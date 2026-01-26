@@ -6,6 +6,8 @@ class Show < ApplicationRecord
   belongs_to :production
   belongs_to :location, optional: true
   belongs_to :event_linkage, optional: true
+  belongs_to :location_space, optional: true
+  belongs_to :space_rental, optional: true
 
   # A show may be referenced as the primary_show in an EventLinkage
   has_one :primary_event_linkage, class_name: "EventLinkage", foreign_key: :primary_show_id, dependent: :nullify

@@ -409,6 +409,11 @@ module My
       else
         render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
+    rescue ActiveRecord::RecordNotUnique
+      # Race condition: another request created the record, so find and update it
+      @availability = ShowAvailability.find_by!(available_entity: entity, show: @show)
+      @availability.update!(status: params[:status])
+      render json: { status: @availability.status }
     end
 
     def update_audition_session
@@ -427,6 +432,11 @@ module My
       else
         render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
+    rescue ActiveRecord::RecordNotUnique
+      # Race condition: another request created the record, so find and update it
+      @availability = AuditionSessionAvailability.find_by!(available_entity: entity, audition_session: @session)
+      @availability.update!(status: params[:status])
+      render json: { status: @availability.status }
     end
 
     private

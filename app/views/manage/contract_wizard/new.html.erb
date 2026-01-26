@@ -1,0 +1,55 @@
+<% content_for :title, "New Contract" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path]
+    ],
+    text: "New Contract",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <%= icon("file-text", class: "w-8 h-8 text-pink-600") %>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900">Create a New Contract</h2>
+        <p class="text-gray-600 mt-2">
+          Set up a contract for a third-party group renting your space or performing at your venue.
+        </p>
+      </div>
+
+      <%= form_with url: manage_create_draft_contract_wizard_path, method: :post, local: true do |form| %>
+        <div class="space-y-5">
+          <div>
+            <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Contractor / Group Name
+              <span class="text-pink-500">*</span>
+            </label>
+            <input type="text"
+                   name="contract[contractor_name]"
+                   id="contractor_name"
+                   placeholder="e.g., Local Comedy Troupe, Dance Academy, Private Event"
+                   autofocus
+                   required
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <p class="mt-1.5 text-xs text-gray-500">The name of the person or group you're contracting with</p>
+          </div>
+        </div>
+
+        <div class="mt-8 flex justify-end">
+          <%= render "shared/button", text: "Start Contract", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-4 text-center">
+      <%= link_to "Cancel", manage_contracts_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+</div>

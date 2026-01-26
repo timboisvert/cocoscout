@@ -1,0 +1,315 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Bookings" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <%= icon("calendar", class: "w-8 h-8 text-pink-600") %>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Space Bookings</h2>
+    <p class="text-gray-600 mt-2">Add the dates and times when this contractor will use your space.</p>
+  </div>
+
+  <div id="bookings-app"
+       data-controller="contract-bookings"
+       data-contract-bookings-existing-value="<%= @existing_bookings.to_json %>"
+       data-contract-bookings-locations-value="<%= @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json %>">
+
+    <%# Booking type selection %>
+    <div class="mb-6">
+      <div class="grid grid-cols-2 gap-3">
+        <label class="cursor-pointer">
+          <div data-contract-bookings-target="singleOption" class="p-4 rounded-lg border-2 border-pink-500 bg-pink-50 transition-colors hover:border-pink-400">
+            <div class="flex items-start">
+              <input type="radio" name="booking_type" value="single" checked
+                     data-action="change->contract-bookings#toggleBookingType"
+                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
+                <p class="font-medium text-gray-900">Single booking</p>
+                <p class="text-sm text-gray-500 mt-0.5">One date and time</p>
+              </div>
+            </div>
+          </div>
+        </label>
+        <label class="cursor-pointer">
+          <div data-contract-bookings-target="recurringOption" class="p-4 rounded-lg border-2 border-gray-200 bg-gray-50 transition-colors hover:border-pink-300">
+            <div class="flex items-start">
+              <input type="radio" name="booking_type" value="recurring"
+                     data-action="change->contract-bookings#toggleBookingType"
+                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
+                <p class="font-medium text-gray-900">Recurring series</p>
+                <p class="text-sm text-gray-500 mt-0.5">Weekly, biweekly, or monthly</p>
+              </div>
+            </div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <%# Single booking form %>
+    <div data-contract-bookings-target="singleForm" class="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+      <div class="space-y-4">
+        <%# Location %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+          <select data-contract-bookings-target="location"
+                  data-action="change->contract-bookings#locationChanged"
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="">Select a location...</option>
+            <% @locations.each do |location| %>
+              <option value="<%= location.id %>"><%= location.name %></option>
+            <% end %>
+          </select>
+        </div>
+
+        <%# Space (optional) %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Space
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <select data-contract-bookings-target="space"
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="">Entire venue / no specific space</option>
+          </select>
+          <p class="mt-1.5 text-xs text-gray-500">
+            <%= link_to "Manage spaces", "#", data: { action: "click->contract-bookings#openSpacesModal" }, class: "text-pink-600 hover:text-pink-700 underline" %>
+            for your locations
+          </p>
+        </div>
+
+        <%# Start date/time and duration %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date & Time</label>
+            <input type="datetime-local"
+                   data-contract-bookings-target="startDateTime"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+            <select data-contract-bookings-target="duration"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="1">1 hour</option>
+              <option value="1.5">1.5 hours</option>
+              <option value="2" selected>2 hours</option>
+              <option value="2.5">2.5 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+              <option value="5">5 hours</option>
+              <option value="6">6 hours</option>
+              <option value="8">8 hours</option>
+              <option value="10">10 hours</option>
+              <option value="12">12 hours (half day)</option>
+              <option value="24">24 hours (full day)</option>
+            </select>
+          </div>
+        </div>
+
+        <%# Notes %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Notes
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input type="text"
+                 data-contract-bookings-target="notes"
+                 placeholder="e.g., Setup included, green room access"
+                 class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+        </div>
+
+        <%= render "shared/button", text: "Add Booking", variant: "primary", size: "medium", icon: "plus", type: :button, full_width: true, data: { action: "click->contract-bookings#addBooking" } %>
+      </div>
+    </div>
+
+    <%# Recurring booking form %>
+    <div data-contract-bookings-target="recurringForm" class="hidden bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+      <div class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4">
+        <p class="text-sm text-pink-800">
+          <strong>Tip:</strong> This will generate multiple bookings based on your pattern. You can remove individual dates after.
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <%# Location %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+          <select data-contract-bookings-target="recurringLocation"
+                  data-action="change->contract-bookings#recurringLocationChanged"
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="">Select a location...</option>
+            <% @locations.each do |location| %>
+              <option value="<%= location.id %>"><%= location.name %></option>
+            <% end %>
+          </select>
+        </div>
+
+        <%# Space (optional) %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Space
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <select data-contract-bookings-target="recurringSpace"
+                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="">Entire venue / no specific space</option>
+          </select>
+        </div>
+
+        <%# Frequency and Day %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Frequency</label>
+            <select data-contract-bookings-target="frequency"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+            <select data-contract-bookings-target="dayOfWeek"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+        </div>
+
+        <%# Time and Duration %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
+            <input type="time"
+                   data-contract-bookings-target="recurringTime"
+                   value="19:00"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+            <select data-contract-bookings-target="recurringDuration"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="1">1 hour</option>
+              <option value="1.5">1.5 hours</option>
+              <option value="2" selected>2 hours</option>
+              <option value="2.5">2.5 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+              <option value="5">5 hours</option>
+              <option value="6">6 hours</option>
+              <option value="8">8 hours</option>
+            </select>
+          </div>
+        </div>
+
+        <%# Start date and count %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Starting From</label>
+            <input type="date"
+                   data-contract-bookings-target="startDate"
+                   value="<%= Date.current.to_s %>"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Number of Events</label>
+            <select data-contract-bookings-target="eventCount"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="4">4 events</option>
+              <option value="8" selected>8 events</option>
+              <option value="12">12 events</option>
+              <option value="16">16 events</option>
+              <option value="24">24 events</option>
+              <option value="52">52 events (1 year weekly)</option>
+            </select>
+          </div>
+        </div>
+
+        <%# Notes %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Notes
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input type="text"
+                 data-contract-bookings-target="recurringNotes"
+                 placeholder="e.g., Weekly rehearsal, monthly showcase"
+                 class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+        </div>
+
+        <%= render "shared/button", text: "Generate Recurring Bookings", variant: "primary", size: "medium", icon: "plus", type: :button, full_width: true, data: { action: "click->contract-bookings#addRecurringBookings" } %>
+      </div>
+    </div>
+
+    <%# Booking list %>
+    <div data-contract-bookings-target="list" class="space-y-2 mb-6">
+      <% if @existing_bookings.empty? %>
+        <p class="text-gray-500 text-sm text-center py-4">No bookings added yet.</p>
+      <% end %>
+    </div>
+
+    <%# Navigation %>
+    <%= form_with url: manage_bookings_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+      <input type="hidden" name="bookings" data-contract-bookings-target="bookingsJson" value="<%= @existing_bookings.to_json %>">
+
+      <div class="flex justify-between">
+        <%= link_to manage_contractor_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
+          <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next: Services", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Spaces Management Modal %>
+  <div id="spaces-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-contract-bookings-target="spacesModal">
+    <div class="flex items-center justify-center min-h-screen px-4">
+      <div class="fixed inset-0 bg-black/50" data-action="click->contract-bookings#closeSpacesModal"></div>
+      <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Manage Spaces</h3>
+          <button type="button" data-action="click->contract-bookings#closeSpacesModal" class="text-gray-400 hover:text-gray-600">
+            <%= icon("x-circle", class: "w-6 h-6") %>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-sm text-gray-600">Click on a location to manage its spaces:</p>
+
+          <% @locations.each do |location| %>
+            <%= link_to manage_location_path(location), target: "_blank", class: "block p-3 bg-gray-50 rounded-lg hover:bg-pink-50 border border-gray-200 hover:border-pink-300 transition-colors" do %>
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium text-gray-900"><%= location.name %></div>
+                  <div class="text-sm text-gray-500">
+                    <% spaces = location.location_spaces %>
+                    <% if spaces.any? %>
+                      <%= pluralize(spaces.count, "space") %>: <%= spaces.map(&:name).join(", ") %>
+                    <% else %>
+                      No spaces defined
+                    <% end %>
+                  </div>
+                </div>
+                <%= icon("external-link", class: "w-4 h-4 text-gray-400") %>
+              </div>
+            <% end %>
+          <% end %>
+
+          <% if @locations.empty? %>
+            <p class="text-sm text-gray-500 italic">No locations available. Add locations in your organization settings.</p>
+          <% end %>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
+          <p class="text-xs text-gray-500">Changes will be reflected when you refresh this page.</p>
+          <%= render "shared/button", text: "Done", variant: "secondary", size: "medium", type: :button, data: { action: "click->contract-bookings#closeSpacesModal" } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -57,6 +57,17 @@ module Manage
         @production_dashboards[production.id] = DashboardService.new(production).generate
       end
 
+      # Load pending ticketing events that need attention (managers only)
+      if Current.user.manager?
+        @pending_ticketing_events = TicketingPendingEvent
+          .joins(:ticketing_provider)
+          .where(ticketing_providers: { organization_id: Current.organization.id })
+          .pending
+          .includes(:ticketing_provider, :suggested_production)
+          .order(created_at: :desc)
+          .limit(10)
+      end
+
       render "home"
     end
 

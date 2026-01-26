@@ -26,6 +26,7 @@ class Production < ApplicationRecord
   has_many :ticketing_production_links, dependent: :destroy
   has_many :ticketing_providers, through: :ticketing_production_links
   belongs_to :organization
+  belongs_to :contract, optional: true
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
     attachable.variant :small, resize_to_limit: [ 300, 200 ], preprocessed: true
@@ -43,6 +44,12 @@ class Production < ApplicationRecord
     sign_up: "sign_up",           # Self-service registration via sign-up forms
     manual: "manual"              # Admin manually adds names/emails
   }, default: :talent_pool, prefix: :casting
+
+  # Production type: in-house (our production) or third-party (renter/contractor)
+  enum :production_type, {
+    in_house: "in_house",
+    third_party: "third_party"
+  }, default: :in_house, prefix: :type
 
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
@@ -396,5 +403,18 @@ class Production < ApplicationRecord
 
   def create_default_talent_pool
     talent_pools.create!(name: "Talent Pool")
+  end
+
+  # Contract-related helpers
+  def third_party?
+    type_third_party?
+  end
+
+  def governed_by_contract?
+    contract.present? && contract.status_active?
+  end
+
+  def contract_locked?
+    governed_by_contract?
   end
 end

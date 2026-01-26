@@ -1,0 +1,34 @@
+<div id="space_<%= space.id %>" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+  <div class="flex-1">
+    <div class="flex items-center gap-2">
+      <span class="font-medium text-gray-900"><%= space.name %></span>
+      <% if space.default? %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">
+          Default
+        </span>
+      <% end %>
+    </div>
+    <% if space.capacity.present? && space.capacity > 0 %>
+      <div class="text-sm text-gray-500 mt-0.5">
+        Capacity: <%= space.capacity %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if local_assigns[:can_edit] %>
+    <div class="flex items-center gap-2">
+      <% unless space.default? %>
+        <%= button_to "Set Default", set_default_manage_location_space_path(location, space),
+              method: :post,
+              class: "text-xs text-gray-500 hover:text-gray-700",
+              form: { class: "inline" } %>
+      <% end %>
+      <%= render "shared/button", text: "Edit", variant: "tertiary", size: "small", type: :button, data: { action: "click->location-spaces#openEditSpaceModal", "space-id": space.id, "space-name": space.name, "space-capacity": space.capacity, "space-default": space.default?, "space-path": manage_location_space_path(location, space) } %>
+      <%= button_to "Delete", manage_location_space_path(location, space),
+            method: :delete,
+            data: { turbo_confirm: "Are you sure you want to delete this space?" },
+            class: "text-xs text-pink-600 hover:text-pink-700",
+            form: { class: "inline" } %>
+    </div>
+  <% end %>
+</div>

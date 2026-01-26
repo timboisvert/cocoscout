@@ -3,6 +3,7 @@
 class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :productions, dependent: :destroy
+  has_many :contracts, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :ticket_fee_templates, dependent: :destroy
   has_many :ticketing_providers, dependent: :destroy

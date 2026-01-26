@@ -1,0 +1,75 @@
+<% content_for :title, "Create Contract - #{local_assigns[:step_name] || 'Setup'}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path]
+    ],
+    text: "New Contract",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <%
+          steps = [
+            { num: 1, name: "Contractor", path: defined?(@contract) && @contract.persisted? ? manage_contractor_contract_wizard_path(@contract) : nil },
+            { num: 2, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
+            { num: 3, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
+            { num: 4, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 5, name: "Terms", path: defined?(@contract) && @contract.persisted? ? manage_terms_contract_wizard_path(@contract) : nil },
+            { num: 6, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+          ]
+        %>
+        <% steps.each_with_index do |step, index| %>
+          <% is_current = step[:num] == @step %>
+          <% is_completed = step[:num] < @step %>
+          <% is_clickable = is_completed && step[:path].present? %>
+
+          <div class="flex items-center">
+            <% if is_clickable %>
+              <%= link_to step[:path], class: "flex items-center" do %>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
+              <% end %>
+            <% else %>
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
+                  <%= step[:num] %>
+                </div>
+                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
+              </div>
+            <% end %>
+          </div>
+
+          <% if index < steps.length - 1 %>
+            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < @step ? 'bg-pink-500' : 'bg-gray-200' %>" style="max-width: 40px;"></div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <%= yield %>
+    </div>
+
+    <!-- Cancel Link -->
+    <% if defined?(@contract) && @contract.persisted? %>
+      <div class="mt-4 text-center">
+        <%= link_to "Cancel", manage_cancel_contract_wizard_path(@contract),
+            data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel? This draft will be deleted." },
+            class: "text-sm text-gray-500 hover:text-gray-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>

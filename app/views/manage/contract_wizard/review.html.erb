@@ -1,0 +1,178 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Review" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <%= icon("check-circle", class: "w-8 h-8 text-pink-600") %>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Review Contract</h2>
+    <p class="text-gray-600 mt-2">Review all details before activating the contract.</p>
+  </div>
+
+  <% unless @valid_for_activation %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div class="flex items-start">
+        <%= icon("alert-circle", class: "w-5 h-5 text-red-600 mt-0.5 mr-3") %>
+        <div>
+          <h3 class="font-medium text-red-800">Cannot activate yet</h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% @validation_errors&.each do |error| %>
+              <li><%= error %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="space-y-6">
+    <%# Contractor Info %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-medium text-gray-900">Contractor</h3>
+        <%= link_to manage_contractor_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          Edit
+        <% end %>
+      </div>
+      <dl class="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <dt class="text-gray-500">Name</dt>
+          <dd class="text-gray-900"><%= @contract.contractor_name %></dd>
+        </div>
+        <% if @contract.contractor_email.present? %>
+          <div>
+            <dt class="text-gray-500">Email</dt>
+            <dd class="text-gray-900"><%= @contract.contractor_email %></dd>
+          </div>
+        <% end %>
+        <% if @contract.contractor_phone.present? %>
+          <div>
+            <dt class="text-gray-500">Phone</dt>
+            <dd class="text-gray-900"><%= @contract.contractor_phone %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <%# Bookings %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-medium text-gray-900">Bookings (<%= @contract.draft_bookings.count %>)</h3>
+        <%= link_to manage_bookings_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          Edit
+        <% end %>
+      </div>
+      <% if @contract.draft_bookings.any? %>
+        <ul class="space-y-2 text-sm">
+          <% @contract.draft_bookings.each do |booking| %>
+            <li class="flex items-center gap-2 text-gray-700">
+              <%= icon("calendar", class: "w-4 h-4 text-gray-400") %>
+              Space ID <%= booking["location_space_id"] %>:
+              <%= Time.parse(booking["starts_at"]).strftime("%b %d, %Y %l:%M %p") rescue booking["starts_at"] %> -
+              <%= Time.parse(booking["ends_at"]).strftime("%l:%M %p") rescue booking["ends_at"] %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-sm text-red-600">No bookings added</p>
+      <% end %>
+    </div>
+
+    <%# Services %>
+    <% if @contract.draft_services.any? %>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-medium text-gray-900">Services (<%= @contract.draft_services.count %>)</h3>
+          <%= link_to manage_services_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+            Edit
+          <% end %>
+        </div>
+        <ul class="space-y-1 text-sm text-gray-700">
+          <% @contract.draft_services.each do |service| %>
+            <li class="flex items-center gap-2">
+              <%= icon("check", class: "w-4 h-4 text-green-500") %>
+              <%= service["name"] %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%# Payments %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-medium text-gray-900">Payments (<%= @contract.draft_payments.count %>)</h3>
+        <%= link_to manage_payments_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          Edit
+        <% end %>
+      </div>
+      <% if @contract.draft_payments.any? %>
+        <ul class="space-y-2 text-sm">
+          <% @contract.draft_payments.each do |payment| %>
+            <li class="flex items-center justify-between">
+              <span class="text-gray-700">
+                <%= payment["description"].presence || "Payment" %>
+                <span class="text-xs text-gray-500">
+                  (due <%= Date.parse(payment["due_date"]).strftime("%b %d, %Y") rescue payment["due_date"] %>)
+                </span>
+              </span>
+              <span class="font-medium <%= payment["direction"] == "incoming" ? 'text-green-600' : 'text-red-600' %>">
+                <%= payment["direction"] == "incoming" ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %>
+              </span>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-sm text-gray-500">No payments scheduled</p>
+      <% end %>
+    </div>
+
+    <%# Contract Period %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-medium text-gray-900">Contract Period</h3>
+        <%= link_to manage_terms_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          Edit
+        <% end %>
+      </div>
+      <% if @contract.contract_start_date.present? && @contract.contract_end_date.present? %>
+        <p class="text-sm text-gray-700"><%= @contract.date_range %></p>
+      <% else %>
+        <p class="text-sm text-red-600">Contract dates not set</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-8 flex justify-between items-center">
+    <%= link_to manage_terms_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
+      <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
+      Back
+    <% end %>
+
+    <div class="flex items-center gap-4">
+      <% if @valid_for_activation %>
+        <%= button_to manage_activate_contract_wizard_path(@contract),
+          method: :post,
+          class: "inline-flex items-center gap-2 px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium" do %>
+          <%= icon("check-circle", class: "w-5 h-5") %>
+          Activate Contract
+        <% end %>
+      <% else %>
+        <%= render "shared/button", text: "Activate Contract", variant: "disabled", size: "large", icon: "check-circle", type: :button, disabled: true %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div class="flex items-start">
+      <%= icon("info", class: "w-5 h-5 text-blue-600 mt-0.5 mr-3") %>
+      <div class="text-sm text-blue-800">
+        <p class="font-medium">What happens when you activate?</p>
+        <ul class="mt-2 list-disc list-inside space-y-1">
+          <li>Space rentals will be created and appear on your calendar</li>
+          <li>Payment schedule will be set up with reminders</li>
+          <li>A third-party production will be created (if configured)</li>
+          <li>You can still edit details after activation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>

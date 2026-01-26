@@ -1,0 +1,66 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Services" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <%= icon("wrench", class: "w-8 h-8 text-pink-600") %>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Services Included</h2>
+    <p class="text-gray-600 mt-2">Specify any services included in this contract (optional).</p>
+  </div>
+
+  <div id="services-app" data-controller="contract-services" data-contract-services-existing-value="<%= @existing_services.to_json %>">
+    <%# Common services checkboxes %>
+    <div class="mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Common Services</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <% [
+          { name: "Tech support", description: "Sound and lighting technician" },
+          { name: "Box office", description: "Ticket sales and door staff" },
+          { name: "Marketing", description: "Promotional support" },
+          { name: "Concessions", description: "Bar or concession sales" },
+          { name: "Cleanup", description: "Post-event cleaning" },
+          { name: "Security", description: "Event security staff" }
+        ].each do |service| %>
+          <label class="flex items-start p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <input type="checkbox"
+                   data-action="change->contract-services#toggleService"
+                   data-name="<%= service[:name] %>"
+                   data-description="<%= service[:description] %>"
+                   class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900"><%= service[:name] %></div>
+              <div class="text-xs text-gray-500"><%= service[:description] %></div>
+            </div>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Custom service input %>
+    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Add Custom Service</h3>
+      <div class="flex gap-2">
+        <input type="text" data-contract-services-target="customName" placeholder="Service name" class="flex-1 border-gray-300 rounded-lg text-sm">
+        <%= render "shared/button", text: "Add", variant: "secondary", size: "small", type: :button, data: { action: "click->contract-services#addCustom" } %>
+      </div>
+    </div>
+
+    <%# Selected services list %>
+    <div data-contract-services-target="list" class="space-y-2 mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-2">Selected Services</h3>
+      <p class="text-gray-500 text-sm">No services selected. This step is optional.</p>
+    </div>
+
+    <%# Navigation %>
+    <%= form_with url: manage_services_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+      <input type="hidden" name="services" data-contract-services-target="servicesJson" value="<%= @existing_services.to_json %>">
+
+      <div class="flex justify-between">
+        <%= link_to manage_bookings_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
+          <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next: Payments", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

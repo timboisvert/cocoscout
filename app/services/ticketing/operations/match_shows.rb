@@ -150,11 +150,14 @@ module Ticketing
         return nil unless time_value
 
         if time_value.is_a?(Hash)
-          Time.zone.parse(time_value["utc"] || time_value["local"])
+          parsed_value = time_value["utc"] || time_value["local"]
+          return nil unless parsed_value
+
+          Time.zone.parse(parsed_value)
         else
           Time.zone.parse(time_value.to_s)
         end
-      rescue ArgumentError
+      rescue ArgumentError, TypeError
         nil
       end
 

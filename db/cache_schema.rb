@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_26_174705) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -307,6 +307,57 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
   end
 
+  create_table "contract_documents", force: :cascade do |t|
+    t.bigint "contract_id", null: false
+    t.datetime "created_at", null: false
+    t.string "document_type"
+    t.string "name", null: false
+    t.text "notes"
+    t.datetime "updated_at", null: false
+    t.index ["contract_id"], name: "index_contract_documents_on_contract_id"
+  end
+
+  create_table "contract_payments", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.bigint "contract_id", null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "direction", null: false
+    t.date "due_date", null: false
+    t.text "notes"
+    t.date "paid_date"
+    t.string "payment_method"
+    t.string "reference_number"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
+    t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
+    t.index ["due_date"], name: "index_contract_payments_on_due_date"
+    t.index ["status"], name: "index_contract_payments_on_status"
+  end
+
+  create_table "contracts", force: :cascade do |t|
+    t.datetime "activated_at"
+    t.datetime "cancelled_at"
+    t.datetime "completed_at"
+    t.date "contract_end_date"
+    t.date "contract_start_date"
+    t.text "contractor_address"
+    t.string "contractor_email"
+    t.string "contractor_name", null: false
+    t.string "contractor_phone"
+    t.datetime "created_at", null: false
+    t.jsonb "draft_data", default: {}
+    t.text "notes"
+    t.bigint "organization_id", null: false
+    t.string "status", default: "draft", null: false
+    t.text "terms"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_contracts_on_organization_id"
+    t.index ["status"], name: "index_contracts_on_status"
+  end
+
   create_table "email_batches", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "mailer_action"
@@ -478,6 +529,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.index ["group_id", "organization_id"], name: "index_groups_organizations_on_group_id_and_organization_id", unique: true
     t.index ["group_id"], name: "index_groups_organizations_on_group_id"
     t.index ["organization_id"], name: "index_groups_organizations_on_organization_id"
+  end
+
+  create_table "location_spaces", force: :cascade do |t|
+    t.integer "capacity"
+    t.datetime "created_at", null: false
+    t.boolean "default", default: false, null: false
+    t.text "description"
+    t.bigint "location_id", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id", "default"], name: "index_location_spaces_one_default_per_location", unique: true, where: "(\"default\" = true)"
+    t.index ["location_id"], name: "index_location_spaces_on_location_id"
   end
 
   create_table "locations", force: :cascade do |t|
@@ -721,6 +784,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.boolean "casting_setup_completed", default: false, null: false
     t.string "casting_source", default: "talent_pool", null: false
     t.string "contact_email"
+    t.bigint "contract_id"
     t.datetime "created_at", null: false
     t.boolean "default_attendance_enabled", default: false, null: false
     t.boolean "default_signup_based_casting", default: false, null: false
@@ -730,6 +794,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
+    t.string "production_type", default: "in_house", null: false
     t.string "public_key"
     t.datetime "public_key_changed_at"
     t.boolean "public_profile_enabled", default: true
@@ -739,7 +804,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.string "show_upcoming_events_mode", default: "all"
     t.datetime "updated_at", null: false
     t.index ["casting_source"], name: "index_productions_on_casting_source"
+    t.index ["contract_id"], name: "index_productions_on_contract_id"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
+    t.index ["production_type"], name: "index_productions_on_production_type"
     t.index ["public_key"], name: "index_productions_on_public_key", unique: true
   end
 
@@ -1116,6 +1183,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.boolean "is_online", default: false, null: false
     t.string "linkage_role"
     t.bigint "location_id"
+    t.bigint "location_space_id"
     t.text "notes"
     t.string "online_location_info"
     t.integer "production_id", null: false
@@ -1124,12 +1192,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.string "recurrence_pattern"
     t.string "secondary_name"
     t.boolean "signup_based_casting", default: false, null: false
+    t.bigint "space_rental_id"
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
+    t.index ["location_space_id"], name: "index_shows_on_location_space_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
+    t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
   end
 
   create_table "sign_up_form_holdouts", force: :cascade do |t|
@@ -1415,6 +1486,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "space_rentals", force: :cascade do |t|
+    t.boolean "confirmed", default: false, null: false
+    t.bigint "contract_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "ends_at", null: false
+    t.bigint "location_space_id", null: false
+    t.text "notes"
+    t.datetime "starts_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id"], name: "index_space_rentals_on_contract_id"
+    t.index ["location_space_id", "starts_at", "ends_at"], name: "index_space_rentals_on_space_and_time"
+    t.index ["location_space_id"], name: "index_space_rentals_on_location_space_id"
+    t.index ["starts_at"], name: "index_space_rentals_on_starts_at"
+  end
+
   create_table "talent_pool_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "member_id", null: false
@@ -1661,6 +1747,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   add_foreign_key "casting_tables", "organizations"
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
+  add_foreign_key "contract_documents", "contracts"
+  add_foreign_key "contract_payments", "contracts"
+  add_foreign_key "contracts", "organizations"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
@@ -1673,6 +1762,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
+  add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
@@ -1692,6 +1782,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   add_foreign_key "production_expenses", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "productions", "contracts"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
   add_foreign_key "questionnaire_answers", "questionnaire_responses"
@@ -1727,8 +1818,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "event_linkages"
+  add_foreign_key "shows", "location_spaces"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
+  add_foreign_key "shows", "space_rentals"
   add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
   add_foreign_key "sign_up_form_instances", "shows"
   add_foreign_key "sign_up_form_instances", "sign_up_forms"
@@ -1748,6 +1841,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "space_rentals", "contracts"
+  add_foreign_key "space_rentals", "location_spaces"
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"

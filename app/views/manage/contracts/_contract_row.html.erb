@@ -1,0 +1,72 @@
+<div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+  <div class="flex-1">
+    <div class="flex items-center gap-3">
+      <%# Link drafts to wizard, others to show page %>
+      <% contract_path = contract.status_draft? ? manage_contractor_contract_wizard_path(contract) : manage_contract_path(contract) %>
+      <%= link_to contract_path, class: "font-medium text-gray-900 hover:text-pink-600" do %>
+        <%= contract.contractor_name %>
+      <% end %>
+      <% case contract.status %>
+      <% when "draft" %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+          Draft
+        </span>
+      <% when "active" %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+          Active
+        </span>
+      <% when "completed" %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+          Completed
+        </span>
+      <% when "cancelled" %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+          Cancelled
+        </span>
+      <% end %>
+    </div>
+
+    <div class="mt-1 flex items-center gap-4 text-sm text-gray-500">
+      <% if contract.date_range %>
+        <span class="flex items-center gap-1">
+          <%= icon("calendar", class: "w-4 h-4") %>
+          <%= contract.date_range %>
+        </span>
+      <% end %>
+
+      <% if contract.space_rentals.any? %>
+        <span class="flex items-center gap-1">
+          <%= icon("map-pin", class: "w-4 h-4") %>
+          <%= pluralize(contract.space_rentals.count, "booking") %>
+        </span>
+      <% elsif contract.draft_bookings.any? %>
+        <span class="flex items-center gap-1">
+          <%= icon("map-pin", class: "w-4 h-4") %>
+          <%= pluralize(contract.draft_bookings.count, "booking") %> (draft)
+        </span>
+      <% end %>
+
+      <% pending_count = contract.pending_payments.count %>
+      <% if pending_count > 0 %>
+        <span class="flex items-center gap-1">
+          <%= icon("dollar-sign", class: "w-4 h-4") %>
+          <%= pluralize(pending_count, "pending payment") %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <% if contract.status_draft? %>
+      <%= link_to manage_contractor_contract_wizard_path(contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+        Continue
+        <%= icon("arrow-right", class: "w-4 h-4 inline-block") %>
+      <% end %>
+    <% else %>
+      <%= link_to manage_contract_path(contract), class: "text-sm text-gray-600 hover:text-gray-700" do %>
+        View
+        <%= icon("arrow-right", class: "w-4 h-4 inline-block") %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

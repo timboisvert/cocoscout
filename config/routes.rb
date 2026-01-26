@@ -880,6 +880,15 @@ Rails.application.routes.draw do
       post "ticketing/:id/apply_matches", to: "ticketing_production_links#apply_matches", as: "apply_matches_money_ticketing_production_link"
     end
 
+    # Ticketing pending events - events that need manual linking
+    resources :ticketing_pending_events, only: [ :index, :show ], path: "ticketing/pending" do
+      member do
+        post :link
+        post :dismiss
+      end
+    end
+    post "ticketing/sync/:provider_id", to: "ticketing_pending_events#sync_now", as: "ticketing_sync_now"
+
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses
     scope "money/financials/:production_id" do
@@ -892,6 +901,48 @@ Rails.application.routes.draw do
       delete "expenses/:id", to: "production_expenses#destroy", as: "delete_money_financials_production_expense"
       post "expenses/:id/recalculate", to: "production_expenses#recalculate", as: "recalculate_money_financials_production_expense"
       patch "expenses/:id/allocations/:allocation_id/override", to: "production_expenses#override_allocation", as: "override_money_financials_production_expense_allocation"
+    end
+
+    # Contracts - third-party productions and venue rentals
+    resources :contracts, path: "money/contracts" do
+      member do
+        post :activate
+        post :complete
+        post :cancel
+      end
+      resources :contract_documents, only: %i[create destroy], path: "documents"
+      resources :contract_payments, only: %i[create update destroy], path: "payments" do
+        member do
+          post :mark_paid
+        end
+      end
+      resources :space_rentals, only: %i[create update destroy], path: "rentals"
+    end
+
+    # Contract wizard
+    get  "money/contracts/wizard/new", to: "contract_wizard#new", as: "new_contract_wizard"
+    post "money/contracts/wizard/create_draft", to: "contract_wizard#create_draft", as: "create_draft_contract_wizard"
+    get  "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
+    post "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
+    get  "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
+    post "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#save_bookings"
+    get  "money/contracts/:contract_id/wizard/services", to: "contract_wizard#services", as: "services_contract_wizard"
+    post "money/contracts/:contract_id/wizard/services", to: "contract_wizard#save_services"
+    get  "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#payments", as: "payments_contract_wizard"
+    post "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#save_payments"
+    get  "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#terms", as: "terms_contract_wizard"
+    post "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#save_terms"
+    get  "money/contracts/:contract_id/wizard/review", to: "contract_wizard#review", as: "review_contract_wizard"
+    post "money/contracts/:contract_id/wizard/activate", to: "contract_wizard#activate", as: "activate_contract_wizard"
+    delete "money/contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
+
+    # Location spaces
+    scope "locations/:location_id" do
+      resources :location_spaces, path: "spaces", only: %i[index create update destroy] do
+        member do
+          post :set_default
+        end
+      end
     end
 
     # Show payouts - now under /money/shows/:id/payouts

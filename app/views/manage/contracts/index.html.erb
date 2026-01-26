@@ -1,0 +1,96 @@
+<% content_for :title, "Contracts" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path]
+    ],
+    text: "Contracts",
+    links: [
+      { icon: "plus", text: "New Contract", path: manage_new_contract_wizard_path }
+    ]
+  } %>
+
+  <% if @upcoming_payments.any? %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <div class="flex items-start">
+        <%= icon("alert-triangle", class: "w-5 h-5 text-yellow-600 mt-0.5 mr-3") %>
+        <div>
+          <h3 class="font-medium text-yellow-800">Upcoming Payments</h3>
+          <p class="text-sm text-yellow-700 mt-1">
+            You have <%= pluralize(@upcoming_payments.count, "payment") %> due in the next 14 days.
+          </p>
+          <ul class="mt-2 space-y-1">
+            <% @upcoming_payments.limit(3).each do |payment| %>
+              <li class="text-sm text-yellow-700">
+                <%= link_to payment.contract.contractor_name, manage_contract_path(payment.contract), class: "underline hover:no-underline" %>:
+                <%= number_to_currency(payment.amount) %>
+                due <%= payment.due_date.strftime("%b %d") %>
+              </li>
+            <% end %>
+            <% if @upcoming_payments.count > 3 %>
+              <li class="text-sm text-yellow-700">
+                and <%= @upcoming_payments.count - 3 %> more...
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @draft_contracts.any? %>
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <%= icon("pencil", class: "w-5 h-5 inline-block mr-2 text-gray-500") %>
+        Draft Contracts
+      </h2>
+      <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <% @draft_contracts.each do |contract| %>
+          <%= render "contract_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @active_contracts.any? %>
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <%= icon("check-circle", class: "w-5 h-5 inline-block mr-2 text-green-600") %>
+        Active Contracts
+      </h2>
+      <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <% @active_contracts.each do |contract| %>
+          <%= render "contract_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @completed_contracts.any? %>
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        <%= icon("check", class: "w-5 h-5 inline-block mr-2 text-gray-400") %>
+        Past Contracts
+      </h2>
+      <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <% @completed_contracts.each do |contract| %>
+          <%= render "contract_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @contracts.empty? %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
+      <%= icon("file-text", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts yet</h3>
+      <p class="text-gray-600 mb-4">
+        Create a contract when an external group wants to rent your space or perform at your venue.
+      </p>
+      <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus", path: manage_new_contract_wizard_path %>
+    </div>
+  <% end %>
+</div>

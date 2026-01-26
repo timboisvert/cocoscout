@@ -1,0 +1,340 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Payments" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <%= icon("currency-dollar", class: "w-8 h-8 text-pink-600") %>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Payment Structure</h2>
+    <p class="text-gray-600 mt-2">Define how payments will work for this contract.</p>
+  </div>
+
+  <div id="payments-app" data-controller="contract-payments" data-contract-payments-existing-value="<%= @existing_payments.to_json %>">
+    <%# Payment Structure Selection %>
+    <div class="mb-6">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Payment Structure</h3>
+      <div class="grid gap-3">
+        <label class="relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="payment_structure" value="flat_fee" data-action="change->contract-payments#selectStructure" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" checked>
+          <div class="ml-3 flex-1">
+            <div class="flex items-center gap-2">
+              <%= icon("banknotes", class: "w-5 h-5 text-pink-600") %>
+              <span class="text-sm font-medium text-gray-900">Flat Fee</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">A single fixed amount for the entire contract, with optional deposit.</p>
+          </div>
+        </label>
+
+        <label class="relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="payment_structure" value="per_event" data-action="change->contract-payments#selectStructure" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3 flex-1">
+            <div class="flex items-center gap-2">
+              <%= icon("calendar", class: "w-5 h-5 text-pink-600") %>
+              <span class="text-sm font-medium text-gray-900">Per Event Fee</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Charge per event/booking, with optional volume discount.</p>
+          </div>
+        </label>
+
+        <label class="relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="payment_structure" value="revenue_share" data-action="change->contract-payments#selectStructure" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3 flex-1">
+            <div class="flex items-center gap-2">
+              <%= icon("chart-pie", class: "w-5 h-5 text-pink-600") %>
+              <span class="text-sm font-medium text-gray-900">Revenue Share</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Split ticket sales or revenue by percentage.</p>
+          </div>
+        </label>
+
+        <label class="relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="payment_structure" value="custom" data-action="change->contract-payments#selectStructure" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3 flex-1">
+            <div class="flex items-center gap-2">
+              <%= icon("adjustments-horizontal", class: "w-5 h-5 text-pink-600") %>
+              <span class="text-sm font-medium text-gray-900">Custom Schedule</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Create a custom payment schedule with multiple payments.</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <%# Flat Fee Configuration %>
+    <div data-contract-payments-target="flatFeeConfig" class="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-200">
+      <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <%= icon("banknotes", class: "w-4 h-4 text-pink-600") %>
+        Flat Fee Details
+      </h4>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Total Contract Amount</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <input type="number" step="0.01" min="0" data-contract-payments-target="flatFeeAmount" placeholder="0.00"
+                   class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Direction</label>
+          <select data-contract-payments-target="flatFeeDirection" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="incoming">They pay us (venue rental, etc.)</option>
+            <option value="outgoing">We pay them (performer fee, etc.)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center">
+          <input type="checkbox" data-contract-payments-target="flatFeeDeposit" data-action="change->contract-payments#toggleDeposit"
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <label class="ml-2 text-sm text-gray-700">Require deposit upfront</label>
+        </div>
+
+        <div data-contract-payments-target="flatFeeDepositConfig" class="hidden pl-6 border-l-2 border-pink-200 space-y-3">
+          <div class="flex gap-3 items-end">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposit Amount</label>
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <input type="number" step="0.01" min="0" data-contract-payments-target="flatFeeDepositAmount" placeholder="0.00"
+                         class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                </div>
+                <span class="text-gray-400 self-center">or</span>
+                <div class="relative w-24">
+                  <input type="number" step="1" min="0" max="100" data-contract-payments-target="flatFeeDepositPercent" placeholder="50"
+                         class="w-full pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposit Due Date</label>
+            <input type="date" data-contract-payments-target="flatFeeDepositDue"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Final Payment Due Date</label>
+          <input type="date" data-contract-payments-target="flatFeeFinalDue"
+                 class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        </div>
+      </div>
+    </div>
+
+    <%# Per Event Configuration %>
+    <div data-contract-payments-target="perEventConfig" class="hidden bg-gray-50 rounded-xl p-5 mb-6 border border-gray-200">
+      <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <%= icon("calendar", class: "w-4 h-4 text-pink-600") %>
+        Per Event Fee Details
+      </h4>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Fee Per Event</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <input type="number" step="0.01" min="0" data-contract-payments-target="perEventAmount" placeholder="0.00"
+                   class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Direction</label>
+          <select data-contract-payments-target="perEventDirection" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="incoming">They pay us per event</option>
+            <option value="outgoing">We pay them per event</option>
+          </select>
+        </div>
+
+        <div class="flex items-center">
+          <input type="checkbox" data-contract-payments-target="perEventDiscount" data-action="change->contract-payments#toggleVolumeDiscount"
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <label class="ml-2 text-sm text-gray-700">Apply volume discount</label>
+        </div>
+
+        <div data-contract-payments-target="perEventDiscountConfig" class="hidden pl-6 border-l-2 border-pink-200 space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">After # Events</label>
+              <input type="number" min="1" data-contract-payments-target="perEventDiscountAfter" placeholder="5"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Discount %</label>
+              <div class="relative">
+                <input type="number" step="1" min="0" max="100" data-contract-payments-target="perEventDiscountPercent" placeholder="10"
+                       class="w-full pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Payment Terms</label>
+          <select data-contract-payments-target="perEventTerms" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="before">Due before each event</option>
+            <option value="after">Due after each event</option>
+            <option value="monthly">Monthly invoice</option>
+            <option value="end">Due at end of contract</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <%# Revenue Share Configuration %>
+    <div data-contract-payments-target="revenueShareConfig" class="hidden bg-gray-50 rounded-xl p-5 mb-6 border border-gray-200">
+      <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <%= icon("chart-pie", class: "w-4 h-4 text-pink-600") %>
+        Revenue Share Details
+      </h4>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Revenue Source</label>
+          <select data-contract-payments-target="revenueSource" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="ticket_sales">Ticket Sales</option>
+            <option value="door_sales">Door Sales</option>
+            <option value="bar_sales">Bar/Concession Sales</option>
+            <option value="merchandise">Merchandise</option>
+            <option value="total_revenue">Total Revenue</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Our Share</label>
+            <div class="relative">
+              <input type="number" step="1" min="0" max="100" data-contract-payments-target="revenueOurShare" placeholder="30"
+                     data-action="input->contract-payments#syncRevenueShare"
+                     class="w-full pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Their Share</label>
+            <div class="relative">
+              <input type="number" step="1" min="0" max="100" data-contract-payments-target="revenueTheirShare" placeholder="70"
+                     data-action="input->contract-payments#syncRevenueShare"
+                     class="w-full pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center">
+          <input type="checkbox" data-contract-payments-target="revenueGuarantee" data-action="change->contract-payments#toggleGuarantee"
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <label class="ml-2 text-sm text-gray-700">Minimum guarantee</label>
+        </div>
+
+        <div data-contract-payments-target="revenueGuaranteeConfig" class="hidden pl-6 border-l-2 border-pink-200">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Guaranteed Minimum</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <input type="number" step="0.01" min="0" data-contract-payments-target="revenueGuaranteeAmount" placeholder="500.00"
+                   class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <p class="text-xs text-gray-500 mt-1">They receive at least this amount, even if their share is less.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Settlement Terms</label>
+          <select data-contract-payments-target="revenueSettlement" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <option value="same_day">Same day settlement</option>
+            <option value="next_day">Next business day</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <%# Custom Payment Schedule %>
+    <div data-contract-payments-target="customConfig" class="hidden mb-6">
+      <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 mb-4">
+        <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <%= icon("plus-circle", class: "w-4 h-4 text-pink-600") %>
+          Add Payment
+        </h4>
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+              <input type="text" data-contract-payments-target="description" placeholder="e.g., Rental deposit, Final payment"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                <input type="number" step="0.01" min="0" data-contract-payments-target="amount" placeholder="0.00"
+                       class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Direction</label>
+              <select data-contract-payments-target="direction" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                <option value="incoming">They pay us (incoming)</option>
+                <option value="outgoing">We pay them (outgoing)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Due Date</label>
+              <input type="date" data-contract-payments-target="dueDate"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+          </div>
+
+          <%= render "shared/button", text: "Add Payment", variant: "primary", size: "medium", icon: "plus", type: :button, full_width: true, data: { action: "click->contract-payments#addPayment" } %>
+        </div>
+      </div>
+
+      <%# Payment list %>
+      <div data-contract-payments-target="list" class="space-y-2">
+        <% if @existing_payments.empty? %>
+          <div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+            <%= icon("banknotes", class: "w-8 h-8 text-gray-300 mx-auto mb-2") %>
+            <p class="text-gray-500 text-sm">No payments scheduled yet.</p>
+            <p class="text-gray-400 text-xs mt-1">Add payments above to create a custom schedule.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Summary %>
+    <div data-contract-payments-target="summary" class="bg-pink-50 rounded-xl p-5 mb-6 border border-pink-200">
+      <h4 class="text-sm font-semibold text-gray-900 mb-3">Payment Summary</h4>
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">Total Incoming:</span>
+          <span class="font-semibold text-green-600" data-contract-payments-target="totalIncoming">$0.00</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">Total Outgoing:</span>
+          <span class="font-semibold text-red-600" data-contract-payments-target="totalOutgoing">$0.00</span>
+        </div>
+        <div class="flex justify-between text-sm font-medium pt-2 border-t border-pink-200">
+          <span class="text-gray-900">Net Amount:</span>
+          <span class="font-bold text-pink-600" data-contract-payments-target="netAmount">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <%# Navigation %>
+    <%= form_with url: manage_payments_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+      <input type="hidden" name="payment_structure" data-contract-payments-target="structureJson" value="flat_fee">
+      <input type="hidden" name="payments" data-contract-payments-target="paymentsJson" value="<%= @existing_payments.to_json %>">
+
+      <div class="flex justify-between">
+        <%= link_to manage_services_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
+          <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next: Terms", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

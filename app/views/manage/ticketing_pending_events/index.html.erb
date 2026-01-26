@@ -1,0 +1,104 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Organizations", manage_organizations_path],
+    [Current.organization.name, manage_organization_path(Current.organization, anchor: "tab-4")]
+  ],
+  text: "Pending Ticketing Events"
+} %>
+
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <% if @pending_events.any? %>
+    <div class="mb-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Events Needing Attention</h3>
+      <p class="text-sm text-gray-500">These events from your ticketing platforms couldn't be automatically matched to a production. Link them manually or dismiss if not needed.</p>
+    </div>
+
+    <div class="space-y-3">
+      <% @pending_events.each do |pending_event| %>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                  <%= pending_event.ticketing_provider.name %>
+                </span>
+                <% if pending_event.suggested_production %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    <%= (pending_event.match_confidence.to_f * 100).round %>% match suggested
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    No match found
+                  </span>
+                <% end %>
+              </div>
+
+              <h4 class="text-lg font-medium text-gray-900"><%= pending_event.provider_event_name %></h4>
+
+              <div class="mt-2 text-sm text-gray-500 space-y-1">
+                <% if pending_event.occurrence_count > 0 %>
+                  <div><%= pluralize(pending_event.occurrence_count, "occurrence") %></div>
+                <% end %>
+                <% if pending_event.first_occurrence_at %>
+                  <div>
+                    <% if pending_event.last_occurrence_at && pending_event.last_occurrence_at != pending_event.first_occurrence_at %>
+                      <%= pending_event.first_occurrence_at.strftime("%b %-d") %> - <%= pending_event.last_occurrence_at.strftime("%b %-d, %Y") %>
+                    <% else %>
+                      <%= pending_event.first_occurrence_at.strftime("%b %-d, %Y") %>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+
+              <% if pending_event.suggested_production %>
+                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div class="text-xs text-amber-600 font-medium mb-1">Suggested Match</div>
+                  <div class="font-medium text-gray-900"><%= pending_event.suggested_production.name %></div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="flex-shrink-0 flex flex-col gap-2">
+              <%= link_to manage_ticketing_pending_event_path(pending_event) do %>
+                <%= render "shared/button", text: "Review & Link", variant: "primary", size: "small" %>
+              <% end %>
+              <%= button_to dismiss_manage_ticketing_pending_event_path(pending_event),
+                           method: :post,
+                           class: "text-sm text-gray-500 hover:text-gray-700",
+                           data: { turbo_confirm: "Dismiss this event? It won't be synced." } do %>
+                Dismiss
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-12 bg-white border border-gray-200 rounded-lg">
+      <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3 class="mt-2 text-sm font-semibold text-gray-900">All caught up!</h3>
+      <p class="mt-1 text-sm text-gray-500">No ticketing events need attention right now.</p>
+    </div>
+  <% end %>
+
+  <% if @dismissed_events.any? %>
+    <div class="mt-8">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Recently Dismissed</h3>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200">
+        <% @dismissed_events.each do |event| %>
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div>
+              <span class="text-sm font-medium text-gray-600"><%= event.provider_event_name %></span>
+              <span class="text-xs text-gray-400 ml-2">via <%= event.ticketing_provider.name %></span>
+            </div>
+            <span class="text-xs text-gray-400">
+              Dismissed <%= time_ago_in_words(event.dismissed_at) %> ago
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

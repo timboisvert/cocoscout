@@ -31,7 +31,6 @@ class TicketingPendingEvent < ApplicationRecord
         production: production,
         provider_event_id: provider_event_id,
         provider_event_name: provider_event_name,
-        provider_event_data: provider_event_data,
         sync_enabled: true,
         sync_ticket_sales: true
       )

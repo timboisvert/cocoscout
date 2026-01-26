@@ -1,0 +1,59 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Contractor" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <%= icon("user", class: "w-8 h-8 text-pink-600") %>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Contractor Information</h2>
+    <p class="text-gray-600 mt-2">Enter the contact details for the person or group you're contracting with.</p>
+  </div>
+
+  <%= form_with model: @contract, url: manage_contractor_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+    <div class="space-y-5">
+      <div>
+        <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Name
+          <span class="text-pink-500">*</span>
+        </label>
+        <%= form.text_field :contractor_name,
+          placeholder: "Full name or organization name",
+          required: true,
+          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+      </div>
+
+      <div>
+        <label for="contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Email
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <%= form.email_field :contractor_email,
+          placeholder: "contact@example.com",
+          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+      </div>
+
+      <div>
+        <label for="contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Phone
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <%= form.telephone_field :contractor_phone,
+          placeholder: "(555) 123-4567",
+          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+      </div>
+
+      <div>
+        <label for="contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Address
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <%= form.text_area :contractor_address,
+          rows: 3,
+          placeholder: "123 Main Street\nCity, State 12345",
+          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next: Bookings", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

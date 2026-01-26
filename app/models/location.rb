@@ -4,6 +4,7 @@ class Location < ApplicationRecord
   belongs_to :organization
   has_many :shows, dependent: :restrict_with_error
   has_many :audition_sessions, dependent: :restrict_with_error
+  has_many :location_spaces, dependent: :destroy
 
   validates :name, :address1, :city, :state, :postal_code, presence: true
 

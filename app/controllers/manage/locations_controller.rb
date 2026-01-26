@@ -11,7 +11,9 @@ module Manage
     end
 
     def show
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-2")
+      @spaces = @location.location_spaces.by_name
+      @is_owner = Current.organization.owned_by?(Current.user)
+      @role = Current.user.organization_roles.find_by(organization: Current.organization)&.company_role
     end
 
     def new
