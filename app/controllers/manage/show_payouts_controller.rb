@@ -469,7 +469,7 @@ module Manage
 
     def override_rules_params
       params.require(:override_rules).permit(
-        distribution: [:method, :per_ticket_rate, :minimum, :flat_amount],
+        distribution: [ :method, :per_ticket_rate, :minimum, :flat_amount ],
         performer_overrides: {}
       )
     end

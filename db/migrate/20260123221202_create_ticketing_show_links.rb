@@ -28,7 +28,7 @@ class CreateTicketingShowLinks < ActiveRecord::Migration[8.0]
 
     add_index :ticketing_show_links, :provider_occurrence_id
     add_index :ticketing_show_links,
-              [:show_id, :ticketing_production_link_id],
+              %i[show_id ticketing_production_link_id],
               unique: true,
               name: "idx_ticketing_show_links_unique"
   end

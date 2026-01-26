@@ -94,6 +94,6 @@ namespace :routes do
     invalid_parts = invalid.gsub(/_path|_url/, "").split("_")
 
     shared = valid_parts & invalid_parts
-    shared.size >= [valid_parts.size, invalid_parts.size].min * 0.6
+    shared.size >= [ valid_parts.size, invalid_parts.size ].min * 0.6
   end
 end

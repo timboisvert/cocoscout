@@ -25,7 +25,7 @@ class CreateTicketingProductionLinks < ActiveRecord::Migration[8.0]
     end
 
     add_index :ticketing_production_links,
-              [:production_id, :ticketing_provider_id],
+              %i[production_id ticketing_provider_id],
               unique: true,
               name: "idx_ticketing_prod_links_unique"
     add_index :ticketing_production_links, :provider_event_id

@@ -23,7 +23,7 @@ class CreateTicketingSyncLogs < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :ticketing_sync_logs, [:ticketing_provider_id, :created_at],
+    add_index :ticketing_sync_logs, %i[ticketing_provider_id created_at],
               name: "idx_ticketing_sync_logs_provider_created"
     add_index :ticketing_sync_logs, :status
   end

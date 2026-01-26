@@ -28,7 +28,7 @@ class CreateTicketingProviders < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :ticketing_providers, [:organization_id, :provider_type]
+    add_index :ticketing_providers, %i[organization_id provider_type]
     add_index :ticketing_providers, :provider_account_id
   end
 end

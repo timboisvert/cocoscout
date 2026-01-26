@@ -18,7 +18,7 @@ class CreateTicketingPendingEvents < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :ticketing_pending_events, [:ticketing_provider_id, :provider_event_id],
+    add_index :ticketing_pending_events, %i[ticketing_provider_id provider_event_id],
               unique: true, name: "idx_pending_events_provider_event"
     add_index :ticketing_pending_events, :status
   end
