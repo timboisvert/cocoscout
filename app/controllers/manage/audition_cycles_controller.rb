@@ -159,7 +159,7 @@ module Manage
       @questions = @audition_cycle.questions.order(:position)
 
       if @question.save
-        redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
+        redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true, tab: 2),
                     notice: "Question was successfully created"
       else
         @question_error = true
@@ -170,7 +170,7 @@ module Manage
     # PATCH/PUT /audition_cycles/:id/update_question/:question_id
     def update_question
       if @question.update(question_params)
-        redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
+        redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true, tab: 2),
                     notice: "Question was successfully updated", status: :see_other
       else
         render :form, status: :unprocessable_entity
@@ -180,7 +180,7 @@ module Manage
     # DELETE /audition_cycles/:id/destroy_question/:question_id
     def destroy_question
       @question.destroy!
-      redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
+      redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true, tab: 2),
                   notice: "Question was successfully deleted", status: :see_other
     end
 

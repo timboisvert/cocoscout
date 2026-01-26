@@ -127,8 +127,8 @@
     nil
   end
 
-  # Build data attributes string
-  data_attrs = data.map { |k, v| "data-#{k.to_s.dasherize}=\"#{v}\"" }.join(' ')
+  # Build data attributes string (HTML-escape values to handle JSON and special characters)
+  data_attrs = data.map { |k, v| "data-#{k.to_s.dasherize}=\"#{ERB::Util.html_escape(v)}\"" }.join(' ')
 
   # HTTP method for links (default GET, can be :post, :patch, :delete, etc.)
   http_method = local_assigns[:method]

@@ -37,6 +37,7 @@
                 "question-text": question.text,
                 "question-type": question.question_type,
                 "question-required": question.required,
+                "question-options": question.question_options.reject(&:marked_for_destruction?).map { |o| { id: o.id, text: o.text } }.to_json,
                 "update-path": manage_update_question_signups_auditions_cycle_path(@production, @audition_cycle, question_id: question.id)
               } %>
             <%= button_to manage_destroy_question_signups_auditions_cycle_path(@production, @audition_cycle, question_id: question.id),

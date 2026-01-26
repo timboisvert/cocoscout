@@ -2,7 +2,7 @@
     <label class="block text-sm font-medium text-gray-700 mb-3">Options</label>
 
     <div data-controller="nested-form">
-        <div data-nested-form-target="children" class="space-y-2">
+        <div data-nested-form-target="children" data-question-modal-target="optionsContainer" class="space-y-2">
         <%= form.fields_for :question_options do |option_form| %>
             <%= render "question_option_fields", form: option_form %>
         <% end %>
