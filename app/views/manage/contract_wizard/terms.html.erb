@@ -1,11 +1,6 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Terms" } do %>
-  <div class="text-center mb-6">
-    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <%= icon("file-text", class: "w-8 h-8 text-pink-600") %>
-    </div>
-    <h2 class="text-xl font-bold text-gray-900">Contract Terms</h2>
-    <p class="text-gray-600 mt-2">Set the contract dates and add any notes or terms.</p>
-  </div>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Contract dates & terms</h2>
+  <p class="text-gray-600 mb-6">Set the contract dates and add any notes or terms.</p>
 
   <%= form_with model: @contract, url: manage_terms_contract_wizard_path(@contract), method: :post, local: true do |form| %>
     <div class="space-y-5">
@@ -59,10 +54,7 @@
     </div>
 
     <div class="mt-8 flex justify-between">
-      <%= link_to manage_payments_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
-        <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
-        Back
-      <% end %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_payments_contract_wizard_path(@contract) %>
       <%= render "shared/button", text: "Next: Review", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>

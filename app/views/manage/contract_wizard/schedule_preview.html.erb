@@ -1,0 +1,86 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Preview" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review your schedule</h2>
+  <p class="text-gray-600 mb-6">Based on your booking rules, here's what will be scheduled.</p>
+
+  <% if @generated_bookings.any? %>
+    <%# Summary stats %>
+    <div class="bg-pink-50 rounded-lg p-4 mb-6 border border-pink-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-lg font-semibold text-pink-800">
+            <%= pluralize(@generated_bookings.count, "event") %> scheduled
+          </p>
+          <p class="text-sm text-pink-600 mt-0.5">
+            <%
+              dates = @generated_bookings.map { |b| Date.parse(b["starts_at"]) rescue nil }.compact.sort
+              if dates.any?
+            %>
+              <%= dates.first.strftime("%b %d, %Y") %> – <%= dates.last.strftime("%b %d, %Y") %>
+            <% end %>
+          </p>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-pink-700">
+          <%= icon("check-circle", class: "w-5 h-5") %>
+          Ready to continue
+        </div>
+      </div>
+    </div>
+
+    <%# Booking list %>
+    <div class="space-y-2 max-h-80 overflow-y-auto mb-6 pr-2">
+      <% @generated_bookings.sort_by { |b| b["starts_at"] }.each_with_index do |booking, index| %>
+        <%
+          starts_at = DateTime.parse(booking["starts_at"]) rescue nil
+          location = @locations_map[booking["location_id"].to_i]
+          space = @spaces_map[booking["space_id"].to_i] if booking["space_id"].present?
+        %>
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-sm font-medium">
+              <%= index + 1 %>
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">
+                <% if starts_at %>
+                  <%= starts_at.strftime("%A, %B %d, %Y") %>
+                <% else %>
+                  Date TBD
+                <% end %>
+              </p>
+              <p class="text-sm text-gray-500">
+                <% if starts_at %>
+                  <%= starts_at.strftime("%l:%M %p").strip %> · <%= booking["duration"] %> hours
+                <% end %>
+                <% if location %>
+                  · <%= location.name %><%= space ? " (#{space.name})" : "" %>
+                <% end %>
+              </p>
+            </div>
+          </div>
+          <% if booking["notes"].present? %>
+            <span class="text-xs text-gray-400"><%= booking["notes"] %></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <p class="text-sm text-gray-500 text-center mb-6">
+      Not quite right? Go back to adjust your booking rules.
+    </p>
+  <% else %>
+    <%# Empty state %>
+    <div class="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 mb-6">
+      <%= icon("calendar", class: "w-12 h-12 text-gray-300 mx-auto mb-3") %>
+      <p class="text-gray-600 font-medium">No events scheduled</p>
+      <p class="text-gray-400 text-sm mt-1">Go back to the Bookings step to set up your schedule.</p>
+    </div>
+  <% end %>
+
+  <%# Navigation %>
+  <%= form_with url: manage_schedule_preview_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+    <div class="flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_bookings_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Next: Services", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

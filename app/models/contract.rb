@@ -77,6 +77,10 @@ class Contract < ApplicationRecord
     draft_data["bookings"] || []
   end
 
+  def draft_booking_rules
+    draft_data["booking_rules"] || {}
+  end
+
   def draft_payments
     draft_data["payments"] || []
   end

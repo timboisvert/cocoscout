@@ -42,7 +42,7 @@ class ProfileController < ApplicationController
 
   def update
     # Handle virtual attribute conversion
-    permitted = person_params.to_h
+    permitted = person_params
     show_contact_info_value = permitted.delete(:show_contact_info)
     @person.show_contact_info = show_contact_info_value if show_contact_info_value.present?
 
@@ -292,7 +292,7 @@ class ProfileController < ApplicationController
         id institution program
         year_start year_end ongoing notes position _destroy
       ]
-    )
+    ).to_h
 
     # Manually permit the nested profile_skills_attributes hash with specific keys
     if params[:person][:profile_skills_attributes].present?

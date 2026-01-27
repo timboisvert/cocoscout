@@ -922,10 +922,13 @@ Rails.application.routes.draw do
     # Contract wizard
     get  "money/contracts/wizard/new", to: "contract_wizard#new", as: "new_contract_wizard"
     post "money/contracts/wizard/create_draft", to: "contract_wizard#create_draft", as: "create_draft_contract_wizard"
+    get  "money/contracts/:contract_id/wizard/resume", to: "contract_wizard#resume", as: "resume_contract_wizard"
     get  "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
     post "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
     get  "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
     post "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#save_bookings"
+    get  "money/contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#schedule_preview", as: "schedule_preview_contract_wizard"
+    post "money/contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#save_schedule_preview"
     get  "money/contracts/:contract_id/wizard/services", to: "contract_wizard#services", as: "services_contract_wizard"
     post "money/contracts/:contract_id/wizard/services", to: "contract_wizard#save_services"
     get  "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#payments", as: "payments_contract_wizard"

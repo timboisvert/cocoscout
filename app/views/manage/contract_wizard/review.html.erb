@@ -1,11 +1,6 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Review" } do %>
-  <div class="text-center mb-6">
-    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <%= icon("check-circle", class: "w-8 h-8 text-pink-600") %>
-    </div>
-    <h2 class="text-xl font-bold text-gray-900">Review Contract</h2>
-    <p class="text-gray-600 mt-2">Review all details before activating the contract.</p>
-  </div>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review & Activate</h2>
+  <p class="text-gray-600 mb-6">Review all details before activating the contract.</p>
 
   <% unless @valid_for_activation %>
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -53,6 +48,12 @@
     </div>
 
     <%# Bookings %>
+    <%
+      # Build lookup maps for location/space names
+      locations = Current.organization.locations.includes(:location_spaces)
+      locations_map = locations.index_by(&:id)
+      spaces_map = locations.flat_map(&:location_spaces).index_by(&:id)
+    %>
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-medium text-gray-900">Bookings (<%= @contract.draft_bookings.count %>)</h3>
@@ -61,13 +62,29 @@
         <% end %>
       </div>
       <% if @contract.draft_bookings.any? %>
-        <ul class="space-y-2 text-sm">
-          <% @contract.draft_bookings.each do |booking| %>
+        <ul class="space-y-2 text-sm max-h-48 overflow-y-auto">
+          <% @contract.draft_bookings.sort_by { |b| b["starts_at"].to_s }.each do |booking| %>
+            <%
+              starts_at = DateTime.parse(booking["starts_at"]) rescue nil
+              duration = booking["duration"].to_f
+              location = locations_map[booking["location_id"].to_i]
+              space = spaces_map[booking["space_id"].to_i] if booking["space_id"].present?
+              venue_name = location&.name || "Unknown location"
+              venue_name += " (#{space.name})" if space
+            %>
             <li class="flex items-center gap-2 text-gray-700">
-              <%= icon("calendar", class: "w-4 h-4 text-gray-400") %>
-              Space ID <%= booking["location_space_id"] %>:
-              <%= Time.parse(booking["starts_at"]).strftime("%b %d, %Y %l:%M %p") rescue booking["starts_at"] %> -
-              <%= Time.parse(booking["ends_at"]).strftime("%l:%M %p") rescue booking["ends_at"] %>
+              <%= icon("calendar", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>
+              <span>
+                <% if starts_at %>
+                  <%= starts_at.strftime("%b %d, %Y") %> at <%= starts_at.strftime("%l:%M %p").strip %>
+                  <span class="text-gray-400">·</span>
+                  <%= duration %> hrs
+                <% else %>
+                  Date TBD
+                <% end %>
+                <span class="text-gray-400">·</span>
+                <%= venue_name %>
+              </span>
             </li>
           <% end %>
         </ul>
@@ -142,21 +159,15 @@
   </div>
 
   <div class="mt-8 flex justify-between items-center">
-    <%= link_to manage_terms_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
-      <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
-      Back
-    <% end %>
+    <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_terms_contract_wizard_path(@contract) %>
 
     <div class="flex items-center gap-4">
       <% if @valid_for_activation %>
-        <%= button_to manage_activate_contract_wizard_path(@contract),
-          method: :post,
-          class: "inline-flex items-center gap-2 px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors font-medium" do %>
-          <%= icon("check-circle", class: "w-5 h-5") %>
-          Activate Contract
+        <%= form_with url: manage_activate_contract_wizard_path(@contract), method: :post, local: true, class: "inline" do %>
+          <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :submit %>
         <% end %>
       <% else %>
-        <%= render "shared/button", text: "Activate Contract", variant: "disabled", size: "large", icon: "check-circle", type: :button, disabled: true %>
+        <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :button, disabled: true %>
       <% end %>
     </div>
   </div>

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["customName", "list", "servicesJson"]
+    static targets = ["customName", "list", "servicesJson", "checkbox"]
     static values = { existing: Array }
 
     connect() {

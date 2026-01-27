@@ -1,8 +1,8 @@
 <div class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
   <div class="flex-1">
     <div class="flex items-center gap-3">
-      <%# Link drafts to wizard, others to show page %>
-      <% contract_path = contract.status_draft? ? manage_contractor_contract_wizard_path(contract) : manage_contract_path(contract) %>
+      <%# Link drafts to wizard resume, others to show page %>
+      <% contract_path = contract.status_draft? ? manage_resume_contract_wizard_path(contract) : manage_contract_path(contract) %>
       <%= link_to contract_path, class: "font-medium text-gray-900 hover:text-pink-600" do %>
         <%= contract.contractor_name %>
       <% end %>
@@ -11,6 +11,11 @@
         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
           Draft
         </span>
+        <% if contract.wizard_step > 1 %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">
+            Step <%= contract.wizard_step %>/6
+          </span>
+        <% end %>
       <% when "active" %>
         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
           Active
@@ -58,7 +63,7 @@
 
   <div class="flex items-center gap-2">
     <% if contract.status_draft? %>
-      <%= link_to manage_contractor_contract_wizard_path(contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+      <%= link_to manage_resume_contract_wizard_path(contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
         Continue
         <%= icon("arrow-right", class: "w-4 h-4 inline-block") %>
       <% end %>

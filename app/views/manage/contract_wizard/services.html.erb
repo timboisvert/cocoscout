@@ -1,11 +1,11 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Services" } do %>
-  <div class="text-center mb-6">
-    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <%= icon("wrench", class: "w-8 h-8 text-pink-600") %>
-    </div>
-    <h2 class="text-xl font-bold text-gray-900">Services Included</h2>
-    <p class="text-gray-600 mt-2">Specify any services included in this contract (optional).</p>
-  </div>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What services are included?</h2>
+  <p class="text-gray-600 mb-6">Specify any services included in this contract (optional).</p>
+
+  <%
+    # Build lookup for existing services
+    existing_service_names = @existing_services.map { |s| s["name"].downcase }
+  %>
 
   <div id="services-app" data-controller="contract-services" data-contract-services-existing-value="<%= @existing_services.to_json %>">
     <%# Common services checkboxes %>
@@ -20,11 +20,14 @@
           { name: "Cleanup", description: "Post-event cleaning" },
           { name: "Security", description: "Event security staff" }
         ].each do |service| %>
+          <% is_checked = existing_service_names.include?(service[:name].downcase) %>
           <label class="flex items-start p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
             <input type="checkbox"
                    data-action="change->contract-services#toggleService"
+                   data-contract-services-target="checkbox"
                    data-name="<%= service[:name] %>"
                    data-description="<%= service[:description] %>"
+                   <%= "checked" if is_checked %>
                    class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
             <div class="ml-3">
               <div class="text-sm font-medium text-gray-900"><%= service[:name] %></div>
@@ -55,10 +58,7 @@
       <input type="hidden" name="services" data-contract-services-target="servicesJson" value="<%= @existing_services.to_json %>">
 
       <div class="flex justify-between">
-        <%= link_to manage_bookings_contract_wizard_path(@contract), class: "inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" do %>
-          <%= icon("arrow-left", class: "w-4 h-4 mr-2") %>
-          Back
-        <% end %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_schedule_preview_contract_wizard_path(@contract) %>
         <%= render "shared/button", text: "Next: Payments", variant: "primary", size: "medium", type: :submit %>
       </div>
     <% end %>

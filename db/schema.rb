@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_26_174705) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_27_033433) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -353,6 +353,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_26_174705) do
     t.string "status", default: "draft", null: false
     t.text "terms"
     t.datetime "updated_at", null: false
+    t.integer "wizard_step", default: 1, null: false
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["status"], name: "index_contracts_on_status"

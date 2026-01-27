@@ -20,10 +20,11 @@
           steps = [
             { num: 1, name: "Contractor", path: defined?(@contract) && @contract.persisted? ? manage_contractor_contract_wizard_path(@contract) : nil },
             { num: 2, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 3, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
-            { num: 4, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 5, name: "Terms", path: defined?(@contract) && @contract.persisted? ? manage_terms_contract_wizard_path(@contract) : nil },
-            { num: 6, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 3, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
+            { num: 4, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
+            { num: 5, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 6, name: "Terms", path: defined?(@contract) && @contract.persisted? ? manage_terms_contract_wizard_path(@contract) : nil },
+            { num: 7, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
           ]
         %>
         <% steps.each_with_index do |step, index| %>
@@ -52,7 +53,7 @@
           </div>
 
           <% if index < steps.length - 1 %>
-            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < @step ? 'bg-pink-500' : 'bg-gray-200' %>" style="max-width: 40px;"></div>
+            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < @step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
           <% end %>
         <% end %>
       </div>
