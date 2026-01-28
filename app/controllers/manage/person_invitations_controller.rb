@@ -27,6 +27,11 @@ module Manage
           person.organizations << @person_invitation.organization
         end
 
+        # Add to talent pool if invitation was for a talent pool
+        if @person_invitation.talent_pool && !@person_invitation.talent_pool.people.exists?(person.id)
+          @person_invitation.talent_pool.people << person
+        end
+
         # Mark the invitation as accepted
         @person_invitation.update(accepted_at: Time.current)
 
@@ -87,6 +92,11 @@ module Manage
       # Ensure the person is in the organization (if invitation has one)
       if @person_invitation.organization && !person.organizations.include?(@person_invitation.organization)
         person.organizations << @person_invitation.organization
+      end
+
+      # Add to talent pool if invitation was for a talent pool
+      if @person_invitation.talent_pool && !@person_invitation.talent_pool.people.exists?(person.id)
+        @person_invitation.talent_pool.people << person
       end
 
       # Mark the invitation as accepted

@@ -68,3 +68,42 @@
     </div>
   <% end %>
 </div>
+
+<%# Pending Invitations Section %>
+<% pending_invitations = talent_pool.pending_invitations %>
+<% if pending_invitations.any? %>
+  <div class="mt-6 border-t border-gray-200 pt-4">
+    <h4 class="text-sm font-semibold text-gray-700 mb-3">
+      Pending Invitations
+      <span class="text-xs font-normal text-gray-500">(<%= pending_invitations.count %>)</span>
+    </h4>
+    <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+      <% pending_invitations.each do |invitation| %>
+        <div class="relative group opacity-60 hover:opacity-100 transition-opacity">
+          <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+              <div class="text-2xl font-bold text-gray-500">
+                <%= invitation.email.split('@').first.chars.first(2).join.upcase %>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs font-medium text-gray-900 truncate" title="<%= invitation.email %>">
+            <%= invitation.email.split('@').first %>
+          </div>
+          <% if can_manage %>
+            <button type="button"
+                    class="absolute bottom-6 left-1 right-1 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                    data-action="talent-pool-inline#revokeInvitation"
+                    data-invitation-id="<%= invitation.id %>"
+                    data-invitation-email="<%= invitation.email %>">
+              Revoke
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <p class="text-xs text-gray-500 mt-2">
+      These people will be added to the talent pool when they accept their invitation.
+    </p>
+  </div>
+<% end %>

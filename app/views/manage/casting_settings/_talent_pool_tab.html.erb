@@ -1,6 +1,9 @@
 <div data-controller="talent-pool-inline"
      data-talent-pool-inline-search-url-value="<%= manage_casting_talent_pool_search_people_path(@production) %>"
      data-talent-pool-inline-add-person-url-value="<%= manage_casting_talent_pool_add_person_path(@production) %>"
+     data-talent-pool-inline-add-global-person-url-value="<%= manage_casting_talent_pool_add_global_person_path(@production) %>"
+     data-talent-pool-inline-invite-to-pool-url-value="<%= manage_casting_talent_pool_invite_to_pool_path(@production) %>"
+     data-talent-pool-inline-revoke-invitation-url-value="<%= manage_casting_talent_pool_revoke_invitation_path(@production) %>"
      data-talent-pool-inline-add-group-url-value="<%= manage_casting_talent_pool_add_group_path(@production) %>"
      data-talent-pool-inline-remove-person-url-value="<%= manage_casting_talent_pool_remove_person_path(@production) %>"
      data-talent-pool-inline-remove-group-url-value="<%= manage_casting_talent_pool_remove_group_path(@production) %>"
@@ -14,7 +17,7 @@
 
   <%# Sharing Section %>
   <% if current_user_can_manage?(Current.production) %>
-    <% sibling_productions = @production.sibling_productions %>
+    <% sibling_productions = @production.sibling_productions.reject(&:type_third_party?) %>
 
     <% if @production.uses_shared_pool? %>
       <%# This production uses a shared pool from another production %>

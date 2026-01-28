@@ -3,7 +3,7 @@
 module Manage
   class TicketingPendingEventsController < ManageController
     before_action :ensure_user_is_manager
-    before_action :set_pending_event, only: [:show, :link, :dismiss]
+    before_action :set_pending_event, only: [ :show, :link, :dismiss ]
 
     def index
       @pending_events = TicketingPendingEvent

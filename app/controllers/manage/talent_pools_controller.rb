@@ -29,6 +29,99 @@ module Manage
       end
     end
 
+    # Add a person from CocoScout who's not in our org yet
+    def add_global_person
+      person = Person.find(params[:person_id])
+
+      # Add person to organization if not already
+      unless person.organizations.include?(Current.organization)
+        person.organizations << Current.organization
+      end
+
+      # Add to talent pool
+      @talent_pool.people << person unless @talent_pool.people.exists?(person.id)
+
+      if request.xhr?
+        render json: { success: true, message: "#{person.name} added to organization and talent pool" }
+      else
+        redirect_to manage_casting_talent_pool_path(@production),
+                    notice: "#{person.name} added to organization and talent pool"
+      end
+    end
+
+    # Invite a new person (not on CocoScout) directly to the talent pool
+    def invite_to_pool
+      email = params[:email]&.strip&.downcase
+      name = params[:name]&.strip
+
+      if email.blank? || name.blank?
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
+        return
+      end
+
+      # Check if person with this email already exists
+      existing_person = Person.find_by(email: email)
+
+      if existing_person
+        # Person exists - add them to org and pool
+        unless existing_person.organizations.include?(Current.organization)
+          existing_person.organizations << Current.organization
+        end
+        @talent_pool.people << existing_person unless @talent_pool.people.exists?(existing_person.id)
+
+        render json: { success: true, message: "#{existing_person.name} added to talent pool" }
+      else
+        # Create new person and send invitation
+        person = Person.create!(name: name, email: email)
+        person.organizations << Current.organization
+
+        # Create user account
+        user = User.create!(
+          email_address: email,
+          password: User.generate_secure_password
+        )
+        person.update!(user: user)
+
+        # Create invitation linked to talent pool
+        invitation = PersonInvitation.create!(
+          email: email,
+          organization: Current.organization,
+          talent_pool: @talent_pool
+        )
+
+        # Send invitation email using the standard invitation template
+        invitation_subject = EmailTemplateService.render_subject("person_invitation", {
+          organization_name: Current.organization.name
+        })
+        invitation_message = EmailTemplateService.render_body("person_invitation", {
+          organization_name: Current.organization.name,
+          setup_url: "[setup link will be included]"
+        })
+
+        Manage::PersonMailer.person_invitation(invitation, invitation_subject, invitation_message).deliver_later
+
+        render json: {
+          success: true,
+          message: "Invitation sent to #{name}. They'll be added to the talent pool when they accept.",
+          pending: true
+        }
+      end
+    end
+
+    def revoke_invitation
+      invitation = @talent_pool.person_invitations.pending.find(params[:invitation_id])
+      email = invitation.email
+
+      invitation.destroy!
+
+      if request.xhr?
+        render json: { success: true, message: "Invitation to #{email} revoked" }
+      else
+        redirect_to manage_casting_talent_pool_path(@production),
+                    notice: "Invitation to #{email} revoked"
+      end
+    end
+
     def confirm_remove_person
       @person = Current.organization.people.find(params[:person_id])
       @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
@@ -102,26 +195,51 @@ module Manage
     def search_people
       q = (params[:q] || params[:query]).to_s.strip
 
-      if q.present?
-        # Case-insensitive search by name, email, and public_key
-        @people = Current.organization.people.where(
-          "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
-          q: "%#{q}%"
-        )
-        @groups = Current.organization.groups.where("LOWER(name) LIKE LOWER(:q)", q: "%#{q}%")
-      else
-        @people = Person.none
-        @groups = Group.none
+      if q.blank? || q.length < 2
+        render partial: "manage/talent_pools/search_results_enhanced",
+               locals: {
+                 org_members: [],
+                 global_people: [],
+                 query: q,
+                 talent_pool_id: @talent_pool.id,
+                 show_invite: false
+               }
+        return
       end
 
+      # Search within organization (people and groups)
+      org_people = Current.organization.people.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      )
+      org_groups = Current.organization.groups.where("LOWER(name) LIKE LOWER(:q)", q: "%#{q}%")
+
       # Exclude people and groups already in the talent pool
-      @people = @people.where.not(id: @talent_pool.people.pluck(:id))
-      @groups = @groups.where.not(id: @talent_pool.groups.pluck(:id))
+      org_people = org_people.where.not(id: @talent_pool.people.pluck(:id))
+      org_groups = org_groups.where.not(id: @talent_pool.groups.pluck(:id))
 
-      @members = (@people.to_a + @groups.to_a).sort_by { |m| m.name.downcase }
+      org_members = (org_people.to_a + org_groups.to_a).sort_by { |m| m.name.downcase }
 
-      render partial: "manage/talent_pools/search_results",
-             locals: { members: @members, talent_pool_id: @talent_pool.id }
+      # Search globally in CocoScout (people not in this org)
+      org_person_ids = Current.organization.people.pluck(:id)
+      global_people = Person.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).where.not(id: org_person_ids).limit(10).to_a
+
+      # Determine if we should show invite option
+      # Show invite if query looks like an email and we didn't find exact matches
+      show_invite = q.include?("@") && org_members.none? { |m| m.try(:email)&.downcase == q.downcase } &&
+                   global_people.none? { |p| p.email&.downcase == q.downcase }
+
+      render partial: "manage/talent_pools/search_results_enhanced",
+             locals: {
+               org_members: org_members,
+               global_people: global_people,
+               query: q,
+               talent_pool_id: @talent_pool.id,
+               show_invite: show_invite
+             }
     end
 
     def upcoming_assignments

@@ -46,13 +46,13 @@ module Ticketing
 
       def normalize_events(response)
         events = case provider.provider_type
-                 when "ticket_tailor"
+        when "ticket_tailor"
                    response["data"] || []
-                 when "eventbrite"
+        when "eventbrite"
                    response["events"] || []
-                 else
+        else
                    response["data"] || response["events"] || []
-                 end
+        end
 
         events.map { |e| normalize_event(e) }
       end
@@ -222,16 +222,16 @@ module Ticketing
         return 0 if prod_end && event_start > prod_end + 7.days
 
         # Calculate overlap percentage
-        overlap_start = [event_start, prod_start].max
-        overlap_end = [event_end || event_start, prod_end || prod_start].min
+        overlap_start = [ event_start, prod_start ].max
+        overlap_end = [ event_end || event_start, prod_end || prod_start ].min
 
         return 0 if overlap_start > overlap_end
 
         # Perfect overlap or close enough
-        event_duration = [(event_end || event_start) - event_start, 1.day].max
-        overlap_duration = [overlap_end - overlap_start, 1.day].max
+        event_duration = [ (event_end || event_start) - event_start, 1.day ].max
+        overlap_duration = [ overlap_end - overlap_start, 1.day ].max
 
-        [overlap_duration / event_duration, 1.0].min
+        [ overlap_duration / event_duration, 1.0 ].min
       end
 
       def create_auto_link(event, match, results)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_27_223450) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -690,9 +690,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_27_223450) do
     t.datetime "declined_at"
     t.string "email", null: false
     t.bigint "organization_id"
+    t.bigint "talent_pool_id"
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_person_invitations_on_organization_id"
+    t.index ["talent_pool_id"], name: "index_person_invitations_on_talent_pool_id"
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
@@ -1777,6 +1779,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_27_223450) do
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
   add_foreign_key "person_invitations", "organizations"
+  add_foreign_key "person_invitations", "talent_pools"
   add_foreign_key "post_views", "posts"
   add_foreign_key "post_views", "users"
   add_foreign_key "posters", "productions"

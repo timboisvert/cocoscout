@@ -7,6 +7,7 @@ class TalentPool < ApplicationRecord
   has_many :shared_productions, through: :talent_pool_shares, source: :production
   has_many :people, through: :talent_pool_memberships, source: :member, source_type: "Person"
   has_many :groups, through: :talent_pool_memberships, source: :member, source_type: "Group"
+  has_many :person_invitations, dependent: :nullify
   # NOTE: cast_assignment_stages are deleted via Production's before_destroy callback
   # to avoid foreign key constraint issues
   has_many :cast_assignment_stages
@@ -28,6 +29,11 @@ class TalentPool < ApplicationRecord
   # Helper method to get all members (both people and groups)
   def members
     talent_pool_memberships.includes(:member).map(&:member)
+  end
+
+  # Pending invitations that haven't been accepted yet
+  def pending_invitations
+    person_invitations.pending
   end
 
   # Cached member counts for display in lists
