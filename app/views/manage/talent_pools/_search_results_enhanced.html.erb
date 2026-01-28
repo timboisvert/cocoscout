@@ -70,12 +70,12 @@
       </div>
       <div class="space-y-2">
         <% global_people.each do |person| %>
-          <div class="flex items-center gap-3 p-3 border border-blue-200 bg-blue-50 rounded-lg hover:border-blue-400 transition-all relative group w-full">
+          <div class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all relative group w-full">
             <% headshot_variant = person.safe_headshot_variant(:tile) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
             <% else %>
-              <div class="w-10 h-10 rounded-lg bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
+              <div class="w-10 h-10 rounded-lg bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
                 <%= person.initials %>
               </div>
             <% end %>
@@ -84,7 +84,7 @@
               <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
             </div>
             <button type="button"
-              class="px-3 py-1.5 text-blue-600 bg-white rounded-md text-xs font-bold shadow hover:bg-blue-100 transition-all border border-blue-300 cursor-pointer flex-shrink-0"
+              class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 cursor-pointer flex-shrink-0"
               data-action="talent-pool-inline#addGlobalPerson"
               data-person-id="<%= person.id %>"
               data-person-name="<%= person.name %>"
