@@ -30,15 +30,8 @@ module Manage
         session[:current_organization_id][user_id.to_s] = organization.id
       end
 
-      # Check if user has a production saved for this organization
-      production_key = "#{user_id}_#{organization.id}"
-      has_saved_production = session[:current_production_id_for_organization]&.key?(production_key)
-
-      if has_saved_production
-        redirect_to manage_path
-      else
-        redirect_to select_production_path
-      end
+      # Always redirect to manage - production auto-selection happens there if needed
+      redirect_to manage_path
     end
 
     def production
@@ -46,23 +39,6 @@ module Manage
       # If no organization in session, redirect to organization selection
       if Current.organization.nil?
         redirect_to select_organization_path, alert: "Please select an organization first"
-        return
-      end
-
-      # First check how many productions user has access to (simple count query)
-      production_count = Current.user.accessible_productions
-        .where(organization: Current.organization)
-        .count
-
-      # If user has exactly one production, auto-select it without loading full data
-      if production_count == 1
-        production = Current.user.accessible_productions
-          .where(organization: Current.organization)
-          .first
-        session[:current_production_id_for_organization] ||= {}
-        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] =
-          production.id
-        redirect_to manage_path
         return
       end
 

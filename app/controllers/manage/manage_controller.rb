@@ -186,17 +186,6 @@ module Manage
       else
         Current.production = nil
       end
-
-      # Auto-select if user has exactly one accessible production
-      return unless Current.production.nil? && Current.user && Current.organization
-
-      accessible_productions = Current.user.accessible_productions.where(organization: Current.organization)
-      return unless accessible_productions.count == 1
-
-      production = accessible_productions.first
-      session[:current_production_id_for_organization] ||= {}
-      session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"] = production.id
-      Current.production = production
     end
 
     def require_current_organization
@@ -205,7 +194,7 @@ module Manage
 
       return if Current.organization
 
-      redirect_to select_organization_path
+      redirect_to select_organization_path and return
     end
 
     # Shared data fetchers for use across controllers
