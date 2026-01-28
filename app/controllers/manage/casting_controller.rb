@@ -4,6 +4,7 @@ module Manage
   class CastingController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
+    before_action :check_not_third_party
     before_action :check_casting_setup, only: :index
     before_action :set_show,
                   only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
@@ -1122,6 +1123,12 @@ module Manage
         initials: group.initials,
         headshot_url: group.safe_headshot_variant(:thumb)&.then { |v| Rails.application.routes.url_helpers.url_for(v) rescue nil }
       }
+    end
+
+    def check_not_third_party
+      if @production.type_third_party?
+        redirect_to manage_shows_path(@production), alert: "Casting is not available for third-party productions"
+      end
     end
 
     def check_casting_setup

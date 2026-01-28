@@ -1,0 +1,122 @@
+<% content_for :title, "Cancel Contract" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path],
+      [@contract.contractor_name, manage_contract_path(@contract)]
+    ],
+    text: "Cancel Contract",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto">
+    <%# Warning banner %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0">
+          <%= icon("exclamation-triangle", class: "w-5 h-5 text-red-600") %>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-red-800">This action cannot be undone</h3>
+          <p class="text-sm text-red-700 mt-1">
+            Cancelling this contract will permanently delete all associated events. Any pending payments will be handled according to your selection below.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <%# Events being cancelled %>
+    <% if @shows.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <%= render "shared/card_header", title: "Events Being Cancelled (#{@shows.count})" %>
+        <div class="p-4 space-y-1 max-h-64 overflow-y-auto">
+          <% @shows.each do |show| %>
+            <%= render partial: "shared/show_row", locals: {
+              show: show,
+              show_location: true,
+              right_panel: :rental_services,
+              services: @contract.draft_services
+            } %>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-center text-gray-600">
+        No events scheduled for this contract.
+      </div>
+    <% end %>
+
+    <%# Settlement options %>
+    <%= form_with url: process_cancel_manage_contract_path(@contract), method: :post, local: true, data: { controller: "contract-cancel" } do |f| %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <%= render "shared/card_header", title: "Payment Settlement" %>
+        <div class="p-4">
+          <% if @pending_payments.any? %>
+            <p class="text-sm text-gray-600 mb-4">
+              <% if @pending_payments.count == 1 %>
+                There is <strong>1 pending payment</strong> totaling
+              <% else %>
+                There are <strong><%= @pending_payments.count %> pending payments</strong> totaling
+              <% end %>
+              <strong class="text-pink-600"><%= number_to_currency(@pending_total) %></strong>.
+              How would you like to handle <%= @pending_payments.count == 1 ? 'it' : 'them' %>?
+            </p>
+
+            <div class="space-y-3">
+              <label class="flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="settlement_type" value="pay_remaining" checked
+                       data-action="change->contract-cancel#updateSettlement"
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
+                <div class="ml-3">
+                  <div class="text-sm font-medium text-gray-900">Require remaining payments</div>
+                  <div class="text-sm text-gray-500">They must still pay the <%= number_to_currency(@pending_total) %> in pending payments.</div>
+                </div>
+              </label>
+
+              <label class="flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="settlement_type" value="flat_fee"
+                       data-action="change->contract-cancel#updateSettlement"
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
+                <div class="ml-3 flex-1">
+                  <div class="text-sm font-medium text-gray-900">Charge cancellation fee</div>
+                  <div class="text-sm text-gray-500 mb-2">Cancel pending payments and charge a flat cancellation fee.</div>
+                  <div class="relative" data-contract-cancel-target="feeInput">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                    <input type="number" name="cancellation_fee" step="0.01" min="0" placeholder="0.00"
+                           class="w-40 pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-100 disabled:text-gray-400"
+                           disabled>
+                  </div>
+                </div>
+              </label>
+
+              <label class="flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="settlement_type" value="cancel_all"
+                       data-action="change->contract-cancel#updateSettlement"
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
+                <div class="ml-3">
+                  <div class="text-sm font-medium text-gray-900">Cancel all payments</div>
+                  <div class="text-sm text-gray-500">No additional payment required. All pending payments will be cancelled.</div>
+                </div>
+              </label>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-600">
+              No pending payments for this contract.
+            </p>
+            <input type="hidden" name="settlement_type" value="cancel_all">
+          <% end %>
+        </div>
+      </div>
+
+      <%# Actions %>
+      <div class="flex justify-between">
+        <%= render "shared/button", text: "Keep Contract", variant: "secondary", size: "medium", path: manage_contract_path(@contract) %>
+        <%= render "shared/button", text: "Cancel Contract", variant: "danger", size: "medium", icon: "x-circle", type: :submit, data: { turbo_confirm: "Are you sure you want to cancel this contract? This will delete all associated events." } %>
+      </div>
+    <% end %>
+  </div>
+</div>

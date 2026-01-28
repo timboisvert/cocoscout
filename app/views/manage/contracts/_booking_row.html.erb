@@ -1,0 +1,56 @@
+<%#
+  Space Rental Row (show_row style)
+
+  A show_row-style row for displaying a space rental/booking.
+
+  Required params:
+    - rental: SpaceRental object
+%>
+<%
+  location = rental.location_space&.location
+  space = rental.location_space
+%>
+
+<div class="flex items-stretch px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
+  <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+    <%# Left Section: Date Box %>
+    <div class="w-full md:w-1/2 flex items-center gap-4">
+      <%# Date Box %>
+      <div class="flex-shrink-0 w-14 text-center">
+        <div class="text-xs font-semibold text-pink-600 uppercase"><%= rental.starts_at.strftime("%b") %></div>
+        <div class="text-2xl font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></div>
+        <div class="text-xs text-gray-500"><%= rental.starts_at.strftime("%a") %></div>
+      </div>
+
+      <%# Rental Details %>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-gray-900">
+          <%= space&.name || "Space" %>
+          <% if location %>
+            <span class="text-gray-500 font-normal">at <%= location.name %></span>
+          <% end %>
+        </div>
+        <div class="text-sm text-gray-600">
+          <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>
+          <span class="text-gray-400 mx-1">·</span>
+          <%= rental.duration_hours %> hours
+        </div>
+      </div>
+    </div>
+
+    <%# Right Section: Status %>
+    <div class="w-full md:w-1/2 flex items-center justify-end border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+      <% if rental.confirmed? %>
+        <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+          <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
+          Confirmed
+        </span>
+      <% else %>
+        <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+          <%= icon("clock", class: "w-4 h-4 mr-1 inline") %>
+          Pending
+        </span>
+      <% end %>
+    </div>
+  </div>
+</div>

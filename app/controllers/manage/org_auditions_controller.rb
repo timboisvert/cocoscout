@@ -5,8 +5,8 @@ module Manage
     def index
       @filter = params[:filter] # 'in_person' or 'video'
 
-      # Get all productions for the organization
-      @productions = Current.organization.productions.includes(:audition_cycles).order(:name)
+      # Get all in-house productions for the organization (exclude third-party)
+      @productions = Current.organization.productions.type_in_house.includes(:audition_cycles).order(:name)
 
       # Get all active audition cycles across all productions
       @all_active_cycles = AuditionCycle.where(production: @productions, active: true)

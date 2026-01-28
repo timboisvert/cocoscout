@@ -15,10 +15,10 @@ module Manage
       end
       session[:casting_hide_canceled] = @hide_canceled
 
-      # Get all productions for the organization
-      @productions = Current.organization.productions.order(:name)
+      # Get all in-house productions for the organization (exclude third-party)
+      @productions = Current.organization.productions.type_in_house.order(:name)
 
-      # Get shows with casting enabled across all productions
+      # Get shows with casting enabled across all in-house productions
       base_shows = Show.where(production: @productions, casting_enabled: true)
                        .includes(:production, :location, :custom_roles, show_person_role_assignments: :role)
 

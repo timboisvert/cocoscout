@@ -28,7 +28,7 @@
     <div class="border border-gray-200 rounded-lg overflow-hidden">
       <%= render "shared/card_header", title: "Organization Details" %>
       <div class="p-6 bg-white">
-        <%= form_with model: [:manage, @organization], method: :patch, class: "space-y-6" do |f| %>
+        <%= form_with model: [:manage, @organization], method: :patch, multipart: true, class: "space-y-6", data: { controller: "file-preview" } do |f| %>
           <% if @organization.errors.any? %>
             <div class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg">
               <ul class="list-disc ml-6">
@@ -51,23 +51,25 @@
             <h3 class="text-sm font-medium text-gray-700 mb-4">Organization Logo</h3>
             <div class="flex items-start gap-6">
               <div class="flex-shrink-0">
-                <% if @organization.logo.attached? %>
-                  <%= image_tag @organization.logo, alt: "#{@organization.name} Logo", class: "rounded shadow-sm object-contain max-h-[100px] max-w-[120px] border border-gray-200" %>
-                <% else %>
-                  <div class="w-[100px] h-[100px] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
-                    <span class="text-2xl font-bold text-gray-400"><%= @organization.name.split.map { |w| w[0] }.join.upcase.first(2) %></span>
-                  </div>
-                <% end %>
+                <div data-file-preview-target="preview">
+                  <% if @organization.logo.attached? %>
+                    <%= image_tag @organization.logo, alt: "#{@organization.name} Logo", class: "rounded shadow-sm object-contain max-h-[100px] max-w-[120px] border border-gray-200" %>
+                  <% else %>
+                    <div class="w-[100px] h-[100px] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
+                      <span class="text-2xl font-bold text-gray-400"><%= @organization.name.split.map { |w| w[0] }.join.upcase.first(2) %></span>
+                    </div>
+                  <% end %>
+                </div>
               </div>
               <div class="flex-1">
-                <%= f.label :logo, class: "block text-sm font-medium text-gray-600 mb-2" do %>
-                  <span class="cursor-pointer text-pink-500 underline">Choose a new logo...</span>
-                <% end %>
-                <%= f.file_field :logo, accept: "image/*", class: "hidden" %>
+                <label class="block text-sm font-medium text-gray-600 mb-2 cursor-pointer">
+                  <span class="text-pink-500 underline" data-file-preview-target="label">Choose a new logo...</span>
+                  <%= f.file_field :logo, accept: "image/*", class: "hidden", data: { action: "change->file-preview#preview", file_preview_target: "input" } %>
+                </label>
                 <p class="text-xs text-gray-500">PNG, JPG, or GIF. Recommended size: 200x200 pixels or larger.</p>
                 <% if @organization.logo.attached? %>
                   <div class="mt-2">
-                    <%= button_to "Remove logo", remove_logo_manage_organization_path(@organization), method: :delete, data: { turbo: false, confirm: "Are you sure you want to remove the logo?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
+                    <%= link_to "Remove logo", remove_logo_manage_organization_path(@organization), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to remove the logo?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
                   </div>
                 <% end %>
               </div>

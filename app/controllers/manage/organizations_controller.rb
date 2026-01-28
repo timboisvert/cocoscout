@@ -70,7 +70,15 @@ module Manage
         redirect_to manage_organization_path(@organization), notice: "Organization was successfully updated",
                                                              status: :see_other
       else
-        render :edit, status: :unprocessable_entity
+        # Re-setup show page instance variables for rendering
+        @role = @organization.role_for(Current.user)
+        @is_owner = @organization.owned_by?(Current.user)
+        @team_members = @organization.users.includes(:default_person, :organization_roles)
+        @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
+        @locations = @organization.locations.order(:created_at)
+        @team_invitation = TeamInvitation.new
+        @productions = @organization.productions.order(:name)
+        render :show, status: :unprocessable_entity
       end
     end
 
@@ -86,7 +94,7 @@ module Manage
 
     def remove_logo
       @organization.logo.purge
-      redirect_to edit_manage_organization_path(@organization), notice: "Logo removed successfully"
+      redirect_back fallback_location: manage_organization_path(@organization), notice: "Logo removed successfully"
     end
 
     def confirm_delete

@@ -32,12 +32,15 @@ class Contract < ApplicationRecord
       create_records_from_draft!
       update!(
         status: :active,
-        activated_at: Time.current,
-        draft_data: {} # Clear draft data after activation
+        activated_at: Time.current
+        # Keep draft_data - it contains the full contract config (services, payment_config, etc.)
       )
     end
 
     true
+  rescue ActiveRecord::RecordInvalid => e
+    errors.add(:base, e.message)
+    false
   end
 
   def complete!
@@ -85,12 +88,36 @@ class Contract < ApplicationRecord
     draft_data["payments"] || []
   end
 
+  def draft_payment_structure
+    draft_data["payment_structure"] || "flat_fee"
+  end
+
+  def draft_payment_config
+    draft_data["payment_config"] || {}
+  end
+
   def draft_services
     draft_data["services"] || []
   end
 
   def update_draft_step(step_name, data)
     self.draft_data = draft_data.merge(step_name.to_s => data)
+    save!
+  end
+
+  # Amend data helpers (for amending existing active contracts)
+  def amend_data
+    draft_data["amend"] || {}
+  end
+
+  def update_amend_data(data)
+    self.draft_data = draft_data.merge("amend" => data)
+    save!
+  end
+
+  def clear_amend_data
+    new_data = draft_data.except("amend")
+    self.draft_data = new_data
     save!
   end
 
@@ -127,6 +154,10 @@ class Contract < ApplicationRecord
   end
 
   # Display helpers
+  def display_name
+    production_name.presence || contractor_name
+  end
+
   def date_range
     return nil if contract_start_date.blank? || contract_end_date.blank?
 
@@ -142,10 +173,26 @@ class Contract < ApplicationRecord
   def create_records_from_draft!
     # Create space rentals from draft bookings
     draft_bookings.each do |booking|
+      starts_at = Time.zone.parse(booking["starts_at"])
+
+      # Handle both data formats: ends_at directly, or duration-based calculation
+      ends_at = if booking["ends_at"].present?
+        Time.zone.parse(booking["ends_at"])
+      else
+        duration_hours = booking["duration"].to_f
+        starts_at + duration_hours.hours
+      end
+
+      # Get location_id (required) and space_id (optional for "Entire venue")
+      location_id = booking["location_id"]
+      space_id = booking["location_space_id"] || booking["space_id"]
+      space_id = nil if space_id.blank? # Convert empty string to nil
+
       space_rentals.create!(
-        location_space_id: booking["location_space_id"],
-        starts_at: booking["starts_at"],
-        ends_at: booking["ends_at"],
+        location_id: location_id,
+        location_space_id: space_id,
+        starts_at: starts_at,
+        ends_at: ends_at,
         notes: booking["notes"],
         confirmed: true
       )
@@ -162,26 +209,25 @@ class Contract < ApplicationRecord
       )
     end
 
-    # Create production if specified in draft
-    if draft_data["production"].present?
-      prod_data = draft_data["production"]
-      production = productions.create!(
-        organization: organization,
-        name: prod_data["name"] || contractor_name,
-        production_type: "third_party",
-        contact_email: contractor_email
-      )
+    # Always create a production for the contract
+    # This makes the events visible in Shows & Events
+    prod_data = draft_data["production"] || {}
+    production = productions.create!(
+      organization: organization,
+      name: production_name.presence || prod_data["name"].presence || contractor_name,
+      production_type: "third_party",
+      contact_email: contractor_email
+    )
 
-      # Create shows for each booking
-      space_rentals.each do |rental|
-        production.shows.create!(
-          date_and_time: rental.starts_at,
-          location: rental.location_space.location,
-          location_space: rental.location_space,
-          space_rental: rental,
-          event_type: prod_data["event_type"] || "performance"
-        )
-      end
+    # Create shows for each space rental (booking)
+    space_rentals.reload.each do |rental|
+      production.shows.create!(
+        date_and_time: rental.starts_at,
+        location: rental.location,
+        location_space: rental.location_space,
+        space_rental: rental,
+        event_type: prod_data["event_type"].presence || "show"
+      )
     end
   end
 end

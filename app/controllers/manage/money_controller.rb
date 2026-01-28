@@ -21,6 +21,11 @@ module Manage
     private
 
     def build_production_summary(production)
+      # Third-party productions use contract-based financials
+      if production.type_third_party?
+        return build_third_party_summary(production)
+      end
+
       revenue_types = EventTypes.revenue_event_types
       shows = production.shows.where("date_and_time <= ?", 1.day.from_now)
       revenue_shows = shows.where(event_type: revenue_types)
@@ -58,6 +63,52 @@ module Manage
         awaiting_payout_amount: awaiting_payout.sum(:total_payout) || 0,
         paid_count: paid_payouts.count,
         paid_amount: paid_payouts.sum(:total_payout) || 0
+      }
+    end
+
+    def build_third_party_summary(production)
+      contract = production.contract
+      return empty_third_party_summary(production) unless contract
+
+      received = contract.total_incoming
+      pending_payments = contract.pending_payments
+      pending_amount = pending_payments.sum(:amount)
+      overdue_payments = contract.overdue_payments
+      overdue_amount = overdue_payments.sum(:amount)
+
+      {
+        production: production,
+        is_third_party: true,
+        contract: contract,
+        total_shows: production.shows.count,
+        gross_revenue: received,
+        pending_amount: pending_amount,
+        pending_count: pending_payments.count,
+        overdue_amount: overdue_amount,
+        overdue_count: overdue_payments.count,
+        # Zero out in-house specific fields
+        show_expenses: 0,
+        production_expenses: 0,
+        total_payouts: 0,
+        net_income: received
+      }
+    end
+
+    def empty_third_party_summary(production)
+      {
+        production: production,
+        is_third_party: true,
+        contract: nil,
+        total_shows: production.shows.count,
+        gross_revenue: 0,
+        pending_amount: 0,
+        pending_count: 0,
+        overdue_amount: 0,
+        overdue_count: 0,
+        show_expenses: 0,
+        production_expenses: 0,
+        total_payouts: 0,
+        net_income: 0
       }
     end
   end

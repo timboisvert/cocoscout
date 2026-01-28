@@ -4,6 +4,7 @@ module Manage
   class SignupsController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
+    before_action :check_not_third_party
 
     def index
       # Sign-up forms stats
@@ -32,6 +33,12 @@ module Manage
       end
       @production = Current.organization.productions.find(params.require(:production_id))
       sync_current_production(@production)
+    end
+
+    def check_not_third_party
+      if @production.type_third_party?
+        redirect_to manage_shows_path(@production), alert: "Sign-ups are not available for third-party productions"
+      end
     end
   end
 end

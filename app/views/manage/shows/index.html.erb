@@ -39,17 +39,25 @@
     <div class="space-y-1" data-controller="linked-highlight">
       <% @shows.each do |show| %>
         <%
-          assignments = @assignments_by_show[show.id] || []
-          roles = @roles_by_show[show.id] || []
-          cant_make_it = @cant_make_it_by_show[show.id] || {}
-          sign_up_regs = @sign_up_registrations_by_show[show.id] || []
-          assignments_by_role = assignments.group_by(&:role_id)
-          cast_summary = {
-            roles: roles,
-            assignments_by_role: assignments_by_role,
-            cant_make_it_by_assignment: cant_make_it,
-            sign_up_registrations: sign_up_regs
-          }
+          is_third_party = @production.type_third_party?
+
+          if is_third_party
+            # For third-party: show rental and services
+            services = @contract_services || []
+          else
+            # For in-house: show cast summary
+            assignments = @assignments_by_show[show.id] || []
+            roles = @roles_by_show[show.id] || []
+            cant_make_it = @cant_make_it_by_show[show.id] || {}
+            sign_up_regs = @sign_up_registrations_by_show[show.id] || []
+            assignments_by_role = assignments.group_by(&:role_id)
+            cast_summary = {
+              roles: roles,
+              assignments_by_role: assignments_by_role,
+              cant_make_it_by_assignment: cant_make_it,
+              sign_up_registrations: sign_up_regs
+            }
+          end
         %>
         <%= render partial: "shared/show_row", locals: {
           show: show,
@@ -58,8 +66,9 @@
           show_recurring: true,
           show_linked: true,
           show_location: true,
-          right_panel: :cast_summary,
-          cast_summary: cast_summary
+          right_panel: is_third_party ? :rental_services : :cast_summary,
+          cast_summary: is_third_party ? nil : cast_summary,
+          services: is_third_party ? services : nil
         } %>
       <% end %>
     </div>

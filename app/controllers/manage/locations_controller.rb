@@ -66,13 +66,7 @@ module Manage
 
     def destroy
       if @location.has_any_events?
-        message = if @location.has_upcoming_events?
-          "Cannot delete location with upcoming events"
-        else
-          "Cannot delete location with past events"
-        end
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
-                    alert: message
+        redirect_to cannot_delete_manage_location_path(@location)
       else
         @location.destroy!
         expire_locations_cache
@@ -82,8 +76,7 @@ module Manage
     end
 
     def cannot_delete
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
-                  alert: "Cannot delete location with upcoming events"
+      # Renders the cannot_delete view
     end
 
     private

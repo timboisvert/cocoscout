@@ -907,8 +907,16 @@ Rails.application.routes.draw do
     resources :contracts, path: "money/contracts" do
       member do
         post :activate
-        post :complete
-        post :cancel
+        get :cancel
+        post :process_cancel
+        # Amend contract flow with nested paths
+        get "amend/bookings", action: :amend_bookings, as: :amend_bookings
+        post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings
+        get "amend/events", action: :amend_events, as: :amend_events
+        get "amend/payments", action: :amend_payments, as: :amend_payments
+        post "amend/payments", action: :save_amend_payments, as: :save_amend_payments
+        get "amend/review", action: :amend_review, as: :amend_review
+        post "amend/apply", action: :apply_amendments, as: :apply_amendments
       end
       resources :contract_documents, only: %i[create destroy], path: "documents"
       resources :contract_payments, only: %i[create update destroy], path: "payments" do
@@ -935,6 +943,9 @@ Rails.application.routes.draw do
     post "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#save_payments"
     get  "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#terms", as: "terms_contract_wizard"
     post "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#save_terms"
+    get  "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#documents", as: "documents_contract_wizard"
+    post "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#save_documents"
+    delete "money/contracts/:contract_id/wizard/documents/:document_id", to: "contract_wizard#delete_document", as: "delete_document_contract_wizard"
     get  "money/contracts/:contract_id/wizard/review", to: "contract_wizard#review", as: "review_contract_wizard"
     post "money/contracts/:contract_id/wizard/activate", to: "contract_wizard#activate", as: "activate_contract_wizard"
     delete "money/contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"

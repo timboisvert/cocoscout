@@ -26,39 +26,56 @@
       </div>
     </div>
 
-    <%# Booking list %>
-    <div class="space-y-2 max-h-80 overflow-y-auto mb-6 pr-2">
-      <% @generated_bookings.sort_by { |b| b["starts_at"] }.each_with_index do |booking, index| %>
+    <%# Booking list - styled like show_rows %>
+    <div class="space-y-1 max-h-96 overflow-y-auto mb-6 pr-1">
+      <% @generated_bookings.sort_by { |b| b["starts_at"] }.each do |booking| %>
         <%
           starts_at = DateTime.parse(booking["starts_at"]) rescue nil
           location = @locations_map[booking["location_id"].to_i]
           space = @spaces_map[booking["space_id"].to_i] if booking["space_id"].present?
+          duration = booking["duration"].to_f
+          notes = booking["notes"]
+          has_notes = notes.present?
         %>
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-sm font-medium">
-              <%= index + 1 %>
+        <div class="flex items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
+          <%# Left section - Date/Time info %>
+          <div class="flex-1 flex items-center gap-4 p-3">
+            <%# Date block %>
+            <div class="flex-shrink-0 w-14 text-center">
+              <% if starts_at %>
+                <div class="text-xs font-medium text-gray-500 uppercase"><%= starts_at.strftime("%b") %></div>
+                <div class="text-2xl font-bold text-gray-900 leading-tight"><%= starts_at.strftime("%d") %></div>
+                <div class="text-xs text-gray-500"><%= starts_at.strftime("%a") %></div>
+              <% else %>
+                <div class="text-sm text-gray-400">TBD</div>
+              <% end %>
             </div>
-            <div>
-              <p class="font-medium text-gray-900">
+
+            <%# Details %>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900">
                 <% if starts_at %>
-                  <%= starts_at.strftime("%A, %B %d, %Y") %>
-                <% else %>
-                  Date TBD
+                  <%= starts_at.strftime("%l:%M %p").strip %>
+                  <span class="text-gray-400 font-normal">·</span>
+                  <span class="text-gray-600 font-normal"><%= duration == duration.to_i ? "#{duration.to_i} hr#{'s' if duration > 1}" : "#{duration} hrs" %></span>
                 <% end %>
-              </p>
-              <p class="text-sm text-gray-500">
-                <% if starts_at %>
-                  <%= starts_at.strftime("%l:%M %p").strip %> · <%= booking["duration"] %> hours
-                <% end %>
+              </div>
+              <div class="text-sm text-gray-500 truncate">
                 <% if location %>
-                  · <%= location.name %><%= space ? " (#{space.name})" : "" %>
+                  <%= location.name %><%= space ? " · #{space.name}" : "" %>
                 <% end %>
-              </p>
+              </div>
             </div>
           </div>
-          <% if booking["notes"].present? %>
-            <span class="text-xs text-gray-400"><%= booking["notes"] %></span>
+
+          <% if has_notes %>
+            <%# Right panel - Notes %>
+            <div class="flex-shrink-0 w-48 bg-gray-50 border-l border-gray-200 p-3 flex items-center">
+              <div class="text-sm text-gray-600 truncate" title="<%= notes %>">
+                <span class="text-gray-400 text-xs uppercase tracking-wide">Note:</span>
+                <span class="ml-1"><%= notes %></span>
+              </div>
+            </div>
           <% end %>
         </div>
       <% end %>

@@ -1,68 +1,79 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Bookings" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When will they use your space?</h2>
-  <p class="text-gray-600 mb-6">Define the booking pattern for this contract.</p>
+  <p class="text-gray-600 mb-6">Define the dates and times for this contract.</p>
 
-  <%= form_with url: manage_bookings_contract_wizard_path(@contract), method: :post, local: true, data: { controller: "contract-bookings", "contract-bookings-locations-value": @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json } do |form| %>
+  <%
+    # Parse existing rules
+    existing_rules = @contract.draft_booking_rules || {}
+    if existing_rules.is_a?(Hash) && existing_rules["rules"].is_a?(Array)
+      booking_rules = existing_rules["rules"]
+    elsif existing_rules.is_a?(Hash) && existing_rules["mode"].present?
+      booking_rules = [existing_rules]
+    else
+      booking_rules = []
+    end
 
-    <%# Booking Mode Selection %>
-    <div class="mb-6">
-      <h3 class="text-sm font-semibold text-gray-900 mb-3">Booking Type</h3>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="cursor-pointer">
-          <div data-contract-bookings-target="singleOption" class="p-4 rounded-lg border-2 <%= @existing_rules["mode"] == "recurring" ? "border-gray-200 bg-gray-50" : "border-pink-500 bg-pink-50" %> transition-colors hover:border-pink-400">
-            <div class="flex items-start">
-              <input type="radio" name="booking_mode" value="single" 
-                     <%= "checked" unless @existing_rules["mode"] == "recurring" %>
-                     data-action="change->contract-bookings#toggleBookingMode"
-                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
-              <div class="ml-3">
-                <p class="font-medium text-gray-900">Single Event</p>
-                <p class="text-xs text-gray-500 mt-0.5">One specific date and time</p>
-              </div>
-            </div>
-          </div>
-        </label>
-        <label class="cursor-pointer">
-          <div data-contract-bookings-target="recurringOption" class="p-4 rounded-lg border-2 <%= @existing_rules["mode"] == "recurring" ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-gray-50" %> transition-colors hover:border-pink-400">
-            <div class="flex items-start">
-              <input type="radio" name="booking_mode" value="recurring"
-                     <%= "checked" if @existing_rules["mode"] == "recurring" %>
-                     data-action="change->contract-bookings#toggleBookingMode"
-                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
-              <div class="ml-3">
-                <p class="font-medium text-gray-900">Recurring Series</p>
-                <p class="text-xs text-gray-500 mt-0.5">Weekly, biweekly, or monthly</p>
-              </div>
-            </div>
-          </div>
-        </label>
-      </div>
+    # Determine initial mode
+    initial_mode = existing_rules["booking_mode"] || (booking_rules.length > 1 ? "multiple" : "single")
+
+    # Get default location
+    default_location = @locations.find(&:default) || @locations.first
+    default_location_id = default_location&.id
+  %>
+
+  <%= form_with url: manage_bookings_contract_wizard_path(@contract), method: :post, local: true, data: {
+    controller: "contract-bookings",
+    "contract-bookings-locations-value": @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json,
+    "contract-bookings-existing-rules-value": booking_rules.to_json,
+    "contract-bookings-initial-mode-value": initial_mode,
+    "contract-bookings-default-location-id-value": default_location_id
+  } do |form| %>
+
+    <input type="hidden" name="booking_rules_json" data-contract-bookings-target="rulesJson" value="<%= booking_rules.to_json %>">
+    <input type="hidden" name="booking_mode" data-contract-bookings-target="bookingMode" value="<%= initial_mode %>">
+
+    <%# Mode selector - two wide buttons %>
+    <div class="grid grid-cols-2 gap-3 mb-6">
+      <button type="button" data-action="click->contract-bookings#selectSingleMode"
+              data-contract-bookings-target="singleModeBtn"
+              class="<%= initial_mode == 'single' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400' %> border-2 rounded-xl p-4 text-center transition-all">
+        <div class="flex items-center justify-center gap-2 font-semibold">
+          <%= icon("calendar", class: "w-5 h-5") %>
+          Single Event
+        </div>
+        <div class="text-sm opacity-75 mt-1">One date and time</div>
+      </button>
+      <button type="button" data-action="click->contract-bookings#selectMultipleMode"
+              data-contract-bookings-target="multipleModeBtn"
+              class="<%= initial_mode == 'multiple' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400' %> border-2 rounded-xl p-4 text-center transition-all">
+        <div class="flex items-center justify-center gap-2 font-semibold">
+          <%= icon("calendar-days", class: "w-5 h-5") %>
+          Multiple Events
+        </div>
+        <div class="text-sm opacity-75 mt-1">Several dates or recurring</div>
+      </button>
     </div>
 
-    <%# Single Event Form %>
-    <div data-contract-bookings-target="singleForm" class="<%= "hidden" if @existing_rules["mode"] == "recurring" %> bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200">
-      <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <%= icon("calendar", class: "w-4 h-4 text-pink-600") %>
-        Event Details
-      </h4>
-      <div class="space-y-4">
+    <%# ==================== SINGLE EVENT MODE ==================== %>
+    <div data-contract-bookings-target="singleModeContent" class="<%= 'hidden' if initial_mode != 'single' %>">
+      <div class="bg-gray-50 rounded-lg p-5 border border-gray-200 space-y-4">
+        <% single_rule = booking_rules.find { |r| r["mode"] == "single" } || {} %>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
-            <select name="single_location" data-contract-bookings-target="location"
-                    data-action="change->contract-bookings#locationChanged"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+            <select data-contract-bookings-target="singleLocation" data-action="change->contract-bookings#singleLocationChanged"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
               <option value="">Select a location...</option>
               <% @locations.each do |location| %>
-                <option value="<%= location.id %>" <%= "selected" if @existing_rules["location_id"].to_s == location.id.to_s && @existing_rules["mode"] != "recurring" %>><%= location.name %></option>
+                <% selected = single_rule["location_id"].present? ? single_rule["location_id"].to_s == location.id.to_s : location.id == default_location_id %>
+                <option value="<%= location.id %>" <%= 'selected' if selected %>><%= location.name %></option>
               <% end %>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Space <span class="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <select name="single_space" data-contract-bookings-target="space"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+            <select data-contract-bookings-target="singleSpace"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
               <option value="">Entire venue</option>
             </select>
@@ -71,66 +82,167 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time</label>
-            <input type="datetime-local" name="single_starts_at"
-                   value="<%= @existing_rules["starts_at"] unless @existing_rules["mode"] == "recurring" %>"
-                   data-contract-bookings-target="startDateTime"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time <span class="text-pink-500">*</span></label>
+            <input type="datetime-local" data-contract-bookings-target="singleDateTime" value="<%= single_rule['starts_at'] %>"
                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
-            <select name="single_duration" data-contract-bookings-target="duration"
+            <select data-contract-bookings-target="singleDuration"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <% duration = @existing_rules["mode"] != "recurring" ? @existing_rules["duration"].to_s : "" %>
-              <option value="1" <%= "selected" if duration == "1" %>>1 hour</option>
-              <option value="1.5" <%= "selected" if duration == "1.5" %>>1.5 hours</option>
-              <option value="2" <%= "selected" if duration == "2" || duration.blank? %>>2 hours</option>
-              <option value="2.5" <%= "selected" if duration == "2.5" %>>2.5 hours</option>
-              <option value="3" <%= "selected" if duration == "3" %>>3 hours</option>
-              <option value="4" <%= "selected" if duration == "4" %>>4 hours</option>
-              <option value="6" <%= "selected" if duration == "6" %>>6 hours</option>
-              <option value="8" <%= "selected" if duration == "8" %>>8 hours</option>
+              <% [1, 1.5, 2, 2.5, 3, 4, 6, 8, 12].each do |hrs| %>
+                <option value="<%= hrs %>" <%= 'selected' if single_rule['duration'].to_s == hrs.to_s || (single_rule['duration'].blank? && hrs == 2) %>><%= hrs == hrs.to_i ? "#{hrs.to_i} hour#{'s' if hrs > 1}" : "#{hrs} hours" %></option>
+              <% end %>
             </select>
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Notes <span class="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <input type="text" name="single_notes"
-                 value="<%= @existing_rules["notes"] unless @existing_rules["mode"] == "recurring" %>"
-                 placeholder="e.g., Setup time included"
-                 data-contract-bookings-target="notes"
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" data-contract-bookings-target="singleNotes" value="<%= single_rule['notes'] %>" placeholder="e.g., Setup time included"
                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
         </div>
       </div>
     </div>
 
-    <%# Recurring Series Form %>
-    <div data-contract-bookings-target="recurringForm" class="<%= "hidden" unless @existing_rules["mode"] == "recurring" %> bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200">
-      <h4 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <%= icon("repeat", class: "w-4 h-4 text-pink-600") %>
-        Recurring Pattern
-      </h4>
-      <div class="space-y-4">
+    <%# ==================== MULTIPLE EVENTS MODE ==================== %>
+    <div data-contract-bookings-target="multipleModeContent" class="<%= 'hidden' if initial_mode != 'multiple' %>">
+
+      <%# List of added bookings %>
+      <div data-contract-bookings-target="bookingsList" class="space-y-3 mb-4">
+        <%# Populated by JS %>
+      </div>
+
+      <%# Error message %>
+      <div data-contract-bookings-target="formError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        Please complete all required fields before continuing.
+      </div>
+
+      <%# Add buttons %>
+      <div class="flex gap-3 mb-4">
+        <button type="button" data-action="click->contract-bookings#addSingleEvent"
+                class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition-colors flex items-center justify-center gap-2">
+          <%= icon("plus", class: "w-4 h-4") %>
+          Add Single Event
+        </button>
+        <button type="button" data-action="click->contract-bookings#addRecurringSeries"
+                class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition-colors flex items-center justify-center gap-2">
+          <%= icon("plus", class: "w-4 h-4") %>
+          Add Recurring Series
+        </button>
+      </div>
+
+      <p class="text-xs text-gray-500 text-center">
+        Click a button above to add events. You can mix single events and recurring series.
+      </p>
+    </div>
+
+    <%# Manage Spaces Link %>
+    <p class="text-xs text-gray-500 text-center mt-6 mb-6">
+      Need to add spaces?
+      <%= link_to "Manage locations", manage_locations_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
+    </p>
+
+    <%# Navigation %>
+    <div class="flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_contractor_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Next: Preview Schedule", variant: "primary", size: "medium", type: :submit, data: { action: "click->contract-bookings#validateAndSubmit" } %>
+    </div>
+
+    <%# ==================== TEMPLATES FOR JS ==================== %>
+    <template data-contract-bookings-target="singleEventTemplate">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="single" data-booking-index="">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+              <%= icon("calendar", class: "w-4 h-4 text-pink-600") %>
+            </div>
+            <span class="font-medium text-gray-900">Single Event</span>
+          </div>
+          <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+            <%= icon("x", class: "w-5 h-5") %>
+          </button>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
-            <select name="recurring_location" data-contract-bookings-target="recurringLocation"
-                    data-action="change->contract-bookings#recurringLocationChanged"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+            <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
               <option value="">Select a location...</option>
               <% @locations.each do |location| %>
-                <option value="<%= location.id %>" <%= "selected" if @existing_rules["location_id"].to_s == location.id.to_s && @existing_rules["mode"] == "recurring" %>><%= location.name %></option>
+                <option value="<%= location.id %>"><%= location.name %></option>
               <% end %>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Space <span class="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <select name="recurring_space" data-contract-bookings-target="recurringSpace"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+            <select data-field="space_id"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="">Entire venue</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time <span class="text-pink-500">*</span></label>
+            <input type="datetime-local" data-field="starts_at"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+            <select data-field="duration"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="1">1 hour</option>
+              <option value="1.5">1.5 hours</option>
+              <option value="2" selected>2 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+              <option value="6">6 hours</option>
+              <option value="8">8 hours</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" data-field="notes" placeholder="e.g., Setup time included"
+                 class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+        </div>
+      </div>
+    </template>
+
+    <template data-contract-bookings-target="recurringEventTemplate">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="recurring" data-booking-index="">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-pink-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </div>
+            <span class="font-medium text-gray-900">Recurring Series</span>
+          </div>
+          <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+            <%= icon("x", class: "w-5 h-5") %>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+            <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="">Select a location...</option>
+              <% @locations.each do |location| %>
+                <option value="<%= location.id %>"><%= location.name %></option>
+              <% end %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+            <select data-field="space_id"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
               <option value="">Entire venue</option>
             </select>
@@ -140,24 +252,55 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Frequency</label>
-            <select name="recurring_frequency" data-contract-bookings-target="frequency"
+            <select data-field="frequency" data-action="change->contract-bookings#frequencyChanged"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <option value="weekly" <%= "selected" if @existing_rules["frequency"] == "weekly" %>>Weekly</option>
-              <option value="biweekly" <%= "selected" if @existing_rules["frequency"] == "biweekly" %>>Every 2 weeks</option>
-              <option value="monthly" <%= "selected" if @existing_rules["frequency"] == "monthly" %>>Monthly (same day of week)</option>
+              <option value="daily">Daily</option>
+              <option value="weekly" selected>Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly_day">Monthly (same day, e.g., 2nd Friday)</option>
+              <option value="monthly_date">Monthly (same date, e.g., the 15th)</option>
+            </select>
+          </div>
+          <%# Day of week - shown for weekly/biweekly %>
+          <div data-frequency-field="day_of_week">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+            <select data-field="day_of_week"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5" selected>Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+        </div>
+
+        <%# Monthly day options - shown only for monthly_day %>
+        <div data-frequency-field="monthly_day_options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Which Week</label>
+            <select data-field="week_ordinal"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <option value="1">First</option>
+              <option value="2">Second</option>
+              <option value="3">Third</option>
+              <option value="4">Fourth</option>
+              <option value="5">Last</option>
             </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
-            <select name="recurring_day_of_week" data-contract-bookings-target="dayOfWeek"
+            <select data-field="monthly_day_of_week"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <option value="0" <%= "selected" if @existing_rules["day_of_week"].to_s == "0" %>>Sunday</option>
-              <option value="1" <%= "selected" if @existing_rules["day_of_week"].to_s == "1" %>>Monday</option>
-              <option value="2" <%= "selected" if @existing_rules["day_of_week"].to_s == "2" %>>Tuesday</option>
-              <option value="3" <%= "selected" if @existing_rules["day_of_week"].to_s == "3" %>>Wednesday</option>
-              <option value="4" <%= "selected" if @existing_rules["day_of_week"].to_s == "4" %>>Thursday</option>
-              <option value="5" <%= "selected" if @existing_rules["day_of_week"].to_s == "5" || @existing_rules["day_of_week"].blank? %>>Friday</option>
-              <option value="6" <%= "selected" if @existing_rules["day_of_week"].to_s == "6" %>>Saturday</option>
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5" selected>Friday</option>
+              <option value="6">Saturday</option>
             </select>
           </div>
         </div>
@@ -165,73 +308,43 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
-            <input type="time" name="recurring_time"
-                   value="<%= @existing_rules["time"] || "19:00" %>"
-                   data-contract-bookings-target="recurringTime"
+            <input type="time" data-field="time" value="19:00"
                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
-            <select name="recurring_duration" data-contract-bookings-target="recurringDuration"
+            <select data-field="duration"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <% r_duration = @existing_rules["mode"] == "recurring" ? @existing_rules["duration"].to_s : "" %>
-              <option value="1" <%= "selected" if r_duration == "1" %>>1 hour</option>
-              <option value="1.5" <%= "selected" if r_duration == "1.5" %>>1.5 hours</option>
-              <option value="2" <%= "selected" if r_duration == "2" || r_duration.blank? %>>2 hours</option>
-              <option value="2.5" <%= "selected" if r_duration == "2.5" %>>2.5 hours</option>
-              <option value="3" <%= "selected" if r_duration == "3" %>>3 hours</option>
-              <option value="4" <%= "selected" if r_duration == "4" %>>4 hours</option>
-              <option value="6" <%= "selected" if r_duration == "6" %>>6 hours</option>
-              <option value="8" <%= "selected" if r_duration == "8" %>>8 hours</option>
+              <option value="1">1 hour</option>
+              <option value="1.5">1.5 hours</option>
+              <option value="2" selected>2 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+              <option value="6">6 hours</option>
+              <option value="8">8 hours</option>
             </select>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
-            <input type="date" name="recurring_start_date"
-                   value="<%= @existing_rules["start_date"] || Date.current.to_s %>"
-                   data-contract-bookings-target="startDate"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date <span class="text-pink-500">*</span></label>
+            <input type="date" data-field="start_date" value="<%= Date.current.to_s %>"
                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Number of Events</label>
-            <select name="recurring_event_count" data-contract-bookings-target="eventCount"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <option value="4" <%= "selected" if @existing_rules["event_count"].to_s == "4" %>>4 events</option>
-              <option value="8" <%= "selected" if @existing_rules["event_count"].to_s == "8" || @existing_rules["event_count"].blank? %>>8 events</option>
-              <option value="12" <%= "selected" if @existing_rules["event_count"].to_s == "12" %>>12 events</option>
-              <option value="16" <%= "selected" if @existing_rules["event_count"].to_s == "16" %>>16 events</option>
-              <option value="24" <%= "selected" if @existing_rules["event_count"].to_s == "24" %>>24 events</option>
-              <option value="52" <%= "selected" if @existing_rules["event_count"].to_s == "52" %>>52 events (1 year weekly)</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Until <span class="text-pink-500">*</span></label>
+            <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Notes <span class="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <input type="text" name="recurring_notes"
-                 value="<%= @existing_rules["notes"] if @existing_rules["mode"] == "recurring" %>"
-                 placeholder="e.g., Weekly open mic"
-                 data-contract-bookings-target="recurringNotes"
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" data-field="notes" placeholder="e.g., Weekly rehearsal"
                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
         </div>
       </div>
-    </div>
-
-    <%# Manage Spaces Link %>
-    <p class="text-xs text-gray-500 text-center mb-6">
-      Need to add spaces?
-      <%= link_to "Manage locations", manage_locations_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
-    </p>
-
-    <%# Navigation %>
-    <div class="flex justify-between">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_contractor_contract_wizard_path(@contract) %>
-      <%= render "shared/button", text: "Next: Preview Schedule", variant: "primary", size: "medium", type: :submit %>
-    </div>
+    </template>
   <% end %>
 <% end %>

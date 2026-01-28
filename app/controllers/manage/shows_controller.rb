@@ -84,6 +84,13 @@ module Manage
         .to_a
 
       @sign_up_registrations_by_show = sign_up_registrations.group_by { |r| r.sign_up_slot.sign_up_form_instance.show_id }
+
+      # Load contract services for third-party productions
+      if @production.type_third_party? && @production.contract.present?
+        @contract_services = @production.contract.draft_services
+      else
+        @contract_services = []
+      end
     end
 
     def show

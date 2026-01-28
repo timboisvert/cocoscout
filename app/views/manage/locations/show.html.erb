@@ -10,7 +10,8 @@
     ],
     text: @location.name,
     links: (@is_owner || @role == "manager") ? [
-      { icon: "pencil", text: "Edit Location", path: "#", data: { action: "click->location-spaces#openEditLocationModal" } }
+      { icon: "pencil", text: "Edit Location", path: "#", data: { action: "click->location-spaces#openEditLocationModal" } },
+      { icon: "trash", text: "Delete Location", path: manage_location_path(@location), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this location? This cannot be undone." }, variant: "danger" }
     ] : []
   } %>
 

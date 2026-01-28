@@ -469,6 +469,28 @@
       </div>
     </div>
 
+  <% elsif right_panel == :rental_services %>
+    <%# Right Section: Space Rental & Services for third-party productions %>
+    <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex flex-col justify-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+      <% rental = show.space_rental %>
+      <% if rental %>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-medium text-gray-900"><%= rental.space_name %></span>
+        </div>
+      <% end %>
+      <% if local_assigns[:services].present? && local_assigns[:services].any? %>
+        <div class="flex flex-wrap gap-1">
+          <% local_assigns[:services].each do |service| %>
+            <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <%= service %>
+            </span>
+          <% end %>
+        </div>
+      <% elsif rental.nil? %>
+        <span class="text-sm text-gray-400">Third-party rental</span>
+      <% end %>
+    </div>
+
   <% elsif right_panel == :countdown && local_assigns[:closes_at].present? && local_assigns[:closes_at] > Time.current %>
     <%# Right Section: Countdown timer for closing time %>
     <div class="flex-shrink-0 w-32 sm:w-40 md:border-l border-gray-200 md:pl-4 flex flex-col items-center justify-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0"

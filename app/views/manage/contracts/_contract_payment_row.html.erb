@@ -1,0 +1,152 @@
+<%#
+  Contract Payment Row
+
+  A show_row-style row for displaying a contract payment.
+
+  Required params:
+    - payment: ContractPayment object
+
+  Optional params:
+    - show_mark_received: Whether to show the "Mark Received" button (default: true)
+%>
+<%
+  show_mark_received = local_assigns.fetch(:show_mark_received, true)
+  contract = payment.contract
+  is_late = payment.overdue?
+  is_incoming = payment.direction_incoming?
+%>
+
+<div data-controller="payment-modal">
+<div class="flex items-stretch px-3 py-2 border rounded-lg transition-all group <%= is_late ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200 hover:border-gray-400' %>">
+  <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+    <%# Left Section: Date & Payment Details %>
+    <div class="w-full md:w-1/2 flex items-center gap-4">
+      <%# Date Box %>
+      <div class="flex-shrink-0 w-14 text-center">
+        <div class="text-xs font-semibold <%= is_late ? 'text-pink-600' : 'text-pink-600' %> uppercase"><%= payment.due_date.strftime("%b") %></div>
+        <div class="text-2xl font-bold <%= is_late ? 'text-pink-700' : 'text-gray-900' %>"><%= payment.due_date.strftime("%-d") %></div>
+        <div class="text-xs <%= is_late ? 'text-pink-500' : 'text-gray-500' %>"><%= payment.due_date.strftime("%a") %></div>
+      </div>
+
+      <%# Payment Details %>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if is_late %>
+            <span class="inline-flex items-center rounded-md bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/20">
+              <%= icon("alert-circle", class: "w-3 h-3 mr-1 inline") %>
+              Late
+            </span>
+          <% end %>
+          <span class="font-medium text-gray-900">
+            <%= link_to contract.contractor_name, manage_contract_path(contract), class: "hover:text-pink-600" %>
+          </span>
+        </div>
+        <div class="text-sm text-gray-600">
+          <%= payment.description.presence || "Payment" %>
+          <% unless is_incoming %>
+            <span class="text-red-600">(outgoing)</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Right Section: Amount & Actions %>
+    <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
+      <div class="flex-1">
+        <div class="text-2xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
+          <%= number_to_currency(payment.amount) %>
+        </div>
+        <% if is_late %>
+          <div class="text-xs text-pink-600">
+            <%= distance_of_time_in_words(payment.due_date, Date.current) %> overdue
+          </div>
+        <% end %>
+      </div>
+
+      <% if show_mark_received && payment.status_pending? %>
+        <%= render "shared/button",
+          text: "Mark Received",
+          variant: "secondary",
+          size: "small",
+          icon: "check",
+          data: {
+            action: "click->payment-modal#open"
+          },
+          type: :button %>
+      <% elsif payment.status_paid? %>
+        <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+          <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
+          Paid <%= payment.paid_date&.strftime("%b %-d") %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# Modal for marking payment received %>
+<% if show_mark_received && payment.status_pending? %>
+  <div id="mark-payment-received-<%= payment.id %>" class="hidden fixed inset-0 z-50" data-payment-modal-target="modal">
+    <div class="fixed inset-0 bg-black/50" data-action="click->payment-modal#close"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6" data-payment-modal-target="content">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-900">Mark Payment Received</h3>
+          <button type="button" data-action="click->payment-modal#close" class="text-gray-400 hover:text-gray-600">
+            <%= icon("x-mark", class: "w-5 h-5") %>
+          </button>
+        </div>
+
+        <div class="mb-6">
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <div class="text-sm text-gray-500 mb-1">Payment Amount</div>
+            <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
+              <%= number_to_currency(payment.amount) %>
+            </div>
+            <div class="text-sm text-gray-600 mt-2">
+              <%= contract.contractor_name %> · <%= payment.description.presence || "Payment" %>
+            </div>
+          </div>
+        </div>
+
+        <%= form_with url: mark_paid_manage_contract_contract_payment_path(contract, payment), method: :post, local: true do |f| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date Received</label>
+              <%= date_field_tag :paid_on, Date.current, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+              <%= select_tag :payment_method,
+                options_for_select([
+                  ["Select method...", ""],
+                  ["Cash", "cash"],
+                  ["Check", "check"],
+                  ["Credit Card", "credit_card"],
+                  ["Bank Transfer", "bank_transfer"],
+                  ["Venmo", "venmo"],
+                  ["PayPal", "paypal"],
+                  ["Zelle", "zelle"],
+                  ["Other", "other"]
+                ]),
+                class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Reference/Check # (optional)</label>
+              <%= text_field_tag :reference, nil, placeholder: "e.g., Check #1234", class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button type="button" data-action="click->payment-modal#close" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              Cancel
+            </button>
+            <%= render "shared/button", text: "Mark Received", variant: "primary", size: "medium", type: :submit, classes: "flex-1" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+</div>

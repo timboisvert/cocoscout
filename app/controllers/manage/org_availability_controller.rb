@@ -10,7 +10,7 @@ module Manage
       end_date = @months.months.from_now
 
       # Production filter parameter (default all)
-      @all_productions = Current.organization.productions
+      @all_productions = Current.organization.productions.type_in_house
                                  .includes(:talent_pools)
                                  .order(:name)
                                  .to_a
@@ -390,7 +390,7 @@ module Manage
 
       # Get all shows this person might be relevant for
       all_shows = []
-      @productions ||= Current.organization.productions.to_a
+      @productions ||= Current.organization.productions.type_in_house.to_a
 
       @productions.each do |production|
         pool = production.effective_talent_pool

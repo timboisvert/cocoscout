@@ -3,8 +3,8 @@
 module Manage
   class OrgTalentPoolsController < Manage::ManageController
     def index
-      # Get all productions with their talent pools
-      productions = Current.organization.productions
+      # Get all in-house productions with their talent pools (exclude third-party)
+      productions = Current.organization.productions.type_in_house
                            .includes(:talent_pools)
                            .order(:name)
 

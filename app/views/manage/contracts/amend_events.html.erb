@@ -1,0 +1,166 @@
+<% content_for :title, "Amend Contract - Review Events" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path],
+      [@contract.contractor_name, manage_contract_path(@contract)]
+    ],
+    text: "Amend Contract",
+    links: []
+  } %>
+
+  <div class="max-w-4xl mx-auto mt-6">
+    <p class="text-gray-600 mb-6">Review all events after your changes are applied.</p>
+
+    <%# Progress Steps - 4 steps %>
+    <div class="flex items-center gap-4 mb-8">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
+          <%= icon("check", class: "w-4 h-4") %>
+        </div>
+        <span class="text-sm font-medium text-gray-500">Events</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-pink-500"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-sm font-semibold">2</div>
+        <span class="text-sm font-medium text-gray-900">Review Events</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">3</div>
+        <span class="text-sm font-medium text-gray-500">Payments</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">4</div>
+        <span class="text-sm font-medium text-gray-500">Confirm</span>
+      </div>
+    </div>
+
+    <%# Event Changes Summary (Pink!) %>
+    <% if @rentals_to_remove.any? || @new_bookings.any? %>
+      <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start gap-3">
+          <%= icon("sparkles", class: "w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5") %>
+          <div class="text-sm text-pink-800">
+            <p class="font-medium mb-2">Event Changes Summary</p>
+            <ul class="space-y-1">
+              <% if @rentals_to_remove.any? %>
+                <li class="flex items-center gap-2">
+                  <%= icon("minus-circle", class: "w-4 h-4 text-red-500") %>
+                  <span><%= @rentals_to_remove.count %> event<%= @rentals_to_remove.count == 1 ? '' : 's' %> will be removed</span>
+                </li>
+              <% end %>
+              <% if @new_bookings.any? %>
+                <li class="flex items-center gap-2">
+                  <%= icon("plus-circle", class: "w-4 h-4 text-green-500") %>
+                  <span><%= @new_bookings.count %> new event<%= @new_bookings.count == 1 ? '' : 's' %> will be added</span>
+                </li>
+              <% end %>
+            </ul>
+            <p class="mt-2 pt-2 border-t border-pink-200 font-medium">
+              Total events after amendment: <%= @all_events_after.count %>
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start gap-3">
+          <%= icon("info", class: "w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5") %>
+          <div class="text-sm text-gray-600">
+            <p class="font-medium">No changes to events</p>
+            <p class="mt-1">You haven't added or removed any events. You can continue to modify payments.</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Full Event List %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">All Events After Amendment (<%= @all_events_after.count %>)</h3>
+      </div>
+      <% if @all_events_after.any? %>
+        <div class="divide-y divide-gray-100">
+          <% current_month = nil %>
+          <% @all_events_after.each do |event| %>
+            <% event_month = event[:starts_at].strftime("%B %Y") %>
+            <% if event_month != current_month %>
+              <% current_month = event_month %>
+              <div class="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide"><%= event_month %></span>
+              </div>
+            <% end %>
+            <div class="flex items-center gap-4 p-4 <%= event[:type] == :new ? 'bg-green-50' : '' %>">
+              <div class="flex-shrink-0 w-14 text-center">
+                <div class="text-xs font-semibold <%= event[:type] == :new ? 'text-green-600' : 'text-pink-600' %> uppercase"><%= event[:starts_at].strftime("%a") %></div>
+                <div class="text-xl font-bold text-gray-900"><%= event[:starts_at].strftime("%-d") %></div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900">
+                  <%= event[:space_name] || event[:location_name] || "Location" %>
+                  <% if event[:type] == :new %>
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">New</span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-500">
+                  <%= event[:starts_at].strftime("%l:%M %p").strip %> - <%= event[:ends_at].strftime("%l:%M %p").strip %>
+                  <span class="text-gray-400">·</span>
+                  <%= event[:duration] %> <%= event[:duration] == 1 ? 'hour' : 'hours' %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="p-8 text-center">
+          <div class="text-gray-400 mb-2">
+            <%= icon("calendar", class: "w-12 h-12 mx-auto") %>
+          </div>
+          <p class="text-gray-500">No events in this contract after amendments.</p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Events Being Removed (detailed view) %>
+    <% if @rentals_to_remove.any? %>
+      <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
+        <div class="px-4 py-3 bg-red-50 border-b border-red-200">
+          <h3 class="text-sm font-semibold text-red-700 flex items-center gap-2">
+            <%= icon("minus-circle", class: "w-4 h-4") %>
+            Events Being Removed (<%= @rentals_to_remove.count %>)
+          </h3>
+        </div>
+        <div class="p-4 space-y-2">
+          <% @rentals_to_remove.each do |rental| %>
+            <div class="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+              <div class="flex-shrink-0 w-12 text-center">
+                <div class="text-xs font-semibold text-red-600 uppercase"><%= rental.starts_at.strftime("%b") %></div>
+                <div class="text-lg font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></div>
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">
+                  <%= rental.location_space&.name || rental.location&.name || "Location" %>
+                </div>
+                <div class="text-sm text-gray-500">
+                  <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Navigation Buttons %>
+    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+      <%= render "shared/button", text: "Back: Events", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_bookings_manage_contract_path(@contract) %>
+      <%= render "shared/button", text: "Next: Payments", variant: "primary", size: "medium", path: amend_payments_manage_contract_path(@contract) %>
+    </div>
+  </div>
+</div>

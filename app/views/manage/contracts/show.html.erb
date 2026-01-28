@@ -23,170 +23,171 @@
       ["Contracts", manage_contracts_path]
     ],
     text: @contract.contractor_name,
-    links: @contract.status_active? ? [
-      { icon: "check", text: "Mark Complete", path: complete_manage_contract_path(@contract), method: :post }
-    ] : []
+    links: []
   } %>
 
-  <%# Status and date info %>
-  <div class="mb-6 flex items-center gap-3">
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_badge[:bg] %> <%= status_badge[:text] %>">
-      <%= icon(status_badge[:icon], class: "w-3 h-3 mr-1") %>
-      <%= status_badge[:label] %>
-    </span>
-    <% if @contract.date_range %>
-      <span class="text-sm text-gray-500"><%= @contract.date_range %></span>
-    <% end %>
+  <%# Status and date info - show_row style %>
+  <div class="flex items-stretch px-3 py-3 border border-gray-200 rounded-lg bg-white mb-6">
+    <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+      <%# Left: Date Box %>
+      <div class="w-full md:w-1/3 flex items-center gap-4">
+        <% if @contract.contract_start_date.present? %>
+          <div class="flex-shrink-0 w-14 text-center">
+            <div class="text-xs font-semibold text-pink-600 uppercase"><%= @contract.contract_start_date.strftime("%b") %></div>
+            <div class="text-2xl font-bold text-gray-900"><%= @contract.contract_start_date.strftime("%-d") %></div>
+            <div class="text-xs text-gray-500"><%= @contract.contract_start_date.strftime("%Y") %></div>
+          </div>
+        <% end %>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_badge[:bg] %> <%= status_badge[:text] %>">
+              <%= icon(status_badge[:icon], class: "w-3 h-3 mr-1") %>
+              <%= status_badge[:label] %>
+            </span>
+          </div>
+          <% if @contract.date_range %>
+            <div class="text-sm text-gray-600 mt-1"><%= @contract.date_range %></div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Middle: Contract Info %>
+      <div class="w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0">
+        <div class="text-xs text-gray-400 uppercase tracking-wide">Contract Period</div>
+        <div class="text-sm text-gray-700 mt-1">
+          <% if @contract.contract_start_date && @contract.contract_end_date %>
+            <%= (@contract.contract_end_date - @contract.contract_start_date).to_i + 1 %> days
+          <% else %>
+            Not set
+          <% end %>
+        </div>
+      </div>
+
+      <%# Right: Financial Summary %>
+      <div class="w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0">
+        <div class="text-xs text-gray-400 uppercase tracking-wide">Contract Value</div>
+        <div class="text-lg font-bold <%= @contract.net_amount >= 0 ? 'text-green-600' : 'text-red-600' %> mt-1">
+          <%= number_to_currency(@contract.net_amount) %>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <%# Main content %>
     <div class="lg:col-span-2 space-y-6">
       <%# Contractor Info %>
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Contractor Information</h2>
-        <dl class="grid grid-cols-2 gap-4">
-          <div>
-            <dt class="text-sm font-medium text-gray-500">Name</dt>
-            <dd class="mt-1 text-sm text-gray-900"><%= @contract.contractor_name %></dd>
-          </div>
-          <% if @contract.contractor_email.present? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Contractor Information" %>
+        <div class="p-4">
+          <dl class="grid grid-cols-2 gap-4">
             <div>
-              <dt class="text-sm font-medium text-gray-500">Email</dt>
-              <dd class="mt-1 text-sm text-gray-900">
-                <%= mail_to @contract.contractor_email, class: "text-pink-600 hover:text-pink-700" %>
-              </dd>
+              <dt class="text-sm font-medium text-gray-500">Company</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @contract.contractor_name %></dd>
             </div>
-          <% end %>
-          <% if @contract.contractor_phone.present? %>
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Phone</dt>
-              <dd class="mt-1 text-sm text-gray-900"><%= @contract.contractor_phone %></dd>
-            </div>
-          <% end %>
-          <% if @contract.contractor_address.present? %>
-            <div class="col-span-2">
-              <dt class="text-sm font-medium text-gray-500">Address</dt>
-              <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line"><%= @contract.contractor_address %></dd>
-            </div>
-          <% end %>
-        </dl>
-      </div>
-
-      <%# Bookings %>
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Space Bookings</h2>
-          <% if @contract.status_active? %>
-            <%= render "shared/button", text: "Add Booking", variant: "tertiary", size: "small", icon: "plus", type: :button %>
-          <% end %>
-        </div>
-
-        <% if @rentals.any? %>
-          <div class="space-y-3">
-            <% @rentals.each do |rental| %>
-              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div class="font-medium text-gray-900">
-                    <%= rental.location_space.name %>
-                    <span class="text-gray-500 font-normal">at <%= rental.location.name %></span>
-                  </div>
-                  <div class="text-sm text-gray-500 mt-1">
-                    <%= rental.date_display %> • <%= rental.time_range_display %>
-                    (<%= rental.duration_hours %> hours)
-                  </div>
-                </div>
-                <% if rental.confirmed? %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                    Confirmed
-                  </span>
-                <% else %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                    Pending
-                  </span>
-                <% end %>
+            <% if @contract.production_name.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Production</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @contract.production_name %></dd>
               </div>
             <% end %>
+            <% if @contract.contractor_email.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Email</dt>
+                <dd class="mt-1 text-sm text-gray-900">
+                  <%= mail_to @contract.contractor_email, class: "text-pink-600 hover:text-pink-700" %>
+                </dd>
+              </div>
+            <% end %>
+            <% if @contract.contractor_phone.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Phone</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @contract.contractor_phone %></dd>
+              </div>
+            <% end %>
+            <% if @contract.contractor_address.present? %>
+              <div class="col-span-2">
+                <dt class="text-sm font-medium text-gray-500">Address</dt>
+                <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line"><%= @contract.contractor_address %></dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+      </div>
+
+      <%# Contract Type & Services %>
+      <% if @services.any? %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Included Services" %>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2">
+              <% @services.each do |service| %>
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  <%= icon("check", class: "w-3 h-3") %>
+                  <%= service["name"] %>
+                </span>
+              <% end %>
+            </div>
           </div>
-        <% else %>
-          <p class="text-gray-500 text-sm">No bookings yet.</p>
-        <% end %>
+        </div>
+      <% end %>
+
+      <%# Bookings %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Space Bookings" %>
+        <div class="p-4">
+          <% if @rentals.any? %>
+            <div class="space-y-2">
+              <% @rentals.each do |rental| %>
+                <%= render "booking_row", rental: rental %>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm">No bookings yet.</p>
+          <% end %>
+        </div>
       </div>
 
       <%# Payments %>
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Payments</h2>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Payments" %>
+        <div class="p-4">
+          <% if @payments.any? %>
+            <div class="space-y-2">
+              <% @payments.each do |payment| %>
+                <%= render "contract_payment_row", payment: payment %>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm">No payments scheduled.</p>
+          <% end %>
         </div>
-
-        <% if @payments.any? %>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <% @payments.each do |payment| %>
-                  <tr class="<%= 'bg-red-50' if payment.overdue? %>">
-                    <td class="px-3 py-3 text-sm text-gray-900">
-                      <%= payment.description.presence || "Payment" %>
-                      <% if payment.direction_incoming? %>
-                        <span class="text-xs text-green-600">(incoming)</span>
-                      <% else %>
-                        <span class="text-xs text-red-600">(outgoing)</span>
-                      <% end %>
-                    </td>
-                    <td class="px-3 py-3 text-sm text-gray-500"><%= payment.due_date.strftime("%b %d, %Y") %></td>
-                    <td class="px-3 py-3 text-sm text-right font-medium <%= payment.direction_incoming? ? 'text-green-600' : 'text-red-600' %>">
-                      <%= payment.formatted_amount %>
-                    </td>
-                    <td class="px-3 py-3 text-center">
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= payment.status_badge_class %>">
-                        <%= payment.overdue? ? "Overdue" : payment.status.humanize %>
-                      </span>
-                    </td>
-                    <td class="px-3 py-3 text-right">
-                      <% if payment.status_pending? %>
-                        <%= button_to mark_paid_manage_contract_contract_payment_path(@contract, payment),
-                          method: :post,
-                          class: "text-xs text-pink-600 hover:text-pink-700" do %>
-                          Mark Paid
-                        <% end %>
-                      <% end %>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        <% else %>
-          <p class="text-gray-500 text-sm">No payments scheduled.</p>
-        <% end %>
       </div>
 
       <%# Associated Productions %>
       <% if @productions.any? %>
-        <div class="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Associated Productions</h2>
-          <div class="space-y-3">
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Associated Productions" %>
+          <div class="p-4 space-y-2">
             <% @productions.each do |production| %>
-              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div class="font-medium text-gray-900"><%= production.name %></div>
-                  <div class="text-sm text-gray-500">
-                    <%= pluralize(production.shows.count, "show") %>
+              <div class="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
+                <div class="flex items-center gap-3">
+                  <% logo_variant = production.safe_logo_variant(:small) %>
+                  <% if logo_variant %>
+                    <div class="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden">
+                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover" %>
+                    </div>
+                  <% else %>
+                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                      <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="font-medium text-gray-900"><%= production.name %></div>
+                    <div class="text-sm text-gray-500"><%= pluralize(production.shows.count, "show") %></div>
                   </div>
                 </div>
-                <%= link_to manage_production_shows_path(production), class: "text-sm text-pink-600 hover:text-pink-700" do %>
-                  View
-                  <%= icon("arrow-right", class: "w-4 h-4 inline-block") %>
-                <% end %>
+                <%= render "shared/button", text: "View", variant: "secondary", size: "small", path: manage_production_shows_path(production) %>
               </div>
             <% end %>
           </div>
@@ -197,99 +198,165 @@
     <%# Sidebar %>
     <div class="space-y-6">
       <%# Financial Summary %>
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Financial Summary</h3>
-        <dl class="space-y-3">
-          <div class="flex justify-between">
-            <dt class="text-sm text-gray-500">Total Incoming</dt>
-            <dd class="text-sm font-medium text-green-600"><%= number_to_currency(@contract.total_incoming) %></dd>
-          </div>
-          <div class="flex justify-between">
-            <dt class="text-sm text-gray-500">Total Outgoing</dt>
-            <dd class="text-sm font-medium text-red-600"><%= number_to_currency(@contract.total_outgoing) %></dd>
-          </div>
-          <div class="flex justify-between border-t border-gray-200 pt-3">
-            <dt class="text-sm font-medium text-gray-900">Net Amount</dt>
-            <dd class="text-sm font-bold <%= @contract.net_amount >= 0 ? 'text-green-600' : 'text-red-600' %>">
-              <%= number_to_currency(@contract.net_amount) %>
-            </dd>
-          </div>
-        </dl>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Financial Summary" %>
+        <div class="p-4">
+          <dl class="space-y-3">
+            <div class="flex justify-between">
+              <dt class="text-sm text-gray-500">Total Incoming</dt>
+              <dd class="text-sm font-medium text-green-600"><%= number_to_currency(@contract.total_incoming) %></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-sm text-gray-500">Total Outgoing</dt>
+              <dd class="text-sm font-medium text-red-600"><%= number_to_currency(@contract.total_outgoing) %></dd>
+            </div>
+            <div class="flex justify-between border-t border-gray-200 pt-3">
+              <dt class="text-sm font-medium text-gray-900">Net Amount</dt>
+              <dd class="text-sm font-bold <%= @contract.net_amount >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                <%= number_to_currency(@contract.net_amount) %>
+              </dd>
+            </div>
+          </dl>
+        </div>
       </div>
 
       <%# Documents %>
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-gray-900">Documents</h3>
+      <div class="border border-gray-200 rounded-lg overflow-hidden" data-controller="modal">
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-700">Documents</h3>
+          <button type="button" data-action="click->modal#open" data-modal-id="document-upload-modal" class="text-pink-600 hover:text-pink-700">
+            <%= icon("plus", class: "w-4 h-4") %>
+          </button>
+        </div>
+        <div class="p-4">
+          <% if @documents.any? %>
+            <div class="space-y-2">
+              <% @documents.each do |doc| %>
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <% if doc.file.attached? %>
+                    <%= link_to rails_blob_path(doc.file, disposition: "inline"), target: "_blank", class: "flex items-center gap-2 flex-1 min-w-0" do %>
+                      <% content_type = doc.file.content_type %>
+                      <% if content_type&.start_with?("image/") %>
+                        <%= icon("image", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
+                      <% elsif content_type == "application/pdf" %>
+                        <%= icon("file-text", class: "w-4 h-4 text-red-500 flex-shrink-0") %>
+                      <% else %>
+                        <%= icon("file", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>
+                      <% end %>
+                      <span class="text-sm text-gray-900 hover:text-pink-600 truncate"><%= doc.name %></span>
+                    <% end %>
+                  <% else %>
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <%= icon("file-text", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>
+                      <span class="text-sm text-gray-500 truncate"><%= doc.name %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <% if doc.file.attached? %>
+                      <%= link_to rails_blob_path(doc.file, disposition: "attachment"), class: "text-gray-400 hover:text-pink-600", title: "Download" do %>
+                        <%= icon("download", class: "w-4 h-4") %>
+                      <% end %>
+                    <% end %>
+                    <%= button_to manage_contract_contract_document_path(@contract, doc),
+                      method: :delete,
+                      data: { turbo_confirm: "Delete this document?" },
+                      class: "text-gray-400 hover:text-red-600",
+                      title: "Delete" do %>
+                      <%= icon("trash", class: "w-4 h-4") %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500 text-center py-4">No documents uploaded yet.</p>
+          <% end %>
         </div>
 
-        <% if @documents.any? %>
-          <div class="space-y-2">
-            <% @documents.each do |doc| %>
-              <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div class="flex items-center gap-2">
-                  <%= icon("file", class: "w-4 h-4 text-gray-400") %>
-                  <span class="text-sm text-gray-900"><%= doc.name %></span>
-                </div>
-                <% if doc.file.attached? %>
-                  <%= link_to rails_blob_path(doc.file, disposition: "attachment"), class: "text-pink-600 hover:text-pink-700" do %>
-                    <%= icon("document", class: "w-4 h-4") %>
-                  <% end %>
-                <% end %>
+        <%# Upload Modal %>
+        <div id="document-upload-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <div class="fixed inset-0 bg-gray-500/75 transition-opacity" data-action="click->modal#close"></div>
+            <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Upload Document</h3>
+                <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-500">
+                  <%= icon("x", class: "w-5 h-5") %>
+                </button>
               </div>
-            <% end %>
-          </div>
-        <% else %>
-          <p class="text-sm text-gray-500">No documents uploaded.</p>
-        <% end %>
 
-        <%= form_with model: [@contract, ContractDocument.new], url: manage_contract_contract_documents_path(@contract), class: "mt-4" do |f| %>
-          <div class="space-y-2">
-            <%= f.text_field :name, placeholder: "Document name", class: "w-full text-sm border-gray-300 rounded-lg" %>
-            <%= f.file_field :file, class: "w-full text-sm" %>
-            <%= f.submit "Upload", class: "w-full px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors cursor-pointer" %>
+              <%= form_with model: [@contract, ContractDocument.new], url: manage_contract_contract_documents_path(@contract), multipart: true, data: { controller: "file-upload" } do |f| %>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors mb-4">
+                  <div class="space-y-3">
+                    <%= icon("upload", class: "w-8 h-8 text-gray-400 mx-auto") %>
+                    <div>
+                      <label class="text-pink-600 hover:text-pink-700 cursor-pointer font-medium">
+                        Choose a file
+                        <%= f.file_field :file,
+                          accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png",
+                          class: "sr-only",
+                          data: { file_upload_target: "input", action: "change->file-upload#fileSelected" } %>
+                      </label>
+                      <p class="text-xs text-gray-500 mt-1">PDF, DOC, DOCX, or images up to 10MB</p>
+                    </div>
+                    <div data-file-upload-target="filename" class="hidden text-sm font-medium text-gray-900 bg-gray-100 rounded-lg px-3 py-2"></div>
+                  </div>
+                </div>
+
+                <%= f.text_field :name, placeholder: "Document name (optional)", class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 mb-4" %>
+
+                <div class="flex justify-end gap-3">
+                  <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                    Cancel
+                  </button>
+                  <%= render "shared/button", text: "Upload", variant: "primary", size: "medium", type: :submit %>
+                </div>
+              <% end %>
+            </div>
           </div>
-        <% end %>
+        </div>
       </div>
 
       <%# Notes %>
       <% if @contract.notes.present? || @contract.terms.present? %>
-        <div class="bg-white border border-gray-200 rounded-lg p-6">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4">Notes & Terms</h3>
-          <% if @contract.notes.present? %>
-            <div class="mb-4">
-              <h4 class="text-xs font-medium text-gray-500 uppercase mb-1">Notes</h4>
-              <p class="text-sm text-gray-700 whitespace-pre-line"><%= @contract.notes %></p>
-            </div>
-          <% end %>
-          <% if @contract.terms.present? %>
-            <div>
-              <h4 class="text-xs font-medium text-gray-500 uppercase mb-1">Terms</h4>
-              <p class="text-sm text-gray-700 whitespace-pre-line"><%= @contract.terms %></p>
-            </div>
-          <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Notes & Terms" %>
+          <div class="p-4">
+            <% if @contract.notes.present? %>
+              <div class="mb-4">
+                <h4 class="text-xs font-medium text-gray-500 uppercase mb-1">Notes</h4>
+                <p class="text-sm text-gray-700 whitespace-pre-line"><%= @contract.notes %></p>
+              </div>
+            <% end %>
+            <% if @contract.terms.present? %>
+              <div>
+                <h4 class="text-xs font-medium text-gray-500 uppercase mb-1">Terms</h4>
+                <p class="text-sm text-gray-700 whitespace-pre-line"><%= @contract.terms %></p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
 
       <%# Actions %>
       <% if @contract.status_active? %>
-        <div class="bg-white border border-gray-200 rounded-lg p-6">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4">Actions</h3>
-          <div class="space-y-2">
-            <%= button_to cancel_manage_contract_path(@contract, delete_events: false),
-              method: :post,
-              data: { confirm: "Cancel this contract? Associated shows will be marked as cancelled." },
-              class: "w-full px-3 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-left" do %>
-              <%= icon("x-circle", class: "w-4 h-4 inline-block mr-2") %>
-              Cancel Contract (Keep Events)
-            <% end %>
-            <%= button_to cancel_manage_contract_path(@contract, delete_events: true),
-              method: :post,
-              data: { confirm: "Cancel this contract and DELETE all associated events? This cannot be undone." },
-              class: "w-full px-3 py-2 text-sm text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors text-left" do %>
-              <%= icon("trash", class: "w-4 h-4 inline-block mr-2") %>
-              Cancel Contract (Delete Events)
-            <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Actions" %>
+          <div class="p-4 space-y-2">
+            <%= render "shared/button",
+              text: "Amend Contract",
+              variant: "primary",
+              size: "small",
+              icon: "edit",
+              path: amend_bookings_manage_contract_path(@contract),
+              classes: "w-full" %>
+            <%= render "shared/button",
+              text: "Cancel Contract",
+              variant: "secondary",
+              size: "small",
+              icon: "x-circle",
+              path: cancel_manage_contract_path(@contract),
+              classes: "w-full" %>
           </div>
         </div>
       <% end %>

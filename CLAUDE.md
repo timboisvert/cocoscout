@@ -1,5 +1,28 @@
 # CocoScout Development Guidelines
 
+## CRITICAL: Route Structure - READ THIS FIRST
+
+**When the user mentions a URL path, ALWAYS check routes.rb to find the correct controller/view.**
+
+There are TWO levels of management pages:
+
+### Org-level pages (NO production ID in URL)
+- `/manage/shows` → `org_shows_controller` → `views/manage/org_shows/`
+- `/manage/casting` → `org_casting_controller` → `views/manage/org_casting/`
+- `/manage/signups` → `org_signups_controller` → `views/manage/org_signups/`
+- `/manage/auditions` → `org_auditions_controller` → `views/manage/org_auditions/`
+- `/manage/roles` → `org_roles_controller` → `views/manage/org_roles/`
+- `/manage/availability` → `org_availability_controller` → `views/manage/org_availability/`
+
+### Production-level pages (HAVE production ID in URL)
+- `/manage/shows/:production_id` → `shows_controller` → `views/manage/shows/`
+- `/manage/casting/:production_id` → `casting_controller` → `views/manage/casting/`
+- etc.
+
+**NEVER assume which level without checking the URL or routes.rb!**
+
+---
+
 ## UI Components
 
 ### Headshots

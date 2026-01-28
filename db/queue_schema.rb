@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_27_033433) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_27_223450) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -350,6 +350,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_27_033433) do
     t.jsonb "draft_data", default: {}
     t.text "notes"
     t.bigint "organization_id", null: false
+    t.string "production_name"
+    t.jsonb "services", default: []
     t.string "status", default: "draft", null: false
     t.text "terms"
     t.datetime "updated_at", null: false
@@ -1492,11 +1494,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_27_033433) do
     t.bigint "contract_id", null: false
     t.datetime "created_at", null: false
     t.datetime "ends_at", null: false
-    t.bigint "location_space_id", null: false
+    t.bigint "location_id", null: false
+    t.bigint "location_space_id"
     t.text "notes"
     t.datetime "starts_at", null: false
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_space_rentals_on_contract_id"
+    t.index ["location_id"], name: "index_space_rentals_on_location_id"
     t.index ["location_space_id", "starts_at", "ends_at"], name: "index_space_rentals_on_space_and_time"
     t.index ["location_space_id"], name: "index_space_rentals_on_location_space_id"
     t.index ["starts_at"], name: "index_space_rentals_on_starts_at"
@@ -1844,6 +1848,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_27_033433) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "space_rentals", "contracts"
   add_foreign_key "space_rentals", "location_spaces"
+  add_foreign_key "space_rentals", "locations"
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"

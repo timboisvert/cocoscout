@@ -38,14 +38,24 @@
             # Build data hash: merge link[:data] with data_action if present
             button_data = link[:data] || {}
             button_data[:action] = link[:data_action] if link[:data_action].present?
+
+            # Determine variant: explicit variant, or derive from color, or default to primary
+            button_variant = if link[:variant].present?
+              link[:variant]
+            elsif link[:color] == "white"
+              "outline"
+            else
+              "primary"
+            end
           %>
           <%= render partial: "shared/button", locals: {
             text: link[:text],
             path: link[:path],
             icon: link[:icon],
-            variant: link[:color] == "white" ? "outline" : "primary",
+            variant: button_variant,
             data: button_data,
-            size: "small"
+            size: "small",
+            method: link[:method]
           } %>
         <% end %>
       <% end %>

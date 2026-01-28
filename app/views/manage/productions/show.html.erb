@@ -8,8 +8,8 @@
     links: []
   } %>
 
-  <!-- Open Calls with Auditionees -->
-  <% if @dashboard[:open_calls][:with_auditionees].any? %>
+  <!-- Open Calls with Auditionees (only for in-house productions) -->
+  <% if !@production.type_third_party? && @dashboard[:open_calls][:with_auditionees].any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
       <%= render "shared/card_header", title: "Audition Cycle", links: [
         { text: "Manage Auditions", path: manage_signups_auditions_path(@production) }
@@ -61,8 +61,8 @@
     </div>
   <% end %>
 
-  <!-- Sign-Up Forms -->
-  <% if @dashboard[:sign_up_forms].any? %>
+  <!-- Sign-Up Forms (only for in-house productions) -->
+  <% if !@production.type_third_party? && @dashboard[:sign_up_forms].any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
       <%= render "shared/card_header", title: "Sign-Up Forms", links: [
         { text: "Manage Sign-Ups", path: manage_signups_forms_path(@production) }
@@ -183,8 +183,8 @@
     </div>
   <% end %>
 
-  <!-- Open Vacancies -->
-  <% if @dashboard[:open_vacancies].any? %>
+  <!-- Open Vacancies (only for in-house productions) -->
+  <% if !@production.type_third_party? && @dashboard[:open_vacancies].any? %>
     <div class="border border-pink-200 rounded-lg overflow-hidden mb-8 bg-pink-50">
       <%= render "shared/card_header",
         title: "Open Vacancies",
@@ -286,10 +286,12 @@
   <!-- Upcoming Shows & Availability -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
     <% if current_user_can_manage?(@production) %>
-      <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)", links: [
-        { text: "All Shows", path: manage_production_shows_path(@production) },
-        { text: "Availability", path: manage_casting_availability_path(@production) }
-      ] %>
+      <%
+        header_links = [{ text: "All Shows", path: manage_production_shows_path(@production) }]
+        # Only show Availability link for in-house productions
+        header_links << { text: "Availability", path: manage_casting_availability_path(@production) } unless @production.type_third_party?
+      %>
+      <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)", links: header_links %>
     <% else %>
       <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)" %>
     <% end %>

@@ -1,0 +1,109 @@
+<%#
+  Third-Party Production Financials View
+
+  Shows contract-based financials instead of show-by-show data.
+
+  Required params:
+    - production: Production object
+    - contract: Contract object (may be nil)
+    - contract_payments: Array of ContractPayment objects
+    - space_rentals: Array of SpaceRental objects
+    - financial_summary: Hash with financial data
+%>
+
+<%# Four Summary Boxes - matching in-house style %>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <%# Total Contract Value %>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Total Contract</div>
+    <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(financial_summary[:total_contract_value]) %></div>
+    <% if contract %>
+      <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
+    <% end %>
+  </div>
+
+  <%# Received %>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Received</div>
+    <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(financial_summary[:gross_revenue]) %></div>
+    <div class="text-xs text-gray-500">
+      <%= contract_payments.select { |p| p.status_paid? }.count %> <%= "payment".pluralize(contract_payments.select { |p| p.status_paid? }.count) %>
+    </div>
+  </div>
+
+  <%# Pending %>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Pending</div>
+    <% if financial_summary[:pending_amount] > 0 %>
+      <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(financial_summary[:pending_amount]) %></div>
+      <div class="text-xs text-gray-500"><%= financial_summary[:pending_count] %> <%= "payment".pluralize(financial_summary[:pending_count]) %></div>
+    <% else %>
+      <div class="text-2xl font-semibold text-gray-400">$0.00</div>
+      <div class="text-xs text-gray-500">all paid</div>
+    <% end %>
+  </div>
+
+  <%# Overdue %>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Overdue</div>
+    <% if financial_summary[:overdue_amount] > 0 %>
+      <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(financial_summary[:overdue_amount]) %></div>
+      <div class="text-xs text-red-500"><%= financial_summary[:overdue_count] %> <%= "payment".pluralize(financial_summary[:overdue_count]) %></div>
+    <% else %>
+      <div class="text-2xl font-semibold text-gray-400">$0.00</div>
+      <div class="text-xs text-gray-500">none</div>
+    <% end %>
+  </div>
+</div>
+
+<% if contract %>
+  <%# Payment Schedule %>
+  <div class="mb-8 pt-6 border-t border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Payment Schedule</h3>
+
+    <% if contract_payments.any? %>
+      <div class="space-y-2">
+        <% contract_payments.each do |payment| %>
+          <%= render partial: "manage/contracts/contract_payment_row", locals: { payment: payment, show_mark_received: true } %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
+        <p class="text-gray-500">No payments scheduled for this contract.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Events %>
+  <div class="mb-8">
+    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Events</h3>
+
+    <% shows = production.shows.order(:date_and_time) %>
+    <% if shows.any? %>
+      <div class="space-y-1">
+        <% shows.each do |show| %>
+          <%= render partial: "shared/show_row", locals: {
+            show: show,
+            link_path: manage_show_path(production, show),
+            show_canceled: true,
+            show_location: true,
+            right_panel: :rental_services,
+            services: contract.draft_services
+          } %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
+        <p class="text-gray-500">No events scheduled.</p>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <%# No Contract %>
+  <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <p class="text-gray-600 mb-4">No contract associated with this production.</p>
+    <%= link_to manage_contracts_path do %>
+      <%= render "shared/button", text: "View Contracts", variant: "secondary", size: "small" %>
+    <% end %>
+  </div>
+<% end %>

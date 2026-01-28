@@ -13,9 +13,13 @@
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
       <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <% unless @production.type_third_party? %>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <% else %>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <% end %>
     </nav>
 
     <!-- Tab 1: Basic Information -->
@@ -33,28 +37,56 @@
               <% end %>
             </div>
 
-            <div>
-              <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <p class="text-xs text-gray-500 mb-2">A brief description of your production shown on public listings</p>
-              <%= form.textarea :description, rows: 4, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}], placeholder: "Describe your production..." %>
-            </div>
+            <% unless @production.type_third_party? %>
+              <div>
+                <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <p class="text-xs text-gray-500 mb-2">A brief description of your production shown on public listings</p>
+                <%= form.textarea :description, rows: 4, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}], placeholder: "Describe your production..." %>
+              </div>
+            <% end %>
           </div>
         </div>
 
-        <!-- Contact Settings Card -->
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <%= render "shared/card_header", title: "Contact Settings" %>
-          <div class="p-6">
-            <div>
-              <%= form.label :contact_email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <p class="text-xs text-gray-500 mb-2">Used for automated emails and public inquiries</p>
-              <%= form.email_field :contact_email, autocapitalize: "none", class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}], placeholder: "contact@example.com" %>
-              <% if @production.errors[:contact_email].any? %>
-                <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:contact_email].first %></p>
+        <% if @production.type_third_party? %>
+          <%# Third-Party Contract Info %>
+          <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+            <%= render "shared/card_header", title: "Contract Information" %>
+            <div class="p-6">
+              <% if @production.contract.present? %>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></p>
+                    <p class="text-sm text-gray-500">
+                      <% if @production.contract.contract_start_date && @production.contract.contract_end_date %>
+                        <%= @production.contract.contract_start_date.strftime("%b %-d, %Y") %> - <%= @production.contract.contract_end_date.strftime("%b %-d, %Y") %>
+                      <% else %>
+                        Contract dates not set
+                      <% end %>
+                    </p>
+                  </div>
+                  <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract) %>
+                </div>
+              <% else %>
+                <p class="text-sm text-gray-500">This production was created from a third-party contract.</p>
               <% end %>
             </div>
           </div>
-        </div>
+        <% else %>
+          <!-- Contact Settings Card -->
+          <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+            <%= render "shared/card_header", title: "Contact Settings" %>
+            <div class="p-6">
+              <div>
+                <%= form.label :contact_email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <p class="text-xs text-gray-500 mb-2">Used for automated emails and public inquiries</p>
+                <%= form.email_field :contact_email, autocapitalize: "none", class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}], placeholder: "contact@example.com" %>
+                <% if @production.errors[:contact_email].any? %>
+                  <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:contact_email].first %></p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
 
         <!-- Save Button -->
         <div class="flex justify-end">
@@ -218,13 +250,14 @@
       </div>
     </div>
 
-    <!-- Tab 4: Team -->
-    <div data-tabs-target="panel" class="hidden">
-      <%= render "team_permissions" %>
-    </div>
+    <% unless @production.type_third_party? %>
+      <!-- Tab 4: Team -->
+      <div data-tabs-target="panel" class="hidden">
+        <%= render "team_permissions" %>
+      </div>
 
-    <!-- Tab 5: Public Profile -->
-    <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
+      <!-- Tab 5: Public Profile -->
+      <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <%= render "shared/card_header", title: "Public Listing" %>
@@ -392,8 +425,9 @@
       </div>
       <% end %>
     </div>
+    <% end %><%# end unless type_third_party %>
 
-    <!-- Tab 6: Danger Zone -->
+    <!-- Danger Zone Tab -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">

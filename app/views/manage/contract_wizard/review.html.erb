@@ -29,9 +29,15 @@
       </div>
       <dl class="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <dt class="text-gray-500">Name</dt>
+          <dt class="text-gray-500">Company</dt>
           <dd class="text-gray-900"><%= @contract.contractor_name %></dd>
         </div>
+        <% if @contract.production_name.present? %>
+          <div>
+            <dt class="text-gray-500">Production</dt>
+            <dd class="text-gray-900"><%= @contract.production_name %></dd>
+          </div>
+        <% end %>
         <% if @contract.contractor_email.present? %>
           <div>
             <dt class="text-gray-500">Email</dt>
@@ -159,7 +165,7 @@
   </div>
 
   <div class="mt-8 flex justify-between items-center">
-    <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_terms_contract_wizard_path(@contract) %>
+    <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_documents_contract_wizard_path(@contract) %>
 
     <div class="flex items-center gap-4">
       <% if @valid_for_activation %>

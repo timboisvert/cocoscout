@@ -9,7 +9,8 @@ module Manage
 
     # Step 0: Select Production (when entering from org-level)
     def select_production
-      @productions = Current.organization.productions.order(:name)
+      # Exclude third-party productions as they don't have casting
+      @productions = Current.organization.productions.type_in_house.order(:name)
     end
 
     def save_production_selection
@@ -17,14 +18,15 @@ module Manage
 
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.organization.productions.type_in_house.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 
-      production = Current.organization.productions.find_by(id: production_id)
+      # Only allow in-house productions for audition cycles
+      production = Current.organization.productions.type_in_house.find_by(id: production_id)
       unless production
         flash.now[:alert] = "Production not found"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.organization.productions.type_in_house.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 

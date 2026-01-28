@@ -11,22 +11,34 @@
       ["Money", manage_money_index_path]
     ],
     text: @production ? @production.name : "Financials",
-    links: @production ? [
+    links: @production && !@is_third_party ? [
       { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) },
       { text: "Ticketing", path: manage_money_ticketing_production_links_path(@production) }
-    ] : []
+    ] : (@is_third_party && @contract ? [
+      { text: "View Contract", path: manage_contract_path(@contract) }
+    ] : [])
   } %>
 
-  <%# Profitability Summary %>
-  <%= render partial: "manage/payouts/profitability_summary", locals: {
-    summary: @financial_summary,
-    selected_period: @selected_period,
-    production: @production,
-    period_path: @production ? manage_money_production_financials_path(@production) : manage_money_financials_path
-  } %>
+  <% if @production && @is_third_party %>
+    <%# Third-Party Production View - Contract Financials %>
+    <%= render partial: "manage/money_financials/third_party_financials", locals: {
+      production: @production,
+      contract: @contract,
+      contract_payments: @contract_payments,
+      space_rentals: @space_rentals,
+      financial_summary: @financial_summary
+    } %>
 
-  <% if @production %>
-    <%# Single Production View - Show List %>
+  <% elsif @production %>
+    <%# In-House Production View - Show List %>
+    <%# Profitability Summary %>
+    <%= render partial: "manage/payouts/profitability_summary", locals: {
+      summary: @financial_summary,
+      selected_period: @selected_period,
+      production: @production,
+      period_path: manage_money_production_financials_path(@production)
+    } %>
+
     <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
       <%# Filter Bar with toggle %>
       <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
@@ -73,8 +85,15 @@
     </div>
   <% else %>
     <%# All Productions View - Production List %>
-    <div class="">
+    <%# Profitability Summary %>
+    <%= render partial: "manage/payouts/profitability_summary", locals: {
+      summary: @financial_summary,
+      selected_period: @selected_period,
+      production: nil,
+      period_path: manage_money_financials_path
+    } %>
 
+    <div class="">
       <% if @production_summaries.any? %>
         <div class="space-y-2">
           <% @production_summaries.each do |summary| %>

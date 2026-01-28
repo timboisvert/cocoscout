@@ -1,0 +1,383 @@
+<% content_for :title, "Amend Contract - Events" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path],
+      [@contract.contractor_name, manage_contract_path(@contract)]
+    ],
+    text: "Amend Contract",
+    links: []
+  } %>
+
+  <div class="max-w-4xl mx-auto mt-6">
+    <p class="text-gray-600 mb-6">Add or remove events from this contract.</p>
+
+    <%# Progress Steps - 4 steps %>
+    <div class="flex items-center gap-4 mb-8">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-sm font-semibold">1</div>
+        <span class="text-sm font-medium text-gray-900">Events</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">2</div>
+        <span class="text-sm font-medium text-gray-500">Review Events</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">3</div>
+        <span class="text-sm font-medium text-gray-500">Payments</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">4</div>
+        <span class="text-sm font-medium text-gray-500">Confirm</span>
+      </div>
+    </div>
+
+  <%# Existing Events Section %>
+  <% if @existing_rentals.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Current Events (<%= @existing_rentals.count %>)</h3>
+      </div>
+      <div class="p-4 space-y-2" id="existing-rentals-list">
+        <% @existing_rentals.each do |rental| %>
+          <div class="existing-rental flex items-center justify-between p-3 bg-gray-50 rounded-lg" data-rental-id="<%= rental.id %>">
+            <div class="flex items-center gap-3">
+              <div class="flex-shrink-0 w-12 text-center">
+                <div class="text-xs font-semibold text-pink-600 uppercase"><%= rental.starts_at.strftime("%b") %></div>
+                <div class="text-lg font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></div>
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">
+                  <%= rental.location_space&.name || rental.location&.name || "Location" %>
+                </div>
+                <div class="text-sm text-gray-500">
+                  <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>
+                </div>
+              </div>
+            </div>
+            <button type="button" onclick="toggleRemoveRental(<%= rental.id %>)" class="remove-rental-btn text-gray-400 hover:text-red-500 transition-colors p-2" title="Remove this event">
+              <%= icon("x", class: "w-5 h-5") %>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Add New Events Section %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-700">Add New Events</h3>
+    </div>
+    <div class="p-4">
+      <%
+        # Parse existing amend rules
+        existing_rules = @amend_data["booking_rules"] || {}
+        if existing_rules.is_a?(Hash) && existing_rules["rules"].is_a?(Array)
+          booking_rules = existing_rules["rules"]
+        else
+          booking_rules = []
+        end
+
+        initial_mode = existing_rules["booking_mode"] || "multiple"
+
+        default_location = @locations.find(&:default) || @locations.first
+        default_location_id = default_location&.id
+      %>
+
+      <%= form_with url: save_amend_bookings_manage_contract_path(@contract), method: :post, local: true, data: {
+        controller: "contract-bookings",
+        "contract-bookings-locations-value": @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json,
+        "contract-bookings-existing-rules-value": booking_rules.to_json,
+        "contract-bookings-initial-mode-value": "multiple",
+        "contract-bookings-default-location-id-value": default_location_id
+      } do |form| %>
+
+        <input type="hidden" name="booking_rules_json" data-contract-bookings-target="rulesJson" value="<%= booking_rules.to_json %>">
+        <input type="hidden" name="booking_mode" data-contract-bookings-target="bookingMode" value="multiple">
+        <input type="hidden" name="removed_rental_ids" id="removed-rental-ids" value="<%= (@amend_data["removed_rental_ids"] || []).to_json %>">
+
+        <%# Multiple events mode (always show this for amending) %>
+        <div data-contract-bookings-target="multipleModeContent">
+          <%# List of new bookings being added %>
+          <div data-contract-bookings-target="bookingsList" class="space-y-3 mb-4">
+            <%# Populated by JS %>
+          </div>
+
+          <%# Add buttons %>
+          <div class="flex gap-3 mb-4">
+            <button type="button" data-action="click->contract-bookings#addSingleEvent"
+                    class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition-colors flex items-center justify-center gap-2">
+              <%= icon("plus", class: "w-4 h-4") %>
+              Add Single Event
+            </button>
+            <button type="button" data-action="click->contract-bookings#addRecurringSeries"
+                    class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition-colors flex items-center justify-center gap-2">
+              <%= icon("plus", class: "w-4 h-4") %>
+              Add Recurring Series
+            </button>
+          </div>
+
+          <p class="text-xs text-gray-500 text-center mb-6">
+            Click a button above to add events. You can mix single events and recurring series.
+          </p>
+
+          <%# Form Error Message %>
+          <div data-contract-bookings-target="formError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+            Please fill in all required fields.
+          </div>
+        </div>
+
+        <%# Navigation %>
+        <div class="flex justify-between pt-4 border-t border-gray-200">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_contract_path(@contract) %>
+          <%= render "shared/button", text: "Next: Review Events", variant: "primary", size: "medium", type: :submit, data: { action: "click->contract-bookings#validateAndSubmit" } %>
+        </div>
+
+        <%# ==================== TEMPLATES FOR JS ==================== %>
+        <template data-contract-bookings-target="singleEventTemplate">
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="single" data-booking-index="">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <%= icon("calendar", class: "w-4 h-4 text-pink-600") %>
+                </div>
+                <span class="font-medium text-gray-900">Single Event</span>
+              </div>
+              <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                <%= icon("x", class: "w-5 h-5") %>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+                <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="">Select a location...</option>
+                  <% @locations.each do |location| %>
+                    <option value="<%= location.id %>"><%= location.name %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+                <select data-field="space_id"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="">Entire venue</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time <span class="text-pink-500">*</span></label>
+                <input type="datetime-local" data-field="starts_at"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+                <select data-field="duration"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="1">1 hour</option>
+                  <option value="1.5">1.5 hours</option>
+                  <option value="2" selected>2 hours</option>
+                  <option value="3">3 hours</option>
+                  <option value="4">4 hours</option>
+                  <option value="6">6 hours</option>
+                  <option value="8">8 hours</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+              <input type="text" data-field="notes" placeholder="e.g., Setup time included"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+            </div>
+          </div>
+        </template>
+
+        <template data-contract-bookings-target="recurringEventTemplate">
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="recurring" data-booking-index="">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-pink-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                </div>
+                <span class="font-medium text-gray-900">Recurring Series</span>
+              </div>
+              <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                <%= icon("x", class: "w-5 h-5") %>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+                <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="">Select a location...</option>
+                  <% @locations.each do |location| %>
+                    <option value="<%= location.id %>"><%= location.name %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+                <select data-field="space_id"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="">Entire venue</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Frequency</label>
+                <select data-field="frequency" data-action="change->contract-bookings#frequencyChanged"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="daily">Daily</option>
+                  <option value="weekly" selected>Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly_day">Monthly (same day, e.g., 2nd Friday)</option>
+                  <option value="monthly_date">Monthly (same date, e.g., the 15th)</option>
+                </select>
+              </div>
+              <div data-frequency-field="day_of_week">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+                <select data-field="day_of_week"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5" selected>Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+            </div>
+
+            <div data-frequency-field="monthly_day_options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Which Week</label>
+                <select data-field="week_ordinal"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="1">First</option>
+                  <option value="2">Second</option>
+                  <option value="3">Third</option>
+                  <option value="4">Fourth</option>
+                  <option value="5">Last</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+                <select data-field="monthly_day_of_week"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5" selected>Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
+                <input type="time" data-field="time" value="19:00"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+                <select data-field="duration"
+                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="1">1 hour</option>
+                  <option value="1.5">1.5 hours</option>
+                  <option value="2" selected>2 hours</option>
+                  <option value="3">3 hours</option>
+                  <option value="4">4 hours</option>
+                  <option value="6">6 hours</option>
+                  <option value="8">8 hours</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date <span class="text-pink-500">*</span></label>
+                <input type="date" data-field="start_date" value="<%= Date.current.to_s %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Until <span class="text-pink-500">*</span></label>
+                <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+              <input type="text" data-field="notes" placeholder="e.g., Weekly rehearsal"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+            </div>
+          </div>
+        </template>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Track removed rental IDs
+  let removedRentalIds = <%= (@amend_data["removed_rental_ids"] || []).to_json.html_safe %>;
+
+  function toggleRemoveRental(rentalId) {
+    const rentalEl = document.querySelector(`[data-rental-id="${rentalId}"]`);
+    const idx = removedRentalIds.indexOf(rentalId);
+
+    if (idx > -1) {
+      // Restore it
+      removedRentalIds.splice(idx, 1);
+      rentalEl.classList.remove('opacity-50', 'line-through');
+      rentalEl.querySelector('.remove-rental-btn').innerHTML = '<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>';
+      rentalEl.querySelector('.remove-rental-btn').title = 'Remove this event';
+    } else {
+      // Mark for removal
+      removedRentalIds.push(rentalId);
+      rentalEl.classList.add('opacity-50', 'line-through');
+      rentalEl.querySelector('.remove-rental-btn').innerHTML = '<svg class="w-5 h-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>';
+      rentalEl.querySelector('.remove-rental-btn').title = 'Undo removal';
+    }
+
+    document.getElementById('removed-rental-ids').value = JSON.stringify(removedRentalIds);
+  }
+
+  // Initialize removed state on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    removedRentalIds.forEach(id => {
+      const rentalEl = document.querySelector(`[data-rental-id="${id}"]`);
+      if (rentalEl) {
+        rentalEl.classList.add('opacity-50', 'line-through');
+        rentalEl.querySelector('.remove-rental-btn').innerHTML = '<svg class="w-5 h-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>';
+        rentalEl.querySelector('.remove-rental-btn').title = 'Undo removal';
+      }
+    });
+  });
+</script>
+
+  </div>
+</div>

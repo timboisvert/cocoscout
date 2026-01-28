@@ -44,33 +44,58 @@
   <div class="space-y-4">
 
       <% if current_user_can_manage?(@show.production) %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
-          <div class="p-4">
-            <%
-              # Sanitize event_type to prevent XSS (even though it's from an enum)
-              event_label = sanitize(@show.event_type.titleize)
-              edit_label = "Edit #{event_label}"
-              cancel_label = "Cancel #{event_label}"
-              duplicate_label = "Duplicate #{event_label}"
-              delete_label = "Delete #{event_label}"
-              uncancel_label = "Uncancel #{event_label}"
-            %>
-            <div class="flex flex-wrap gap-2 items-center">
-              <% if is_canceled %>
-                <%= render "shared/button", text: uncancel_label, path: manage_uncancel_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
-                <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
-              <% else %>
-                <%# Always show edit button, even for past events %>
-                <%= render "shared/button", text: edit_label, path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
-                <%= render "shared/button", text: duplicate_label, path: manage_shows_wizard_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
-                <% unless is_past %>
-                  <%= render "shared/button", text: cancel_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+        <% if @production.type_third_party? && @production.contract.present? %>
+          <%# Contract info box for third-party productions %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <%= render "shared/card_header", title: "Contract" %>
+            <div class="p-4">
+              <div class="mb-3">
+                <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
+                <% if @production.contract.draft_services.any? %>
+                  <div class="flex flex-wrap gap-1 mt-2">
+                    <% @production.contract.draft_services.each do |service| %>
+                      <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        <%= service %>
+                      </span>
+                    <% end %>
+                  </div>
                 <% end %>
-              <% end %>
+              </div>
+              <div class="flex flex-wrap gap-2 items-center">
+                <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small" %>
+              </div>
             </div>
           </div>
-        </div>
+        <% else %>
+          <%# Standard manage show box for in-house productions %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <%= render "shared/card_header", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
+            <div class="p-4">
+              <%
+                # Sanitize event_type to prevent XSS (even though it's from an enum)
+                event_label = sanitize(@show.event_type.titleize)
+                edit_label = "Edit #{event_label}"
+                cancel_label = "Cancel #{event_label}"
+                duplicate_label = "Duplicate #{event_label}"
+                delete_label = "Delete #{event_label}"
+                uncancel_label = "Uncancel #{event_label}"
+              %>
+              <div class="flex flex-wrap gap-2 items-center">
+                <% if is_canceled %>
+                  <%= render "shared/button", text: uncancel_label, path: manage_uncancel_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
+                  <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+                <% else %>
+                  <%# Always show edit button, even for past events %>
+                  <%= render "shared/button", text: edit_label, path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
+                  <%= render "shared/button", text: duplicate_label, path: manage_shows_wizard_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
+                  <% unless is_past %>
+                    <%= render "shared/button", text: cancel_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
       <% end %>
 
       <%# Notes Box %>
@@ -90,7 +115,7 @@
         </div>
       <% end %>
 
-      <% if @show.casting_enabled %>
+      <% if @show.casting_enabled && !@production.type_third_party? %>
         <% if @open_vacancies.any? %>
           <div class="border border-pink-200 rounded-lg overflow-hidden bg-pink-50">
             <div class="bg-pink-100 px-4 py-3 border-b border-pink-200 flex items-center justify-between">

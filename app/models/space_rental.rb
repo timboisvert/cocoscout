@@ -2,7 +2,8 @@
 
 class SpaceRental < ApplicationRecord
   belongs_to :contract
-  belongs_to :location_space
+  belongs_to :location
+  belongs_to :location_space, optional: true
 
   has_many :shows, dependent: :nullify
 
@@ -18,9 +19,10 @@ class SpaceRental < ApplicationRecord
     where("starts_at <= ? AND ends_at >= ?", end_date, start_date)
   }
 
-  # Delegation
-  delegate :location, to: :location_space
-  delegate :name, to: :location_space, prefix: :space
+  # Space name (handles "Entire venue" case)
+  def space_name
+    location_space&.name || "Entire Venue"
+  end
 
   # Duration in hours
   def duration_hours
@@ -37,7 +39,8 @@ class SpaceRental < ApplicationRecord
   end
 
   def full_display
-    "#{location_space.display_name}: #{date_display} #{time_range_display}"
+    space_display = location_space&.display_name || location.name
+    "#{space_display}: #{date_display} #{time_range_display}"
   end
 
   private
@@ -51,7 +54,8 @@ class SpaceRental < ApplicationRecord
   end
 
   def no_overlapping_rentals
-    return if starts_at.blank? || ends_at.blank? || location_space_id.blank?
+    return if starts_at.blank? || ends_at.blank?
+    return if location_space_id.blank? # Skip overlap check for entire venue bookings
 
     overlapping = SpaceRental
       .where(location_space_id: location_space_id)

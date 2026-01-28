@@ -7,7 +7,8 @@ module Manage
 
     # Step 1: Select Productions
     def productions
-      @productions = Current.organization.productions.order(:name)
+      # Exclude third-party productions as they don't have casting
+      @productions = Current.organization.productions.type_in_house.order(:name)
       @selected_production_ids = @wizard_state[:production_ids] || []
     end
 
@@ -16,16 +17,16 @@ module Manage
 
       if production_ids.empty?
         flash.now[:alert] = "Please select at least one production"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.organization.productions.type_in_house.order(:name)
         @selected_production_ids = []
         render :productions, status: :unprocessable_entity and return
       end
 
-      # Verify all productions belong to this org
-      valid_ids = Current.organization.productions.where(id: production_ids).pluck(:id)
+      # Verify all productions belong to this org and are not third-party
+      valid_ids = Current.organization.productions.type_in_house.where(id: production_ids).pluck(:id)
       if valid_ids.sort != production_ids.sort
         flash.now[:alert] = "Invalid production selection"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.organization.productions.type_in_house.order(:name)
         @selected_production_ids = []
         render :productions, status: :unprocessable_entity and return
       end

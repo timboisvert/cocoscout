@@ -3,7 +3,8 @@
 module Manage
   class OrgRolesController < Manage::ManageController
     def index
-      @productions = Current.organization.productions
+      # Exclude third-party productions (no casting/roles)
+      @productions = Current.organization.productions.type_in_house
                              .includes(:roles)
                              .order(:name)
     end

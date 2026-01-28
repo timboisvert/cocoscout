@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "description", "amount", "direction", "dueDate", "list", "paymentsJson", "structureJson",
+        "description", "amount", "direction", "dueDate", "list", "paymentsJson", "structureJson", "configJson",
         "summary", "summaryDetails", "totalIncoming", "totalOutgoing", "netAmount",
         // Flat fee targets
         "flatFeeConfig", "flatFeeAmount", "flatFeeDirection", "flatFeeDeposit",
@@ -11,19 +11,231 @@ export default class extends Controller {
         "perEventConfig", "perEventAmount", "perEventCount", "perEventDirection", "perEventTiming",
         "perEventUpfrontConfig", "perEventUpfrontDue", "perEventTotal", "perEventCountDisplay", "perEventAmountDisplay",
         "perEventTermsConfig", "perEventDiscount", "perEventDiscountConfig", "perEventDiscountPercent", "perEventTerms",
+        "perEventTermsDaysConfig", "perEventTermsDays", "perEventTermsDaysLabel",
+        // Structure buttons
+        "flatFeeBtn", "perEventBtn", "revenueShareBtn", "customBtn",
         // Revenue share targets
         "revenueShareConfig", "revenueSource", "revenueOurShare", "revenueTheirShare",
         "revenueGuarantee", "revenueGuaranteeConfig", "revenueGuaranteeAmount", "revenueSettlement",
         // Custom targets
         "customConfig"
     ]
-    static values = { existing: Array }
+    static values = {
+        existing: Array,
+        existingStructure: { type: String, default: "flat_fee" },
+        existingConfig: { type: Object, default: {} },
+        bookings: { type: Array, default: [] },
+        bookingsCount: Number
+    }
 
     connect() {
         this.payments = this.existingValue || []
-        this.currentStructure = "flat_fee"
+        this.currentStructure = this.existingStructureValue || "flat_fee"
+        this.eventCount = this.bookingsCountValue || 0
+        this.bookingDates = this.bookingsValue || []
+
+        // Restore saved config first
+        this.restoreConfig(this.existingConfigValue || {})
+
+        // Initialize UI with saved structure
+        this.updateStructureButtons()
+        this.showConfigPanel(this.currentStructure)
+
         this.renderList()
         this.updateSummary()
+    }
+
+    restoreConfig(config) {
+        if (!config || Object.keys(config).length === 0) return
+
+        // Restore flat fee config
+        if (this.hasFlatFeeAmountTarget && config.flat_fee_amount) {
+            this.flatFeeAmountTarget.value = config.flat_fee_amount
+        }
+        if (this.hasFlatFeeDirectionTarget && config.flat_fee_direction) {
+            this.flatFeeDirectionTarget.value = config.flat_fee_direction
+        }
+        if (this.hasFlatFeeDepositTarget && config.flat_fee_has_deposit) {
+            this.flatFeeDepositTarget.checked = config.flat_fee_has_deposit
+            if (this.hasFlatFeeDepositConfigTarget) {
+                this.flatFeeDepositConfigTarget.classList.toggle("hidden", !config.flat_fee_has_deposit)
+            }
+        }
+        if (this.hasFlatFeeDepositAmountTarget && config.flat_fee_deposit_amount) {
+            this.flatFeeDepositAmountTarget.value = config.flat_fee_deposit_amount
+        }
+        if (this.hasFlatFeeDepositPercentTarget && config.flat_fee_deposit_percent) {
+            this.flatFeeDepositPercentTarget.value = config.flat_fee_deposit_percent
+        }
+        if (this.hasFlatFeeDepositDueTarget && config.flat_fee_deposit_due) {
+            this.flatFeeDepositDueTarget.value = config.flat_fee_deposit_due
+        }
+        if (this.hasFlatFeeFinalDueTarget && config.flat_fee_final_due) {
+            this.flatFeeFinalDueTarget.value = config.flat_fee_final_due
+        }
+
+        // Restore per event config
+        if (this.hasPerEventAmountTarget && config.per_event_amount) {
+            this.perEventAmountTarget.value = config.per_event_amount
+        }
+        if (this.hasPerEventDirectionTarget && config.per_event_direction) {
+            this.perEventDirectionTarget.value = config.per_event_direction
+        }
+        if (this.hasPerEventTimingTarget && config.per_event_timing) {
+            this.perEventTimingTarget.value = config.per_event_timing
+            // Show/hide timing-related panels
+            const isUpfront = config.per_event_timing === "upfront"
+            if (this.hasPerEventUpfrontConfigTarget) {
+                this.perEventUpfrontConfigTarget.classList.toggle("hidden", !isUpfront)
+            }
+            if (this.hasPerEventTermsConfigTarget) {
+                this.perEventTermsConfigTarget.classList.toggle("hidden", isUpfront)
+            }
+            if (this.hasPerEventTermsDaysConfigTarget) {
+                // Show days config only if per_event and terms is before/after
+                const showDays = !isUpfront && (config.per_event_terms === "before" || config.per_event_terms === "after")
+                this.perEventTermsDaysConfigTarget.classList.toggle("hidden", !showDays)
+            }
+        }
+        if (this.hasPerEventTermsTarget && config.per_event_terms) {
+            this.perEventTermsTarget.value = config.per_event_terms
+        }
+        if (this.hasPerEventTermsDaysTarget && config.per_event_terms_days) {
+            this.perEventTermsDaysTarget.value = config.per_event_terms_days
+        }
+        if (this.hasPerEventTermsDaysLabelTarget && config.per_event_terms) {
+            if (config.per_event_terms === "before") {
+                this.perEventTermsDaysLabelTarget.textContent = "Days before event"
+            } else if (config.per_event_terms === "after") {
+                this.perEventTermsDaysLabelTarget.textContent = "Days after event"
+            }
+        }
+        if (this.hasPerEventUpfrontDueTarget && config.per_event_upfront_due) {
+            this.perEventUpfrontDueTarget.value = config.per_event_upfront_due
+        }
+        if (this.hasPerEventDiscountTarget && config.per_event_has_discount) {
+            this.perEventDiscountTarget.checked = config.per_event_has_discount
+            if (this.hasPerEventDiscountConfigTarget) {
+                this.perEventDiscountConfigTarget.classList.toggle("hidden", !config.per_event_has_discount)
+            }
+        }
+        if (this.hasPerEventDiscountPercentTarget && config.per_event_discount_percent) {
+            this.perEventDiscountPercentTarget.value = config.per_event_discount_percent
+        }
+
+        // Restore revenue share config
+        if (this.hasRevenueSourceTarget && config.revenue_source) {
+            this.revenueSourceTarget.value = config.revenue_source
+        }
+        if (this.hasRevenueOurShareTarget && config.revenue_our_share) {
+            this.revenueOurShareTarget.value = config.revenue_our_share
+        }
+        if (this.hasRevenueTheirShareTarget && config.revenue_their_share) {
+            this.revenueTheirShareTarget.value = config.revenue_their_share
+        }
+        if (this.hasRevenueGuaranteeTarget && config.revenue_has_guarantee) {
+            this.revenueGuaranteeTarget.checked = config.revenue_has_guarantee
+            if (this.hasRevenueGuaranteeConfigTarget) {
+                this.revenueGuaranteeConfigTarget.classList.toggle("hidden", !config.revenue_has_guarantee)
+            }
+        }
+        if (this.hasRevenueGuaranteeAmountTarget && config.revenue_guarantee_amount) {
+            this.revenueGuaranteeAmountTarget.value = config.revenue_guarantee_amount
+        }
+        if (this.hasRevenueSettlementTarget && config.revenue_settlement) {
+            this.revenueSettlementTarget.value = config.revenue_settlement
+        }
+
+        // Update per-event total display
+        this.updatePerEventTotal()
+    }
+
+    collectConfig() {
+        return {
+            // Flat fee config
+            flat_fee_amount: this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : "",
+            flat_fee_direction: this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming",
+            flat_fee_has_deposit: this.hasFlatFeeDepositTarget ? this.flatFeeDepositTarget.checked : false,
+            flat_fee_deposit_amount: this.hasFlatFeeDepositAmountTarget ? this.flatFeeDepositAmountTarget.value : "",
+            flat_fee_deposit_percent: this.hasFlatFeeDepositPercentTarget ? this.flatFeeDepositPercentTarget.value : "",
+            flat_fee_deposit_due: this.hasFlatFeeDepositDueTarget ? this.flatFeeDepositDueTarget.value : "",
+            flat_fee_final_due: this.hasFlatFeeFinalDueTarget ? this.flatFeeFinalDueTarget.value : "",
+
+            // Per event config
+            per_event_amount: this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : "",
+            per_event_direction: this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming",
+            per_event_timing: this.hasPerEventTimingTarget ? this.perEventTimingTarget.value : "per_event",
+            per_event_terms: this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "due",
+            per_event_terms_days: this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : "7",
+            per_event_upfront_due: this.hasPerEventUpfrontDueTarget ? this.perEventUpfrontDueTarget.value : "",
+            per_event_has_discount: this.hasPerEventDiscountTarget ? this.perEventDiscountTarget.checked : false,
+            per_event_discount_percent: this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : "",
+
+            // Revenue share config
+            revenue_source: this.hasRevenueSourceTarget ? this.revenueSourceTarget.value : "ticket_sales",
+            revenue_our_share: this.hasRevenueOurShareTarget ? this.revenueOurShareTarget.value : "50",
+            revenue_their_share: this.hasRevenueTheirShareTarget ? this.revenueTheirShareTarget.value : "50",
+            revenue_has_guarantee: this.hasRevenueGuaranteeTarget ? this.revenueGuaranteeTarget.checked : false,
+            revenue_guarantee_amount: this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : "",
+            revenue_settlement: this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "after_event"
+        }
+    }
+
+    selectStructureBtn(event) {
+        const structure = event.currentTarget.dataset.structure
+        this.currentStructure = structure
+        this.updateStructureJson()
+        this.updateStructureButtons()
+        this.showConfigPanel(structure)
+        this.updateSummary()
+    }
+
+    updateStructureButtons() {
+        const activeClasses = "bg-pink-500 text-white border-pink-500"
+        const inactiveClasses = "bg-white text-gray-700 border-gray-300 hover:border-pink-400"
+
+        const buttons = [
+            { target: "flatFeeBtn", structure: "flat_fee" },
+            { target: "perEventBtn", structure: "per_event" },
+            { target: "revenueShareBtn", structure: "revenue_share" },
+            { target: "customBtn", structure: "custom" }
+        ]
+
+        buttons.forEach(({ target, structure }) => {
+            const btn = this[`has${target.charAt(0).toUpperCase() + target.slice(1)}Target`] ? this[`${target}Target`] : null
+            if (btn) {
+                btn.className = btn.className.replace(/bg-pink-500|bg-white|text-white|text-gray-700|border-pink-500|border-gray-300|hover:border-pink-400/g, '').trim()
+                if (this.currentStructure === structure) {
+                    btn.classList.add(...activeClasses.split(' '))
+                } else {
+                    btn.classList.add(...inactiveClasses.split(' '))
+                }
+            }
+        })
+    }
+
+    showConfigPanel(structure) {
+        // Hide all config panels
+        if (this.hasFlatFeeConfigTarget) this.flatFeeConfigTarget.classList.add("hidden")
+        if (this.hasPerEventConfigTarget) this.perEventConfigTarget.classList.add("hidden")
+        if (this.hasRevenueShareConfigTarget) this.revenueShareConfigTarget.classList.add("hidden")
+        if (this.hasCustomConfigTarget) this.customConfigTarget.classList.add("hidden")
+
+        // Show selected config panel
+        switch (structure) {
+            case "flat_fee":
+                if (this.hasFlatFeeConfigTarget) this.flatFeeConfigTarget.classList.remove("hidden")
+                break
+            case "per_event":
+                if (this.hasPerEventConfigTarget) this.perEventConfigTarget.classList.remove("hidden")
+                break
+            case "revenue_share":
+                if (this.hasRevenueShareConfigTarget) this.revenueShareConfigTarget.classList.remove("hidden")
+                break
+            case "custom":
+                if (this.hasCustomConfigTarget) this.customConfigTarget.classList.remove("hidden")
+                break
+        }
     }
 
     selectStructure(event) {
@@ -85,14 +297,32 @@ export default class extends Controller {
         if (this.hasPerEventTermsConfigTarget) {
             this.perEventTermsConfigTarget.classList.toggle("hidden", isUpfront)
         }
+        if (this.hasPerEventTermsDaysConfigTarget) {
+            // Hide days config when upfront, show only when per_event
+            this.perEventTermsDaysConfigTarget.classList.toggle("hidden", isUpfront)
+        }
 
         // Update the per-event total display
         this.updatePerEventTotal()
     }
 
+    togglePaymentTermsDays(event) {
+        const terms = event.target.value
+        const showDays = terms === "before" || terms === "after"
+
+        if (this.hasPerEventTermsDaysConfigTarget) {
+            this.perEventTermsDaysConfigTarget.classList.toggle("hidden", !showDays)
+        }
+
+        // Update label based on before/after
+        if (this.hasPerEventTermsDaysLabelTarget && showDays) {
+            this.perEventTermsDaysLabelTarget.textContent = terms === "before" ? "Days before event" : "Days after event"
+        }
+    }
+
     updatePerEventTotal() {
         const amount = parseFloat(this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : 0) || 0
-        const count = parseInt(this.hasPerEventCountTarget ? this.perEventCountTarget.value : 1) || 1
+        const count = this.eventCount || 1
         const total = amount * count
 
         if (this.hasPerEventTotalTarget) {
@@ -129,30 +359,30 @@ export default class extends Controller {
             case "flat_fee":
                 const flatAmount = parseFloat(this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : 0) || 0
                 const flatDirection = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
-                
+
                 // Check for deposit
                 const hasDeposit = this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.checked
                 let depositAmount = 0
                 let remainingAmount = flatAmount
-                
+
                 if (hasDeposit && flatAmount > 0) {
                     const depositFixed = parseFloat(this.hasFlatFeeDepositAmountTarget ? this.flatFeeDepositAmountTarget.value : 0) || 0
                     const depositPercent = parseFloat(this.hasFlatFeeDepositPercentTarget ? this.flatFeeDepositPercentTarget.value : 0) || 0
-                    
+
                     if (depositFixed > 0) {
                         depositAmount = depositFixed
                     } else if (depositPercent > 0) {
                         depositAmount = flatAmount * (depositPercent / 100)
                     }
-                    
+
                     remainingAmount = flatAmount - depositAmount
-                    
+
                     if (depositAmount > 0) {
                         details.push({ label: "Deposit", amount: depositAmount })
                         details.push({ label: "Remaining balance", amount: remainingAmount })
                     }
                 }
-                
+
                 if (flatDirection === "incoming") {
                     incoming = flatAmount
                 } else {
@@ -162,17 +392,17 @@ export default class extends Controller {
 
             case "per_event":
                 const perEventAmount = parseFloat(this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : 0) || 0
-                const perEventCount = parseInt(this.hasPerEventCountTarget ? this.perEventCountTarget.value : 1) || 1
+                const perEventCount = this.eventCount || 1
                 const perEventDirection = this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming"
                 let perEventTotal = perEventAmount * perEventCount
 
                 // Update the display values
                 this.updatePerEventTotal()
-                
+
                 // Check for volume discount
                 const hasDiscount = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
                 let discountAmount = 0
-                
+
                 if (hasDiscount && perEventTotal > 0) {
                     const discountPercent = parseFloat(this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : 0) || 0
                     if (discountPercent > 0) {
@@ -283,6 +513,14 @@ export default class extends Controller {
         const date = new Date()
         date.setDate(date.getDate() + days)
         return date.toISOString().split("T")[0]
+    }
+
+    formatDateForInput(date) {
+        // Format Date object as YYYY-MM-DD for input fields
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
     }
 
     clearForm() {
@@ -403,38 +641,61 @@ export default class extends Controller {
                 break
 
             case "per_event":
-                const perEventAmount = parseFloat(this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : 0) || 0
-                const perEventCount = parseInt(this.hasPerEventCountTarget ? this.perEventCountTarget.value : 1) || 1
-                const perEventDirection = this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming"
+                const perEventAmount2 = parseFloat(this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : 0) || 0
+                const perEventCount2 = this.eventCount || 1
+                const perEventDirection2 = this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming"
                 const perEventTiming = this.hasPerEventTimingTarget ? this.perEventTimingTarget.value : "per_event"
-
-                let totalAmount = perEventAmount * perEventCount
+                const perEventTerms = this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "due"
+                const perEventTermsDays = parseInt(this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : 7) || 7
 
                 // Apply discount if enabled
-                const hasDiscount = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
-                if (hasDiscount) {
-                    const discountPercent = parseFloat(this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : 0) || 0
-                    if (discountPercent > 0) {
-                        totalAmount = totalAmount * (1 - discountPercent / 100)
+                const hasDiscount2 = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
+                let discountMultiplier = 1
+                if (hasDiscount2) {
+                    const discountPercent2 = parseFloat(this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : 0) || 0
+                    if (discountPercent2 > 0) {
+                        discountMultiplier = 1 - (discountPercent2 / 100)
                     }
                 }
 
-                if (totalAmount > 0) {
+                const perEventFinalAmount = perEventAmount2 * discountMultiplier
+
+                if (perEventFinalAmount > 0) {
                     if (perEventTiming === "upfront") {
+                        // Pay all upfront as single payment
                         const upfrontDue = this.hasPerEventUpfrontDueTarget ? this.perEventUpfrontDueTarget.value : ""
                         payments.push({
-                            description: `${perEventCount} Events (Upfront)`,
-                            amount: totalAmount,
-                            direction: perEventDirection,
+                            description: `${perEventCount2} Events @ $${perEventFinalAmount.toFixed(2)} each (Upfront)`,
+                            amount: perEventFinalAmount * perEventCount2,
+                            direction: perEventDirection2,
                             due_date: upfrontDue || this.getDateDaysFromNow(7)
                         })
                     } else {
-                        // Create one payment entry summarizing per-event fees
-                        payments.push({
-                            description: `${perEventCount} Events @ $${perEventAmount.toFixed(2)} each`,
-                            amount: totalAmount,
-                            direction: perEventDirection,
-                            due_date: this.getDateDaysFromNow(30)
+                        // Pay for each event individually - create separate payments
+                        this.bookingDates.forEach((bookingDate, index) => {
+                            let dueDate
+                            const eventDate = new Date(bookingDate)
+
+                            if (perEventTerms === "before") {
+                                // Due X days before event
+                                dueDate = new Date(eventDate)
+                                dueDate.setDate(dueDate.getDate() - perEventTermsDays)
+                            } else if (perEventTerms === "after") {
+                                // Due X days after event
+                                dueDate = new Date(eventDate)
+                                dueDate.setDate(dueDate.getDate() + perEventTermsDays)
+                            } else {
+                                // Due on event date
+                                dueDate = eventDate
+                            }
+
+                            payments.push({
+                                description: `Event ${index + 1} Fee`,
+                                amount: perEventFinalAmount,
+                                direction: perEventDirection2,
+                                due_date: this.formatDateForInput(dueDate),
+                                event_date: bookingDate
+                            })
                         })
                     }
                 }
@@ -465,10 +726,18 @@ export default class extends Controller {
 
             case "custom":
                 // For custom, we already have the payments array managed manually
+                this.updateConfigJson()
                 return // Don't update, use the existing this.payments
         }
 
         this.payments = payments
         this.updateHiddenField()
+        this.updateConfigJson()
+    }
+
+    updateConfigJson() {
+        if (this.hasConfigJsonTarget) {
+            this.configJsonTarget.value = JSON.stringify(this.collectConfig())
+        }
     }
 }
