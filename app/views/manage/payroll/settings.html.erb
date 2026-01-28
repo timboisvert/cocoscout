@@ -1,18 +1,23 @@
 <% content_for :title, "Payroll Settings" %>
 
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+<%# Render as modal when requested via turbo frame %>
+<% if turbo_frame_request? %>
+  <%= render "settings_modal" %>
+<% else %>
+  <%# Full page fallback %>
+  <div class="w-full mb-10">
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Money", manage_money_index_path],
-      ["Payroll", manage_money_payroll_path]
-    ],
-    text: "Payroll Settings"
-  } %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [
+        ["Money", manage_money_index_path],
+        ["Payroll", manage_money_payroll_path]
+      ],
+      text: "Payroll Settings"
+    } %>
 
-  <div class="max-w-2xl">
-    <%= form_with model: @schedule, url: manage_money_payroll_settings_path, method: :patch, class: "space-y-8" do |f| %>
+    <div class="max-w-2xl">
+      <%= form_with model: @schedule, url: manage_money_payroll_settings_path, method: :patch, class: "space-y-8" do |f| %>
       <%# Enable/Disable %>
       <div class="bg-white rounded-lg border border-gray-200 p-6">
         <div class="flex items-start gap-4">
@@ -40,20 +45,20 @@
               <%= f.radio_button :period_type, period_type, class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
               <div class="flex-1">
                 <span class="font-medium text-gray-900">
-                  <% case period_type %>
-                  <% when "weekly" %>Weekly
-                  <% when "biweekly" %>Every Two Weeks
-                  <% when "semi_monthly" %>Twice a Month
-                  <% when "monthly" %>Monthly
-                  <% end %>
+                  <%= case period_type
+                      when "weekly" then "Weekly"
+                      when "biweekly" then "Every Two Weeks"
+                      when "semi_monthly" then "Twice a Month"
+                      when "monthly" then "Monthly"
+                      end %>
                 </span>
                 <span class="text-gray-500 text-sm ml-2">
-                  <% case period_type %>
-                  <% when "weekly" %>(52 pay periods per year)
-                  <% when "biweekly" %>(26 pay periods per year)
-                  <% when "semi_monthly" %>(24 pay periods per year)
-                  <% when "monthly" %>(12 pay periods per year)
-                  <% end %>
+                  <%= case period_type
+                      when "weekly" then "(52 pay periods per year)"
+                      when "biweekly" then "(26 pay periods per year)"
+                      when "semi_monthly" then "(24 pay periods per year)"
+                      when "monthly" then "(12 pay periods per year)"
+                      end %>
                 </span>
               </div>
             </label>
@@ -137,3 +142,4 @@
     <% end %>
   </div>
 </div>
+<% end %>

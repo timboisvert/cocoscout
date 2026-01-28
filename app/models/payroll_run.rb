@@ -56,8 +56,8 @@ class PayrollRun < ApplicationRecord
     end
   end
 
-  # Build line items from unpaid ShowPayoutLineItems in the period
-  # This links show payout line items to people, but does NOT pre-calculate amounts
+  # Build line items from unpaid ShowPayoutLineItems
+  # Includes the current period PLUS any unpaid items from previous periods
   def build_line_items!
     return false unless pending?
 
@@ -65,15 +65,17 @@ class PayrollRun < ApplicationRecord
     # Exclude those already in a payroll run or paid independently
     production_ids = organization.productions.where(production_type: :in_house).pluck(:id)
 
+    # Include items from current period AND any unpaid items from before this period
+    # (up to the end of the current period)
     eligible_items = ShowPayoutLineItem
       .joins(show_payout: :show)
       .where(shows: { production_id: production_ids })
-      .where(shows: { date_and_time: period_start.beginning_of_day..period_end.end_of_day })
+      .where("shows.date_and_time <= ?", period_end.end_of_day)
       .where(manually_paid: false)
       .where(payout_reference_id: nil)
       .where(payroll_line_item_id: nil)
       .where(paid_independently: false)
-      .includes(:payee, show_payout: :show)
+      .includes(show_payout: :show)
 
     # Group by person (skip guests for now - they're paid per-show)
     items_by_person = eligible_items.reject(&:is_guest?).group_by(&:payee)
@@ -81,6 +83,9 @@ class PayrollRun < ApplicationRecord
     transaction do
       items_by_person.each do |person, line_items|
         next unless person.is_a?(Person)
+
+        # Apply outstanding advances to these line items
+        apply_advances_to_line_items!(person, line_items)
 
         # Create payroll line item - amounts are calculated dynamically, not stored
         pli = payroll_line_items.create!(
@@ -129,9 +134,23 @@ class PayrollRun < ApplicationRecord
 
   # Cancel the run
   def cancel!
-    return false unless pending?
+    return false unless pending? || processing?
 
     transaction do
+      # Revert advance deductions - restore remaining_balance on PersonAdvances
+      show_payout_line_items.each do |spli|
+        spli.advance_recoveries.each do |recovery|
+          advance = recovery.person_advance
+          advance.update!(
+            remaining_balance: advance.remaining_balance + recovery.amount,
+            status: advance.remaining_balance + recovery.amount >= advance.original_amount ? "pending" : "partial",
+            fully_recovered_at: nil
+          )
+        end
+        # Clear the advance_deduction on the line item
+        spli.update!(advance_deduction: 0) if spli.advance_deduction.to_f > 0
+      end
+
       # Unlink all show payout line items
       show_payout_line_items.update_all(payroll_line_item_id: nil)
       payroll_line_items.destroy_all
@@ -142,6 +161,46 @@ class PayrollRun < ApplicationRecord
   end
 
   private
+
+  # Apply outstanding advances to show payout line items for a person
+  # This deducts advances from their payout amounts at payroll time
+  def apply_advances_to_line_items!(person, line_items)
+    # Get outstanding advances for this person across all productions in the org
+    production_ids = organization.productions.where(production_type: :in_house).pluck(:id)
+
+    advances = person.person_advances
+      .where(production_id: production_ids)
+      .outstanding
+      .paid  # Only apply advances that have been paid out to the person
+      .order(:issued_at)  # Oldest first
+
+    return if advances.empty?
+
+    # Sort line items by show date (oldest first) to apply advances chronologically
+    sorted_items = line_items.sort_by { |li| li.show_payout.show.date_and_time }
+
+    advances.each do |advance|
+      break if advance.remaining_balance <= 0
+
+      sorted_items.each do |line_item|
+        break if advance.remaining_balance <= 0
+
+        # Calculate how much of this line item's amount is available for deduction
+        # (after any existing deductions)
+        available_amount = line_item.amount - (line_item.advance_deduction || 0)
+        next if available_amount <= 0
+
+        # Apply the advance
+        actual_deduction = advance.apply!(available_amount, line_item)
+
+        # Update the line item's advance_deduction
+        if actual_deduction > 0
+          new_deduction = (line_item.advance_deduction || 0) + actual_deduction
+          line_item.update!(advance_deduction: new_deduction)
+        end
+      end
+    end
+  end
 
   def period_end_after_start
     return unless period_start && period_end

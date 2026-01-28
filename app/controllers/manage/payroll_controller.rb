@@ -69,10 +69,52 @@ module Manage
       end
     end
 
+    # Pay Now - creates a payroll run for all unpaid items through today
+    def pay_now
+      # Find the earliest unpaid show date
+      earliest_unpaid = ShowPayoutLineItem
+        .joins(show_payout: :show)
+        .where(shows: { production_id: in_house_production_ids })
+        .where(manually_paid: false, payout_reference_id: nil, payroll_line_item_id: nil, paid_independently: false)
+        .minimum("shows.date_and_time")
+
+      if earliest_unpaid.nil?
+        redirect_to manage_money_payroll_path, alert: "No unpaid items to pay."
+        return
+      end
+
+      period_start = earliest_unpaid.to_date
+      period_end = Date.current
+
+      @payroll_run = Current.organization.payroll_runs.create!(
+        period_start: period_start,
+        period_end: period_end,
+        notes: "Pay Now - created #{Date.current.strftime('%B %-d, %Y')}",
+        created_by: Current.user
+      )
+
+      @payroll_run.build_line_items!
+
+      if @payroll_run.payroll_line_items.any?
+        redirect_to manage_money_payroll_run_path(@payroll_run),
+                    notice: "Payroll run created with #{@payroll_run.payroll_line_items.count} people."
+      else
+        @payroll_run.cancel!
+        redirect_to manage_money_payroll_path, alert: "No eligible payouts found."
+      end
+    end
+
     def show_run
       @line_items = @payroll_run.payroll_line_items.includes(:person, show_payout_line_items: { show_payout: :show }).by_name
       @paid_count = @line_items.select(&:paid?).count
       @unpaid_count = @line_items.reject(&:paid?).count
+      @unpaid_line_items = @line_items.reject(&:paid?)
+
+      # Find people without payment info (Venmo or Zelle)
+      @people_without_payment = @unpaid_line_items.select do |li|
+        person = li.person
+        !person.venmo_configured? && !person.zelle_configured?
+      end.map(&:person)
     end
 
     def start_run
@@ -111,19 +153,15 @@ module Manage
 
       @line_item.mark_as_paid!(Current.user, method: method, notes: notes)
 
-      respond_to do |format|
-        format.html { redirect_back fallback_location: manage_money_payroll_run_path(@payroll_run) }
-        format.turbo_stream
-      end
+      redirect_back fallback_location: manage_money_payroll_run_path(@payroll_run),
+                    notice: "#{@line_item.person.name} marked as paid."
     end
 
     def unmark_line_item_paid
       @line_item.unmark_as_paid!
 
-      respond_to do |format|
-        format.html { redirect_back fallback_location: manage_money_payroll_run_path(@payroll_run) }
-        format.turbo_stream
-      end
+      redirect_back fallback_location: manage_money_payroll_run_path(@payroll_run),
+                    notice: "#{@line_item.person.name} payment reverted."
     end
 
     private
@@ -139,7 +177,7 @@ module Manage
       end
 
       # Pending payroll runs (manually created or in progress)
-      @pending_runs = Current.organization.payroll_runs.pending.includes(:payroll_line_items).by_period
+      @pending_runs = Current.organization.payroll_runs.where(status: %w[pending processing]).includes(:payroll_line_items).by_period
 
       # Completed runs for history
       @completed_runs = Current.organization.payroll_runs.completed.includes(:payroll_line_items).by_period.limit(10)
@@ -166,7 +204,7 @@ module Manage
     end
 
     def schedule_params
-      params.require(:payroll_schedule).permit(:active, :period_type, :period_anchor, :semi_monthly_days, :payday_timing, :payday_offset_days)
+      params.require(:payroll_schedule).permit(:autopilot, :period_type, :period_anchor, :semi_monthly_days, :payday_timing, :payday_offset_days)
     end
 
     def in_house_production_ids
@@ -184,24 +222,31 @@ module Manage
     end
 
     def preview_line_items(period_start, period_end)
-      ShowPayoutLineItem
+      # Include items from current period AND any unpaid items from before this period
+      items = ShowPayoutLineItem
         .joins(show_payout: :show)
         .where(shows: { production_id: in_house_production_ids })
-        .where(shows: { date_and_time: period_start.beginning_of_day..period_end.end_of_day })
+        .where("shows.date_and_time <= ?", period_end.end_of_day)
         .where(manually_paid: false)
         .where(payout_reference_id: nil)
         .where(payroll_line_item_id: nil)
         .where(paid_independently: false)
         .where(is_guest: false)
-        .includes(:payee, show_payout: { show: :production })
-        .group_by(&:payee)
-        .transform_values do |items|
+        .includes(show_payout: { show: :production })
+
+      items.group_by(&:payee)
+        .transform_values do |person_items|
+          current_period_items = person_items.select { |i| i.show_payout.show.date_and_time >= period_start.beginning_of_day }
+          prior_items = person_items.reject { |i| i.show_payout.show.date_and_time >= period_start.beginning_of_day }
+
           {
-            show_count: items.count,
-            gross: items.sum(&:amount),
-            deductions: items.sum(&:advance_deduction),
-            net: items.sum { |i| i.amount - (i.advance_deduction || 0) },
-            productions: items.map { |i| i.show_payout.show.production.name }.uniq
+            show_count: person_items.count,
+            gross: person_items.sum(&:amount),
+            deductions: person_items.sum(&:advance_deduction),
+            net: person_items.sum { |i| i.amount - (i.advance_deduction || 0) },
+            productions: person_items.map { |i| i.show_payout.show.production.name }.uniq,
+            current_period_count: current_period_items.count,
+            prior_period_count: prior_items.count
           }
         end
     end

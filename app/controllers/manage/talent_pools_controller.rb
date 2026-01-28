@@ -321,7 +321,7 @@ module Manage
     def leave_shared_pool
       TalentPoolShare.find_by(production: @production)&.destroy
 
-      redirect_to manage_casting_settings_path(@production, anchor: "talent-pool"),
+      redirect_to manage_casting_talent_pools_path,
                   notice: "You are now using a separate talent pool for this production."
     end
 
@@ -358,7 +358,7 @@ module Manage
       end
 
       flash[:notice] = "Sharing settings updated."
-      redirect_to manage_casting_settings_path(@production, anchor: "talent-pool"), status: :see_other
+      redirect_to manage_casting_talent_pools_path, status: :see_other
     end
 
     def set_production

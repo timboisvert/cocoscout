@@ -83,7 +83,14 @@ class Production < ApplicationRecord
 
   # Returns the shared talent pool if this production is linked to one,
   # otherwise returns its own talent pool
+  # If organization is in single talent pool mode, returns the org pool
   def effective_talent_pool
+    # Check organization-level setting first
+    if organization.talent_pool_single?
+      return organization.talent_pool
+    end
+
+    # Per-production mode: check for shared pool, then own pool
     shared_pool = TalentPoolShare.find_by(production_id: id)&.talent_pool
     shared_pool || talent_pool
   end

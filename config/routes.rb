@@ -485,6 +485,10 @@ Rails.application.routes.draw do
     get  "/casting",            to: "org_casting#index", as: "casting"
     get  "/casting/roles",      to: "org_roles#index", as: "casting_roles"
     get  "/casting/talent-pools", to: "org_talent_pools#index", as: "casting_talent_pools"
+    get  "/casting/talent-pools/switch-to-single", to: "org_talent_pools#switch_to_single_confirm", as: "casting_talent_pools_switch_to_single_confirm"
+    post "/casting/talent-pools/switch-to-single", to: "org_talent_pools#switch_to_single", as: "casting_talent_pools_switch_to_single"
+    get  "/casting/talent-pools/switch-to-per-production", to: "org_talent_pools#switch_to_per_production_confirm", as: "casting_talent_pools_switch_to_per_production_confirm"
+    post "/casting/talent-pools/switch-to-per-production", to: "org_talent_pools#switch_to_per_production", as: "casting_talent_pools_switch_to_per_production"
 
     # Casting Tables (org-level)
     get  "/casting/tables",              to: "casting_tables#index", as: "casting_tables"
@@ -840,6 +844,7 @@ Rails.application.routes.draw do
     patch "money/payroll/settings", to: "payroll#update_settings"
     get "money/payroll/new", to: "payroll#new_run", as: "new_money_payroll_run"
     post "money/payroll", to: "payroll#create_run", as: "create_money_payroll_run"
+    post "money/payroll/pay_now", to: "payroll#pay_now", as: "money_payroll_pay_now"
     get "money/payroll/runs/:id", to: "payroll#show_run", as: "money_payroll_run"
     post "money/payroll/runs/:id/start", to: "payroll#start_run", as: "start_money_payroll_run"
     post "money/payroll/runs/:id/cancel", to: "payroll#cancel_run", as: "cancel_money_payroll_run"

@@ -1,0 +1,119 @@
+<%= turbo_frame_tag "talent_pool_mode_modal" do %>
+  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-controller="modal"
+       data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
+         data-action="click->modal#stopPropagation">
+      
+      <%# Header %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Switch to Single Talent Pool</h3>
+          <%= link_to manage_casting_talent_pools_path, class: "text-gray-400 hover:text-gray-600" do %>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          <% end %>
+        </div>
+        <p class="text-sm text-gray-500 mt-1">
+          All productions will share one unified talent pool.
+        </p>
+      </div>
+
+      <%# Current state summary %>
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="text-sm text-gray-600">
+          <strong>Current:</strong> <%= pluralize(@productions.count, 'production') %> with separate talent pools
+        </div>
+        <% if @all_members[:people_count] > 0 || @all_members[:groups_count] > 0 %>
+          <div class="text-sm text-gray-600 mt-1">
+            <strong>Combined total:</strong> 
+            <%= pluralize(@all_members[:people_count], 'person') %>
+            <% if @all_members[:groups_count] > 0 %>
+              and <%= pluralize(@all_members[:groups_count], 'group') %>
+            <% end %>
+            across all pools
+          </div>
+        <% end %>
+      </div>
+
+      <%= form_with url: manage_casting_talent_pools_switch_to_single_path, method: :post, 
+                    data: { turbo: false, controller: "radio-card" } do %>
+        <%# Options %>
+        <div class="px-6 py-4 space-y-3">
+          <p class="text-sm font-medium text-gray-700 mb-4">How would you like to populate the new unified pool?</p>
+
+          <%# Option 1: Merge All %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-pink-500 bg-pink-50"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="merge_all" checked
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div>
+                <div class="font-medium text-gray-900">Merge all members from all productions</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  Combine everyone into one pool.
+                  <% if @all_members[:people_count] > 0 %>
+                    This will include <%= pluralize(@all_members[:people_count], 'person') %>.
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </label>
+
+          <%# Option 2: From One Production %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-gray-200"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="from_production"
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Start with one production's pool</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  Copy members from a specific production only.
+                </div>
+                <div class="mt-2 hidden" data-radio-card-target="extras" data-for="from_production">
+                  <select name="source_production_id" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-pink-500 focus:ring-pink-500 focus:ring-1">
+                    <% @productions.each do |prod| %>
+                      <% pool = prod.talent_pool %>
+                      <% count = pool.cached_member_counts[:total] %>
+                      <option value="<%= prod.id %>">
+                        <%= prod.name %> (<%= pluralize(count, 'member') %>)
+                      </option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </label>
+
+          <%# Option 3: Start Fresh %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-gray-200"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="fresh"
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div>
+                <div class="font-medium text-gray-900">Start fresh with an empty pool</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  Create a new empty pool and add members manually.
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <%# Footer %>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+          <%= link_to manage_casting_talent_pools_path do %>
+            <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", tag: :span %>
+          <% end %>
+          <%= render "shared/button", text: "Switch to Single Pool", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

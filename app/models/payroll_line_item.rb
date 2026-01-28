@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class PayrollLineItem < ApplicationRecord
-  PAYMENT_METHODS = %w[venmo cash zelle check other].freeze
+  PAYMENT_METHODS = %w[venmo cash zelle check other n/a].freeze
   PAYOUT_STATUSES = %w[pending success failed].freeze
 
   belongs_to :payroll_run

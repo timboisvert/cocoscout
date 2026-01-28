@@ -14,23 +14,24 @@
   <% if @schedule %>
     <%# 60/40 Layout for configured payroll %>
     <div class="flex flex-col lg:flex-row gap-6">
-      <%# Left side - 60% - Current Period %>
+      <%# Left side - 60% - Current Period Preview %>
       <div class="lg:w-3/5">
-        <%# Current Pay Period %>
+        <%# Current Pay Period Preview %>
         <div class="bg-white rounded-lg border border-gray-200 mb-6">
           <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
               <div>
-                <h3 class="font-semibold text-gray-900">Current Pay Period</h3>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-gray-900">Next Payroll Run</h3>
+                  <%= render "shared/badge", text: "Preview", color: "gray" %>
+                </div>
                 <p class="text-sm text-gray-500">
                   <%= @current_period[:start].strftime("%B %-d") %> — <%= @current_period[:end].strftime("%B %-d, %Y") %>
                   <span class="text-gray-400">•</span>
                   Payday: <%= @current_period[:payday].strftime("%A, %B %-d") %>
                 </p>
               </div>
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
-                <%= @schedule.period_type_label %>
-              </span>
+              <%= render "shared/badge", text: @schedule.period_type_label, color: "pink" %>
             </div>
           </div>
 
@@ -39,13 +40,21 @@
               <% @preview_items.sort_by { |person, data| person.name.downcase }.each do |person, data| %>
                 <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-medium">
-                      <%= person.name.first.upcase %>
-                    </div>
+                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-medium">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
                     <div>
                       <div class="font-medium text-gray-900"><%= person.name %></div>
                       <div class="text-sm text-gray-500">
-                        <%= data[:show_count] %> show<%= data[:show_count] != 1 ? "s" : "" %>
+                        <%= pluralize(data[:show_count], 'event') %>
+                        <% if data[:prior_period_count] && data[:prior_period_count] > 0 %>
+                          <span class="text-pink-600">(incl. <%= data[:prior_period_count] %> from prior periods)</span>
+                        <% end %>
                         <% if data[:productions].size > 1 %>
                           across <%= data[:productions].size %> productions
                         <% end %>
@@ -64,29 +73,39 @@
               <% end %>
             </div>
 
+            <% prior_total = @preview_items.sum { |_, d| d[:prior_period_count] || 0 } %>
             <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
               <div class="flex items-center justify-between">
                 <div class="text-gray-600">
                   <span class="font-semibold text-gray-900"><%= @preview_items.count %></span> people
                   <span class="text-gray-400 mx-2">•</span>
                   Total: <span class="font-semibold text-gray-900"><%= number_to_currency(@preview_items.sum { |_, d| d[:net] }) %></span>
+                  <% if prior_total > 0 %>
+                    <span class="text-gray-400 mx-2">•</span>
+                    <span class="text-pink-600"><%= prior_total %> unpaid from prior periods</span>
+                  <% end %>
                 </div>
               </div>
             </div>
           <% else %>
-            <div class="px-6 py-12 text-center text-gray-500">
-              <div class="text-3xl mb-2">🎉</div>
-              <p>No payouts due for this period.</p>
-              <p class="text-sm mt-1">All set! Check back next pay period.</p>
+            <div class="px-6 py-8 text-center text-gray-500">
+              <div class="text-3xl mb-2">📅</div>
+              <p class="font-medium text-gray-700">No events in this pay period</p>
+              <p class="text-sm mt-1">Events from <%= @current_period[:start].strftime("%b %-d") %> – <%= @current_period[:end].strftime("%b %-d") %> will appear here.</p>
+              <% if @unpaid_amount > 0 %>
+                <p class="text-sm mt-3 text-pink-600">
+                  Note: You have <%= number_to_currency(@unpaid_amount) %> in unpaid payouts from other periods.
+                </p>
+              <% end %>
             </div>
           <% end %>
         </div>
 
-        <%# Pending Runs (if any) %>
+        <%# Active Runs (pending or processing) %>
         <% if @pending_runs.any? %>
           <div class="bg-white rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="font-semibold text-gray-900">Pending Payroll Runs</h3>
+              <h3 class="font-semibold text-gray-900">Active Payroll Runs</h3>
             </div>
             <div class="divide-y divide-gray-100">
               <% @pending_runs.each do |run| %>
@@ -98,14 +117,12 @@
                     <div class="text-sm text-gray-500">
                       <%= run.line_item_count %> people
                       <span class="text-gray-400">•</span>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= run.processing? ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-700' %>">
-                        <%= run.status.titleize %>
-                      </span>
+                      <%= render "shared/badge", text: run.processing? ? "Processing" : "Pending", color: run.processing? ? "pink" : "gray" %>
                     </div>
                   </div>
                   <div class="flex items-center gap-4">
                     <span class="font-semibold text-gray-900"><%= number_to_currency(run.calculated_total_amount) %></span>
-                    <%= link_to "View →", manage_money_payroll_run_path(run), class: "text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+                    <%= link_to run.processing? ? "Continue →" : "View →", manage_money_payroll_run_path(run), class: "text-pink-600 hover:text-pink-700 text-sm font-medium" %>
                   </div>
                 </div>
               <% end %>
@@ -143,36 +160,13 @@
         <% end %>
       </div>
 
-      <%# Right side - 40% - Quick Actions & Settings %>
+      <%# Right side - 40% - Schedule & One-Off %>
       <div class="lg:w-2/5 space-y-6">
-        <%# Make Payments Now %>
-        <div class="bg-white rounded-lg border border-gray-200">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">Quick Actions</h3>
-          </div>
-          <div class="p-6">
-            <% if @preview_items.any? %>
-              <p class="text-gray-600 mb-4">
-                Ready to pay <span class="font-semibold"><%= @preview_items.count %></span> people
-                <span class="font-semibold"><%= number_to_currency(@preview_items.sum { |_, d| d[:net] }) %></span>
-                for the current period.
-              </p>
-              <%= link_to manage_new_money_payroll_run_path do %>
-                <%= render "shared/button", text: "Create Payroll Run", variant: "primary", size: "medium", icon: "arrow-right", full_width: true %>
-              <% end %>
-            <% else %>
-              <p class="text-gray-500 text-center py-4">
-                No payments due for the current period.
-              </p>
-            <% end %>
-          </div>
-        </div>
-
         <%# Payroll Schedule Summary %>
         <div class="bg-white rounded-lg border border-gray-200">
           <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Schedule</h3>
-            <%= link_to manage_money_payroll_settings_path, class: "text-pink-600 hover:text-pink-700 text-sm font-medium" do %>
+            <%= link_to manage_money_payroll_settings_path, data: { turbo_frame: "payroll_settings_modal" }, class: "text-pink-600 hover:text-pink-700 text-sm font-medium" do %>
               Edit
             <% end %>
           </div>
@@ -193,6 +187,42 @@
                 </span>
               </div>
             <% end %>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-500">Autopilot</span>
+              <% if @schedule.autopilot? %>
+                <%= render "shared/badge", text: "On", color: "pink" %>
+              <% else %>
+                <%= render "shared/badge", text: "Off", color: "gray" %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%# One-Off Payroll Run %>
+        <div class="bg-white rounded-lg border border-gray-200">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">One-Off Payroll Run</h3>
+          </div>
+          <div class="p-6 space-y-4">
+            <% if @preview_items.any? %>
+              <p class="text-sm text-gray-600">
+                Pay everyone now without waiting for the scheduled run.
+                <span class="font-medium"><%= @preview_items.count %> people</span> owed
+                <span class="font-medium"><%= number_to_currency(@preview_items.sum { |_, d| d[:net] }) %></span>.
+              </p>
+              <%= form_with url: manage_money_payroll_pay_now_path, method: :post, data: { turbo: false } do %>
+                <%= render "shared/button", text: "Create One-Off Run", variant: "secondary", size: "medium", full_width: true, type: :submit %>
+              <% end %>
+              <% if @schedule.autopilot? %>
+                <p class="text-xs text-gray-500">
+                  This won't affect your scheduled runs—items paid now won't appear in the next autopilot run.
+                </p>
+              <% end %>
+            <% else %>
+              <p class="text-gray-500 text-center">
+                No payments due.
+              </p>
+            <% end %>
           </div>
         </div>
 
@@ -204,7 +234,7 @@
           <div class="p-6">
             <div class="text-3xl font-bold text-pink-600"><%= number_to_currency(@unpaid_amount) %></div>
             <div class="text-gray-500 mt-1">
-              <%= @unpaid_line_items_count %> line items across <%= @productions.count %> production<%= @productions.count != 1 ? "s" : "" %>
+              <%= pluralize(@unpaid_line_items_count, 'payout') %> across <%= pluralize(@productions.count, 'production') %>
             </div>
           </div>
         </div>
@@ -219,7 +249,7 @@
         <p class="text-gray-600 mb-6">
           Configure your pay periods and payday schedule. Once set up, payroll runs will be automatically calculated based on your schedule.
         </p>
-        <%= link_to manage_money_payroll_settings_path do %>
+        <%= link_to manage_money_payroll_settings_path, data: { turbo_frame: "payroll_settings_modal" } do %>
           <%= render "shared/button", text: "Configure Payroll Schedule", variant: "primary", size: "large", icon: "settings" %>
         <% end %>
       </div>
@@ -229,7 +259,7 @@
         <div class="bg-white rounded-lg border border-gray-200 p-6">
           <div class="text-3xl font-bold text-pink-600"><%= number_to_currency(@unpaid_amount) %></div>
           <div class="text-gray-500 mt-1">Unpaid payouts</div>
-          <div class="text-sm text-gray-400 mt-1"><%= @unpaid_line_items_count %> line items</div>
+          <div class="text-sm text-gray-400 mt-1"><%= pluralize(@unpaid_line_items_count, 'payout') %></div>
         </div>
 
         <div class="bg-white rounded-lg border border-gray-200 p-6">
@@ -248,3 +278,6 @@
     </div>
   <% end %>
 </div>
+
+<%# Turbo frame for settings modal %>
+<%= turbo_frame_tag "payroll_settings_modal" %>

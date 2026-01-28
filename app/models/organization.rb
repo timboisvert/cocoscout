@@ -2,6 +2,7 @@
 
 class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
+  belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
@@ -26,6 +27,14 @@ class Organization < ApplicationRecord
     per_production: "per_production",
     shared: "shared"
   }, default: :per_production, prefix: :forum
+
+  # Talent pool mode determines how talent pools are organized
+  # per_production: Each production has its own talent pool (can share between specific productions)
+  # single: One unified talent pool across all productions
+  enum :talent_pool_mode, {
+    per_production: "per_production",
+    single: "single"
+  }, default: :per_production, prefix: :talent_pool
 
   validates :name, presence: true
 
@@ -86,6 +95,47 @@ class Organization < ApplicationRecord
         groups: groups.count
       }
     end
+  end
+
+  # Returns the org-level talent pool (creates if needed when switching to single mode)
+  def talent_pool
+    organization_talent_pool
+  end
+
+  # Create or get the organization-level talent pool
+  def find_or_create_talent_pool!
+    return organization_talent_pool if organization_talent_pool.present?
+
+    # Create a new talent pool that belongs to the first production
+    # (TalentPool requires a production, so we use the first one as the "owner")
+    first_production = productions.type_in_house.order(:created_at).first
+    return nil unless first_production
+
+    pool = TalentPool.create!(
+      production: first_production,
+      name: "#{name} Talent Pool"
+    )
+    update!(organization_talent_pool: pool)
+    pool
+  end
+
+  # Get all members across all production talent pools (for merge preview)
+  def all_talent_pool_members
+    person_ids = Set.new
+    group_ids = Set.new
+
+    productions.type_in_house.each do |prod|
+      pool = prod.talent_pool
+      person_ids.merge(pool.people.pluck(:id))
+      group_ids.merge(pool.groups.pluck(:id))
+    end
+
+    {
+      people: Person.where(id: person_ids.to_a),
+      groups: Group.where(id: group_ids.to_a),
+      people_count: person_ids.size,
+      groups_count: group_ids.size
+    }
   end
 
   private

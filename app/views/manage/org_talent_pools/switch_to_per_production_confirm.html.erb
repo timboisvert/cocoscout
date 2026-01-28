@@ -1,0 +1,119 @@
+<%= turbo_frame_tag "talent_pool_mode_modal" do %>
+  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-controller="modal"
+       data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
+         data-action="click->modal#stopPropagation">
+      
+      <%# Header %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Switch to Per-Production Pools</h3>
+          <%= link_to manage_casting_talent_pools_path, class: "text-gray-400 hover:text-gray-600" do %>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          <% end %>
+        </div>
+        <p class="text-sm text-gray-500 mt-1">
+          Each production will have its own separate talent pool.
+        </p>
+      </div>
+
+      <%# Current state summary %>
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="text-sm text-gray-600">
+          <strong>Current:</strong> Single pool with 
+          <%= @org_pool ? pluralize(@org_pool.cached_member_counts[:total], 'member') : '0 members' %>
+        </div>
+        <% if @production_pool_stats.any? { |s| s[:people_count] > 0 || s[:groups_count] > 0 } %>
+          <div class="text-sm text-gray-600 mt-1">
+            <strong>Note:</strong> Some productions have existing pools from before the switch.
+          </div>
+        <% end %>
+      </div>
+
+      <%= form_with url: manage_casting_talent_pools_switch_to_per_production_path, method: :post, 
+                    data: { turbo: false, controller: "radio-card" } do %>
+        <%# Options %>
+        <div class="px-6 py-4 space-y-3">
+          <p class="text-sm font-medium text-gray-700 mb-4">What should happen to the current pool members?</p>
+
+          <%# Option 1: Restore Previous %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-pink-500 bg-pink-50"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="restore" checked
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div>
+                <div class="font-medium text-gray-900">Restore previous production pools</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  Each production returns to its pool as it was before the switch.
+                  <% new_members_count = @org_pool ? @org_pool.cached_member_counts[:total] : 0 %>
+                  <% if new_members_count > 0 %>
+                    <span class="text-amber-600">Members added while in single mode won't be in any production pool.</span>
+                  <% end %>
+                </div>
+                <% if @production_pool_stats.any? %>
+                  <div class="mt-2 text-xs text-gray-500">
+                    <% @production_pool_stats.each do |stat| %>
+                      <div><%= stat[:production].name %>: <%= pluralize(stat[:people_count], 'person') %></div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </label>
+
+          <%# Option 2: Copy to All %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-gray-200"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="copy_all"
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div>
+                <div class="font-medium text-gray-900">Copy current pool to all productions</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  Every production gets all <%= @org_pool ? @org_pool.cached_member_counts[:total] : 0 %> members from the current pool.
+                </div>
+              </div>
+            </div>
+          </label>
+
+          <%# Option 3: Copy to One %>
+          <label class="block border rounded-lg p-4 cursor-pointer hover:border-pink-300 transition-colors border-gray-200"
+                 data-radio-card-target="card">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="strategy" value="copy_to_one"
+                     class="mt-1 accent-pink-600"
+                     data-action="change->radio-card#select">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Copy current pool to one production only</div>
+                <div class="text-sm text-gray-500 mt-0.5">
+                  One production gets the current pool; others restore their previous pools.
+                </div>
+                <div class="mt-2 hidden" data-radio-card-target="extras" data-for="copy_to_one">
+                  <select name="target_production_id" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-pink-500 focus:ring-pink-500 focus:ring-1">
+                    <% @productions.each do |prod| %>
+                      <option value="<%= prod.id %>"><%= prod.name %></option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <%# Footer %>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+          <%= link_to manage_casting_talent_pools_path do %>
+            <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", tag: :span %>
+          <% end %>
+          <%= render "shared/button", text: "Switch to Per-Production", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -35,3 +35,7 @@ production:
   update_sign_up_statuses:
     class: UpdateSignUpStatusesJob
     schedule: every minute
+
+  autopilot_payroll:
+    class: AutopilotPayrollJob
+    schedule: every 5 minutes

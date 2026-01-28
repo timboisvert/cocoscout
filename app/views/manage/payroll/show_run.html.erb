@@ -1,6 +1,8 @@
 <% content_for :title, "Payroll Run" %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10"
+     data-controller="payroll-payment"
+     data-payroll-payment-run-id-value="<%= @payroll_run.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -44,22 +46,22 @@
 
         <div class="flex items-center gap-3">
           <% if @payroll_run.pending? %>
-            <%= form_with url: manage_start_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline" do %>
+            <%= form_with url: manage_start_money_payroll_run_path(@payroll_run), method: :post, data: { turbo: false }, class: "inline" do %>
               <%= render "shared/button", text: "Start Processing", variant: "primary", size: "medium", type: :submit %>
             <% end %>
-            <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Cancel this payroll run? The line items will be available for future runs." } do %>
+            <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Cancel this payroll run? The line items will be available for future runs." } do %>
               <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
             <% end %>
           <% elsif @payroll_run.processing? %>
             <% if @paid_count == @line_items.count %>
-              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline" do %>
+              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, data: { turbo: false }, class: "inline" do %>
                 <%= render "shared/button", text: "Mark Complete", variant: "primary", size: "medium", type: :submit %>
               <% end %>
             <% else %>
-              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Mark complete with #{@unpaid_count} unpaid items? Unpaid items will be available for future runs." } do %>
+              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Mark complete with #{@unpaid_count} unpaid items? Unpaid items will be available for future runs." } do %>
                 <%= render "shared/button", text: "Mark Complete", variant: "outline", size: "medium", type: :submit %>
               <% end %>
-              <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Cancel this payroll run?" } do %>
+              <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Cancel this payroll run?" } do %>
                 <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
               <% end %>
             <% end %>
@@ -109,6 +111,60 @@
         <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
           <div class="h-full bg-pink-500 transition-all duration-300" style="width: <%= (@paid_count.to_f / [@line_items.count, 1].max * 100).round %>%"></div>
         </div>
+        <% if @unpaid_line_items.any? %>
+          <div class="mt-4 flex items-center justify-between">
+            <span class="text-sm text-gray-600"><%= @unpaid_count %> remaining to pay</span>
+            <%= render "shared/button", text: "Pay Everyone", variant: "primary", size: "medium", icon: "banknotes", data: { action: "click->payroll-payment#showPayEveryoneModal" } %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Payment Setup Section %>
+    <% if @payroll_run.processing? && @people_without_payment.any? %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="font-semibold text-gray-900">Payment Setup</h3>
+            <p class="text-sm text-gray-500 mt-0.5">
+              <%= @people_without_payment.size %> <%= @people_without_payment.size == 1 ? "person hasn't" : "people haven't" %> set up their payment info
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <%= render "shared/button", text: "QR Code", variant: "outline", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
+          </div>
+        </div>
+
+<%= render "shared/button", text: "Show names", variant: "ghost", size: "small", icon: "chevron-right", data: { action: "click->show-toggle#toggle", "show-toggle-target": "button" } %>
+        <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
+          <div class="flex flex-wrap gap-1.5">
+            <% @people_without_payment.each do |person| %>
+              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                <%= person.name %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+
+        <%# QR Code Modal %>
+        <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+          <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Payment Setup QR Code</h3>
+              <%= render "shared/button", text: "", variant: "ghost", size: "small", icon: "x-mark", data: { action: "click->qr-code#close" } %>
+            </div>
+            <div class="p-6 text-center">
+              <p class="text-sm text-gray-600 mb-4">Show this QR code at your venue. When scanned, it takes performers to their payment setup page.</p>
+              <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                <canvas data-qr-code-target="canvas" width="200" height="200"></canvas>
+              </div>
+              <p class="text-xs text-gray-500 mt-4"><%= my_payments_setup_url %></p>
+              <div class="mt-4">
+                <%= render "shared/button", text: "Download", variant: "secondary", size: "medium", icon: "arrow-down-tray", data: { action: "click->qr-code#download" } %>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     <% end %>
 
@@ -118,7 +174,7 @@
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Person</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Shows</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Events</th>
             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross</th>
             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Advance Ded.</th>
             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net</th>
@@ -131,14 +187,35 @@
             <tr id="payroll_line_item_<%= item.id %>" class="<%= item.paid? ? 'bg-pink-50' : '' %>">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <% if item.person.safe_headshot_variant(:tiny) %>
-                    <%= image_tag item.person.safe_headshot_variant(:tiny), class: "w-8 h-8 rounded-full object-cover" %>
+                  <% if item.person.safe_headshot_variant(:thumb) %>
+                    <%= image_tag item.person.safe_headshot_variant(:thumb), class: "w-8 h-8 rounded-lg object-cover" %>
                   <% else %>
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium">
+                    <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium">
                       <%= item.person.initials %>
                     </div>
                   <% end %>
-                  <div class="text-sm font-medium text-gray-900"><%= item.person.name %></div>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900"><%= item.person.name %></div>
+                    <div class="text-xs flex items-center gap-1">
+                      <% if item.person.venmo_configured? %>
+                        <span class="inline-flex items-center gap-0.5 text-blue-600">
+                          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
+                          </svg>
+                          <span><%= item.person.formatted_venmo_identifier %></span>
+                        </span>
+                      <% elsif item.person.zelle_configured? %>
+                        <span class="inline-flex items-center gap-0.5 text-purple-600">
+                          <svg class="w-3 h-3" viewBox="0 0 50 50" fill="currentColor">
+                            <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z"/>
+                          </svg>
+                          <span><%= item.person.formatted_zelle_identifier %></span>
+                        </span>
+                      <% else %>
+                        <span class="text-gray-400">(no payment method)</span>
+                      <% end %>
+                    </div>
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 text-right"><%= item.show_count %></td>
@@ -161,19 +238,13 @@
                   </span>
                 <% end %>
               </td>
-              <td class="px-6 py-4 text-sm text-right">
-                <% if @payroll_run.processing? %>
-                  <% if item.paid? %>
-                    <%= form_with url: manage_unpay_money_payroll_line_item_path(@payroll_run, item), method: :post, local: true, class: "inline" do %>
-                      <%= render "shared/button", text: "Unpay", variant: "ghost", size: "small", type: :submit %>
-                    <% end %>
-                  <% else %>
-                    <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item), method: :post, local: true, class: "inline" do %>
-                      <%= render "shared/button", text: "Mark Paid", variant: "primary", size: "small", type: :submit %>
-                    <% end %>
+              <% if @payroll_run.processing? && item.paid? %>
+                <td class="px-6 py-4 text-sm text-right">
+                  <%= form_with url: manage_unpay_money_payroll_line_item_path(@payroll_run, item), method: :post, data: { turbo: false }, class: "inline" do %>
+                    <%= render "shared/button", text: "Unpay", variant: "ghost", size: "small", type: :submit %>
                   <% end %>
-                <% end %>
-              </td>
+                </td>
+              <% end %>
             </tr>
           <% end %>
         </tbody>
@@ -182,4 +253,231 @@
 
     <%# Breakdown Modal/Accordion would go here %>
   </div>
+
+  <%# Pay Everyone Walkthrough Modal %>
+  <% if @payroll_run.processing? && @unpaid_line_items.any? %>
+    <div data-payroll-payment-target="payEveryoneModal"
+         class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+         data-action="click->payroll-payment#closeOnBackdrop keydown.esc@window->payroll-payment#closeOnEscape">
+      <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-white">Pay Your Performers</h3>
+            <%= render "shared/button", text: "", variant: "ghost", size: "small", icon: "x-mark", classes: "text-white/80 hover:text-white", data: { action: "click->payroll-payment#hidePayEveryoneModal" } %>
+          </div>
+            <!-- Progress -->
+            <div class="mt-3">
+              <div class="flex items-center justify-between text-sm text-white/80 mb-1">
+                <span>Progress</span>
+                <span data-payroll-payment-target="progressText">1 of <%= @unpaid_line_items.count %></span>
+              </div>
+              <div class="w-full bg-white/20 rounded-full h-2">
+                <div data-payroll-payment-target="progressBar"
+                     class="bg-white rounded-full h-2 transition-all duration-300"
+                     style="width: <%= (1.0 / @unpaid_line_items.count * 100).round %>%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payee Cards (one for each unpaid person) -->
+          <% @unpaid_line_items.each_with_index do |item, index| %>
+            <div data-payroll-payment-target="payeeCard" class="<%= index > 0 ? 'hidden' : '' %>">
+              <div class="px-6 py-6">
+                <!-- Person Info -->
+                <div class="flex items-center gap-4 mb-6">
+                  <% headshot_variant = item.person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: item.person.name, class: "w-16 h-16 rounded-xl object-cover" %>
+                  <% else %>
+                    <div class="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xl">
+                      <%= item.person.initials %>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="text-xl font-semibold text-gray-900"><%= item.person.name %></div>
+                    <div class="text-sm text-gray-500"><%= pluralize(item.show_count, 'event') %></div>
+                  </div>
+                </div>
+
+                <!-- Amount -->
+                <div class="bg-gray-50 rounded-xl p-4 mb-6 text-center">
+                  <div class="text-sm text-gray-500 mb-1">Amount to Pay</div>
+                  <div class="text-4xl font-bold text-gray-900"><%= number_to_currency(item.net_amount) %></div>
+                  <% if item.advance_deductions > 0 %>
+                    <div class="text-xs text-gray-500 mt-1">
+                      <%= number_to_currency(item.gross_amount) %> gross − <%= number_to_currency(item.advance_deductions) %> advance
+                    </div>
+                  <% end %>
+                </div>
+
+                <!-- Payment Info or Setup Needed -->
+                <% person = item.person %>
+                <% if item.net_amount == 0 %>
+                  <!-- Zero amount - just mark as complete -->
+                  <div class="mb-6">
+                    <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center">
+                      <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <p class="text-gray-600 font-medium">No payment needed</p>
+                      <p class="text-sm text-gray-500 mt-1">This person's net payout is $0 after advance deductions.</p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: "n/a"), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                      <%= render "shared/button", text: "Mark as Complete", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
+                    <% end %>
+                  </div>
+                <% elsif person.venmo_configured? %>
+                  <div class="mb-6">
+                    <div class="text-sm text-gray-500 mb-2 text-center">Pay with Venmo</div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
+                        </svg>
+                        <span class="text-2xl font-semibold text-blue-700"><%= person.formatted_venmo_identifier %></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Instructions -->
+                  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+                    <div class="flex items-start gap-2">
+                      <svg class="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                      </svg>
+                      <p class="text-sm text-gray-700">Open Venmo on your phone, send <strong><%= number_to_currency(item.net_amount) %></strong> to <strong><%= person.formatted_venmo_identifier %></strong>, then mark as paid below.</p>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="space-y-3">
+                    <%= render "shared/button",
+                        text: "Open Venmo",
+                        variant: "primary",
+                        size: "large",
+                        type: :button,
+                        classes: "w-full bg-blue-500 hover:bg-blue-600",
+                        data: {
+                          action: "click->payroll-payment#openVenmo",
+                          venmo_handle: person.venmo_identifier,
+                          venmo_amount: item.net_amount,
+                          venmo_note: "Payroll #{@payroll_run.period_start.strftime('%b %-d')} - #{@payroll_run.period_end.strftime('%b %-d')}"
+                        } %>
+                    <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: "venmo"), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                      <%= render "shared/button", text: "I Paid via Venmo", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
+                    <% end %>
+                  </div>
+
+                  <!-- Alternative Payment Methods -->
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-sm text-gray-500 text-center mb-3">Or paid another way:</p>
+                    <div class="grid grid-cols-3 gap-2">
+                      <% %w[zelle cash check].each do |method| %>
+                        <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: method), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                          <%= render "shared/button", text: method.titleize, variant: "ghost", size: "small", type: :submit, classes: "w-full" %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% elsif person.zelle_configured? %>
+                  <div class="mb-6">
+                    <div class="text-sm text-gray-500 mb-2 text-center">Pay with Zelle</div>
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                      <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8" viewBox="0 0 50 50" fill="none">
+                          <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z" fill="#6D1ED4"/>
+                          <path d="M32.5 14H19.8l-.3 3.2h8.3L17 32.5v3.5h13.2l.3-3.2h-8.8L32.5 17.5V14z" fill="white"/>
+                        </svg>
+                        <span class="text-2xl font-semibold text-purple-700"><%= person.zelle_email.presence || person.zelle_phone %></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Instructions -->
+                  <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+                    <div class="flex items-start gap-2">
+                      <svg class="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                      </svg>
+                      <p class="text-sm text-gray-700">Open your bank's Zelle, send <strong><%= number_to_currency(item.net_amount) %></strong> to <strong><%= person.zelle_email.presence || person.zelle_phone %></strong>, then mark as paid below.</p>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="space-y-3">
+                    <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: "zelle"), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                      <%= render "shared/button", text: "I Paid via Zelle", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
+                    <% end %>
+                  </div>
+
+                  <!-- Alternative Payment Methods -->
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-sm text-gray-500 text-center mb-3">Or paid another way:</p>
+                    <div class="grid grid-cols-3 gap-2">
+                      <% %w[venmo cash check].each do |method| %>
+                        <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: method), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                          <%= render "shared/button", text: method.titleize, variant: "ghost", size: "small", type: :submit, classes: "w-full" %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% else %>
+                  <!-- No payment method configured -->
+                  <div class="mb-6">
+                    <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center">
+                      <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                      </svg>
+                      <p class="text-gray-600 font-medium">No payment info on file</p>
+                      <p class="text-sm text-gray-500 mt-1">Ask <%= person.name.split.first %> to add their Venmo or Zelle in CocoScout, or pay them another way.</p>
+                    </div>
+                  </div>
+
+                  <!-- Alternative Payment Methods -->
+                  <div class="space-y-3">
+                    <p class="text-sm text-gray-500 text-center">Mark as paid via:</p>
+                    <div class="grid grid-cols-2 gap-2">
+                      <% %w[venmo zelle cash check].each do |method| %>
+                        <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item, payment_method: method), method: :post, data: { action: "submit->payroll-payment#nextPayee" } do |_f| %>
+                          <%= render "shared/button", text: method.titleize, variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+              <!-- Footer Navigation -->
+              <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <% if index > 0 %>
+                  <%= render "shared/button", text: "← Previous", variant: "ghost", size: "small", type: :button, data: { action: "click->payroll-payment#previousPayee" } %>
+                <% else %>
+                  <div></div>
+                <% end %>
+
+                <%= render "shared/button", text: "Skip for now →", variant: "ghost", size: "small", type: :button, data: { action: "click->payroll-payment#skipPayee" } %>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- All Done Card -->
+          <div data-payroll-payment-target="allDoneCard" class="hidden">
+            <div class="px-6 py-12 text-center">
+              <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <h4 class="text-xl font-semibold text-gray-900 mb-2">All Done!</h4>
+              <p class="text-gray-600 mb-6">You've gone through everyone in this payroll run.</p>
+              <%= render "shared/button", text: "Close", variant: "primary", size: "large", data: { action: "click->payroll-payment#hidePayEveryoneModal" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+  <% end %>
 </div>

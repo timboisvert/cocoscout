@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_28_162130) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -590,11 +590,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_162130) do
     t.string "forum_mode", default: "per_production", null: false
     t.string "invite_token"
     t.string "name"
+    t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
     t.string "shared_forum_name"
+    t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
+    t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
+    t.index ["talent_pool_mode"], name: "index_organizations_on_talent_pool_mode"
   end
 
   create_table "organizations_people", id: false, force: :cascade do |t|
@@ -669,7 +673,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_162130) do
   end
 
   create_table "payroll_schedules", force: :cascade do |t|
-    t.boolean "active", default: true, null: false
+    t.boolean "autopilot", default: false, null: false
     t.datetime "created_at", null: false
     t.string "frequency", default: "per_show", null: false
     t.decimal "min_payout_threshold", precision: 10, scale: 2, default: "0.0"
@@ -1895,6 +1899,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_162130) do
   add_foreign_key "locations", "organizations"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
+  add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_schemes", "organizations"
   add_foreign_key "payout_schemes", "productions"
