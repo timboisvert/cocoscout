@@ -35,25 +35,59 @@ module Manage
     def link
       production = Current.organization.productions.find(params[:production_id])
 
+      # Check if production is already linked to this provider
+      existing_link = @pending_event.ticketing_provider.ticketing_production_links
+                                    .find_by(production: production)
+
+      if existing_link
+        # Production already linked - dismiss this pending event and redirect to existing link
+        @pending_event.update!(
+          status: "matched",
+          matched_production_link: existing_link,
+          suggested_production: production
+        )
+        redirect_to manage_ticketing_production_link_path(production, existing_link),
+                    notice: "#{production.name} is already linked to this provider. Pending event dismissed."
+        return
+      end
+
       link = @pending_event.match_to_production!(production, user: Current.user)
 
-      # Auto-match shows to occurrences
-      matcher = Ticketing::Operations::MatchShows.new(link)
-      result = matcher.auto_match!
+      # Try to auto-match shows to occurrences, but don't fail if API call fails
+      begin
+        matcher = Ticketing::Operations::MatchShows.new(link)
+        result = matcher.auto_match!
 
-      if result[:applied] > 0
-        redirect_to manage_money_ticketing_production_link_path(production, link),
-                    notice: "Linked '#{@pending_event.provider_event_name}' to #{production.name}. #{result[:applied]} shows matched automatically."
-      else
-        redirect_to match_manage_money_ticketing_production_link_path(production, link),
-                    notice: "Linked to #{production.name}. Review show matches to start syncing."
+        if result[:applied] > 0
+          redirect_to manage_ticketing_production_link_path(production, link),
+                      notice: "Linked '#{@pending_event.provider_event_name}' to #{production.name}. #{result[:applied]} shows matched automatically."
+        else
+          redirect_to manage_match_ticketing_production_link_path(production, link),
+                      notice: "Linked to #{production.name}. Review show matches to start syncing."
+        end
+      rescue Ticketing::BaseService::AuthenticationError => e
+        Rails.logger.warn("Ticketing auto-match auth failed: #{e.message}")
+        redirect_to manage_ticketing_production_link_path(production, link),
+                    notice: "Linked to #{production.name}.",
+                    alert: "Could not auto-match shows: authentication failed. Check your API credentials."
+      rescue Ticketing::BaseService::ApiError => e
+        Rails.logger.warn("Ticketing auto-match API error: #{e.message}")
+        redirect_to manage_ticketing_production_link_path(production, link),
+                    notice: "Linked to #{production.name}.",
+                    alert: "Could not auto-match shows: #{e.message}"
+      rescue StandardError => e
+        Rails.logger.error("Ticketing auto-match error: #{e.class.name} - #{e.message}")
+        redirect_to manage_ticketing_production_link_path(production, link),
+                    notice: "Linked to #{production.name}.",
+                    alert: "Could not auto-match shows automatically. You can match them manually."
       end
     rescue ActiveRecord::RecordInvalid => e
       redirect_to manage_ticketing_pending_event_path(@pending_event),
                   alert: "Failed to link: #{e.message}"
     rescue StandardError => e
+      Rails.logger.error("Ticketing link error: #{e.class.name} - #{e.message}\n#{e.backtrace.first(5).join("\n")}")
       redirect_to manage_ticketing_pending_event_path(@pending_event),
-                  alert: "Error: #{e.class.name} - #{e.message}"
+                  alert: "Error creating link: #{e.message}"
     end
 
     def dismiss
@@ -68,7 +102,7 @@ module Manage
       # Run sync in background
       TicketingSyncJob.perform_later(provider.id, sync_type: :events_only)
 
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-4"),
+      redirect_to manage_ticketing_pending_events_path,
                   notice: "Syncing events from #{provider.name}. New events will appear shortly."
     end
 

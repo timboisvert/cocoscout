@@ -4,8 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Organizations", manage_organizations_path],
-      [@organization.name, manage_organization_path(@organization, anchor: "tab-4")]
+      ["Ticketing", manage_ticketing_index_path],
+      ["Providers", manage_ticketing_providers_path]
     ],
     text: "Connect Ticketing Platform"
   } %>
@@ -16,10 +16,10 @@
       <div class="flex items-center justify-center">
         <%
           steps = [
-            { num: 1, name: "Platform", path: manage_ticketing_wizard_path(@organization) },
-            { num: 2, name: "Credentials", path: manage_ticketing_wizard_credentials_path(@organization) },
-            { num: 3, name: "Test", path: manage_ticketing_wizard_test_path(@organization) },
-            { num: 4, name: "Review", path: manage_ticketing_wizard_review_path(@organization) }
+            { num: 1, name: "Platform", path: manage_ticketing_wizard_path },
+            { num: 2, name: "Credentials", path: manage_ticketing_wizard_credentials_path },
+            { num: 3, name: "Test", path: manage_ticketing_wizard_test_path },
+            { num: 4, name: "Review", path: manage_ticketing_wizard_review_path }
           ]
         %>
         <% steps.each_with_index do |step, index| %>
@@ -61,7 +61,7 @@
 
     <!-- Cancel Link -->
     <div class="mt-4 text-center">
-      <%= link_to "Cancel", manage_ticketing_wizard_cancel_path(@organization),
+      <%= link_to "Cancel", manage_ticketing_wizard_cancel_path,
           data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." },
           class: "text-sm text-gray-500 hover:text-gray-700" %>
     </div>

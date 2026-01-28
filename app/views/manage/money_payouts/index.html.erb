@@ -1,23 +1,33 @@
 <% content_for :title, @production ? "#{@production.name} Payouts" : "Payouts" %>
 
+<%
+  payouts_description = <<~HTML
+    <p>
+      Manage cast and crew payments. Calculate payouts from show revenue, track what's owed, and process payments.
+    </p>
+  HTML
+
+  payouts_actions = [
+    { icon: "banknotes", text: "Advances", description: "Pre-show payments", path: manage_money_advances_path },
+    { icon: "calendar", text: "Payroll", description: "Scheduled pay runs", path: manage_money_payroll_path },
+    { icon: "puzzle-piece", text: "Payout Schemes", description: "Configure calculation rules", path: manage_money_payout_schemes_path }
+  ]
+%>
+
 <div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: @production ? [
-      ["Money", manage_money_index_path],
-      ["Payouts", manage_money_payouts_path]
-    ] : [
-      ["Money", manage_money_index_path]
-    ],
-    text: @production ? @production.name : "Payouts",
-    links: [
-      { text: "Manage Schemes", path: manage_money_payout_schemes_path }
-    ]
-  } %>
-
   <% if @production %>
-    <%# Single Production View %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [
+        ["Money", manage_money_index_path],
+        ["Payouts", manage_money_payouts_path]
+      ],
+      text: @production.name,
+      links: [
+        { text: "Manage Schemes", path: manage_money_payout_schemes_path }
+      ]
+    } %>
 
     <%# Payout Stats Cards %>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -120,11 +130,10 @@
         },
         { separator: true },
         {
-          partial: "shared/filters/toggle_filter",
+          partial: "manage/money_payouts/toggle_filters",
           locals: {
-            label: "Hide Non-revenue Events",
-            active: @hide_non_revenue,
-            toggle_action: "click->money-filter#toggle"
+            hide_non_revenue: @hide_non_revenue,
+            hide_future_events: @hide_future_events
           }
         }
       ] %>
@@ -214,6 +223,12 @@
 
   <% else %>
     <%# All Productions View %>
+
+    <%= render "shared/module_header",
+      title: "Payouts",
+      description: payouts_description,
+      actions: payouts_actions
+    %>
 
     <%# Organization Summary %>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

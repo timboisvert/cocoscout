@@ -13,12 +13,28 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments
+      :update_guest_payments, :issue_advances, :reset_calculation
     ]
 
     def show
-      @line_items = @show_payout.line_items.includes(:payee).by_amount
+      @line_items = @show_payout.line_items.by_amount
       @show_financials = @show.show_financials
+
+      # Load advances related to this show's performers
+      person_ids = @line_items.where(payee_type: "Person").pluck(:payee_id).compact
+
+      # Advances for this show (issued but not yet paid, or paid and outstanding)
+      @show_advances = @production.person_advances.for_show(@show).outstanding.where(person_id: person_ids).includes(:person)
+
+      # General outstanding advances for these people (will be deducted from any payout)
+      @general_advances = @production.person_advances.general.outstanding.where(person_id: person_ids).includes(:person)
+
+      # Build a lookup by person_id for easy access in the view
+      @advances_by_person = {}
+      (@show_advances + @general_advances).each do |advance|
+        @advances_by_person[advance.person_id] ||= []
+        @advances_by_person[advance.person_id] << advance
+      end
     end
 
     def update
@@ -98,6 +114,24 @@ module Manage
       end
     end
 
+    # Reset calculation - undo a calculation, delete line items, clear calculated_at
+    def reset_calculation
+      # Don't allow resetting if any line items are paid
+      if @show_payout.line_items.where(manually_paid: true).any?
+        redirect_to manage_money_show_payout_path(@show),
+                    alert: "Cannot reset calculation because some line items have been marked as paid."
+        return
+      end
+
+      # Delete all line items and reset calculated_at
+      @show_payout.transaction do
+        @show_payout.line_items.destroy_all
+        @show_payout.update!(calculated_at: nil, total_payout: nil, status: "awaiting_payout")
+      end
+
+      redirect_to manage_money_show_payout_path(@show),
+                  notice: "Calculation reset. You can now issue advances or recalculate when ready."
+    end
     def approve
       if @show_payout.approve!(Current.user)
         redirect_to manage_money_show_payout_path(@show),
@@ -429,6 +463,59 @@ module Manage
 
       redirect_to manage_money_show_payout_path(@show),
                   notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
+    end
+
+    # Issue advances to cast members for this show
+    def issue_advances
+      advances_params = params[:advances] || {}
+      default_amount = params[:default_amount].to_f
+
+      created_count = 0
+      skipped_count = 0
+      total_issued = 0
+
+      advances_params.each do |_key, advance_data|
+        person_id = advance_data[:person_id]
+        next if person_id.blank?
+
+        # Skip if explicitly excluded
+        if advance_data[:excluded] == "1" || advance_data[:excluded] == true
+          skipped_count += 1
+          next
+        end
+
+        amount = advance_data[:amount].present? ? advance_data[:amount].to_f : default_amount
+        next if amount <= 0
+
+        person = Person.find_by(id: person_id)
+        next unless person
+
+        # Create the advance
+        @production.person_advances.create!(
+          person: person,
+          show: @show,
+          advance_type: "show",
+          original_amount: amount,
+          remaining_balance: amount,
+          issued_by: Current.user,
+          issued_at: Time.current,
+          status: "pending",
+          notes: advance_data[:notes].presence
+        )
+
+        created_count += 1
+        total_issued += amount
+      end
+
+      if created_count > 0
+        notice = "Issued #{created_count} advance#{'s' if created_count != 1} totaling #{helpers.number_to_currency(total_issued)}."
+        notice += " Skipped #{skipped_count}." if skipped_count > 0
+      else
+        notice = "No advances issued."
+        notice += " #{skipped_count} excluded or already have advances." if skipped_count > 0
+      end
+
+      redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
     private

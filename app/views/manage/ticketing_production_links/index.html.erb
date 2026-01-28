@@ -1,12 +1,11 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
-    ["Money", manage_money_index_path],
-    ["Financials", manage_money_production_financials_path(@production)],
-    [@production.name, manage_money_production_financials_path(@production)]
+    ["Ticketing", manage_ticketing_index_path],
+    [@production.name, manage_ticketing_production_path(@production)]
   ],
   text: "Ticketing Integrations",
   links: @available_providers.any? ? [
-    { text: "Link Ticketing Event", path: manage_new_money_ticketing_production_link_path(@production) }
+    { text: "Link Ticketing Event", path: manage_new_ticketing_production_link_path(@production) }
   ] : []
 } %>
 
@@ -45,7 +44,7 @@
                 </span>
               <% end %>
 
-              <%= link_to "Manage", manage_money_ticketing_production_link_path(@production, link),
+              <%= link_to "Manage", manage_ticketing_production_link_path(@production, link),
                           class: "text-sm text-pink-600 hover:text-pink-800" %>
             </div>
           </div>
@@ -70,14 +69,14 @@
 
       <% if @available_providers.any? %>
         <div class="mt-6">
-          <%= link_to manage_new_money_ticketing_production_link_path(@production) do %>
+          <%= link_to manage_new_ticketing_production_link_path(@production) do %>
             <%= render "shared/button", text: "Link Ticketing Event", variant: "primary", size: "medium" %>
           <% end %>
         </div>
       <% else %>
         <div class="mt-6">
           <p class="text-sm text-gray-500 mb-3">First, connect a ticketing platform in settings</p>
-          <%= link_to manage_ticketing_wizard_path(@production.organization) do %>
+          <%= link_to manage_ticketing_wizard_path do %>
             <%= render "shared/button", text: "Connect Platform", variant: "secondary", size: "medium" %>
           <% end %>
         </div>

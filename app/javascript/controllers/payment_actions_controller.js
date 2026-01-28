@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["bulkModal", "payEveryoneModal", "payeeCard", "progressText", "progressBar", "markPaidModal", "markPaidName", "markPaidForm", "addPersonModal", "addMissingCastModal", "guestPaymentModal"]
+  static targets = ["bulkModal", "payEveryoneModal", "payeeCard", "progressText", "progressBar", "markPaidModal", "markPaidName", "markPaidForm", "addPersonModal", "addMissingCastModal", "guestPaymentModal", "issueAdvancesModal"]
   static values = {
     payees: Array,
     currentIndex: { type: Number, default: 0 },
@@ -67,6 +67,23 @@ export default class extends Controller {
     if (event) event.preventDefault()
     if (this.hasGuestPaymentModalTarget) {
       this.guestPaymentModalTarget.classList.add("hidden")
+      document.body.classList.remove("overflow-hidden")
+    }
+  }
+
+  // Issue Advances Modal
+  showIssueAdvancesModal(event) {
+    event.preventDefault()
+    if (this.hasIssueAdvancesModalTarget) {
+      this.issueAdvancesModalTarget.classList.remove("hidden")
+      document.body.classList.add("overflow-hidden")
+    }
+  }
+
+  hideIssueAdvancesModal(event) {
+    if (event) event.preventDefault()
+    if (this.hasIssueAdvancesModalTarget) {
+      this.issueAdvancesModalTarget.classList.add("hidden")
       document.body.classList.remove("overflow-hidden")
     }
   }

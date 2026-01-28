@@ -24,14 +24,14 @@ module Manage
       @providers = Current.organization.ticketing_providers
 
       if @providers.empty?
-        redirect_to manage_ticketing_wizard_path(Current.organization),
+        redirect_to manage_ticketing_wizard_path,
                     alert: "Connect a ticketing platform first before linking a production."
         return
       end
 
       # If only one provider, auto-select it
       if @providers.count == 1 && params[:provider_id].blank?
-        redirect_to manage_new_money_ticketing_production_link_path(@production, provider_id: @providers.first.id)
+        redirect_to manage_new_ticketing_production_link_path(@production, provider_id: @providers.first.id)
         return
       end
 
@@ -51,10 +51,10 @@ module Manage
         result = matcher.auto_match!
 
         if result[:applied] > 0
-          redirect_to manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+          redirect_to manage_ticketing_production_link_path(@production, @ticketing_production_link),
                       notice: "Production linked! #{result[:applied]} shows matched automatically."
         else
-          redirect_to match_manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+          redirect_to manage_match_ticketing_production_link_path(@production, @ticketing_production_link),
                       notice: "Production linked. Match shows to start syncing."
         end
       else
@@ -69,7 +69,7 @@ module Manage
 
     def update
       if @ticketing_production_link.update(ticketing_production_link_params)
-        redirect_to manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        redirect_to manage_ticketing_production_link_path(@production, @ticketing_production_link),
                     notice: "Ticketing settings updated."
       else
         @provider = @ticketing_production_link.ticketing_provider
@@ -79,7 +79,7 @@ module Manage
 
     def destroy
       @ticketing_production_link.destroy
-      redirect_to manage_money_ticketing_production_links_path(@production),
+      redirect_to manage_ticketing_production_path(@production),
                   notice: "Ticketing integration removed."
     end
 
@@ -87,10 +87,10 @@ module Manage
       result = Ticketing::Operations::ImportSales.new(@ticketing_production_link, user: Current.user).call
 
       if result[:success]
-        redirect_to manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        redirect_to manage_ticketing_production_link_path(@production, @ticketing_production_link),
                     notice: "Sync complete! #{result[:records_updated]} shows updated."
       else
-        redirect_to manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        redirect_to manage_ticketing_production_link_path(@production, @ticketing_production_link),
                     alert: "Sync failed: #{result[:error]}"
       end
     end
@@ -115,10 +115,10 @@ module Manage
         matcher = Ticketing::Operations::MatchShows.new(@ticketing_production_link)
         applied = matcher.apply_matches!(matches)
 
-        redirect_to manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        redirect_to manage_ticketing_production_link_path(@production, @ticketing_production_link),
                     notice: "#{applied} shows matched."
       else
-        redirect_to match_manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        redirect_to manage_match_ticketing_production_link_path(@production, @ticketing_production_link),
                     alert: "No matches selected."
       end
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_28_162130) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -59,6 +59,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "advance_recoveries", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.bigint "person_advance_id", null: false
+    t.bigint "show_payout_line_item_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_advance_id", "show_payout_line_item_id"], name: "idx_advance_recoveries_unique", unique: true
+    t.index ["person_advance_id"], name: "index_advance_recoveries_on_person_advance_id"
+    t.index ["show_payout_line_item_id"], name: "index_advance_recoveries_on_show_payout_line_item_id"
   end
 
   create_table "answers", force: :cascade do |t|
@@ -608,6 +619,72 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.index ["production_id"], name: "index_payout_schemes_on_production_id"
   end
 
+  create_table "payroll_line_items", force: :cascade do |t|
+    t.decimal "advance_deductions", precision: 10, scale: 2, default: "0.0", null: false
+    t.jsonb "breakdown", default: {}
+    t.datetime "created_at", null: false
+    t.decimal "gross_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.boolean "manually_paid", default: false
+    t.datetime "manually_paid_at"
+    t.bigint "manually_paid_by_id"
+    t.decimal "net_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.datetime "paid_at"
+    t.string "payment_method"
+    t.text "payment_notes"
+    t.text "payout_error"
+    t.string "payout_reference_id"
+    t.string "payout_status"
+    t.bigint "payroll_run_id", null: false
+    t.bigint "person_id", null: false
+    t.integer "show_count", default: 0
+    t.datetime "updated_at", null: false
+    t.index ["manually_paid_by_id"], name: "index_payroll_line_items_on_manually_paid_by_id"
+    t.index ["payroll_run_id", "person_id"], name: "index_payroll_line_items_on_payroll_run_id_and_person_id", unique: true
+    t.index ["payroll_run_id"], name: "index_payroll_line_items_on_payroll_run_id"
+    t.index ["person_id"], name: "index_payroll_line_items_on_person_id"
+  end
+
+  create_table "payroll_runs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.integer "line_item_count", default: 0
+    t.text "notes"
+    t.bigint "organization_id", null: false
+    t.bigint "payroll_schedule_id"
+    t.date "period_end", null: false
+    t.date "period_start", null: false
+    t.datetime "processed_at"
+    t.bigint "processed_by_id"
+    t.bigint "production_id"
+    t.string "status", default: "pending", null: false
+    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_payroll_runs_on_created_by_id"
+    t.index ["organization_id", "period_start", "period_end"], name: "idx_on_organization_id_period_start_period_end_15a4e22ff4"
+    t.index ["organization_id"], name: "index_payroll_runs_on_organization_id"
+    t.index ["payroll_schedule_id"], name: "index_payroll_runs_on_payroll_schedule_id"
+    t.index ["processed_by_id"], name: "index_payroll_runs_on_processed_by_id"
+    t.index ["production_id"], name: "index_payroll_runs_on_production_id"
+    t.index ["status"], name: "index_payroll_runs_on_status"
+  end
+
+  create_table "payroll_schedules", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "frequency", default: "per_show", null: false
+    t.decimal "min_payout_threshold", precision: 10, scale: 2, default: "0.0"
+    t.bigint "organization_id", null: false
+    t.integer "pay_day"
+    t.integer "payday_offset_days", default: 0
+    t.string "payday_timing", default: "period_end", null: false
+    t.date "period_anchor"
+    t.string "period_type", default: "biweekly", null: false
+    t.bigint "production_id"
+    t.string "semi_monthly_days"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_payroll_schedules_on_organization_id", unique: true
+  end
+
   create_table "people", force: :cascade do |t|
     t.datetime "archived_at"
     t.text "bio"
@@ -682,6 +759,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.datetime "updated_at", null: false
     t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_59d6099064"
     t.index ["profileable_type", "profileable_id"], name: "index_performance_sections_on_profileable"
+  end
+
+  create_table "person_advances", force: :cascade do |t|
+    t.string "advance_type", default: "show", null: false
+    t.datetime "created_at", null: false
+    t.datetime "fully_recovered_at"
+    t.datetime "issued_at", null: false
+    t.bigint "issued_by_id", null: false
+    t.text "notes"
+    t.decimal "original_amount", precision: 10, scale: 2, null: false
+    t.datetime "paid_at"
+    t.bigint "paid_by_id"
+    t.string "payment_method"
+    t.bigint "person_id", null: false
+    t.bigint "production_id", null: false
+    t.decimal "remaining_balance", precision: 10, scale: 2, null: false
+    t.bigint "show_id"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["issued_by_id"], name: "index_person_advances_on_issued_by_id"
+    t.index ["paid_by_id"], name: "index_person_advances_on_paid_by_id"
+    t.index ["person_id", "production_id", "status"], name: "idx_on_person_id_production_id_status_414a71ca7e"
+    t.index ["person_id"], name: "index_person_advances_on_person_id"
+    t.index ["production_id"], name: "index_person_advances_on_production_id"
+    t.index ["show_id"], name: "index_person_advances_on_show_id_partial", where: "(show_id IS NOT NULL)"
   end
 
   create_table "person_invitations", force: :cascade do |t|
@@ -1033,6 +1135,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.index ["shoutee_type", "shoutee_id"], name: "index_shoutouts_on_shoutee"
   end
 
+  create_table "show_advance_waivers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.bigint "person_id", null: false
+    t.string "reason", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "waived_by_id", null: false
+    t.index ["person_id"], name: "index_show_advance_waivers_on_person_id"
+    t.index ["show_id", "person_id"], name: "index_show_advance_waivers_on_show_id_and_person_id", unique: true
+    t.index ["show_id"], name: "index_show_advance_waivers_on_show_id"
+    t.index ["waived_by_id"], name: "index_show_advance_waivers_on_waived_by_id"
+  end
+
   create_table "show_attendance_records", force: :cascade do |t|
     t.datetime "checked_in_at"
     t.datetime "created_at", null: false
@@ -1106,6 +1222,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   end
 
   create_table "show_payout_line_items", force: :cascade do |t|
+    t.decimal "advance_deduction", precision: 10, scale: 2, default: "0.0"
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.jsonb "calculation_details", default: {}
     t.datetime "created_at", null: false
@@ -1118,6 +1235,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.bigint "manually_paid_by_id"
     t.text "notes"
     t.datetime "paid_at"
+    t.boolean "paid_independently", default: false
     t.bigint "payee_id"
     t.string "payee_type"
     t.string "payment_method"
@@ -1125,6 +1243,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.text "payout_error"
     t.string "payout_reference_id"
     t.string "payout_status"
+    t.bigint "payroll_line_item_id"
     t.decimal "shares", precision: 10, scale: 2
     t.bigint "show_payout_id", null: false
     t.datetime "updated_at", null: false
@@ -1133,6 +1252,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
+    t.index ["payroll_line_item_id"], name: "index_show_payout_line_items_on_payroll_line_item_id"
     t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
@@ -1723,6 +1843,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   end
 
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "advance_recoveries", "person_advances"
+  add_foreign_key "advance_recoveries", "show_payout_line_items"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
   add_foreign_key "audition_cycles", "productions"
@@ -1776,8 +1898,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_schemes", "organizations"
   add_foreign_key "payout_schemes", "productions"
+  add_foreign_key "payroll_line_items", "payroll_runs"
+  add_foreign_key "payroll_line_items", "people"
+  add_foreign_key "payroll_line_items", "users", column: "manually_paid_by_id"
+  add_foreign_key "payroll_runs", "organizations"
+  add_foreign_key "payroll_runs", "payroll_schedules"
+  add_foreign_key "payroll_runs", "productions"
+  add_foreign_key "payroll_runs", "users", column: "created_by_id"
+  add_foreign_key "payroll_runs", "users", column: "processed_by_id"
+  add_foreign_key "payroll_schedules", "organizations"
+  add_foreign_key "payroll_schedules", "productions"
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
+  add_foreign_key "person_advances", "people"
+  add_foreign_key "person_advances", "productions"
+  add_foreign_key "person_advances", "shows"
+  add_foreign_key "person_advances", "users", column: "issued_by_id"
+  add_foreign_key "person_advances", "users", column: "paid_by_id"
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "person_invitations", "talent_pools"
   add_foreign_key "post_views", "posts"
@@ -1809,6 +1946,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
+  add_foreign_key "show_advance_waivers", "people"
+  add_foreign_key "show_advance_waivers", "shows"
+  add_foreign_key "show_advance_waivers", "users", column: "waived_by_id"
   add_foreign_key "show_attendance_records", "show_person_role_assignments"
   add_foreign_key "show_attendance_records", "shows"
   add_foreign_key "show_attendance_records", "sign_up_registrations"
@@ -1817,6 +1957,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_001654) do
   add_foreign_key "show_cast_notifications", "shows"
   add_foreign_key "show_financials", "shows"
   add_foreign_key "show_links", "shows"
+  add_foreign_key "show_payout_line_items", "payroll_line_items"
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"

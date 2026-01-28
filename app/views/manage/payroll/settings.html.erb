@@ -1,0 +1,139 @@
+<% content_for :title, "Payroll Settings" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payroll", manage_money_payroll_path]
+    ],
+    text: "Payroll Settings"
+  } %>
+
+  <div class="max-w-2xl">
+    <%= form_with model: @schedule, url: manage_money_payroll_settings_path, method: :patch, class: "space-y-8" do |f| %>
+      <%# Enable/Disable %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">Enable Scheduled Payroll</h3>
+            <p class="text-sm text-gray-500 mt-1">
+              When enabled, the payroll page will show the current pay period and upcoming payday based on your configured schedule.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= f.check_box :active, class: "sr-only peer" %>
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+          </label>
+        </div>
+      </div>
+
+      <%# Pay Period Type %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">Pay Period</h3>
+        <p class="text-sm text-gray-500 mb-4">How often do you pay performers?</p>
+
+        <div class="space-y-3">
+          <% PayrollSchedule::PERIOD_TYPES.each do |period_type| %>
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :period_type, period_type, class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+              <div class="flex-1">
+                <span class="font-medium text-gray-900">
+                  <% case period_type %>
+                  <% when "weekly" %>Weekly
+                  <% when "biweekly" %>Every Two Weeks
+                  <% when "semi_monthly" %>Twice a Month
+                  <% when "monthly" %>Monthly
+                  <% end %>
+                </span>
+                <span class="text-gray-500 text-sm ml-2">
+                  <% case period_type %>
+                  <% when "weekly" %>(52 pay periods per year)
+                  <% when "biweekly" %>(26 pay periods per year)
+                  <% when "semi_monthly" %>(24 pay periods per year)
+                  <% when "monthly" %>(12 pay periods per year)
+                  <% end %>
+                </span>
+              </div>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Semi-Monthly Options %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6" data-controller="visibility" data-visibility-show-value="semi_monthly">
+        <h3 class="font-semibold text-gray-900 mb-4">Semi-Monthly Split</h3>
+        <p class="text-sm text-gray-500 mb-4">How should the month be divided?</p>
+
+        <div class="space-y-3">
+          <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= f.radio_button :semi_monthly_days, "1_and_16", class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+            <div>
+              <span class="font-medium text-gray-900">1st–15th & 16th–end</span>
+              <span class="text-gray-500 text-sm block">Periods end on the 15th and last day of month</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= f.radio_button :semi_monthly_days, "15_and_last", class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+            <div>
+              <span class="font-medium text-gray-900">1st–14th & 15th–end</span>
+              <span class="text-gray-500 text-sm block">Periods end on the 14th and last day of month</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <%# Payday Timing %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">Payday</h3>
+        <p class="text-sm text-gray-500 mb-4">When do you pay after a period ends?</p>
+
+        <div class="space-y-3">
+          <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= f.radio_button :payday_timing, "period_end", class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+            <div>
+              <span class="font-medium text-gray-900">On the last day of the period</span>
+              <span class="text-gray-500 text-sm block">Pay immediately when the period ends</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= f.radio_button :payday_timing, "next_business_day", class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+            <div>
+              <span class="font-medium text-gray-900">Next business day</span>
+              <span class="text-gray-500 text-sm block">If period ends on weekend, pay on Monday</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= f.radio_button :payday_timing, "days_after", class: "w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 focus:ring-2" %>
+            <div class="flex-1">
+              <span class="font-medium text-gray-900">Days after period ends</span>
+              <div class="flex items-center gap-2 mt-2">
+                <%= f.number_field :payday_offset_days, min: 1, max: 14, class: "w-20 rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+                <span class="text-sm text-gray-500">days after period ends</span>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <%# Period Anchor (for weekly/biweekly) %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">Period Start Reference</h3>
+        <p class="text-sm text-gray-500 mb-4">
+          Pick a date that falls on the first day of a pay period. We'll use this to calculate all past and future periods.
+          For weekly schedules, pick any Monday (or whatever day your weeks start). For biweekly, pick the first day of any pay period.
+        </p>
+        <div>
+          <%= f.date_field :period_anchor, class: "rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+      </div>
+
+      <%# Submit %>
+      <div class="flex items-center gap-4">
+        <%= f.submit "Save Settings", class: "inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer" %>
+        <%= link_to "Cancel", manage_money_payroll_path, class: "text-gray-500 hover:text-gray-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,80 @@
+<%
+  production = summary[:production]
+  has_ticketing = summary[:has_ticketing]
+%>
+
+<%= link_to manage_ticketing_production_path(production), class: "block no-underline" do %>
+  <div class="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+    <div class="flex items-center justify-between">
+      <%# Left side: Production info %>
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <% logo_variant = production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+            <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover" %>
+          </div>
+        <% else %>
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
+          </div>
+        <% end %>
+
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate"><%= production.name %></p>
+          <p class="text-sm text-gray-500">
+            <% if has_ticketing %>
+              <%= pluralize(summary[:links_count], "linked event") %>
+              <% if summary[:providers].any? %>
+                via <%= summary[:providers].join(", ") %>
+              <% end %>
+            <% else %>
+              No ticketing connected
+            <% end %>
+          </p>
+        </div>
+      </div>
+
+      <%# Right side: Stats panels %>
+      <div class="flex items-center gap-6">
+        <% if has_ticketing %>
+          <%# Tickets Sold %>
+          <div class="text-right hidden md:block">
+            <p class="text-xs text-gray-400">Tickets</p>
+            <p class="text-sm font-medium text-gray-900"><%= number_with_delimiter(summary[:tickets_sold]) %></p>
+          </div>
+
+          <%# Revenue %>
+          <div class="text-right hidden md:block">
+            <p class="text-xs text-gray-400">Revenue</p>
+            <p class="text-sm font-medium text-gray-900"><%= number_to_currency(summary[:revenue]) %></p>
+          </div>
+
+          <%# Status %>
+          <div class="text-right">
+            <% if summary[:sync_issues] > 0 %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                <%= pluralize(summary[:sync_issues], "issue") %>
+              </span>
+            <% elsif summary[:unlinked_shows] > 0 %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                <%= summary[:unlinked_shows] %> unlinked
+              </span>
+            <% else %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                Synced
+              </span>
+            <% end %>
+          </div>
+        <% else %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+            Not connected
+          </span>
+        <% end %>
+
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </div>
+  </div>
+<% end %>

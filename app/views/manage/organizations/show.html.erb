@@ -540,7 +540,7 @@
                                  class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
                       Sync Now
                     <% end %>
-                    <%= link_to "Manage", manage_ticketing_provider_path(@organization, provider), class: "text-sm text-gray-500 hover:text-gray-700" %>
+                    <%= link_to "Manage", manage_ticketing_provider_path(provider), class: "text-sm text-gray-500 hover:text-gray-700" %>
                   </div>
                 </div>
               </div>
@@ -555,7 +555,7 @@
           </div>
         <% end %>
 
-        <%= link_to manage_ticketing_wizard_path(@organization) do %>
+        <%= link_to manage_ticketing_wizard_path do %>
           <%= render "shared/button", text: "Connect Ticketing Platform", variant: "primary", size: "medium" %>
         <% end %>
       </div>

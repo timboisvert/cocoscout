@@ -1,10 +1,8 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
-    ["Money", manage_money_index_path],
-    ["Financials", manage_money_production_financials_path(@production)],
-    [@production.name, manage_money_production_financials_path(@production)],
-    ["Ticketing", manage_money_ticketing_production_links_path(@production)],
-    [@ticketing_production_link.provider_event_name || "Link", manage_money_ticketing_production_link_path(@production, @ticketing_production_link)]
+    ["Ticketing", manage_ticketing_index_path],
+    [@production.name, manage_ticketing_production_path(@production)],
+    [@ticketing_production_link.provider_event_name || "Link", manage_ticketing_production_link_path(@production, @ticketing_production_link)]
   ],
   text: "Edit Ticketing Link"
 } %>
@@ -12,7 +10,7 @@
 <div class="max-w-2xl mx-auto px-4 py-6">
   <div class="bg-white shadow rounded-lg p-6">
     <%= form_with model: @ticketing_production_link,
-                 url: manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+                 url: manage_ticketing_production_link_path(@production, @ticketing_production_link),
                  method: :patch, class: "space-y-6" do |f| %>
       <% if @ticketing_production_link.errors.any? %>
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -73,7 +71,7 @@
       </div>
 
       <div class="flex items-center justify-end space-x-3 pt-4 border-t">
-        <%= link_to "Cancel", manage_money_ticketing_production_link_path(@production, @ticketing_production_link),
+        <%= link_to "Cancel", manage_ticketing_production_link_path(@production, @ticketing_production_link),
                    class: "text-sm text-gray-500 hover:text-gray-700" %>
         <%= f.submit "Save Changes", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer" %>
       </div>

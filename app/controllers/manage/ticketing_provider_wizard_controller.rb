@@ -2,7 +2,6 @@
 
 module Manage
   class TicketingProviderWizardController < Manage::ManageController
-    before_action :set_organization
     before_action :load_wizard_state
 
     # Step 1: Select Platform
@@ -21,12 +20,12 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_ticketing_wizard_credentials_path(@organization)
+      redirect_to manage_ticketing_wizard_credentials_path
     end
 
     # Step 2: Enter Credentials
     def credentials
-      redirect_to manage_ticketing_wizard_path(@organization) if @wizard_state[:provider_type].blank?
+      redirect_to manage_ticketing_wizard_path if @wizard_state[:provider_type].blank?
 
       @provider_type = @wizard_state[:provider_type]
       @provider_info = Ticketing::ServiceFactory.provider_info(@provider_type)
@@ -44,19 +43,19 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_ticketing_wizard_test_path(@organization)
+      redirect_to manage_ticketing_wizard_test_path
     end
 
     # Step 3: Test Connection
     def test
-      redirect_to manage_ticketing_wizard_path(@organization) if @wizard_state[:provider_type].blank?
+      redirect_to manage_ticketing_wizard_path if @wizard_state[:provider_type].blank?
 
       @provider_type = @wizard_state[:provider_type]
       @provider_info = Ticketing::ServiceFactory.provider_info(@provider_type)
       @connection_result = nil
 
       # Build a temporary provider to test
-      @temp_provider = @organization.ticketing_providers.new(
+      @temp_provider = Current.organization.ticketing_providers.new(
         provider_type: @wizard_state[:provider_type],
         name: @wizard_state[:name],
         api_key: @wizard_state[:api_key]
@@ -77,20 +76,20 @@ module Manage
     end
 
     def retry_test
-      redirect_to manage_ticketing_wizard_test_path(@organization)
+      redirect_to manage_ticketing_wizard_test_path
     end
 
     # Step 4: Review and Create
     def review
-      redirect_to manage_ticketing_wizard_path(@organization) if @wizard_state[:provider_type].blank?
-      redirect_to manage_ticketing_wizard_test_path(@organization) unless @wizard_state[:test_passed]
+      redirect_to manage_ticketing_wizard_path if @wizard_state[:provider_type].blank?
+      redirect_to manage_ticketing_wizard_test_path unless @wizard_state[:test_passed]
 
       @provider_type = @wizard_state[:provider_type]
       @provider_info = Ticketing::ServiceFactory.provider_info(@provider_type)
     end
 
     def create_provider
-      @ticketing_provider = @organization.ticketing_providers.new(
+      @ticketing_provider = Current.organization.ticketing_providers.new(
         provider_type: @wizard_state[:provider_type],
         name: @wizard_state[:name],
         api_key: @wizard_state[:api_key],
@@ -102,7 +101,7 @@ module Manage
 
       if @ticketing_provider.save
         clear_wizard_state
-        redirect_to manage_organization_path(@organization, anchor: "tab-4"),
+        redirect_to manage_ticketing_provider_path(@ticketing_provider),
                     notice: "#{@ticketing_provider.name} connected successfully!"
       else
         flash.now[:alert] = @ticketing_provider.errors.full_messages.join(", ")
@@ -114,19 +113,11 @@ module Manage
 
     def cancel
       clear_wizard_state
-      redirect_to manage_organization_path(@organization, anchor: "tab-4"),
+      redirect_to manage_ticketing_providers_path,
                   notice: "Connection cancelled"
     end
 
     private
-
-    def set_organization
-      @organization = Current.organization
-      # Verify the param matches current org for security
-      if params[:organization_id].present? && params[:organization_id].to_i != @organization.id
-        redirect_to manage_path, alert: "Invalid organization"
-      end
-    end
 
     def default_provider_name
       provider_info = Ticketing::ServiceFactory.provider_info(@wizard_state[:provider_type])
@@ -147,7 +138,7 @@ module Manage
     end
 
     def wizard_cache_key
-      "ticketing_wizard:#{Current.user.id}:#{@organization.id}"
+      "ticketing_wizard:#{Current.user.id}:#{Current.organization.id}"
     end
   end
 end

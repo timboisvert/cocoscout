@@ -1,0 +1,81 @@
+<%#
+  Advances Production Row - Four Panel Layout
+
+  Required:
+    - summary: Hash with production advance summary data
+
+  Panels:
+    1. Production name and basic info
+    2. Unpaid Advances (we owe them)
+    3. Outstanding Advances (they owe us)
+    4. Repaid
+%>
+
+<%
+  production = summary[:production]
+  unpaid_amount = summary[:unpaid_amount] || 0
+  unpaid_count = summary[:unpaid_count] || 0
+  outstanding_amount = summary[:outstanding_amount] || 0
+  outstanding_count = summary[:outstanding_count] || 0
+  repaid_count = summary[:repaid_count] || 0
+  row_link_path = manage_money_production_advances_path(production)
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+  <%= link_to row_link_path, class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+
+      <%# Panel 1: Production Info %>
+      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+        <%# Production Logo or Initials %>
+        <% logo_variant = production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+            <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
+          </div>
+        <% else %>
+          <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+            <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
+          </div>
+        <% end %>
+
+        <%# Production Details %>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900"><%= production.name %></div>
+        </div>
+      </div>
+
+      <%# Panel 2: Unpaid Advances (we owe them) %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Unpaid</div>
+        <% if unpaid_count > 0 %>
+          <div class="text-sm font-medium text-pink-600"><%= number_to_currency(unpaid_amount) %></div>
+          <div class="text-xs text-gray-500"><%= unpaid_count %> to pay out</div>
+        <% else %>
+          <div class="text-sm text-gray-400">—</div>
+        <% end %>
+      </div>
+
+      <%# Panel 3: Outstanding Advances (they owe us) %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Outstanding</div>
+        <% if outstanding_count > 0 %>
+          <div class="text-sm font-medium text-amber-600"><%= number_to_currency(outstanding_amount) %></div>
+          <div class="text-xs text-gray-500"><%= outstanding_count %> to repay</div>
+        <% else %>
+          <div class="text-sm text-gray-400">—</div>
+        <% end %>
+      </div>
+
+      <%# Panel 4: Repaid %>
+      <div class="w-full lg:w-1/5 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center rounded-b-lg lg:rounded-b-none lg:rounded-r-lg">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Repaid</div>
+        <% if repaid_count > 0 %>
+          <div class="text-sm font-medium text-green-600"><%= repaid_count %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">—</div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

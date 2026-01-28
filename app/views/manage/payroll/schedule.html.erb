@@ -1,0 +1,134 @@
+<% content_for :title, "Payroll Schedule" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path],
+      ["Payroll", manage_money_payroll_path],
+      [@production.name, manage_money_production_payroll_path(@production)]
+    ],
+    text: "Payroll Schedule",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= form_with url: manage_money_production_payroll_schedule_path(@production), method: :patch, class: "space-y-6" do |f| %>
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 class="font-semibold text-gray-900 mb-4">Schedule Configuration</h3>
+
+        <%# Frequency %>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Pay Frequency</label>
+          <div class="space-y-2">
+            <% PayrollSchedule::FREQUENCIES.each do |freq| %>
+              <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 <%= @payroll_schedule.frequency == freq ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+                <%= f.radio_button :frequency, freq, class: "mt-1 text-pink-600 focus:ring-pink-500", data: { action: "change->payroll-schedule#updateFrequency" } %>
+                <div>
+                  <div class="font-medium text-gray-900"><%= freq.titleize %></div>
+                  <div class="text-sm text-gray-500">
+                    <% case freq %>
+                    <% when "per_show" %>
+                      Payouts are processed after each individual show
+                    <% when "weekly" %>
+                      Aggregate and pay all show earnings once per week
+                    <% when "biweekly" %>
+                      Aggregate and pay all show earnings every two weeks
+                    <% when "monthly" %>
+                      Aggregate and pay all show earnings once per month
+                    <% end %>
+                  </div>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Pay Day (only for periodic) %>
+        <div id="pay_day_section" class="mb-6 <%= @payroll_schedule.per_show? ? 'hidden' : '' %>" data-payroll-schedule-target="payDaySection">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Pay Day</label>
+          <select name="payroll_schedule[pay_day]" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500">
+            <% (0..6).each do |day| %>
+              <option value="<%= day %>" <%= @payroll_schedule.pay_day == day ? "selected" : "" %>>
+                <%= Date::DAYNAMES[day] %>
+              </option>
+            <% end %>
+          </select>
+          <p class="mt-1 text-sm text-gray-500">Which day of the week to process payroll runs</p>
+        </div>
+
+        <%# Minimum Payout Threshold %>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Minimum Payout Threshold</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <input type="number" name="payroll_schedule[min_payout_threshold]"
+                   value="<%= @payroll_schedule.min_payout_threshold %>"
+                   min="0" step="0.01"
+                   class="pl-7 w-full border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                   placeholder="0.00" />
+          </div>
+          <p class="mt-1 text-sm text-gray-500">
+            Payouts below this amount will be held until the next period. Set to 0 to pay all amounts.
+          </p>
+        </div>
+
+        <%# Active Toggle %>
+        <div class="flex items-center gap-3">
+          <input type="checkbox" name="payroll_schedule[active]" value="1"
+                 <%= @payroll_schedule.active? ? "checked" : "" %>
+                 class="rounded border-gray-300 text-pink-600 focus:ring-pink-500" />
+          <label class="text-sm text-gray-700">Schedule is active</label>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <%= f.submit "Save Schedule", class: "px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors cursor-pointer" %>
+        <%= link_to "Cancel", manage_money_production_payroll_path(@production), class: "px-4 py-2 text-gray-600 hover:text-gray-900" %>
+      </div>
+    <% end %>
+
+    <% if @payroll_schedule.persisted? && @payroll_schedule.periodic? %>
+      <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 class="font-medium text-blue-900 mb-2">Next Pay Period</h4>
+        <% period = @payroll_schedule.period_for_pay_date(@payroll_schedule.next_pay_date) %>
+        <p class="text-blue-700">
+          <strong>Pay Date:</strong> <%= @payroll_schedule.next_pay_date.strftime("%B %-d, %Y") %><br>
+          <strong>Period:</strong> <%= period[:start].strftime("%B %-d") %> - <%= period[:end].strftime("%B %-d, %Y") %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  // Simple toggle for pay day section
+  document.addEventListener('DOMContentLoaded', function() {
+    const radios = document.querySelectorAll('input[name="payroll_schedule[frequency]"]');
+    const payDaySection = document.getElementById('pay_day_section');
+
+    radios.forEach(radio => {
+      radio.addEventListener('change', function() {
+        if (this.value === 'per_show') {
+          payDaySection.classList.add('hidden');
+        } else {
+          payDaySection.classList.remove('hidden');
+        }
+
+        // Update selected state styling
+        document.querySelectorAll('input[name="payroll_schedule[frequency]"]').forEach(r => {
+          const label = r.closest('label');
+          if (r.checked) {
+            label.classList.add('border-pink-500', 'bg-pink-50');
+            label.classList.remove('border-gray-200');
+          } else {
+            label.classList.remove('border-pink-500', 'bg-pink-50');
+            label.classList.add('border-gray-200');
+          }
+        });
+      });
+    });
+  });
+</script>

@@ -1,9 +1,7 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
-    ["Money", manage_money_index_path],
-    ["Financials", manage_money_production_financials_path(@production)],
-    [@production.name, manage_money_production_financials_path(@production)],
-    ["Ticketing", manage_money_ticketing_production_links_path(@production)]
+    ["Ticketing", manage_ticketing_index_path],
+    [@production.name, manage_ticketing_production_path(@production)]
   ],
   text: "Link Ticketing Event"
 } %>
@@ -17,14 +15,14 @@
           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
             <%= @provider.name %>
           </span>
-          <%= link_to "Change", manage_new_money_ticketing_production_link_path(@production), class: "text-pink-600 hover:text-pink-800" %>
+          <%= link_to "Change", manage_new_ticketing_production_link_path(@production), class: "text-pink-600 hover:text-pink-800" %>
         </div>
       </div>
 
       <h3 class="text-lg font-medium text-gray-900 mb-2">Select an Event</h3>
       <p class="text-sm text-gray-500 mb-4">Choose which <%= @provider.provider_display_name %> event to link to "<%= @production.name %>"</p>
 
-      <%= form_with model: @ticketing_production_link, url: manage_money_ticketing_production_links_path(@production), class: "space-y-4", data: { controller: "ticketing-event-select" } do |f| %>
+      <%= form_with model: @ticketing_production_link, url: manage_ticketing_production_links_path(@production), class: "space-y-4", data: { controller: "ticketing-event-select" } do |f| %>
         <%= f.hidden_field :ticketing_provider_id, value: @provider.id %>
         <%= f.hidden_field :provider_event_name, data: { ticketing_event_select_target: "eventName" } %>
 
@@ -84,7 +82,7 @@
         </div>
 
         <div class="flex items-center justify-end space-x-3 pt-4 border-t">
-          <%= link_to "Cancel", manage_money_ticketing_production_links_path(@production),
+          <%= link_to "Cancel", manage_ticketing_production_path(@production),
                      class: "text-sm text-gray-500 hover:text-gray-700" %>
           <%= f.submit "Link Event", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer", disabled: @available_events.empty? %>
         </div>
@@ -97,7 +95,7 @@
 
       <div class="space-y-3">
         <% @providers.each do |provider| %>
-          <%= link_to manage_new_money_ticketing_production_link_path(@production, provider_id: provider.id),
+          <%= link_to manage_new_ticketing_production_link_path(@production, provider_id: provider.id),
                       class: "flex items-center p-4 border rounded-lg hover:border-pink-300 transition-colors" do %>
             <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -81,24 +81,41 @@ module Manage
     end
 
     def load_production_shows
-      @shows = @production.shows
-                          .where("date_and_time <= ?", 1.day.from_now)
-                          .order(date_and_time: :desc)
-                          .includes(:show_financials, :show_payout, :location)
-                          .limit(100)
-                          .to_a
+      # Handle hide_future_events toggle (enabled by default - future events hidden)
+      if params[:hide_future_events].present?
+        @hide_future_events = params[:hide_future_events] == "true"
+        cookies[:money_hide_future_events] = { value: @hide_future_events.to_s, expires: 1.year.from_now }
+      else
+        @hide_future_events = cookies[:money_hide_future_events] != "false"
+      end
 
-      # Apply filter
-      @filter = params[:filter].presence || "all"
-      @shows = apply_filter(@shows, @filter)
-
-      # Handle hide_non_revenue toggle
+      # Handle hide_non_revenue toggle (enabled by default)
       if params[:hide_non_revenue].present?
         @hide_non_revenue = params[:hide_non_revenue] == "true"
         cookies[:money_hide_non_revenue] = { value: @hide_non_revenue.to_s, expires: 1.year.from_now }
       else
         @hide_non_revenue = cookies[:money_hide_non_revenue] != "false"
       end
+
+      # Build query based on hide future events toggle
+      if @hide_future_events
+        @shows = @production.shows
+                            .where("date_and_time <= ?", 1.day.from_now)
+                            .order(date_and_time: :desc)
+                            .includes(:show_financials, :show_payout, :location)
+                            .limit(100)
+                            .to_a
+      else
+        @shows = @production.shows
+                            .order(date_and_time: :desc)
+                            .includes(:show_financials, :show_payout, :location)
+                            .limit(100)
+                            .to_a
+      end
+
+      # Apply filter
+      @filter = params[:filter].presence || "all"
+      @shows = apply_filter(@shows, @filter)
 
       if @hide_non_revenue
         @shows = @shows.select { |show| EventTypes.revenue_event_types.include?(show.event_type) }
@@ -130,7 +147,8 @@ module Manage
     end
 
     def load_all_productions
-      @productions = Current.organization.productions.order(:name)
+      # Only show in-house productions on the payouts page (not third-party/renters)
+      @productions = Current.organization.productions.where.not(production_type: "third_party").order(:name)
       @production_summaries = @productions.map do |production|
         build_payout_summary(production)
       end

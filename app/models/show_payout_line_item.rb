@@ -4,9 +4,13 @@ class ShowPayoutLineItem < ApplicationRecord
   belongs_to :show_payout
   belongs_to :payee, polymorphic: true, optional: true  # Person or Group (optional for guests)
   belongs_to :manually_paid_by, class_name: "User", optional: true
+  belongs_to :payroll_line_item, optional: true  # If part of a payroll run
 
   has_one :show, through: :show_payout
   has_one :production, through: :show_payout
+
+  has_many :advance_recoveries, dependent: :destroy
+  has_many :person_advances, through: :advance_recoveries
 
   # Payment methods for tracking how payments were made
   PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a].freeze
@@ -115,6 +119,27 @@ class ShowPayoutLineItem < ApplicationRecord
     when "other" then "Other"
     else payment_method.titleize
     end
+  end
+
+  # Net amount after advance deductions
+  def net_amount
+    amount - (advance_deduction || 0)
+  end
+
+  # Check if this line item is part of a payroll run
+  def in_payroll?
+    payroll_line_item_id.present?
+  end
+
+  # Check if this can be paid independently (outside payroll)
+  def can_pay_independently?
+    !paid? && !in_payroll?
+  end
+
+  # Mark as paid independently (for one-off payments)
+  def pay_independently!(by_user, method: nil, notes: nil)
+    update!(paid_independently: true)
+    mark_as_already_paid!(by_user, method: method, notes: notes)
   end
 
   # Calculation details accessors

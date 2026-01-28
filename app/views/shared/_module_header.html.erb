@@ -1,7 +1,7 @@
 <%#
   Module Header Component (New Header)
   A module-level header with large title (coustard-regular), multi-line description,
-  and action buttons arranged in a 2x2 grid (4 buttons) or 2+1 layout (3 buttons).
+  and action buttons arranged in a 4-column grid below the description.
 
   This is the "new header" style - use for major module landing pages like Casting, Money, etc.
 
@@ -21,106 +21,33 @@
 <% actions ||= [] %>
 
 <div class="pt-2 mb-6">
-  <%# Row 1: Title %>
+  <%# Title %>
   <h1 class="text-4xl coustard-regular text-gray-900"><%= title %></h1>
 
-  <%# Row 2: Description on left, Action buttons on right %>
-  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mt-4">
-    <%# Left side: Description %>
-    <% if local_assigns[:description] && description.present? %>
-      <div class="flex-1 text-sm text-gray-600 max-w-2xl space-y-2">
-        <%= raw description %>
-      </div>
-    <% end %>
+  <%# Description %>
+  <% if local_assigns[:description] && description.present? %>
+    <div class="text-sm text-gray-600 max-w-3xl space-y-2 mt-4">
+      <%= raw description %>
+    </div>
+  <% end %>
 
-    <%# Right side: Action buttons %>
-    <% if actions.any? %>
-      <div class="flex-shrink-0">
-        <% if actions.length == 4 %>
-          <%# 4 buttons: 2x2 grid %>
-          <div class="grid grid-cols-2 gap-2">
-            <% actions.each do |action| %>
-              <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200", data: action[:data] do %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <%= render "shared/module_header_icon", icon: action[:icon] %>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900"><%= action[:text] %></div>
-                  <% if action[:description].present? %>
-                    <div class="text-xs text-gray-500"><%= action[:description] %></div>
-                  <% end %>
-                </div>
-              <% end %>
-            <% end %>
+  <%# Action buttons in 4-column grid %>
+  <% if actions.any? %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+      <% actions.each do |action| %>
+        <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200", data: action[:data] do %>
+          <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <%= render "shared/module_header_icon", icon: action[:icon] %>
           </div>
-        <% elsif actions.length == 3 %>
-          <%# 3 buttons: 1 on top spanning full width, 2 below %>
-          <div class="space-y-2">
-            <% action = actions.first %>
-            <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 w-full", data: action[:data] do %>
-              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                <%= render "shared/module_header_icon", icon: action[:icon] %>
-              </div>
-              <div class="flex-1">
-                <div class="font-medium text-gray-900"><%= action[:text] %></div>
-                <% if action[:description].present? %>
-                  <div class="text-xs text-gray-500"><%= action[:description] %></div>
-                <% end %>
-              </div>
-            <% end %>
-            <div class="grid grid-cols-2 gap-2">
-              <% actions.drop(1).each do |action| %>
-                <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200", data: action[:data] do %>
-                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                    <%= render "shared/module_header_icon", icon: action[:icon] %>
-                  </div>
-                  <div class="flex-1">
-                    <div class="font-medium text-gray-900"><%= action[:text] %></div>
-                    <% if action[:description].present? %>
-                      <div class="text-xs text-gray-500"><%= action[:description] %></div>
-                    <% end %>
-                  </div>
-                <% end %>
-              <% end %>
-            </div>
-          </div>
-        <% elsif actions.length == 2 %>
-          <%# 2 buttons: side by side %>
-          <div class="grid grid-cols-2 gap-2">
-            <% actions.each do |action| %>
-              <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200", data: action[:data] do %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <%= render "shared/module_header_icon", icon: action[:icon] %>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900"><%= action[:text] %></div>
-                  <% if action[:description].present? %>
-                    <div class="text-xs text-gray-500"><%= action[:description] %></div>
-                  <% end %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-        <% else %>
-          <%# 1 button or 5+ buttons: vertical stack %>
-          <div class="space-y-2">
-            <% actions.each do |action| %>
-              <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200", data: action[:data] do %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <%= render "shared/module_header_icon", icon: action[:icon] %>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900"><%= action[:text] %></div>
-                  <% if action[:description].present? %>
-                    <div class="text-xs text-gray-500"><%= action[:description] %></div>
-                  <% end %>
-                </div>
-              <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900"><%= action[:text] %></div>
+            <% if action[:description].present? %>
+              <div class="text-xs text-gray-500 truncate"><%= action[:description] %></div>
             <% end %>
           </div>
         <% end %>
-      </div>
-    <% end %>
-  </div>
+      <% end %>
+    </div>
+  <% end %>
 </div>
 

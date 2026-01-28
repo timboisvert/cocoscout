@@ -1,0 +1,271 @@
+<% content_for :title, "Advance Details" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path],
+      ["Advances", manage_money_advances_path],
+      [@production.name, manage_money_production_advances_path(@production)]
+    ],
+    text: "Advance Details",
+    links: []
+  } %>
+
+  <%# Person Card %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+    <div class="flex items-center gap-4">
+      <% headshot_variant = @advance.person.safe_headshot_variant(:small) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, class: "w-16 h-16 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 text-xl font-medium">
+          <%= @advance.person.initials %>
+        </div>
+      <% end %>
+      <div class="flex-1">
+        <h2 class="text-xl font-semibold text-gray-900"><%= @advance.person.name %></h2>
+        <p class="text-gray-500"><%= @advance.production.name %></p>
+      </div>
+      <div class="text-right space-y-1">
+        <% if @advance.unpaid? %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
+            Unpaid
+          </span>
+        <% elsif @advance.outstanding? %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+            Outstanding
+          </span>
+        <% elsif @advance.fully_repaid? %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            Fully Repaid
+          </span>
+        <% else %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+            Written Off
+          </span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Summary Boxes %>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Original Amount</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@advance.original_amount) %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Payment Status</div>
+      <% if @advance.paid? %>
+        <div class="text-2xl font-semibold text-green-600">Paid</div>
+        <div class="text-xs text-gray-500"><%= @advance.payment_method&.titleize %></div>
+      <% else %>
+        <div class="text-2xl font-semibold text-pink-600">Unpaid</div>
+      <% end %>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Remaining Balance</div>
+      <div class="text-2xl font-semibold <%= @advance.remaining_balance > 0 ? 'text-amber-600' : 'text-green-600' %>">
+        <%= number_to_currency(@advance.remaining_balance) %>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Repaid</div>
+      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@advance.repaid_amount) %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Type</div>
+      <div class="text-2xl font-semibold text-gray-900">
+        <%= @advance.advance_type == "show" ? "Show" : "General" %>
+      </div>
+    </div>
+  </div>
+
+  <%# Two Column Layout: Repayment List + Actions %>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <%# Main Content - Repayment History (2 cols) %>
+    <div class="lg:col-span-2 space-y-6">
+      <%# Details Card %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <%= render "shared/card_header", title: "Details" %>
+        <div class="p-4">
+          <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt class="text-gray-500">Issued</dt>
+              <dd class="font-medium text-gray-900"><%= @advance.issued_at.strftime("%B %-d, %Y at %l:%M %p") %></dd>
+            </div>
+            <div>
+              <dt class="text-gray-500">Issued By</dt>
+              <dd class="font-medium text-gray-900"><%= @advance.issued_by.email_address %></dd>
+            </div>
+            <% if @advance.paid? %>
+              <div>
+                <dt class="text-gray-500">Paid</dt>
+                <dd class="font-medium text-gray-900"><%= @advance.paid_at.strftime("%B %-d, %Y at %l:%M %p") %></dd>
+              </div>
+              <div>
+                <dt class="text-gray-500">Payment Method</dt>
+                <dd class="font-medium text-gray-900"><%= @advance.payment_method&.titleize || "Not specified" %></dd>
+              </div>
+              <% if @advance.paid_by %>
+                <div>
+                  <dt class="text-gray-500">Paid By</dt>
+                  <dd class="font-medium text-gray-900"><%= @advance.paid_by.email_address %></dd>
+                </div>
+              <% end %>
+            <% end %>
+            <% if @advance.show %>
+              <div>
+                <dt class="text-gray-500">For Show</dt>
+                <dd class="font-medium text-gray-900"><%= @advance.show.date_and_time.strftime("%B %-d, %Y") %> - <%= @advance.show.display_name %></dd>
+              </div>
+            <% end %>
+            <% if @advance.fully_repaid_at %>
+              <div>
+                <dt class="text-gray-500">Fully Repaid</dt>
+                <dd class="font-medium text-gray-900"><%= @advance.fully_repaid_at.strftime("%B %-d, %Y") %></dd>
+              </div>
+            <% end %>
+            <% if @advance.notes.present? %>
+              <div class="col-span-2">
+                <dt class="text-gray-500">Notes</dt>
+                <dd class="font-medium text-gray-900"><%= simple_format(@advance.notes) %></dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+      </div>
+
+      <%# Repayment History %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <%= render "shared/card_header", title: "Repayment History" %>
+        <% if @repayments.any? %>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Repaid</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <% @repayments.each do |repayment| %>
+                <tr>
+                  <td class="px-6 py-4 text-sm text-gray-900"><%= repayment.created_at.strftime("%B %-d, %Y") %></td>
+                  <td class="px-6 py-4 text-sm text-gray-600">
+                    <% if repayment.show_payout_line_item&.show %>
+                      <%= repayment.show_payout_line_item.show.date_and_time.strftime("%b %-d") %> -
+                      <%= repayment.show_payout_line_item.show.display_name %>
+                    <% else %>
+                      —
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-green-600 font-medium text-right">
+                    <%= number_to_currency(repayment.amount) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% else %>
+          <div class="p-6 text-center text-gray-500">
+            No repayments yet. Deductions will appear here as payouts are processed.
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Sidebar - Actions (1 col) %>
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Actions</h3>
+        <div class="space-y-3">
+          <% if @advance.unpaid? %>
+            <%# Unpaid - show Mark as Paid and Cancel options %>
+            <%= form_with url: manage_mark_paid_money_advance_path(@production, @advance), method: :post, data: { turbo: false }, class: "block" do %>
+              <button type="submit"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-pink-50 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Mark as Paid</div>
+                  <div class="text-xs text-gray-500">Record that you sent <%= number_to_currency(@advance.original_amount) %></div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
+
+            <%= form_with url: manage_destroy_money_advance_path(@production, @advance), method: :delete, data: { turbo_confirm: "Cancel this advance? This will remove it entirely." }, class: "block" do %>
+              <button type="submit"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Cancel Advance</div>
+                  <div class="text-xs text-gray-500">Remove this advance entirely</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
+          <% elsif @advance.outstanding? %>
+            <%# Paid but not recovered - show Write Off option %>
+            <%= form_with url: manage_write_off_money_advance_path(@production, @advance), method: :post, data: { turbo_confirm: "Write off the remaining #{number_to_currency(@advance.remaining_balance)}? This forgives the debt and cannot be undone." }, class: "block" do %>
+              <button type="submit"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Write Off Balance</div>
+                  <div class="text-xs text-gray-500">Forgive remaining <%= number_to_currency(@advance.remaining_balance) %></div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
+          <% elsif @advance.fully_repaid? %>
+            <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-green-600">Fully Repaid</div>
+                <div class="text-xs text-gray-500">No actions needed</div>
+              </div>
+            </div>
+          <% else %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-500">Written Off</div>
+                <div class="text-xs text-gray-500">No actions available</div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

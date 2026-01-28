@@ -51,7 +51,16 @@
   # Check for regular performers (non-guests) who need payment info
   regular_line_items = @show_payout.line_items.where(payee_type: "Person").where(is_guest: [false, nil])
   performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.payee.venmo_configured? && !li.payee.zelle_configured? }
-  has_performers_needing_payment = performers_without_payment.any?
+
+  # Check for people with unpaid advances who need payment info
+  show_advances_for_setup = @production.person_advances.for_show(@show).unpaid.includes(:person)
+  people_with_advances_needing_setup = show_advances_for_setup.select { |a| !a.person.venmo_configured? && !a.person.zelle_configured? }.map(&:person).uniq
+
+  # Combine: performers from payout + people with unpaid advances, without duplication
+  payout_people_ids = performers_without_payment.map { |li| li.payee&.id }.compact
+  all_people_needing_payment_setup = performers_without_payment.map(&:payee).compact +
+    people_with_advances_needing_setup.reject { |p| payout_people_ids.include?(p.id) }
+  has_people_needing_payment = all_people_needing_payment_setup.any?
 
   # Get list of people in production for add person dropdown
   production_people = @production.effective_talent_pool&.people&.order(:name) || []
@@ -192,14 +201,14 @@
         </div>
       <% end %>
 
-      <% if has_performers_needing_payment %>
+      <% if has_people_needing_payment %>
         <!-- Payment Setup Section (matches /manage/money/payouts style) -->
         <div class="bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
           <div class="flex items-center justify-between mb-3">
             <div>
               <h3 class="font-semibold text-gray-900">Payment Setup</h3>
               <p class="text-sm text-gray-500 mt-0.5">
-                <%= performers_without_payment.size %> performer<%= performers_without_payment.size == 1 ? " hasn't" : "s haven't" %> set up their payment info
+                <%= all_people_needing_payment_setup.size %> <%= all_people_needing_payment_setup.size == 1 ? "person hasn't" : "people haven't" %> set up their payment info
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -216,9 +225,9 @@
           </button>
           <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
             <div class="flex flex-wrap gap-1.5">
-              <% performers_without_payment.each do |li| %>
+              <% all_people_needing_payment_setup.each do |person| %>
                 <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                  <%= li.payee&.name %>
+                  <%= person.name %>
                 </span>
               <% end %>
             </div>
@@ -372,6 +381,302 @@
         <% end %>
       </div>
 
+      <!-- Advances for This Show -->
+      <% show_advances = @production.person_advances.for_show(@show).includes(:person).by_issued_at %>
+      <% if show_advances.any? %>
+        <%
+          unpaid_advances = show_advances.unpaid
+          paid_advances = show_advances.paid
+          total_amount = show_advances.sum(:original_amount)
+          unpaid_amount = unpaid_advances.sum(:original_amount)
+        %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5"
+             data-controller="advance-payments"
+             data-advance-payments-advances-value="<%= unpaid_advances.map { |a| { id: a.id, name: a.person.name, amount: a.original_amount, venmo: a.person.formatted_venmo_identifier } }.to_json %>">
+
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900">Advances</h3>
+            <span class="text-lg font-semibold text-pink-600">
+              <%= number_to_currency(total_amount) %>
+            </span>
+          </div>
+
+          <% if unpaid_advances.any? %>
+            <!-- Pay Advances Button -->
+            <div class="bg-pink-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="text-sm text-gray-700">
+                  <span class="font-semibold text-pink-600"><%= unpaid_advances.count %></span>
+                  advance<%= unpaid_advances.count == 1 ? '' : 's' %> to pay
+                  <span class="text-gray-500">•</span>
+                  <span class="font-medium"><%= number_to_currency(unpaid_amount) %></span>
+                </div>
+                <%= render "shared/button",
+                      text: "Pay Advances",
+                      variant: "primary",
+                      size: "small",
+                      icon: "currency-dollar",
+                      type: :button,
+                      data: { action: "click->advance-payments#openModal" } %>
+              </div>
+            </div>
+          <% elsif paid_advances.any? %>
+            <!-- All Paid Banner -->
+            <div class="bg-green-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center gap-2 text-green-700">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+                </svg>
+                <span class="font-medium">All advances paid!</span>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Advance List (grouped by person) -->
+          <%
+            # Group advances by person
+            advances_by_person = show_advances.group_by(&:person)
+          %>
+          <div class="space-y-2">
+            <% advances_by_person.each do |person, person_advances| %>
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% person_total = person_advances.sum(&:original_amount) %>
+              <% all_paid = person_advances.all?(&:paid?) %>
+              <% any_unpaid = person_advances.any?(&:unpaid?) %>
+
+              <div class="rounded-lg <%= all_paid ? 'bg-gray-50' : 'bg-white border border-gray-200' %>">
+                <%# Main person row %>
+                <div class="flex items-center gap-3 p-3">
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 text-sm font-medium">
+                      <%= person.initials %>
+                    </div>
+                  <% end %>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900"><%= person.name %></div>
+                    <div class="text-xs flex items-center gap-1">
+                      <% if person.venmo_configured? %>
+                        <span class="inline-flex items-center gap-0.5 text-blue-600">
+                          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
+                          </svg>
+                          <span><%= person.formatted_venmo_identifier %></span>
+                        </span>
+                      <% elsif person.zelle_configured? %>
+                        <span class="inline-flex items-center gap-0.5 text-purple-600">
+                          <svg class="w-3 h-3" viewBox="0 0 50 50" fill="currentColor">
+                            <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z"/>
+                          </svg>
+                          <span><%= person.zelle_identifier %></span>
+                        </span>
+                      <% else %>
+                        <span class="text-gray-400">(no payment method)</span>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <% if person_advances.size == 1 %>
+                    <%# Single advance - show amount and status on main row %>
+                    <% advance = person_advances.first %>
+                    <div class="text-right mr-2">
+                      <div class="font-semibold text-gray-900"><%= number_to_currency(advance.original_amount) %></div>
+                      <% if advance.paid? %>
+                        <div class="text-xs text-green-600 flex items-center justify-end gap-1">
+                          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                          </svg>
+                          Paid via <%= advance.payment_method&.titleize %>
+                        </div>
+                      <% else %>
+                        <div class="text-xs text-gray-500">Not yet paid</div>
+                      <% end %>
+                    </div>
+
+                    <%# Delete button for single advance - only if unpaid %>
+                    <% if advance.unpaid? %>
+                      <%= form_with url: manage_destroy_money_advance_path(@production, advance),
+                                    method: :delete,
+                                    data: { turbo_confirm: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?" },
+                                    class: "inline" do %>
+                        <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      <% end %>
+                    <% end %>
+                  <% else %>
+                    <%# Multiple advances - show total on main row %>
+                    <div class="text-right">
+                      <div class="font-semibold text-gray-900"><%= number_to_currency(person_total) %></div>
+                      <div class="text-xs text-gray-500"><%= person_advances.size %> advances</div>
+                    </div>
+                  <% end %>
+                </div>
+
+                <% if person_advances.size > 1 %>
+                  <%# Multiple advances - show each one in a sub-list %>
+                  <div class="border-t border-gray-100 px-3 pb-2 pt-1 ml-13 space-y-1">
+                    <% person_advances.each do |advance| %>
+                      <div class="flex items-center gap-2 py-1.5 pl-10">
+                        <div class="flex-1 flex items-center gap-2">
+                          <span class="text-sm font-medium text-gray-700"><%= number_to_currency(advance.original_amount) %></span>
+                          <% if advance.paid? %>
+                            <span class="inline-flex items-center gap-1 text-xs text-green-600">
+                              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                              </svg>
+                              Paid via <%= advance.payment_method&.titleize %>
+                            </span>
+                          <% else %>
+                            <span class="text-xs text-gray-400">Not yet paid</span>
+                          <% end %>
+                          <% if advance.notes.present? %>
+                            <span class="text-xs text-gray-400 italic"><%= advance.notes %></span>
+                          <% end %>
+                        </div>
+
+                        <%# Delete button for each advance - only if unpaid %>
+                        <% if advance.unpaid? %>
+                          <%= form_with url: manage_destroy_money_advance_path(@production, advance),
+                                        method: :delete,
+                                        data: { turbo_confirm: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?" },
+                                        class: "inline" do %>
+                            <button type="submit" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          <% end %>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Pay Advances Modal (walkthrough style) -->
+          <div data-advance-payments-target="modal"
+               class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+               data-action="click->advance-payments#closeOnBackdrop">
+          <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-white">Pay Advances</h3>
+                <button type="button"
+                        data-action="click->advance-payments#closeModal"
+                        class="text-white/80 hover:text-white">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <!-- Progress -->
+              <div class="mt-3 flex items-center gap-2">
+                <div class="flex-1 h-1.5 bg-white/30 rounded-full overflow-hidden">
+                  <div data-advance-payments-target="progressBar" class="h-full bg-white rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span data-advance-payments-target="progressText" class="text-sm text-white/90">0 of <%= unpaid_advances.count %></span>
+              </div>
+            </div>
+
+            <!-- Current Person Card -->
+            <div class="p-6">
+              <% unpaid_advances.each_with_index do |advance, idx| %>
+                <div data-advance-payments-target="card"
+                     data-advance-id="<%= advance.id %>"
+                     class="<%= idx == 0 ? '' : 'hidden' %>">
+                  <% headshot_variant = advance.person.safe_headshot_variant(:thumb) %>
+
+                  <div class="flex items-center gap-4 mb-6">
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: advance.person.name, class: "w-16 h-16 rounded-xl object-cover" %>
+                    <% else %>
+                      <div class="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 text-xl font-medium">
+                        <%= advance.person.initials %>
+                      </div>
+                    <% end %>
+                    <div>
+                      <div class="text-xl font-semibold text-gray-900"><%= advance.person.name %></div>
+                      <% if advance.person.formatted_venmo_identifier.present? %>
+                        <div class="text-gray-500"><%= advance.person.formatted_venmo_identifier %></div>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <div class="text-center mb-6">
+                    <div class="text-4xl font-bold text-pink-600"><%= number_to_currency(advance.original_amount) %></div>
+                    <div class="text-gray-500 mt-1">Advance amount</div>
+                  </div>
+
+                  <% if advance.person.venmo_configured? %>
+                    <a href="<%= advance.person.venmo_payment_url(advance.original_amount, "Advance for #{@show.secondary_name || @show.date_and_time.strftime('%b %-d')}") %>"
+                       target="_blank"
+                       class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#008CFF] text-white rounded-lg hover:bg-[#0074D4] transition-colors font-medium mb-3">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-3.75 5.25l-1.5 7.5h-2.25l1.5-7.5h2.25zm-6 0v3h1.5v1.5h-1.5v3H7.5v-7.5h2.25z"/>
+                      </svg>
+                      Open in Venmo
+                    </a>
+                  <% end %>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <% PersonAdvance::PAYMENT_METHODS.each do |method| %>
+                      <%= form_with url: manage_mark_paid_money_advance_path(@production, advance), method: :post do %>
+                        <input type="hidden" name="payment_method" value="<%= method %>">
+                        <%= render "shared/button",
+                              text: method.titleize,
+                              variant: "secondary",
+                              size: "small",
+                              classes: "w-full",
+                              type: :submit,
+                              data: { action: "click->advance-payments#markPaid" } %>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                  <%= render "shared/button",
+                        text: "Skip for now",
+                        variant: "ghost",
+                        size: "small",
+                        classes: "w-full mt-3",
+                        type: :button,
+                        data: { action: "click->advance-payments#skipPerson" } %>
+                </div>
+              <% end %>
+
+              <!-- Done State -->
+              <div data-advance-payments-target="doneCard" class="hidden text-center py-8">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="text-xl font-semibold text-gray-900 mb-2">All done!</div>
+                <p class="text-gray-500 mb-6">You've gone through all the advances.</p>
+                <%= render "shared/button",
+                      text: "Close",
+                      variant: "primary",
+                      size: "medium",
+                      type: :button,
+                      data: { action: "click->advance-payments#closeModal" } %>
+              </div>
+            </div>
+          </div>
+        </div>
+        <%# End of bg-white card with advance-payments controller %>
+      </div>
+      <% end %>
+
+      <%# Only show Payout Breakdown for past shows or if already calculated %>
+      <% show_payout_breakdown = is_calculated || @show.date_and_time < Time.current %>
+      <% if show_payout_breakdown %>
       <!-- Payout Breakdown -->
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="flex items-center justify-between mb-4">
@@ -478,6 +783,30 @@
                               <% end %>
                             <% end %>
                           </div>
+                          <%# Show advance information for this person %>
+                          <% if item.payee_type == "Person" && @advances_by_person[item.payee_id]&.any? %>
+                            <div class="mt-1 flex flex-wrap gap-1">
+                              <% @advances_by_person[item.payee_id].each do |advance| %>
+                                <% if advance.unpaid? %>
+                                  <%= link_to manage_money_advance_path(advance.production, advance),
+                                      class: "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-700 hover:bg-pink-200" do %>
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1"/>
+                                    </svg>
+                                    Advance <%= number_to_currency(advance.original_amount) %> unpaid
+                                  <% end %>
+                                <% else %>
+                                  <%= link_to manage_money_advance_path(advance.production, advance),
+                                      class: "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 hover:bg-amber-200" do %>
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    −<%= number_to_currency(advance.remaining_balance) %> advance
+                                  <% end %>
+                                <% end %>
+                              <% end %>
+                            </div>
+                          <% end %>
                         </div>
                       </div>
                     </td>
@@ -816,6 +1145,7 @@
           </div>
         <% end %>
       </div>
+      <% end %>
 
     </div>
 
@@ -933,6 +1263,28 @@
               </button>
             <% end %>
 
+            <%# Reset Calculation - for future shows where calculation was accidental %>
+            <% if @show.date_and_time >= Time.current %>
+              <%= form_with url: manage_reset_calculation_money_show_payout_path(@show), method: :delete, local: true, class: "block",
+                            data: { turbo_confirm: "Are you sure? This will delete all payout line items and reset the calculation. Advances will not be affected." } do %>
+                <button type="submit"
+                        class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                  <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-900">Reset Calculation</div>
+                    <div class="text-xs text-gray-500">Clear line items, keep advances</div>
+                  </div>
+                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              <% end %>
+            <% end %>
+
             <button type="button"
                     data-action="click->payment-actions#showAddPersonModal"
                     class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
@@ -949,6 +1301,26 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </button>
+
+            <%# Issue Advances - only for future shows %>
+            <% if @show.date_and_time >= Time.current %>
+              <button type="button"
+                      data-action="click->payment-actions#showIssueAdvancesModal"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Issue Advances</div>
+                  <div class="text-xs text-gray-500">Give pre-show payments to cast</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
           <% elsif has_financials %>
             <%# Ready to calculate %>
             <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
@@ -962,6 +1334,26 @@
                 <div class="flex-1">
                   <div class="font-medium text-gray-900">Calculate Payouts</div>
                   <div class="text-xs text-gray-500">Generate payout amounts from financials</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
+
+            <%# Issue Advances - for future shows %>
+            <% if @show.date_and_time >= Time.current %>
+              <button type="button"
+                      data-action="click->payment-actions#showIssueAdvancesModal"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Issue Advances</div>
+                  <div class="text-xs text-gray-500">Give pre-show payments to cast</div>
                 </div>
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -983,6 +1375,26 @@
               <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
+            <% end %>
+
+            <%# Issue Advances - for future shows %>
+            <% if @show.date_and_time >= Time.current %>
+              <button type="button"
+                      data-action="click->payment-actions#showIssueAdvancesModal"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Issue Advances</div>
+                  <div class="text-xs text-gray-500">Give pre-show payments to cast</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
             <% end %>
           <% end %>
         </div>
@@ -1114,6 +1526,25 @@
         </div>
       </div>
     <% end %>
+
+    <%# Issue Advances Modal %>
+    <%
+      # Get cast members for advances modal
+      cast_assignments = @show.show_person_role_assignments.includes(:assignable).where(assignable_type: "Person")
+      advance_cast_members = cast_assignments.map(&:assignable).compact.uniq
+
+      # Get existing advances for these cast members for this show (grouped by person_id)
+      # A person can have multiple advances, so we group them into arrays
+      existing_show_advances = @production.person_advances
+        .for_show(@show)
+        .not_settled
+        .where(person_id: advance_cast_members.map(&:id))
+        .group_by(&:person_id)
+    %>
+    <%= render "manage/show_payouts/issue_advances_modal",
+               show: @show,
+               cast_members: advance_cast_members,
+               existing_advances: existing_show_advances %>
 
   </div>
 </div>

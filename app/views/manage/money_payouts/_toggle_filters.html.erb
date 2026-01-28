@@ -1,0 +1,12 @@
+<div class="flex items-center gap-4 ml-auto">
+  <%= render "shared/filters/toggle_filter",
+    label: "Hide Non-revenue Events",
+    active: hide_non_revenue,
+    toggle_action: "click->money-filter#toggle"
+  %>
+  <%= render "shared/filters/toggle_filter",
+    label: "Hide Future Events",
+    active: hide_future_events,
+    toggle_action: "click->money-filter#toggleFutureEvents"
+  %>
+</div>

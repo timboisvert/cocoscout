@@ -22,6 +22,8 @@ module Manage
         end
       else
         # All productions view - show list of productions with summaries
+        return redirect_to manage_path unless Current.organization
+
         @productions = Current.organization.productions.order(:name)
         @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
         @production_summaries = @productions.map do |production|
@@ -67,6 +69,8 @@ module Manage
     private
 
     def set_production
+      return unless Current.organization
+
       if params[:production_id].present?
         @production = Current.organization.productions.find_by(id: params[:production_id])
       end

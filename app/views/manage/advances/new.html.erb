@@ -1,0 +1,120 @@
+<% content_for :title, "Issue Advance - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Advances", manage_money_advances_path],
+      [@production.name, manage_money_production_advances_path(@production)]
+    ],
+    text: "Issue Advance",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= form_with model: @advance, url: manage_create_money_production_advance_path(@production), class: "space-y-6" do |form| %>
+      <% if @advance.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <ul class="list-disc list-inside text-red-700 text-sm">
+            <% @advance.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <%# Person Selection %>
+      <div>
+        <%= form.label :person_id, "Person", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <% if @people.any? %>
+          <%= form.select :person_id,
+              options_for_select(@people.map { |p| [p.name, p.id] }, @advance.person_id),
+              { include_blank: "Select a person..." },
+              class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        <% else %>
+          <p class="text-sm text-gray-500">No people in the talent pool. Add people to the production's talent pool first.</p>
+        <% end %>
+      </div>
+
+      <%# Advance Type %>
+      <div>
+        <%= form.label :advance_type, "Advance Type", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <div class="space-y-2">
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <%= form.radio_button :advance_type, "show", class: "mt-0.5", data: { action: "change->advance-form#toggleShowSelect" } %>
+            <div>
+              <div class="font-medium text-gray-900">For a Specific Show</div>
+              <div class="text-sm text-gray-500">Advance will be repaid from this show's payout first</div>
+            </div>
+          </label>
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <%= form.radio_button :advance_type, "general", class: "mt-0.5", data: { action: "change->advance-form#toggleShowSelect" } %>
+            <div>
+              <div class="font-medium text-gray-900">General Advance</div>
+              <div class="text-sm text-gray-500">Advance will be repaid from any future payout</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <%# Show Selection (for show-specific advances) %>
+      <div id="show-select-container" class="<%= @advance.advance_type == 'general' ? 'hidden' : '' %>">
+        <%= form.label :show_id, "Show", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <% if @upcoming_shows.any? %>
+          <%= form.select :show_id,
+              options_for_select(@upcoming_shows.map { |s| ["#{s.date_and_time.strftime('%b %-d, %Y')} - #{s.display_name}", s.id] }, @advance.show_id),
+              { include_blank: "Select a show..." },
+              class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        <% else %>
+          <p class="text-sm text-gray-500">No upcoming shows scheduled.</p>
+        <% end %>
+      </div>
+
+      <%# Amount %>
+      <div>
+        <%= form.label :original_amount, "Amount", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span class="text-gray-500">$</span>
+          </div>
+          <%= form.number_field :original_amount,
+              step: 0.01,
+              min: 0.01,
+              placeholder: "0.00",
+              class: "block w-full pl-7 rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+      </div>
+
+      <%# Notes %>
+      <div>
+        <%= form.label :notes, "Notes (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_area :notes,
+            rows: 3,
+            placeholder: "Any notes about this advance...",
+            class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+
+      <%# Submit %>
+      <div class="flex items-center gap-3">
+        <%= render "shared/button", type: "submit", text: "Issue Advance", variant: "primary" %>
+        <%= link_to "Cancel", manage_money_production_advances_path(@production), class: "text-gray-600 hover:text-gray-800" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  // Simple toggle for show select
+  document.querySelectorAll('input[name="person_advance[advance_type]"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const container = document.getElementById('show-select-container');
+      if (e.target.value === 'show') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    });
+  });
+</script>

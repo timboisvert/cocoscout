@@ -44,6 +44,11 @@ class Person < ApplicationRecord
   has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
   has_many :given_shoutouts, class_name: "Shoutout", foreign_key: :author_id, dependent: :destroy
 
+  # Advances and payroll
+  has_many :person_advances, dependent: :destroy
+  has_many :show_advance_waivers, dependent: :destroy
+  has_many :payroll_line_items, dependent: :destroy
+
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_resumes, as: :profileable, dependent: :destroy
@@ -368,6 +373,21 @@ class Person < ApplicationRecord
     else
       venmo_identifier
     end
+  end
+
+  # Generate Venmo payment URL for mobile deep linking
+  def venmo_payment_url(amount, note = nil)
+    return nil unless venmo_configured? && venmo_identifier_type == "USER_HANDLE"
+
+    username = venmo_identifier.delete("@")
+    params = {
+      txn: "pay",
+      recipients: username,
+      amount: amount.to_f,
+      note: note
+    }.compact
+
+    "venmo://paycharge?#{params.to_query}"
   end
 
   # Zelle payout methods

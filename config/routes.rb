@@ -819,6 +819,35 @@ Rails.application.routes.draw do
     get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"
     post "money/payouts/:production_id/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"
 
+    # Advances - production-level
+    get "money/advances", to: "advances#index", as: "money_advances"
+    get "money/advances/:production_id", to: "advances#index", as: "money_production_advances"
+    get "money/advances/:production_id/new", to: "advances#new", as: "new_money_production_advance"
+    post "money/advances/:production_id", to: "advances#create", as: "create_money_production_advance"
+    get "money/advances/:production_id/:id", to: "advances#show", as: "money_advance"
+    patch "money/advances/:production_id/:id", to: "advances#update"
+    delete "money/advances/:production_id/:id", to: "advances#destroy", as: "destroy_money_advance"
+    post "money/advances/:production_id/:id/write_off", to: "advances#write_off", as: "write_off_money_advance"
+    post "money/advances/:production_id/:id/mark_paid", to: "advances#mark_paid", as: "mark_paid_money_advance"
+    delete "money/advances/:production_id/:id/mark_paid", to: "advances#unmark_paid", as: "unmark_paid_money_advance"
+    # Advance waivers
+    post "money/advances/:production_id/waiver", to: "advances#create_waiver", as: "create_money_advance_waiver"
+    delete "money/advances/:production_id/waiver/:id", to: "advances#destroy_waiver", as: "destroy_money_advance_waiver"
+
+    # Payroll runs - organization-level (spans all productions)
+    get "money/payroll", to: "payroll#index", as: "money_payroll"
+    get "money/payroll/settings", to: "payroll#settings", as: "money_payroll_settings"
+    patch "money/payroll/settings", to: "payroll#update_settings"
+    get "money/payroll/new", to: "payroll#new_run", as: "new_money_payroll_run"
+    post "money/payroll", to: "payroll#create_run", as: "create_money_payroll_run"
+    get "money/payroll/runs/:id", to: "payroll#show_run", as: "money_payroll_run"
+    post "money/payroll/runs/:id/start", to: "payroll#start_run", as: "start_money_payroll_run"
+    post "money/payroll/runs/:id/cancel", to: "payroll#cancel_run", as: "cancel_money_payroll_run"
+    post "money/payroll/runs/:id/complete", to: "payroll#complete_run", as: "complete_money_payroll_run"
+    # Payroll line items
+    post "money/payroll/runs/:run_id/line_items/:id/pay", to: "payroll#mark_line_item_paid", as: "pay_money_payroll_line_item"
+    post "money/payroll/runs/:run_id/line_items/:id/unpay", to: "payroll#unmark_line_item_paid", as: "unpay_money_payroll_line_item"
+
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
     get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
@@ -847,50 +876,57 @@ Rails.application.routes.draw do
     # Ticket fee templates
     resources :ticket_fee_templates, only: [ :index, :create, :update, :destroy ], path: "money/fees"
 
-    # Ticketing integrations - nested under organizations
-    scope "organizations/:organization_id" do
-      # Ticketing provider wizard (connect new platform)
-      get  "ticketing/wizard",             to: "ticketing_provider_wizard#platform",         as: "ticketing_wizard"
-      post "ticketing/wizard/platform",    to: "ticketing_provider_wizard#save_platform",    as: "ticketing_wizard_save_platform"
-      get  "ticketing/wizard/credentials", to: "ticketing_provider_wizard#credentials",      as: "ticketing_wizard_credentials"
-      post "ticketing/wizard/credentials", to: "ticketing_provider_wizard#save_credentials", as: "ticketing_wizard_save_credentials"
-      get  "ticketing/wizard/test",        to: "ticketing_provider_wizard#test",             as: "ticketing_wizard_test"
-      post "ticketing/wizard/retry",       to: "ticketing_provider_wizard#retry_test",       as: "ticketing_wizard_retry"
-      get  "ticketing/wizard/review",      to: "ticketing_provider_wizard#review",           as: "ticketing_wizard_review"
-      post "ticketing/wizard/create",      to: "ticketing_provider_wizard#create_provider",  as: "ticketing_wizard_create"
-      delete "ticketing/wizard/cancel",    to: "ticketing_provider_wizard#cancel",           as: "ticketing_wizard_cancel"
+    # ===========================================
+    # TICKETING SECTION (mirrors Money section structure)
+    # ===========================================
 
-      # Ticketing provider management (existing connections)
-      get    "ticketing/:id",       to: "ticketing_providers#show",    as: "ticketing_provider"
-      get    "ticketing/:id/edit",  to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
-      patch  "ticketing/:id",       to: "ticketing_providers#update"
-      delete "ticketing/:id",       to: "ticketing_providers#destroy"
-      post   "ticketing/:id/test",  to: "ticketing_providers#test",    as: "test_ticketing_provider"
-      post   "ticketing/:id/sync",  to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
-    end
+    # Main ticketing hub (organization level)
+    get "ticketing", to: "ticketing#index", as: "ticketing_index"
 
-    # Ticketing production links - production level
-    scope "money/financials/:production_id" do
-      get  "ticketing",                   to: "ticketing_production_links#index",       as: "money_ticketing_production_links"
-      get  "ticketing/new",               to: "ticketing_production_links#new",         as: "new_money_ticketing_production_link"
-      post "ticketing",                   to: "ticketing_production_links#create"
-      get  "ticketing/:id",               to: "ticketing_production_links#show",        as: "money_ticketing_production_link"
-      get  "ticketing/:id/edit",          to: "ticketing_production_links#edit",        as: "edit_money_ticketing_production_link"
-      patch "ticketing/:id",              to: "ticketing_production_links#update"
-      delete "ticketing/:id",             to: "ticketing_production_links#destroy"
-      post "ticketing/:id/sync",          to: "ticketing_production_links#sync",        as: "sync_money_ticketing_production_link"
-      get  "ticketing/:id/match",         to: "ticketing_production_links#match",       as: "match_money_ticketing_production_link"
-      post "ticketing/:id/apply_matches", to: "ticketing_production_links#apply_matches", as: "apply_matches_money_ticketing_production_link"
-    end
+    # Provider management
+    get  "ticketing/providers",          to: "ticketing_providers#index",   as: "ticketing_providers"
+    get  "ticketing/providers/new",      to: "ticketing_provider_wizard#platform", as: "ticketing_providers_new"
+    get  "ticketing/providers/:id",      to: "ticketing_providers#show",    as: "ticketing_provider"
+    get  "ticketing/providers/:id/edit", to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
+    patch "ticketing/providers/:id",     to: "ticketing_providers#update"
+    delete "ticketing/providers/:id",    to: "ticketing_providers#destroy"
+    post "ticketing/providers/:id/test", to: "ticketing_providers#test",    as: "test_ticketing_provider"
+    post "ticketing/providers/:id/sync", to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
 
-    # Ticketing pending events - events that need manual linking
-    resources :ticketing_pending_events, only: [ :index, :show ], path: "ticketing/pending" do
-      member do
-        post :link
-        post :dismiss
-      end
+    # Provider wizard (connect new platform)
+    get  "ticketing/wizard",             to: "ticketing_provider_wizard#platform",         as: "ticketing_wizard"
+    post "ticketing/wizard/platform",    to: "ticketing_provider_wizard#save_platform",    as: "ticketing_wizard_save_platform"
+    get  "ticketing/wizard/credentials", to: "ticketing_provider_wizard#credentials",      as: "ticketing_wizard_credentials"
+    post "ticketing/wizard/credentials", to: "ticketing_provider_wizard#save_credentials", as: "ticketing_wizard_save_credentials"
+    get  "ticketing/wizard/test",        to: "ticketing_provider_wizard#test",             as: "ticketing_wizard_test"
+    post "ticketing/wizard/retry",       to: "ticketing_provider_wizard#retry_test",       as: "ticketing_wizard_retry"
+    get  "ticketing/wizard/review",      to: "ticketing_provider_wizard#review",           as: "ticketing_wizard_review"
+    post "ticketing/wizard/create",      to: "ticketing_provider_wizard#create_provider",  as: "ticketing_wizard_create"
+    delete "ticketing/wizard/cancel",    to: "ticketing_provider_wizard#cancel",           as: "ticketing_wizard_cancel"
+
+    # Pending events (events that need manual linking)
+    get  "ticketing/pending",     to: "ticketing_pending_events#index", as: "ticketing_pending_events"
+    get  "ticketing/pending/:id", to: "ticketing_pending_events#show",  as: "ticketing_pending_event"
+    post "ticketing/pending/:id/link",    to: "ticketing_pending_events#link",    as: "link_ticketing_pending_event"
+    post "ticketing/pending/:id/dismiss", to: "ticketing_pending_events#dismiss", as: "dismiss_ticketing_pending_event"
+    post "ticketing/sync/:provider_id",   to: "ticketing_pending_events#sync_now", as: "ticketing_sync_now"
+
+    # Production-level ticketing (like /money/financials/:production_id)
+    get "ticketing/:production_id", to: "ticketing_productions#show", as: "ticketing_production"
+
+    # Production links (events linked to this production)
+    scope "ticketing/:production_id" do
+      get  "links",                   to: "ticketing_production_links#index",         as: "ticketing_production_links"
+      get  "links/new",               to: "ticketing_production_links#new",           as: "new_ticketing_production_link"
+      post "links",                   to: "ticketing_production_links#create",        as: "create_ticketing_production_link"
+      get  "links/:id",               to: "ticketing_production_links#show",          as: "ticketing_production_link"
+      get  "links/:id/edit",          to: "ticketing_production_links#edit",          as: "edit_ticketing_production_link"
+      patch "links/:id",              to: "ticketing_production_links#update",        as: "update_ticketing_production_link"
+      delete "links/:id",             to: "ticketing_production_links#destroy",       as: "destroy_ticketing_production_link"
+      post "links/:id/sync",          to: "ticketing_production_links#sync",          as: "sync_ticketing_production_link"
+      get  "links/:id/match",         to: "ticketing_production_links#match",         as: "match_ticketing_production_link"
+      post "links/:id/apply_matches", to: "ticketing_production_links#apply_matches", as: "apply_matches_ticketing_production_link"
     end
-    post "ticketing/sync/:provider_id", to: "ticketing_pending_events#sync_now", as: "ticketing_sync_now"
 
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses
@@ -983,6 +1019,10 @@ Rails.application.routes.draw do
     delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
     post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
     post "money/shows/:id/payouts/update_guest_payments", to: "show_payouts#update_guest_payments", as: "update_guest_payments_money_show_payout"
+    # Show advances - issue advances to cast members for a show
+    post "money/shows/:id/payouts/issue_advances", to: "show_payouts#issue_advances", as: "issue_advances_money_show_payout"
+    # Reset calculation - clear calculated state and line items
+    delete "money/shows/:id/payouts/reset_calculation", to: "show_payouts#reset_calculation", as: "reset_calculation_money_show_payout"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
     # resources :email_groups, only: %i[create update destroy] (moved to communications)

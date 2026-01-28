@@ -13,7 +13,7 @@
     text: @production ? @production.name : "Financials",
     links: @production && !@is_third_party ? [
       { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) },
-      { text: "Ticketing", path: manage_money_ticketing_production_links_path(@production) }
+      { text: "Ticketing", path: manage_ticketing_production_path(@production) }
     ] : (@is_third_party && @contract ? [
       { text: "View Contract", path: manage_contract_path(@contract) }
     ] : [])

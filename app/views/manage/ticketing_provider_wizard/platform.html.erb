@@ -2,7 +2,7 @@
   <h2 class="text-xl font-semibold text-gray-900 mb-2">Select a Ticketing Platform</h2>
   <p class="text-sm text-gray-600 mb-6">Choose the ticketing platform you want to connect to sync your ticket sales data.</p>
 
-  <%= form_with url: manage_ticketing_wizard_save_platform_path(@organization), method: :post, class: "space-y-4" do |f| %>
+  <%= form_with url: manage_ticketing_wizard_save_platform_path, method: :post, class: "space-y-4" do |f| %>
     <div class="space-y-3">
       <% @provider_types.each do |provider| %>
         <% is_available = provider[:status] == "available" %>

@@ -1,15 +1,15 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
-    ["Organizations", manage_organizations_path],
-    [@organization.name, manage_organization_path(@organization, anchor: "tab-4")],
-    [@ticketing_provider.name, manage_ticketing_provider_path(@organization, @ticketing_provider)]
+    ["Ticketing", manage_ticketing_index_path],
+    ["Providers", manage_ticketing_providers_path],
+    [@ticketing_provider.name, manage_ticketing_provider_path(@ticketing_provider)]
   ],
   text: "Edit Connection"
 } %>
 
 <div class="max-w-2xl mx-auto px-4 py-6">
   <div class="bg-white shadow rounded-lg p-6">
-    <%= form_with model: @ticketing_provider, url: manage_ticketing_provider_path(@organization, @ticketing_provider), method: :patch, class: "space-y-6" do |f| %>
+    <%= form_with model: @ticketing_provider, url: manage_ticketing_provider_path(@ticketing_provider), method: :patch, class: "space-y-6" do |f| %>
       <% if @ticketing_provider.errors.any? %>
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
           <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
@@ -67,7 +67,7 @@
       </div>
 
       <div class="flex items-center justify-end space-x-3 pt-4 border-t">
-        <%= link_to "Cancel", manage_ticketing_provider_path(@organization, @ticketing_provider), class: "text-sm text-gray-500 hover:text-gray-700" %>
+        <%= link_to "Cancel", manage_ticketing_provider_path(@ticketing_provider), class: "text-sm text-gray-500 hover:text-gray-700" %>
         <%= f.submit "Save Changes", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer" %>
       </div>
     <% end %>

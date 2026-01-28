@@ -60,6 +60,10 @@ class Show < ApplicationRecord
   # Attendance tracking
   has_many :show_attendance_records, dependent: :destroy
 
+  # Advances
+  has_many :person_advances, dependent: :destroy
+  has_many :show_advance_waivers, dependent: :destroy
+
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
 

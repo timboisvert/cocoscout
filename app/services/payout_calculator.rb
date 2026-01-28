@@ -157,17 +157,22 @@ class PayoutCalculator
         }
       end
 
-      # Clear existing line items
+      # Clear existing line items (also clears advance recoveries via dependent: :destroy)
       payout.line_items.destroy_all
 
       # Create line items for regular performers
       adjusted_line_items.each do |item|
-        payout.line_items.create!(
+        line_item = payout.line_items.create!(
           payee: item[:payee],
           amount: item[:amount],
           shares: item[:shares],
           calculation_details: item[:calculation_details]
         )
+
+        # Apply advance deductions for Person payees
+        if item[:payee].is_a?(Person)
+          apply_advance_deductions(line_item)
+        end
       end
 
       # Create line items for guests (restoring payment info if it existed)
@@ -513,6 +518,42 @@ class PayoutCalculator
           breakdown: [ "Guest performer: #{format_currency(amount)}" ]
         }
       }
+    end
+  end
+
+  # Apply outstanding advance deductions to a line item
+  # Priority order:
+  # 1. Show-specific advances for this show
+  # 2. General advances (oldest first)
+  def apply_advance_deductions(line_item)
+    return unless line_item.payee.is_a?(Person)
+
+    person = line_item.payee
+    production = @show.production
+    remaining_payout = line_item.amount
+    total_deduction = 0
+
+    # Get outstanding advances for this person in this production
+    # Prioritize show-specific advances for this show, then general advances
+    advances = person.person_advances
+      .where(production: production)
+      .outstanding
+      .order(
+        Arel.sql("CASE WHEN show_id = #{@show.id} THEN 0 ELSE 1 END"),  # This show first
+        :issued_at  # Then oldest first
+      )
+
+    advances.each do |advance|
+      break if remaining_payout <= 0
+
+      recovery_amount = advance.recover!(remaining_payout, line_item)
+      total_deduction += recovery_amount
+      remaining_payout -= recovery_amount
+    end
+
+    # Update line item with deduction amount
+    if total_deduction > 0
+      line_item.update!(advance_deduction: total_deduction)
     end
   end
 

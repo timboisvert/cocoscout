@@ -7,8 +7,9 @@
 
   Panels:
     1. Date/Time box + Show info
-    2. Payouts panel
-    3. Status panel
+    2. Advances panel (if any)
+    3. Payouts panel
+    4. Status panel
 %>
 
 <%
@@ -39,6 +40,14 @@
   total_payout = payout&.total_payout || 0
   line_items_count = payout&.line_items&.count || 0
   paid_count = payout&.line_items&.already_paid&.count || 0
+
+  # Load advances for this show
+  show_advances = production.person_advances.for_show(show).outstanding
+  unpaid_advances = show_advances.unpaid
+  outstanding_advances = show_advances.paid
+  unpaid_amount = unpaid_advances.sum(:original_amount)
+  outstanding_amount = outstanding_advances.sum(:remaining_balance)
+  has_advances = unpaid_advances.any? || outstanding_advances.any?
 %>
 
 <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= 'opacity-60' if is_canceled %>"
@@ -77,9 +86,20 @@
         </div>
       </div>
 
-      <%# Panel 2: Payouts %>
+      <%# Panel 2: Payouts (with Advances if any) %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payouts</div>
+        <% if has_advances %>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Advances</div>
+          <div class="text-xs space-y-0.5 mb-2">
+            <% if unpaid_advances.any? %>
+              <div class="text-pink-600 font-medium"><%= number_to_currency(unpaid_amount) %> Unpaid</div>
+            <% end %>
+            <% if outstanding_advances.any? %>
+              <div class="text-amber-600 font-medium"><%= number_to_currency(outstanding_amount) %> Paid</div>
+            <% end %>
+          </div>
+        <% end %>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Payouts</div>
         <% if payout&.calculated_at.present? %>
           <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_payout) %></div>
           <div class="text-xs text-gray-500"><%= paid_count %>/<%= line_items_count %> paid</div>

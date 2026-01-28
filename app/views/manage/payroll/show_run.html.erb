@@ -1,0 +1,185 @@
+<% content_for :title, "Payroll Run" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path],
+      ["Payroll", manage_money_payroll_path]
+    ],
+    text: "Payroll Run: #{@payroll_run.period_start.strftime('%b %-d')} - #{@payroll_run.period_end.strftime('%b %-d, %Y')}",
+    links: []
+  } %>
+
+  <div class="max-w-5xl">
+    <%# Status Header %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <% case @payroll_run.status %>
+          <% when "pending" %>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+              Pending
+            </span>
+          <% when "processing" %>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
+              Processing
+            </span>
+          <% when "completed" %>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
+              Completed
+            </span>
+          <% when "cancelled" %>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+              Cancelled
+            </span>
+          <% end %>
+          <div class="text-gray-600">
+            <span class="font-medium text-gray-900"><%= @line_items.count %></span> people •
+            <span class="font-medium text-gray-900"><%= number_to_currency(@payroll_run.calculated_total_amount) %></span> total
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <% if @payroll_run.pending? %>
+            <%= form_with url: manage_start_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline" do %>
+              <%= render "shared/button", text: "Start Processing", variant: "primary", size: "medium", type: :submit %>
+            <% end %>
+            <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Cancel this payroll run? The line items will be available for future runs." } do %>
+              <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
+            <% end %>
+          <% elsif @payroll_run.processing? %>
+            <% if @paid_count == @line_items.count %>
+              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline" do %>
+                <%= render "shared/button", text: "Mark Complete", variant: "primary", size: "medium", type: :submit %>
+              <% end %>
+            <% else %>
+              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Mark complete with #{@unpaid_count} unpaid items? Unpaid items will be available for future runs." } do %>
+                <%= render "shared/button", text: "Mark Complete", variant: "outline", size: "medium", type: :submit %>
+              <% end %>
+              <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, local: true, class: "inline", data: { turbo_confirm: "Cancel this payroll run?" } do %>
+                <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @payroll_run.notes.present? %>
+        <div class="mt-4 pt-4 border-t border-gray-100 text-gray-600">
+          <%= @payroll_run.notes %>
+        </div>
+      <% end %>
+
+      <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <span class="text-gray-500">Created:</span>
+          <span class="text-gray-900"><%= @payroll_run.created_at.strftime("%b %-d, %Y at %l:%M %p") %></span>
+        </div>
+        <% if @payroll_run.created_by %>
+          <div>
+            <span class="text-gray-500">Created by:</span>
+            <span class="text-gray-900"><%= @payroll_run.created_by.email_address %></span>
+          </div>
+        <% end %>
+        <% if @payroll_run.processed_at %>
+          <div>
+            <span class="text-gray-500">Completed:</span>
+            <span class="text-gray-900"><%= @payroll_run.processed_at.strftime("%b %-d, %Y") %></span>
+          </div>
+        <% end %>
+        <% if @payroll_run.processed_by %>
+          <div>
+            <span class="text-gray-500">By:</span>
+            <span class="text-gray-900"><%= @payroll_run.processed_by.email_address %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Progress Bar %>
+    <% if @payroll_run.processing? %>
+      <div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-700">Payment Progress</span>
+          <span class="text-sm text-gray-500"><%= @paid_count %> of <%= @line_items.count %> paid</span>
+        </div>
+        <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-pink-500 transition-all duration-300" style="width: <%= (@paid_count.to_f / [@line_items.count, 1].max * 100).round %>%"></div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Line Items Table %>
+    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Person</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Shows</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Advance Ded.</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% @line_items.each do |item| %>
+            <tr id="payroll_line_item_<%= item.id %>" class="<%= item.paid? ? 'bg-pink-50' : '' %>">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <% if item.person.safe_headshot_variant(:tiny) %>
+                    <%= image_tag item.person.safe_headshot_variant(:tiny), class: "w-8 h-8 rounded-full object-cover" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium">
+                      <%= item.person.initials %>
+                    </div>
+                  <% end %>
+                  <div class="text-sm font-medium text-gray-900"><%= item.person.name %></div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600 text-right"><%= item.show_count %></td>
+              <td class="px-6 py-4 text-sm text-gray-900 text-right"><%= number_to_currency(item.gross_amount) %></td>
+              <td class="px-6 py-4 text-sm text-red-600 text-right">
+                <%= item.advance_deductions > 0 ? "-#{number_to_currency(item.advance_deductions)}" : "—" %>
+              </td>
+              <td class="px-6 py-4 text-sm font-medium text-gray-900 text-right"><%= number_to_currency(item.net_amount) %></td>
+              <td class="px-6 py-4">
+                <% if item.paid? %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                    Paid
+                  </span>
+                  <% if item.payment_method.present? %>
+                    <span class="text-xs text-gray-500 ml-1"><%= item.payment_method %></span>
+                  <% end %>
+                <% else %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    Unpaid
+                  </span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-sm text-right">
+                <% if @payroll_run.processing? %>
+                  <% if item.paid? %>
+                    <%= form_with url: manage_unpay_money_payroll_line_item_path(@payroll_run, item), method: :post, local: true, class: "inline" do %>
+                      <%= render "shared/button", text: "Unpay", variant: "ghost", size: "small", type: :submit %>
+                    <% end %>
+                  <% else %>
+                    <%= form_with url: manage_pay_money_payroll_line_item_path(@payroll_run, item), method: :post, local: true, class: "inline" do %>
+                      <%= render "shared/button", text: "Mark Paid", variant: "primary", size: "small", type: :submit %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%# Breakdown Modal/Accordion would go here %>
+  </div>
+</div>
