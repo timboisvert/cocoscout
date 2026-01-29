@@ -2,8 +2,10 @@
   # Get all productions that share this talent pool (owner first, then shared)
   pool_productions = [@talent_pool.production] + @talent_pool.shared_productions.to_a
   production_names = pool_productions.map(&:name).join(", ")
+  single_pool_mode = Current.organization.talent_pool_single?
+  pool_display_name = single_pool_mode ? "#{Current.organization.name} Talent Pool" : production_names
 %>
-<% content_for :title, "Talent Pool - #{production_names}" %>
+<% content_for :title, "Talent Pool - #{pool_display_name}" %>
 
 <div class="w-full mb-10" data-controller="talent-pool-inline talent-pool-sharing"
      data-talent-pool-inline-search-url-value="<%= manage_casting_talent_pool_search_people_path(@production) %>"
@@ -21,7 +23,7 @@
       ["Casting", manage_casting_path],
       ["Talent Pools", manage_casting_talent_pools_path]
     ],
-    text: production_names,
+    text: pool_display_name,
     links: []
   } %>
 
@@ -31,8 +33,8 @@
     <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
   </div>
 
-  <%# Sharing Section %>
-  <% if current_user_can_manage?(@production) %>
+  <%# Sharing Section - only show in per-production mode %>
+  <% if current_user_can_manage?(@production) && !single_pool_mode %>
     <% sibling_productions = @production.sibling_productions.reject(&:type_third_party?) %>
 
     <% if @production.uses_shared_pool? %>

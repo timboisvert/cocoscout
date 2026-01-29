@@ -68,12 +68,16 @@
     <% end %>
   </div>
 
+  <%
+    # In single pool mode, don't show the pool selector dropdown (but still show Everyone vs Talent Pool)
+    single_pool_mode = Current.organization.talent_pool_single?
+  %>
   <%= render "shared/filters/filter_bar",
       toggle_label: "Filters & View Options",
       wrapper_data_controller: "filter-select",
       filter_groups: [
-        # Only show the Talent Pool vs Everyone filter when there are multiple pools
-        (@talent_pools.count > 1 ? {
+        # Always show the Talent Pool vs Everyone filter
+        {
           partial: "shared/filters/dropdown_filter",
           locals: {
             label: "Group",
@@ -96,9 +100,9 @@
               filter_select_type_value: @type
             }
           }
-        } : nil),
-        # Only show pool selector when filtering by talent pools AND there are multiple pools
-        (@filter == "talent_pools" && @talent_pools.count > 1 ? {
+        },
+        # Only show pool selector when filtering by talent pools AND NOT in single pool mode AND there are multiple pools
+        (@filter == "talent_pools" && !single_pool_mode && @talent_pools.count > 1 ? {
           partial: "shared/filters/dropdown_filter",
           locals: {
             label: "Pool",
@@ -114,8 +118,7 @@
             }
           }
         } : nil),
-        # Add separator only if we showed any talent pool filters
-        (@talent_pools.count > 1 ? { separator: true } : nil),
+        { separator: true },
         {
           partial: "shared/filters/dropdown_filter",
           locals: {
