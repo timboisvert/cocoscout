@@ -1,5 +1,15 @@
 <div class="w-full">
 
+  <!-- Announcements -->
+  <% if @announcements.present? %>
+    <%= render "shared/announcement_bar", announcements: @announcements %>
+  <% end %>
+
+  <!-- Onboarding Checklist -->
+  <% @people.each do |person| %>
+    <%= render "my/dashboard/onboarding_checklist", person: person %>
+  <% end %>
+
   <!-- Pending Vacancy Invitations -->
   <% if @pending_vacancy_invitations.any? %>
     <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">

@@ -1,1 +1,25 @@
-<%= render "manage/casting/attendance_modal", show: @show, attendance_records: @attendance_records, summary: @attendance_summary %>
+<%#
+  Attendance page - wraps the shared attendance modal in a full page view
+  Auto-opens the modal on page load
+%>
+<% content_for :title, "Attendance - #{@show.date_and_time.strftime('%B %d, %Y')}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)],
+      [@show.date_and_time.strftime("%B %-d, %Y"), manage_edit_show_path(@production, @show)]
+    ],
+    text: "Attendance",
+    links: []
+  } %>
+
+  <div class="max-w-4xl mx-auto px-4 py-6">
+    <%# Render the shared attendance modal with auto-open %>
+    <div data-controller="auto-modal"
+         data-auto-modal-target-value="attendance-modal">
+      <%= render "shared/attendance_modal", show: @show, production: @production, variant: "primary" %>
+    </div>
+  </div>
+</div>

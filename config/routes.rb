@@ -58,6 +58,8 @@ Rails.application.routes.draw do
     post "/change_email",       to: "superadmin#change_email",        as: "change_email_user"
     get  "/email_logs",         to: "superadmin#email_logs",          as: "email_logs"
     get  "/email_logs/:id",     to: "superadmin#email_log",           as: "email_log"
+    get  "/sms_logs",           to: "superadmin#sms_logs",            as: "sms_logs"
+    get  "/sms_logs/:id",       to: "superadmin#sms_log",             as: "sms_log"
     get  "/queue",              to: "superadmin#queue",               as: "queue_monitor"
     get  "/queue/failed",       to: "superadmin#queue_failed",        as: "queue_failed"
     post "/queue/retry/:id",    to: "superadmin#queue_retry",         as: "queue_retry"
@@ -136,8 +138,8 @@ Rails.application.routes.draw do
   # Talent-facing interface
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
-    get   "/welcome",                       to: "dashboard#welcome",        as: "welcome"
-    post  "/dismiss_welcome",               to: "dashboard#dismiss_welcome", as: "dismiss_welcome"
+    post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
+    post  "/dismiss_announcement",          to: "dashboard#dismiss_announcement", as: "dismiss_announcement"
 
     # Profile management
     resources :profiles, only: [ :index, :new, :create ]

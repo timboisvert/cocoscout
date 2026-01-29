@@ -54,6 +54,33 @@
             </div>
           </label>
         </div>
+
+        <!-- Event Defaults Section -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-900 mb-4">Event Defaults</h3>
+          <p class="text-sm text-gray-600 mb-4">
+            These defaults apply when creating new events. Individual events can override these settings.
+          </p>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div>
+                <p class="font-medium text-gray-900">Enable Attendance Tracking</p>
+                <p class="text-sm text-gray-500 mt-0.5">New events will have attendance tracking enabled by default</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox"
+                       name="production[default_attendance_enabled]"
+                       value="1"
+                       <%= 'checked' if @production.default_attendance_enabled? %>
+                       data-casting-source-target="attendanceToggle"
+                       data-action="change->casting-source#updateSetting"
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

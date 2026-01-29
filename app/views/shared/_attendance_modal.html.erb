@@ -86,15 +86,25 @@
               type: :button,
               data: { action: "click->attendance-modal#toggleWalkinForm" } %>
 
-          <div data-attendance-modal-target="walkinForm" class="hidden space-y-2">
+          <div data-attendance-modal-target="walkinForm" class="hidden space-y-3">
+            <%# Error message %>
+            <div data-attendance-modal-target="walkinError"
+                 class="hidden px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            </div>
+
+            <%# Success message %>
+            <div data-attendance-modal-target="walkinSuccess"
+                 class="hidden px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            </div>
+
             <div class="flex gap-2">
               <input type="email"
                      data-attendance-modal-target="walkinEmailInput"
-                     placeholder="Email"
+                     placeholder="Email address"
                      class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
               <input type="text"
                      data-attendance-modal-target="walkinNameInput"
-                     placeholder="Name (if new)"
+                     placeholder="Name (optional)"
                      class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
               <%= render "shared/button",
                   text: "Add",
@@ -103,6 +113,7 @@
                   type: :button,
                   data: { action: "click->attendance-modal#addWalkin" } %>
             </div>
+            <p class="text-xs text-gray-500">Add people to the list, then click "Submit Walk-ins" to record their attendance.</p>
             <div data-attendance-modal-target="walkinList" class="space-y-2"></div>
             <div class="pt-2">
               <%= render "shared/button",

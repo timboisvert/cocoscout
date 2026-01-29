@@ -5,15 +5,132 @@
     <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   </div>
 
-  <!-- Notification Preferences Section -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Email Notifications" %>
-    <div class="p-6">
-      <p class="text-sm text-gray-600 mb-6">
-        Control which email notifications you receive from CocoScout.
-      </p>
+  <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+    <% if Current.user.superadmin? %>
+    <!-- Text Message Notifications Section (Superadmin Only) -->
+    <div class="bg-white border-2 border-dashed border-orange-300 rounded-lg overflow-hidden mb-6 relative">
+      <div class="absolute top-3 right-3 z-10">
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          Superadmin Only
+        </span>
+      </div>
+      <%= render "shared/card_header", title: "Text Message Notifications" %>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-6">
+          Get important CocoScout notifications via text message.
+        </p>
 
-      <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+        <!-- Phone Number -->
+        <div class="mb-6">
+          <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-500 text-sm">+1</span>
+            <input type="tel"
+                   id="phone"
+                   name="phone"
+                   value="<%= Current.user.formatted_sms_phone %>"
+                   placeholder="(555) 123-4567"
+                   inputmode="tel"
+                   autocomplete="tel-national"
+                   class="w-48 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500">
+            <% if Current.user.sms_phone.present? %>
+              <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                <input type="checkbox"
+                       name="clear_phone"
+                       value="1"
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600">
+                Remove
+              </label>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">US phone numbers only (10 digits).</p>
+        </div>
+
+        <% if Current.user.sms_phone.present? %>
+          <div class="space-y-4">
+            <!-- Master SMS Toggle -->
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <p class="text-sm font-medium text-gray-700">Enable Text Notifications</p>
+                <p class="text-xs text-gray-500 mt-1">Turn on to receive text messages for enabled notifications below</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="sms_notifications[enabled]" value="0">
+                <input type="checkbox"
+                       name="sms_notifications[enabled]"
+                       value="1"
+                       <%= 'checked' if Current.user.notification_preferences['sms_enabled'] != false %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+
+            <!-- Show Cancellations -->
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <p class="text-sm font-medium text-gray-700">Show Cancellations</p>
+                <p class="text-xs text-gray-500 mt-1">Get texted immediately when a show you're cast in is cancelled</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="sms_notifications[show_cancellation]" value="0">
+                <input type="checkbox"
+                       name="sms_notifications[show_cancellation]"
+                       value="1"
+                       <%= 'checked' if Current.user.notification_preferences['sms_show_cancellation'] != false %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+
+            <!-- Vacancy Notifications -->
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <p class="text-sm font-medium text-gray-700">Vacancy Notifications</p>
+                <p class="text-xs text-gray-500 mt-1">Get texted when you're invited to fill an open vacancy</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="sms_notifications[vacancy_notification]" value="0">
+                <input type="checkbox"
+                       name="sms_notifications[vacancy_notification]"
+                       value="1"
+                       <%= 'checked' if Current.user.notification_preferences['sms_vacancy_notification'] != false %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- SMS Consent Disclosures -->
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-2">
+          <p>Text messages are reserved for urgent, time-sensitive notifications only:</p>
+          <ul class="list-disc list-inside ml-2 space-y-1">
+            <li>Show cancellations (when a show you're cast in is cancelled)</li>
+            <li>Vacancy invitations (when you're invited to fill an open spot)</li>
+          </ul>
+          <p>Message frequency varies based on your activity (typically 0-5 messages per month). Message and data rates may apply. Reply STOP to opt out at any time. Reply HELP for assistance.</p>
+          <p>
+            View our
+            <%= link_to "Terms of Service", "/terms", class: "text-pink-600 hover:text-pink-800 underline", target: "_blank" %>
+            and
+            <%= link_to "Privacy Policy", "/privacy", class: "text-pink-600 hover:text-pink-800 underline", target: "_blank" %>.
+          </p>
+        </div>
+      </div>
+    </div>
+    <% end %>
+
+    <!-- Email Notifications Section -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Email Notifications" %>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-6">
+          Control which email notifications you receive from CocoScout.
+        </p>
+
         <div class="space-y-4">
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <div>
@@ -63,11 +180,11 @@
             </label>
           </div>
         </div>
-
-        <div class="mt-6">
-          <%= render "shared/button", text: "Save Preferences", type: :submit, variant: "primary" %>
-        </div>
-      <% end %>
+      </div>
     </div>
-  </div>
+
+    <div class="mt-6">
+      <%= render "shared/button", text: "Save Preferences", type: :submit, variant: "primary" %>
+    </div>
+  <% end %>
 </div>

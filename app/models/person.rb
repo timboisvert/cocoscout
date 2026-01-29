@@ -88,7 +88,11 @@ class Person < ApplicationRecord
             format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
   validate :public_key_change_frequency
+  validate :phone_format
   # name_not_malicious, email_not_malicious, and sanitize_name are in SuspiciousDetection concern
+
+  # Phone normalization - strips non-digits and keeps last 10
+  normalizes :phone, with: ->(phone) { phone.present? ? phone.gsub(/\D/, "").last(10) : nil }
 
   # Callbacks
   before_validation :generate_public_key, on: :create
@@ -100,6 +104,16 @@ class Person < ApplicationRecord
     return "" if name.blank?
 
     name.split.map { |word| word[0] }.join.upcase
+  end
+
+  # Format phone number for display: (XXX) XXX-XXXX
+  def formatted_phone
+    return nil unless phone.present?
+
+    digits = phone.gsub(/\D/, "")
+    return phone unless digits.length == 10
+
+    "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
   end
 
   # Multi-profile archiving methods (soft delete)
@@ -331,6 +345,61 @@ class Person < ApplicationRecord
     self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
+  # Onboarding checklist tasks
+  def onboarding_tasks
+    tasks = []
+
+    # Task 1: Add a headshot
+    tasks << {
+      key: :headshot,
+      title: "Add a headshot",
+      description: "Upload a professional photo",
+      completed: profile_headshots.any?,
+      priority: 1
+    }
+
+    # Task 2: Upload a resume
+    tasks << {
+      key: :resume,
+      title: "Upload a resume",
+      description: "Add your performance resume",
+      completed: profile_resumes.any?,
+      priority: 2
+    }
+
+    # Task 3: Set up payment info (Venmo/Zelle) - only if in a talent pool
+    if talent_pools.any?
+      tasks << {
+        key: :payment,
+        title: "Set up payment info",
+        description: "Add Venmo or Zelle for faster payouts",
+        completed: venmo_configured?,
+        priority: 3
+      }
+    end
+
+    # Task 4: Complete your profile (bio)
+    tasks << {
+      key: :profile,
+      title: "Complete your profile",
+      description: "Add a bio and basic info",
+      completed: bio.present?,
+      priority: 4
+    }
+
+    tasks.sort_by { |t| t[:priority] }
+  end
+
+  def onboarding_complete?
+    onboarding_tasks.all? { |t| t[:completed] }
+  end
+
+  def onboarding_progress
+    tasks = onboarding_tasks
+    return 100 if tasks.empty?
+    (tasks.count { |t| t[:completed] }.to_f / tasks.count * 100).round
+  end
+
   # Venmo payout methods
   VENMO_IDENTIFIER_TYPES = %w[PHONE EMAIL USER_HANDLE].freeze
 
@@ -467,6 +536,14 @@ class Person < ApplicationRecord
     end
   end
 
+  def phone_format
+    return if phone.blank?
+
+    digits = phone.gsub(/\D/, "")
+    return if digits.length == 10
+
+    errors.add(:phone, "must be a valid 10-digit US phone number")
+  end
 
   def generate_public_key
     return if public_key.present?

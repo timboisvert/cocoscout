@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer toggle_signup_based_casting toggle_attendance attendance update_attendance]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series]
 
     def index
@@ -981,7 +981,7 @@ module Manage
     def update_attendance
       # Permit each record ID with its status value (present, absent, late, excused, unknown)
       raw_attendance = params.require(:attendance)
-      valid_statuses = %w[present absent late excused unknown]
+      valid_statuses = %w[present absent excused unknown]
       attendance_params = {}
       raw_attendance.each do |key, value|
         attendance_params[key.to_s] = value.to_s if valid_statuses.include?(value.to_s)
@@ -1020,46 +1020,124 @@ module Manage
       person = Person.find_by(email: email)
 
       if person
+        # Check if this person already has an attendance record for this show
+        # Could be via direct walk-in (person_id) or via role assignment
+        existing_walkin = @show.show_attendance_records.find_by(person_id: person.id)
+        if existing_walkin
+          respond_to do |format|
+            format.json do
+              render json: {
+                success: false,
+                error: "#{person.name} is already marked as attending this event"
+              }, status: :unprocessable_entity
+            end
+          end
+          return
+        end
+
+        # Check if they're assigned to this show (via role assignment)
+        existing_assignment = @show.show_person_role_assignments.find_by(assignable: person)
+        if existing_assignment
+          respond_to do |format|
+            format.json do
+              render json: {
+                success: false,
+                error: "#{person.name} is already cast in this event. Use the attendance list to mark them present."
+              }, status: :unprocessable_entity
+            end
+          end
+          return
+        end
+
         # Person exists - ensure they're in current organization
-        unless person.organization_members.exists?(organization: Current.organization)
-          OrganizationMember.create!(
-            person: person,
-            organization: Current.organization,
-            role: :member
-          )
+        unless person.organizations.include?(Current.organization)
+          person.organizations << Current.organization
         end
       else
         # Person doesn't exist - create new person
-        person = Person.create!(
+        person = Person.new(
           name: name.presence || email.split("@")[0],
           email: email
         )
+
+        unless person.save
+          respond_to do |format|
+            format.json do
+              render json: {
+                success: false,
+                error: person.errors.full_messages.join(", ")
+              }, status: :unprocessable_entity
+            end
+          end
+          return
+        end
+
         # Add to organization
-        OrganizationMember.create!(
-          person: person,
-          organization: Current.organization,
-          role: :member
-        )
-        # Send invitation
-        PersonInvitation.create_and_send!(person: person, sender: Current.user, organization: Current.organization)
+        person.organizations << Current.organization
       end
 
-      # Create attendance record marked as present
-      record = ShowAttendanceRecord.create!(
+      # Send invitation if person doesn't have a user account yet
+      unless person.user
+        user = User.create!(
+          email_address: person.email,
+          password: User.generate_secure_password
+        )
+        person.update!(user: user)
+
+        person_invitation = PersonInvitation.create!(
+          email: person.email,
+          organization: Current.organization
+        )
+        Manage::PersonMailer.person_invitation(person_invitation, nil, nil).deliver_later
+      end
+
+      # Create attendance record marked as present (walk-in linked to person)
+      record = ShowAttendanceRecord.new(
         show: @show,
+        person: person,
         status: "present"
       )
 
+      if record.save
+        respond_to do |format|
+          format.json do
+            render json: {
+              success: true,
+              person: {
+                id: person.id,
+                name: person.name,
+                email: person.email
+              }
+            }
+          end
+        end
+      else
+        respond_to do |format|
+          format.json do
+            render json: {
+              success: false,
+              error: record.errors.full_messages.join(", ")
+            }, status: :unprocessable_entity
+          end
+        end
+      end
+    rescue ActionController::ParameterMissing
       respond_to do |format|
         format.json do
           render json: {
-            success: true,
-            person: {
-              id: person.id,
-              name: person.name,
-              email: person.email
-            }
-          }
+            success: false,
+            error: "Email is required"
+          }, status: :unprocessable_entity
+        end
+      end
+    rescue StandardError => e
+      Rails.logger.error("Walk-in creation error: #{e.message}")
+      respond_to do |format|
+        format.json do
+          render json: {
+            success: false,
+            error: "An unexpected error occurred. Please try again."
+          }, status: :internal_server_error
         end
       end
     end
@@ -1093,7 +1171,7 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :is_online, :online_location_info,
-                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled,
+                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled,
                                                show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info

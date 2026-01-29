@@ -110,12 +110,41 @@ class AccountController < ApplicationController
   end
 
   def update_notifications
+    # Handle email notification preferences (existing)
     notification_params = params[:notifications] || {}
-
     User::NOTIFICATION_PREFERENCE_KEYS.each do |key|
       enabled = notification_params[key] == "1"
       Current.user.set_notification_preference(key, enabled)
     end
+
+    # Handle phone number update (stored on person)
+    person = Current.user.person
+    if person
+      if params[:clear_phone] == "1"
+        # Clear phone number
+        person.phone = nil
+      elsif params[:phone].present?
+        # Normalize and set phone (Person model handles normalization)
+        normalized = params[:phone].gsub(/\D/, "").last(10)
+        if normalized.length == 10
+          person.phone = normalized
+        elsif normalized.present?
+          redirect_to account_notifications_path, alert: "Please enter a valid 10-digit US phone number."
+          return
+        end
+      end
+
+      unless person.save
+        redirect_to account_notifications_path, alert: person.errors.full_messages.join(", ")
+        return
+      end
+    end
+
+    # Handle SMS preferences
+    sms_params = params[:sms_notifications] || {}
+    Current.user.set_notification_preference("sms_enabled", sms_params[:enabled] == "1")
+    Current.user.set_notification_preference("sms_show_cancellation", sms_params[:show_cancellation] == "1")
+    Current.user.set_notification_preference("sms_vacancy_notification", sms_params[:vacancy_notification] == "1")
 
     if Current.user.save
       redirect_to account_notifications_path, notice: "Notification preferences updated."

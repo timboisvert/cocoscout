@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_29_064511) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -1157,11 +1157,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
     t.datetime "checked_in_at"
     t.datetime "created_at", null: false
     t.text "notes"
+    t.bigint "person_id"
     t.bigint "show_id", null: false
     t.bigint "show_person_role_assignment_id"
     t.bigint "sign_up_registration_id"
     t.string "status", default: "unknown", null: false
     t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_show_attendance_records_on_person_id"
+    t.index ["show_id", "person_id"], name: "idx_attendance_by_walkin", unique: true, where: "(person_id IS NOT NULL)"
     t.index ["show_id", "show_person_role_assignment_id"], name: "idx_attendance_by_assignment", unique: true, where: "(show_person_role_assignment_id IS NOT NULL)"
     t.index ["show_id", "show_person_role_assignment_id"], name: "idx_attendance_show_assignment", unique: true
     t.index ["show_id", "sign_up_registration_id"], name: "idx_attendance_by_signup", unique: true, where: "(sign_up_registration_id IS NOT NULL)"
@@ -1470,6 +1473,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
     t.index ["sign_up_form_id", "position"], name: "index_sign_up_slots_on_sign_up_form_id_and_position"
     t.index ["sign_up_form_id"], name: "index_sign_up_slots_on_sign_up_form_id"
     t.index ["sign_up_form_instance_id"], name: "index_sign_up_slots_on_sign_up_form_instance_id"
+  end
+
+  create_table "sms_logs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.text "message", null: false
+    t.bigint "organization_id"
+    t.string "phone", null: false
+    t.bigint "production_id"
+    t.datetime "sent_at"
+    t.string "sms_type", null: false
+    t.string "sns_message_id"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["organization_id"], name: "index_sms_logs_on_organization_id"
+    t.index ["phone"], name: "index_sms_logs_on_phone"
+    t.index ["production_id"], name: "index_sms_logs_on_production_id"
+    t.index ["sent_at"], name: "index_sms_logs_on_sent_at"
+    t.index ["sms_type"], name: "index_sms_logs_on_sms_type"
+    t.index ["status"], name: "index_sms_logs_on_status"
+    t.index ["user_id"], name: "index_sms_logs_on_user_id"
   end
 
   create_table "socials", force: :cascade do |t|
@@ -1824,6 +1849,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "default_person_id"
+    t.jsonb "dismissed_announcements", default: [], null: false
     t.string "email_address", null: false
     t.datetime "email_changed_at"
     t.integer "included_production_ids", default: [], null: false, array: true
@@ -1954,6 +1980,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
   add_foreign_key "show_advance_waivers", "people"
   add_foreign_key "show_advance_waivers", "shows"
   add_foreign_key "show_advance_waivers", "users", column: "waived_by_id"
+  add_foreign_key "show_attendance_records", "people"
   add_foreign_key "show_attendance_records", "show_person_role_assignments"
   add_foreign_key "show_attendance_records", "shows"
   add_foreign_key "show_attendance_records", "sign_up_registrations"
@@ -1989,6 +2016,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_28_215651) do
   add_foreign_key "sign_up_slots", "roles"
   add_foreign_key "sign_up_slots", "sign_up_form_instances"
   add_foreign_key "sign_up_slots", "sign_up_forms"
+  add_foreign_key "sms_logs", "organizations"
+  add_foreign_key "sms_logs", "productions"
+  add_foreign_key "sms_logs", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

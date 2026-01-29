@@ -3,11 +3,8 @@
 module My
   class DashboardController < ApplicationController
     def index
-      # Check if user needs to see welcome page (but not when impersonating)
-      if Current.user.welcomed_at.nil? && session[:user_doing_the_impersonating].blank? && cookies.signed[:impersonator_user_id].blank?
-        @show_my_sidebar = false
-        render "welcome" and return
-      end
+      # Load announcements for this user
+      @announcements = AnnouncementService.announcements_for(Current.user)
 
       # Get all active profiles and their IDs
       @people = Current.user.people.active.order(:created_at).to_a
@@ -363,25 +360,18 @@ module My
                                       .order("shows.date_and_time ASC")
     end
 
-    def welcome
-      @show_my_sidebar = false
-      render "welcome"
+    def dismiss_onboarding
+      Current.user.people.active.update_all(profile_welcomed_at: Time.current)
+      redirect_to my_dashboard_path
     end
 
-    def dismiss_welcome
-      # Prevent dismissing welcome screen when impersonating
-      if session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
-        redirect_to my_dashboard_path, alert: "Cannot dismiss welcome screen while impersonating"
-        return
-      end
+    def dismiss_announcement
+      announcement_id = params[:announcement_id]
+      Current.user.dismiss_announcement!(announcement_id) if announcement_id.present?
 
-      Current.user.update(welcomed_at: Time.current)
-
-      # If this is an AJAX request, just return success
-      if request.xhr?
-        head :ok
-      else
-        redirect_to my_dashboard_path
+      respond_to do |format|
+        format.html { redirect_to my_dashboard_path }
+        format.turbo_stream { head :ok }
       end
     end
   end

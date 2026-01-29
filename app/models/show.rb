@@ -113,6 +113,7 @@ class Show < ApplicationRecord
   # Sign-up form instance management
   after_commit :create_sign_up_form_instances, on: :create
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
+  after_commit :send_sms_on_cancel, on: :update, if: :just_canceled?
   after_commit :sync_sign_up_form_instances_on_date_change, on: :update, if: :saved_change_to_date_and_time?
   before_destroy :cleanup_sign_up_form_instances
 
@@ -506,18 +507,36 @@ class Show < ApplicationRecord
       }
     end
 
+    # Add walk-ins (attendance records with person_id but no assignment or registration)
+    show_attendance_records.includes(:person).where.not(person_id: nil).each do |walkin_record|
+      person = walkin_record.person
+      # Create a pseudo-assignment object for walk-ins
+      pseudo_assignment = Struct.new(:id, :role, :person).new(
+        "walkin_#{walkin_record.id}",
+        Struct.new(:name).new("Walk-in"),
+        person
+      )
+
+      records << {
+        assignment: pseudo_assignment,
+        record: walkin_record,
+        person: person,
+        type: "walkin"
+      }
+    end
+
     records
   end
 
   # Calculate attendance summary
   def attendance_summary
     records = show_attendance_records
-    total_people = show_person_role_assignments.count + sign_up_registrations.count
+    walkins_count = records.where.not(person_id: nil).count
+    total_people = show_person_role_assignments.count + sign_up_registrations.count + walkins_count
     {
       total: total_people,
       present: records.present.count,
       absent: records.absent.count,
-      late: records.late.count,
       excused: records.excused.count,
       unknown: total_people - records.count + records.unknown.count
     }
@@ -660,6 +679,20 @@ class Show < ApplicationRecord
       end
       # Run status job to calculate correct state based on current time
       UpdateSignUpStatusesJob.perform_now
+    end
+  end
+
+  def just_canceled?
+    saved_change_to_canceled? && canceled?
+  end
+
+  def send_sms_on_cancel
+    # Send SMS to cast members who have show cancellation SMS enabled
+    cast_people.includes(:user).find_each do |person|
+      user = person.user
+      if user&.sms_notification_enabled?("show_cancellation")
+        SmsService.send_show_cancellation(user: user, show: self)
+      end
     end
   end
 

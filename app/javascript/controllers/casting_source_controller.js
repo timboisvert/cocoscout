@@ -36,6 +36,47 @@ export default class extends Controller {
         })
     }
 
+    updateSetting(event) {
+        const input = event.target
+        const name = input.name
+        const value = input.type === 'checkbox' ? (input.checked ? '1' : '0') : input.value
+        this.saveSetting(name, value)
+    }
+
+    async saveSetting(name, value) {
+        if (this.submitting) return
+        this.submitting = true
+
+        try {
+            const formData = new FormData()
+            formData.append(name, value)
+            formData.append('_method', 'patch')
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+            const response = await fetch(this.updateUrlValue, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken,
+                    'Accept': 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml'
+                },
+                body: formData
+            })
+
+            if (response.ok) {
+                this.showNotice('Settings saved')
+            } else {
+                console.error('Failed to save setting')
+                this.showError('Failed to save setting')
+            }
+        } catch (error) {
+            console.error('Error saving setting:', error)
+            this.showError('Failed to save setting')
+        } finally {
+            this.submitting = false
+        }
+    }
+
     async saveSelection(value) {
         if (this.submitting) return
         this.submitting = true

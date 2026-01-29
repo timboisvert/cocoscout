@@ -241,6 +241,57 @@ class User < ApplicationRecord
     self.notification_preferences = notification_preferences.merge(key.to_s => enabled)
   end
 
+  # SMS Notification Support
+  # SMS preferences are stored in notification_preferences jsonb:
+  #   - sms_enabled: master toggle
+  #   - sms_show_cancellation: show cancellation texts
+  #   - sms_vacancy_notification: vacancy invitation texts
+
+  SMS_NOTIFICATION_TYPES = %w[show_cancellation vacancy_notification].freeze
+
+  # Check if SMS is fully enabled (has phone and master toggle on)
+  def sms_enabled?
+    phone = person&.phone
+    phone.present? && notification_preferences["sms_enabled"] != false
+  end
+
+  # Check if a specific SMS notification type is enabled
+  def sms_notification_enabled?(type)
+    return false unless sms_enabled?
+
+    notification_preferences["sms_#{type}"] != false
+  end
+
+  # Get phone number from primary person profile
+  def sms_phone
+    person&.phone
+  end
+
+  # Get formatted phone for display
+  def formatted_sms_phone
+    phone = sms_phone
+    return nil unless phone.present?
+
+    digits = phone.gsub(/\D/, "")
+    return phone unless digits.length == 10
+
+    "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
+  end
+
+  # Announcement Dismissal Support
+  # Tracks which announcements the user has dismissed via dismissed_announcements jsonb array
+
+  def announcement_dismissed?(announcement_id)
+    dismissed_announcements.include?(announcement_id.to_s)
+  end
+
+  def dismiss_announcement!(announcement_id)
+    return if announcement_dismissed?(announcement_id)
+
+    self.dismissed_announcements = dismissed_announcements + [ announcement_id.to_s ]
+    save!
+  end
+
   # Generate an invitation token for setting password
   def generate_invitation_token
     self.invitation_token = SecureRandom.urlsafe_base64(32)

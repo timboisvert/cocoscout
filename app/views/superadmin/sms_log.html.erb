@@ -1,0 +1,140 @@
+<% content_for :title, "SMS Log Details - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path],
+        ["SMS Logs", sms_logs_path]
+    ],
+    text: "SMS Details",
+    links: []
+  } %>
+
+  <div class="mt-4 space-y-4">
+    <!-- SMS Metadata -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "SMS Information" %>
+
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">User</label>
+            <div>
+              <% if @sms_log.user %>
+                <%= link_to @sms_log.user.email_address, sms_logs_path(user_id: @sms_log.user.id), class: "text-pink-600 hover:text-pink-800 font-medium" %>
+                <span class="text-sm text-gray-500">(ID: <%= @sms_log.user.id %>)</span>
+              <% else %>
+                <span class="text-gray-400">No user associated</span>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <div class="text-gray-900"><%= @sms_log.formatted_phone %></div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                <%= @sms_log.type_display %>
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <div>
+              <% case @sms_log.status %>
+              <% when "pending" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Pending
+                </span>
+              <% when "sent" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Sent
+                </span>
+              <% when "failed" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Failed
+                </span>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Created At</label>
+            <div class="text-gray-900">
+              <%= @sms_log.created_at.strftime("%B %d, %Y at %I:%M %p") %>
+            </div>
+          </div>
+
+          <% if @sms_log.sent_at.present? %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sent At</label>
+            <div class="text-gray-900">
+              <%= @sms_log.sent_at.strftime("%B %d, %Y at %I:%M %p") %>
+            </div>
+          </div>
+          <% end %>
+
+          <% if @sms_log.organization %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+            <div class="text-gray-900"><%= @sms_log.organization.name %></div>
+          </div>
+          <% end %>
+
+          <% if @sms_log.production %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Production</label>
+            <div class="text-gray-900"><%= @sms_log.production.name %></div>
+          </div>
+          <% end %>
+
+          <% if @sms_log.sns_message_id.present? %>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">SNS Message ID</label>
+            <div class="text-gray-600 text-sm font-mono break-all"><%= @sms_log.sns_message_id %></div>
+          </div>
+          <% end %>
+        </div>
+
+        <% if @sms_log.error_message.present? %>
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-red-700 mb-1">Error Message</label>
+          <div class="text-sm text-red-900 bg-red-50 p-4 rounded-lg border border-red-200">
+            <%= @sms_log.error_message %>
+          </div>
+        </div>
+        <% end %>
+      </div>
+
+      <!-- SMS Message -->
+      <div class="px-6 py-4 border-t border-gray-200">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-900">
+          <%= @sms_log.message %>
+        </div>
+        <div class="mt-2 text-xs text-gray-500">
+          <%= @sms_log.message.length %> characters
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 text-sm text-gray-600">
+        <div class="flex justify-between items-center">
+          <div>
+            SMS Log ID: <%= @sms_log.id %>
+          </div>
+          <div>
+            <%= link_to "Back to SMS Logs", sms_logs_path, class: "text-pink-600 hover:text-pink-800 font-medium" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

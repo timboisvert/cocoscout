@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "list", "loading", "emptyState", "presentCount", "totalCount", "walkinForm", "walkinNameInput", "walkinEmailInput", "walkinList"]
+    static targets = ["modal", "list", "loading", "emptyState", "presentCount", "totalCount", "walkinForm", "walkinNameInput", "walkinEmailInput", "walkinList", "walkinError", "walkinSuccess"]
     static values = {
         showId: Number,
         productionId: Number,
@@ -32,6 +32,7 @@ export default class extends Controller {
             this.modalTarget.classList.remove("hidden")
             document.body.classList.add("overflow-hidden")
             this.walkinRecords = []
+            this.clearMessages()
             await this.loadAttendance()
         }
     }
@@ -50,17 +51,69 @@ export default class extends Controller {
     toggleWalkinForm() {
         if (this.hasWalkinFormTarget) {
             this.walkinFormTarget.classList.toggle("hidden")
+            this.clearMessages()
         }
     }
 
+    clearMessages() {
+        if (this.hasWalkinErrorTarget) {
+            this.walkinErrorTarget.classList.add("hidden")
+            this.walkinErrorTarget.textContent = ""
+        }
+        if (this.hasWalkinSuccessTarget) {
+            this.walkinSuccessTarget.classList.add("hidden")
+            this.walkinSuccessTarget.textContent = ""
+        }
+    }
+
+    showError(message) {
+        if (this.hasWalkinErrorTarget) {
+            this.walkinErrorTarget.textContent = message
+            this.walkinErrorTarget.classList.remove("hidden")
+        }
+        if (this.hasWalkinSuccessTarget) {
+            this.walkinSuccessTarget.classList.add("hidden")
+        }
+    }
+
+    showSuccess(message) {
+        if (this.hasWalkinSuccessTarget) {
+            this.walkinSuccessTarget.textContent = message
+            this.walkinSuccessTarget.classList.remove("hidden")
+        }
+        if (this.hasWalkinErrorTarget) {
+            this.walkinErrorTarget.classList.add("hidden")
+        }
+        // Auto-hide success after 3 seconds
+        setTimeout(() => {
+            if (this.hasWalkinSuccessTarget) {
+                this.walkinSuccessTarget.classList.add("hidden")
+            }
+        }, 3000)
+    }
+
     addWalkin() {
+        this.clearMessages()
         const nameInput = this.walkinNameInputTarget
         const emailInput = this.walkinEmailInputTarget
         const email = emailInput?.value?.trim()
         const name = nameInput?.value?.trim()
 
         if (!email) {
-            alert("Please enter an email")
+            this.showError("Please enter an email address")
+            return
+        }
+
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email)) {
+            this.showError("Please enter a valid email address")
+            return
+        }
+
+        // Check for duplicate in pending list
+        if (this.walkinRecords.some(r => r.email.toLowerCase() === email.toLowerCase())) {
+            this.showError("This email is already in your walk-in list")
             return
         }
 
@@ -117,17 +170,24 @@ export default class extends Controller {
         this.walkinRecords = this.walkinRecords.filter(r => r.id !== walkinId)
         this.renderWalkinList()
         this.updateCounts()
+        this.clearMessages()
     }
 
     async submitWalkins(event) {
+        this.clearMessages()
+
         if (this.walkinRecords.length === 0) {
-            alert("No walk-ins to submit")
+            this.showError("Add at least one walk-in before submitting")
             return
         }
 
         const submitButton = event.target.closest("button")
         submitButton.disabled = true
+        const originalText = submitButton.textContent
         submitButton.textContent = "Submitting..."
+
+        const errors = []
+        const successes = []
 
         try {
             for (const walkin of this.walkinRecords) {
@@ -144,29 +204,38 @@ export default class extends Controller {
                     })
                 })
 
-                if (!response.ok) {
-                    console.error(`Failed to create walk-in: ${walkin.name}`)
-                    alert(`Failed to create walk-in for ${walkin.name}`)
-                    submitButton.disabled = false
-                    submitButton.textContent = "Submit Walk-ins"
-                    return
+                const data = await response.json()
+
+                if (response.ok && data.success) {
+                    successes.push(walkin.name)
+                    // Remove successful walkin from list
+                    this.walkinRecords = this.walkinRecords.filter(r => r.id !== walkin.id)
+                } else {
+                    const errorMsg = data.error || "Unknown error"
+                    errors.push(`${walkin.name}: ${errorMsg}`)
                 }
             }
 
-            this.walkinRecords = []
+            // Update the UI
             this.renderWalkinList()
             this.updateCounts()
-            this.walkinFormTarget.classList.add("hidden")
-            await this.loadAttendance()
 
-            submitButton.disabled = false
-            submitButton.textContent = "Submit Walk-ins"
-            alert("Walk-ins added successfully!")
+            if (successes.length > 0) {
+                await this.loadAttendance()
+            }
+
+            if (errors.length > 0) {
+                this.showError(errors.join(". "))
+            } else if (successes.length > 0) {
+                this.showSuccess(`${successes.length} walk-in${successes.length > 1 ? "s" : ""} added successfully!`)
+                this.walkinFormTarget.classList.add("hidden")
+            }
         } catch (error) {
             console.error("Failed to submit walk-ins:", error)
-            alert("Failed to submit walk-ins")
+            this.showError("Network error. Please check your connection and try again.")
+        } finally {
             submitButton.disabled = false
-            submitButton.textContent = "Submit Walk-ins"
+            submitButton.textContent = originalText
         }
     }
 
