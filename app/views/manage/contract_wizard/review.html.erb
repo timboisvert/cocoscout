@@ -152,14 +152,12 @@
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-medium text-gray-900">Contract Period</h3>
-        <%= link_to manage_terms_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
-          Edit
-        <% end %>
       </div>
       <% if @contract.contract_start_date.present? && @contract.contract_end_date.present? %>
         <p class="text-sm text-gray-700"><%= @contract.date_range %></p>
+        <p class="text-xs text-gray-500 mt-1">Dates are based on your scheduled bookings</p>
       <% else %>
-        <p class="text-sm text-red-600">Contract dates not set</p>
+        <p class="text-sm text-gray-500">Dates will be set from bookings</p>
       <% end %>
     </div>
   </div>
