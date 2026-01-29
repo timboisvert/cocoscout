@@ -19,7 +19,7 @@ class AutopilotPayrollJob < ApplicationJob
     return unless current_period
 
     period_end = current_period[:end]
-    
+
     # Only create a run if the period has ended
     return unless Time.current > period_end.end_of_day
 
@@ -27,7 +27,7 @@ class AutopilotPayrollJob < ApplicationJob
     existing_run = schedule.organization.payroll_runs
       .where(period_start: current_period[:start], period_end: period_end)
       .exists?
-    
+
     return if existing_run
 
     # Create the payroll run

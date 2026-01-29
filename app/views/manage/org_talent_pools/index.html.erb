@@ -26,7 +26,7 @@
       </div>
       <div class="flex items-center gap-2">
         <% if @is_single_mode %>
-          <%= link_to manage_casting_talent_pools_switch_to_per_production_confirm_path, 
+          <%= link_to manage_casting_talent_pools_switch_to_per_production_confirm_path,
                       data: { turbo_frame: "talent_pool_mode_modal" } do %>
             <%= render "shared/button", text: "Switch to Per-Production", variant: "secondary", size: "small", tag: :span %>
           <% end %>

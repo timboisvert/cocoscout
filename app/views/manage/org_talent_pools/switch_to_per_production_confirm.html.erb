@@ -4,7 +4,7 @@
        data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
     <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
          data-action="click->modal#stopPropagation">
-      
+
       <%# Header %>
       <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
@@ -23,7 +23,7 @@
       <%# Current state summary %>
       <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
         <div class="text-sm text-gray-600">
-          <strong>Current:</strong> Single pool with 
+          <strong>Current:</strong> Single pool with
           <%= @org_pool ? pluralize(@org_pool.cached_member_counts[:total], 'member') : '0 members' %>
         </div>
         <% if @production_pool_stats.any? { |s| s[:people_count] > 0 || s[:groups_count] > 0 } %>
@@ -33,7 +33,7 @@
         <% end %>
       </div>
 
-      <%= form_with url: manage_casting_talent_pools_switch_to_per_production_path, method: :post, 
+      <%= form_with url: manage_casting_talent_pools_switch_to_per_production_path, method: :post,
                     data: { turbo: false, controller: "radio-card" } do %>
         <%# Options %>
         <div class="px-6 py-4 space-y-3">

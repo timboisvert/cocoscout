@@ -72,7 +72,8 @@
       toggle_label: "Filters & View Options",
       wrapper_data_controller: "filter-select",
       filter_groups: [
-        {
+        # Only show the Talent Pool vs Everyone filter when there are multiple pools
+        (@talent_pools.count > 1 ? {
           partial: "shared/filters/dropdown_filter",
           locals: {
             label: "Group",
@@ -95,8 +96,9 @@
               filter_select_type_value: @type
             }
           }
-        },
-        (@filter == "talent_pools" && @talent_pools.any? ? {
+        } : nil),
+        # Only show pool selector when filtering by talent pools AND there are multiple pools
+        (@filter == "talent_pools" && @talent_pools.count > 1 ? {
           partial: "shared/filters/dropdown_filter",
           locals: {
             label: "Pool",
@@ -112,7 +114,8 @@
             }
           }
         } : nil),
-        { separator: true },
+        # Add separator only if we showed any talent pool filters
+        (@talent_pools.count > 1 ? { separator: true } : nil),
         {
           partial: "shared/filters/dropdown_filter",
           locals: {
