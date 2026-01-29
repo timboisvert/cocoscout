@@ -133,7 +133,7 @@ class AuthController < ApplicationController
           person.user = user
           person.save!
         else
-          user.create_person(email: user.email_address, name: user.email_address.split("@").first)
+          user.people.create(email: user.email_address, name: user.email_address.split("@").first)
         end
       end
 
