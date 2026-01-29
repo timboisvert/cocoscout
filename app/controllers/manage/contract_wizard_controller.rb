@@ -145,36 +145,24 @@ module Manage
       @contract.update_draft_step(:payments, payments_data)
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)
-      @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
-      redirect_to manage_terms_contract_wizard_path(@contract)
-    end
 
-    # Step 6: Terms and notes
-    def terms
-      @step = 6
-
-      # Auto-populate contract dates from bookings if not already set
+      # Auto-set contract dates from bookings
       if @contract.contract_start_date.blank? || @contract.contract_end_date.blank?
         booking_dates = @contract.draft_bookings.map { |b| Time.zone.parse(b["starts_at"])&.to_date }.compact
         if booking_dates.any?
-          @contract.contract_start_date ||= booking_dates.min
-          @contract.contract_end_date ||= booking_dates.max
+          @contract.contract_start_date = booking_dates.min if @contract.contract_start_date.blank?
+          @contract.contract_end_date = booking_dates.max if @contract.contract_end_date.blank?
+          @contract.save!
         end
       end
+
+      @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
+      redirect_to manage_documents_contract_wizard_path(@contract)
     end
 
-    def save_terms
-      if @contract.update(terms_params.merge(wizard_step: [ 7, @contract.wizard_step ].max))
-        redirect_to manage_documents_contract_wizard_path(@contract)
-      else
-        @step = 6
-        render :terms, status: :unprocessable_entity
-      end
-    end
-
-    # Step 7: Document upload
+    # Step 6: Document upload
     def documents
-      @step = 7
+      @step = 6
       @documents = @contract.contract_documents.recent
     end
 
@@ -182,12 +170,12 @@ module Manage
       if params[:contract_document].present? && params[:contract_document][:file].present?
         doc = @contract.contract_documents.build(
           name: params[:contract_document][:name].presence || "Contract Document",
-          document_type: "contract"
+          document_type: "signed_contract"
         )
         doc.file.attach(params[:contract_document][:file])
 
         unless doc.save
-          @step = 7
+          @step = 6
           @documents = @contract.contract_documents.recent
           flash.now[:alert] = doc.errors.full_messages.join(", ")
           render :documents, status: :unprocessable_entity
@@ -195,7 +183,7 @@ module Manage
         end
       end
 
-      @contract.update_column(:wizard_step, [ 8, @contract.wizard_step ].max)
+      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
       redirect_to manage_review_contract_wizard_path(@contract)
     end
 
@@ -205,9 +193,9 @@ module Manage
       redirect_to manage_documents_contract_wizard_path(@contract), notice: "Document deleted."
     end
 
-    # Step 8: Review and activate
+    # Step 7: Review and activate
     def review
-      @step = 8
+      @step = 7
       @valid_for_activation = @contract.valid_for_activation?
       @validation_errors = @contract.errors.full_messages unless @valid_for_activation
     end
@@ -216,7 +204,7 @@ module Manage
       if @contract.activate!
         redirect_to manage_contract_path(@contract), notice: "Contract activated successfully!"
       else
-        @step = 8
+        @step = 7
         @valid_for_activation = false
         @validation_errors = @contract.errors.full_messages
         render :review, status: :unprocessable_entity
@@ -240,12 +228,6 @@ module Manage
       )
     end
 
-    def terms_params
-      params.require(:contract).permit(
-        :contract_start_date, :contract_end_date, :terms, :notes
-      )
-    end
-
     def wizard_step_path(step)
       case step
       when 1 then manage_contractor_contract_wizard_path(@contract)
@@ -253,7 +235,7 @@ module Manage
       when 3 then manage_schedule_preview_contract_wizard_path(@contract)
       when 4 then manage_services_contract_wizard_path(@contract)
       when 5 then manage_payments_contract_wizard_path(@contract)
-      when 6 then manage_terms_contract_wizard_path(@contract)
+      when 6 then manage_documents_contract_wizard_path(@contract)
       when 7 then manage_review_contract_wizard_path(@contract)
       else manage_contractor_contract_wizard_path(@contract)
       end

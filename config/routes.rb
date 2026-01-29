@@ -991,8 +991,6 @@ Rails.application.routes.draw do
     post "money/contracts/:contract_id/wizard/services", to: "contract_wizard#save_services"
     get  "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#payments", as: "payments_contract_wizard"
     post "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#save_payments"
-    get  "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#terms", as: "terms_contract_wizard"
-    post "money/contracts/:contract_id/wizard/terms", to: "contract_wizard#save_terms"
     get  "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#documents", as: "documents_contract_wizard"
     post "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#save_documents"
     delete "money/contracts/:contract_id/wizard/documents/:document_id", to: "contract_wizard#delete_document", as: "delete_document_contract_wizard"

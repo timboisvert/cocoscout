@@ -200,8 +200,10 @@ class Show < ApplicationRecord
   end
 
   # Display name for the show (secondary_name if set, otherwise production name + event type)
+  # For third-party productions, we don't append the event type since they often have unique names
   def display_name
     return secondary_name if secondary_name.present?
+    return production.name if production.present? && production.type_third_party?
     return "#{production.name} #{event_type.titleize}" if production.present? && event_type.present?
     "Show"
   end

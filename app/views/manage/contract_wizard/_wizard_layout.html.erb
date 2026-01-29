@@ -23,9 +23,8 @@
             { num: 3, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
             { num: 4, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
             { num: 5, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 6, name: "Terms", path: defined?(@contract) && @contract.persisted? ? manage_terms_contract_wizard_path(@contract) : nil },
-            { num: 7, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 8, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 6, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
+            { num: 7, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
           ]
         %>
         <% steps.each_with_index do |step, index| %>
