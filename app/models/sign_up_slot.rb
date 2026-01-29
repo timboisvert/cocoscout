@@ -33,8 +33,10 @@ class SignUpSlot < ApplicationRecord
   end
 
   def active_registrations_count
+    return @active_registrations_count if defined?(@active_registrations_count)
+
     # Use loaded association if available to avoid N+1 queries
-    if sign_up_registrations.loaded?
+    @active_registrations_count = if sign_up_registrations.loaded?
       sign_up_registrations.count { |r| r.status != "cancelled" }
     else
       sign_up_registrations.where.not(status: "cancelled").count

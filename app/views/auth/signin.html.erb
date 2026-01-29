@@ -93,7 +93,8 @@
           <!-- Error Messages -->
           <% if @error %>
             <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
-              Please enter a valid email address and password.
+              <p class="font-medium">We couldn't sign you in with that email and password.</p>
+              <p class="mt-1">Please check your credentials and try again, or <%= link_to "reset your password", password_path, class: "underline font-medium hover:text-pink-800" %> if you've forgotten it.</p>
             </div>
           <% end %>
 
@@ -125,7 +126,7 @@
             <div data-controller="password-visibility">
               <div class="flex items-center justify-between mb-1">
                 <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
-                <%= link_to "Forgot password?", password_path, tabindex: -1, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" %>
+                <%= link_to "Need to reset your password?", password_path, tabindex: -1, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" %>
               </div>
               <div class="relative">
                 <%= form.password_field :password,
