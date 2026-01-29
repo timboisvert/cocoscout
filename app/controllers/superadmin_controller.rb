@@ -62,18 +62,19 @@ class SuperadminController < ApplicationController
     return render json: [] if query.length < 2
 
     # Search users by email, person's name, or public_key (case insensitive)
-    users = User.left_joins(:default_person)
+    users = User.left_joins(:people)
                 .where("LOWER(users.email_address) LIKE ? OR LOWER(people.name) LIKE ? OR LOWER(people.public_key) LIKE ?",
                        "%#{query}%", "%#{query}%", "%#{query}%")
-                .includes(:default_person)
+                .distinct
                 .order(:email_address)
                 .limit(10)
 
     results = users.map do |user|
+      person = user.primary_person
       {
         email: user.email_address,
-        name: user.default_person&.name || user.email_address,
-        public_key: user.default_person&.public_key
+        name: person&.name,
+        public_key: person&.public_key
       }
     end
 
@@ -88,10 +89,10 @@ class SuperadminController < ApplicationController
     # Apply filter for suspicious people
     @people = @people.suspicious if @filter == "suspicious"
 
-    # Filter by search term if provided (search by name or email)
+    # Filter by search term if provided (search by name, email, or public_key)
     if @search.present?
       search_term = "%#{@search}%"
-      @people = @people.where("name LIKE ? OR email LIKE ?", search_term, search_term)
+      @people = @people.where("name ILIKE ? OR email ILIKE ? OR public_key ILIKE ?", search_term, search_term, search_term)
     end
 
     @pagy, @people = pagy(@people, items: 25)
@@ -993,6 +994,108 @@ class SuperadminController < ApplicationController
     @storage_breakdown.sort_by! { |item| -item[:size_bytes] }
   end
 
+  # Profiles Monitor - Profile statistics and insights
+  def profiles
+    # Total counts
+    @total_profiles = Person.count
+    @active_profiles = Person.active.count
+    @archived_profiles = Person.archived.count
+
+    # Sign-in activity (via User last_seen_at)
+    @signed_in_24h = User.where("last_seen_at > ?", 24.hours.ago).count
+    @signed_in_7d = User.where("last_seen_at > ?", 7.days.ago).count
+    @signed_in_30d = User.where("last_seen_at > ?", 30.days.ago).count
+
+    # Profile creation timeline
+    @created_today = Person.where("created_at > ?", Time.current.beginning_of_day).count
+    @created_this_week = Person.where("created_at > ?", 7.days.ago).count
+    @created_this_month = Person.where("created_at > ?", 30.days.ago).count
+
+    # Profile completeness - headshots
+    @with_headshots = Person.active.joins(:profile_headshots).distinct.count
+    @without_headshots = @active_profiles - @with_headshots
+    @headshot_percent = @active_profiles.positive? ? (@with_headshots.to_f / @active_profiles * 100).round(1) : 0
+
+    # Profile completeness - resumes
+    @with_resumes = Person.active.joins(:profile_resumes).distinct.count
+    @without_resumes = @active_profiles - @with_resumes
+    @resume_percent = @active_profiles.positive? ? (@with_resumes.to_f / @active_profiles * 100).round(1) : 0
+
+    # Profile completeness - bio
+    @with_bio = Person.active.where.not(bio: [ nil, "" ]).count
+    @without_bio = @active_profiles - @with_bio
+    @bio_percent = @active_profiles.positive? ? (@with_bio.to_f / @active_profiles * 100).round(1) : 0
+
+    # Payment setup
+    @with_venmo = Person.active.where.not(venmo_identifier: [ nil, "" ]).count
+    @with_zelle = Person.active.where.not(zelle_identifier: [ nil, "" ]).count
+    @with_payment = Person.active.where("venmo_identifier IS NOT NULL AND venmo_identifier != '' OR zelle_identifier IS NOT NULL AND zelle_identifier != ''").count
+    @payment_percent = @active_profiles.positive? ? (@with_payment.to_f / @active_profiles * 100).round(1) : 0
+
+    # Public profiles
+    @public_profiles = Person.active.where(public_profile_enabled: true).count
+    @with_public_key = Person.active.where.not(public_key: [ nil, "" ]).count
+    @public_percent = @active_profiles.positive? ? (@public_profiles.to_f / @active_profiles * 100).round(1) : 0
+
+    # Talent pool participation
+    @in_talent_pools = Person.active.joins(:talent_pool_memberships).distinct.count
+    @talent_pool_percent = @active_profiles.positive? ? (@in_talent_pools.to_f / @active_profiles * 100).round(1) : 0
+
+    # Group membership
+    @in_groups = Person.active.joins(:group_memberships).distinct.count
+
+    # Videos
+    @with_videos = Person.active.joins(:profile_videos).distinct.count
+
+    # Performance credits
+    @with_performance_credits = Person.active.joins(:performance_credits).distinct.count
+
+    # Training credits
+    @with_training_credits = Person.active.joins(:training_credits).distinct.count
+
+    # Skills
+    @with_skills = Person.active.joins(:profile_skills).distinct.count
+
+    # User account association
+    @linked_to_users = Person.active.where.not(user_id: nil).count
+    @orphan_profiles = @active_profiles - @linked_to_users
+
+    # Event registrations
+    @registered_for_events = Person.active.joins(:sign_up_registrations).merge(SignUpRegistration.confirmed).distinct.count
+    @registered_for_events_percent = @active_profiles.positive? ? (@registered_for_events.to_f / @active_profiles * 100).round(1) : 0
+    @registered_waitlisted = Person.active.joins(:sign_up_registrations).merge(SignUpRegistration.waitlisted).distinct.count
+    @registered_waitlisted_percent = @active_profiles.positive? ? (@registered_waitlisted.to_f / @active_profiles * 100).round(1) : 0
+
+    # Audition requests
+    @submitted_audition_requests = Person.active
+      .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
+      .distinct.count
+    @submitted_in_person_auditions = Person.active
+      .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
+      .joins("INNER JOIN audition_cycles ON audition_cycles.id = audition_requests.audition_cycle_id")
+      .where("audition_cycles.allow_in_person_auditions = ?", true)
+      .distinct.count
+    @submitted_in_person_percent = @active_profiles.positive? ? (@submitted_in_person_auditions.to_f / @active_profiles * 100).round(1) : 0
+    @submitted_video_auditions = Person.active
+      .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
+      .where("audition_requests.video_url IS NOT NULL AND audition_requests.video_url != ''")
+      .distinct.count
+    @submitted_video_percent = @active_profiles.positive? ? (@submitted_video_auditions.to_f / @active_profiles * 100).round(1) : 0
+
+    # Recent profile activity (last 50)
+    @recent_profiles = Person.active
+                             .order(created_at: :desc)
+                             .limit(50)
+                             .select(:id, :name, :email, :public_key, :created_at)
+
+    # Daily sign-ups for the last 14 days (for chart)
+    @daily_signups = (0..13).map do |days_ago|
+      date = days_ago.days.ago.to_date
+      count = Person.where(created_at: date.beginning_of_day..date.end_of_day).count
+      { date: date, count: count }
+    end.reverse
+  end
+
   # Cache Monitor
   def cache
     if solid_cache_available?
@@ -1147,6 +1250,33 @@ class SuperadminController < ApplicationController
     @total_keys = @keys.size
     @total_pages = (@total_keys.to_f / @per_page).ceil
     @keys = @keys.slice((@page - 1) * @per_page, @per_page) || []
+  end
+
+  # =========================================================================
+  # Demo Users
+  # =========================================================================
+
+  def demo_users
+    @demo_users = DemoUser.ordered.includes(:created_by)
+    @demo_org = Organization.find_by(name: "Starlight Community Theater")
+  end
+
+  def demo_user_create
+    @demo_user = DemoUser.new(demo_user_params)
+    @demo_user.created_by = Current.user
+
+    if @demo_user.save
+      redirect_to demo_users_path, notice: "Demo user added: #{@demo_user.email}"
+    else
+      redirect_to demo_users_path, alert: "Failed to add demo user: #{@demo_user.errors.full_messages.join(', ')}"
+    end
+  end
+
+  def demo_user_destroy
+    @demo_user = DemoUser.find(params[:id])
+    email = @demo_user.email
+    @demo_user.destroy!
+    redirect_to demo_users_path, notice: "Demo user removed: #{email}"
   end
 
   # =========================================================================
@@ -1338,6 +1468,10 @@ class SuperadminController < ApplicationController
                                            :template_type, :mailer_class, :mailer_action, :notes,
                                            :prepend_production_name,
                                            available_variables: [ :name, :description ])
+  end
+
+  def demo_user_params
+    params.require(:demo_user).permit(:email, :name, :notes)
   end
 
   def require_superadmin

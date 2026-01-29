@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_29_064511) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -370,6 +370,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_064511) do
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["status"], name: "index_contracts_on_status"
+  end
+
+  create_table "demo_users", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "email", null: false
+    t.string "name"
+    t.text "notes"
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_demo_users_on_email", unique: true
   end
 
   create_table "email_batches", force: :cascade do |t|
@@ -1909,6 +1919,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_064511) do
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contracts", "organizations"
+  add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"

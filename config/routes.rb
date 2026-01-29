@@ -83,6 +83,7 @@ Rails.application.routes.draw do
     post "/storage/migrate_keys",    to: "superadmin#storage_migrate_keys",    as: "storage_migrate_keys"
     post "/storage/cleanup_s3_orphans", to: "superadmin#storage_cleanup_s3_orphans", as: "storage_cleanup_s3_orphans"
     get  "/data",               to: "superadmin#data",                as: "data_monitor"
+    get  "/profiles",           to: "superadmin#profiles",            as: "profiles_monitor"
     get  "/cache",              to: "superadmin#cache",               as: "cache_monitor"
     post "/cache/clear",        to: "superadmin#cache_clear",         as: "cache_clear"
     post "/cache/clear_pattern", to: "superadmin#cache_clear_pattern", as: "cache_clear_pattern"
@@ -94,6 +95,11 @@ Rails.application.routes.draw do
     delete "/email_templates/:id", to: "superadmin#email_template_destroy", as: "email_template_destroy"
     get  "/email_templates/:id/preview", to: "superadmin#email_template_preview", as: "email_template_preview"
     get  "/keys",               to: "superadmin#keys",                as: "keys_monitor"
+
+    # Demo Users
+    get    "/demo_users",       to: "superadmin#demo_users",          as: "demo_users"
+    post   "/demo_users",       to: "superadmin#demo_user_create",    as: "demo_user_create"
+    delete "/demo_users/:id",   to: "superadmin#demo_user_destroy",   as: "demo_user_destroy"
 
     # Dev tools (development only)
     get  "/dev_tools",                    to: "superadmin#dev_tools",                 as: "dev_tools"
@@ -131,8 +137,6 @@ Rails.application.routes.draw do
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
     post "/organization",        to: "manage/select#set_organization", as: "set_organization"
-    get  "/production",          to: "manage/select#production",       as: "select_production"
-    post "/production",          to: "manage/select#set_production",   as: "set_production"
   end
 
   # Talent-facing interface

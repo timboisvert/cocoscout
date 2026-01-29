@@ -117,28 +117,68 @@ class DemoSeeder
       puts "=" * 60
 
       org = Organization.find_by(name: DEMO_ORG_NAME)
-      if org.nil?
-        puts "No demo organization found. Nothing to destroy."
+
+      # Find all demo users (by email domain) - capture IDs before destroying anything
+      demo_users = User.where("email_address LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+      demo_user_ids = demo_users.pluck(:id)
+
+      # Find ALL people with demo email domain (regardless of user association)
+      demo_people = Person.where("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+      demo_people_ids = demo_people.pluck(:id)
+
+      if org.nil? && demo_user_ids.empty? && demo_people_ids.empty?
+        puts "No demo data found. Nothing to destroy."
         return
       end
 
-      # Find all demo users (by email domain)
-      demo_users = User.where("email_address LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+      # Clean up SmsLogs that reference demo users or org
+      if defined?(SmsLog)
+        sms_log_count = 0
+        if org
+          sms_log_count += SmsLog.where(organization_id: org.id).delete_all
+        end
+        if demo_user_ids.any?
+          sms_log_count += SmsLog.where(user_id: demo_user_ids).delete_all
+        end
+        puts "Deleted #{sms_log_count} SMS logs" if sms_log_count > 0
+      end
 
-      # Destroy organization (cascades to productions, shows, etc.)
-      puts "Destroying organization: #{org.name}..."
-      org.destroy!
+      # Clean up CastingTables before destroying org (FK constraint on shows)
+      if org
+        casting_table_count = org.casting_tables.count
+        org.casting_tables.destroy_all
+        puts "Deleted #{casting_table_count} casting tables" if casting_table_count > 0
+      end
 
-      # Destroy demo users
-      puts "Destroying #{demo_users.count} demo users..."
-      demo_users.destroy_all
+      # Clean up TalentPoolShares before destroying org (FK constraint on talent_pools)
+      if org
+        talent_pool_ids = TalentPool.joins(:production).where(productions: { organization_id: org.id }).pluck(:id)
+        production_ids = org.productions.pluck(:id)
+        if talent_pool_ids.any? || production_ids.any?
+          share_count = TalentPoolShare.where(talent_pool_id: talent_pool_ids)
+                                       .or(TalentPoolShare.where(production_id: production_ids))
+                                       .delete_all
+          puts "Deleted #{share_count} talent pool shares" if share_count > 0
+        end
+      end
 
-      # Clean up any orphaned people without users that were in the demo org
-      # (People are not dependent: :destroy on organization)
-      orphaned_people = Person.left_joins(:user).where(users: { id: nil })
-                              .where("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
-      puts "Cleaning up #{orphaned_people.count} orphaned demo people..."
-      orphaned_people.destroy_all
+      # Destroy organization (cascades to productions, shows, contracts, etc.)
+      if org
+        puts "Destroying organization: #{org.name}..."
+        org.destroy!
+      end
+
+      # Destroy demo users FIRST (users have FK to people via person_id)
+      if demo_user_ids.any?
+        puts "Destroying #{demo_user_ids.count} demo users..."
+        User.where(id: demo_user_ids).destroy_all
+      end
+
+      # Destroy demo people (this also removes their headshots, skills, credits, etc.)
+      if demo_people_ids.any?
+        puts "Destroying #{demo_people_ids.count} demo people..."
+        Person.where(id: demo_people_ids).destroy_all
+      end
 
       puts "Demo data destroyed successfully!"
     end
@@ -201,10 +241,41 @@ class DemoSeeder
       OrganizationRole.create!(
         organization: @org,
         user: @admin_user,
-        role: "manager"
+        company_role: "manager"
       )
 
+      # Add all superadmins as managers so they can access the demo org
+      superadmin_count = 0
+      User.where(email_address: User::SUPERADMIN_EMAILS).find_each do |superadmin|
+        next if superadmin == @admin_user  # Skip if already added
+
+        OrganizationRole.find_or_create_by!(
+          organization: @org,
+          user: superadmin
+        ) do |role|
+          role.company_role = "manager"
+        end
+        superadmin_count += 1
+      end
+
+      # Add demo users (from DemoUser table) as managers
+      demo_user_count = 0
+      DemoUser.find_each do |demo_user|
+        user = User.find_by(email_address: demo_user.email)
+        next unless user  # Skip if user hasn't registered yet
+
+        OrganizationRole.find_or_create_by!(
+          organization: @org,
+          user: user
+        ) do |role|
+          role.company_role = "manager"
+        end
+        demo_user_count += 1
+      end
+
       puts "  Created: #{@org.name}"
+      puts "  Added #{superadmin_count} superadmins as managers" if superadmin_count > 0
+      puts "  Added #{demo_user_count} demo users as managers" if demo_user_count > 0
     end
 
     def create_locations
@@ -279,7 +350,7 @@ class DemoSeeder
         OrganizationRole.create!(
           organization: @org,
           user: user,
-          role: "manager"
+          company_role: "manager"
         )
 
         # Create person profile for manager
@@ -316,7 +387,7 @@ class DemoSeeder
         OrganizationRole.create!(
           organization: @org,
           user: user,
-          role: "member"
+          company_role: "member"
         )
 
         # Determine headshot based on pronouns
@@ -456,7 +527,7 @@ class DemoSeeder
         { title: "Romeo and Juliet", role: "Nurse", location: "Shakespeare in the Park" },
         { title: "The Wizard of Oz", role: "Dorothy", location: "Youth Theater" },
         { title: "Rent", role: "Mark", location: "Off-Broadway Tour" },
-        { title: "Chicago", role: "Velma Kelly", location: "Regional Theater" },
+        { title: "Boeing Boeing", role: "Gloria", location: "Regional Theater" },
         { title: "A Chorus Line", role: "Cassie", location: "Dinner Theater" },
         { title: "Hairspray", role: "Tracy Turnblad", location: "High School" }
       ]
@@ -515,70 +586,66 @@ class DemoSeeder
     def create_in_house_productions
       puts "\nCreating in-house productions..."
 
-      # Production 1: The Sound of Music (Musical)
-      @sound_of_music = create_production(
-        name: "The Sound of Music",
-        description: "Rodgers and Hammerstein's beloved musical about the von Trapp family.",
+      # Production 1: Marriage Material (Romantic Comedy)
+      @marriage_material = create_production(
+        name: "Marriage Material",
+        description: "A hilarious romantic comedy about a couple whose families meet for the first time at their engagement party - with disastrous results.",
         roles: [
-          { name: "Maria", quantity: 1, category: "performing" },
-          { name: "Captain von Trapp", quantity: 1, category: "performing" },
-          { name: "Baroness Schraeder", quantity: 1, category: "performing" },
-          { name: "Max Detweiler", quantity: 1, category: "performing" },
-          { name: "Mother Abbess", quantity: 1, category: "performing" },
-          { name: "Liesl", quantity: 1, category: "performing" },
-          { name: "Friedrich", quantity: 1, category: "performing" },
-          { name: "Louisa", quantity: 1, category: "performing" },
-          { name: "Kurt", quantity: 1, category: "performing" },
-          { name: "Brigitta", quantity: 1, category: "performing" },
-          { name: "Marta", quantity: 1, category: "performing" },
-          { name: "Gretl", quantity: 1, category: "performing" },
-          { name: "Ensemble", quantity: 8, category: "performing" },
+          { name: "Jenny (The Bride)", quantity: 1, category: "performing" },
+          { name: "Marcus (The Groom)", quantity: 1, category: "performing" },
+          { name: "Linda (Jenny's Mom)", quantity: 1, category: "performing" },
+          { name: "Frank (Jenny's Dad)", quantity: 1, category: "performing" },
+          { name: "Darlene (Marcus's Mom)", quantity: 1, category: "performing" },
+          { name: "Big Earl (Marcus's Dad)", quantity: 1, category: "performing" },
+          { name: "Cousin Tiffany", quantity: 1, category: "performing" },
+          { name: "Uncle Morty", quantity: 1, category: "performing" },
+          { name: "The Caterer", quantity: 1, category: "performing" },
+          { name: "Wedding Party", quantity: 6, category: "performing" },
           { name: "Stage Manager", quantity: 1, category: "technical" },
           { name: "Lighting Operator", quantity: 1, category: "technical" }
         ],
         talent_pool_size: 15
       )
 
-      # Production 2: A Midsummer Night's Dream (Shakespeare)
-      @midsummer = create_production(
-        name: "A Midsummer Night's Dream",
-        description: "Shakespeare's enchanting comedy of love, magic, and mischief.",
+      # Production 2: Awkward Family Dinner (Ensemble Comedy)
+      @awkward_dinner = create_production(
+        name: "Awkward Family Dinner",
+        description: "When three generations gather for Thanksgiving, old grudges resurface, secrets spill out, and the turkey catches fire. An ensemble comedy about the family we're stuck with.",
         roles: [
-          { name: "Puck", quantity: 1, category: "performing" },
-          { name: "Oberon", quantity: 1, category: "performing" },
-          { name: "Titania", quantity: 1, category: "performing" },
-          { name: "Bottom", quantity: 1, category: "performing" },
-          { name: "Lysander", quantity: 1, category: "performing" },
-          { name: "Demetrius", quantity: 1, category: "performing" },
-          { name: "Hermia", quantity: 1, category: "performing" },
-          { name: "Helena", quantity: 1, category: "performing" },
-          { name: "Theseus", quantity: 1, category: "performing" },
-          { name: "Hippolyta", quantity: 1, category: "performing" },
-          { name: "Mechanicals", quantity: 4, category: "performing" },
-          { name: "Fairies", quantity: 4, category: "performing" },
+          { name: "Grandma Rose", quantity: 1, category: "performing" },
+          { name: "Grandpa Lou", quantity: 1, category: "performing" },
+          { name: "Mom (Susan)", quantity: 1, category: "performing" },
+          { name: "Dad (Richard)", quantity: 1, category: "performing" },
+          { name: "Aunt Patty", quantity: 1, category: "performing" },
+          { name: "Uncle Steve", quantity: 1, category: "performing" },
+          { name: "The Prodigal Son (Derek)", quantity: 1, category: "performing" },
+          { name: "The Overachiever (Melissa)", quantity: 1, category: "performing" },
+          { name: "The Teenager (Zach)", quantity: 1, category: "performing" },
+          { name: "Derek's New Girlfriend", quantity: 1, category: "performing" },
+          { name: "Extended Family", quantity: 4, category: "performing" },
           { name: "Stage Manager", quantity: 1, category: "technical" }
         ],
         talent_pool_size: 12
       )
 
-      # Production 3: Chicago (Musical) - shares talent pool with Sound of Music
-      @chicago = create_production(
-        name: "Chicago",
-        description: "The Tony Award-winning musical about murder, greed, corruption, and all that jazz.",
+      # Production 3: Last Call at Larry's (Bar Comedy) - shares talent pool with Marriage Material
+      @last_call = create_production(
+        name: "Last Call at Larry's",
+        description: "It's closing time at a neighborhood dive bar, but nobody wants to go home. A comedy about the regulars, the staff, and the stranger who just walked in.",
         roles: [
-          { name: "Roxie Hart", quantity: 1, category: "performing" },
-          { name: "Velma Kelly", quantity: 1, category: "performing" },
-          { name: "Billy Flynn", quantity: 1, category: "performing" },
-          { name: "Matron 'Mama' Morton", quantity: 1, category: "performing" },
-          { name: "Amos Hart", quantity: 1, category: "performing" },
-          { name: "Mary Sunshine", quantity: 1, category: "performing" },
-          { name: "Merry Murderesses", quantity: 6, category: "performing" },
-          { name: "Ensemble", quantity: 6, category: "performing" },
+          { name: "Larry (The Owner)", quantity: 1, category: "performing" },
+          { name: "Deb (The Bartender)", quantity: 1, category: "performing" },
+          { name: "Mel (The Regular)", quantity: 1, category: "performing" },
+          { name: "Sheila (The Regular)", quantity: 1, category: "performing" },
+          { name: "Tommy Two-Beers", quantity: 1, category: "performing" },
+          { name: "The Stranger", quantity: 1, category: "performing" },
+          { name: "Bar Patrons", quantity: 6, category: "performing" },
+          { name: "The Band", quantity: 3, category: "performing" },
           { name: "Stage Manager", quantity: 1, category: "technical" },
-          { name: "Choreographer Assistant", quantity: 1, category: "technical" }
+          { name: "Sound Tech", quantity: 1, category: "technical" }
         ],
         talent_pool_size: 14,
-        share_talent_pool_with: @sound_of_music
+        share_talent_pool_with: @marriage_material
       )
 
       # Production 4: Open Mic Night (Weekly with sign-up)
@@ -719,9 +786,9 @@ class DemoSeeder
           { amount: 1500, description: "Performance fee", due_days_before: 3 }
         ],
         rental_dates: [
-          { days_from_now: 50, hours: 3, space: @rehearsal_a },
-          { days_from_now: 51, hours: 3, space: @rehearsal_a },
-          { days_from_now: 52, hours: 5, space: @main_stage }
+          { days_from_now: 53, hours: 3, space: @rehearsal_a },
+          { days_from_now: 54, hours: 3, space: @rehearsal_a },
+          { days_from_now: 55, hours: 5, space: @main_stage }
         ]
       )
 
@@ -801,7 +868,7 @@ class DemoSeeder
           amount: payment[:amount],
           description: payment[:description],
           due_date: due_date,
-          direction: "from",  # Payment from contractor to us
+          direction: "incoming",  # Payment from contractor to us
           status: due_date < Time.current ? "paid" : "pending",
           paid_date: due_date < Time.current ? due_date : nil
         )
@@ -847,15 +914,15 @@ class DemoSeeder
     def create_shows_and_casting
       puts "\nCreating shows and casting..."
 
-      # Sound of Music - Fri/Sat performances for 8 weeks
-      create_recurring_shows(@sound_of_music, @main_stage, weeks: 8, days: [ 5, 6 ], hour: 19)
+      # Marriage Material - Fri/Sat performances for 8 weeks
+      create_recurring_shows(@marriage_material, @main_stage, weeks: 8, days: [ 5, 6 ], hour: 19)
 
-      # Midsummer - Thu/Fri for 6 weeks
-      create_recurring_shows(@midsummer, @black_box, weeks: 6, days: [ 4, 5 ], hour: 19, start_offset: 14)
+      # Awkward Family Dinner - Thu/Fri for 6 weeks
+      create_recurring_shows(@awkward_dinner, @black_box, weeks: 6, days: [ 4, 5 ], hour: 19, start_offset: 14)
 
-      # Chicago - Sat matinee and evening for 8 weeks
-      create_recurring_shows(@chicago, @main_stage, weeks: 8, days: [ 6 ], hour: 14, start_offset: 7)
-      create_recurring_shows(@chicago, @main_stage, weeks: 8, days: [ 6 ], hour: 19, start_offset: 7)
+      # Last Call at Larry's - Sat matinee and evening for 8 weeks
+      create_recurring_shows(@last_call, @main_stage, weeks: 8, days: [ 6 ], hour: 14, start_offset: 7)
+      create_recurring_shows(@last_call, @main_stage, weeks: 8, days: [ 6 ], hour: 19, start_offset: 7)
 
       # Improv Workshop - Weekly on Wednesdays
       create_recurring_shows(@improv_workshop, @rehearsal_a, weeks: 12, days: [ 3 ], hour: 19, event_type: "workshop")
@@ -872,15 +939,15 @@ class DemoSeeder
       )
 
       # Cast the shows
-      cast_production(@sound_of_music)
-      cast_production(@midsummer)
-      cast_production(@chicago)
+      cast_production(@marriage_material)
+      cast_production(@awkward_dinner)
+      cast_production(@last_call)
       cast_production(@improv_workshop)
 
-      # Create casting table for Sound of Music + Chicago (shared talent pool)
+      # Create casting table for Marriage Material + Last Call (shared talent pool)
       create_casting_table
 
-      puts "  Created shows and cast #{@sound_of_music.shows.count + @midsummer.shows.count + @chicago.shows.count + @improv_workshop.shows.count + 1} performances"
+      puts "  Created shows and cast #{@marriage_material.shows.count + @awkward_dinner.shows.count + @last_call.shows.count + @improv_workshop.shows.count + 1} performances"
     end
 
     def create_recurring_shows(production, space, weeks:, days:, hour:, start_offset: 0, event_type: "show")
@@ -936,7 +1003,7 @@ class DemoSeeder
     end
 
     def create_casting_table
-      # Create a casting table for Sound of Music and Chicago (they share talent)
+      # Create a casting table for Marriage Material and Last Call (they share talent)
       casting_table = CastingTable.create!(
         organization: @org,
         name: "Musical Season Casting",
@@ -945,11 +1012,11 @@ class DemoSeeder
       )
 
       # Add both productions
-      CastingTableProduction.create!(casting_table: casting_table, production: @sound_of_music)
-      CastingTableProduction.create!(casting_table: casting_table, production: @chicago)
+      CastingTableProduction.create!(casting_table: casting_table, production: @marriage_material)
+      CastingTableProduction.create!(casting_table: casting_table, production: @last_call)
 
       # Add some shows to the casting table
-      [ @sound_of_music, @chicago ].each do |prod|
+      [ @marriage_material, @last_call ].each do |prod|
         prod.shows.where("date_and_time > ?", Time.current).limit(3).each do |show|
           CastingTableEvent.create!(casting_table: casting_table, show: show)
         end
@@ -960,7 +1027,7 @@ class DemoSeeder
       puts "\nSetting up availability..."
 
       # For each production's talent pool, set intelligent availability
-      [ @sound_of_music, @midsummer, @chicago, @improv_workshop ].each do |production|
+      [ @marriage_material, @awkward_dinner, @last_call, @improv_workshop ].each do |production|
         talent_pool = production.talent_pools.first
         next unless talent_pool
 
@@ -1059,7 +1126,7 @@ class DemoSeeder
       12.times do |i|
         SignUpSlot.create!(
           sign_up_form: sign_up_form,
-          position: i,
+          position: i + 1,
           name: "#{i + 1}. Performance Slot",
           capacity: 1
         )
@@ -1070,7 +1137,7 @@ class DemoSeeder
         questionable: sign_up_form,
         text: "What will you be performing?",
         question_type: "short_text",
-        position: 0,
+        position: 1,
         required: true
       )
 
@@ -1078,7 +1145,7 @@ class DemoSeeder
         questionable: sign_up_form,
         text: "Do you need any special equipment?",
         question_type: "long_text",
-        position: 1,
+        position: 2,
         required: false
       )
 
@@ -1105,7 +1172,8 @@ class DemoSeeder
               sign_up_slot: slots[idx],
               person: person,
               status: "confirmed",
-              position: idx
+              position: idx + 1,
+              registered_at: rand(1..7).days.ago
             )
           end
         end
@@ -1179,7 +1247,6 @@ class DemoSeeder
         request = AuditionRequest.create!(
           audition_cycle: cycle,
           requestable: person,
-          status: idx < 3 ? "scheduled" : "submitted",
           video_url: idx % 3 == 0 ? "https://www.youtube.com/watch?v=dQw4w9WgXcQ" : nil
         )
 
@@ -1255,10 +1322,10 @@ class DemoSeeder
         }
       )
 
-      # Create production-level payout scheme for Sound of Music
-      @som_payout = PayoutScheme.create!(
-        production: @sound_of_music,
-        name: "Sound of Music Payout",
+      # Create production-level payout scheme for Marriage Material
+      @mm_payout = PayoutScheme.create!(
+        production: @marriage_material,
+        name: "Marriage Material Payout",
         description: "Per-ticket split with guaranteed minimum",
         rules: {
           allocation: [
@@ -1275,8 +1342,8 @@ class DemoSeeder
       )
 
       # Add financials to past shows and some upcoming
-      [ @sound_of_music, @midsummer, @chicago ].each do |production|
-        scheme = production == @sound_of_music ? @som_payout : @standard_payout
+      [ @marriage_material, @awkward_dinner, @last_call ].each do |production|
+        scheme = production == @marriage_material ? @mm_payout : @standard_payout
 
         production.shows.where("date_and_time < ?", Time.current).each do |show|
           create_show_financials(show, scheme)
@@ -1292,7 +1359,8 @@ class DemoSeeder
       @created_people.sample(5).each do |person|
         PersonAdvance.create!(
           person: person,
-          production: @sound_of_music,
+          production: @marriage_material,
+          advance_type: "general",
           original_amount: [ 100, 150, 200, 250 ].sample,
           remaining_balance: [ 0, 50, 100 ].sample,
           status: "partial",

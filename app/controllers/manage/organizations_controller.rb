@@ -59,7 +59,7 @@ module Manage
         session[:current_organization_id] ||= {}
         session[:current_organization_id][Current.user&.id.to_s] = @organization.id
 
-        redirect_to select_production_path, notice: "#{@organization.name} was successfully created"
+        redirect_to manage_path, notice: "#{@organization.name} was successfully created"
       else
         render :new, status: :unprocessable_entity
       end

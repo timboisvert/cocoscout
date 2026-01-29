@@ -367,16 +367,14 @@ class Person < ApplicationRecord
       priority: 2
     }
 
-    # Task 3: Set up payment info (Venmo/Zelle) - only if in a talent pool
-    if talent_pools.any?
-      tasks << {
-        key: :payment,
-        title: "Set up payment info",
-        description: "Add Venmo or Zelle for faster payouts",
-        completed: venmo_configured?,
-        priority: 3
-      }
-    end
+    # Task 3: Set up payment info (Venmo/Zelle)
+    tasks << {
+      key: :payment,
+      title: "Set up payment info",
+      description: "Add Venmo or Zelle for faster payouts",
+      completed: venmo_configured?,
+      priority: 3
+    }
 
     # Task 4: Complete your profile (bio)
     tasks << {

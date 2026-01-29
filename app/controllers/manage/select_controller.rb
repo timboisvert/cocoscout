@@ -11,6 +11,18 @@ module Manage
       # Organization selection screen
       @organizations = Current.user.organizations.includes(:owner, :productions, :users).order(:name)
 
+      # If user has only one organization, auto-select it and redirect to manage
+      if @organizations.size == 1
+        organization = @organizations.first
+        user_id = Current.user&.id
+        if user_id
+          session[:current_organization_id] ||= {}
+          session[:current_organization_id][user_id.to_s] = organization.id
+        end
+        redirect_to manage_path
+        return
+      end
+
       # Add role information for each organization
       @organization_roles = {}
       @organizations.each do |org|
@@ -31,45 +43,6 @@ module Manage
       end
 
       # Always redirect to manage - production auto-selection happens there if needed
-      redirect_to manage_path
-    end
-
-    def production
-      # Production selection screen
-      # If no organization in session, redirect to organization selection
-      if Current.organization.nil?
-        redirect_to select_organization_path, alert: "Please select an organization first"
-        return
-      end
-
-      # Load productions with counts for display
-      @productions = Current.user.accessible_productions
-        .where(organization: Current.organization)
-        .left_joins(:shows)
-        .select(
-          "productions.*",
-          "COUNT(DISTINCT shows.id) AS shows_count"
-        )
-        .group("productions.id")
-        .order(:name)
-
-      @production = Production.new
-    end
-
-    def set_production
-      unless Current.organization
-        redirect_to select_organization_path, alert: "Please select an organization first."
-        return
-      end
-
-      production = Current.organization.productions.find(params[:id])
-      unless Current.user.accessible_productions.include?(production)
-        redirect_to select_production_path, alert: "You do not have access to this production."
-        return
-      end
-
-      session[:current_production_id_for_organization] ||= {}
-      session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = production.id
       redirect_to manage_path
     end
 

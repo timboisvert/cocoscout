@@ -13,6 +13,24 @@
 
   <div class="max-w-4xl">
 
+    <!-- Intro Text -->
+    <div class="bg-pink-50 border border-pink-200 rounded-lg p-5 mb-6">
+      <div class="flex gap-3">
+        <svg class="w-6 h-6 text-pink-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h3 class="font-semibold text-pink-900 mb-1">Get Paid Faster</h3>
+          <p class="text-sm text-pink-800">
+            CocoScout allows productions to pay talent directly via Venmo or Zelle.
+            Adding your payment info here means productions can pay you quickly after shows—no
+            chasing down checks or waiting for bank transfers. Your information is only shared
+            with productions when they process a payout to you.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <%# Preferred Payment Method - only show if both are configured %>
     <% if @person.venmo_configured? && @person.zelle_configured? %>
       <div class="bg-pink-50 border border-pink-200 rounded-lg p-5 mb-6">
@@ -191,24 +209,6 @@
         <% end %>
       </div>
 
-    </div>
-
-    <!-- Information Section -->
-    <div class="bg-pink-50 border border-pink-200 rounded-lg p-5">
-      <h4 class="font-medium text-pink-900 mb-2 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        How Payouts Work
-      </h4>
-      <ul class="text-sm text-pink-800 space-y-2">
-        <li><strong>1. Add your payment info</strong> - Set up Venmo, Zelle, or both</li>
-        <li><strong>2. Set your preference</strong> - If you have both, tell us which you prefer</li>
-        <li><strong>3. Get paid</strong> - Productions will see your preference when processing payouts</li>
-      </ul>
-      <p class="text-xs text-pink-700 mt-3">
-        Venmo and Zelle payments are processed outside of CocoScout. Productions will see your payment info when processing payouts.
-      </p>
     </div>
   </div>
 </div>

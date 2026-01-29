@@ -1,0 +1,153 @@
+<% content_for :title, "Demo Users - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Demo Users",
+    links: []
+  } %>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <!-- Left column: Add new demo user -->
+    <div>
+      <div class="border border-gray-200 rounded-lg overflow-visible">
+        <%= render "shared/card_header", title: "Add Demo User" do %>
+          <p class="text-sm text-gray-500 mt-1">Search for a user to add as a demo org manager</p>
+        <% end %>
+        <div class="p-4 overflow-visible">
+          <div data-controller="user-search" data-user-search-url-value="<%= search_users_path %>">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Search Users</label>
+            <div class="relative">
+              <input type="text"
+                     data-user-search-target="input"
+                     data-action="input->user-search#search"
+                     placeholder="Search by name or email..."
+                     autocomplete="off"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+
+              <!-- Results dropdown -->
+              <div data-user-search-target="results"
+                   class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              </div>
+            </div>
+
+            <!-- Selected user form (hidden until user selected) -->
+            <div data-user-search-target="selectedForm" class="hidden mt-4">
+              <%= form_with model: DemoUser.new, url: demo_user_create_path, class: "space-y-4" do |f| %>
+                <div class="p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="font-medium text-gray-900" data-user-search-target="selectedName"></div>
+                      <div class="text-sm text-gray-500" data-user-search-target="selectedEmail"></div>
+                    </div>
+                    <button type="button" data-action="click->user-search#clear" class="text-gray-400 hover:text-gray-600">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <%= f.hidden_field :email, data: { user_search_target: "emailField" } %>
+                <%= f.hidden_field :name, data: { user_search_target: "nameField" } %>
+                <div>
+                  <%= f.label :notes, "Notes (optional)", class: "block text-sm font-medium text-gray-700" %>
+                  <%= f.text_area :notes, rows: 2, placeholder: "Investor, advisor, etc.", class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500" %>
+                </div>
+                <%= f.submit "Add Demo User", class: "w-full bg-pink-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-pink-700 cursor-pointer" %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo Org Status -->
+      <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Demo Organization" %>
+        <div class="p-4">
+          <% if @demo_org %>
+            <div class="flex items-center gap-2 text-green-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm font-medium">Active</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2"><%= @demo_org.name %></p>
+            <p class="text-xs text-gray-400 mt-1">Created <%= time_ago_in_words(@demo_org.created_at) %> ago</p>
+          <% else %>
+            <div class="flex items-center gap-2 text-gray-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm font-medium">Not Seeded</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Run <code class="bg-gray-100 px-1 rounded">rails demo:seed</code> to create</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: Demo users list -->
+    <div>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Demo Users" do %>
+          <p class="text-sm text-gray-500 mt-1"><%= @demo_users.count %> users configured</p>
+        <% end %>
+
+        <% if @demo_users.empty? %>
+          <div class="p-8 text-center">
+            <div class="text-gray-400 mb-2">
+              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <p class="text-sm text-gray-500">No demo users configured yet.</p>
+            <p class="text-xs text-gray-400 mt-1">Search for users to add them as demo org managers.</p>
+          </div>
+        <% else %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @demo_users.each do |demo_user| %>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <div class="text-sm font-medium text-gray-900"><%= demo_user.email %></div>
+                      <% if demo_user.notes.present? %>
+                        <div class="text-xs text-gray-500 mt-0.5"><%= truncate(demo_user.notes, length: 40) %></div>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <div class="text-sm text-gray-500"><%= demo_user.name.presence || "—" %></div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <%= time_ago_in_words(demo_user.created_at) %> ago
+                      <% if demo_user.created_by %>
+                        <div class="text-xs text-gray-400">by <%= demo_user.created_by.email_address %></div>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                      <%= link_to "Remove", demo_user_destroy_path(demo_user),
+                          data: { turbo_method: :delete, turbo_confirm: "Remove #{demo_user.email} from demo users?" },
+                          class: "text-sm text-red-600 hover:text-red-800" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,16 @@
 <% tasks = person.onboarding_tasks %>
 <% return if tasks.empty? || person.profile_welcomed_at.present? %>
 
+<%
+  # Map task keys to their destination paths
+  task_paths = {
+    headshot: profile_path(anchor: "headshots"),
+    resume: profile_path(anchor: "resumes"),
+    payment: my_payments_setup_path,
+    profile: profile_path(anchor: "bio")
+  }
+%>
+
 <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
   <div class="px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2">
@@ -17,7 +27,8 @@
   <div class="px-4 pb-3">
     <div class="flex flex-wrap gap-2">
       <% tasks.each do |task| %>
-        <%= link_to profile_path, class: "group flex items-center gap-2 px-3 py-1.5 rounded-full text-sm #{task[:completed] ? 'bg-gray-100 text-gray-500' : 'bg-pink-50 text-gray-700 hover:bg-pink-100'} transition-colors" do %>
+        <% task_path = task_paths[task[:key]] || profile_path %>
+        <%= link_to task_path, class: "group flex items-center gap-2 px-3 py-1.5 rounded-full text-sm #{task[:completed] ? 'bg-gray-100 text-gray-500' : 'bg-pink-50 text-gray-700 hover:bg-pink-100'} transition-colors" do %>
           <% if task[:completed] %>
             <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

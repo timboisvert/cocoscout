@@ -209,6 +209,25 @@
 
   <!-- Row 2: Monitor Grid (6 columns) -->
   <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-4">
+    <!-- Profiles Monitor -->
+    <%= link_to profiles_monitor_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Profiles Monitor</h3>
+              <p class="text-xs text-gray-500">Sign-ins & completeness</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Data Monitor -->
     <%= link_to data_monitor_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
@@ -355,6 +374,25 @@
             <div>
               <h3 class="font-semibold text-gray-900">Key Monitor</h3>
               <p class="text-xs text-gray-500">Short URL keys (/a/, /s/)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Demo Users -->
+    <%= link_to demo_users_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Demo Users</h3>
+              <p class="text-xs text-gray-500">Manage demo org access</p>
             </div>
           </div>
         </div>
