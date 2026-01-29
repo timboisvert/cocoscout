@@ -271,7 +271,7 @@ module My
         @instance = find_current_instance
       end
 
-      @slots = @instance&.sign_up_slots&.order(:position) || []
+      @slots = @instance&.sign_up_slots&.includes(:sign_up_registrations)&.order(:position) || []
       @questions = @sign_up_form.questions.order(:position)
       @show = @instance&.show
       @my_registrations = find_user_registrations
