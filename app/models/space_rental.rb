@@ -58,12 +58,23 @@ class SpaceRental < ApplicationRecord
     return if location_space_id.blank? # Skip overlap check for entire venue bookings
 
     overlapping = SpaceRental
+      .joins(:contract)
       .where(location_space_id: location_space_id)
       .where.not(id: id)
-      .where("starts_at < ? AND ends_at > ?", ends_at, starts_at)
+      .where.not(contracts: { status: "cancelled" })
+      .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", ends_at, starts_at)
 
-    if overlapping.exists?
-      errors.add(:base, "This time slot overlaps with an existing rental")
+    if overlapping.any?
+      # Build detailed error message with specific conflict times
+      conflict_details = overlapping.limit(3).map do |rental|
+        "#{rental.starts_at.strftime('%b %-d at %-I:%M %p')} - #{rental.ends_at.strftime('%-I:%M %p')}"
+      end.join(", ")
+
+      if overlapping.count > 3
+        conflict_details += " and #{overlapping.count - 3} more"
+      end
+
+      errors.add(:base, "This time slot overlaps with existing rentals: #{conflict_details}")
     end
   end
 end
