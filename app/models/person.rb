@@ -520,7 +520,7 @@ class Person < ApplicationRecord
       errors.add(:venmo_identifier, "must be a valid email address") unless venmo_identifier.match?(URI::MailTo::EMAIL_REGEXP)
     when "USER_HANDLE"
       handle = venmo_identifier.delete("@")
-      errors.add(:venmo_identifier, "must be a valid Venmo username (5-30 characters)") unless handle.match?(/\A[a-zA-Z0-9-]{5,30}\z/)
+      errors.add(:venmo_identifier, "must be a valid Venmo username (5-30 characters)") unless handle.match?(/\A[a-zA-Z0-9_-]{5,30}\z/)
     end
   end
 
