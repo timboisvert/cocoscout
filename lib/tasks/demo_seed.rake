@@ -124,12 +124,12 @@ class DemoSeeder
     { first: "Hunter", last: "Jenkins", pronouns: "he/him" }
   ].freeze
 
-  # Headshot URLs from randomuser.me (placeholder images)
-  # Expanded to support 75 performers
-  HEADSHOT_URLS = {
-    female: (1..45).map { |i| "https://randomuser.me/api/portraits/women/#{i}.jpg" },
-    male: (1..35).map { |i| "https://randomuser.me/api/portraits/men/#{i}.jpg" },
-    neutral: (1..8).map { |i| "https://randomuser.me/api/portraits/lego/#{i}.jpg" }
+  # Pravatar.cc image indices for realistic human photos
+  # These are curated indices that look professional/theatrical
+  HEADSHOT_INDICES = {
+    female: (1..33).to_a,   # Female-presenting photos
+    male: (34..70).to_a,    # Male-presenting photos
+    neutral: (1..70).to_a   # All photos for they/them
   }.freeze
 
   # Production poster/logo URLs using picsum.photos (placeholder images)
@@ -149,7 +149,9 @@ class DemoSeeder
       puts "DESTROYING DEMO DATA"
       puts "=" * 60
 
-      org = Organization.find_by(name: DEMO_ORG_NAME)
+      # Find org by exact name or partial match (handles name changes)
+      org = Organization.find_by(name: DEMO_ORG_NAME) ||
+            Organization.where("name LIKE ?", "Starlight Community Theater%").first
 
       # Find all demo users (by email domain) - capture IDs before destroying anything
       demo_users = User.where("email_address LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
@@ -405,10 +407,6 @@ class DemoSeeder
     def create_performer_users_and_people
       puts "\nCreating performer users and profiles..."
 
-      female_headshot_idx = 0
-      male_headshot_idx = 0
-      neutral_headshot_idx = 0
-
       PERFORMER_NAMES.each_with_index do |performer, idx|
         full_name = "#{performer[:first]} #{performer[:last]}"
         email = "#{performer[:first].downcase}.#{performer[:last].downcase}@#{DEMO_EMAIL_DOMAIN}"
@@ -425,55 +423,37 @@ class DemoSeeder
           company_role: "member"
         )
 
-        # Determine headshot based on pronouns
-        headshot_url = case performer[:pronouns]
-        when "she/her"
-          url = HEADSHOT_URLS[:female][female_headshot_idx % HEADSHOT_URLS[:female].length]
-          female_headshot_idx += 1
-          url
-        when "he/him"
-          url = HEADSHOT_URLS[:male][male_headshot_idx % HEADSHOT_URLS[:male].length]
-          male_headshot_idx += 1
-          url
-        else
-          url = HEADSHOT_URLS[:neutral][neutral_headshot_idx % HEADSHOT_URLS[:neutral].length]
-          neutral_headshot_idx += 1
-          url
-        end
-
         person = create_person(
           user: user,
           name: full_name,
           email: email,
           pronouns: performer[:pronouns],
           bio: generate_performer_bio(performer),
-          headshot_url: headshot_url
+          headshot_url: headshot_url_for(performer[:pronouns], idx)
         )
 
         # Give some people multiple profiles (performers 0 and 5)
         if idx == 0
           # Sarah Mitchell also performs as "Sally Mae" (stage name)
-          alt_person = create_person(
+          create_person(
             user: user,
             name: "Sally Mae",
             email: email,
             pronouns: performer[:pronouns],
             bio: "Stage name for #{full_name}. Specializes in country and folk performances.",
-            headshot_url: HEADSHOT_URLS[:female][female_headshot_idx % HEADSHOT_URLS[:female].length]
+            headshot_url: headshot_url_for(performer[:pronouns], 100)
           )
-          female_headshot_idx += 1
           puts "    Also created alternate profile: Sally Mae"
         elsif idx == 5
           # David Kim also has a comedy persona
-          alt_person = create_person(
+          create_person(
             user: user,
             name: "Dave K. Comedy",
             email: email,
             pronouns: performer[:pronouns],
             bio: "Comedy persona for #{full_name}. Stand-up and improv specialist.",
-            headshot_url: HEADSHOT_URLS[:male][male_headshot_idx % HEADSHOT_URLS[:male].length]
+            headshot_url: headshot_url_for(performer[:pronouns], 101)
           )
-          male_headshot_idx += 1
           puts "    Also created alternate profile: Dave K. Comedy"
         end
 
@@ -482,6 +462,18 @@ class DemoSeeder
       end
 
       puts "\n  Created #{PERFORMER_NAMES.count} performers with profiles"
+    end
+
+    def headshot_url_for(pronouns, index)
+      # Use pravatar.cc for realistic human photos
+      # Pick from appropriate gender pool based on pronouns
+      pool = case pronouns
+      when "she/her" then HEADSHOT_INDICES[:female]
+      when "he/him" then HEADSHOT_INDICES[:male]
+      else HEADSHOT_INDICES[:neutral]
+      end
+      img_id = pool[index % pool.length]
+      "https://i.pravatar.cc/400?img=#{img_id}"
     end
 
     def create_person(user:, name:, email:, pronouns: nil, bio: nil, headshot_url: nil)
