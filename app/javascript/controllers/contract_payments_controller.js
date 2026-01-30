@@ -646,7 +646,8 @@ export default class extends Controller {
                 const perEventDirection2 = this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming"
                 const perEventTiming = this.hasPerEventTimingTarget ? this.perEventTimingTarget.value : "per_event"
                 const perEventTerms = this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "due"
-                const perEventTermsDays = parseInt(this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : 7) || 7
+                const perEventTermsDaysRaw = this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : "7"
+                const perEventTermsDays = perEventTermsDaysRaw !== "" ? parseInt(perEventTermsDaysRaw) : 7
 
                 // Apply discount if enabled
                 const hasDiscount2 = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
