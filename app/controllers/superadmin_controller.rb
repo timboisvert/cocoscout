@@ -1273,7 +1273,7 @@ class SuperadminController < ApplicationController
 
   def demo_users
     @demo_users = DemoUser.ordered.includes(:created_by)
-    @demo_org = Organization.find_by(name: "Starlight Community Theater")
+    @demo_org = find_demo_organization
   end
 
   def demo_user_create
@@ -1281,7 +1281,11 @@ class SuperadminController < ApplicationController
     @demo_user.created_by = Current.user
 
     if @demo_user.save
-      redirect_to demo_users_path, notice: "Demo user added: #{@demo_user.email}"
+      # If the user already has an account, add them to the demo org as a manager
+      added_to_org = add_user_to_demo_org(@demo_user.email)
+      notice = "Demo user added: #{@demo_user.email}"
+      notice += " (added to demo organization as manager)" if added_to_org
+      redirect_to demo_users_path, notice: notice
     else
       redirect_to demo_users_path, alert: "Failed to add demo user: #{@demo_user.errors.full_messages.join(', ')}"
     end
@@ -1367,6 +1371,35 @@ class SuperadminController < ApplicationController
   end
 
   private
+
+  # Find the demo organization (handles name changes)
+  def find_demo_organization
+    # Try to find by the expected name pattern
+    org = Organization.where("name LIKE ?", "Starlight Community Theater%").first
+    # Fallback: look for any org with "Demo" in the name
+    org ||= Organization.where("name LIKE ?", "%Demo%").first
+    org
+  end
+
+  # Add a user to the demo organization as a manager (if they have an account)
+  def add_user_to_demo_org(email)
+    user = User.find_by(email_address: email)
+    return false unless user
+
+    demo_org = find_demo_organization
+    return false unless demo_org
+
+    OrganizationRole.find_or_create_by!(
+      organization: demo_org,
+      user: user
+    ) do |role|
+      role.company_role = "manager"
+    end
+
+    true
+  rescue ActiveRecord::RecordInvalid
+    false
+  end
 
   def generate_email_preview_html(body_content)
     # Generate a standalone HTML preview that mimics the mailer layout
