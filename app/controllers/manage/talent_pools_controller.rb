@@ -257,7 +257,7 @@ module Manage
         assignments: assignments.map do |a|
           {
             id: a.id,
-            show_name: a.show.name_or_formatted_date,
+            show_name: a.show.display_name,
             role_name: a.role&.name,
             date: a.show.date_and_time
           }
