@@ -443,7 +443,7 @@ class Person < ApplicationRecord
   end
 
   # Generate Venmo payment URL for mobile deep linking
-  def venmo_payment_url(amount, note = nil)
+  def venmo_payment_link(amount, note = nil)
     return nil unless venmo_configured? && venmo_identifier_type == "USER_HANDLE"
 
     username = venmo_identifier.delete("@")

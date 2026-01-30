@@ -92,7 +92,7 @@
                       <%= session.start_at.strftime("%A, %B %-d, %Y at %-l:%M %p") %>
                     </td>
                     <td class="px-4 py-3 text-right text-sm">
-                      <%= link_to "Edit", edit_manage_audition_session_path(session), class: "text-pink-500 hover:text-pink-700 underline" %>
+                      <%= link_to "Edit", manage_edit_signups_auditions_cycle_session_path(session.production, session.audition_cycle, session), class: "text-pink-500 hover:text-pink-700 underline" %>
                     </td>
                   </tr>
                 <% end %>
