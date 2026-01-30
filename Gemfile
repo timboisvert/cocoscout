@@ -31,7 +31,7 @@ gem "tzinfo-data", platforms: %i[windows jruby]
 gem "redis"
 
 group :production do
-  gem "mailgun-ruby", "~> 1.2"
+  gem "mailgun-ruby", "~> 1.4"
   gem "poppler"
 end
 
