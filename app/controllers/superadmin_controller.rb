@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class SuperadminController < ApplicationController
+  # Demo users are excluded from counts/lists to avoid skewing real metrics
+  DEMO_EMAIL_DOMAIN = "demo.cocoscout.com"
+
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
@@ -16,21 +19,24 @@ class SuperadminController < ApplicationController
   def index
     @users = User.order(:email_address)
 
+    # Exclude demo users from all people stats
+    non_demo_people = Person.where.not("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+
     # People stats for overview
-    @people_total = Person.count
-    @people_new_today = Person.where("created_at > ?", Time.current.beginning_of_day).count
-    @people_new_past_7_days = Person.where("created_at > ?", 7.days.ago).count
+    @people_total = non_demo_people.count
+    @people_new_today = non_demo_people.where("created_at > ?", Time.current.beginning_of_day).count
+    @people_new_past_7_days = non_demo_people.where("created_at > ?", 7.days.ago).count
     # Active = has a user account that has logged in within the past 30 days
-    @people_active = Person.joins(:user).where("users.last_seen_at > ?", 30.days.ago).count
+    @people_active = non_demo_people.joins(:user).where("users.last_seen_at > ?", 30.days.ago).count
 
-    # People chart data - last 30 days by day
-    @people_daily_data = build_daily_chart_data(Person, 30)
+    # People chart data - last 30 days by day (exclude demo)
+    @people_daily_data = build_daily_chart_data(non_demo_people, 30)
 
-    # People chart data - last 12 weeks by week
-    @people_weekly_data = build_weekly_chart_data(Person, 12)
+    # People chart data - last 12 weeks by week (exclude demo)
+    @people_weekly_data = build_weekly_chart_data(non_demo_people, 12)
 
-    # People chart data - last 12 months by month
-    @people_monthly_data = build_monthly_chart_data(Person, 12)
+    # People chart data - last 12 months by month (exclude demo)
+    @people_monthly_data = build_monthly_chart_data(non_demo_people, 12)
 
     # Organization stats for overview
     @organizations_total = Organization.count
@@ -84,7 +90,11 @@ class SuperadminController < ApplicationController
   def people_list
     @search = params[:search].to_s.strip
     @filter = params[:filter].to_s.strip
-    @people = Person.includes(:user).order(created_at: :desc)
+
+    # Exclude demo users from people list
+    @people = Person.includes(:user)
+                    .where.not("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+                    .order(created_at: :desc)
 
     # Apply filter for suspicious people
     @people = @people.suspicious if @filter == "suspicious"
@@ -96,7 +106,7 @@ class SuperadminController < ApplicationController
     end
 
     @pagy, @people = pagy(@people, items: 25)
-    @suspicious_count = Person.suspicious.count
+    @suspicious_count = Person.suspicious.where.not("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}").count
   end
 
   def person_detail
@@ -996,102 +1006,107 @@ class SuperadminController < ApplicationController
 
   # Profiles Monitor - Profile statistics and insights
   def profiles
+    # Exclude demo users from all profile stats
+    non_demo_people = Person.where.not("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+    non_demo_active = non_demo_people.active
+    non_demo_users = User.where.not("email_address LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+
     # Total counts
-    @total_profiles = Person.count
-    @active_profiles = Person.active.count
-    @archived_profiles = Person.archived.count
+    @total_profiles = non_demo_people.count
+    @active_profiles = non_demo_active.count
+    @archived_profiles = non_demo_people.archived.count
 
     # Sign-in activity (via User last_seen_at)
-    @signed_in_24h = User.where("last_seen_at > ?", 24.hours.ago).count
-    @signed_in_7d = User.where("last_seen_at > ?", 7.days.ago).count
-    @signed_in_30d = User.where("last_seen_at > ?", 30.days.ago).count
+    @signed_in_24h = non_demo_users.where("last_seen_at > ?", 24.hours.ago).count
+    @signed_in_7d = non_demo_users.where("last_seen_at > ?", 7.days.ago).count
+    @signed_in_30d = non_demo_users.where("last_seen_at > ?", 30.days.ago).count
 
     # Profile creation timeline
-    @created_today = Person.where("created_at > ?", Time.current.beginning_of_day).count
-    @created_this_week = Person.where("created_at > ?", 7.days.ago).count
-    @created_this_month = Person.where("created_at > ?", 30.days.ago).count
+    @created_today = non_demo_people.where("created_at > ?", Time.current.beginning_of_day).count
+    @created_this_week = non_demo_people.where("created_at > ?", 7.days.ago).count
+    @created_this_month = non_demo_people.where("created_at > ?", 30.days.ago).count
 
     # Profile completeness - headshots
-    @with_headshots = Person.active.joins(:profile_headshots).distinct.count
+    @with_headshots = non_demo_active.joins(:profile_headshots).distinct.count
     @without_headshots = @active_profiles - @with_headshots
     @headshot_percent = @active_profiles.positive? ? (@with_headshots.to_f / @active_profiles * 100).round(1) : 0
 
     # Profile completeness - resumes
-    @with_resumes = Person.active.joins(:profile_resumes).distinct.count
+    @with_resumes = non_demo_active.joins(:profile_resumes).distinct.count
     @without_resumes = @active_profiles - @with_resumes
     @resume_percent = @active_profiles.positive? ? (@with_resumes.to_f / @active_profiles * 100).round(1) : 0
 
     # Profile completeness - bio
-    @with_bio = Person.active.where.not(bio: [ nil, "" ]).count
+    @with_bio = non_demo_active.where.not(bio: [ nil, "" ]).count
     @without_bio = @active_profiles - @with_bio
     @bio_percent = @active_profiles.positive? ? (@with_bio.to_f / @active_profiles * 100).round(1) : 0
 
     # Payment setup
-    @with_venmo = Person.active.where.not(venmo_identifier: [ nil, "" ]).count
-    @with_zelle = Person.active.where.not(zelle_identifier: [ nil, "" ]).count
-    @with_payment = Person.active.where("venmo_identifier IS NOT NULL AND venmo_identifier != '' OR zelle_identifier IS NOT NULL AND zelle_identifier != ''").count
+    @with_venmo = non_demo_active.where.not(venmo_identifier: [ nil, "" ]).count
+    @with_zelle = non_demo_active.where.not(zelle_identifier: [ nil, "" ]).count
+    @with_payment = non_demo_active.where("venmo_identifier IS NOT NULL AND venmo_identifier != '' OR zelle_identifier IS NOT NULL AND zelle_identifier != ''").count
     @payment_percent = @active_profiles.positive? ? (@with_payment.to_f / @active_profiles * 100).round(1) : 0
 
     # Public profiles
-    @public_profiles = Person.active.where(public_profile_enabled: true).count
-    @with_public_key = Person.active.where.not(public_key: [ nil, "" ]).count
+    @public_profiles = non_demo_active.where(public_profile_enabled: true).count
+    @with_public_key = non_demo_active.where.not(public_key: [ nil, "" ]).count
     @public_percent = @active_profiles.positive? ? (@public_profiles.to_f / @active_profiles * 100).round(1) : 0
 
     # Talent pool participation
-    @in_talent_pools = Person.active.joins(:talent_pool_memberships).distinct.count
+    @in_talent_pools = non_demo_active.joins(:talent_pool_memberships).distinct.count
     @talent_pool_percent = @active_profiles.positive? ? (@in_talent_pools.to_f / @active_profiles * 100).round(1) : 0
 
     # Group membership
-    @in_groups = Person.active.joins(:group_memberships).distinct.count
+    @in_groups = non_demo_active.joins(:group_memberships).distinct.count
 
     # Videos
-    @with_videos = Person.active.joins(:profile_videos).distinct.count
+    @with_videos = non_demo_active.joins(:profile_videos).distinct.count
 
     # Performance credits
-    @with_performance_credits = Person.active.joins(:performance_credits).distinct.count
+    @with_performance_credits = non_demo_active.joins(:performance_credits).distinct.count
 
     # Training credits
-    @with_training_credits = Person.active.joins(:training_credits).distinct.count
+    @with_training_credits = non_demo_active.joins(:training_credits).distinct.count
 
     # Skills
-    @with_skills = Person.active.joins(:profile_skills).distinct.count
+    @with_skills = non_demo_active.joins(:profile_skills).distinct.count
 
     # User account association
-    @linked_to_users = Person.active.where.not(user_id: nil).count
+    @linked_to_users = non_demo_active.where.not(user_id: nil).count
     @orphan_profiles = @active_profiles - @linked_to_users
 
     # Event registrations
-    @registered_for_events = Person.active.joins(:sign_up_registrations).merge(SignUpRegistration.confirmed).distinct.count
+    @registered_for_events = non_demo_active.joins(:sign_up_registrations).merge(SignUpRegistration.confirmed).distinct.count
     @registered_for_events_percent = @active_profiles.positive? ? (@registered_for_events.to_f / @active_profiles * 100).round(1) : 0
-    @registered_waitlisted = Person.active.joins(:sign_up_registrations).merge(SignUpRegistration.waitlisted).distinct.count
+    @registered_waitlisted = non_demo_active.joins(:sign_up_registrations).merge(SignUpRegistration.waitlisted).distinct.count
     @registered_waitlisted_percent = @active_profiles.positive? ? (@registered_waitlisted.to_f / @active_profiles * 100).round(1) : 0
 
     # Audition requests
-    @submitted_audition_requests = Person.active
+    @submitted_audition_requests = non_demo_active
       .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
       .distinct.count
-    @submitted_in_person_auditions = Person.active
+    @submitted_in_person_auditions = non_demo_active
       .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
       .joins("INNER JOIN audition_cycles ON audition_cycles.id = audition_requests.audition_cycle_id")
       .where("audition_cycles.allow_in_person_auditions = ?", true)
       .distinct.count
     @submitted_in_person_percent = @active_profiles.positive? ? (@submitted_in_person_auditions.to_f / @active_profiles * 100).round(1) : 0
-    @submitted_video_auditions = Person.active
+    @submitted_video_auditions = non_demo_active
       .joins("INNER JOIN audition_requests ON audition_requests.requestable_id = people.id AND audition_requests.requestable_type = 'Person'")
       .where("audition_requests.video_url IS NOT NULL AND audition_requests.video_url != ''")
       .distinct.count
     @submitted_video_percent = @active_profiles.positive? ? (@submitted_video_auditions.to_f / @active_profiles * 100).round(1) : 0
 
-    # Recent profile activity (last 50)
-    @recent_profiles = Person.active
+    # Recent profile activity (last 50) - exclude demo
+    @recent_profiles = non_demo_active
                              .order(created_at: :desc)
                              .limit(50)
                              .select(:id, :name, :email, :public_key, :created_at)
 
-    # Daily sign-ups for the last 14 days (for chart)
+    # Daily sign-ups for the last 14 days (for chart) - exclude demo
     @daily_signups = (0..13).map do |days_ago|
       date = days_ago.days.ago.to_date
-      count = Person.where(created_at: date.beginning_of_day..date.end_of_day).count
+      count = non_demo_people.where(created_at: date.beginning_of_day..date.end_of_day).count
       { date: date, count: count }
     end.reverse
   end

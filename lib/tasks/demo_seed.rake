@@ -132,21 +132,31 @@ class DemoSeeder
     neutral: (1..70).to_a   # All photos for they/them
   }.freeze
 
-  # Production poster/logo URLs using picsum.photos (placeholder images)
+  # Production logos (landscape - wider than tall)
   # Format: https://picsum.photos/seed/{seed}/{width}/{height}
+  PRODUCTION_LOGOS = {
+    "Marriage Material" => "https://picsum.photos/seed/marriage-logo/800/400",
+    "Awkward Family Dinner" => "https://picsum.photos/seed/dinner-logo/800/400",
+    "Last Call at Larry's" => "https://picsum.photos/seed/lastcall-logo/800/400",
+    "Open Mic Night" => "https://picsum.photos/seed/openmic-logo/800/400",
+    "Improv Workshop Series" => "https://picsum.photos/seed/improv-logo/800/400",
+    "Spring Showcase" => "https://picsum.photos/seed/showcase-logo/800/400"
+  }.freeze
+
+  # Production posters (portrait - taller than wide, like movie posters)
   PRODUCTION_POSTERS = {
-    "Marriage Material" => "https://picsum.photos/seed/marriage/400/600",
-    "Awkward Family Dinner" => "https://picsum.photos/seed/dinner/400/600",
-    "Last Call at Larry's" => "https://picsum.photos/seed/lastcall/400/600",
-    "Open Mic Night" => "https://picsum.photos/seed/openmic/400/600",
-    "Improv Workshop Series" => "https://picsum.photos/seed/improv/400/600",
-    "Spring Showcase" => "https://picsum.photos/seed/showcase/400/600"
+    "Marriage Material" => "https://picsum.photos/seed/marriage-poster/400/600",
+    "Awkward Family Dinner" => "https://picsum.photos/seed/dinner-poster/400/600",
+    "Last Call at Larry's" => "https://picsum.photos/seed/lastcall-poster/400/600",
+    "Open Mic Night" => "https://picsum.photos/seed/openmic-poster/400/600",
+    "Improv Workshop Series" => "https://picsum.photos/seed/improv-poster/400/600",
+    "Spring Showcase" => "https://picsum.photos/seed/showcase-poster/400/600"
   }.freeze
 
   class << self
     def destroy_all
       puts "=" * 60
-      puts "DESTROYING DEMO DATA"
+      puts "DESTROYING ALL DEMO DATA (including organization)"
       puts "=" * 60
 
       # Find org by exact name or partial match (handles name changes)
@@ -218,6 +228,66 @@ class DemoSeeder
       puts "Demo data destroyed successfully!"
     end
 
+    def reset_org_contents(org, admin_user)
+      # Reset organization contents without destroying the org itself
+      # This prevents issues with users who have the org selected in their session
+      puts "  Resetting organization contents..."
+
+      # Clean up SmsLogs
+      if defined?(SmsLog)
+        SmsLog.where(organization_id: org.id).delete_all
+      end
+
+      # Clean up CastingTables (FK constraint on shows)
+      org.casting_tables.destroy_all
+
+      # Clean up TalentPoolShares (FK constraint on talent_pools)
+      talent_pool_ids = TalentPool.joins(:production).where(productions: { organization_id: org.id }).pluck(:id)
+      production_ids = org.productions.pluck(:id)
+      if talent_pool_ids.any? || production_ids.any?
+        TalentPoolShare.where(talent_pool_id: talent_pool_ids)
+                       .or(TalentPoolShare.where(production_id: production_ids))
+                       .delete_all
+      end
+
+      # Destroy all productions (cascades to shows, roles, talent pools, etc.)
+      org.productions.destroy_all
+
+      # Destroy all contracts
+      org.contracts.destroy_all
+
+      # Destroy organization-level payout schemes
+      org.payout_schemes.destroy_all
+
+      # Clear people from org (but don't delete them yet - we'll handle demo people separately)
+      org.people.clear
+
+      # Find demo users and people to delete (excluding the admin)
+      demo_users = User.where("email_address LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+                       .where.not(id: admin_user.id)
+      demo_user_ids = demo_users.pluck(:id)
+
+      demo_people = Person.where("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+      admin_person = admin_user.default_person
+      demo_people = demo_people.where.not(id: admin_person.id) if admin_person
+      demo_people_ids = demo_people.pluck(:id)
+
+      # Delete organization roles for demo users (except admin)
+      OrganizationRole.where(organization: org, user_id: demo_user_ids).delete_all
+
+      # Destroy demo users (except admin)
+      if demo_user_ids.any?
+        User.where(id: demo_user_ids).destroy_all
+      end
+
+      # Destroy demo people (except admin's person)
+      if demo_people_ids.any?
+        Person.where(id: demo_people_ids).destroy_all
+      end
+
+      puts "  Organization contents reset"
+    end
+
     def seed_all
       puts "=" * 60
       puts "SEEDING DEMO DATA"
@@ -225,16 +295,23 @@ class DemoSeeder
       puts "All passwords: #{DEMO_PASSWORD}"
       puts "=" * 60
 
-      # Destroy existing demo data first
-      destroy_all
-
       ActiveRecord::Base.transaction do
         @created_people = []
         @created_users = []
 
-        create_admin_user
-        create_organization
-        create_locations
+        # Find or create admin user and organization (preserved across reseeds)
+        find_or_create_admin_user
+        find_or_create_organization
+
+        # Reset org contents if it already existed
+        if @org_existed
+          reset_org_contents(@org, @admin_user)
+        end
+
+        # Find or create locations (preserved across reseeds)
+        find_or_create_locations
+
+        # Create fresh data
         create_manager_users
         create_performer_users_and_people
         create_in_house_productions
@@ -251,40 +328,61 @@ class DemoSeeder
 
     private
 
-    def create_admin_user
-      puts "\nCreating admin user..."
-      @admin_user = User.create!(
-        email_address: "demo@#{DEMO_EMAIL_DOMAIN}",
-        password: DEMO_PASSWORD,
-        password_confirmation: DEMO_PASSWORD
-      )
+    def find_or_create_admin_user
+      puts "\nFinding or creating admin user..."
+      @admin_user = User.find_by(email_address: "demo@#{DEMO_EMAIL_DOMAIN}")
+
+      if @admin_user
+        puts "  Found existing admin: #{@admin_user.email_address}"
+      else
+        @admin_user = User.create!(
+          email_address: "demo@#{DEMO_EMAIL_DOMAIN}",
+          password: DEMO_PASSWORD,
+          password_confirmation: DEMO_PASSWORD
+        )
+        puts "  Created: #{@admin_user.email_address}"
+      end
       @created_users << @admin_user
-      puts "  Created: #{@admin_user.email_address}"
     end
 
-    def create_organization
-      puts "\nCreating organization..."
-      @org = Organization.create!(
-        name: DEMO_ORG_NAME,
-        owner: @admin_user,
-        talent_pool_mode: "per_production",
-        forum_mode: "per_production"
-      )
+    def find_or_create_organization
+      puts "\nFinding or creating organization..."
 
-      # Attach organization logo
-      attach_organization_logo
+      # Look for existing org
+      @org = Organization.find_by(name: DEMO_ORG_NAME) ||
+             Organization.where("name LIKE ?", "Starlight Community Theater%").first
 
-      # Add admin as manager
-      OrganizationRole.create!(
-        organization: @org,
-        user: @admin_user,
-        company_role: "manager"
-      )
+      if @org
+        @org_existed = true
+        # Update name if it changed
+        @org.update!(name: DEMO_ORG_NAME) if @org.name != DEMO_ORG_NAME
+        puts "  Found existing organization: #{@org.name}"
+      else
+        @org_existed = false
+        @org = Organization.create!(
+          name: DEMO_ORG_NAME,
+          owner: @admin_user,
+          talent_pool_mode: "per_production",
+          forum_mode: "per_production"
+        )
 
-      # Add all superadmins as managers so they can access the demo org
+        # Attach organization logo
+        attach_organization_logo
+
+        # Add admin as manager
+        OrganizationRole.create!(
+          organization: @org,
+          user: @admin_user,
+          company_role: "manager"
+        )
+
+        puts "  Created: #{@org.name}"
+      end
+
+      # Always ensure superadmins and demo users have access (whether org is new or existing)
       superadmin_count = 0
       User.where(email_address: User::SUPERADMIN_EMAILS).find_each do |superadmin|
-        next if superadmin == @admin_user  # Skip if already added
+        next if superadmin == @admin_user
 
         OrganizationRole.find_or_create_by!(
           organization: @org,
@@ -295,11 +393,10 @@ class DemoSeeder
         superadmin_count += 1
       end
 
-      # Add demo users (from DemoUser table) as managers
       demo_user_count = 0
       DemoUser.find_each do |demo_user|
         user = User.find_by(email_address: demo_user.email)
-        next unless user  # Skip if user hasn't registered yet
+        next unless user
 
         OrganizationRole.find_or_create_by!(
           organization: @org,
@@ -310,62 +407,75 @@ class DemoSeeder
         demo_user_count += 1
       end
 
-      puts "  Created: #{@org.name}"
       puts "  Added #{superadmin_count} superadmins as managers" if superadmin_count > 0
       puts "  Added #{demo_user_count} demo users as managers" if demo_user_count > 0
     end
 
-    def create_locations
-      puts "\nCreating locations..."
+    def find_or_create_locations
+      puts "\nFinding or creating locations..."
 
-      @main_location = Location.create!(
-        organization: @org,
-        name: "Starlight Theater",
-        address1: "123 Main Street",
-        city: "Springfield",
-        state: "IL",
-        postal_code: "62701",
-        default: true
-      )
+      # Try to find existing location
+      @main_location = @org.locations.find_by(name: "Starlight Theater")
 
-      # Create spaces
-      @main_stage = LocationSpace.create!(
-        location: @main_location,
-        name: "Main Stage",
-        capacity: 300,
-        default: true,
-        description: "Our primary performance space with full theatrical lighting and sound."
-      )
+      if @main_location
+        puts "  Found existing location: #{@main_location.name}"
+        # Load existing spaces
+        @main_stage = @main_location.location_spaces.find_by(name: "Main Stage")
+        @black_box = @main_location.location_spaces.find_by(name: "Black Box Theater")
+        @rehearsal_a = @main_location.location_spaces.find_by(name: "Rehearsal Room A")
+        @rehearsal_b = @main_location.location_spaces.find_by(name: "Rehearsal Room B")
+        @lobby = @main_location.location_spaces.find_by(name: "Lobby & Event Space")
+      else
+        # Create new location
+        @main_location = Location.create!(
+          organization: @org,
+          name: "Starlight Theater",
+          address1: "123 Main Street",
+          city: "Springfield",
+          state: "IL",
+          postal_code: "62701",
+          default: true
+        )
 
-      @black_box = LocationSpace.create!(
-        location: @main_location,
-        name: "Black Box Theater",
-        capacity: 100,
-        description: "Flexible intimate performance space."
-      )
+        # Create spaces
+        @main_stage = LocationSpace.create!(
+          location: @main_location,
+          name: "Main Stage",
+          capacity: 300,
+          default: true,
+          description: "Our primary performance space with full theatrical lighting and sound."
+        )
 
-      @rehearsal_a = LocationSpace.create!(
-        location: @main_location,
-        name: "Rehearsal Room A",
-        capacity: 30,
-        description: "Large rehearsal space with mirrors and piano."
-      )
+        @black_box = LocationSpace.create!(
+          location: @main_location,
+          name: "Black Box Theater",
+          capacity: 100,
+          description: "Flexible intimate performance space."
+        )
 
-      @rehearsal_b = LocationSpace.create!(
-        location: @main_location,
-        name: "Rehearsal Room B",
-        capacity: 20,
-        description: "Standard rehearsal room."
-      )
+        @rehearsal_a = LocationSpace.create!(
+          location: @main_location,
+          name: "Rehearsal Room A",
+          capacity: 30,
+          description: "Large rehearsal space with mirrors and piano."
+        )
 
-      @lobby = LocationSpace.create!(
-        location: @main_location,
-        name: "Lobby & Event Space",
-        capacity: 150,
-        description: "Multi-purpose space for receptions and events."
-      )
+        @rehearsal_b = LocationSpace.create!(
+          location: @main_location,
+          name: "Rehearsal Room B",
+          capacity: 20,
+          description: "Standard rehearsal room."
+        )
 
-      puts "  Created: #{@main_location.name} with #{@main_location.location_spaces.count} spaces"
+        @lobby = LocationSpace.create!(
+          location: @main_location,
+          name: "Lobby & Event Space",
+          capacity: 150,
+          description: "Multi-purpose space for receptions and events."
+        )
+
+        puts "  Created: #{@main_location.name} with #{@main_location.location_spaces.count} spaces"
+      end
     end
 
     def create_manager_users
@@ -677,9 +787,14 @@ class DemoSeeder
         show_cast_members: true
       )
 
-      # Attach logo/poster if available
+      # Attach logo (landscape) if available
+      if PRODUCTION_LOGOS[name]
+        attach_production_logo(production, PRODUCTION_LOGOS[name])
+      end
+
+      # Attach poster (portrait) if available
       if PRODUCTION_POSTERS[name]
-        attach_production_logo(production, PRODUCTION_POSTERS[name])
+        attach_production_poster(production, PRODUCTION_POSTERS[name])
       end
 
       # Create roles
@@ -726,6 +841,17 @@ class DemoSeeder
         production.logo.attach(io: file, filename: filename, content_type: "image/jpeg")
       rescue StandardError => e
         puts "    Warning: Could not attach logo for #{production.name}: #{e.message}"
+      end
+    end
+
+    def attach_production_poster(production, url)
+      begin
+        file = URI.open(url)
+        filename = "poster_#{production.id}.jpg"
+        poster = production.posters.create!(name: "#{production.name} Poster", is_primary: true)
+        poster.image.attach(io: file, filename: filename, content_type: "image/jpeg")
+      rescue StandardError => e
+        puts "    Warning: Could not attach poster for #{production.name}: #{e.message}"
       end
     end
 
@@ -984,11 +1110,11 @@ class DemoSeeder
     end
 
     def attach_show_posters
-      # Attach posters to about 30% of shows for the main productions
-      [ @marriage_material, @awkward_dinner, @last_call ].each do |production|
+      # Attach posters to about 50% of shows for all casting-enabled productions
+      [ @marriage_material, @awkward_dinner, @last_call, @open_mic, @improv_workshop ].each do |production|
         production.shows.each_with_index do |show, idx|
-          # Attach poster to every 3rd show
-          next unless idx % 3 == 0
+          # Attach poster to every other show
+          next unless idx % 2 == 0
 
           begin
             seed = "show_#{production.name.parameterize}_#{idx}"
@@ -999,6 +1125,15 @@ class DemoSeeder
             # Silently skip poster failures
           end
         end
+      end
+
+      # Always attach a poster to the Spring Showcase
+      begin
+        url = "https://picsum.photos/seed/spring-showcase-main/400/600"
+        file = URI.open(url)
+        @spring_showcase.shows.first&.poster&.attach(io: file, filename: "poster_spring_showcase.jpg", content_type: "image/jpeg")
+      rescue StandardError => e
+        # Silently skip poster failure
       end
     end
 
