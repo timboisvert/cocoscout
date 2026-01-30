@@ -81,8 +81,20 @@ module Manage
     end
 
     def destroy
+      # Only allow destroying cancelled contracts
+      unless @contract.status_cancelled?
+        redirect_to manage_contract_path(@contract), alert: "Only cancelled contracts can be deleted."
+        return
+      end
+
+      # Delete associated productions and their shows
+      @contract.productions.each do |production|
+        production.shows.destroy_all
+        production.destroy
+      end
+
       @contract.destroy
-      redirect_to manage_contracts_path, notice: "Contract deleted."
+      redirect_to manage_contracts_path, notice: "Contract and all associated data permanently deleted."
     end
 
     def activate

@@ -359,6 +359,19 @@
               classes: "w-full" %>
           </div>
         </div>
+      <% elsif @contract.status_cancelled? %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Actions" %>
+          <div class="p-4 space-y-2">
+            <%= button_to manage_contract_path(@contract),
+                method: :delete,
+                data: { turbo_confirm: "Are you sure you want to permanently delete this contract? This will also delete all payments, documents, and events. This cannot be undone." },
+                class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition" do %>
+              <%= icon("trash", class: "w-4 h-4") %>
+              Delete Forever
+            <% end %>
+          </div>
+        </div>
       <% end %>
     </div>
   </div>
