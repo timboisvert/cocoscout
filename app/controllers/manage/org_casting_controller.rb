@@ -2,6 +2,8 @@
 
 module Manage
   class OrgCastingController < Manage::ManageController
+    before_action :require_current_organization
+
     def index
       # Store the shows filter (default to upcoming)
       @filter = params[:filter] || session[:casting_filter] || "upcoming"

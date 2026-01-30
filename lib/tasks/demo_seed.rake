@@ -43,8 +43,9 @@ class DemoSeeder
   DEMO_EMAIL_DOMAIN = "demo.cocoscout.com"
   DEMO_PASSWORD = "Password1!"
 
-  # Performer names (realistic mix)
+  # Performer names (75 realistic names for a robust demo)
   PERFORMER_NAMES = [
+    # Original 25
     { first: "Sarah", last: "Mitchell", pronouns: "she/her" },
     { first: "James", last: "Rodriguez", pronouns: "he/him" },
     { first: "Emily", last: "Chen", pronouns: "she/her" },
@@ -69,45 +70,77 @@ class DemoSeeder
     { first: "Jordan", last: "Walker", pronouns: "they/them" },
     { first: "Alex", last: "Hall", pronouns: "they/them" },
     { first: "Morgan", last: "Young", pronouns: "she/her" },
-    { first: "Casey", last: "King", pronouns: "he/him" }
+    { first: "Casey", last: "King", pronouns: "he/him" },
+    # Additional 50 names
+    { first: "Olivia", last: "Scott", pronouns: "she/her" },
+    { first: "Ethan", last: "Green", pronouns: "he/him" },
+    { first: "Sophia", last: "Adams", pronouns: "she/her" },
+    { first: "Mason", last: "Baker", pronouns: "he/him" },
+    { first: "Isabella", last: "Gonzalez", pronouns: "she/her" },
+    { first: "William", last: "Nelson", pronouns: "he/him" },
+    { first: "Ava", last: "Hill", pronouns: "she/her" },
+    { first: "Noah", last: "Ramirez", pronouns: "he/him" },
+    { first: "Emma", last: "Campbell", pronouns: "she/her" },
+    { first: "Liam", last: "Mitchell", pronouns: "he/him" },
+    { first: "Charlotte", last: "Roberts", pronouns: "she/her" },
+    { first: "Benjamin", last: "Carter", pronouns: "he/him" },
+    { first: "Amelia", last: "Phillips", pronouns: "she/her" },
+    { first: "Lucas", last: "Evans", pronouns: "he/him" },
+    { first: "Harper", last: "Turner", pronouns: "she/her" },
+    { first: "Henry", last: "Torres", pronouns: "he/him" },
+    { first: "Evelyn", last: "Parker", pronouns: "she/her" },
+    { first: "Alexander", last: "Collins", pronouns: "he/him" },
+    { first: "Abigail", last: "Edwards", pronouns: "she/her" },
+    { first: "Sebastian", last: "Stewart", pronouns: "he/him" },
+    { first: "Ella", last: "Sanchez", pronouns: "she/her" },
+    { first: "Jack", last: "Morris", pronouns: "he/him" },
+    { first: "Scarlett", last: "Rogers", pronouns: "she/her" },
+    { first: "Aiden", last: "Reed", pronouns: "he/him" },
+    { first: "Grace", last: "Cook", pronouns: "she/her" },
+    { first: "Matthew", last: "Morgan", pronouns: "he/him" },
+    { first: "Chloe", last: "Bell", pronouns: "she/her" },
+    { first: "Owen", last: "Murphy", pronouns: "he/him" },
+    { first: "Victoria", last: "Bailey", pronouns: "she/her" },
+    { first: "Luke", last: "Rivera", pronouns: "he/him" },
+    { first: "Riley", last: "Cooper", pronouns: "they/them" },
+    { first: "Zoe", last: "Richardson", pronouns: "she/her" },
+    { first: "Dylan", last: "Cox", pronouns: "he/him" },
+    { first: "Lily", last: "Howard", pronouns: "she/her" },
+    { first: "Gabriel", last: "Ward", pronouns: "he/him" },
+    { first: "Hannah", last: "Peterson", pronouns: "she/her" },
+    { first: "Julian", last: "Gray", pronouns: "he/him" },
+    { first: "Nora", last: "James", pronouns: "she/her" },
+    { first: "Isaac", last: "Watson", pronouns: "he/him" },
+    { first: "Aria", last: "Brooks", pronouns: "she/her" },
+    { first: "Caleb", last: "Kelly", pronouns: "he/him" },
+    { first: "Layla", last: "Sanders", pronouns: "she/her" },
+    { first: "Nathan", last: "Price", pronouns: "he/him" },
+    { first: "Zoey", last: "Bennett", pronouns: "she/her" },
+    { first: "Carter", last: "Wood", pronouns: "he/him" },
+    { first: "Penelope", last: "Barnes", pronouns: "she/her" },
+    { first: "Lincoln", last: "Ross", pronouns: "he/him" },
+    { first: "Quinn", last: "Henderson", pronouns: "they/them" },
+    { first: "Stella", last: "Coleman", pronouns: "she/her" },
+    { first: "Hunter", last: "Jenkins", pronouns: "he/him" }
   ].freeze
 
   # Headshot URLs from randomuser.me (placeholder images)
+  # Expanded to support 75 performers
   HEADSHOT_URLS = {
-    female: [
-      "https://randomuser.me/api/portraits/women/1.jpg",
-      "https://randomuser.me/api/portraits/women/2.jpg",
-      "https://randomuser.me/api/portraits/women/3.jpg",
-      "https://randomuser.me/api/portraits/women/4.jpg",
-      "https://randomuser.me/api/portraits/women/5.jpg",
-      "https://randomuser.me/api/portraits/women/6.jpg",
-      "https://randomuser.me/api/portraits/women/7.jpg",
-      "https://randomuser.me/api/portraits/women/8.jpg",
-      "https://randomuser.me/api/portraits/women/9.jpg",
-      "https://randomuser.me/api/portraits/women/10.jpg",
-      "https://randomuser.me/api/portraits/women/11.jpg",
-      "https://randomuser.me/api/portraits/women/12.jpg",
-      "https://randomuser.me/api/portraits/women/13.jpg",
-      "https://randomuser.me/api/portraits/women/14.jpg",
-      "https://randomuser.me/api/portraits/women/15.jpg"
-    ],
-    male: [
-      "https://randomuser.me/api/portraits/men/1.jpg",
-      "https://randomuser.me/api/portraits/men/2.jpg",
-      "https://randomuser.me/api/portraits/men/3.jpg",
-      "https://randomuser.me/api/portraits/men/4.jpg",
-      "https://randomuser.me/api/portraits/men/5.jpg",
-      "https://randomuser.me/api/portraits/men/6.jpg",
-      "https://randomuser.me/api/portraits/men/7.jpg",
-      "https://randomuser.me/api/portraits/men/8.jpg",
-      "https://randomuser.me/api/portraits/men/9.jpg",
-      "https://randomuser.me/api/portraits/men/10.jpg"
-    ],
-    neutral: [
-      "https://randomuser.me/api/portraits/lego/1.jpg",
-      "https://randomuser.me/api/portraits/lego/2.jpg",
-      "https://randomuser.me/api/portraits/lego/3.jpg"
-    ]
+    female: (1..45).map { |i| "https://randomuser.me/api/portraits/women/#{i}.jpg" },
+    male: (1..35).map { |i| "https://randomuser.me/api/portraits/men/#{i}.jpg" },
+    neutral: (1..8).map { |i| "https://randomuser.me/api/portraits/lego/#{i}.jpg" }
+  }.freeze
+
+  # Production poster/logo URLs using picsum.photos (placeholder images)
+  # Format: https://picsum.photos/seed/{seed}/{width}/{height}
+  PRODUCTION_POSTERS = {
+    "Marriage Material" => "https://picsum.photos/seed/marriage/400/600",
+    "Awkward Family Dinner" => "https://picsum.photos/seed/dinner/400/600",
+    "Last Call at Larry's" => "https://picsum.photos/seed/lastcall/400/600",
+    "Open Mic Night" => "https://picsum.photos/seed/openmic/400/600",
+    "Improv Workshop Series" => "https://picsum.photos/seed/improv/400/600",
+    "Spring Showcase" => "https://picsum.photos/seed/showcase/400/600"
   }.freeze
 
   class << self
@@ -202,7 +235,6 @@ class DemoSeeder
         create_locations
         create_manager_users
         create_performer_users_and_people
-        create_groups
         create_in_house_productions
         create_space_rental_contracts
         create_shows_and_casting
@@ -236,6 +268,9 @@ class DemoSeeder
         talent_pool_mode: "per_production",
         forum_mode: "per_production"
       )
+
+      # Attach organization logo
+      attach_organization_logo
 
       # Add admin as manager
       OrganizationRole.create!(
@@ -548,41 +583,6 @@ class DemoSeeder
       end
     end
 
-    def create_groups
-      puts "\nCreating performance groups..."
-
-      # Create an improv troupe
-      @improv_troupe = Group.create!(
-        name: "The Spontaneous Players",
-        email: "spontaneous@#{DEMO_EMAIL_DOMAIN}",
-        bio: "Award-winning improv comedy troupe performing weekly at Starlight Theater."
-      )
-      @org.groups << @improv_troupe
-
-      # Add 5 members to the improv troupe
-      improv_members = @created_people.sample(5)
-      improv_members.each do |person|
-        GroupMembership.create!(group: @improv_troupe, person: person)
-      end
-
-      # Create a jazz ensemble
-      @jazz_ensemble = Group.create!(
-        name: "Starlight Jazz Trio",
-        email: "jazz@#{DEMO_EMAIL_DOMAIN}",
-        bio: "House jazz ensemble providing live music for events and performances."
-      )
-      @org.groups << @jazz_ensemble
-
-      # Add 3 members
-      jazz_members = (@created_people - improv_members).sample(3)
-      jazz_members.each do |person|
-        GroupMembership.create!(group: @jazz_ensemble, person: person)
-      end
-
-      puts "  Created: #{@improv_troupe.name} (#{improv_members.count} members)"
-      puts "  Created: #{@jazz_ensemble.name} (#{jazz_members.count} members)"
-    end
-
     def create_in_house_productions
       puts "\nCreating in-house productions..."
 
@@ -607,25 +607,19 @@ class DemoSeeder
         talent_pool_size: 15
       )
 
-      # Production 2: Awkward Family Dinner (Ensemble Comedy)
+      # Production 2: Awkward Family Dinner (Small Ensemble Comedy - fewer roles)
       @awkward_dinner = create_production(
         name: "Awkward Family Dinner",
         description: "When three generations gather for Thanksgiving, old grudges resurface, secrets spill out, and the turkey catches fire. An ensemble comedy about the family we're stuck with.",
         roles: [
           { name: "Grandma Rose", quantity: 1, category: "performing" },
-          { name: "Grandpa Lou", quantity: 1, category: "performing" },
           { name: "Mom (Susan)", quantity: 1, category: "performing" },
           { name: "Dad (Richard)", quantity: 1, category: "performing" },
-          { name: "Aunt Patty", quantity: 1, category: "performing" },
-          { name: "Uncle Steve", quantity: 1, category: "performing" },
           { name: "The Prodigal Son (Derek)", quantity: 1, category: "performing" },
           { name: "The Overachiever (Melissa)", quantity: 1, category: "performing" },
-          { name: "The Teenager (Zach)", quantity: 1, category: "performing" },
-          { name: "Derek's New Girlfriend", quantity: 1, category: "performing" },
-          { name: "Extended Family", quantity: 4, category: "performing" },
-          { name: "Stage Manager", quantity: 1, category: "technical" }
+          { name: "Derek's New Girlfriend", quantity: 1, category: "performing" }
         ],
-        talent_pool_size: 12
+        talent_pool_size: 10
       )
 
       # Production 3: Last Call at Larry's (Bar Comedy) - shares talent pool with Marriage Material
@@ -636,40 +630,34 @@ class DemoSeeder
           { name: "Larry (The Owner)", quantity: 1, category: "performing" },
           { name: "Deb (The Bartender)", quantity: 1, category: "performing" },
           { name: "Mel (The Regular)", quantity: 1, category: "performing" },
-          { name: "Sheila (The Regular)", quantity: 1, category: "performing" },
-          { name: "Tommy Two-Beers", quantity: 1, category: "performing" },
           { name: "The Stranger", quantity: 1, category: "performing" },
-          { name: "Bar Patrons", quantity: 6, category: "performing" },
-          { name: "The Band", quantity: 3, category: "performing" },
-          { name: "Stage Manager", quantity: 1, category: "technical" },
+          { name: "Bar Patrons", quantity: 3, category: "performing" },
           { name: "Sound Tech", quantity: 1, category: "technical" }
         ],
-        talent_pool_size: 14,
+        talent_pool_size: 12,
         share_talent_pool_with: @marriage_material
       )
 
-      # Production 4: Open Mic Night (Weekly with sign-up)
+      # Production 4: Open Mic Night (Weekly with sign-up - minimal roles)
       @open_mic = create_production(
         name: "Open Mic Night",
         description: "Weekly showcase for local performers. Sign up to share your talent!",
         casting_source: "sign_up",
         roles: [
-          { name: "Performer", quantity: 12, category: "performing" },
-          { name: "Host", quantity: 1, category: "performing" },
-          { name: "Sound Tech", quantity: 1, category: "technical" }
+          { name: "Host", quantity: 1, category: "performing" }
         ],
         talent_pool_size: 0  # Sign-up based, no talent pool needed
       )
 
-      # Production 5: Improv Workshop Series (Weekly class)
+      # Production 5: Improv Workshop Series (Weekly class - small group)
       @improv_workshop = create_production(
         name: "Improv Workshop Series",
         description: "Weekly improv comedy workshops for all skill levels.",
         roles: [
           { name: "Instructor", quantity: 1, category: "performing" },
-          { name: "Participant", quantity: 15, category: "performing" }
+          { name: "Participant", quantity: 8, category: "performing" }
         ],
-        talent_pool_size: 10
+        talent_pool_size: 12
       )
 
       # Production 6: Spring Showcase (One-off with auditions)
@@ -677,10 +665,8 @@ class DemoSeeder
         name: "Spring Showcase",
         description: "Annual showcase featuring the best local talent. Auditions required.",
         roles: [
-          { name: "Featured Performer", quantity: 8, category: "performing" },
-          { name: "Ensemble", quantity: 12, category: "performing" },
-          { name: "Stage Manager", quantity: 1, category: "technical" },
-          { name: "Lighting Designer", quantity: 1, category: "technical" }
+          { name: "Featured Performer", quantity: 6, category: "performing" },
+          { name: "Ensemble", quantity: 8, category: "performing" }
         ],
         talent_pool_size: 0  # Will use auditions
       )
@@ -699,6 +685,11 @@ class DemoSeeder
         show_cast_members: true
       )
 
+      # Attach logo/poster if available
+      if PRODUCTION_POSTERS[name]
+        attach_production_logo(production, PRODUCTION_POSTERS[name])
+      end
+
       # Create roles
       roles.each_with_index do |role_attrs, idx|
         Role.create!(
@@ -710,12 +701,10 @@ class DemoSeeder
         )
       end
 
-      # Create talent pool
+      # Add people to the auto-created talent pool
       if talent_pool_size > 0
-        talent_pool = TalentPool.create!(
-          production: production,
-          name: "#{name} Talent Pool"
-        )
+        talent_pool = production.talent_pools.first
+        talent_pool.update!(name: "#{name} Talent Pool")
 
         # Add people to talent pool
         pool_members = @created_people.sample(talent_pool_size)
@@ -736,6 +725,27 @@ class DemoSeeder
       end
 
       production
+    end
+
+    def attach_production_logo(production, url)
+      begin
+        file = URI.open(url)
+        filename = "logo_#{production.id}.jpg"
+        production.logo.attach(io: file, filename: filename, content_type: "image/jpeg")
+      rescue StandardError => e
+        puts "    Warning: Could not attach logo for #{production.name}: #{e.message}"
+      end
+    end
+
+    def attach_organization_logo
+      begin
+        # Use a theater/stage themed placeholder image
+        url = "https://picsum.photos/seed/starlight-theater/400/400"
+        file = URI.open(url)
+        @org.logo.attach(io: file, filename: "org_logo.jpg", content_type: "image/jpeg")
+      rescue StandardError => e
+        puts "    Warning: Could not attach organization logo: #{e.message}"
+      end
     end
 
     def create_space_rental_contracts
@@ -914,20 +924,23 @@ class DemoSeeder
     def create_shows_and_casting
       puts "\nCreating shows and casting..."
 
-      # Marriage Material - Fri/Sat performances for 8 weeks
-      create_recurring_shows(@marriage_material, @main_stage, weeks: 8, days: [ 5, 6 ], hour: 19)
+      # Marriage Material - Fri/Sat performances (4 weeks past + 6 weeks future)
+      create_recurring_shows(@marriage_material, @main_stage, weeks_past: 4, weeks_future: 6, days: [ 5, 6 ], hour: 19)
 
-      # Awkward Family Dinner - Thu/Fri for 6 weeks
-      create_recurring_shows(@awkward_dinner, @black_box, weeks: 6, days: [ 4, 5 ], hour: 19, start_offset: 14)
+      # Awkward Family Dinner - Thu/Fri (2 weeks past + 4 weeks future)
+      create_recurring_shows(@awkward_dinner, @black_box, weeks_past: 2, weeks_future: 4, days: [ 4, 5 ], hour: 19)
 
-      # Last Call at Larry's - Sat matinee and evening for 8 weeks
-      create_recurring_shows(@last_call, @main_stage, weeks: 8, days: [ 6 ], hour: 14, start_offset: 7)
-      create_recurring_shows(@last_call, @main_stage, weeks: 8, days: [ 6 ], hour: 19, start_offset: 7)
+      # Last Call at Larry's - Sat matinee and evening (3 weeks past + 5 weeks future)
+      create_recurring_shows(@last_call, @main_stage, weeks_past: 3, weeks_future: 5, days: [ 6 ], hour: 14)
+      create_recurring_shows(@last_call, @main_stage, weeks_past: 3, weeks_future: 5, days: [ 6 ], hour: 19)
 
-      # Improv Workshop - Weekly on Wednesdays
-      create_recurring_shows(@improv_workshop, @rehearsal_a, weeks: 12, days: [ 3 ], hour: 19, event_type: "workshop")
+      # Open Mic - Weekly on Tuesdays (2 weeks past + 8 weeks future)
+      create_recurring_shows(@open_mic, @black_box, weeks_past: 2, weeks_future: 8, days: [ 2 ], hour: 19)
 
-      # Spring Showcase - Single show
+      # Improv Workshop - Weekly on Wednesdays (2 weeks past + 10 weeks future)
+      create_recurring_shows(@improv_workshop, @rehearsal_a, weeks_past: 2, weeks_future: 10, days: [ 3 ], hour: 19, event_type: "workshop")
+
+      # Spring Showcase - Single show in the future
       show_date = 75.days.from_now.change(hour: 19, min: 0)
       Show.create!(
         production: @spring_showcase,
@@ -938,27 +951,33 @@ class DemoSeeder
         casting_enabled: true
       )
 
-      # Cast the shows
-      cast_production(@marriage_material)
-      cast_production(@awkward_dinner)
-      cast_production(@last_call)
-      cast_production(@improv_workshop)
+      # Attach posters to some shows
+      attach_show_posters
+
+      # Cast the shows with varied casting levels
+      cast_production(@marriage_material, casting_profile: :mostly_full)
+      cast_production(@awkward_dinner, casting_profile: :half_cast)
+      cast_production(@last_call, casting_profile: :varied)
+      cast_production(@improv_workshop, casting_profile: :mostly_full)
 
       # Create casting table for Marriage Material + Last Call (shared talent pool)
       create_casting_table
 
-      puts "  Created shows and cast #{@marriage_material.shows.count + @awkward_dinner.shows.count + @last_call.shows.count + @improv_workshop.shows.count + 1} performances"
+      total_shows = @marriage_material.shows.count + @awkward_dinner.shows.count +
+                    @last_call.shows.count + @open_mic.shows.count +
+                    @improv_workshop.shows.count + 1
+      puts "  Created shows and cast #{total_shows} performances"
     end
 
-    def create_recurring_shows(production, space, weeks:, days:, hour:, start_offset: 0, event_type: "show")
-      start_date = (start_offset.days.from_now).beginning_of_week
+    def create_recurring_shows(production, space, weeks_past:, weeks_future:, days:, hour:, event_type: "show")
+      # Start from weeks_past weeks ago
+      start_date = (weeks_past.weeks.ago).beginning_of_week
+      total_weeks = weeks_past + weeks_future
 
-      weeks.times do |week_num|
+      total_weeks.times do |week_num|
         days.each do |day_of_week|
           show_date = start_date + week_num.weeks + day_of_week.days
           show_date = show_date.change(hour: hour, min: 0)
-
-          next if show_date < Time.current  # Don't create past shows
 
           Show.create!(
             production: production,
@@ -972,19 +991,54 @@ class DemoSeeder
       end
     end
 
-    def cast_production(production)
+    def attach_show_posters
+      # Attach posters to about 30% of shows for the main productions
+      [ @marriage_material, @awkward_dinner, @last_call ].each do |production|
+        production.shows.each_with_index do |show, idx|
+          # Attach poster to every 3rd show
+          next unless idx % 3 == 0
+
+          begin
+            seed = "show_#{production.name.parameterize}_#{idx}"
+            url = "https://picsum.photos/seed/#{seed}/400/600"
+            file = URI.open(url)
+            show.poster.attach(io: file, filename: "poster_#{show.id}.jpg", content_type: "image/jpeg")
+          rescue StandardError => e
+            # Silently skip poster failures
+          end
+        end
+      end
+    end
+
+    def cast_production(production, casting_profile: :varied)
       talent_pool = production.talent_pools.first
       return unless talent_pool
 
       pool_members = talent_pool.talent_pool_memberships.map(&:member)
       roles = production.roles.performing
 
-      production.shows.where("date_and_time > ?", Time.current).each do |show|
+      production.shows.each_with_index do |show, show_idx|
+        is_past = show.date_and_time < Time.current
+
+        # Determine casting level based on profile
+        casting_level = determine_casting_level(casting_profile, show_idx, is_past)
+
+        # Track who's been assigned to this show to avoid duplicates
+        assigned_to_show = Set.new
+
         roles.each do |role|
-          # Assign people to each role
-          role.quantity.times do |position|
-            person = pool_members.sample
-            next unless person
+          # Determine how many positions to fill for this role
+          positions_to_fill = calculate_positions_to_fill(role.quantity, casting_level)
+
+          # Get available people (not already assigned to this show)
+          available = pool_members.reject { |p| assigned_to_show.include?(p.id) }
+
+          positions_to_fill.times do |position|
+            break if available.empty?
+
+            person = available.sample
+            available.delete(person)
+            assigned_to_show.add(person.id)
 
             ShowPersonRoleAssignment.create!(
               show: show,
@@ -995,10 +1049,45 @@ class DemoSeeder
           end
         end
 
-        # Mark some shows as casting finalized
-        if rand < 0.7  # 70% of shows have finalized casting
+        # Past shows and fully cast future shows should be finalized
+        if is_past || casting_level == :full
+          show.update!(casting_finalized_at: is_past ? show.date_and_time - 1.day : 1.day.ago)
+        elsif casting_level == :mostly && rand < 0.3
+          # Some mostly cast shows are also finalized
           show.update!(casting_finalized_at: 1.day.ago)
         end
+      end
+    end
+
+    def determine_casting_level(profile, show_idx, is_past)
+      # Past shows should always be fully cast
+      return :full if is_past
+
+      # Half of shows fully cast, half mostly cast (no empty shows)
+      case profile
+      when :mostly_full
+        # 70% full, 30% mostly cast
+        rand < 0.7 ? :full : :mostly
+      when :half_cast
+        # 50% full, 50% mostly cast
+        rand < 0.5 ? :full : :mostly
+      when :varied
+        # Alternate by show index: 50% full, 50% mostly
+        show_idx.even? ? :full : :mostly
+      else
+        :full
+      end
+    end
+
+    def calculate_positions_to_fill(total_quantity, casting_level)
+      case casting_level
+      when :full
+        total_quantity
+      when :mostly
+        # Fill 70-90% of positions (mostly cast, just a few gaps)
+        (total_quantity * rand(0.7..0.9)).round.clamp(1, total_quantity)
+      else
+        total_quantity
       end
     end
 
@@ -1101,7 +1190,7 @@ class DemoSeeder
         )
       end
 
-      # Create sign-up form
+      # Create sign-up form with 25 slots to accommodate 20+ registrations
       sign_up_form = SignUpForm.create!(
         production: @open_mic,
         name: "Open Mic Sign-Up",
@@ -1110,7 +1199,7 @@ class DemoSeeder
         schedule_mode: "relative",
         opens_days_before: 0,  # Opens day of
         closes_hours_before: 2,  # Closes 2 hours before
-        slot_count: 12,
+        slot_count: 25,
         slot_capacity: 1,
         slot_prefix: "Slot",
         slot_selection_mode: "choose_slot",
@@ -1123,7 +1212,7 @@ class DemoSeeder
       )
 
       # Create slots
-      12.times do |i|
+      25.times do |i|
         SignUpSlot.create!(
           sign_up_form: sign_up_form,
           position: i + 1,
@@ -1150,7 +1239,8 @@ class DemoSeeder
       )
 
       # Create instances for upcoming shows and add some registrations
-      @open_mic.shows.where("date_and_time > ?", Time.current).limit(4).each do |show|
+      instance_count = 0
+      @open_mic.shows.where("date_and_time > ?", Time.current).order(:date_and_time).limit(4).each do |show|
         instance = SignUpFormInstance.create!(
           sign_up_form: sign_up_form,
           show: show,
@@ -1159,10 +1249,14 @@ class DemoSeeder
           status: show.date_and_time.beginning_of_day <= Time.current ? "open" : "scheduled"
         )
 
-        # Add some registrations to the first couple instances
-        if show.date_and_time < 2.weeks.from_now
-          slots = sign_up_form.sign_up_slots.to_a
-          num_registrations = rand(4..8)
+        # Generate slots from template for this instance
+        instance.generate_slots_from_template!
+
+        # Add registrations based on instance number
+        # First instance gets 20+ registrations, others get 4-12
+        if show.date_and_time < 3.weeks.from_now
+          slots = instance.sign_up_slots.order(:position).to_a
+          num_registrations = instance_count == 0 ? rand(22..24) : rand(4..12)
 
           @created_people.sample(num_registrations).each_with_index do |person, idx|
             break if idx >= slots.length
@@ -1177,9 +1271,11 @@ class DemoSeeder
             )
           end
         end
+
+        instance_count += 1
       end
 
-      puts "  Created Open Mic with #{sign_up_form.sign_up_slots.count} slots"
+      puts "  Created Open Mic with #{sign_up_form.sign_up_slots.count} slots and 20+ registrations on first instance"
     end
 
     def create_audition_cycle
@@ -1188,6 +1284,7 @@ class DemoSeeder
       cycle = AuditionCycle.create!(
         production: @spring_showcase,
         active: true,
+        token: ShortKeyService.generate(type: :audition),
         opens_at: 1.week.ago,
         closes_at: 3.weeks.from_now,
         allow_video_submissions: true,
@@ -1382,17 +1479,21 @@ class DemoSeeder
       ticket_price = 25
       ticket_revenue = past ? ticket_count * ticket_price : nil
 
+      # Keep expenses reasonable (10-15% of revenue)
+      expenses = past ? (ticket_revenue * rand(0.10..0.15)).round : nil
+      ticket_fees = past ? (ticket_revenue * rand(0.02..0.04)).round : nil
+
       financials = ShowFinancials.create!(
         show: show,
         revenue_type: "ticket_sales",
         ticket_revenue: ticket_revenue,
         ticket_count: ticket_count,
-        ticket_fees: past ? rand(50..150) : nil,
-        expenses: past ? rand(200..500) : nil,
+        ticket_fees: ticket_fees,
+        expenses: expenses,
         data_confirmed: past
       )
 
-      # Create payout for past shows
+      # Create payout for past shows - artists get the majority!
       if past && ticket_revenue
         payout = ShowPayout.create!(
           show: show,
@@ -1401,21 +1502,35 @@ class DemoSeeder
           calculated_at: 1.day.ago
         )
 
-        # Create line items for each cast member
-        show.show_person_role_assignments.joins(:role).where(roles: { category: "performing" }).each do |assignment|
-          next unless assignment.assignable.is_a?(Person)
+        # Calculate payout pool: 65-75% of net revenue goes to performers
+        net_revenue = ticket_revenue - (expenses || 0) - (ticket_fees || 0)
+        payout_pool = (net_revenue * rand(0.65..0.75)).round
 
-          person = assignment.assignable
-          amount = rand(25..100)
+        # Get performing cast members
+        performing_assignments = show.show_person_role_assignments
+          .joins(:role)
+          .where(roles: { category: "performing" })
+          .select { |a| a.assignable.is_a?(Person) }
 
-          ShowPayoutLineItem.create!(
-            show_payout: payout,
-            payee: person,
-            amount: amount,
-            shares: 1,
-            payment_method: person.preferred_payment_method || [ "venmo", "cash", "check" ].sample,
-            paid_at: payout.status == "paid" ? 1.day.ago : nil
-          )
+        if performing_assignments.any?
+          # Distribute payout pool among cast (with slight variation for realism)
+          base_share = payout_pool / performing_assignments.count
+
+          performing_assignments.each do |assignment|
+            person = assignment.assignable
+            # Add ±10% variation to each share for realism
+            variation = rand(0.9..1.1)
+            amount = (base_share * variation).round
+
+            ShowPayoutLineItem.create!(
+              show_payout: payout,
+              payee: person,
+              amount: amount,
+              shares: 1,
+              payment_method: person.preferred_payment_method || [ "venmo", "cash", "check" ].sample,
+              paid_at: payout.status == "paid" ? 1.day.ago : nil
+            )
+          end
         end
 
         # Update total
