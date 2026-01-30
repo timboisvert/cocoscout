@@ -1294,8 +1294,14 @@ class SuperadminController < ApplicationController
   def demo_user_destroy
     @demo_user = DemoUser.find(params[:id])
     email = @demo_user.email
+
+    # Remove user from demo organization if they have an account
+    removed_from_org = remove_user_from_demo_org(email)
+
     @demo_user.destroy!
-    redirect_to demo_users_path, notice: "Demo user removed: #{email}"
+    notice = "Demo user removed: #{email}"
+    notice += " (removed from demo organization)" if removed_from_org
+    redirect_to demo_users_path, notice: notice
   end
 
   # =========================================================================
@@ -1379,6 +1385,21 @@ class SuperadminController < ApplicationController
     # Fallback: look for any org with "Demo" in the name
     org ||= Organization.where("name LIKE ?", "%Demo%").first
     org
+  end
+
+  # Remove a user from the demo organization (if they have an account)
+  def remove_user_from_demo_org(email)
+    user = User.find_by(email_address: email)
+    return false unless user
+
+    demo_org = find_demo_organization
+    return false unless demo_org
+
+    role = OrganizationRole.find_by(organization: demo_org, user: user)
+    return false unless role
+
+    role.destroy
+    true
   end
 
   # Add a user to the demo organization as a manager (if they have an account)

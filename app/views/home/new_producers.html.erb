@@ -46,133 +46,377 @@
       </div>
     </section>
 
-    <!-- Features Grid -->
-    <section id="features" class="w-full bg-white border-t border-b border-slate-100 px-6 py-20">
+    <!-- ============================================================== -->
+    <!-- LAYOUT OPTION A: Alternating Full-Width Rows                   -->
+    <!-- Screenshot on one side, text on the other, alternating         -->
+    <!-- ============================================================== -->
+    <section id="features" class="w-full bg-white border-t border-slate-200 px-6 py-20">
       <div class="max-w-7xl mx-auto">
-        <div class="text-center mb-16">
+        <div class="text-center mb-6">
+          <span class="inline-block bg-pink-100 text-pink-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Layout Option A</span>
           <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything you need to run a show</h2>
           <p class="text-lg text-slate-600 max-w-2xl mx-auto">Replace the spreadsheets, email chains, and group texts with one unified platform.</p>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Feature 1: Auditions -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Audition form builder -->
-              <span class="text-slate-400 text-sm">Screenshot: Audition Builder</span>
+        <div class="space-y-16 mt-16">
+          <!-- Feature Row 1: Auditions (image left) -->
+          <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Audition Builder (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Custom Audition Forms</h3>
-            <p class="text-slate-600">Build audition forms with the questions you need. Upload cuts, set deadlines, and collect video submissions.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Custom Audition Forms</h3>
+              <p class="text-lg text-slate-600 mb-4">Build audition forms with exactly the questions you need. Upload cuts, set deadlines, and collect video submissions—all in one place.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Video & audio submissions</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Custom question builder</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Deadline management</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- Feature 2: Submissions Review -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Submissions list -->
-              <span class="text-slate-400 text-sm">Screenshot: Review Submissions</span>
+          <!-- Feature Row 2: Submissions Review (image right) -->
+          <div class="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Review Submissions (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Review Submissions</h3>
-            <p class="text-slate-600">See every submission with headshots, videos, and answers at a glance. Rate, filter, and share with your team.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Review Submissions</h3>
+              <p class="text-lg text-slate-600 mb-4">See every submission with headshots, videos, and answers at a glance. Rate candidates, filter by criteria, and share notes with your team.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Rating system</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Team collaboration</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Smart filtering</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- Feature 3: Casting Board -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Casting board -->
-              <span class="text-slate-400 text-sm">Screenshot: Casting Board</span>
+          <!-- Feature Row 3: Casting Board (image left) -->
+          <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Casting Board (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Drag & Drop Casting</h3>
-            <p class="text-slate-600">Move performers into roles with a simple drag. See conflicts instantly and finalize your cast with one click.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Drag & Drop Casting</h3>
+              <p class="text-lg text-slate-600 mb-4">Move performers into roles with a simple drag. See conflicts instantly and finalize your cast with one click.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Visual casting board</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Conflict detection</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> One-click notifications</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- Feature 4: Sign-Up Forms -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Sign-up form builder -->
-              <span class="text-slate-400 text-sm">Screenshot: Sign-Up Forms</span>
+          <!-- Feature Row 4: Scheduling (image right) -->
+          <div class="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Schedule / Calendar (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Sign-Up Forms</h3>
-            <p class="text-slate-600">Create sign-ups for volunteering, crew slots, potlucks, or anything else. Collect responses with deadlines and limits.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Smart Scheduling</h3>
+              <p class="text-lg text-slate-600 mb-4">Build your rehearsal schedule with roles attached. Notify exactly who's called and sync it all to their calendars.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Role-based call lists</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Calendar sync</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Availability tracking</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- Feature 5: Scheduling -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Schedule view -->
-              <span class="text-slate-400 text-sm">Screenshot: Schedule</span>
+          <!-- Feature Row 5: Communications (image left) -->
+          <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Forum / Messages (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Smart Scheduling</h3>
-            <p class="text-slate-600">Build your rehearsal schedule with roles attached. Notify exactly who's called and sync it all to their calendars.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Team Communications</h3>
+              <p class="text-lg text-slate-600 mb-4">Send emails to your whole cast or just specific roles. Keep all production updates in one searchable place.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Production forum</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Role-based messaging</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Email notifications</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- Feature 6: Communications -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Messages -->
-              <span class="text-slate-400 text-sm">Screenshot: Communications</span>
+          <!-- Feature Row 6: Payouts (image right) -->
+          <div class="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-center">
+            <div class="lg:w-3/5">
+              <div class="aspect-[16/10] bg-slate-100 rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Payout Dashboard (1280×800)</span>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Team Communications</h3>
-            <p class="text-slate-600">Send emails to your whole cast or just specific roles. Keep all production updates in one searchable place.</p>
+            <div class="lg:w-2/5">
+              <h3 class="text-2xl font-bold text-slate-900 mb-4 coustard-regular">Performer Payouts</h3>
+              <p class="text-lg text-slate-600 mb-4">Pay your performers directly through CocoScout. Set amounts per show, send with one click, and track everything.</p>
+              <ul class="text-slate-500 space-y-2">
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Venmo & Zelle integration</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Per-show or flat rates</li>
+                <li class="flex items-center gap-2"><span class="text-pink-500">✓</span> Payment history</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- LAYOUT OPTION B: Two-Column Large Cards                        -->
+    <!-- Bigger screenshots in 2-column grid with more detail           -->
+    <!-- ============================================================== -->
+    <section class="w-full bg-slate-50 border-t border-slate-200 px-6 py-20">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-6">
+          <span class="inline-block bg-pink-100 text-pink-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Layout Option B</span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything you need to run a show</h2>
+          <p class="text-lg text-slate-600 max-w-2xl mx-auto">Replace the spreadsheets, email chains, and group texts with one unified platform.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-10 mt-16">
+          <!-- Feature Card 1: Auditions -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Audition Builder (800×600)</span>
+            </div>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Custom Audition Forms</h3>
+              <p class="text-slate-600 mb-4">Build audition forms with the questions you need. Upload cuts, set deadlines, and collect video submissions.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Video submissions</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Custom questions</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Deadlines</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 7: Questionnaires -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Questionnaire builder -->
-              <span class="text-slate-400 text-sm">Screenshot: Questionnaires</span>
+          <!-- Feature Card 2: Submissions Review -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Review Submissions (800×600)</span>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Questionnaires</h3>
-            <p class="text-slate-600">Collect t-shirt sizes, bios, emergency contacts, or anything else. Send once, track responses, and export results.</p>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Review Submissions</h3>
+              <p class="text-slate-600 mb-4">See every submission with headshots, videos, and answers at a glance. Rate, filter, and share with your team.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Rating system</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Team notes</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Filtering</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 8: Directory -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Directory -->
-              <span class="text-slate-400 text-sm">Screenshot: Directory</span>
+          <!-- Feature Card 3: Casting Board -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Casting Board (800×600)</span>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Cast & Crew Directory</h3>
-            <p class="text-slate-600">Everyone's contact info, roles, and profiles in one place. Your cast can connect without sharing personal numbers.</p>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Drag & Drop Casting</h3>
+              <p class="text-slate-600 mb-4">Move performers into roles with a simple drag. See conflicts instantly and finalize your cast with one click.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Visual board</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Conflict detection</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">One-click notify</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 9: Vacancies -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Vacancies -->
-              <span class="text-slate-400 text-sm">Screenshot: Post Vacancies</span>
+          <!-- Feature Card 4: Scheduling -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Schedule (800×600)</span>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Post Vacancies</h3>
-            <p class="text-slate-600">Need to fill a role or crew position fast? Post a vacancy and get applications from ready performers.</p>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Smart Scheduling</h3>
+              <p class="text-slate-600 mb-4">Build your rehearsal schedule with roles attached. Notify exactly who's called and sync it all to their calendars.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Role-based calls</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Calendar sync</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Availability</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 10: Team Management -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Team management -->
-              <span class="text-slate-400 text-sm">Screenshot: Team Settings</span>
+          <!-- Feature Card 5: Communications -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Forum (800×600)</span>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Team Management</h3>
-            <p class="text-slate-600">Add directors, stage managers, and producers with the right permissions. Everyone sees what they need to.</p>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Team Communications</h3>
+              <p class="text-slate-600 mb-4">Send emails to your whole cast or just specific roles. Keep all production updates in one searchable place.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Forum</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Email blasts</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Role-based</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 11: Payouts -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Payouts -->
-              <span class="text-slate-400 text-sm">Screenshot: Payouts</span>
+          <!-- Feature Card 6: Payouts -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="aspect-[4/3] bg-slate-100 overflow-hidden">
+              <span class="flex items-center justify-center h-full text-slate-400">Screenshot: Payouts (800×600)</span>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Performer Payouts</h3>
-            <p class="text-slate-600">Pay your performers directly through CocoScout. Set amounts, send with one click, and track everything.</p>
+            <div class="p-8">
+              <h3 class="text-2xl font-bold text-slate-900 mb-3 coustard-regular">Performer Payouts</h3>
+              <p class="text-slate-600 mb-4">Pay your performers directly through CocoScout. Set amounts, send with one click, and track everything.</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Venmo</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Zelle</span>
+                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">Payment history</span>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <!-- Feature 12: Production Dashboard -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
-              <!-- Screenshot placeholder: Dashboard -->
-              <span class="text-slate-400 text-sm">Screenshot: Production Dashboard</span>
+    <!-- ============================================================== -->
+    <!-- LAYOUT OPTION C: Full-Width Showcase Sections                  -->
+    <!-- Each feature gets a hero-style full-width treatment            -->
+    <!-- ============================================================== -->
+    <section class="w-full bg-white border-t border-slate-200">
+      <div class="text-center px-6 py-16">
+        <span class="inline-block bg-pink-100 text-pink-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-4">Layout Option C</span>
+        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything you need to run a show</h2>
+        <p class="text-lg text-slate-600 max-w-2xl mx-auto">Replace the spreadsheets, email chains, and group texts with one unified platform.</p>
+      </div>
+
+      <!-- Feature Showcase 1: Auditions -->
+      <div class="w-full bg-gradient-to-br from-pink-50 to-white px-6 py-16">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col lg:flex-row gap-10 items-center">
+            <div class="lg:w-1/3">
+              <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">Auditions</span>
+              <h3 class="text-3xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">Custom Audition Forms</h3>
+              <p class="text-lg text-slate-600 mb-6">Build audition forms with the questions you need. Upload cuts, set deadlines, and collect video submissions—all in one place.</p>
+              <ul class="text-slate-600 space-y-3">
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Upload audio cuts and sheet music</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Collect video submissions with deadlines</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Ask any questions you need answered</span>
+                </li>
+              </ul>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Production Dashboard</h3>
-            <p class="text-slate-600">See everything at a glance—upcoming events, pending tasks, team activity, and what needs your attention.</p>
+            <div class="lg:w-2/3">
+              <div class="aspect-[16/10] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400 text-lg">Screenshot: Audition Builder (1440×900)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Showcase 2: Casting -->
+      <div class="w-full bg-white px-6 py-16">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col lg:flex-row-reverse gap-10 items-center">
+            <div class="lg:w-1/3">
+              <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">Casting</span>
+              <h3 class="text-3xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">Drag & Drop Casting Board</h3>
+              <p class="text-lg text-slate-600 mb-6">Move performers into roles with a simple drag. See conflicts instantly and finalize your cast with one click.</p>
+              <ul class="text-slate-600 space-y-3">
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Visual drag-and-drop interface</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Instant conflict detection</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Notify cast with one click</span>
+                </li>
+              </ul>
+            </div>
+            <div class="lg:w-2/3">
+              <div class="aspect-[16/10] bg-slate-50 rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400 text-lg">Screenshot: Casting Board (1440×900)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Showcase 3: Scheduling -->
+      <div class="w-full bg-gradient-to-br from-slate-50 to-white px-6 py-16">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col lg:flex-row gap-10 items-center">
+            <div class="lg:w-1/3">
+              <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">Scheduling</span>
+              <h3 class="text-3xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">Smart Scheduling</h3>
+              <p class="text-lg text-slate-600 mb-6">Build your rehearsal schedule with roles attached. Notify exactly who's called and sync it all to their calendars.</p>
+              <ul class="text-slate-600 space-y-3">
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Attach roles to events</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Automatic call list generation</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Calendar sync for cast</span>
+                </li>
+              </ul>
+            </div>
+            <div class="lg:w-2/3">
+              <div class="aspect-[16/10] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400 text-lg">Screenshot: Show List / Calendar (1440×900)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Showcase 4: Payouts -->
+      <div class="w-full bg-white px-6 py-16">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col lg:flex-row-reverse gap-10 items-center">
+            <div class="lg:w-1/3">
+              <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">Payments</span>
+              <h3 class="text-3xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">Performer Payouts</h3>
+              <p class="text-lg text-slate-600 mb-6">Pay your performers directly through CocoScout. Set amounts per show, send with one click, and track everything.</p>
+              <ul class="text-slate-600 space-y-3">
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Venmo & Zelle integration</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Per-show or flat rate payment</span>
+                </li>
+                <li class="flex items-start gap-3">
+                  <span class="text-pink-500 mt-1">✓</span>
+                  <span>Complete payment history</span>
+                </li>
+              </ul>
+            </div>
+            <div class="lg:w-2/3">
+              <div class="aspect-[16/10] bg-slate-50 rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <span class="flex items-center justify-center h-full text-slate-400 text-lg">Screenshot: Payout Dashboard (1440×900)</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

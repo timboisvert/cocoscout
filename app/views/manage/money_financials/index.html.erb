@@ -52,11 +52,10 @@
         },
         { separator: true },
         {
-          partial: "shared/filters/toggle_filter",
+          partial: "manage/money_financials/toggle_filters",
           locals: {
-            label: "Hide Non-revenue Events",
-            active: @hide_non_revenue,
-            toggle_action: "click->money-filter#toggle"
+            hide_non_revenue: @hide_non_revenue,
+            hide_future_events: @hide_future_events
           }
         }
       ] %>

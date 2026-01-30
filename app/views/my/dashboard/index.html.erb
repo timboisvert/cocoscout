@@ -5,9 +5,9 @@
     <%= render "shared/announcement_bar", announcements: @announcements %>
   <% end %>
 
-  <!-- Onboarding Checklist -->
-  <% @people.each do |person| %>
-    <%= render "my/dashboard/onboarding_checklist", person: person %>
+  <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
+  <% if (primary = @people.first) %>
+    <%= render "my/dashboard/onboarding_checklist", person: primary %>
   <% end %>
 
   <!-- Pending Vacancy Invitations -->

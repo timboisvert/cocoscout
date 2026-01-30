@@ -51,6 +51,18 @@ module Manage
       if @production && @shows && !@is_third_party
         @shows = apply_filter(@shows, @filter)
 
+        # Handle hide_future_events toggle (enabled by default)
+        if params[:hide_future_events].present?
+          @hide_future_events = params[:hide_future_events] == "true"
+          cookies[:money_hide_future_events] = { value: @hide_future_events.to_s, expires: 1.year.from_now }
+        else
+          @hide_future_events = cookies[:money_hide_future_events] != "false"
+        end
+
+        if @hide_future_events
+          @shows = @shows.select { |show| show.date_and_time <= 1.day.from_now }
+        end
+
         # Handle hide_non_revenue toggle
         if params[:hide_non_revenue].present?
           @hide_non_revenue = params[:hide_non_revenue] == "true"
