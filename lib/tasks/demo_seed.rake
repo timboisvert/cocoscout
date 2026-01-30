@@ -39,7 +39,7 @@ namespace :demo do
 end
 
 class DemoSeeder
-  DEMO_ORG_NAME = "Starlight Community Theater"
+  DEMO_ORG_NAME = "Starlight Community Theater (Demo Organization)"
   DEMO_EMAIL_DOMAIN = "demo.cocoscout.com"
   DEMO_PASSWORD = "Password1!"
 
