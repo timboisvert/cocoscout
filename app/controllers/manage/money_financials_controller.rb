@@ -167,7 +167,6 @@ module Manage
 
     def load_shows_for_production(production)
       production.shows
-                .where("date_and_time <= ?", 1.day.from_now)
                 .order(date_and_time: :desc)
                 .includes(:show_financials, :location)
                 .limit(100)

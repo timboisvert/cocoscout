@@ -69,8 +69,10 @@
       <% else %>
         <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
           <p class="text-gray-600">
-            <% if @filter == "all" %>
+            <% if @filter == "all" && @hide_future_events %>
               No past shows yet. Shows will appear here after they occur.
+            <% elsif @filter == "all" %>
+              No shows found for this production.
             <% elsif @filter == "complete" %>
               No shows with complete financial data.
             <% elsif @filter == "pending" %>

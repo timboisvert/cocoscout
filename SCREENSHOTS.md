@@ -2,34 +2,44 @@
 
 All screenshots should be taken at **1440x900** resolution. Use the demo organization and log in as `demo@demo.cocoscout.com`.
 
+**Save to:** `app/assets/images/screenshots/`
+
 ---
 
 ## 1. Auditions (3 screenshots)
 
-- [ ] **1-1: Audition Form Builder**
-  - Page: `/manage/productions/[ID]/audition_cycles/[ID]/edit`
+Folder: `screenshots/auditions/`
+
+- [ ] **1-form-builder.png**
+  - Page: `/manage/signups/auditions/[PRODUCTION_ID]/[CYCLE_ID]/form`
   - Show: Questions section, cuts/files section, deadline fields
   - Scroll to show the richest part of the form
 
-- [ ] **1-2: Submissions List**
-  - Page: `/manage/productions/[ID]/audition_cycles/[ID]/audition_requests`
+- [ ] **2-submissions-list.png**
+  - Page: `/manage/signups/auditions/[PRODUCTION_ID]/[CYCLE_ID]/requests`
   - Show: Grid of submissions with headshots, names, timestamps
   - Ideally some have ratings (stars), show filtering controls
 
-- [ ] **1-3: Submission Detail**
-  - Page: Click into one submission from the list
+- [ ] **3-submission-detail.png**
+  - Page: `/manage/signups/auditions/[PRODUCTION_ID]/[CYCLE_ID]/requests/[REQUEST_ID]`
   - Show: Headshot, video player, answers to questions
 
 ---
 
-## 2. Casting (2 screenshots)
+## 2. Casting (3 screenshots)
 
-- [ ] **2-1: Casting Table**
-  - Page: `/manage/productions/[ID]/casting_table`
+Folder: `screenshots/casting/`
+
+- [ ] **1-casting-table.png**
+  - Page: `/manage/casting/tables/[TABLE_ID]`
   - Show: Role columns with performers assigned, talent pool on side
   - Best if multiple roles are filled
 
-- [ ] **2-2: Org Casting Grid**
+- [ ] **2-notifications.png**
+  - Page: (User to add)
+  - Show: (User to add)
+
+- [ ] **3-org-grid.png**
   - Page: `/manage/casting`
   - Show: Multi-production casting overview with multiple shows
 
@@ -37,41 +47,47 @@ All screenshots should be taken at **1440x900** resolution. Use the demo organiz
 
 ## 3. Scheduling (3 screenshots)
 
-- [ ] **3-1: Shows List**
-  - Page: `/manage/productions/[ID]/shows`
+Folder: `screenshots/scheduling/`
+
+- [ ] **1-shows-list.png**
+  - Page: `/manage/shows/[PRODUCTION_ID]`
   - Show: List of upcoming shows with dates, times, locations, cast counts
 
-- [ ] **3-2: Show Detail / Call List**
-  - Page: `/manage/productions/[ID]/shows/[ID]`
+- [ ] **2-show-detail.png**
+  - Page: `/manage/shows/[PRODUCTION_ID]/[SHOW_ID]`
   - Show: Individual show with cast list, roles assigned
 
-- [ ] **3-3: Availability Grid**
-  - Page: `/manage/productions/[ID]/availability`
+- [ ] **3-availability-grid.png**
+  - Page: `/manage/casting/[PRODUCTION_ID]/availability`
   - Show: Grid showing performer availability across shows
 
 ---
 
-## 4. Payouts (2 screenshots)
+## 4. Accounting (2 screenshots)
 
-- [ ] **4-1: Money Dashboard**
-  - Page: `/manage/productions/[ID]/money`
-  - Show: Overview with totals, recent shows with payout status
+Folder: `screenshots/accounting/`
 
-- [ ] **4-2: Payout Scheme Setup**
-  - Page: `/manage/productions/[ID]/money/payout_schemes/[ID]` or create new
-  - Show: Scheme configuration (per-show rates, role amounts)
+- [ ] **1-financial-overview.png**
+  - Page: `/manage/money/financials/[PRODUCTION_ID]`
+  - Show: Revenue/expense summary section, charts if visible
+
+- [ ] **2-show-financials.png**
+  - Page: `/manage/money/shows/[SHOW_ID]/financials`
+  - Show: Per-show P&L breakdown, revenue, expenses
 
 ---
 
-## 5. Accounting (2 screenshots)
+## 5. Payouts (2 screenshots)
 
-- [ ] **5-1: Financial Overview**
-  - Page: `/manage/productions/[ID]/money`
-  - Show: Revenue/expense summary section, charts if visible
+Folder: `screenshots/payouts/`
 
-- [ ] **5-2: Show Financials Detail**
-  - Page: Click into a show's financials
-  - Show: Per-show P&L breakdown, revenue, expenses
+- [ ] **1-dashboard.png**
+  - Page: `/manage/money/payouts/[PRODUCTION_ID]`
+  - Show: Overview with totals, recent shows with payout status
+
+- [ ] **2-scheme-setup.png**
+  - Page: `/manage/money/schemes/[SCHEME_ID]` or `/manage/money/schemes/new`
+  - Show: Scheme configuration (per-show rates, role amounts)
 
 ---
 
@@ -97,4 +113,4 @@ Production.joins(:organization)
 
 ---
 
-**Total: 12 screenshots** across 5 features
+**Total: 13 screenshots** across 5 features
