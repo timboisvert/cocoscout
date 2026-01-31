@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -582,6 +582,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
+  create_table "message_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "message_type", null: false
+    t.bigint "organization_id"
+    t.integer "recipient_count", default: 0, null: false
+    t.bigint "regarding_id"
+    t.string "regarding_type"
+    t.bigint "sender_id", null: false
+    t.string "sender_type", null: false
+    t.string "subject", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_message_batches_on_organization_id"
+    t.index ["regarding_type", "regarding_id"], name: "index_message_batches_on_regarding"
+    t.index ["sender_type", "sender_id"], name: "index_message_batches_on_sender"
+    t.index ["sender_type", "sender_id"], name: "index_message_batches_on_sender_type_and_sender_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.bigint "message_batch_id"
+    t.string "message_type", null: false
+    t.bigint "organization_id"
+    t.bigint "parent_id"
+    t.datetime "read_at"
+    t.bigint "recipient_id", null: false
+    t.string "recipient_type", null: false
+    t.bigint "regarding_id"
+    t.string "regarding_type"
+    t.bigint "sender_id", null: false
+    t.string "sender_type", null: false
+    t.string "subject", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_batch_id"], name: "idx_messages_batch"
+    t.index ["parent_id"], name: "idx_messages_parent"
+    t.index ["recipient_type", "recipient_id", "created_at"], name: "idx_messages_recipient_created"
+    t.index ["recipient_type", "recipient_id", "read_at"], name: "idx_messages_recipient_read"
+    t.index ["regarding_type", "regarding_id"], name: "idx_messages_regarding"
+    t.index ["sender_type", "sender_id"], name: "idx_messages_sender"
+  end
+
   create_table "organization_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
@@ -597,12 +638,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
 
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "forum_mode", default: "per_production", null: false
     t.string "invite_token"
     t.string "name"
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
-    t.string "shared_forum_name"
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
@@ -814,17 +853,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
-  create_table "post_views", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "post_id", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.datetime "viewed_at", null: false
-    t.index ["post_id"], name: "index_post_views_on_post_id"
-    t.index ["user_id", "post_id"], name: "index_post_views_on_user_id_and_post_id", unique: true
-    t.index ["user_id"], name: "index_post_views_on_user_id"
-  end
-
   create_table "posters", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_primary", default: false, null: false
@@ -833,21 +861,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.datetime "updated_at", null: false
     t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "(is_primary = true)"
     t.index ["production_id"], name: "index_posters_on_production_id"
-  end
-
-  create_table "posts", force: :cascade do |t|
-    t.bigint "author_id", null: false
-    t.string "author_type", null: false
-    t.text "body"
-    t.datetime "created_at", null: false
-    t.bigint "parent_id"
-    t.bigint "production_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["author_type", "author_id"], name: "index_posts_on_author"
-    t.index ["parent_id", "created_at"], name: "index_posts_on_parent_id_and_created_at"
-    t.index ["parent_id"], name: "index_posts_on_parent_id"
-    t.index ["production_id", "created_at"], name: "index_posts_on_production_id_and_created_at"
-    t.index ["production_id"], name: "index_posts_on_production_id"
   end
 
   create_table "production_expense_allocations", force: :cascade do |t|
@@ -911,7 +924,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.boolean "default_signup_based_casting", default: false, null: false
     t.text "description"
     t.text "event_visibility_overrides"
-    t.boolean "forum_enabled", default: true, null: false
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -1865,7 +1877,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.integer "included_production_ids", default: [], null: false, array: true
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
+    t.datetime "last_message_digest_sent_at"
     t.datetime "last_seen_at"
+    t.boolean "message_digest_enabled", default: true
     t.jsonb "notification_preferences", default: {}, null: false
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
@@ -1934,6 +1948,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "message_batches", "organizations"
+  add_foreign_key "messages", "message_batches"
+  add_foreign_key "messages", "messages", column: "parent_id"
+  add_foreign_key "messages", "organizations"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
@@ -1959,11 +1977,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
   add_foreign_key "person_advances", "users", column: "paid_by_id"
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "person_invitations", "talent_pools"
-  add_foreign_key "post_views", "posts"
-  add_foreign_key "post_views", "users"
   add_foreign_key "posters", "productions"
-  add_foreign_key "posts", "posts", column: "parent_id"
-  add_foreign_key "posts", "productions"
   add_foreign_key "production_expense_allocations", "production_expenses"
   add_foreign_key "production_expense_allocations", "shows"
   add_foreign_key "production_expenses", "productions"

@@ -1133,7 +1133,7 @@ module Manage
 
     def check_casting_setup
       unless @production.casting_setup_completed?
-        redirect_to setup_manage_casting_settings_path(@production)
+        redirect_to manage_setup_casting_settings_path(@production)
       end
     end
 

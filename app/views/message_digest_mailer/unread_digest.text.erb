@@ -1,0 +1,18 @@
+Hi <%= @user.person&.name || "there" %>,
+
+You have <%= @message_count %> unread message<%= "s" if @message_count > 1 %> waiting for you on CocoScout:
+
+<% @messages.first(5).each do |message| %>
+  - <%= message.sender_name %>: <%= message.subject %>
+<% end %>
+<% if @messages.size > 5 %>
+  ... and <%= @messages.size - 5 %> more
+<% end %>
+
+View your inbox: <%= @inbox_url %>
+
+You're receiving this because you have message notifications enabled.
+You can adjust your notification preferences in your account settings.
+
+---
+© <%= Date.current.year %> CocoScout. All rights reserved.

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #ec4899; }
+      .logo { font-size: 24px; font-weight: bold; color: #ec4899; }
+      .content { padding: 30px 0; }
+      .message-list { background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+      .message-list li { margin: 10px 0; }
+      .cta-button { display: inline-block; background-color: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+      .footer { text-align: center; padding: 20px 0; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">CocoScout</div>
+      </div>
+
+      <div class="content">
+        <p>Hi <%= @user.person&.name || "there" %>,</p>
+
+        <p>You have <strong><%= @message_count %> unread message<%= "s" if @message_count > 1 %></strong> waiting for you on CocoScout:</p>
+
+        <div class="message-list">
+          <ul>
+            <% @messages.first(5).each do |message| %>
+              <li><strong><%= message.sender_name %></strong>: <%= message.subject %></li>
+            <% end %>
+            <% if @messages.size > 5 %>
+              <li><em>... and <%= @messages.size - 5 %> more</em></li>
+            <% end %>
+          </ul>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="<%= @inbox_url %>" class="cta-button">View Your Inbox</a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          You're receiving this because you have message notifications enabled.
+          You can adjust your notification preferences in your account settings.
+        </p>
+      </div>
+
+      <div class="footer">
+        <p>&copy; <%= Date.current.year %> CocoScout. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

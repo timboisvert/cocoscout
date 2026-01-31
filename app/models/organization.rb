@@ -20,14 +20,6 @@ class Organization < ApplicationRecord
 
   has_one_attached :logo
 
-  # Forum mode determines how message boards are organized
-  # per_production: Each production has its own separate forum
-  # shared: All productions in this org share one forum
-  enum :forum_mode, {
-    per_production: "per_production",
-    shared: "shared"
-  }, default: :per_production, prefix: :forum
-
   # Talent pool mode determines how talent pools are organized
   # per_production: Each production has its own talent pool (can share between specific productions)
   # single: One unified talent pool across all productions
@@ -39,11 +31,6 @@ class Organization < ApplicationRecord
   validates :name, presence: true
 
   before_create :generate_invite_token
-
-  # Get the display name for the shared forum
-  def forum_display_name
-    shared_forum_name.presence || name
-  end
 
   # Generate or ensure invite token exists
   def ensure_invite_token!

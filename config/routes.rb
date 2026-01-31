@@ -145,6 +145,18 @@ Rails.application.routes.draw do
     post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
     post  "/dismiss_announcement",          to: "dashboard#dismiss_announcement", as: "dismiss_announcement"
 
+    # Inbox
+    resources :inbox, only: [:index, :show] do
+      member do
+        post :archive
+        post :mark_read
+        post :reply
+      end
+      collection do
+        post :mark_all_read
+      end
+    end
+
     # Profile management
     resources :profiles, only: [ :index, :new, :create ]
 

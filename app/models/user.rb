@@ -21,7 +21,19 @@ class User < ApplicationRecord
   has_many :email_logs, dependent: :destroy
   has_many :audition_request_votes, dependent: :destroy
   has_many :audition_votes, dependent: :destroy
-  has_many :post_views, dependent: :delete_all
+
+  # Messaging - messages addressed to any of user's People or Groups
+  def received_messages
+    Message.for_user(self)
+  end
+
+  def unread_messages
+    received_messages.unread.active
+  end
+
+  def unread_message_count
+    unread_messages.count
+  end
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false },
@@ -302,6 +314,19 @@ class User < ApplicationRecord
   # Check if invitation token is still valid
   def invitation_token_valid?
     invitation_token.present?
+  end
+
+  # Messaging - messages addressed to any of user's People or Groups
+  def received_messages
+    Message.for_user(self)
+  end
+
+  def unread_messages
+    received_messages.unread.active
+  end
+
+  def unread_message_count
+    unread_messages.count
   end
 
   private

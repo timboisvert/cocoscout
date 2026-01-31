@@ -1,0 +1,33 @@
+<%# Reply message partial %>
+<div class="bg-white rounded-lg border border-gray-200 p-4">
+  <div class="flex items-start gap-3">
+    <%# Sender headshot %>
+    <% sender_person = message.sender.is_a?(Person) ? message.sender : message.sender.person %>
+    <% if sender_person %>
+      <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
+          <%= sender_person.initials %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+      </div>
+    <% end %>
+
+    <div class="flex-1">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-medium text-gray-900"><%= message.sender_name %></span>
+        <span class="text-sm text-gray-500"><%= time_ago_in_words(message.created_at) %> ago</span>
+      </div>
+      <div class="prose prose-sm max-w-none">
+        <%= message.body %>
+      </div>
+    </div>
+  </div>
+</div>
