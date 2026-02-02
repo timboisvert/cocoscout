@@ -2,29 +2,144 @@
   "ignored_warnings": [
     {
       "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "46be72496e6f4c97e9e7de74d1f646fa5313b1bdf5c60216e07b2f49ddfd41df",
-      "check_name": "LinkToHref",
-      "file": "app/views/my/shows/show.html.erb",
-      "line": 113,
-      "note": "safe_url method validates URL scheme is http/https only, preventing javascript: XSS"
+      "warning_code": 2,
+      "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/shared/messages/_reactions.html.erb",
+      "line": 22,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "MessageReaction.icon_for(reaction_type)",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::MessagesController",
+          "method": "index",
+          "line": 65,
+          "file": "app/controllers/manage/messages_controller.rb",
+          "rendered": {
+            "name": "manage/messages/index",
+            "file": "app/views/manage/messages/index.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "manage/messages/index",
+          "line": 119,
+          "file": "app/views/manage/messages/index.html.erb",
+          "rendered": {
+            "name": "shared/messages/_message_card",
+            "file": "app/views/shared/messages/_message_card.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "shared/messages/_message_card",
+          "line": 169,
+          "file": "app/views/shared/messages/_message_card.html.erb",
+          "rendered": {
+            "name": "shared/messages/_reactions",
+            "file": "app/views/shared/messages/_reactions.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "shared/messages/_reactions"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
-      "warning_code": 84,
-      "fingerprint": "92375953037532faa7c168ce996f0d07341bf335f78ff4df3532587f37df9c39",
-      "check_name": "RenderInline",
-      "file": "app/views/manage/casting_tables/summary.html.erb",
-      "line": 134,
-      "note": "False positive: .count returns an integer which cannot contain XSS payload"
+      "warning_code": 2,
+      "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/shared/messages/_reactions.html.erb",
+      "line": 51,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "MessageReaction.icon_for(reaction_type)",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::MessagesController",
+          "method": "index",
+          "line": 65,
+          "file": "app/controllers/manage/messages_controller.rb",
+          "rendered": {
+            "name": "manage/messages/index",
+            "file": "app/views/manage/messages/index.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "manage/messages/index",
+          "line": 119,
+          "file": "app/views/manage/messages/index.html.erb",
+          "rendered": {
+            "name": "shared/messages/_message_card",
+            "file": "app/views/shared/messages/_message_card.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "shared/messages/_message_card",
+          "line": 169,
+          "file": "app/views/shared/messages/_message_card.html.erb",
+          "rendered": {
+            "name": "shared/messages/_reactions",
+            "file": "app/views/shared/messages/_reactions.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "shared/messages/_reactions"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "4ce2d2156e5562c6a5831dd1f1fe679db7da50c8af391171e805dad8e8c04973",
       "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/show_payouts/show.html.erb",
-      "line": 1053,
+      "line": 1465,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Add #{(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size} #{if ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowPayoutsController",
+          "method": "show",
+          "line": 35,
+          "file": "app/controllers/manage/show_payouts_controller.rb",
+          "rendered": {
+            "name": "manage/show_payouts/show",
+            "file": "app/views/manage/show_payouts/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/show_payouts/show"
+      },
+      "user_input": "(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
       "note": "False positive: .size returns an integer which cannot contain XSS payload"
     },
     {
@@ -32,10 +147,69 @@
       "warning_code": 4,
       "fingerprint": "74acd1976f39ea828900c245ada884b3441f4297b19c3a2e8ff7843528963500",
       "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/manage/ticketing_production_links/show.html.erb",
-      "line": 58,
+      "line": 66,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url, Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"text-sm text-pink-600 hover:text-pink-800\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::TicketingProductionLinksController",
+          "method": "show",
+          "line": 18,
+          "file": "app/controllers/manage/ticketing_production_links_controller.rb",
+          "rendered": {
+            "name": "manage/ticketing_production_links/show",
+            "file": "app/views/manage/ticketing_production_links/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/ticketing_production_links/show"
+      },
+      "user_input": "Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
       "note": "safe_provider_event_url method validates URL scheme is http/https only, preventing javascript: XSS"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "92375953037532faa7c168ce996f0d07341bf335f78ff4df3532587f37df9c39",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/casting_tables/summary.html.erb",
+      "line": 134,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Finalize Casting (#{Current.organization.casting_tables.find(params[:id]).casting_table_draft_assignments.includes(:show, :role).order(\"shows.date_and_time\").count} assignments)\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::CastingTablesController",
+          "method": "summary",
+          "line": 182,
+          "file": "app/controllers/manage/casting_tables_controller.rb",
+          "rendered": {
+            "name": "manage/casting_tables/summary",
+            "file": "app/views/manage/casting_tables/summary.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/casting_tables/summary"
+      },
+      "user_input": "Current.organization.casting_tables.find(params[:id]).casting_table_draft_assignments.includes(:show, :role).order(\"shows.date_and_time\").count",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": "False positive: .count returns an integer which cannot contain XSS payload"
     }
   ],
-  "brakeman_version": "7.1.2"
+  "brakeman_version": "8.0.1"
 }

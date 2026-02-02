@@ -2,7 +2,7 @@
 
 module Manage
   class CastingAvailabilityController < Manage::ManageController
-    before_action :set_production, except: [:org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability]
+    before_action :set_production, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
 
     def index
       # Get all future shows for this production, ordered by date
@@ -141,14 +141,6 @@ module Manage
       end
     end
 
-    private
-
-    def set_production
-      unless Current.organization
-        redirect_to select_organization_path, alert: "Please select an organization first."
-        return
-      end
-      @production = Current.organization.productions.find(params.expect(:production_id))
     def org_index
       # Time filter parameter (default 3 months)
       @months = params[:months]&.to_i || 3
@@ -448,6 +440,14 @@ module Manage
 
     private
 
+    def set_production
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return
+      end
+      @production = Current.organization.productions.find(params.expect(:production_id))
+    end
+
     def collect_all_members
       person_ids = Set.new
       group_ids = Set.new
@@ -697,5 +697,7 @@ module Manage
         end
       end
 
+      result
+    end
   end
 end
