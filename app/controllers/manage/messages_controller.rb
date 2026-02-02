@@ -114,6 +114,92 @@ module Manage
                                 .order(:created_at)
     end
 
+    # POST /manage/messages
+    # Unified endpoint for sending messages to people, groups, or shows
+    def create
+      subject = params[:subject]
+      body = params[:body]
+      recipient_type = params[:recipient_type]
+      recipient_id = params[:recipient_id]
+
+      if subject.blank? || body.blank?
+        redirect_back fallback_location: manage_messages_path, alert: "Subject and message are required"
+        return
+      end
+
+      case recipient_type
+      when "person"
+        person = Current.organization.people.find(recipient_id)
+        MessageService.send_direct(
+          sender: Current.user,
+          recipient_person: person,
+          subject: subject,
+          body: body,
+          organization: Current.organization
+        )
+        redirect_back fallback_location: manage_person_path(person), notice: "Message sent to #{person.name}"
+
+      when "group"
+        group = Current.organization.groups.find(recipient_id)
+        production = group.production || Current.production
+        MessageService.send_to_group(
+          sender: Current.user,
+          group: group,
+          subject: subject,
+          body: body,
+          production: production
+        )
+        redirect_back fallback_location: manage_directory_path, notice: "Message sent to #{group.name}"
+
+      when "show_cast"
+        show = Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find(recipient_id)
+        MessageService.send_to_show_cast(
+          show: show,
+          sender: Current.user,
+          subject: subject,
+          body: body
+        )
+        redirect_back fallback_location: manage_show_path(show.production, show), notice: "Message sent to #{show.display_name} cast"
+
+      when "batch"
+        # Handle batch messaging from directory selection
+        person_ids = params[:person_ids]&.select(&:present?) || []
+
+        if person_ids.empty?
+          redirect_back fallback_location: manage_directory_path, alert: "Please select at least one person or group."
+          return
+        end
+
+        # Load people and groups from the IDs (scoped to current organization)
+        people = Current.organization.people.where(id: person_ids)
+        groups = Current.organization.groups.where(id: person_ids)
+
+        # Collect all people to message (direct people + group members with notifications enabled)
+        people_to_message = people.to_a
+
+        groups.each do |group|
+          members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
+          people_to_message.concat(members_with_notifications)
+        end
+
+        people_to_message.uniq!
+
+        MessageService.send_to_people(
+          sender: Current.user,
+          people: people_to_message,
+          subject: subject,
+          body: body,
+          message_type: :direct,
+          organization: Current.organization
+        )
+
+        redirect_to manage_directory_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
+
+      else
+        redirect_back fallback_location: manage_messages_path, alert: "Invalid recipient type"
+      end
+    end
+
     # POST /manage/messages/:id/reply
     def reply
       parent_message_id = params[:parent_message_id] || params[:id]

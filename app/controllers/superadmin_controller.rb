@@ -7,6 +7,7 @@ class SuperadminController < ApplicationController
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
+                         production_transfer production_transfer_execute
                          email_templates email_template_new email_template_create email_template_edit email_template_update
                          email_template_destroy email_template_preview search_users keys
                          dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
@@ -208,6 +209,43 @@ class SuperadminController < ApplicationController
 
   def organization_detail
     @organization = Organization.find(params[:id])
+  end
+
+  def production_transfer
+    @production = Production.find(params[:id])
+    @source_org = @production.organization
+    @organizations = Organization.where.not(id: @source_org.id).order(:name)
+
+    # If target org is selected, run analysis
+    if params[:target_org_id].present?
+      @target_org = Organization.find(params[:target_org_id])
+      @analysis = ProductionOrganizationTransferService.analyze(@production, @target_org)
+    end
+  end
+
+  def production_transfer_execute
+    @production = Production.find(params[:id])
+    @target_org = Organization.find(params[:target_org_id])
+
+    # Extract location mappings from params (format: location_mapping_123 => "456" or "copy")
+    location_mappings = {}
+    params.each do |key, value|
+      if key.to_s.start_with?("location_mapping_") && value.present?
+        source_id = key.to_s.sub("location_mapping_", "").to_i
+        # Keep "copy" as string, convert numbers to int
+        location_mappings[source_id] = value == "copy" ? "copy" : value.to_i
+      end
+    end
+
+    result = ProductionOrganizationTransferService.execute(@production, @target_org, location_mappings: location_mappings)
+
+    if result[:success]
+      redirect_to organization_detail_path(@target_org),
+                  notice: "Production '#{@production.name}' successfully transferred. Changes: #{result[:changes].join(', ')}"
+    else
+      redirect_to production_transfer_path(@production),
+                  alert: "Transfer failed: #{result[:error]}"
+    end
   end
 
   def impersonate

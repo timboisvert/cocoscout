@@ -218,7 +218,14 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Casting" do %>
             <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
-            <%= render "shared/button", text: "Contact Cast", path: manage_casting_show_contact_path(@production, @show), variant: "primary", size: "small", data: { turbo_frame: "cast_contact_modal" } %>
+            <% cast_members = @show.people.distinct %>
+            <div data-controller="compose-message"
+                 data-compose-message-recipient-type-value="show_cast"
+                 data-compose-message-recipient-id-value="<%= @show.id %>"
+                 data-compose-message-recipient-name-value="<%= @show.display_name %> Cast"
+                 data-compose-message-cast-members-value="<%= cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
+              <%= render "shared/button", text: "Contact Cast", variant: "primary", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
+            </div>
           <% end %>
           <div class="p-4">
             <%
@@ -671,5 +678,5 @@
 <%# Turbo frame for recurring series modal %>
 <%= turbo_frame_tag "recurring_series_modal" %>
 
-<%# Turbo frame for cast contact modal %>
-<%= turbo_frame_tag "cast_contact_modal" %>
+<%# Compose message modal for contacting cast %>
+<%= render "shared/compose_message_modal" %>

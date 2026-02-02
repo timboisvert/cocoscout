@@ -77,6 +77,8 @@ Rails.application.routes.draw do
     post "/people/:id/merge", to: "superadmin#merge_person", as: "merge_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
+    get  "/productions/:id/transfer", to: "superadmin#production_transfer", as: "production_transfer"
+    post "/productions/:id/transfer", to: "superadmin#production_transfer_execute", as: "production_transfer_execute"
     get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"
     post "/storage/cleanup_orphans", to: "superadmin#storage_cleanup_orphans", as: "storage_cleanup_orphans"
     post "/storage/cleanup_legacy",  to: "superadmin#storage_cleanup_legacy",  as: "storage_cleanup_legacy"
@@ -254,7 +256,7 @@ Rails.application.routes.draw do
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
     # Messages
-    resources :messages, only: [ :index, :show ] do
+    resources :messages, only: [ :index, :show, :create ] do
       member do
         post :reply
         post "react/:emoji", action: :react, as: :react
@@ -593,8 +595,6 @@ Rails.application.routes.draw do
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
     get  "/casting/:production_id/settings", to: "casting_settings#show", as: "casting_settings"
     patch "/casting/:production_id/settings", to: "casting_settings#update", as: "update_casting_settings"
-    get  "/casting/:production_id/settings/setup", to: "casting_settings#setup", as: "setup_casting_settings"
-    post "/casting/:production_id/settings/complete_setup", to: "casting_settings#complete_setup", as: "complete_setup_casting_settings"
     get  "/casting/:production_id/search_people", to: "casting#search_people", as: "casting_search_people"
 
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
@@ -627,8 +627,6 @@ Rails.application.routes.draw do
 
     # Casting > Shows (new URL pattern: /manage/casting/:production_id/:show_id)
     get  "/casting/:production_id/:show_id/cast", to: "casting#show_cast", as: "casting_show_cast"
-    get  "/casting/:production_id/:show_id/contact", to: "casting#contact_cast", as: "casting_show_contact"
-    post "/casting/:production_id/:show_id/contact", to: "casting#send_cast_email", as: "casting_show_send_email"
     post "/casting/:production_id/:show_id/assign_person_to_role", to: "casting#assign_person_to_role", as: "casting_show_assign_person"
     post "/casting/:production_id/:show_id/assign_guest_to_role", to: "casting#assign_guest_to_role", as: "casting_show_assign_guest"
     post "/casting/:production_id/:show_id/remove_person_from_role", to: "casting#remove_person_from_role", as: "casting_show_remove_person"
@@ -656,8 +654,7 @@ Rails.application.routes.draw do
     delete "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_casting_audition_email_assignment"
 
     # Directory - unified people and groups listing
-    get  "/directory",          to: "directory#index", as: "directory"
-    post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
+    get "/directory",          to: "directory#index", as: "directory"
     patch "/directory/group/:id/update_availability", to: "directory#update_group_availability",
                                                       as: "update_group_availability"
 
@@ -673,8 +670,6 @@ Rails.application.routes.draw do
     post "/directory/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_directory_person"
     post "/directory/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_directory_person"
     post "/directory/people/:id/remove_from_organization", to: "people#remove_from_organization", as: "remove_from_organization_directory_person"
-    get  "/directory/people/:id/contact", to: "people#contact", as: "contact_directory_person"
-    post "/directory/people/:id/send_contact_email", to: "people#send_contact_email", as: "send_contact_email_directory_person"
     patch "/directory/people/:id/update_availability", to: "people#update_availability", as: "update_availability_directory_person"
     get  "/directory/people/:id/availability_modal", to: "people#availability_modal", as: "availability_modal_directory_person"
 
@@ -739,8 +734,6 @@ Rails.application.routes.draw do
         post :add_to_cast
         post :remove_from_cast
         post :remove_from_organization
-        get :contact
-        post :send_contact_message
         patch :update_availability
         get :availability_modal
       end

@@ -3,26 +3,11 @@
 module Manage
   class CastingSettingsController < ManageController
     before_action :set_production
-    before_action :check_casting_setup, only: [ :show ]
     before_action :load_roles_data, only: [ :show ]
     before_action :load_talent_pool_data, only: [ :show ]
 
     def show
       # Main casting settings page with tabs
-    end
-
-    def setup
-      # First-time setup wizard
-    end
-
-    def complete_setup
-      # Process the setup form and mark setup as completed
-      if @production.update(casting_settings_params.merge(casting_setup_completed: true))
-        redirect_to manage_casting_settings_path(@production, anchor: "tab-1"),
-                    notice: "Casting settings saved! Now let's set up your roles."
-      else
-        render :setup, status: :unprocessable_entity
-      end
     end
 
     def update
@@ -47,12 +32,6 @@ module Manage
       end
       @production = Current.organization.productions.find(params[:production_id])
       sync_current_production(@production)
-    end
-
-    def check_casting_setup
-      unless @production.casting_setup_completed?
-        redirect_to manage_setup_casting_settings_path(@production)
-      end
     end
 
     def load_roles_data

@@ -130,49 +130,6 @@ module Manage
       end
     end
 
-    def contact_directory
-      person_ids = params[:person_ids]&.select(&:present?) || []
-      subject = params[:subject]
-      body_html = params[:body]
-
-      if person_ids.empty?
-        redirect_to manage_directory_path, alert: "Please select at least one person or group."
-        return
-      end
-
-      # Load people and groups from the IDs (scoped to current organization via HABTM)
-      people = Current.organization.people.where(id: person_ids)
-      groups = Current.organization.groups.where(id: person_ids)
-
-      # Collect all people to email (direct people + group members with notifications enabled)
-      people_to_email = []
-
-      # Add directly selected people
-      people_to_email.concat(people.to_a)
-
-      # Add group members who have notifications enabled
-      groups.each do |group|
-        members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
-        people_to_email.concat(members_with_notifications)
-      end
-
-      # Remove duplicates
-      people_to_email.uniq!
-
-      # Send messages via MessageService
-      MessageService.send_to_people(
-        sender: Current.user,
-        people: people_to_email,
-        subject: subject,
-        body: body_html,
-        message_type: :direct,
-        organization: Current.organization
-      )
-
-      redirect_to manage_directory_path,
-                  notice: "Message sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
-    end
-
     def update_group_availability
       @group = Group.find(params[:id])
       updated_count = 0

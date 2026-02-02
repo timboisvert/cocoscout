@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["checkbox", "item", "link", "selectButton", "selectedCount", "count", "bulkActions", "dropdown", "modal", "modalContent", "modalCount", "recipients", "selectedIdsContainer", "selectAllButton"]
+    static targets = ["checkbox", "item", "link", "selectButton", "selectedCount", "count", "bulkActions", "dropdown", "selectAllButton"]
 
     connect() {
         this.selectedItems = new Map()
@@ -82,10 +82,11 @@ export default class extends Controller {
             const id = item.dataset.entryId
             const type = item.dataset.entryType
             const name = item.dataset.entryName
+            const headshot = item.dataset.entryHeadshot || ''
 
             if (checkbox && !checkbox.checked) {
                 checkbox.checked = true
-                this.selectedItems.set(`${type}-${id}`, { id, type, name })
+                this.selectedItems.set(`${type}-${id}`, { id, type, name, headshot })
             }
         })
 
@@ -98,9 +99,10 @@ export default class extends Controller {
         const id = item.dataset.entryId
         const type = item.dataset.entryType
         const name = item.dataset.entryName
+        const headshot = item.dataset.entryHeadshot || ''
 
         if (checkbox.checked) {
-            this.selectedItems.set(`${type}-${id}`, { id, type, name })
+            this.selectedItems.set(`${type}-${id}`, { id, type, name, headshot })
         } else {
             this.selectedItems.delete(`${type}-${id}`)
         }
@@ -164,61 +166,134 @@ export default class extends Controller {
         // Hide dropdown
         this.dropdownTarget.classList.add('hidden')
 
-        // Update modal count
-        this.modalCountTarget.textContent = `${this.selectedItems.size} selected`
+        // Build recipient names and IDs for the compose modal
+        const items = Array.from(this.selectedItems.values())
+        const ids = items.map(item => item.id)
 
-        // Render recipients
-        this.renderRecipients()
+        // Find the compose message modal and update it
+        const modal = document.getElementById('compose-message-modal')
+        if (!modal) return
 
-        // Render hidden form fields
-        this.renderHiddenFields()
+        // Update the modal title to show count
+        const titleEl = modal.querySelector('[data-compose-message-target="title"]')
+        if (titleEl) {
+            titleEl.textContent = `Message ${items.length} ${items.length === 1 ? 'person' : 'people'}`
+        }
 
-        // Show modal
-        this.modalTarget.classList.remove('hidden')
+        const singleRecipient = modal.querySelector('[data-compose-message-target="singleRecipient"]')
+        const batchRecipients = modal.querySelector('[data-compose-message-target="batchRecipients"]')
+        const nameTarget = modal.querySelector('[data-compose-message-target="recipientName"]')
+        const headshotTarget = modal.querySelector('[data-compose-message-target="recipientHeadshot"]')
+
+        // If only 1 recipient, show as single (no tooltip, name next to headshot)
+        if (items.length === 1) {
+            const item = items[0]
+            if (singleRecipient) singleRecipient.classList.remove('hidden')
+            if (batchRecipients) batchRecipients.classList.add('hidden')
+
+            if (nameTarget) nameTarget.textContent = item.name
+            if (headshotTarget) {
+                if (item.headshot) {
+                    headshotTarget.innerHTML = `<img src="${item.headshot}" alt="${item.name}" class="w-8 h-8 rounded-lg object-cover ring-2 ring-white">`
+                } else {
+                    const initials = item.name ? item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '?'
+                    headshotTarget.innerHTML = initials
+                    headshotTarget.className = 'w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs ring-2 ring-white'
+                }
+            }
+        } else {
+            // Multiple recipients - show stacked headshots with tooltips
+            if (singleRecipient) singleRecipient.classList.add('hidden')
+            if (batchRecipients) {
+                batchRecipients.classList.remove('hidden')
+                batchRecipients.innerHTML = this.renderStackedHeadshots(items)
+            }
+        }
+
+        // Set hidden fields for batch mode
+        const form = modal.querySelector('form')
+        if (form) {
+            // Set recipient type to batch
+            let recipientTypeField = form.querySelector('input[name="recipient_type"]')
+            if (recipientTypeField) {
+                recipientTypeField.value = 'batch'
+            }
+
+            // Clear any existing person_ids fields
+            form.querySelectorAll('input[name="person_ids[]"]').forEach(el => el.remove())
+
+            // Add person_ids hidden fields
+            ids.forEach(id => {
+                const input = document.createElement('input')
+                input.type = 'hidden'
+                input.name = 'person_ids[]'
+                input.value = id
+                form.appendChild(input)
+            })
+        }
+
+        // Show the modal
+        modal.classList.remove('hidden')
         document.body.style.overflow = 'hidden'
+
+        // Focus the subject field
+        const subjectField = modal.querySelector('input[name="subject"]')
+        if (subjectField) {
+            setTimeout(() => subjectField.focus(), 100)
+        }
+    }
+
+    renderStackedHeadshots(items) {
+        const maxVisible = 8
+        const visibleItems = items.slice(0, maxVisible)
+        const overflowCount = items.length - maxVisible
+
+        let html = visibleItems.map(item => {
+            const initials = item.name ? item.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '?'
+            const headshot = item.headshot
+
+            if (headshot) {
+                return `
+                    <span data-controller="tooltip" data-tooltip-text-value="${item.name}" class="relative">
+                        <img src="${headshot}" alt="${item.name}"
+                             class="w-8 h-8 rounded-lg object-cover ring-2 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
+                    </span>`
+            } else {
+                return `
+                    <span data-controller="tooltip" data-tooltip-text-value="${item.name}" class="relative">
+                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs ring-2 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
+                            ${initials}
+                        </div>
+                    </span>`
+            }
+        }).join('')
+
+        if (overflowCount > 0) {
+            html += `
+                <span data-controller="tooltip" data-tooltip-text-value="${overflowCount} more" class="relative">
+                    <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs ring-2 ring-white relative z-10">
+                        +${overflowCount}
+                    </div>
+                </span>`
+        }
+
+        return html
     }
 
     closeContactModal() {
-        this.modalTarget.classList.add('hidden')
-        document.body.style.overflow = ''
+        // Legacy method - modal is now controlled by compose-message controller
+        const modal = document.getElementById('compose-message-modal')
+        if (modal) {
+            modal.classList.add('hidden')
+            document.body.style.overflow = ''
+        }
     }
 
     closeModalOnBackdrop(event) {
-        if (event.target === this.modalTarget) {
-            this.closeContactModal()
-        }
+        // No longer needed - handled by compose-message controller
     }
 
     stopPropagation(event) {
         event.stopPropagation()
-    }
-
-    renderRecipients() {
-        const html = Array.from(this.selectedItems.values()).map(item => {
-            if (!item || !item.name) {
-                return ''
-            }
-
-            const initials = item.name.split(' ').map(n => n[0]).join('').toUpperCase()
-
-            return `
-        <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
-          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
-            ${initials}
-          </div>
-          <span class="text-xs font-medium text-gray-700 truncate">${item.name}</span>
-        </div>
-      `
-        }).join('')
-
-        this.recipientsTarget.innerHTML = html
-    }
-
-    renderHiddenFields() {
-        const html = Array.from(this.selectedItems.values()).map(item => {
-            return `<input type="hidden" name="person_ids[]" value="${item.id}" data-type="${item.type}">`
-        }).join('')
-
-        this.selectedIdsContainerTarget.innerHTML = html
     }
 }

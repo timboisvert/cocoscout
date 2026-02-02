@@ -69,9 +69,14 @@
         </div>
       </div>
       <% if auditionable.respond_to?(:public_key) && auditionable.public_key.present? %>
-        <div class="flex-shrink-0 flex items-center gap-2">
+        <div class="flex-shrink-0 flex items-center gap-2"
+             data-controller="compose-message"
+             data-compose-message-recipient-type-value="person"
+             data-compose-message-recipient-id-value="<%= auditionable.id %>"
+             data-compose-message-recipient-name-value="<%= auditionable.name %>"
+             data-compose-message-recipient-headshot-value="<%= auditionable.safe_headshot_variant(:thumb) ? url_for(auditionable.safe_headshot_variant(:thumb)) : '' %>">
           <% if auditionable.is_a?(Person) %>
-            <%= render partial: "shared/button", locals: { text: "Contact", path: contact_manage_person_path(auditionable), variant: "outline", data: { turbo_frame: "contact_modal" } } %>
+            <%= render "shared/button", text: "Contact", variant: "outline", type: :button, data: { action: "click->compose-message#open" } %>
           <% end %>
           <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(auditionable.public_key), variant: "outline", target: "_blank" } %>
         </div>
@@ -580,3 +585,6 @@
     window.addEventListener('hashchange', updateNavLinks);
   });
 </script>
+
+<%# Compose Message Modal %>
+<%= render "shared/compose_message_modal" %>

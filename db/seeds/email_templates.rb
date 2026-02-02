@@ -376,52 +376,10 @@ module EmailTemplateSeeds
         },
 
         # ============================================
-        # AVAILABILITY REQUESTS
-        # Source: manage/availability_controller.rb
+        # AVAILABILITY REQUESTS - REMOVED
+        # These templates were removed in favor of in-app availability requests
+        # See migration: RemoveUnusedEmailTemplates
         # ============================================
-        {
-          key: "availability_request",
-          name: "Availability Request",
-          category: "reminder",
-          subject: "Please submit your availability for {{production_name}}",
-          description: "Requests a person to submit their availability. From availability_controller.rb#generate_default_message",
-          template_type: "hybrid",
-          mailer_class: "Manage::AvailabilityMailer",
-          mailer_action: "request_availability",
-          body: <<~HTML,
-            <p>Please submit your availability for the following upcoming {{production_name}} shows & events:</p>
-            <p>{{shows_list}}</p>
-            <p>You can update your availability by visiting:</p>
-            <p><a href="{{availability_url}}">{{availability_url}}</a></p>
-          HTML
-          available_variables: [
-            { name: "production_name", description: "Name of the production" },
-            { name: "shows_list", description: "Bullet list of shows with dates and times" },
-            { name: "availability_url", description: "URL to submit availability" }
-          ]
-        },
-        {
-          key: "availability_request_group",
-          name: "Availability Request (Group)",
-          category: "reminder",
-          subject: "Please submit availability for {{group_name}} - {{production_name}}",
-          description: "Requests a group to submit their collective availability.",
-          template_type: "hybrid",
-          mailer_class: "Manage::AvailabilityMailer",
-          mailer_action: "request_availability_for_group",
-          body: <<~HTML,
-            <p>Please submit availability for {{group_name}} for the following upcoming {{production_name}} shows & events:</p>
-            <p>{{shows_list}}</p>
-            <p>You can update your availability by visiting:</p>
-            <p><a href="{{availability_url}}">{{availability_url}}</a></p>
-          HTML
-          available_variables: [
-            { name: "group_name", description: "Name of the group" },
-            { name: "production_name", description: "Name of the production" },
-            { name: "shows_list", description: "Bullet list of shows with dates and times" },
-            { name: "availability_url", description: "URL to submit availability" }
-          ]
-        },
 
         # ============================================
         # CASTING EMAILS

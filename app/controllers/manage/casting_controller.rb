@@ -5,9 +5,8 @@ module Manage
     before_action :set_production, except: [ :org_index ]
     before_action :check_production_access, except: [ :org_index ]
     before_action :check_not_third_party, except: [ :org_index ]
-    before_action :check_casting_setup, only: :index
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
+                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
     # Org-level casting index (moved from org_casting_controller)
     def org_index
@@ -283,100 +282,6 @@ module Manage
           body: default_removed_email_body
         )
       end
-    end
-
-    def contact_cast
-      # Get all entities (people and groups) assigned to roles in this show
-      # Note: Can't use .includes(:assignable) on polymorphic associations
-      assignments = @show.show_person_role_assignments.includes(:role)
-
-      # Preload people and groups separately
-      person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id)
-      group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id)
-
-      people_by_id = Person.where(id: person_ids).index_by(&:id)
-      groups_by_id = Group.includes(:members).where(id: group_ids).index_by(&:id)
-
-      # Store people and groups for display
-      @cast_people = []
-      @cast_groups = []
-
-      # Collect individual people and groups
-      people_for_email = []
-      assignments.each do |assignment|
-        if assignment.assignable_type == "Person"
-          person = people_by_id[assignment.assignable_id]
-          if person
-            @cast_people << person
-            people_for_email << person
-          end
-        elsif assignment.assignable_type == "Group"
-          group = groups_by_id[assignment.assignable_id]
-          if group
-            @cast_groups << group
-            people_for_email.concat(group.members.to_a)
-          end
-        end
-      end
-
-      @cast_people.uniq!
-      @cast_groups.uniq!
-      @cast_members = people_for_email.uniq.sort_by(&:name)
-
-      render partial: "contact_cast_modal"
-    end
-
-    def send_cast_email
-      subject = params[:subject]
-      body_html = params[:body]
-
-      if subject.blank? || body_html.blank?
-        redirect_to manage_casting_show_contact_path(@production, @show),
-                    alert: "Subject and message are required"
-        return
-      end
-
-      # Get all entities (people and groups) assigned to roles in this show
-      assignments = @show.show_person_role_assignments
-
-      # Preload people and groups separately
-      person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
-      group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
-
-      people_by_id = Person.where(id: person_ids).index_by(&:id)
-      groups_by_id = Group.includes(group_memberships: :person).where(id: group_ids).index_by(&:id)
-
-      # Count unique cast members (people and groups as entities)
-      cast_member_count = person_ids.count + group_ids.count
-
-      # Expand to individual people for email sending (direct assignments + group members with notifications enabled)
-      people_to_email = []
-      assignments.each do |assignment|
-        if assignment.assignable_type == "Person"
-          person = people_by_id[assignment.assignable_id]
-          people_to_email << person if person
-        elsif assignment.assignable_type == "Group"
-          group = groups_by_id[assignment.assignable_id]
-          if group
-            # Add group members who have notifications enabled
-            members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
-            people_to_email.concat(members_with_notifications)
-          end
-        end
-      end
-
-      people_to_email.uniq!
-
-      # Send messages via MessageService
-      MessageService.send_to_show_cast(
-        show: @show,
-        sender: Current.user,
-        subject: subject,
-        body: body_html
-      )
-
-      redirect_to manage_show_path(@production, @show),
-                  notice: "Message sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
     end
 
     # Search people in the organization for manual/hybrid casting
@@ -1217,12 +1122,6 @@ module Manage
     def check_not_third_party
       if @production.type_third_party?
         redirect_to manage_shows_path(@production), alert: "Casting is not available for third-party productions"
-      end
-    end
-
-    def check_casting_setup
-      unless @production.casting_setup_completed?
-        redirect_to manage_setup_casting_settings_path(@production)
       end
     end
 

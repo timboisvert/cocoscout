@@ -4,6 +4,7 @@
      data-entry-id="<%= entry.id %>"
      data-entry-type="<%= entry.class.name %>"
      data-entry-name="<%= entry.name %>"
+     data-entry-headshot="<%= entry.safe_headshot_variant(:thumb) ? url_for(entry.safe_headshot_variant(:thumb)) : '' %>"
      data-action="click->directory-selection#clickItem">
 
   <%# Checkbox for bulk selection - hidden by default, shown in top-left corner %>

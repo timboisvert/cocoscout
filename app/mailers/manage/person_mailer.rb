@@ -20,17 +20,6 @@ module Manage
       mail(to: @person_invitation.email, subject: subject)
     end
 
-    def contact_email(person, subject, message, sender, production_id: nil, organization_id: nil)
-      @person = person
-      @subject = subject
-      @message = message
-      @sender = sender
-      @production_id = production_id
-      @production = Production.find_by(id: production_id) if production_id
-      @organization = Organization.find_by(id: organization_id) if organization_id
-      mail(to: person.email, subject: subject)
-    end
-
     private
 
     def find_email_batch_id

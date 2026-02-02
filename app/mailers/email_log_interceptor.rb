@@ -2,39 +2,60 @@
 
 # Interceptor to log all outgoing emails
 class EmailLogInterceptor
-  def self.delivering_email(message)
-    # Extract user from message headers
-    user_id = message.header["X-User-ID"]&.value
+  # Safely extract header value (handles both single field and array cases)
+  def self.header_value(message, name)
+    field = message.header[name]
+    return nil unless field
+    field.is_a?(Array) ? field.first&.value : field.value
+  end
 
-    unless user_id
-      Rails.logger.warn("Email sent without user tracking: #{message.subject}")
-      return
+  def self.delivering_email(message)
+    # Extract user from message headers (intended to be the recipient user)
+    user_id = header_value(message, "X-User-ID")
+    email_batch_id = header_value(message, "X-Email-Batch-ID")
+    email_batch = EmailBatch.find_by(id: email_batch_id) if email_batch_id.present?
+
+    user = User.find_by(id: user_id) if user_id.present?
+
+    # If X-User-ID is missing or points to a non-existent user, try to resolve via recipient email -> Person -> User
+    if user.nil?
+      Array(message.to).each do |addr|
+        email = addr.to_s[/\<(.*?)\>/,1] || addr.to_s
+        person = Person.find_by(email: email)
+        if person&.user
+          user = person.user
+          break
+        end
+      end
     end
 
-    user = User.find_by(id: user_id)
+    # If still not found, fall back to the user who created the EmailBatch (if any)
+    if user.nil? && email_batch&.user
+      user = email_batch.user
+    end
+
     unless user
-      Rails.logger.warn("Email sent with invalid user_id: #{user_id}")
+      Rails.logger.warn("Email sent without user tracking: #{message.subject}")
       return
     end
 
     # Extract recipient entity if provided
     recipient_entity = nil
-    recipient_entity_type = message.header["X-Recipient-Entity-Type"]&.value
-    recipient_entity_id = message.header["X-Recipient-Entity-ID"]&.value
+    recipient_entity_type = header_value(message, "X-Recipient-Entity-Type")
+    recipient_entity_id = header_value(message, "X-Recipient-Entity-ID")
     if recipient_entity_type.present? && recipient_entity_id.present?
       recipient_entity = recipient_entity_type.constantize.find_by(id: recipient_entity_id)
     end
 
     # Extract email batch if provided
-    email_batch_id = message.header["X-Email-Batch-ID"]&.value
-    email_batch = EmailBatch.find_by(id: email_batch_id) if email_batch_id.present?
-
+    # (already loaded above)
+    
     # Extract organization if provided
-    organization_id = message.header["X-Organization-ID"]&.value
+    organization_id = header_value(message, "X-Organization-ID")
     organization = Organization.find_by(id: organization_id) if organization_id.present?
 
     # Extract production if provided
-    production_id = message.header["X-Production-ID"]&.value
+    production_id = header_value(message, "X-Production-ID")
     production = Production.find_by(id: production_id) if production_id.present?
 
     # Create the email log
@@ -42,8 +63,8 @@ class EmailLogInterceptor
       user: user,
       recipient: Array(message.to).join(", "),
       subject: message.subject,
-      mailer_class: message.header["X-Mailer-Class"]&.value,
-      mailer_action: message.header["X-Mailer-Action"]&.value,
+      mailer_class: header_value(message, "X-Mailer-Class"),
+      mailer_action: header_value(message, "X-Mailer-Action"),
       message_id: message.message_id,
       sent_at: Time.current,
       delivery_status: "queued",

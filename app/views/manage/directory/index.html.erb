@@ -301,68 +301,9 @@
       </div>
   <% end %>
 
-    <%# Contact Modal %>
-    <div id="contact-modal"
-         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-         data-directory-selection-target="modal"
-         data-action="click->directory-selection#closeModalOnBackdrop">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-           data-directory-selection-target="modalContent"
-           data-action="click->directory-selection#stopPropagation">
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900">Send Message</h2>
-        <button type="button"
-                data-action="click->directory-selection#closeContactModal"
-                class="text-gray-400 hover:text-gray-600 transition">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="p-6">
-        <%# Selected Recipients %>
-        <div class="mb-6">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-sm font-medium text-gray-700">Sending to</span>
-            <span class="inline-flex items-center rounded-full bg-pink-500 px-2.5 py-0.5 text-xs font-medium text-white"
-                  data-directory-selection-target="modalCount">
-              0 selected
-            </span>
-          </div>
-
-          <div id="selected-recipients" class="grid grid-cols-2 sm:grid-cols-3 gap-2" data-directory-selection-target="recipients">
-            <%# Recipients will be inserted here dynamically %>
-          </div>
-        </div>
-
-        <%# Message Form %>
-        <%= form_with url: manage_contact_directory_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
-          <div data-directory-selection-target="selectedIdsContainer">
-            <%# Hidden fields for selected IDs will be inserted here %>
-          </div>
-
-          <div>
-            <%= text_field_tag :subject, nil,
-              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-              placeholder: "Message subject...",
-              required: true %>
-          </div>
-
-          <div>
-            <%= rich_text_area_tag :body, nil,
-              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->directory-selection#closeContactModal" } %>
-            <%= render "shared/button", text: "Send Message", variant: "primary", size: "medium", type: :submit %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
   </div><%# Close directory-selection controller %>
   </div><%# Close module content wrapper %>
 </div>
+
+<%# Compose Message Modal for contacting people/groups %>
+<%= render "shared/compose_message_modal" %>

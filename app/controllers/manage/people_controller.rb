@@ -449,39 +449,6 @@ module Manage
                                       status: :see_other
     end
 
-    def contact
-      @person = Current.organization.people.find(params[:id])
-      @productions = Current.organization.productions.order(:name)
-      render partial: "contact_modal", layout: false
-    end
-
-    def send_contact_message
-      @person = Current.organization.people.find(params[:id])
-      subject = params[:subject]
-      body = params[:body]
-
-      if subject.blank? || body.blank?
-        redirect_to manage_person_path(@person), alert: "Subject and message are required"
-        return
-      end
-
-      # Get selected production if provided
-      production = if params[:production_id].present?
-                     Current.organization.productions.find_by(id: params[:production_id])
-      end
-
-      # Send message via MessageService
-      MessageService.send_direct(
-        sender: Current.user,
-        recipient_person: @person,
-        subject: subject,
-        body: body,
-        organization: Current.organization
-      )
-
-      redirect_to manage_person_path(@person), notice: "Message sent to #{@person.name}"
-    end
-
     private
 
     # Use callbacks to share common setup or constraints between actions.

@@ -120,6 +120,21 @@ class MessageService
       )
     end
 
+    # Send to multiple people at once (batch direct messages)
+    # Creates a single message visible to the sender with all recipients
+    def send_to_people(sender:, people:, subject:, body:, message_type: :direct, organization: nil, production: nil)
+      create_message(
+        sender: sender,
+        recipients: Array(people),
+        subject: subject,
+        body: body,
+        organization: organization,
+        production: production,
+        visibility: :personal,
+        message_type: message_type
+      )
+    end
+
     # Core method: create a single message with multiple recipients
     def create_message(sender:, recipients:, subject:, body:, message_type:,
                        organization: nil, production: nil, show: nil,
