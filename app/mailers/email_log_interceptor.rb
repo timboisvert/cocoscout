@@ -20,7 +20,7 @@ class EmailLogInterceptor
     # If X-User-ID is missing or points to a non-existent user, try to resolve via recipient email -> Person -> User
     if user.nil?
       Array(message.to).each do |addr|
-        email = addr.to_s[/\<(.*?)\>/,1] || addr.to_s
+        email = addr.to_s[/\<(.*?)\>/, 1] || addr.to_s
         person = Person.find_by(email: email)
         if person&.user
           user = person.user
@@ -49,7 +49,7 @@ class EmailLogInterceptor
 
     # Extract email batch if provided
     # (already loaded above)
-    
+
     # Extract organization if provided
     organization_id = header_value(message, "X-Organization-ID")
     organization = Organization.find_by(id: organization_id) if organization_id.present?
