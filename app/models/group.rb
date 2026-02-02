@@ -32,8 +32,9 @@ class Group < ApplicationRecord
   # Shoutout associations
   has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
 
-  # Messages addressed to this group
-  has_many :received_messages, as: :recipient, class_name: "Message", dependent: :destroy
+  # Messages addressed to this group (via MessageRecipient)
+  has_many :message_recipients, as: :recipient, dependent: :destroy
+  has_many :received_messages, through: :message_recipients, source: :message
 
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy

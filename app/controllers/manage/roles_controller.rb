@@ -2,10 +2,18 @@
 
 module Manage
   class RolesController < Manage::ManageController
-    before_action :set_production
-    before_action :check_production_access
+    before_action :set_production, except: [ :org_index ]
+    before_action :check_production_access, except: [ :org_index ]
     before_action :set_role, only: %i[update destroy]
-    before_action :ensure_user_is_manager
+    before_action :ensure_user_is_manager, except: [ :org_index ]
+
+    # Org-level roles index (moved from org_roles_controller)
+    def org_index
+      # Exclude third-party productions (no casting/roles)
+      @productions = Current.organization.productions.type_in_house
+                             .includes(:roles)
+                             .order(:name)
+    end
 
     def create
       @role = @production.roles.new(role_params)

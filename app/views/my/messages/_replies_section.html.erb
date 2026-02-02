@@ -1,5 +1,0 @@
-<div class="mt-3" data-post-replies-target="replies" id="replies-for-<%= parent.id %>">
-  <% parent.replies.oldest_first.each do |reply| %>
-    <%= render "my/messages/post", post: reply, is_reply: true %>
-  <% end %>
-</div>

@@ -4,17 +4,19 @@ class MessageService
     # Recipients are People assigned to the show
     def send_to_show_cast(show:, sender:, subject:, body:)
       # Get People (not Users) who are cast in this show
-      people = show.role_assignments.includes(:entity).map do |ra|
-        ra.entity.is_a?(Person) ? ra.entity : ra.entity.members
+      people = show.show_person_role_assignments.includes(:assignable).map do |assignment|
+        assignment.assignable.is_a?(Person) ? assignment.assignable : assignment.assignable.members
       end.flatten.uniq
 
-      send_to_people(
+      create_message(
         sender: sender,
-        people: people,
+        recipients: people,
         subject: subject,
         body: body,
         organization: show.production.organization,
-        regarding: show,
+        production: show.production,
+        show: show,
+        visibility: :show,
         message_type: :cast_contact
       )
     end
@@ -23,13 +25,14 @@ class MessageService
     def send_to_production_cast(production:, sender:, subject:, body:)
       people = production.cast_people.to_a
 
-      send_to_people(
+      create_message(
         sender: sender,
-        people: people,
+        recipients: people,
         subject: subject,
         body: body,
         organization: production.organization,
-        regarding: production,
+        production: production,
+        visibility: :production,
         message_type: :cast_contact
       )
     end
@@ -39,79 +42,243 @@ class MessageService
       pool = production.effective_talent_pool
       people = person_ids ? pool.people.where(id: person_ids).to_a : pool.people.to_a
 
-      send_to_people(
+      create_message(
         sender: sender,
-        people: people,
+        recipients: people,
         subject: subject,
         body: body,
         organization: production.organization,
-        regarding: production,
+        production: production,
+        visibility: :production,
         message_type: :talent_pool
       )
     end
 
-    # Send direct message to a specific Person
-    # No "regarding" object - just a direct conversation
-    def send_direct(sender:, recipient_person:, subject:, body:, organization: nil)
-      Message.create!(
+    # Send to production team (cast → managers)
+    def send_to_production_team(production:, sender:, subject:, body:, parent_message: nil)
+      # Get org-level managers/viewers for this production's organization
+      org_manager_user_ids = production.organization
+        .organization_roles
+        .where(company_role: [ :manager, :viewer ])
+        .pluck(:user_id)
+
+      # Get production-level managers/viewers
+      production_manager_user_ids = production
+        .production_permissions
+        .where(role: [ :manager, :viewer ])
+        .pluck(:user_id)
+
+      # Combine and get unique user IDs
+      manager_user_ids = (org_manager_user_ids + production_manager_user_ids).uniq
+
+      # Get people for these users (use default_person association)
+      people = User.where(id: manager_user_ids).includes(:default_person).map(&:person).compact
+
+      create_message(
         sender: sender,
-        recipient: recipient_person,  # Person, not User!
-        organization: organization,
+        recipients: people,
         subject: subject,
         body: body,
-        message_type: :direct
+        organization: production.organization,
+        production: production,
+        visibility: :personal,  # Personal = only sender + explicit recipients
+        message_type: :production_contact,
+        parent_message: parent_message
       )
     end
 
-    # Send to a Group (all members receive individually, but message shows group context)
-    def send_to_group(sender:, group:, subject:, body:, organization: nil, regarding: nil)
-      send_to_people(
+    # Send direct message to a specific Person (private)
+    def send_direct(sender:, recipient_person:, subject:, body:, organization: nil, parent_message: nil, production: nil)
+      create_message(
         sender: sender,
-        people: group.members.to_a,
+        recipients: [ recipient_person ],
         subject: subject,
         body: body,
-        organization: organization || group.production&.organization,
-        regarding: regarding,
-        message_type: :cast_contact
+        organization: organization,
+        production: production,
+        visibility: :personal,
+        message_type: :direct,
+        parent_message: parent_message
+      )
+    end
+
+    # Send to a Group (all members receive, show-scoped)
+    def send_to_group(sender:, group:, subject:, body:, show: nil, production: nil, parent_message: nil)
+      prod = production || group.production || show&.production
+
+      create_message(
+        sender: sender,
+        recipients: group.members.to_a,
+        subject: subject,
+        body: body,
+        organization: prod&.organization,
+        production: prod,
+        show: show,
+        visibility: show ? :show : :production,
+        message_type: :cast_contact,
+        parent_message: parent_message
+      )
+    end
+
+    # Core method: create a single message with multiple recipients
+    def create_message(sender:, recipients:, subject:, body:, message_type:,
+                       organization: nil, production: nil, show: nil,
+                       visibility: :personal, parent_message: nil)
+      # Filter to people with accounts
+      recipients = Array(recipients).uniq.select { |p| p.is_a?(Person) && p.user.present? }
+      return nil if recipients.empty?
+
+      # If replying, inherit context from parent
+      if parent_message
+        production ||= parent_message.production
+        show ||= parent_message.show
+        visibility = parent_message.visibility.to_sym if parent_message.visibility
+        organization ||= parent_message.organization
+      end
+
+      # Create the message
+      message = Message.create!(
+        sender: sender,
+        organization: organization,
+        production: production,
+        show: show,
+        visibility: visibility,
+        subject: subject,
+        body: body,
+        message_type: message_type,
+        parent_message: parent_message
+      )
+
+      # Create recipient records
+      recipients.each do |person|
+        message.message_recipients.create!(recipient: person)
+      end
+
+      # Get root message for subscriptions
+      root_message = message.root_message
+
+      # Subscribe sender and mark as read (sender shouldn't see their own message as unread)
+      root_message.subscribe!(sender, mark_read: true) if sender.is_a?(User)
+
+      # Subscribe all recipients
+      recipients.each do |person|
+        root_message.subscribe!(person.user)
+      end
+
+      # For production/show visibility, subscribe the entire production team
+      if visibility.to_sym.in?([ :production, :show ]) && production
+        root_message.subscribe_production_team!
+      end
+
+      # Note: Email notifications are now handled by UnreadDigestJob
+      # which sends a digest after 1 hour if user hasn't checked their inbox
+
+      # Broadcast to ActionCable if this is a reply
+      if parent_message.present?
+        broadcast_new_reply(message)
+      end
+
+      # Broadcast inbox notification to all subscribers (except sender)
+      broadcast_inbox_notification(message)
+
+      message
+    end
+
+    # Reply to a message thread
+    def reply(sender:, parent_message:, body:)
+      root = parent_message.root_message
+
+      # For direct messages, recipient is the other party
+      # For production messages, no explicit recipient needed (visibility handles it)
+      if root.personal?
+        # Find the other party in the conversation
+        other_person = if sender.is_a?(User) && sender.person
+          root.message_recipients.map(&:recipient).find { |r| r != sender.person }
+        else
+          root.message_recipients.first&.recipient
+        end
+
+        recipients = other_person ? [ other_person ] : []
+      else
+        # For production/show messages, reply goes to original sender
+        original_sender_person = root.sender.is_a?(Person) ? root.sender : root.sender.person
+        recipients = original_sender_person ? [ original_sender_person ] : []
+      end
+
+      create_message(
+        sender: sender,
+        recipients: recipients,
+        subject: "Re: #{root.subject}",
+        body: body,
+        message_type: root.message_type,
+        parent_message: parent_message,
+        production: root.production,
+        show: root.show,
+        visibility: root.visibility,
+        organization: root.organization
       )
     end
 
     private
 
-    # Core method: send to array of People, creating a batch if multiple
-    def send_to_people(sender:, people:, subject:, body:, message_type:,
-                       organization: nil, regarding: nil)
-      people = people.uniq.select { |p| p.user.present? }  # Only people with accounts
-      return [] if people.empty?
+    def broadcast_new_reply(message)
+      root = message.root_message
+      parent = message.parent_message
 
-      # Create batch if sending to multiple people
-      batch = nil
-      if people.size > 1
-        batch = MessageBatch.create!(
-          sender: sender,
-          organization: organization,
-          regarding: regarding,
-          subject: subject,
-          message_type: message_type,
-          recipient_count: people.size
-        )
+      Rails.logger.info "[MessageService] Broadcasting new reply: message_id=#{message.id}, parent_id=#{parent.id}, root_id=#{root.id}, depth=#{message.thread_depth}"
+
+      # Get default URL options for rendering (needed for image URLs)
+      url_options = Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
+      host = url_options[:host]
+      port = url_options[:port]
+      protocol = url_options[:protocol] || "http"
+
+      # Build the full host string for URL generation
+      full_host = port ? "#{host}:#{port}" : host
+
+      # Render the reply HTML with proper URL options
+      html = ApplicationController.renderer.new(
+        http_host: full_host,
+        https: protocol == "https"
+      ).render(
+        partial: "shared/messages/nested_reply",
+        locals: {
+          reply: message,
+          depth: message.thread_depth,
+          is_last: true,
+          broadcast_host: full_host,
+          broadcast_protocol: protocol
+        }
+      )
+
+      # For the parent_id, we want the direct parent's ID so JS can find where to insert
+      broadcast_parent_id = parent.id
+
+      # Broadcast to the root message channel
+      MessageThreadChannel.broadcast_to(root, {
+        type: "new_reply",
+        message_id: message.id,
+        parent_id: broadcast_parent_id,
+        root_id: root.id,
+        sender_id: message.sender_id,
+        sender_name: message.sender_name,
+        depth: message.thread_depth,
+        html: html
+      })
+    end
+
+    # Broadcast to all subscribers' inboxes that a new message arrived
+    def broadcast_inbox_notification(message)
+      root = message.root_message
+      sender_user_id = message.sender_id if message.sender_type == "User"
+
+      # Get all subscribed users except the sender
+      root.message_subscriptions.includes(:user).find_each do |subscription|
+        next unless subscription.user
+        next if subscription.user.id == sender_user_id # Don't notify sender
+
+        UserInboxChannel.broadcast_new_message(subscription.user, message)
       end
-
-      # Create individual message for each person
-      messages = people.map do |person|
-        Message.create!(
-          sender: sender,
-          recipient: person,  # Person, not User!
-          message_batch: batch,
-          organization: organization,
-          regarding: regarding,
-          subject: subject,
-          body: body,
-          message_type: message_type
-        )
-      end
-
-      messages
     end
   end
 end

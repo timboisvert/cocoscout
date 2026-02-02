@@ -10,7 +10,7 @@ class CreateMessageBatches < ActiveRecord::Migration[8.1]
 
       t.timestamps
 
-      t.index [:sender_type, :sender_id]
+      t.index [ :sender_type, :sender_id ]
     end
   end
 end

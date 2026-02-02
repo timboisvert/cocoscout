@@ -2,13 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     update(event) {
-        console.log("Filter select update triggered", event)
         const select = event.currentTarget
-        console.log("Select element:", select)
-        console.log("Select name:", select.name)
-        console.log("Select value:", select.value)
-        console.log("Dataset:", select.dataset)
-
         const params = new URLSearchParams()
 
         const searchValue = select.dataset.filterSelectSearchValue
@@ -16,20 +10,31 @@ export default class extends Controller {
         const filterValue = select.dataset.filterSelectFilterValue
         const typeValue = select.dataset.filterSelectTypeValue
         const talentPoolIdValue = select.dataset.filterSelectTalentPoolIdValue
-
-        console.log("Data values:", { searchValue, showValue, filterValue, typeValue, talentPoolIdValue })
+        const qValue = select.dataset.filterSelectQValue
+        const productionIdValue = select.dataset.filterSelectProductionIdValue
+        const orderValue = select.dataset.filterSelectOrderValue
 
         if (searchValue) params.set("q", searchValue)
+        if (qValue) params.set("q", qValue)
         if (showValue) params.set("show", showValue)
 
         if (select.name === "filter") {
             params.set("filter", select.value)
             if (typeValue) params.set("type", typeValue)
-            // Don't carry over talent_pool_id when changing filter
+            if (productionIdValue) params.set("production_id", productionIdValue)
+            if (orderValue) params.set("order", orderValue)
         } else if (select.name === "talent_pool_id") {
             params.set("talent_pool_id", select.value)
             if (filterValue) params.set("filter", filterValue)
             if (typeValue) params.set("type", typeValue)
+        } else if (select.name === "production_id") {
+            if (select.value) params.set("production_id", select.value)
+            if (filterValue) params.set("filter", filterValue)
+            if (orderValue) params.set("order", orderValue)
+        } else if (select.name === "order") {
+            params.set("order", select.value)
+            if (filterValue) params.set("filter", filterValue)
+            if (productionIdValue) params.set("production_id", productionIdValue)
         } else if (select.name === "type") {
             params.set("type", select.value)
             if (filterValue) params.set("filter", filterValue)
@@ -43,7 +48,6 @@ export default class extends Controller {
 
         const baseUrl = select.closest("form")?.action || window.location.pathname
         const fullUrl = baseUrl + "?" + params.toString()
-        console.log("Navigating to:", fullUrl)
         window.location.href = fullUrl
     }
 }

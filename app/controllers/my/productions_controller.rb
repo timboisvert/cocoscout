@@ -144,11 +144,13 @@ module My
       # Group shows by month for the calendar view
       @calendar_shows_by_month = @calendar_shows.group_by { |show| show.date_and_time.beginning_of_month }
 
-      # Load emails for this production sent to this person
-      email_logs_query = EmailLog.for_recipient_entity(@person)
-                                 .where(production_id: @production.id)
-                                 .recent
-      @email_logs = email_logs_query.limit(20).to_a
+      # Load messages for this production (where production is a regardable)
+      production_message_ids = MessageRegard.where(regardable: @production).pluck(:message_id)
+      @production_messages = Message.where(id: production_message_ids)
+                                    .where(parent_message_id: nil)  # Only root messages
+                                    .includes(:sender, :recipient, :message_regards, :child_messages, images_attachments: :blob)
+                                    .order(created_at: :desc)
+                                    .limit(20)
 
       # For the send message modal
       @email_draft = EmailDraft.new

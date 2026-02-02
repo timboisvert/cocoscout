@@ -44,7 +44,6 @@
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Members</button>
       <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
     </nav>
 
     <div data-tabs-target="panel">
@@ -95,11 +94,6 @@
           <% end %>
         </div>
       </div>
-    </div>
-
-    <%# Emails Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <%= render "shared/email_inbox", email_logs: @email_logs, email_logs_pagy: @email_logs_pagy, entity: @group, search_query: @search_messages_query %>
     </div>
 
   </div>

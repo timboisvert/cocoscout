@@ -1,0 +1,73 @@
+<%
+  reply_count = message.child_messages.count
+  latest_message = message.child_messages.order(created_at: :desc).first || message
+  latest_time = message.child_messages.maximum(:created_at) || message.created_at
+%>
+
+<div class="block bg-white rounded-lg border border-gray-200 overflow-hidden hover:bg-gray-50 transition-colors">
+  <div class="flex items-start gap-3 p-4">
+    <%# Sender avatar %>
+    <div class="flex-shrink-0">
+      <% sender = message.sender.is_a?(Person) ? message.sender : message.sender&.person %>
+      <% if sender %>
+        <% headshot = sender.safe_headshot_variant(:thumb) %>
+        <% if headshot %>
+          <%= image_tag headshot, class: "w-12 h-12 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+            <%= sender.initials %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center">
+          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="flex-1 min-w-0">
+      <%# Header %>
+      <div class="flex items-center gap-2 flex-wrap mb-1">
+        <span class="font-semibold text-gray-900"><%= message.sender_name %></span>
+        <span class="text-gray-400">·</span>
+        <span class="text-sm text-gray-500"><%= time_ago_in_words(latest_time) %> ago</span>
+        <% if message.production.present? %>
+          <span class="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+            <%= message.production.name.truncate(25) %>
+          </span>
+        <% end %>
+        <% if message.show.present? %>
+          <span class="text-xs text-pink-700 bg-pink-100 px-2 py-0.5 rounded-full">
+            <%= message.show.formatted_date_and_time.to_s.truncate(25) %>
+          </span>
+        <% end %>
+        <% if reply_count > 0 %>
+          <span class="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+            <%= reply_count %> <%= reply_count == 1 ? 'reply' : 'replies' %>
+          </span>
+        <% end %>
+        <% if message.recipient_count > 1 %>
+          <span class="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">
+            <%= message.recipient_count %> recipients
+          </span>
+        <% end %>
+      </div>
+
+      <%# Subject %>
+      <p class="text-base font-medium text-gray-900 mb-1"><%= message.subject %></p>
+
+      <%# Message preview %>
+      <% if latest_message != message %>
+        <p class="text-sm text-gray-600 line-clamp-2">
+          <span class="font-medium"><%= latest_message.sender_name %>:</span> <%= strip_tags(latest_message.body.to_plain_text).truncate(120) %>
+        </p>
+      <% else %>
+        <p class="text-sm text-gray-600 line-clamp-2">
+          <%= strip_tags(message.body.to_plain_text).truncate(150) %>
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>

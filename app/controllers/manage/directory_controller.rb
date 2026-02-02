@@ -123,9 +123,6 @@ module Manage
       @people_count = people_data.count
       @groups_count = groups_data.count
 
-      # Create email draft for the contact modal
-      @email_draft = EmailDraft.new
-
       # Handle pagination with Turbo Streams for infinite scroll
       respond_to do |format|
         format.html # Normal page load
@@ -135,9 +132,8 @@ module Manage
 
     def contact_directory
       person_ids = params[:person_ids]&.select(&:present?) || []
-      @email_draft = EmailDraft.new(email_draft_params)
-      subject = @email_draft.title
-      body_html = @email_draft.body.to_s
+      subject = params[:subject]
+      body_html = params[:body]
 
       if person_ids.empty?
         redirect_to manage_directory_path, alert: "Please select at least one person or group."
@@ -163,24 +159,18 @@ module Manage
       # Remove duplicates
       people_to_email.uniq!
 
-      # Create email batch if sending to multiple people
-      email_batch = nil
-      if people_to_email.size > 1
-        email_batch = EmailBatch.create!(
-          user: Current.user,
-          subject: subject,
-          recipient_count: people_to_email.size,
-          sent_at: Time.current
-        )
-      end
-
-      # Send emails
-      people_to_email.each do |person|
-        Manage::ProductionMailer.send_message(person, subject, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
-      end
+      # Send messages via MessageService
+      MessageService.send_to_people(
+        sender: Current.user,
+        people: people_to_email,
+        subject: subject,
+        body: body_html,
+        message_type: :direct,
+        organization: Current.organization
+      )
 
       redirect_to manage_directory_path,
-                  notice: "Email sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
+                  notice: "Message sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
     end
 
     def update_group_availability

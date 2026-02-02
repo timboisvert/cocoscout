@@ -4,15 +4,15 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Communications", manage_communications_path],
-      [@production.name, manage_communications_production_path(@production)],
-      ["Questionnaires", manage_communications_questionnaires_path(@production)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)],
+      ["Questionnaires", manage_casting_questionnaires_path(@production)]
     ],
     text: "Create Questionnaire",
     links: []
   } %>
 
-  <%= form_with(model: @questionnaire, url: manage_communications_questionnaires_path(@production), method: :post, data: { turbo: false }, class: "contents") do |form| %>
+  <%= form_with(model: @questionnaire, url: manage_casting_questionnaires_path(@production), method: :post, data: { turbo: false }, class: "contents") do |form| %>
 
     <div class="my-5">
       <% if @questionnaire.errors[:title].none? %>

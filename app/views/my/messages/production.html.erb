@@ -1,0 +1,80 @@
+<% content_for :title, "#{@production.name} Messages" %>
+
+<div class="w-full" data-controller="contact-production">
+  <%# Production Header - artful display with logo and name %>
+  <div class="bg-white border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 mb-6">
+    <div class="flex items-center gap-4">
+      <%# Back link %>
+      <%= link_to my_messages_path, class: "text-gray-400 hover:text-gray-600 transition-colors" do %>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      <% end %>
+
+      <%# Production Logo %>
+      <% logo_variant = @production.safe_logo_variant(:small) %>
+      <% if logo_variant %>
+        <%= image_tag logo_variant, alt: @production.name, class: "w-14 h-14 rounded-lg object-cover shadow-sm border border-gray-200" %>
+      <% else %>
+        <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center border border-pink-200">
+          <span class="text-xl font-bold text-pink-600"><%= @production.initials %></span>
+        </div>
+      <% end %>
+
+      <%# Production Name & Context %>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-xl font-bold text-gray-900 truncate coustard-regular"><%= @production.name %></h1>
+        <p class="text-sm text-gray-500">Messages</p>
+      </div>
+
+      <%# Contact Button %>
+      <%= render "shared/contact_production_card", production: @production, variant: :compact %>
+    </div>
+  </div>
+
+  <%# Filter bar (placeholder for future filters) %>
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-sm text-gray-500">
+      <%= pluralize(@messages.count, "conversation") %>
+    </div>
+  </div>
+
+  <% if @messages.any? %>
+    <div class="space-y-4">
+      <% @messages.each do |thread| %>
+        <%= render "shared/messages/message_card", message: thread, hide_production_via: true %>
+      <% end %>
+    </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          Page <%= @pagy.page %> of <%= @pagy.pages %>
+        </div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= link_to "← Previous", production_my_messages_path(@production, page: @pagy.previous), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+          <% else %>
+            <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">← Previous</span>
+          <% end %>
+          <% if @pagy.next %>
+            <%= link_to "Next →", production_my_messages_path(@production, page: @pagy.next), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+          <% else %>
+            <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Next →</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="text-center py-12 bg-white rounded-lg border border-gray-200">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No messages</h3>
+      <p class="mt-1 text-sm text-gray-500">No messages for this production yet.</p>
+    </div>
+  <% end %>
+
+  <%# Contact Production Modal %>
+  <%= render "shared/contact_production_modal" %>
+</div>

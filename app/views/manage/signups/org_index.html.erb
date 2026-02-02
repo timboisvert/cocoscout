@@ -1,0 +1,45 @@
+<% content_for :title, "Sign-ups" %>
+
+<%
+  description = <<~HTML
+    <p>
+      This is your organization's sign-ups hub — manage how people sign up for opportunities across all productions.
+    </p>
+    <p>
+      <strong>Forms</strong> let people claim spots or join a queue for events.
+      <strong>Auditions</strong> let you run casting — collect video submissions and schedule in-person audition slots.
+    </p>
+  HTML
+
+  signup_actions = [
+    { icon: "calendar", text: "Event Registrations", description: "Sign up for specific events", path: manage_signups_all_forms_path(filter: "registrations") },
+    { icon: "queue-list", text: "Waitlists", description: "Not tied to specific lists", path: manage_signups_all_forms_path(filter: "waitlists") },
+    { icon: "users", text: "In-person Auditions", description: "Apply for live audition sessions", path: manage_signups_all_auditions_path(filter: "in_person") },
+    { icon: "video-camera", text: "Video Auditions", description: "Submit video auditions", path: manage_signups_all_auditions_path(filter: "video") }
+  ]
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render "shared/module_header",
+    title: "Sign-ups",
+    description: description,
+    actions: signup_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-6 mt-2">
+    <%# Productions List %>
+    <% if @production_summaries.any? %>
+      <div class="space-y-2">
+        <% @production_summaries.each do |summary| %>
+          <%= render "manage/signups/org_partials/production_row", summary: summary %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">No productions yet. Create a production to start managing sign-ups.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

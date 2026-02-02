@@ -39,3 +39,7 @@ production:
   autopilot_payroll:
     class: AutopilotPayrollJob
     schedule: every 5 minutes
+
+  unread_digest:
+    class: UnreadDigestJob
+    schedule: every 15 minutes

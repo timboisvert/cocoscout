@@ -34,7 +34,7 @@
     gtag('config', 'G-P198QVDCDH');
   </script>
 
-  <body class="inter-regular text-slate-700 bg-[#f9f9f7]">
+  <body class="inter-regular text-slate-700 bg-[#f9f9f7]" <% if Current.user.present? %>data-controller="user-notifications" data-user-notifications-user-id-value="<%= Current.user.id %>"<% end %>>
 
   <div class="flex min-h-screen">
 

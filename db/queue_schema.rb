@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_02_031444) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -582,6 +582,77 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
+  create_table "message_reactions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "emoji", null: false
+    t.bigint "message_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["message_id", "user_id", "emoji"], name: "index_message_reactions_on_message_id_and_user_id_and_emoji", unique: true
+    t.index ["message_id"], name: "index_message_reactions_on_message_id"
+    t.index ["user_id", "message_id"], name: "index_message_reactions_on_user_id_and_message_id", unique: true
+    t.index ["user_id"], name: "index_message_reactions_on_user_id"
+  end
+
+  create_table "message_recipients", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.bigint "message_id", null: false
+    t.datetime "read_at"
+    t.bigint "recipient_id", null: false
+    t.string "recipient_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "recipient_type", "recipient_id"], name: "idx_message_recipients_unique", unique: true
+    t.index ["message_id"], name: "index_message_recipients_on_message_id"
+    t.index ["recipient_type", "recipient_id", "read_at"], name: "idx_message_recipients_unread"
+    t.index ["recipient_type", "recipient_id"], name: "index_message_recipients_on_recipient"
+  end
+
+  create_table "message_regards", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "message_id", null: false
+    t.integer "regardable_id", null: false
+    t.string "regardable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "regardable_type", "regardable_id"], name: "index_message_regards_unique", unique: true
+    t.index ["message_id"], name: "index_message_regards_on_message_id"
+    t.index ["regardable_type", "regardable_id"], name: "index_message_regards_on_regardable"
+  end
+
+  create_table "message_subscriptions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_read_at"
+    t.bigint "message_id", null: false
+    t.boolean "muted", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["message_id", "muted"], name: "index_message_subscriptions_on_message_id_and_muted"
+    t.index ["message_id"], name: "index_message_subscriptions_on_message_id"
+    t.index ["user_id", "message_id"], name: "index_message_subscriptions_on_user_id_and_message_id", unique: true
+    t.index ["user_id"], name: "index_message_subscriptions_on_user_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.string "message_type", null: false
+    t.bigint "organization_id"
+    t.integer "parent_message_id"
+    t.bigint "production_id"
+    t.bigint "sender_id", null: false
+    t.string "sender_type", null: false
+    t.bigint "show_id"
+    t.string "subject", null: false
+    t.datetime "updated_at", null: false
+    t.string "visibility", default: "private", null: false
+    t.index ["parent_message_id"], name: "index_messages_on_parent_message_id"
+    t.index ["production_id"], name: "index_messages_on_production_id"
+    t.index ["sender_type", "sender_id"], name: "idx_messages_sender"
+    t.index ["show_id"], name: "index_messages_on_show_id"
+    t.index ["visibility", "production_id"], name: "idx_messages_visibility_production"
+    t.index ["visibility", "show_id"], name: "idx_messages_visibility_show"
+  end
+
   create_table "organization_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
@@ -597,12 +668,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
 
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "forum_mode", default: "per_production", null: false
     t.string "invite_token"
     t.string "name"
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
-    t.string "shared_forum_name"
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
@@ -814,17 +883,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
-  create_table "post_views", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "post_id", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.datetime "viewed_at", null: false
-    t.index ["post_id"], name: "index_post_views_on_post_id"
-    t.index ["user_id", "post_id"], name: "index_post_views_on_user_id_and_post_id", unique: true
-    t.index ["user_id"], name: "index_post_views_on_user_id"
-  end
-
   create_table "posters", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_primary", default: false, null: false
@@ -833,21 +891,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.datetime "updated_at", null: false
     t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "(is_primary = true)"
     t.index ["production_id"], name: "index_posters_on_production_id"
-  end
-
-  create_table "posts", force: :cascade do |t|
-    t.bigint "author_id", null: false
-    t.string "author_type", null: false
-    t.text "body"
-    t.datetime "created_at", null: false
-    t.bigint "parent_id"
-    t.bigint "production_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["author_type", "author_id"], name: "index_posts_on_author"
-    t.index ["parent_id", "created_at"], name: "index_posts_on_parent_id_and_created_at"
-    t.index ["parent_id"], name: "index_posts_on_parent_id"
-    t.index ["production_id", "created_at"], name: "index_posts_on_production_id_and_created_at"
-    t.index ["production_id"], name: "index_posts_on_production_id"
   end
 
   create_table "production_expense_allocations", force: :cascade do |t|
@@ -911,7 +954,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.boolean "default_signup_based_casting", default: false, null: false
     t.text "description"
     t.text "event_visibility_overrides"
-    t.boolean "forum_enabled", default: true, null: false
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -1518,6 +1560,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
   end
 
+  create_table "solid_cable_messages", force: :cascade do |t|
+    t.binary "channel", null: false
+    t.bigint "channel_hash", null: false
+    t.datetime "created_at", null: false
+    t.binary "payload", null: false
+    t.index ["channel"], name: "index_solid_cable_messages_on_channel"
+    t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
+    t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
+  end
+
   create_table "solid_cache_entries", force: :cascade do |t|
     t.integer "byte_size", null: false
     t.datetime "created_at", null: false
@@ -1865,7 +1917,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
     t.integer "included_production_ids", default: [], null: false, array: true
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
+    t.datetime "last_inbox_visit_at"
+    t.datetime "last_message_digest_sent_at"
     t.datetime "last_seen_at"
+    t.datetime "last_unread_digest_sent_at"
+    t.boolean "message_digest_enabled", default: true
     t.jsonb "notification_preferences", default: {}, null: false
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
@@ -1934,6 +1990,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "message_reactions", "messages"
+  add_foreign_key "message_reactions", "users"
+  add_foreign_key "message_recipients", "messages"
+  add_foreign_key "message_subscriptions", "messages"
+  add_foreign_key "message_subscriptions", "users"
+  add_foreign_key "messages", "organizations"
+  add_foreign_key "messages", "productions"
+  add_foreign_key "messages", "shows"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
@@ -1959,11 +2023,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_204657) do
   add_foreign_key "person_advances", "users", column: "paid_by_id"
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "person_invitations", "talent_pools"
-  add_foreign_key "post_views", "posts"
-  add_foreign_key "post_views", "users"
   add_foreign_key "posters", "productions"
-  add_foreign_key "posts", "posts", column: "parent_id"
-  add_foreign_key "posts", "productions"
   add_foreign_key "production_expense_allocations", "production_expenses"
   add_foreign_key "production_expense_allocations", "shows"
   add_foreign_key "production_expenses", "productions"

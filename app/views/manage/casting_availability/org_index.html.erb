@@ -1,0 +1,211 @@
+<% content_for :title, "Availability" %>
+
+<div class="w-full" data-controller="org-availability">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path]
+    ],
+    text: "Availability",
+    links: [
+      { text: "Request Availability", path: manage_select_production_casting_questionnaires_path, icon: "clipboard" }
+    ]
+  } %>
+
+  <%# Filter bar with production dropdown and time range %>
+  <div class="flex flex-wrap items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-lg mb-4">
+    <%# Production dropdown %>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Production</span>
+      <div class="relative">
+        <select
+          onchange="window.location.href = this.value"
+          class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600">
+          <option value="<%= manage_org_availability_path(months: @months) %>" <%= 'selected' if @selected_production.nil? %>>All Productions</option>
+          <% @all_productions.each do |p| %>
+            <option value="<%= manage_org_availability_path(months: @months, production_id: p.id) %>" <%= 'selected' if @selected_production_id == p.id %>><%= p.name %></option>
+          <% end %>
+        </select>
+        <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+
+    <%# Separator %>
+    <div class="w-px h-6 bg-gray-200"></div>
+
+    <%# Time range buttons %>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Time Range</span>
+      <div class="flex gap-1">
+        <% [[3, "3 months"], [6, "6 months"], [12, "12 months"]].each do |months, label| %>
+          <a href="<%= manage_org_availability_path(months: months, production_id: @selected_production_id) %>"
+             class="px-3 py-1.5 rounded text-xs font-medium transition <%= @months == months ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
+            <%= label %>
+          </a>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Spacer to push key to right %>
+    <div class="flex-1"></div>
+
+    <%# Key/Legend %>
+    <div class="flex items-center gap-4 text-xs text-gray-500">
+      <span class="font-medium text-gray-400 uppercase tracking-wide">Key:</span>
+      <span class="flex items-center gap-1"><span class="text-pink-500 font-medium">A</span> Available</span>
+      <span class="flex items-center gap-1"><span class="text-gray-400 font-medium">U</span> Unavailable</span>
+      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-pink-500"></span> Cast</span>
+      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Registered</span>
+    </div>
+  </div>
+
+  <% has_any_shows = @shows_by_production.values.any?(&:any?) %>
+
+  <% if has_any_shows && @members.any? %>
+    <%# Main Grid - Dates on left, People on top %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div class="overflow-auto max-h-[calc(100vh-220px)] rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50 sticky top-0 z-20">
+            <tr>
+              <th class="sticky left-0 z-30 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px] min-w-[300px] max-w-[300px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative">
+                Event
+              </th>
+              <% @members.each do |member| %>
+                <th class="px-1 py-2 text-center min-w-[50px] max-w-[50px] cursor-pointer hover:bg-gray-100 transition bg-gray-50"
+                    data-action="click->org-availability#openPersonModal"
+                    data-member-type="<%= member.class.name %>"
+                    data-member-id="<%= member.id %>">
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="h-20 flex items-end justify-center pb-1">
+                      <span class="text-xs text-gray-600 whitespace-nowrap [writing-mode:vertical-rl] rotate-180" title="<%= member.name %>">
+                        <%= member.name.split.first %>
+                      </span>
+                    </div>
+                    <% headshot = member.safe_headshot_variant(:thumb) %>
+                    <% if headshot %>
+                      <%= image_tag headshot, alt: member.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
+                        <span class="text-xs font-medium text-gray-500"><%= member.initials[0..1] %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @productions.each do |production| %>
+              <% shows = @shows_by_production[production.id] %>
+              <% next if shows.blank? %>
+
+              <%# Production separator bar %>
+              <tr class="bg-pink-50">
+                <td class="sticky left-0 z-10 bg-pink-50 px-3 py-1 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-pink-200 relative">
+                  <span class="text-xs font-medium text-pink-700"><%= production.name %></span>
+                </td>
+                <% @members.each do |member| %>
+                  <td class="bg-pink-50"></td>
+                <% end %>
+              </tr>
+
+              <% shows.each do |show| %>
+                <tr class="hover:bg-gray-50 group">
+                  <%# Show info (left sticky column) %>
+                  <td class="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 cursor-pointer after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative"
+                      data-action="click->org-availability#openShowModal"
+                      data-show-id="<%= show.id %>">
+                    <div class="flex items-center gap-3">
+                      <%# Date Box %>
+                      <div class="flex-shrink-0 w-12 text-center">
+                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                        <div class="text-xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                        <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                      </div>
+                      <%# Show Details %>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 text-sm">
+                          <%= show.display_name %>
+                        </div>
+                        <div class="text-xs text-gray-600">
+                          <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <% @members.each do |member| %>
+                    <%
+                      member_key = [member.class.name, member.id]
+                      show_key = [show.id, member.class.name, member.id]
+                      availability = @availability[show_key]
+                      is_cast = @cast_assignments[show_key].present?
+                      is_signed_up = @sign_up_registrations[show_key].present?
+
+                      # Check if member is in this production's talent pool
+                      in_talent_pool = @member_productions[member_key]&.include?(production.id)
+
+                      # Availability display
+                      if availability == "available"
+                        avail_display = "A"
+                        avail_class = "text-pink-500"
+                      elsif availability == "unavailable"
+                        avail_display = "U"
+                        avail_class = "text-gray-400"
+                      else
+                        avail_display = "-"
+                        avail_class = "text-gray-300"
+                      end
+                    %>
+                    <% if in_talent_pool %>
+                      <td class="px-1 py-2 text-center relative cursor-pointer hover:bg-gray-100 transition"
+                          data-action="click->org-availability#openPersonModal"
+                          data-member-type="<%= member.class.name %>"
+                          data-member-id="<%= member.id %>">
+                        <div class="w-full h-full min-h-[40px] rounded flex flex-col items-center justify-center">
+                          <span class="text-sm font-medium <%= avail_class %>"><%= avail_display %></span>
+                          <% if is_cast || is_signed_up %>
+                            <div class="flex gap-0.5 mt-0.5">
+                              <% if is_cast %>
+                                <span class="w-2 h-2 rounded-full bg-pink-500" title="Cast"></span>
+                              <% end %>
+                              <% if is_signed_up %>
+                                <span class="w-2 h-2 rounded-full bg-blue-500" title="Signed Up"></span>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                      </td>
+                    <% else %>
+                      <%# Member not in this production's talent pool - gray out %>
+                      <td class="px-1 py-2 text-center bg-gray-100">
+                        <div class="w-full h-full min-h-[40px] rounded flex items-center justify-center">
+                          <span class="text-gray-300">—</span>
+                        </div>
+                      </td>
+                    <% end %>
+                  <% end %>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% elsif @members.empty? %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">No cast members found. Add people to your productions' talent pools first.</p>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">No upcoming shows found in the next <%= @months %> months.</p>
+    </div>
+  <% end %>
+
+  <%# Modal containers %>
+  <%= render "manage/casting_availability/org_partials/modal_containers" %>
+</div>

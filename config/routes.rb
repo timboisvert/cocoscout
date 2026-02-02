@@ -145,15 +145,20 @@ Rails.application.routes.draw do
     post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
     post  "/dismiss_announcement",          to: "dashboard#dismiss_announcement", as: "dismiss_announcement"
 
-    # Inbox
-    resources :inbox, only: [:index, :show] do
+    # Messages
+    resources :messages, only: [ :index, :show ] do
       member do
         post :archive
         post :mark_read
         post :reply
+        post :mute
+        post :unmute
+        post "react/:emoji", action: :react, as: :react
+        delete :destroy
       end
       collection do
         post :mark_all_read
+        get "production/:production_id", action: :production, as: :production
       end
     end
 
@@ -163,6 +168,10 @@ Rails.application.routes.draw do
     # Productions
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
+    resources :productions, only: [] do
+      resources :production_messages, only: [ :create ]
+    end
+    get    "/productions/:production_id/messages", to: "messages#index", as: "production_messages_index"
     get    "/productions/:production_id/emails/:id", to: "productions#email", as: "production_email"
     delete "/productions/:id/leave",        to: "productions#leave",        as: "leave_production"
 
@@ -218,15 +227,6 @@ Rails.application.routes.draw do
     delete "/payments/zelle",                    to: "payments#remove_zelle",              as: "payments_remove_zelle"
     patch  "/payments/preferred",                to: "payments#update_preferred",          as: "payments_update_preferred"
 
-    # Messages (inbox for talent)
-    get   "/messages",                          to: "messages#index",                     as: "messages"
-    post  "/messages",                          to: "messages#create",                    as: "create_message"
-    get   "/messages/reply_form",               to: "messages#reply_form",                as: "messages_reply_form"
-    get   "/messages/posts",                    to: "messages#posts",                     as: "messages_posts"
-    get   "/messages/emails",                   to: "messages#emails",                    as: "messages_emails"
-    post  "/messages/send",                     to: "messages#send_message",              as: "send_message_messages"
-    get   "/messages/:id",                      to: "messages#show",                      as: "email_log"
-
     # Shoutouts management
     get   "/shoutouts",                         to: "shoutouts#index",                    as: "shoutouts"
     post  "/shoutouts",                         to: "shoutouts#create",                   as: "create_shoutout"
@@ -253,6 +253,18 @@ Rails.application.routes.draw do
     get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
+    # Messages
+    resources :messages, only: [ :index, :show ] do
+      member do
+        post :reply
+        post "react/:emoji", action: :react, as: :react
+        delete :destroy
+      end
+      collection do
+        get "production/:production_id", action: :production, as: :production
+      end
+    end
+
     # Productions > Wizard
     get    "/productions/new",                to: "production_wizard#name",          as: "productions_wizard"
     post   "/productions/wizard/name",        to: "production_wizard#save_name",     as: "productions_wizard_save_name"
@@ -271,8 +283,8 @@ Rails.application.routes.draw do
     delete "/productions/wizard/cancel",      to: "production_wizard#cancel",        as: "productions_wizard_cancel"
 
     # Shows & Events - org-level (aggregates all productions)
-    get  "/shows",              to: "org_shows#index", as: "shows"
-    get  "/shows/calendar",     to: "org_shows#calendar", as: "shows_calendar"
+    get  "/shows",              to: "shows#org_index", as: "shows"
+    get  "/shows/calendar",     to: "shows#org_calendar", as: "shows_calendar"
     get  "/shows/new",          to: "show_wizard#select_production", as: "shows_new_wizard"
     post "/shows/new",          to: "show_wizard#save_production_selection", as: "shows_save_production_selection"
 
@@ -340,9 +352,9 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/visual_assets/:id/update_logo", to: "visual_assets#update_logo", as: "update_logo_production_visual_asset"
 
     # Sign-ups - org-level (aggregates all productions)
-    get  "/signups",            to: "org_signups#index", as: "signups"
-    get  "/signups/forms",      to: "org_sign_up_forms#index", as: "signups_all_forms"
-    get  "/signups/auditions",  to: "org_auditions#index", as: "signups_all_auditions"
+    get  "/signups",            to: "signups#org_index", as: "signups"
+    get  "/signups/forms",      to: "sign_up_forms#org_index", as: "signups_all_forms"
+    get  "/signups/auditions",  to: "auditions#org_index", as: "signups_all_auditions"
 
     # Sign-ups - org-level wizards (production selection first)
     get  "/signups/forms/new",       to: "sign_up_form_wizard#select_production", as: "signups_forms_new_wizard"
@@ -500,13 +512,13 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id/cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote_signups_auditions_cycle_session_audition"
 
     # Casting - org-level (aggregates all productions)
-    get  "/casting",            to: "org_casting#index", as: "casting"
-    get  "/casting/roles",      to: "org_roles#index", as: "casting_roles"
-    get  "/casting/talent-pools", to: "org_talent_pools#index", as: "casting_talent_pools"
-    get  "/casting/talent-pools/switch-to-single", to: "org_talent_pools#switch_to_single_confirm", as: "casting_talent_pools_switch_to_single_confirm"
-    post "/casting/talent-pools/switch-to-single", to: "org_talent_pools#switch_to_single", as: "casting_talent_pools_switch_to_single"
-    get  "/casting/talent-pools/switch-to-per-production", to: "org_talent_pools#switch_to_per_production_confirm", as: "casting_talent_pools_switch_to_per_production_confirm"
-    post "/casting/talent-pools/switch-to-per-production", to: "org_talent_pools#switch_to_per_production", as: "casting_talent_pools_switch_to_per_production"
+    get  "/casting",            to: "casting#org_index", as: "casting"
+    get  "/casting/roles",      to: "roles#org_index", as: "casting_roles"
+    get  "/casting/talent-pools", to: "talent_pools#org_index", as: "casting_talent_pools"
+    get  "/casting/talent-pools/switch-to-single", to: "talent_pools#org_switch_to_single_confirm", as: "casting_talent_pools_switch_to_single_confirm"
+    post "/casting/talent-pools/switch-to-single", to: "talent_pools#org_switch_to_single", as: "casting_talent_pools_switch_to_single"
+    get  "/casting/talent-pools/switch-to-per-production", to: "talent_pools#org_switch_to_per_production_confirm", as: "casting_talent_pools_switch_to_per_production_confirm"
+    post "/casting/talent-pools/switch-to-per-production", to: "talent_pools#org_switch_to_per_production", as: "casting_talent_pools_switch_to_per_production"
 
     # Casting Tables (org-level)
     get  "/casting/tables",              to: "casting_tables#index", as: "casting_tables"
@@ -537,15 +549,45 @@ Rails.application.routes.draw do
     delete "/casting/tables/:id/remove_member/:memberable_type/:memberable_id", to: "casting_tables#remove_member", as: "casting_table_remove_member"
 
     # Organization-wide Availability (must be before :production_id routes)
-    get  "/casting/availability", to: "org_availability#index", as: "org_availability"
-    get  "/casting/availability/person_modal/:id", to: "org_availability#person_modal", as: "org_availability_person_modal"
-    get  "/casting/availability/show_modal/:id", to: "org_availability#show_modal", as: "org_availability_show_modal"
-    post "/casting/availability/cast_person", to: "org_availability#cast_person", as: "org_availability_cast_person"
-    post "/casting/availability/sign_up_person", to: "org_availability#sign_up_person", as: "org_availability_sign_up_person"
-    post "/casting/availability/register_person", to: "org_availability#register_person", as: "org_availability_register_person"
-    post "/casting/availability/pre_register", to: "org_availability#pre_register", as: "org_availability_pre_register"
-    post "/casting/availability/pre_register_all", to: "org_availability#pre_register_all", as: "org_availability_pre_register_all"
-    post "/casting/availability/set_availability", to: "org_availability#set_availability", as: "org_availability_set_availability"
+    get  "/casting/availability", to: "casting_availability#org_index", as: "org_availability"
+    get  "/casting/availability/person_modal/:id", to: "casting_availability#org_person_modal", as: "org_availability_person_modal"
+    get  "/casting/availability/show_modal/:id", to: "casting_availability#org_show_modal", as: "org_availability_show_modal"
+    post "/casting/availability/cast_person", to: "casting_availability#org_cast_person", as: "org_availability_cast_person"
+    post "/casting/availability/sign_up_person", to: "casting_availability#org_sign_up_person", as: "org_availability_sign_up_person"
+    post "/casting/availability/register_person", to: "casting_availability#org_register_person", as: "org_availability_register_person"
+    post "/casting/availability/pre_register", to: "casting_availability#org_pre_register", as: "org_availability_pre_register"
+    post "/casting/availability/pre_register_all", to: "casting_availability#org_pre_register_all", as: "org_availability_pre_register_all"
+    post "/casting/availability/set_availability", to: "casting_availability#org_set_availability", as: "org_availability_set_availability"
+
+    # Questionnaires (moved from communications to casting)
+    # IMPORTANT: These must come BEFORE /casting/:production_id routes to avoid "questionnaires" being treated as production_id
+    # Org-level index showing all questionnaires across productions
+    get  "/casting/questionnaires", to: "questionnaires#org_index", as: "casting_questionnaires_index"
+
+    # Production selection wizard (for org-level entry point)
+    get  "/casting/questionnaires/select_production", to: "questionnaires#select_production", as: "select_production_casting_questionnaires"
+    post "/casting/questionnaires/select_production", to: "questionnaires#save_production_selection", as: "save_production_selection_casting_questionnaires"
+
+    # Production-scoped questionnaires
+    get  "/casting/:production_id/questionnaires", to: "questionnaires#index", as: "casting_questionnaires"
+    get  "/casting/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_casting_questionnaire"
+    post "/casting/:production_id/questionnaires", to: "questionnaires#create", as: "create_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id", to: "questionnaires#show", as: "casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_casting_questionnaire"
+    patch "/casting/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_casting_questionnaire"
+    delete "/casting/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_casting_questionnaire"
+    post "/casting/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_casting_questionnaire"
+    patch "/casting/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_casting_questionnaire"
+    delete "/casting/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_casting_questionnaire"
+    post "/casting/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_casting_questionnaire"
+    post "/casting/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_casting_questionnaire"
+    patch "/casting/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_casting_questionnaire"
+    patch "/casting/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_casting_questionnaire"
+    get  "/casting/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_casting_questionnaire"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
@@ -603,49 +645,15 @@ Rails.application.routes.draw do
     post "/casting/:production_id/vacancies/:id/fill", to: "vacancies#fill", as: "fill_casting_vacancy"
     post "/casting/:production_id/vacancies/:id/invitations/:invitation_id/resend", to: "vacancy_invitations#resend", as: "resend_casting_vacancy_invitation"
 
-    # Communications - org-level (aggregates all productions)
-    get  "/communications",     to: "org_communications#index", as: "communications"
-    post "/communications/send_message", to: "org_communications#send_message", as: "org_communications_send_message"
-    get  "/communications/talent_pool_members/:production_id", to: "org_communications#talent_pool_members", as: "org_communications_talent_pool_members"
-    get  "/communications/questionnaires", to: "org_questionnaires#index", as: "communications_all_questionnaires"
-    get  "/communications/questionnaires/new", to: "questionnaires#select_production", as: "communications_questionnaires_new_wizard"
-    post "/communications/questionnaires/new", to: "questionnaires#save_production_selection", as: "communications_questionnaires_save_production_selection"
+    # Email Groups (used for casting email notifications)
+    post "/casting/:production_id/email_groups", to: "email_groups#create", as: "create_casting_email_group"
+    patch "/casting/:production_id/email_groups/:id", to: "email_groups#update", as: "update_casting_email_group"
+    delete "/casting/:production_id/email_groups/:id", to: "email_groups#destroy", as: "destroy_casting_email_group"
 
-    # Communications - production-level (new URL pattern: /manage/communications/:production_id)
-    get  "/communications/:production_id", to: "communications#index", as: "communications_production"
-    get  "/communications/:production_id/:id", to: "communications#show", as: "communication"
-    post "/communications/:production_id/send_message", to: "communications#send_message", as: "communications_send_message"
-
-    # Questionnaires (under communications)
-    get  "/communications/:production_id/questionnaires", to: "questionnaires#index", as: "communications_questionnaires"
-    get  "/communications/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_communications_questionnaire"
-    post "/communications/:production_id/questionnaires", to: "questionnaires#create", as: "create_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id", to: "questionnaires#show", as: "communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_communications_questionnaire"
-    patch "/communications/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_communications_questionnaire"
-    delete "/communications/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_communications_questionnaire"
-    post "/communications/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_communications_questionnaire"
-    patch "/communications/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_communications_questionnaire"
-    delete "/communications/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_communications_questionnaire"
-    post "/communications/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_communications_questionnaire"
-    post "/communications/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_communications_questionnaire"
-    patch "/communications/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_communications_questionnaire"
-    patch "/communications/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_communications_questionnaire"
-    get  "/communications/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_communications_questionnaire"
-
-    # Email Groups (under communications, used for casting email notifications)
-    post "/communications/:production_id/email_groups", to: "email_groups#create", as: "create_communications_email_group"
-    patch "/communications/:production_id/email_groups/:id", to: "email_groups#update", as: "update_communications_email_group"
-    delete "/communications/:production_id/email_groups/:id", to: "email_groups#destroy", as: "destroy_communications_email_group"
-
-    # Audition Email Assignments (under communications)
-    post "/communications/:production_id/audition_email_assignments", to: "audition_email_assignments#create", as: "create_communications_audition_email_assignment"
-    patch "/communications/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_communications_audition_email_assignment"
-    delete "/communications/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_communications_audition_email_assignment"
+    # Audition Email Assignments
+    post "/casting/:production_id/audition_email_assignments", to: "audition_email_assignments#create", as: "create_casting_audition_email_assignment"
+    patch "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_casting_audition_email_assignment"
+    delete "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_casting_audition_email_assignment"
 
     # Directory - unified people and groups listing
     get  "/directory",          to: "directory#index", as: "directory"
@@ -732,7 +740,7 @@ Rails.application.routes.draw do
         post :remove_from_cast
         post :remove_from_organization
         get :contact
-        post :send_contact_email
+        post :send_contact_message
         patch :update_availability
         get :availability_modal
       end

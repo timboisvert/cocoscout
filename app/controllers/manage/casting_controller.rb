@@ -2,12 +2,112 @@
 
 module Manage
   class CastingController < Manage::ManageController
-    before_action :set_production
-    before_action :check_production_access
-    before_action :check_not_third_party
+    before_action :set_production, except: [ :org_index ]
+    before_action :check_production_access, except: [ :org_index ]
+    before_action :check_not_third_party, except: [ :org_index ]
     before_action :check_casting_setup, only: :index
     before_action :set_show,
                   only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
+
+    # Org-level casting index (moved from org_casting_controller)
+    def org_index
+      # Store the shows filter (default to upcoming)
+      @filter = params[:filter] || session[:casting_filter] || "upcoming"
+      session[:casting_filter] = @filter
+
+      # Hide canceled events toggle (default: true - hide canceled)
+      @hide_canceled = if params[:hide_canceled].present?
+        params[:hide_canceled] == "true"
+      else
+        session[:casting_hide_canceled].nil? ? true : session[:casting_hide_canceled]
+      end
+      session[:casting_hide_canceled] = @hide_canceled
+
+      # Get all in-house productions for the organization (exclude third-party)
+      @productions = Current.organization.productions.type_in_house.order(:name)
+
+      # Get shows with casting enabled across all in-house productions
+      base_shows = Show.where(production: @productions, casting_enabled: true)
+                       .includes(:production, :location, :custom_roles, show_person_role_assignments: :role)
+
+      # Apply canceled filter
+      base_shows = base_shows.where(canceled: false) if @hide_canceled
+
+      case @filter
+      when "past"
+        @shows = base_shows.where("date_and_time < ?", Time.current).order(date_and_time: :desc)
+      else
+        @filter = "upcoming"
+        @shows = base_shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+      end
+
+      # Load into memory
+      @shows = @shows.to_a
+
+      # Preload roles per production
+      @roles_by_production = {}
+      @productions.each do |production|
+        @roles_by_production[production.id] = production.roles.order(:position).to_a
+      end
+
+      # Precompute max assignment updated_at per show
+      show_ids = @shows.map(&:id)
+      @assignments_max_updated_at_by_show = ShowPersonRoleAssignment
+        .where(show_id: show_ids)
+        .group(:show_id)
+        .maximum(:updated_at)
+
+      # Precompute max role updated_at per show for custom roles
+      @roles_max_updated_at_by_show = {}
+      @shows.each do |show|
+        if show.use_custom_roles?
+          @roles_max_updated_at_by_show[show.id] = show.custom_roles.map(&:updated_at).compact.max
+        else
+          roles = @roles_by_production[show.production_id] || []
+          @roles_max_updated_at_by_show[show.id] = roles.map(&:updated_at).compact.max
+        end
+      end
+
+      # Preload assignables (people and groups) with their headshots
+      all_assignments = @shows.flat_map(&:show_person_role_assignments)
+
+      person_ids = all_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+      group_ids = all_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+
+      @people_by_id = Person
+                      .where(id: person_ids)
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .index_by(&:id)
+
+      @groups_by_id = Group
+                      .where(id: group_ids)
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .index_by(&:id)
+
+      # Load cancelled vacancies for all shows
+      @cancelled_vacancies_by_show = {}
+      @shows.each do |show|
+        @cancelled_vacancies_by_show[show.id] = show.cancelled_vacancies_by_assignment
+      end
+
+      # Load open vacancies for non-linked shows
+      @open_vacancies_by_show = {}
+      @shows.each do |show|
+        next if show.linked?
+        open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
+        @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)
+      end
+
+      # Load sign-up registrations for shows with linked sign-up forms
+      sign_up_registrations = SignUpRegistration
+        .joins(sign_up_slot: :sign_up_form_instance)
+        .where(sign_up_form_instances: { show_id: show_ids })
+        .where(status: %w[confirmed waitlisted])
+        .includes(:person, person: { profile_headshots: { image_attachment: :blob } }, sign_up_slot: { sign_up_form_instance: :sign_up_form })
+        .to_a
+
+      @sign_up_registrations_by_show = sign_up_registrations.group_by { |r| r.sign_up_slot.sign_up_form_instance.show_id }
+    end
 
     def index
       # Store the shows filter (default to upcoming)
@@ -223,16 +323,16 @@ module Manage
       @cast_groups.uniq!
       @cast_members = people_for_email.uniq.sort_by(&:name)
 
-      # Create a new draft for the form
-      @email_draft = EmailDraft.new(emailable: @show)
+      render partial: "contact_cast_modal"
     end
 
     def send_cast_email
-      @email_draft = EmailDraft.new(email_draft_params.merge(emailable: @show))
+      subject = params[:subject]
+      body_html = params[:body]
 
-      if @email_draft.title.blank? || @email_draft.body.blank?
+      if subject.blank? || body_html.blank?
         redirect_to manage_casting_show_contact_path(@production, @show),
-                    alert: "Title and message are required"
+                    alert: "Subject and message are required"
         return
       end
 
@@ -267,27 +367,16 @@ module Manage
 
       people_to_email.uniq!
 
-      # Convert rich text to HTML string for serialization in background jobs
-      body_html = @email_draft.body.to_s
-
-      # Create email batch if sending to multiple people
-      email_batch = nil
-      if people_to_email.size > 1
-        email_batch = EmailBatch.create!(
-          user: Current.user,
-          subject: @email_draft.title,
-          recipient_count: people_to_email.size,
-          sent_at: Time.current
-        )
-      end
-
-      # Send email to each person
-      people_to_email.each do |person|
-        Manage::ProductionMailer.send_message(person, @email_draft.title, body_html, Current.user, email_batch_id: email_batch&.id, production_id: @production.id).deliver_later
-      end
+      # Send messages via MessageService
+      MessageService.send_to_show_cast(
+        show: @show,
+        sender: Current.user,
+        subject: subject,
+        body: body_html
+      )
 
       redirect_to manage_show_path(@production, @show),
-                  notice: "Email sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
+                  notice: "Message sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
     end
 
     # Search people in the organization for manual/hybrid casting

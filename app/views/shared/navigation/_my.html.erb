@@ -3,7 +3,13 @@
 
     <div class="mt-2">
       <%= render "shared/nav_link", text: "Home", path: my_dashboard_path, active: controller_name == "dashboard" %>
-      <%#= render "shared/nav_link", text: "My Messages", path: my_messages_path, active: controller_name == "messages" %>
+      <div class="relative">
+        <%= render "shared/nav_link", text: "My Messages", path: my_messages_path, active: controller_name == "messages" %>
+        <% unread_count = Current.user&.unread_message_count.to_i %>
+        <% if unread_count > 0 %>
+          <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full" data-unread-badge><%= unread_count > 99 ? "99+" : unread_count %></span>
+        <% end %>
+      </div>
       <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
       <%= render "shared/nav_link", text: "My Availability", path: my_availability_path, active: controller_name == "availability" %>
       <%= render "shared/nav_link", text: "My Auditions", path: my_auditions_path, active: controller_name == "auditions" %>

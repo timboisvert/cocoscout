@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_02_031444) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -582,45 +582,75 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
-  create_table "message_batches", force: :cascade do |t|
+  create_table "message_reactions", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "message_type", null: false
-    t.bigint "organization_id"
-    t.integer "recipient_count", default: 0, null: false
-    t.bigint "regarding_id"
-    t.string "regarding_type"
-    t.bigint "sender_id", null: false
-    t.string "sender_type", null: false
-    t.string "subject", null: false
+    t.string "emoji", null: false
+    t.bigint "message_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["organization_id"], name: "index_message_batches_on_organization_id"
-    t.index ["regarding_type", "regarding_id"], name: "index_message_batches_on_regarding"
-    t.index ["sender_type", "sender_id"], name: "index_message_batches_on_sender"
-    t.index ["sender_type", "sender_id"], name: "index_message_batches_on_sender_type_and_sender_id"
+    t.bigint "user_id", null: false
+    t.index ["message_id", "user_id", "emoji"], name: "index_message_reactions_on_message_id_and_user_id_and_emoji", unique: true
+    t.index ["message_id"], name: "index_message_reactions_on_message_id"
+    t.index ["user_id", "message_id"], name: "index_message_reactions_on_user_id_and_message_id", unique: true
+    t.index ["user_id"], name: "index_message_reactions_on_user_id"
   end
 
-  create_table "messages", force: :cascade do |t|
+  create_table "message_recipients", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
-    t.bigint "message_batch_id"
-    t.string "message_type", null: false
-    t.bigint "organization_id"
-    t.bigint "parent_id"
+    t.bigint "message_id", null: false
     t.datetime "read_at"
     t.bigint "recipient_id", null: false
     t.string "recipient_type", null: false
-    t.bigint "regarding_id"
-    t.string "regarding_type"
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "recipient_type", "recipient_id"], name: "idx_message_recipients_unique", unique: true
+    t.index ["message_id"], name: "index_message_recipients_on_message_id"
+    t.index ["recipient_type", "recipient_id", "read_at"], name: "idx_message_recipients_unread"
+    t.index ["recipient_type", "recipient_id"], name: "index_message_recipients_on_recipient"
+  end
+
+  create_table "message_regards", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "message_id", null: false
+    t.integer "regardable_id", null: false
+    t.string "regardable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "regardable_type", "regardable_id"], name: "index_message_regards_unique", unique: true
+    t.index ["message_id"], name: "index_message_regards_on_message_id"
+    t.index ["regardable_type", "regardable_id"], name: "index_message_regards_on_regardable"
+  end
+
+  create_table "message_subscriptions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_read_at"
+    t.bigint "message_id", null: false
+    t.boolean "muted", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["message_id", "muted"], name: "index_message_subscriptions_on_message_id_and_muted"
+    t.index ["message_id"], name: "index_message_subscriptions_on_message_id"
+    t.index ["user_id", "message_id"], name: "index_message_subscriptions_on_user_id_and_message_id", unique: true
+    t.index ["user_id"], name: "index_message_subscriptions_on_user_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.string "message_type", null: false
+    t.bigint "organization_id"
+    t.integer "parent_message_id"
+    t.bigint "production_id"
     t.bigint "sender_id", null: false
     t.string "sender_type", null: false
+    t.bigint "show_id"
     t.string "subject", null: false
     t.datetime "updated_at", null: false
-    t.index ["message_batch_id"], name: "idx_messages_batch"
-    t.index ["parent_id"], name: "idx_messages_parent"
-    t.index ["recipient_type", "recipient_id", "created_at"], name: "idx_messages_recipient_created"
-    t.index ["recipient_type", "recipient_id", "read_at"], name: "idx_messages_recipient_read"
-    t.index ["regarding_type", "regarding_id"], name: "idx_messages_regarding"
+    t.string "visibility", default: "private", null: false
+    t.index ["parent_message_id"], name: "index_messages_on_parent_message_id"
+    t.index ["production_id"], name: "index_messages_on_production_id"
     t.index ["sender_type", "sender_id"], name: "idx_messages_sender"
+    t.index ["show_id"], name: "index_messages_on_show_id"
+    t.index ["visibility", "production_id"], name: "idx_messages_visibility_production"
+    t.index ["visibility", "show_id"], name: "idx_messages_visibility_show"
   end
 
   create_table "organization_roles", force: :cascade do |t|
@@ -1530,6 +1560,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
     t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
   end
 
+  create_table "solid_cable_messages", force: :cascade do |t|
+    t.binary "channel", null: false
+    t.bigint "channel_hash", null: false
+    t.datetime "created_at", null: false
+    t.binary "payload", null: false
+    t.index ["channel"], name: "index_solid_cable_messages_on_channel"
+    t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
+    t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
+  end
+
   create_table "solid_cache_entries", force: :cascade do |t|
     t.integer "byte_size", null: false
     t.datetime "created_at", null: false
@@ -1877,8 +1917,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
     t.integer "included_production_ids", default: [], null: false, array: true
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
+    t.datetime "last_inbox_visit_at"
     t.datetime "last_message_digest_sent_at"
     t.datetime "last_seen_at"
+    t.datetime "last_unread_digest_sent_at"
     t.boolean "message_digest_enabled", default: true
     t.jsonb "notification_preferences", default: {}, null: false
     t.string "password_digest", null: false
@@ -1948,10 +1990,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_31_205315) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
-  add_foreign_key "message_batches", "organizations"
-  add_foreign_key "messages", "message_batches"
-  add_foreign_key "messages", "messages", column: "parent_id"
+  add_foreign_key "message_reactions", "messages"
+  add_foreign_key "message_reactions", "users"
+  add_foreign_key "message_recipients", "messages"
+  add_foreign_key "message_subscriptions", "messages"
+  add_foreign_key "message_subscriptions", "users"
   add_foreign_key "messages", "organizations"
+  add_foreign_key "messages", "productions"
+  add_foreign_key "messages", "shows"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"

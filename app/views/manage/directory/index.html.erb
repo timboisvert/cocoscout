@@ -336,27 +336,27 @@
           </div>
         </div>
 
-        <%# Email Form %>
-        <%= form_with model: @email_draft, url: manage_contact_directory_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+        <%# Message Form %>
+        <%= form_with url: manage_contact_directory_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
           <div data-directory-selection-target="selectedIdsContainer">
             <%# Hidden fields for selected IDs will be inserted here %>
           </div>
 
           <div>
-            <%= form.text_field :title,
+            <%= text_field_tag :subject, nil,
               class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-              placeholder: "Email subject...",
+              placeholder: "Message subject...",
               required: true %>
           </div>
 
           <div>
-            <%= form.rich_text_area :body,
+            <%= rich_text_area_tag :body, nil,
               class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
           </div>
 
           <div class="flex items-center justify-end gap-3 pt-2">
             <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->directory-selection#closeContactModal" } %>
-            <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Send Message", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>

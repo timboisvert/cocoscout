@@ -6,15 +6,7 @@ module Manage
     before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal]
 
     def show
-      # Load email logs for this person (paginated, with search)
-      # Scope to current organization to exclude system emails and cross-org emails
-      email_logs_query = EmailLog.for_recipient_entity(@person).for_organization(Current.organization).recent
-      if params[:search_messages].present?
-        search_term = "%#{params[:search_messages]}%"
-        email_logs_query = email_logs_query.where("subject LIKE ? OR body LIKE ?", search_term, search_term)
-      end
-      @email_logs_pagy, @email_logs = pagy(email_logs_query, limit: 10, page_param: :messages_page, page: params[:messages_page])
-      @search_messages_query = params[:search_messages]
+      # Person detail view
     end
 
     def new
@@ -459,37 +451,35 @@ module Manage
 
     def contact
       @person = Current.organization.people.find(params[:id])
-      @email_draft = EmailDraft.new
       @productions = Current.organization.productions.order(:name)
       render partial: "contact_modal", layout: false
     end
 
-    def send_contact_email
+    def send_contact_message
       @person = Current.organization.people.find(params[:id])
-      subject = params.dig(:email_draft, :title)
-      body_html = params.dig(:email_draft, :body)
+      subject = params[:subject]
+      body = params[:body]
 
-      if subject.present? && body_html.present?
-        # Use selected production if provided
-        production = if params[:production_id].present?
-                       Current.organization.productions.find_by(id: params[:production_id])
-        end
-
-        # Prepend production name or organization name to subject
-        prefix_name = production&.name || Current.organization.name
-        full_subject = "[#{prefix_name}] #{subject}"
-        Manage::PersonMailer.contact_email(
-          @person,
-          full_subject,
-          body_html,
-          Current.user,
-          production_id: production&.id,
-          organization_id: Current.organization&.id
-        ).deliver_later
-        redirect_to manage_person_path(@person), notice: "Email sent to #{@person.name}"
-      else
+      if subject.blank? || body.blank?
         redirect_to manage_person_path(@person), alert: "Subject and message are required"
+        return
       end
+
+      # Get selected production if provided
+      production = if params[:production_id].present?
+                     Current.organization.productions.find_by(id: params[:production_id])
+      end
+
+      # Send message via MessageService
+      MessageService.send_direct(
+        sender: Current.user,
+        recipient_person: @person,
+        subject: subject,
+        body: body,
+        organization: Current.organization
+      )
+
+      redirect_to manage_person_path(@person), notice: "Message sent to #{@person.name}"
     end
 
     private

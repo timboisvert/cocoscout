@@ -1,0 +1,170 @@
+<%#
+  Image Gallery Component - Lightbox style
+
+  Displays images as small thumbnails that open into a full-screen lightbox modal
+%>
+
+<% images = message.images %>
+<% return if images.blank? %>
+
+<% gallery_id = "gallery_#{message.id}" %>
+
+<div class="px-4 pb-3">
+  <%# Thumbnail Grid - Small boxes %>
+  <div class="flex flex-wrap gap-2">
+    <% images.limit(8).each_with_index do |img, i| %>
+      <div
+        onclick="openLightbox('<%= gallery_id %>', <%= i %>); event.stopPropagation(); event.preventDefault(); return false;"
+        class="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-pink-400 transition-all cursor-pointer">
+        <%= safe_image_tag(img, { resize_to_fill: [192, 192] },
+            class: "w-full h-full object-cover pointer-events-none") %>
+        <% if i == 7 && images.count > 8 %>
+          <div class="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
+            <span class="text-white text-sm font-bold">+<%= images.count - 8 %></span>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Lightbox Modal - Full screen overlay %>
+  <div
+    id="<%= gallery_id %>"
+    onclick="if(event.target === this) closeLightbox('<%= gallery_id %>')"
+    class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+
+    <%# Close button %>
+    <button
+      type="button"
+      onclick="closeLightbox('<%= gallery_id %>'); event.stopPropagation();"
+      class="absolute top-4 right-4 z-10 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <% if images.count > 1 %>
+      <%# Previous button %>
+      <button
+        type="button"
+        onclick="prevImage('<%= gallery_id %>', <%= images.count %>); event.stopPropagation();"
+        class="absolute left-4 z-10 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+
+      <%# Next button %>
+      <button
+        type="button"
+        onclick="nextImage('<%= gallery_id %>', <%= images.count %>); event.stopPropagation();"
+        class="absolute right-4 z-10 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+    <% end %>
+
+    <%# Images - one shown at a time %>
+    <div class="max-w-5xl max-h-[85vh] w-full h-full flex items-center justify-center p-8">
+      <% images.each_with_index do |img, i| %>
+        <div id="<%= gallery_id %>_img_<%= i %>" class="<%= i == 0 ? '' : 'hidden' %> flex items-center justify-center">
+          <%= safe_image_tag(img, { resize_to_limit: [1400, 900] },
+              class: "max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl") %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Counter %>
+    <% if images.count > 1 %>
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
+        <span id="<%= gallery_id %>_counter">1</span> / <%= images.count %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  // Simple lightbox functions
+  window.lightboxState = window.lightboxState || {};
+
+  window.openLightbox = function(galleryId, index) {
+    const modal = document.getElementById(galleryId);
+    if (modal) {
+      window.lightboxState[galleryId] = index;
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      showImage(galleryId, index);
+
+      // Store the total count for keyboard navigation
+      const total = document.querySelectorAll('[id^="' + galleryId + '_img_"]').length;
+
+      // Add keyboard listener for escape and arrow keys
+      const keyHandler = function(e) {
+        if (e.key === 'Escape') {
+          closeLightbox(galleryId);
+          document.removeEventListener('keydown', keyHandler);
+        } else if (e.key === 'ArrowRight') {
+          nextImage(galleryId, total);
+          e.preventDefault();
+        } else if (e.key === 'ArrowLeft') {
+          prevImage(galleryId, total);
+          e.preventDefault();
+        }
+      };
+      document.addEventListener('keydown', keyHandler);
+
+      // Store handler reference for cleanup on close
+      modal.dataset.keyHandler = 'active';
+      modal._keyHandler = keyHandler;
+    }
+  };
+
+  window.closeLightbox = function(galleryId) {
+    const modal = document.getElementById(galleryId);
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      // Remove keyboard handler
+      if (modal._keyHandler) {
+        document.removeEventListener('keydown', modal._keyHandler);
+        modal._keyHandler = null;
+      }
+    }
+  };
+
+  window.showImage = function(galleryId, index) {
+    // Hide all images
+    let i = 0;
+    while (true) {
+      const img = document.getElementById(galleryId + '_img_' + i);
+      if (!img) break;
+      img.classList.add('hidden');
+      i++;
+    }
+    // Show current
+    const current = document.getElementById(galleryId + '_img_' + index);
+    if (current) current.classList.remove('hidden');
+    // Update counter
+    const counter = document.getElementById(galleryId + '_counter');
+    if (counter) counter.textContent = index + 1;
+  };
+
+  window.nextImage = function(galleryId, total) {
+    let current = window.lightboxState[galleryId] || 0;
+    if (current < total - 1) {
+      current++;
+      window.lightboxState[galleryId] = current;
+      showImage(galleryId, current);
+    }
+  };
+
+  window.prevImage = function(galleryId, total) {
+    let current = window.lightboxState[galleryId] || 0;
+    if (current > 0) {
+      current--;
+      window.lightboxState[galleryId] = current;
+      showImage(galleryId, current);
+    }
+  };
+</script>

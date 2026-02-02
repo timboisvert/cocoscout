@@ -1,55 +1,141 @@
 class Message < ApplicationRecord
   belongs_to :sender, polymorphic: true  # User or Person
-  belongs_to :recipient, polymorphic: true  # Person or Group (NOT User!)
-  belongs_to :message_batch, optional: true
   belongs_to :organization, optional: true
-  belongs_to :regarding, polymorphic: true, optional: true
-  belongs_to :parent, class_name: "Message", optional: true
+  belongs_to :production, optional: true  # Direct FK for visibility scoping
+  belongs_to :show, optional: true        # Direct FK for visibility scoping
 
-  has_many :replies, class_name: "Message", foreign_key: :parent_id, dependent: :destroy
+  # Threading relationships
+  belongs_to :parent_message, class_name: "Message", optional: true
+  has_many :child_messages, class_name: "Message", foreign_key: :parent_message_id, dependent: :destroy
+
+  # Recipients (replaces single recipient + batch pattern)
+  has_many :message_recipients, dependent: :destroy
+  has_many :recipient_people, through: :message_recipients, source: :recipient, source_type: "Person"
+  has_many :recipient_groups, through: :message_recipients, source: :recipient, source_type: "Group"
+
+  # Thread subscriptions (who sees this in their inbox)
+  has_many :message_subscriptions, dependent: :destroy
+  has_many :subscribers, through: :message_subscriptions, source: :user
+
+  # Reactions
+  has_many :message_reactions, dependent: :destroy
+
+  # Multi-regarding support (additional context objects)
+  has_many :message_regards, dependent: :destroy
+
   has_rich_text :body
+  has_many_attached :images
 
-  scope :unread, -> { where(read_at: nil) }
-  scope :read, -> { where.not(read_at: nil) }
-  scope :active, -> { where(archived_at: nil) }
-  scope :top_level, -> { where(parent_id: nil) }
-  scope :for_user, ->(user) {
-    # Find messages where recipient is any of user's people or groups
-    person_ids = user.people.pluck(:id)
-    group_ids = user.person&.groups&.pluck(:id) || []
+  # Visibility determines who can see the message
+  enum :visibility, {
+    personal: "private",      # Only sender + recipients
+    production: "production", # All production managers/viewers + recipients
+    show: "show"              # Production team + that show's cast
+  }, default: :personal
 
-    where(recipient_type: "Person", recipient_id: person_ids)
-      .or(where(recipient_type: "Group", recipient_id: group_ids))
-  }
-
+  # Message type for categorization
   enum :message_type, {
-    cast_contact: "cast_contact",    # Manager → cast about a show
-    talent_pool: "talent_pool",      # Manager → talent pool members
-    direct: "direct",                # Person → person
-    system: "system"                 # System notifications
+    cast_contact: "cast_contact",         # Manager → cast about a show
+    talent_pool: "talent_pool",           # Manager → talent pool members
+    direct: "direct",                     # Person → person (private)
+    production_contact: "production_contact", # Cast → production team
+    system: "system"                      # System notifications
   }
 
   validates :subject, presence: true, length: { maximum: 255 }
   validates :message_type, presence: true
 
-  def mark_as_read!
-    update!(read_at: Time.current) if read_at.nil?
+  # Callbacks for real-time updates
+  after_create_commit :broadcast_to_thread
+  after_create_commit :notify_subscribers
+
+  # Scopes
+  scope :root_messages, -> { where(parent_message_id: nil) }
+  scope :not_deleted, -> { where(deleted_at: nil) }
+
+  # Soft delete methods
+  def deleted?
+    deleted_at.present?
   end
 
-  def unread?
-    read_at.nil?
+  def soft_delete!
+    update!(deleted_at: Time.current)
+  end
+
+  # Delete message - soft delete if has children, hard delete if leaf
+  def smart_delete!
+    if child_messages.exists?
+      soft_delete!
+    else
+      destroy!
+    end
+  end
+
+  # Check if user can delete this message
+  def can_be_deleted_by?(user)
+    return false unless user
+    # User is the sender
+    return true if sender_type == "User" && sender_id == user.id
+    # User's person is the sender
+    return true if sender_type == "Person" && user.person&.id == sender_id
+    false
+  end
+
+  # Messages visible to a user based on subscriptions
+  scope :subscribed_by, ->(user) {
+    joins(:message_subscriptions).where(message_subscriptions: { user: user, muted: false })
+  }
+
+  # Production-scoped messages (for manage/messages)
+  scope :for_production, ->(production) {
+    where(production: production, visibility: [ :production, :show ])
+  }
+
+  # Show-scoped messages
+  scope :for_show, ->(show) {
+    where(show: show, visibility: :show)
+  }
+
+  # Messages where user is a recipient
+  scope :received_by, ->(user) {
+    person_ids = user.people.pluck(:id)
+    joins(:message_recipients).where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
+  }
+
+  # Messages not archived by a specific recipient
+  scope :active_for_recipient, ->(person) {
+    joins(:message_recipients)
+      .where(message_recipients: { recipient: person, archived_at: nil })
+  }
+
+  # Add regardable objects to this message
+  def add_regards(*regardables)
+    regardables.flatten.compact.each do |regardable|
+      message_regards.find_or_create_by!(
+        regardable_type: regardable.class.name,
+        regardable_id: regardable.id
+      )
+    end
+  end
+
+  # Get all regardable objects for this message
+  def regardables
+    message_regards.includes(:regardable).map(&:regardable).compact
   end
 
   def reply?
-    parent_id.present?
+    parent_message_id.present?
   end
 
-  # Get the User who should see this message
-  def recipient_user
-    case recipient
-    when Person then recipient.user
-    when Group then recipient.members.first&.user  # Groups need special handling
+  # Calculate depth in the thread (0 = root, 1 = direct reply, etc.)
+  def thread_depth
+    depth = 0
+    msg = self
+    while msg.parent_message_id.present?
+      depth += 1
+      msg = msg.parent_message
     end
+    depth
   end
 
   # Human-readable sender name
@@ -61,59 +147,227 @@ class Message < ApplicationRecord
     end
   end
 
-  # Human-readable recipient name (shows which profile received it)
-  def recipient_name
-    case recipient
-    when Person then recipient.name
-    when Group then recipient.name
-    else "Unknown"
+  # Get recipient count
+  def recipient_count
+    message_recipients.count
+  end
+
+  # Get recipient names (for display)
+  def recipient_names
+    message_recipients.includes(:recipient).map { |mr| mr.recipient&.name }.compact
+  end
+
+  # Check if a person is a recipient
+  def recipient?(person)
+    message_recipients.exists?(recipient: person)
+  end
+
+  # Mark as read for a specific person
+  def mark_read_for!(person)
+    message_recipients.find_by(recipient: person)&.mark_read!
+  end
+
+  # Check if unread for a specific person
+  def unread_for?(person)
+    mr = message_recipients.find_by(recipient: person)
+    mr.nil? || mr.read_at.nil?
+  end
+
+  # Archive for a specific person
+  def archive_for!(person)
+    message_recipients.find_by(recipient: person)&.archive!
+  end
+
+  # Reaction helpers
+  def reaction_counts
+    message_reactions.group(:emoji).count
+  end
+
+  def user_reaction(user)
+    message_reactions.find_by(user: user)&.emoji
+  end
+
+  def add_reaction!(user, emoji)
+    message_reactions.find_or_create_by!(user: user, emoji: emoji)
+  end
+
+  def remove_reaction!(user, emoji)
+    message_reactions.find_by(user: user, emoji: emoji)&.destroy
+  end
+
+  def toggle_reaction!(user, emoji)
+    existing = message_reactions.find_by(user: user)
+
+    if existing
+      if existing.emoji == emoji
+        # Same reaction - remove it (toggle off)
+        existing.destroy
+        false
+      else
+        # Different reaction - replace it
+        existing.update!(emoji: emoji)
+        true
+      end
+    else
+      # No existing reaction - add new one
+      message_reactions.create!(user: user, emoji: emoji)
+      true
     end
   end
 
-  # Derive production from regarding object (no separate production column)
-  def production
-    case regarding
-    when Show then regarding.production
-    when Production then regarding
-    when AuditionCycle then regarding.production
-    when SignUpForm then regarding.production
-    else nil
+  # Get the root message of this thread
+  def root_message
+    return self if parent_message_id.nil?
+
+    current = self
+    current = current.parent_message while current.parent_message_id.present?
+    current
+  end
+
+  # Get all descendant message IDs (recursive)
+  def descendant_ids
+    child_ids = child_messages.pluck(:id)
+    return child_ids if child_ids.empty?
+
+    child_ids + Message.where(id: child_ids).flat_map(&:descendant_ids)
+  end
+
+  # Get all descendant messages (recursive)
+  def descendant_messages
+    Message.where(id: descendant_ids)
+  end
+
+  # Get all messages in this thread (including root)
+  def thread_messages
+    root = root_message
+    Message.where(id: [ root.id ] + root.descendant_ids)
+  end
+
+  # Thread subscription management
+  def subscribe!(user, mark_read: false)
+    return unless user
+    root = root_message
+    subscription = MessageSubscription.find_or_create_by!(user: user, message: root)
+    subscription.mark_read! if mark_read
+    subscription
+  end
+
+  def unsubscribe!(user)
+    root = root_message
+    MessageSubscription.find_by(user: user, message: root)&.destroy
+  end
+
+  def subscribed?(user)
+    return false unless user
+    root = root_message
+    MessageSubscription.exists?(user: user, message: root)
+  end
+
+  # Subscribe all managers/viewers of the production
+  def subscribe_production_team!
+    return unless production
+
+    # Global org managers/viewers
+    production.organization.organization_roles.where(company_role: [ :manager, :viewer ]).find_each do |role|
+      subscribe!(role.user)
+    end
+
+    # Production-specific permissions
+    production.production_permissions.where(role: [ :manager, :viewer ]).find_each do |permission|
+      subscribe!(permission.user)
     end
   end
 
-  # Context card info based on regarding object
+  # Get count of unread messages in this thread for a user
+  def unread_count_for(user)
+    subscription = root_message.message_subscriptions.find_by(user: user)
+    return 0 unless subscription
+
+    last_read = subscription.last_read_at || Time.at(0)
+    root = root_message
+    Message.where(id: [ root.id ] + root.descendant_ids)
+           .where("created_at > ?", last_read)
+           .count
+  end
+
+  # Get latest activity timestamp in thread
+  def latest_activity_at
+    root = root_message
+    latest = root.descendant_messages.maximum(:created_at)
+    latest || root.created_at
+  end
+
+  # Context card info based on production/show
   def regarding_context
-    return nil unless regarding
-
-    case regarding
-    when Show
+    if show.present?
       {
         type: :show,
-        title: regarding.production.name,
-        subtitle: regarding.formatted_date_and_time,
-        location: regarding.display_location,
-        image: regarding.production.posters.primary.first&.safe_image_variant(:small)
+        title: show.production.name,
+        subtitle: show.formatted_date_and_time,
+        location: show.display_location,
+        image: show.production.posters.primary.first&.safe_image_variant(:small)
       }
-    when Production
+    elsif production.present?
       {
         type: :production,
-        title: regarding.name,
-        image: regarding.logo
-      }
-    when AuditionCycle
-      {
-        type: :audition,
-        title: regarding.production.name,
-        subtitle: "Auditions: #{regarding.name}"
-      }
-    when SignUpForm
-      {
-        type: :signup,
-        title: regarding.name,
-        subtitle: regarding.production.name
+        title: production.name,
+        image: production.logo
       }
     else
       nil
     end
+  end
+
+  private
+
+  # Broadcast new reply to all viewers of the thread
+  def broadcast_to_thread
+    return unless reply? # Only broadcast for replies
+
+    root = root_message
+    html = ApplicationController.render(
+      partial: "shared/messages/nested_reply",
+      locals: { reply: self, depth: calculate_depth }
+    )
+
+    MessageThreadChannel.broadcast_to(
+      root,
+      type: "new_reply",
+      html: html,
+      sender_id: sender.is_a?(User) ? sender.id : nil,
+      message_id: id
+    )
+  end
+
+  # Notify all subscribers about the new message (for unread counts)
+  def notify_subscribers
+    root = root_message
+    sender_user = sender.is_a?(User) ? sender : nil
+
+    root.message_subscriptions.includes(:user).find_each do |subscription|
+      next if subscription.user == sender_user # Don't notify sender
+
+      UserNotificationsChannel.broadcast_unread_count(subscription.user)
+
+      # Also send new message notification if not muted
+      unless subscription.muted?
+        UserNotificationsChannel.broadcast_new_message(
+          subscription.user,
+          self,
+          root.subject
+        )
+      end
+    end
+  end
+
+  # Calculate depth for nested reply rendering
+  def calculate_depth
+    depth = 0
+    current = parent_message
+    while current && current != root_message
+      depth += 1
+      current = current.parent_message
+    end
+    depth
   end
 end

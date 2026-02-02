@@ -1,0 +1,117 @@
+<%#
+  Contact Production Team Card
+
+  A visually prominent card that invites users to contact the production team.
+
+  Options (choose one):
+    production: Single production to contact
+    productions: Array of productions for multi-select mode
+
+  Optional:
+    show: If provided, mentions the show in the card
+    variant: :default (full card) or :compact (smaller inline version)
+%>
+
+<%
+  variant = local_assigns[:variant] || :default
+  show = local_assigns[:show]
+  single_production = local_assigns[:production]
+  multi_productions = local_assigns[:productions]
+%>
+
+<% if variant == :compact %>
+  <%# Compact inline version - single production only %>
+  <%= render "shared/button",
+      text: "Contact Production Team",
+      variant: "primary",
+      type: :button,
+      data: {
+        action: "click->contact-production#open",
+        "production-id": single_production.id,
+        "production-name": single_production.name
+      } %>
+<% elsif multi_productions.present? && multi_productions.size > 0 %>
+  <%# Multi-production card with dropdown %>
+  <div class="bg-gradient-to-br from-pink-50 to-pink-100/50 rounded-xl border border-pink-200 p-5 shadow-sm" data-controller="production-select">
+    <div class="flex items-start gap-4">
+      <%# Icon %>
+      <div class="flex-shrink-0">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 shadow-lg shadow-pink-500/30">
+          <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+        </div>
+      </div>
+
+      <%# Content %>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-base font-semibold text-gray-900">
+          Need to reach a production team?
+        </h3>
+        <p class="mt-1 text-sm text-gray-600">
+          Select a production and send them a message directly.
+        </p>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <select class="flex-1 min-w-[200px] max-w-xs px-3 py-2 bg-white border border-pink-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent cursor-pointer" data-production-select-target="select">
+            <option value="">Choose a production...</option>
+            <% multi_productions.each do |prod| %>
+              <option value="<%= prod.id %>" data-name="<%= prod.name %>"><%= prod.name %></option>
+            <% end %>
+          </select>
+
+          <%= render "shared/button",
+              text: "Send Message",
+              variant: "secondary",
+              type: :button,
+              disabled: true,
+              data: {
+                action: "click->production-select#openModal",
+                "production-select-target": "button"
+              } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% elsif single_production.present? %>
+  <%# Full card version - single production %>
+  <div class="bg-gradient-to-br from-pink-50 to-pink-100/50 rounded-xl border border-pink-200 p-5 shadow-sm">
+    <div class="flex items-start gap-4">
+      <%# Icon %>
+      <div class="flex-shrink-0">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 shadow-lg shadow-pink-500/30">
+          <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+        </div>
+      </div>
+
+      <%# Content %>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-base font-semibold text-gray-900">
+          Have a question<% if show %> about this event<% end %>?
+        </h3>
+        <p class="mt-1 text-sm text-gray-600">
+          <% if show %>
+            Send a message to the <span class="font-medium text-pink-600"><%= single_production.name %></span> team about this show.
+          <% else %>
+            Reach out to the <span class="font-medium text-pink-600"><%= single_production.name %></span> production team directly.
+          <% end %>
+        </p>
+
+        <div class="mt-3">
+          <%= render "shared/button",
+              text: "Contact Production Team",
+              variant: "secondary",
+              type: :button,
+              data: {
+                action: "click->contact-production#open",
+                "production-id": single_production.id,
+                "production-name": single_production.name,
+                "show-id": show&.id
+              }.compact %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

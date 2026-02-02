@@ -1,59 +1,122 @@
-<% content_for :title, "Message Details" %>
+<% content_for :title, @root_message.subject %>
 
-<div class="w-full">
+<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @root_message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["My Messages", my_messages_path]
-    ],
-    text: @email_log.subject || "(no subject)",
-    links: []
-  } %>
+  <%
+    subscription = Current.user.message_subscriptions.find_by(message: @root_message)
+    is_muted = subscription&.muted?
 
-  <div class="mt-4">
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex-1 min-w-0">
-            <h1 class="text-lg font-semibold text-gray-900">
-              <%= @email_log.subject || "(no subject)" %>
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">
-              <%= @email_log.sent_at&.strftime("%B %-d, %Y at %-I:%M %p") %>
-            </p>
+    # Check if we came from a production-scoped page
+    from_production_id = params[:from_production]
+    from_production = from_production_id ? Production.find_by(id: from_production_id) : nil
+    show_production_header = from_production.present?
+  %>
+
+  <% if show_production_header && from_production %>
+    <%# Production Header when coming from production messages page %>
+    <div class="bg-white border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 mb-6">
+      <div class="flex items-center gap-4">
+        <%# Back link to production messages %>
+        <%= link_to production_my_messages_path(from_production), class: "text-gray-400 hover:text-gray-600 transition-colors" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        <% end %>
+
+        <%# Production Logo %>
+        <% logo_variant = from_production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <%= image_tag logo_variant, alt: from_production.name, class: "w-14 h-14 rounded-lg object-cover shadow-sm border border-gray-200" %>
+        <% else %>
+          <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center border border-pink-200">
+            <span class="text-xl font-bold text-pink-600"><%= from_production.initials %></span>
           </div>
-          <% if @email_log.production %>
-            <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
-              <% logo_variant = @email_log.production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <%= image_tag logo_variant, alt: "#{@email_log.production.name} logo", class: "w-8 h-8 object-contain rounded" %>
-              <% else %>
-                <div class="w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
-                  <span class="text-pink-600 font-bold text-xs"><%= @email_log.production.name[0..1].upcase %></span>
-                </div>
-              <% end %>
-              <div class="min-w-0">
-                <p class="text-xs font-medium text-gray-900 truncate max-w-[150px]"><%= @email_log.production.name %></p>
-              </div>
-            </div>
+        <% end %>
+
+        <%# Production Name & Message Subject %>
+        <div class="flex-1 min-w-0">
+          <h1 class="text-xl font-bold text-gray-900 truncate coustard-regular"><%= from_production.name %></h1>
+          <p class="text-sm text-gray-500"><%= @root_message.subject.truncate(50) %></p>
+        </div>
+
+        <%# Actions %>
+        <div class="flex items-center gap-2">
+          <%= link_to (is_muted ? unmute_my_message_path(@root_message) : mute_my_message_path(@root_message)),
+              method: :post,
+              class: "p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100",
+              title: is_muted ? "Unmute Thread" : "Mute Thread" do %>
+            <% if is_muted %>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+              </svg>
+            <% else %>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zm12 0l4-4m0 4l-4-4"/>
+              </svg>
+            <% end %>
+          <% end %>
+          <%= link_to archive_my_message_path(@root_message), method: :post, class: "p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100", title: "Archive" do %>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+            </svg>
           <% end %>
         </div>
       </div>
+    </div>
+  <% else %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [
+        ["Messages", my_messages_path]
+      ],
+      text: @root_message.subject.truncate(50),
+      links: [
+        { icon: is_muted ? "volume-up" : "volume-x", text: is_muted ? "Unmute Thread" : "Mute Thread",
+          path: is_muted ? unmute_my_message_path(@root_message) : mute_my_message_path(@root_message),
+          method: :post },
+        { icon: "archive", text: "Archive", path: archive_my_message_path(@root_message), method: :post }
+      ]
+    } %>
+  <% end %>
 
-      <div class="p-0">
-        <% body = @email_log.body_content %>
-        <% if body.present? %>
-          <iframe
-            class="w-full min-h-[600px] border-0"
-            sandbox="allow-same-origin"
-            srcdoc="<%= ERB::Util.html_escape(body) %>"
-          ></iframe>
-        <% else %>
-          <div class="text-center py-8 text-gray-500">
-            No message body available
-          </div>
+  <div class="mt-4">
+    <%# Original Message %>
+    <%= render "shared/messages/message_card", message: @root_message, context: :show %>
+
+    <%# Thread Replies - Nested Tree View %>
+    <% direct_replies = @root_message.child_messages.includes(:sender, :child_messages).order(:created_at) %>
+    <div class="mt-6">
+      <div class="space-y-4" data-message-thread-target="replies">
+        <%= render partial: "shared/messages/nested_reply", collection: direct_replies, as: :reply, locals: { depth: 0 } %>
+      </div>
+    </div>
+
+    <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
+    <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <div class="flex items-start gap-4">
+        <% current_person = Current.user.person %>
+        <% if current_person %>
+          <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+              <%= current_person.initials %>
+            </div>
+          <% end %>
         <% end %>
+
+        <div class="flex-1">
+          <%= form_with url: reply_my_message_path(@root_message), method: :post, class: "space-y-3", data: { turbo: false } do |f| %>
+            <%= f.rich_text_area :body, class: "w-full min-h-[100px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
+            <div class="flex justify-end gap-2">
+              <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">
+                Cancel
+              </button>
+              <%= render "shared/button", text: "Post Comment", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>

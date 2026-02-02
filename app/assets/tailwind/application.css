@@ -16,3 +16,8 @@ select:focus {
     @apply border-l-4 border-l-pink-400 bg-pink-50/50;
     transition: all 0.15s ease-in-out;
 }
+
+/* Pink links in prose content (messages, replies) */
+.prose a {
+    @apply text-pink-600 hover:text-pink-700;
+}

@@ -1,0 +1,49 @@
+<%#
+  Message Action Bar - unified bottom bar for messages
+
+  Shows: Reactions | Reply count + typing indicator | Comment button
+
+  Required locals:
+    message: The message to show actions for
+    show_comment_button: Whether to show the "Comment" button (default: true)
+    show_typing_indicator: Whether this is on the main thread view (default: false)
+%>
+
+<%
+  reply_count = message.descendant_ids.count
+  show_comment_button = local_assigns.fetch(:show_comment_button, true)
+  show_typing_indicator = local_assigns.fetch(:show_typing_indicator, false)
+  is_manage = controller.controller_path.start_with?("manage")
+  message_path = is_manage ? manage_message_path(message.root_message) : my_message_path(message.root_message)
+%>
+
+<div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/80">
+  <div class="flex items-center justify-between">
+    <%# Left side: Reactions %>
+    <div class="flex items-center">
+      <%= render "shared/messages/reactions", message: message %>
+    </div>
+
+    <%# Middle: Reply count + typing indicator %>
+    <div class="flex-1 flex items-center justify-center gap-2 text-sm">
+      <% if reply_count > 0 %>
+        <%= link_to message_path, class: "text-pink-600 hover:text-pink-700 font-medium cursor-pointer" do %>
+          <%= reply_count %> <%= reply_count == 1 ? 'reply' : 'replies' %>
+        <% end %>
+      <% end %>
+      <% if show_typing_indicator %>
+        <span data-message-thread-target="typingIndicator" class="text-gray-500 hidden"></span>
+      <% end %>
+    </div>
+
+    <%# Right side: Comment button %>
+    <% if show_comment_button %>
+      <button
+        type="button"
+        class="text-sm font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer"
+        data-action="click->message-thread#showCommentForm">
+        Comment
+      </button>
+    <% end %>
+  </div>
+</div>

@@ -1,164 +1,160 @@
-<% content_for :title, "Messages" %>
+<% content_for :title, "My Messages" %>
 
-<% show_sidebar = @sidebar_items.length > 1 %>
+<div class="w-full pb-8" data-controller="inbox contact-production">
+  <%# New messages banner - shown when new messages arrive via ActionCable %>
+  <div data-inbox-target="banner" class="hidden sticky top-0 z-40 mb-4">
+    <button
+      type="button"
+      data-action="click->inbox#refresh"
+      class="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span data-inbox-target="count">New messages</span>
+    </button>
+  </div>
 
-<div class="w-full h-full" data-controller="my-messages">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <div class="flex h-[calc(100vh-120px)]">
-    <% if show_sidebar %>
-      <%# Left Sidebar - only show if multiple forums %>
-      <div class="w-1/3 border-r border-gray-200 bg-white overflow-y-auto flex flex-col">
-        <div class="divide-y divide-gray-100 flex-1">
-          <%# Organizations with Shared Forums %>
-          <% @my_organizations.each do |org| %>
-            <% org_production_ids = @all_productions.select { |p| p.organization_id == org.id }.map(&:id) %>
-            <% unread_count = org_production_ids.sum { |id| @unviewed_counts[id] || 0 } %>
-            <button type="button"
-                    data-action="click->my-messages#selectOrganization"
-                    data-organization-id="<%= org.id %>"
-                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_organization&.id == org.id %>">
-              <% if org.logo.attached? %>
-                <%= image_tag org.logo.variant(resize_to_fill: [40, 40]), alt: org.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
-              <% else %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-bold text-pink-600"><%= org.name[0..1].upcase %></span>
-                </div>
-              <% end %>
-              <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 truncate"><%= org.name %></div>
-              </div>
-              <% if unread_count > 0 %>
-                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
-                  <%= unread_count %>
-                </span>
-              <% end %>
-            </button>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Messages",
+    links: [
+      { icon: "check", text: "Mark All Read", path: mark_all_read_my_messages_path, method: :post, disabled: @unread_count == 0 }
+    ]
+  } %>
+
+  <%# Contact Production Team Card %>
+  <% if @contactable_productions.any? %>
+    <div class="mt-4">
+      <% if @contactable_productions.size == 1 %>
+        <%= render "shared/contact_production_card", production: @contactable_productions.first %>
+      <% else %>
+        <%= render "shared/contact_production_card", productions: @contactable_productions %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Filter Bar %>
+  <%= form_with url: my_messages_path, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+    <%= render "shared/filters/filter_bar",
+        toggle_label: "Filters",
+        wrapper_data_controller: "filter-select",
+        filter_groups: [
+          {
+            label: "Show",
+            filters: [
+              { text: "All", path: my_messages_path(q: @search, production_id: @production_filter, order: @order), active: @filter == "all" },
+              { text: "Unread", path: my_messages_path(filter: "unread", q: @search, production_id: @production_filter, order: @order), active: @filter == "unread" }
+            ]
+          },
+          { separator: true },
+          {
+            partial: "shared/filters/dropdown_filter",
+            locals: {
+              label: "Order",
+              name: "order",
+              options: [
+                { value: "newest", text: "Newest First" },
+                { value: "oldest", text: "Oldest First" }
+              ],
+              selected: @order || "newest",
+              data_attributes: {
+                action: "change->filter-select#update",
+                filter_select_filter_value: @filter,
+                filter_select_q_value: @search,
+                filter_select_production_id_value: @production_filter
+              }
+            }
+          },
+          (@user_productions.any? ? { separator: true } : nil),
+          (@user_productions.any? ? {
+            partial: "shared/filters/dropdown_filter",
+            locals: {
+              label: "Production",
+              name: "production_id",
+              options: [{ value: "", text: "All Productions" }] + @user_productions.map { |p| { value: p.id.to_s, text: p.name } },
+              selected: @production_filter.to_s,
+              data_attributes: {
+                action: "change->filter-select#update",
+                filter_select_filter_value: @filter,
+                filter_select_q_value: @search,
+                filter_select_order_value: @order
+              }
+            }
+          } : nil),
+          { separator: true },
+          {
+            partial: "shared/filters/search_input",
+            locals: {
+              placeholder: "Search messages...",
+              value: @search,
+              name: "q"
+            }
+          }
+        ].compact
+    %>
+    <%# Hidden fields to preserve filters when searching %>
+    <%= f.hidden_field :filter, value: @filter %>
+    <%= f.hidden_field :production_id, value: @production_filter %>
+  <% end %>
+
+  <% if @messages.any? %>
+    <div class="mt-4 space-y-4">
+      <% @messages.each do |thread| %>
+        <%= render "shared/messages/message_card", message: thread %>
+      <% end %>
+    </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          Page <%= @pagy.page %> of <%= @pagy.pages %>
+        </div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= link_to "← Previous", my_messages_path(page: @pagy.previous), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+          <% else %>
+            <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">← Previous</span>
           <% end %>
-
-          <%# Productions with Per-Production Forums %>
-          <% @sidebar_productions.each do |production| %>
-            <% unread_count = @unviewed_counts[production.id] || 0 %>
-            <button type="button"
-                    data-action="click->my-messages#selectProduction"
-                    data-production-id="<%= production.id %>"
-                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_production&.id == production.id %>">
-              <% logo_variant = production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <%= image_tag logo_variant, alt: production.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
-              <% else %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-                </div>
-              <% end %>
-              <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
-                <div class="text-xs text-gray-500 truncate"><%= production.organization.name %></div>
-              </div>
-              <% if unread_count > 0 %>
-                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
-                  <%= unread_count %>
-                </span>
-              <% end %>
-            </button>
-          <% end %>
-
-          <% if @sidebar_items.empty? %>
-            <div class="p-4 text-center text-gray-500 text-sm">
-              <p>No message boards available.</p>
-            </div>
+          <% if @pagy.next %>
+            <%= link_to "Next →", my_messages_path(page: @pagy.next), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+          <% else %>
+            <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Next →</span>
           <% end %>
         </div>
       </div>
     <% end %>
-
-    <%# Right Content - Posts %>
-    <div class="flex-1 bg-gray-50 overflow-y-auto flex flex-col">
-      <% if @posting_production %>
-        <%# Pinned Forum Name Header (only when no sidebar) %>
-        <% unless show_sidebar %>
-          <div class="sticky top-0 z-10 bg-white px-6 py-2 flex items-center gap-2 shadow-sm border-b border-gray-100">
-            <% if @selected_organization %>
-              <% if @selected_organization.logo.attached? %>
-                <%= image_tag @selected_organization.logo.variant(resize_to_fill: [24, 24]), alt: @selected_organization.name, class: "w-6 h-6 object-contain rounded flex-shrink-0" %>
-              <% else %>
-                <div class="w-6 h-6 rounded bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-xs font-bold text-pink-600"><%= @selected_organization.name[0..1].upcase %></span>
-                </div>
-              <% end %>
-              <span class="font-medium text-gray-900"><%= @selected_organization.forum_display_name %></span>
-            <% elsif @selected_production %>
-              <% logo_variant = @selected_production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <%= image_tag logo_variant, alt: @selected_production.name, class: "w-6 h-6 object-contain rounded flex-shrink-0" %>
-              <% else %>
-                <div class="w-6 h-6 rounded bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-xs font-bold text-pink-600"><%= @selected_production.initials %></span>
-                </div>
-              <% end %>
-              <span class="font-medium text-gray-900"><%= @selected_production.name %></span>
-            <% end %>
-          </div>
-        <% end %>
-
-        <%# Filter Bar %>
-        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <%
-              # Build base URL for filter links
-              if @selected_organization
-                base_params = { organization_id: @selected_organization.id }
-              elsif @selected_production
-                base_params = { production_id: @selected_production.id }
-              else
-                base_params = {}
-              end
-            %>
-            <%= link_to my_messages_path(base_params.merge(filter: "all")),
-                class: "px-3 py-1.5 text-sm font-medium rounded-lg transition #{@filter == 'all' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'}" do %>
-              All
-            <% end %>
-            <%= link_to my_messages_path(base_params.merge(filter: "unread")),
-                class: "px-3 py-1.5 text-sm font-medium rounded-lg transition #{@filter == 'unread' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'}" do %>
-              Unread
-              <% if @current_unread_count > 0 %>
-                <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-pink-500 text-white text-xs font-medium">
-                  <%= @current_unread_count %>
-                </span>
-              <% end %>
-            <% end %>
-          </div>
-        </div>
-
-        <%# New Post Form %>
-        <div id="new-post-form" class="bg-white border-b border-gray-200 px-6 py-4">
-          <%= render "my/messages/new_post_form", production: @posting_production %>
-        </div>
-
-        <%# Posts List %>
-        <div id="posts-list" class="divide-y divide-gray-200 flex-1">
-          <% if @posts.any? %>
-            <% @posts.each do |post| %>
-              <%= render "my/messages/post", post: post %>
-            <% end %>
-          <% else %>
-            <div class="text-center py-12 text-gray-500">
-              <% if @filter == "unread" %>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 text-gray-300">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-                <p>You're all caught up!</p>
-              <% else %>
-                <p>No posts yet. Be the first to share something!</p>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="text-center py-12 text-gray-500">
-          <p>No message boards available.</p>
-        </div>
-      <% end %>
+  <% else %>
+    <div class="mt-8 text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+      </svg>
+      <%
+        empty_title, empty_message = case @filter
+        when "unread"
+          ["All caught up!", "You have no unread messages."]
+        when "has_images"
+          ["No messages with images", "None of your messages contain images."]
+        when "archived"
+          ["No archived messages", "You haven't archived any messages yet."]
+        else
+          if @search.present?
+            ["No results", "No messages match \"#{@search}\"."]
+          elsif @production_filter.present?
+            ["No messages", "No messages for this production yet."]
+          else
+            ["No messages", "Your inbox is empty."]
+          end
+        end
+      %>
+      <h3 class="mt-2 text-sm font-medium text-gray-900"><%= empty_title %></h3>
+      <p class="mt-1 text-sm text-gray-500"><%= empty_message %></p>
     </div>
-  </div>
+  <% end %>
+
+  <%# Contact Production Modal %>
+  <% if @contactable_productions.any? %>
+    <%= render "shared/contact_production_modal" %>
+  <% end %>
 </div>

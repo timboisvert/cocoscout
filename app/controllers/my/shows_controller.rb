@@ -2,6 +2,8 @@
 
 module My
   class ShowsController < ApplicationController
+    rescue_from ActiveRecord::RecordNotFound, with: :show_not_found
+
     def index
       @person = Current.user.person
       @people = Current.user.people.active.order(:created_at).to_a
@@ -254,64 +256,21 @@ module My
                      .to_a
       group_ids = @groups.map(&:id)
 
-      # Find the show if user has access via:
-      # 1. Any of user's profiles is in the production's talent pool (own or shared)
-      # 2. Any of user's groups is in the production's talent pool (own or shared)
-      # 3. Any of user's profiles has a direct role assignment
-      # 4. Any of user's groups has a role assignment
-      # 5. User has an open vacancy for this show (they can't make it but can reclaim)
-      # 6. User has a sign-up registration for this show
-      #
-      # For shared pools, we need to check both:
-      # - talent_pools.production_id = shows.production_id (own pool)
-      # - talent_pool_shares.production_id = shows.production_id (shared pool)
-      @show = Show.where(id: params[:id])
-                  .includes(event_linkage: :shows)
-                  .where(
-                    "EXISTS (SELECT 1 FROM talent_pools
-                             INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
-                             WHERE (talent_pools.production_id = shows.production_id
-                                    OR EXISTS (SELECT 1 FROM talent_pool_shares
-                                               WHERE talent_pool_shares.talent_pool_id = talent_pools.id
-                                               AND talent_pool_shares.production_id = shows.production_id))
-                             AND talent_pool_memberships.member_type = 'Person'
-                             AND talent_pool_memberships.member_id IN (?)) OR
-                     EXISTS (SELECT 1 FROM talent_pools
-                             INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
-                             WHERE (talent_pools.production_id = shows.production_id
-                                    OR EXISTS (SELECT 1 FROM talent_pool_shares
-                                               WHERE talent_pool_shares.talent_pool_id = talent_pools.id
-                                               AND talent_pool_shares.production_id = shows.production_id))
-                             AND talent_pool_memberships.member_type = 'Group'
-                             AND talent_pool_memberships.member_id IN (?)) OR
-                     EXISTS (SELECT 1 FROM show_person_role_assignments
-                             WHERE show_person_role_assignments.show_id = shows.id
-                             AND show_person_role_assignments.assignable_type = 'Person'
-                             AND show_person_role_assignments.assignable_id IN (?)) OR
-                     EXISTS (SELECT 1 FROM show_person_role_assignments
-                             WHERE show_person_role_assignments.show_id = shows.id
-                             AND show_person_role_assignments.assignable_type = 'Group'
-                             AND show_person_role_assignments.assignable_id IN (?)) OR
-                     EXISTS (SELECT 1 FROM role_vacancies
-                             WHERE role_vacancies.show_id = shows.id
-                             AND role_vacancies.vacated_by_type = 'Person'
-                             AND role_vacancies.vacated_by_id IN (?)
-                             AND role_vacancies.status NOT IN ('filled', 'cancelled')) OR
-                     EXISTS (SELECT 1 FROM sign_up_form_instances
-                             INNER JOIN sign_up_slots ON sign_up_slots.sign_up_form_instance_id = sign_up_form_instances.id
-                             INNER JOIN sign_up_registrations ON sign_up_registrations.sign_up_slot_id = sign_up_slots.id
-                             WHERE sign_up_form_instances.show_id = shows.id
-                             AND sign_up_registrations.person_id IN (?)
-                             AND sign_up_registrations.status != 'cancelled') OR
-                     EXISTS (SELECT 1 FROM sign_up_form_instances
-                             INNER JOIN sign_up_registrations ON sign_up_registrations.sign_up_form_instance_id = sign_up_form_instances.id
-                             WHERE sign_up_form_instances.show_id = shows.id
-                             AND sign_up_registrations.person_id IN (?)
-                             AND sign_up_registrations.status != 'cancelled')",
-                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ], people_ids, people_ids, people_ids
-                  )
-                  .first!
+      # First, find the show
+      @show = Show.includes(event_linkage: :shows).find(params[:id])
       @production = @show.production
+
+      # Check access - user can view if they have:
+      # 1. Organization manager/viewer role for this production's org
+      # 2. Production manager/viewer permission for this production
+      # 3. Talent pool membership (own or shared)
+      # 4. Direct role assignment on this show
+      # 5. Open vacancy for this show
+      # 6. Sign-up registration for this show
+      unless user_can_access_show?(@show, people_ids, group_ids)
+        raise ActiveRecord::RecordNotFound
+      end
+
       @show_person_role_assignments = @show.show_person_role_assignments
                                            .includes(:role)
                                            .to_a
@@ -549,6 +508,52 @@ module My
       else
         redirect_to my_show_path(@show), alert: "Unable to reclaim the vacancy."
       end
+    end
+
+    private
+
+    def user_can_access_show?(show, people_ids, group_ids)
+      production = show.production
+
+      # 1. Organization manager/viewer role
+      org_role = Current.user.organization_roles.find_by(organization_id: production.organization_id)
+      return true if org_role&.company_role.in?(%w[manager viewer])
+
+      # 2. Production-specific manager/viewer permission
+      prod_permission = Current.user.production_permissions.find_by(production_id: production.id)
+      return true if prod_permission&.role.in?(%w[manager viewer])
+
+      # 3. Talent pool membership (person or group)
+      effective_pool = production.effective_talent_pool
+      if effective_pool
+        return true if TalentPoolMembership.where(talent_pool: effective_pool, member_type: "Person", member_id: people_ids).exists?
+        return true if group_ids.present? && TalentPoolMembership.where(talent_pool: effective_pool, member_type: "Group", member_id: group_ids).exists?
+      end
+
+      # 4. Direct role assignment on this show
+      return true if ShowPersonRoleAssignment.where(show: show, assignable_type: "Person", assignable_id: people_ids).exists?
+      return true if group_ids.present? && ShowPersonRoleAssignment.where(show: show, assignable_type: "Group", assignable_id: group_ids).exists?
+
+      # 5. Open vacancy for this show
+      return true if RoleVacancy.where(show: show, vacated_by_type: "Person", vacated_by_id: people_ids)
+                                .where.not(status: %w[filled cancelled]).exists?
+
+      # 6. Sign-up registration for this show
+      return true if SignUpRegistration.joins(sign_up_slot: :sign_up_form_instance)
+                                       .where(sign_up_form_instances: { show_id: show.id })
+                                       .where(person_id: people_ids)
+                                       .where.not(status: "cancelled").exists?
+
+      return true if SignUpRegistration.joins(:sign_up_form_instance)
+                                       .where(sign_up_form_instances: { show_id: show.id })
+                                       .where(person_id: people_ids)
+                                       .where.not(status: "cancelled").exists?
+
+      false
+    end
+
+    def show_not_found
+      redirect_to my_shows_path, alert: "Show not found or you don't have access to it."
     end
   end
 end

@@ -69,6 +69,12 @@
               <%= link_to manage_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Home
               <% end %>
+              <%= link_to manage_messages_path, class: "flex items-center px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
+                Messages
+                <% if Current.user&.unread_message_count&.> 0 %>
+                  <span class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full"><%= Current.user.unread_message_count > 99 ? "99+" : Current.user.unread_message_count %></span>
+                <% end %>
+              <% end %>
               <%= link_to manage_shows_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Shows
               <% end %>
@@ -80,9 +86,6 @@
               Sign-ups
             <% end %>
             <% if has_team_access %>
-              <%= link_to manage_communications_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
-                Communications
-              <% end %>
               <%= link_to manage_money_index_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Money
               <% end %>

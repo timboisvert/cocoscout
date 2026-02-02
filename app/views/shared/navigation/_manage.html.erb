@@ -22,6 +22,11 @@
               active: controller_name == "manage" && action_name == "index"
             },
             {
+              label: "Messages",
+              path: manage_messages_path,
+              active: controller_name == "messages"
+            },
+            {
               label: "Shows & Events",
               path: manage_shows_path,
               active: ["shows", "org_shows", "vacancies", "show_wizard"].include?(controller_name)
@@ -35,11 +40,6 @@
               label: "Sign-ups",
               path: manage_signups_path,
               active: ["signups", "org_signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions", "sign_up_form_wizard", "audition_cycle_wizard", "org_auditions", "org_forms"].include?(controller_name)
-            },
-            {
-              label: "Communications",
-              path: manage_communications_path,
-              active: ["communications", "org_communications", "questionnaires", "org_questionnaires"].include?(controller_name)
             },
             {
               label: "Money",
@@ -70,7 +70,17 @@
         %>
 
         <% links.each do |item| %>
-          <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active], badge: item[:badge] %>
+          <% if item[:label] == "Messages" %>
+            <div class="relative">
+              <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active] %>
+              <% unread_count = Current.user&.unread_message_count.to_i %>
+              <% if unread_count > 0 %>
+                <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full" data-unread-badge><%= unread_count > 99 ? "99+" : unread_count %></span>
+              <% end %>
+            </div>
+          <% else %>
+            <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active], badge: item[:badge] %>
+          <% end %>
         <% end %>
 
       <% end %>

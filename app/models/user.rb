@@ -22,17 +22,24 @@ class User < ApplicationRecord
   has_many :audition_request_votes, dependent: :destroy
   has_many :audition_votes, dependent: :destroy
 
-  # Messaging - messages addressed to any of user's People or Groups
-  def received_messages
-    Message.for_user(self)
-  end
+  # Message subscriptions - threads the user is subscribed to
+  has_many :message_subscriptions, dependent: :destroy
+  has_many :subscribed_threads, through: :message_subscriptions, source: :message
 
-  def unread_messages
-    received_messages.unread.active
+  # Messaging - messages addressed to any of user's People
+  def received_messages
+    person_ids = people.pluck(:id)
+    Message.joins(:message_recipients).where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
   end
 
   def unread_message_count
-    unread_messages.count
+    # Count threads with unread messages (subscription-based)
+    message_subscriptions.active.count { |sub| sub.unread? }
+  end
+
+  # Get root messages for threads user is subscribed to
+  def subscribed_message_threads
+    Message.where(id: message_subscriptions.active.pluck(:message_id))
   end
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
@@ -314,19 +321,6 @@ class User < ApplicationRecord
   # Check if invitation token is still valid
   def invitation_token_valid?
     invitation_token.present?
-  end
-
-  # Messaging - messages addressed to any of user's People or Groups
-  def received_messages
-    Message.for_user(self)
-  end
-
-  def unread_messages
-    received_messages.unread.active
-  end
-
-  def unread_message_count
-    unread_messages.count
   end
 
   private

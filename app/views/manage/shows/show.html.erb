@@ -218,7 +218,7 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Casting" do %>
             <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
-            <%= render "shared/button", text: "Contact Cast", path: manage_casting_show_contact_path(@production, @show), variant: "primary", size: "small" %>
+            <%= render "shared/button", text: "Contact Cast", path: manage_casting_show_contact_path(@production, @show), variant: "primary", size: "small", data: { turbo_frame: "cast_contact_modal" } %>
           <% end %>
           <div class="p-4">
             <%
@@ -670,3 +670,6 @@
 
 <%# Turbo frame for recurring series modal %>
 <%= turbo_frame_tag "recurring_series_modal" %>
+
+<%# Turbo frame for cast contact modal %>
+<%= turbo_frame_tag "cast_contact_modal" %>

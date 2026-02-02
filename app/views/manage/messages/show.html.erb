@@ -1,0 +1,122 @@
+<% content_for :title, @message.subject || "Message" %>
+
+<%
+  # Style options (use the same style system as index)
+  comment_style = (params[:comment_style] || 'inline').to_sym
+  comment_style = :inline unless [:inline, :collapsed, :modal].include?(comment_style)
+
+  thread_style = (params[:thread_style] || 'nested').to_sym
+  thread_style = :nested unless [:flat, :nested, :sidebar].include?(thread_style)
+
+  image_style = (params[:image_style] || 'lightbox').to_sym
+  image_style = :lightbox unless [:grid, :carousel, :lightbox, :masonry].include?(image_style)
+
+  # Get message data
+  sender_person = @message.sender.is_a?(Person) ? @message.sender : @message.sender&.person
+  production_context = @message.production
+  recipient_count = @message.recipient_count
+
+  # Get all replies in the thread
+  all_replies = @message.child_messages.includes(:sender, :child_messages).order(created_at: :asc)
+
+  # Check if we came from a production-scoped page
+  from_production_id = params[:from_production]
+  from_production = from_production_id ? Production.find_by(id: from_production_id) : nil
+  show_production_header = from_production.present?
+  hide_via_links = from_production.present?
+%>
+
+<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <% if show_production_header && from_production %>
+    <%# Production Header when coming from production messages page %>
+    <div class="bg-white border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 mb-6">
+      <div class="flex items-center gap-4">
+        <%# Back link to production messages %>
+        <%= link_to production_manage_messages_path(from_production), class: "text-gray-400 hover:text-gray-600 transition-colors" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        <% end %>
+
+        <%# Production Logo %>
+        <% logo_variant = from_production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <%= image_tag logo_variant, alt: from_production.name, class: "w-14 h-14 rounded-lg object-cover shadow-sm border border-gray-200" %>
+        <% else %>
+          <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center border border-pink-200">
+            <span class="text-xl font-bold text-pink-600"><%= from_production.initials %></span>
+          </div>
+        <% end %>
+
+        <%# Production Name & Context %>
+        <div class="flex-1 min-w-0">
+          <h1 class="text-xl font-bold text-gray-900 truncate coustard-regular"><%= from_production.name %></h1>
+          <p class="text-sm text-gray-500"><%= @message.subject.truncate(50) %></p>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [
+        ["Messages", manage_messages_path]
+      ],
+      text: @message.subject || "Message Thread",
+      links: []
+    } %>
+  <% end %>
+
+  <div class="mt-4">
+    <%# Main Message Card %>
+    <%= render "shared/messages/message_card",
+        message: @message,
+        context: :show,
+        production_context: production_context,
+        hide_production_via: hide_via_links %>
+
+    <%# Replies Section - Nested Tree View %>
+    <div class="mt-6">
+      <% if all_replies.any? %>
+        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
+          Replies
+        </h3>
+      <% end %>
+
+      <div class="space-y-4" data-message-thread-target="replies">
+        <%= render partial: "shared/messages/nested_reply", collection: all_replies, as: :reply, locals: { depth: 0 } %>
+      </div>
+    </div>
+
+    <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
+    <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <div class="flex gap-3">
+        <% current_person = Current.user&.person %>
+        <% if current_person %>
+          <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+              <%= current_person.initials %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0"></div>
+        <% end %>
+
+        <div class="flex-1">
+          <%= form_with url: reply_manage_message_path(@root_message), method: :post, class: "space-y-3", data: { turbo: false } do |f| %>
+            <%= f.rich_text_area :body, class: "w-full min-h-[80px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
+            <div class="flex justify-end gap-2">
+              <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">
+                Cancel
+              </button>
+              <%= render "shared/button", text: "Post Comment", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

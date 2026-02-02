@@ -1,0 +1,191 @@
+<%#
+  Thread Display Component
+
+  Styles (style):
+    :flat    - All replies at same level, chronological (like Facebook default)
+    :nested  - Replies indented under parent, tree view (like Reddit)
+    :sidebar - Compact list that expands to sidebar (like Slack)
+%>
+
+<% style = local_assigns.fetch(:style, :flat) %>
+
+<% if style == :flat %>
+  <%# === STYLE A: Flat - Simple chronological list === %>
+  <div class="space-y-3">
+    <% replies.each do |reply| %>
+      <% sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
+      <div class="flex gap-3">
+        <% if sender_person %>
+          <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
+              <%= sender_person.initials %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-gray-200 flex-shrink-0"></div>
+        <% end %>
+
+        <div class="flex-1 min-w-0">
+          <div class="bg-gray-100 rounded-2xl px-4 py-2">
+            <span class="font-semibold text-sm text-gray-900"><%= reply.sender_name %></span>
+            <div class="text-sm text-gray-800">
+              <%= reply.body %>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 mt-1 px-2 text-xs text-gray-500">
+            <span><%= time_ago_in_words(reply.created_at) %></span>
+            <button class="font-medium hover:underline">Like</button>
+            <button class="font-medium hover:underline">Reply</button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+<% elsif style == :nested %>
+  <%# === STYLE B: Nested - Indented tree view like Reddit === %>
+  <div class="space-y-3">
+    <% replies.each do |reply| %>
+      <% sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
+      <div class="relative">
+        <%# Main comment %>
+        <div class="flex gap-3">
+          <% if sender_person %>
+            <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
+                <%= sender_person.initials %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="w-8 h-8 rounded-lg bg-gray-200 flex-shrink-0"></div>
+          <% end %>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-2">
+              <span class="font-semibold text-sm text-gray-900"><%= reply.sender_name %></span>
+              <span class="text-xs text-gray-400"><%= time_ago_in_words(reply.created_at) %></span>
+            </div>
+            <div class="text-sm text-gray-800 mt-0.5">
+              <%= reply.body %>
+            </div>
+            <div class="flex items-center gap-3 mt-1 text-xs">
+              <button class="text-gray-500 hover:text-gray-700 font-medium">Reply</button>
+              <button class="text-gray-500 hover:text-gray-700 font-medium">Like</button>
+            </div>
+
+            <%# Nested replies (if any) %>
+            <% nested_replies = reply.child_messages.includes(:sender).order(created_at: :asc).limit(3) %>
+            <% if nested_replies.any? %>
+              <div class="mt-3 pl-4 border-l-2 border-gray-200 space-y-3">
+                <% nested_replies.each do |nested| %>
+                  <% nested_person = nested.sender.is_a?(Person) ? nested.sender : nested.sender&.person %>
+                  <div class="flex gap-2">
+                    <% if nested_person %>
+                      <% nested_headshot = nested_person.safe_headshot_variant(:thumb) %>
+                      <% if nested_headshot %>
+                        <%= image_tag nested_headshot, alt: nested_person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] flex-shrink-0">
+                          <%= nested_person.initials %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded-lg bg-gray-200 flex-shrink-0"></div>
+                    <% end %>
+
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-baseline gap-2">
+                        <span class="font-semibold text-xs text-gray-900"><%= nested.sender_name %></span>
+                        <span class="text-[10px] text-gray-400"><%= time_ago_in_words(nested.created_at) %></span>
+                      </div>
+                      <div class="text-xs text-gray-800">
+                        <%= nested.body %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+
+                <% remaining = reply.child_messages.count - 3 %>
+                <% if remaining > 0 %>
+                  <button class="text-xs text-pink-600 hover:underline font-medium pl-8">
+                    View <%= remaining %> more <%= remaining == 1 ? 'reply' : 'replies' %>
+                  </button>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+<% elsif style == :sidebar %>
+  <%# === STYLE C: Sidebar - Compact with expand (like Slack) === %>
+  <div class="divide-y divide-gray-200">
+    <% replies.each do |reply| %>
+      <% sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
+      <div class="py-2 flex gap-2 hover:bg-gray-100 px-2 -mx-2 rounded" x-data="{ expanded: false }">
+        <% if sender_person %>
+          <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: sender_person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] flex-shrink-0">
+              <%= sender_person.initials %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="w-6 h-6 rounded-lg bg-gray-200 flex-shrink-0"></div>
+        <% end %>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-sm text-gray-900"><%= reply.sender_name %></span>
+            <span class="text-xs text-gray-400"><%= reply.created_at.strftime("%-I:%M %p") %></span>
+          </div>
+
+          <%# Truncated preview or full content %>
+          <div
+            class="text-sm text-gray-700 mt-0.5"
+            :class="expanded ? '' : 'line-clamp-2'">
+            <%= reply.body %>
+          </div>
+
+          <% if reply.body.to_plain_text.length > 100 %>
+            <button
+              @click="expanded = !expanded"
+              class="text-xs text-pink-600 hover:underline mt-1"
+              x-text="expanded ? 'Show less' : 'Show more'">
+            </button>
+          <% end %>
+
+          <%# Nested replies indicator %>
+          <% nested_count = reply.child_messages.count %>
+          <% if nested_count > 0 %>
+            <button class="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+              </svg>
+              <%= nested_count %> <%= nested_count == 1 ? 'reply' : 'replies' %>
+            </button>
+          <% end %>
+        </div>
+
+        <%# Quick actions on hover %>
+        <div class="flex items-start gap-1 opacity-0 group-hover:opacity-100">
+          <button class="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600" title="Reply">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

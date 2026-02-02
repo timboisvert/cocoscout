@@ -6,15 +6,7 @@ module Manage
                   only: %i[show update update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
 
     def show
-      # Load email logs for this group (paginated, with search)
-      # Scope to current organization to exclude system emails and cross-org emails
-      email_logs_query = EmailLog.for_recipient_entity(@group).for_organization(Current.organization).recent
-      if params[:search_messages].present?
-        search_term = "%#{params[:search_messages]}%"
-        email_logs_query = email_logs_query.where("subject LIKE ? OR body LIKE ?", search_term, search_term)
-      end
-      @email_logs_pagy, @email_logs = pagy(email_logs_query, limit: 10, page_param: :messages_page, page: params[:messages_page])
-      @search_messages_query = params[:search_messages]
+      # Group detail view
     end
 
     def update_availability

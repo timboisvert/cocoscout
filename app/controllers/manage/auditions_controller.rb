@@ -2,17 +2,47 @@
 
 module Manage
   class AuditionsController < Manage::ManageController
-    before_action :set_production, except: %i[add_to_session remove_from_session move_to_session]
-    before_action :check_production_access, except: %i[add_to_session remove_from_session move_to_session]
+    before_action :set_production, except: %i[org_index add_to_session remove_from_session move_to_session]
+    before_action :check_production_access, except: %i[org_index add_to_session remove_from_session move_to_session]
     before_action :set_audition_cycle,
-                  except: %i[index archive schedule_auditions add_to_session remove_from_session move_to_session]
+                  except: %i[org_index index archive schedule_auditions add_to_session remove_from_session move_to_session]
     before_action :set_audition, only: %i[show edit update destroy cast_audition_vote]
     before_action :ensure_user_is_manager,
-                  except: %i[index archive show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
+                  except: %i[org_index index archive show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
     before_action :ensure_user_has_role, only: %i[prepare publicize]
     before_action :ensure_audition_cycle_active, only: %i[cast_audition_vote]
 
-    # GET /auditions
+    # GET /casting/auditions (org-wide)
+    def org_index
+      @filter = params[:filter] # 'in_person' or 'video'
+
+      # Get all in-house productions for the organization (exclude third-party)
+      @productions = Current.organization.productions.type_in_house.includes(:audition_cycles).order(:name)
+
+      # Get all active audition cycles across all productions
+      @all_active_cycles = AuditionCycle.where(production: @productions, active: true)
+                                         .includes(:production, :audition_requests, :audition_sessions)
+                                         .order(created_at: :desc)
+
+      # Get all archived audition cycles
+      @all_archived_cycles = AuditionCycle.where(production: @productions, active: false)
+                                           .includes(:production)
+                                           .order(created_at: :desc)
+
+      # Apply filter if provided
+      if @filter == "in_person"
+        @cycles = @all_active_cycles.where(allow_in_person_auditions: true)
+        @archived_cycles = @all_archived_cycles.where(allow_in_person_auditions: true)
+      elsif @filter == "video"
+        @cycles = @all_active_cycles.where(allow_video_submissions: true, allow_in_person_auditions: false)
+        @archived_cycles = @all_archived_cycles.where(allow_video_submissions: true, allow_in_person_auditions: false)
+      else
+        @cycles = @all_active_cycles
+        @archived_cycles = @all_archived_cycles
+      end
+    end
+
+    # GET /auditions (production-level)
     def index
       @active_audition_cycle = @production.active_audition_cycle
       @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc).limit(3)

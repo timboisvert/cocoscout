@@ -1,315 +1,269 @@
-# frozen_string_literal: true
+class My::MessagesController < ApplicationController
+  before_action :require_authentication
+  before_action :set_sidebar
+  before_action :track_inbox_visit, only: [ :index, :show, :production ]
+  rescue_from ActiveRecord::RecordNotFound, with: :message_not_found
 
-module My
-  class MessagesController < ApplicationController
-    before_action :require_authentication
-    before_action :load_forum_data
+  def index
+    @show_my_sidebar = true
 
-    def index
-      @show_my_sidebar = true
-      @filter = params[:filter] || "all"
+    # Filter params
+    @filter = params[:filter] || "all"
+    @search = params[:q].to_s.strip
+    @production_filter = params[:production_id]
+    @order = params[:order] || "newest"
 
-      # Auto-select if only one forum
-      if @sidebar_items.length == 1
-        item = @sidebar_items.first
-        if item[:type] == :organization
-          @selected_organization = item[:object]
-        else
-          @selected_production = item[:object]
-        end
-      elsif params[:organization_id].present?
-        @selected_organization = @my_organizations.find { |o| o.id == params[:organization_id].to_i }
-      elsif params[:production_id].present?
-        @selected_production = @sidebar_productions.find { |p| p.id == params[:production_id].to_i }
-      elsif @sidebar_items.any?
-        # Default to first item
-        item = @sidebar_items.first
-        if item[:type] == :organization
-          @selected_organization = item[:object]
-        else
-          @selected_production = item[:object]
-        end
-      end
+    # Base query - show root messages for threads user is subscribed to
+    @messages = Current.user.subscribed_message_threads
+                           .includes(:sender, :message_recipients, :child_messages, :production, :show, images_attachments: :blob)
 
-      # Load posts based on selection
-      if @selected_organization
-        org_productions = @all_productions.select { |p| p.organization_id == @selected_organization.id }
-        posts_query = Post.where(production: org_productions)
-                          .top_level
-                          .includes(:author, :replies, :production, :rich_text_body)
-                          .recent_first
-        @posting_production = org_productions.first
-      elsif @selected_production
-        posts_query = Post.where(production: @selected_production)
-                          .top_level
-                          .includes(:author, :replies, :rich_text_body)
-                          .recent_first
-        @posting_production = @selected_production
-      else
-        posts_query = Post.none
-      end
-
-      # Apply filter
-      if @filter == "unread" && posts_query.present?
-        posts_query = posts_query.unviewed_by(Current.user)
-      end
-
-      @posts = posts_query.limit(50)
-
-      # Mark posts as viewed when viewing "all"
-      if @filter == "all" && @posts.any?
-        @posts.each { |post| post.mark_viewed_by(Current.user) }
-      end
-
-      # Count unviewed posts for badge display
-      @unviewed_counts = Post.where(production: @all_productions)
-                             .top_level
-                             .unviewed_by(Current.user)
-                             .group(:production_id)
-                             .count
-
-      # Calculate total unread for current selection
-      if @selected_organization
-        org_production_ids = @all_productions.select { |p| p.organization_id == @selected_organization.id }.map(&:id)
-        @current_unread_count = org_production_ids.sum { |id| @unviewed_counts[id] || 0 }
-      elsif @selected_production
-        @current_unread_count = @unviewed_counts[@selected_production.id] || 0
-      else
-        @current_unread_count = 0
-      end
-
-      respond_to do |format|
-        format.html
-        format.turbo_stream
-      end
+    # Apply filters
+    case @filter
+    when "unread"
+      unread_thread_ids = Current.user.message_subscriptions.unread.pluck(:message_id)
+      @messages = @messages.where(id: unread_thread_ids)
     end
 
-    def reply_form
-      parent_post = Post.find(params[:parent_id])
-      @production = parent_post.production
-
-      unless @all_productions.include?(@production)
-        head :not_found
-        return
-      end
-
-      @parent_id = parent_post.id
-      render layout: false
+    # Filter by production
+    if @production_filter.present?
+      @messages = @messages.where(production_id: @production_filter)
     end
 
-    def create
-      @show_my_sidebar = true
-
-      # Determine the production to post to
-      production_id = params[:production_id]
-      production = Production.find_by(id: production_id)
-
-      unless production && @all_productions.include?(production)
-        redirect_to my_messages_path, alert: "Production not found."
-        return
-      end
-
-      @post = Post.new(post_params)
-      @post.production = production
-      @post.author = Current.user.person
-
-      # Handle replies
-      if params[:parent_id].present?
-        parent_post = Post.find_by(id: params[:parent_id])
-        if parent_post && parent_post.production_id == production.id
-          @post.parent = parent_post
-        end
-      end
-
-      if @post.save
-        # Determine where to redirect based on forum mode
-        org = production.organization
-        if org.forum_shared?
-          redirect_path = my_messages_path(organization_id: org.id)
-        else
-          redirect_path = my_messages_path(production_id: production.id)
-        end
-
-        respond_to do |format|
-          format.turbo_stream {
-            if @post.reply?
-              # For replies: append the new reply and clear the form
-              parent_id = @post.parent_id
-              parent = Post.find(parent_id)
-              render turbo_stream: [
-                turbo_stream.replace("replies-for-#{parent_id}",
-                  partial: "my/messages/replies_section",
-                  locals: { parent: parent }),
-                turbo_stream.update("reply-form-#{parent_id}", "")
-              ]
-            else
-              # For top-level posts, prepend to the posts list
-              render turbo_stream: [
-                turbo_stream.prepend("posts-list", partial: "my/messages/post", locals: { post: @post }),
-                turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production })
-              ]
-            end
-          }
-          format.html { redirect_to redirect_path }
-        end
-      else
-        # Use params[:parent_id] to determine if this was a reply, since @post.parent_id
-        # may not be set if parent validation failed
-        parent_id = params[:parent_id]
-        respond_to do |format|
-          format.turbo_stream {
-            if parent_id.present?
-              # For reply errors, re-render the form with errors
-              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}",
-                partial: "my/messages/reply_form",
-                formats: [ :html ],
-                locals: { production: production, post: @post, parent_id: parent_id })
-            else
-              # For top-level post errors, show error in the main form
-              render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })
-            end
-          }
-          format.html { redirect_to my_messages_path, alert: "Failed to create post." }
-        end
-      end
+    # Search filter (body is in action_text_rich_texts table)
+    if @search.present?
+      @messages = @messages
+        .left_joins(:rich_text_body)
+        .where("messages.subject ILIKE :q OR action_text_rich_texts.body ILIKE :q", q: "%#{@search}%")
     end
 
-    def emails
-      @show_my_sidebar = true
-      person = Current.user.person
-      return redirect_to my_dashboard_path, alert: "No profile found." unless person
+    # Apply ordering
+    @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
+    @pagy, @messages = pagy(@messages, items: 25)
+    @unread_count = Current.user.unread_message_count
 
-      # Load productions for the modal
-      @my_productions = person.talent_pool_productions
-                              .includes(:organization, logo_attachment: :blob)
-                              .order(:name)
+    # For production dropdown
+    @user_productions = Current.user.subscribed_message_threads.where.not(production_id: nil).distinct.pluck(:production_id)
+    @user_productions = Production.where(id: @user_productions).order(:name)
 
-      # Get emails sent to this person (across all organizations)
-      email_logs_query = EmailLog.for_recipient_entity(person).recent
+    # For "Contact Production Team" card - get productions user is in talent pool for
+    @contactable_productions = productions_user_can_contact
+  end
 
-      if params[:search].present?
-        search_term = "%#{params[:search]}%"
-        email_logs_query = email_logs_query.where("subject ILIKE ?", search_term)
-      end
+  # GET /my/messages/production/:production_id
+  def production
+    @show_my_sidebar = true
+    @production = Production.find(params[:production_id])
 
-      @email_logs_pagy, @email_logs = pagy(email_logs_query.includes(:production), limit: 20)
-      @search_query = params[:search]
+    # Get messages for this production that user is subscribed to
+    @messages = Current.user.subscribed_message_threads
+                           .where(production: @production)
+                           .includes(:sender, :message_recipients, :child_messages, :show, images_attachments: :blob)
+                           .order(updated_at: :desc)
 
-      # For the send message modal - create empty email draft
-      @email_draft = EmailDraft.new
+    @pagy, @messages = pagy(@messages, items: 25)
+    @hide_production_via = true  # Don't show "via" since we're already filtered by production
+  end
+
+  def show
+    @show_my_sidebar = true
+    @message = Message.find(params[:id])
+    @root_message = @message.root_message
+
+    # Ensure user has access (subscribed to thread)
+    unless @root_message.subscribed?(Current.user)
+      redirect_to my_messages_path, alert: "You don't have access to this message"
+      return
     end
 
-    def show
-      @show_my_sidebar = true
-      person = Current.user.person
-      return redirect_to my_dashboard_path, alert: "No profile found." unless person
+    # Mark thread as read for this user
+    subscription = @root_message.message_subscriptions.find_by(user: Current.user)
+    subscription&.mark_read!
 
-      @email_log = EmailLog.for_recipient_entity(person).find_by(id: params[:id])
-
-      unless @email_log
-        redirect_to my_messages_path, alert: "Message not found."
-      end
+    # Also mark as read for the user's person if they're a recipient
+    if Current.user.person
+      @root_message.mark_read_for!(Current.user.person)
     end
 
-    def send_message
-      production_id = params[:production_id]
-      @email_draft = EmailDraft.new(email_draft_params)
-      subject = @email_draft.title
-      body_html = @email_draft.body.to_s
+    # Load all messages in thread (root + descendants)
+    @thread_messages = Message.where(id: [ @root_message.id ] + @root_message.descendant_ids)
+                              .includes(:sender, :message_recipients)
+                              .order(:created_at)
+  end
 
-      production = Production.find_by(id: production_id)
+  def archive
+    @message = Message.find(params[:id])
+    @root_message = @message.root_message
 
-      # Prepare variables for the template
-      template_vars = {
-        sender_name: Current.user.person.name,
-        sender_email: Current.user.person.email,
-        production_name: production&.name,
-        body_html: body_html,
-        subject: subject
-      }
-
-      # Render subject and body using the passthrough template
-      rendered_subject = EmailTemplateService.render_subject("talent_pool_message", template_vars)
-      rendered_body = EmailTemplateService.render_body("talent_pool_message", template_vars)
-
-      if production_id.blank?
-        redirect_back fallback_location: my_messages_emails_path, alert: "Please select a production to contact."
-        return
-      end
-
-      unless production
-        redirect_back fallback_location: my_messages_emails_path, alert: "Production not found."
-        return
-      end
-
-      # Verify the user is in the talent pool of this production
-      unless Current.user.person.in_talent_pool_for?(production)
-        redirect_back fallback_location: my_messages_emails_path, alert: "You are not a member of this production's talent pool."
-        return
-      end
-
-      # Send to production email address
-      production_email = production.contact_email
-      if production_email.blank?
-        redirect_back fallback_location: my_messages_emails_path, alert: "This production does not have a contact email address configured."
-        return
-      end
-
-
-      # Send the email to the production
-      My::TalentMessageMailer.send_to_production(
-        sender: Current.user.person,
-        production: production,
-        subject: rendered_subject,
-        body_html: rendered_body
-      ).deliver_later
-
-      redirect_back fallback_location: my_production_path(production, tab: 2),
-                    notice: "Message sent to #{production.name} team."
+    # Archive for this user's person
+    if Current.user.person
+      @root_message.archive_for!(Current.user.person)
     end
 
-    private
+    respond_to do |format|
+      format.html { redirect_to my_messages_path, notice: "Message archived" }
+      format.turbo_stream
+    end
+  end
 
-    def load_forum_data
-      return redirect_to my_dashboard_path, alert: "No profile found." unless Current.user.person
+  def mark_all_read
+    Current.user.message_subscriptions.active.each(&:mark_read!)
+    redirect_to my_messages_path, notice: "All messages marked as read"
+  end
 
-      # Get all productions the user is in the talent pool of
-      @all_productions = Current.user.person.talent_pool_productions
-                                      .where(forum_enabled: true)
-                                      .includes(:organization, logo_attachment: :blob)
-                                      .order(:name)
+  def mute
+    @message = Message.find(params[:id])
+    @root_message = @message.root_message
 
-      # Group by organization and determine what to show in sidebar
-      @sidebar_productions = []
-      @my_organizations = []
-      @sidebar_items = []
+    subscription = @root_message.message_subscriptions.find_by(user: Current.user)
+    subscription&.mute!
 
-      productions_by_org = @all_productions.group_by(&:organization)
+    redirect_to my_messages_path, notice: "Thread muted"
+  end
 
-      productions_by_org.each do |org, productions|
-        if org.forum_shared?
-          # Shared mode: show organization in sidebar (not individual productions)
-          @my_organizations << org
-          @sidebar_items << { type: :organization, object: org, name: org.name }
-        else
-          # Per-production mode: show individual productions
-          productions.each do |production|
-            @sidebar_productions << production
-            @sidebar_items << { type: :production, object: production, name: production.name }
-          end
-        end
+  def unmute
+    @message = Message.find(params[:id])
+    @root_message = @message.root_message
+
+    subscription = @root_message.message_subscriptions.find_by(user: Current.user)
+    subscription&.unmute!
+
+    redirect_to my_messages_path, notice: "Thread unmuted"
+  end
+
+  # POST /my/messages/:id/reply
+  def reply
+    # Find the parent message - user needs to be subscribed to the ROOT message
+    parent_message_id = params[:parent_message_id] || params[:id]
+    parent = Message.find(parent_message_id)
+
+    # Find root message
+    root_message = parent.root_message
+
+    # Ensure user is subscribed to the thread
+    unless root_message.subscribed?(Current.user)
+      redirect_to my_messages_path, alert: "You don't have access to this thread"
+      return
+    end
+
+    message = MessageService.reply(
+      sender: Current.user,
+      parent_message: parent,
+      body: params[:body]
+    )
+
+    respond_to do |format|
+      format.html { redirect_to my_message_path(root_message), notice: "Reply sent" }
+    end
+  end
+
+  # POST /my/messages/:id/react/:emoji
+  def react
+    message = Message.find(params[:id])
+    emoji = params[:emoji]
+
+    # Validate emoji is in allowed list
+    unless MessageReaction::REACTIONS.include?(emoji)
+      head :unprocessable_entity
+      return
+    end
+
+    added = message.toggle_reaction!(Current.user, emoji)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "reactions_#{message.id}",
+          partial: "shared/messages/reactions",
+          locals: { message: message }
+        )
       end
+      format.html { redirect_back fallback_location: my_message_path(message.root_message) }
+    end
+  end
 
-      @my_organizations.uniq!
-      @sidebar_items.sort_by! { |item| item[:name].downcase }
+  # DELETE /my/messages/:id
+  def destroy
+    message = Message.find_by(id: params[:id])
+
+    if message.nil?
+      redirect_to my_messages_path, alert: "Message not found"
+      return
     end
 
-    def post_params
-      params.require(:post).permit(:body)
+    unless message.can_be_deleted_by?(Current.user)
+      redirect_back fallback_location: my_messages_path, alert: "You can only delete your own messages"
+      return
     end
 
-    def email_draft_params
-      params.require(:email_draft).permit(:title, :body)
+    root = message.root_message
+    is_root = message.parent_message_id.nil?
+
+    message.smart_delete!
+
+    if is_root
+      redirect_to my_messages_path, notice: "Message deleted"
+    else
+      redirect_to my_message_path(root), notice: "Reply deleted"
     end
+  end
+
+  private
+
+  def set_sidebar
+    @show_my_sidebar = true
+  end
+
+  def track_inbox_visit
+    Current.user.touch(:last_inbox_visit_at)
+  end
+
+  def message_not_found
+    redirect_to my_messages_path, alert: "Message not found"
+  end
+
+  # Get productions where user is in the talent pool (can contact the team)
+  def productions_user_can_contact
+    return [] unless Current.user.person
+
+    people_ids = Current.user.people.active.pluck(:id)
+    return [] if people_ids.empty?
+
+    # Get groups user is a member of
+    group_ids = GroupMembership.where(person_id: people_ids).pluck(:group_id)
+
+    production_ids = Set.new
+
+    # Productions via person's direct talent pool memberships
+    person_production_ids = TalentPoolMembership
+      .where(member_type: "Person", member_id: people_ids)
+      .joins(:talent_pool)
+      .pluck("talent_pools.production_id")
+    production_ids.merge(person_production_ids)
+
+    # Productions via shared talent pools
+    if people_ids.any?
+      shared_person_production_ids = Production
+        .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
+        .where(talent_pool_memberships: { member_type: "Person", member_id: people_ids })
+        .pluck(:id)
+      production_ids.merge(shared_person_production_ids)
+    end
+
+    # Productions via group's talent pool memberships
+    if group_ids.any?
+      group_production_ids = TalentPoolMembership
+        .where(member_type: "Group", member_id: group_ids)
+        .joins(:talent_pool)
+        .pluck("talent_pools.production_id")
+      production_ids.merge(group_production_ids)
+
+      shared_group_production_ids = Production
+        .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
+        .where(talent_pool_memberships: { member_type: "Group", member_id: group_ids })
+        .pluck(:id)
+      production_ids.merge(shared_group_production_ids)
+    end
+
+    Production.where(id: production_ids).order(:name)
   end
 end

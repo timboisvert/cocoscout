@@ -19,6 +19,11 @@ development:
     database: cocoscout_development
     host: localhost
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *postgres_default
+    database: cocoscout_development
+    host: localhost
+    migrations_paths: db/cable_migrate
 
 test:
   primary:
@@ -35,6 +40,11 @@ test:
     database: cocoscout_test
     host: localhost
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *postgres_default
+    database: cocoscout_test
+    host: localhost
+    migrations_paths: db/cable_migrate
 
 production:
   primary:
@@ -51,3 +61,7 @@ production:
     <<: *postgres_default
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *postgres_default
+    url: <%= ENV["DATABASE_URL"] %>
+    migrations_paths: db/cable_migrate

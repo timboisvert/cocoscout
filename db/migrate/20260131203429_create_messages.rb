@@ -39,11 +39,11 @@ class CreateMessages < ActiveRecord::Migration[8.1]
     add_foreign_key :messages, :messages, column: :parent_id
 
     # Add indexes separately to avoid conflicts
-    add_index :messages, [:recipient_type, :recipient_id, :read_at], name: "idx_messages_recipient_read"
-    add_index :messages, [:recipient_type, :recipient_id, :created_at], name: "idx_messages_recipient_created"
-    add_index :messages, [:regarding_type, :regarding_id], name: "idx_messages_regarding"
+    add_index :messages, [ :recipient_type, :recipient_id, :read_at ], name: "idx_messages_recipient_read"
+    add_index :messages, [ :recipient_type, :recipient_id, :created_at ], name: "idx_messages_recipient_created"
+    add_index :messages, [ :regarding_type, :regarding_id ], name: "idx_messages_regarding"
     add_index :messages, :parent_id, name: "idx_messages_parent"
     add_index :messages, :message_batch_id, name: "idx_messages_batch"
-    add_index :messages, [:sender_type, :sender_id], name: "idx_messages_sender"
+    add_index :messages, [ :sender_type, :sender_id ], name: "idx_messages_sender"
   end
 end

@@ -1,0 +1,38 @@
+<%#
+  Regarding Card Component
+
+  Renders a contextual card for what the message is about.
+
+  - Production: shown as "via [Production]" in the message header (not here)
+  - Show: shown as a show_row card (only if user has access)
+%>
+
+<% if regardable.is_a?(Show) %>
+  <%
+    # Use the correct path based on controller context
+    is_manage_context = controller.class.name.start_with?("Manage::")
+    production = regardable.production
+
+    # Check if user has access to this show via org role or production permission
+    org_role = Current.user&.organization_roles&.find_by(organization_id: production.organization_id)
+    prod_permission = Current.user&.production_permissions&.find_by(production_id: production.id)
+    has_manager_access = org_role&.company_role.in?(%w[manager viewer]) || prod_permission&.role.in?(%w[manager viewer])
+
+    # For cast, check talent pool/assignments (simplified check)
+    people_ids = Current.user&.people&.active&.pluck(:id) || []
+    has_cast_access = people_ids.present? && (
+      ShowPersonRoleAssignment.where(show: regardable, assignable_type: "Person", assignable_id: people_ids).exists? ||
+      (production.effective_talent_pool && TalentPoolMembership.where(talent_pool: production.effective_talent_pool, member_type: "Person", member_id: people_ids).exists?)
+    )
+
+    has_access = has_manager_access || has_cast_access
+  %>
+  <% if has_access %>
+    <% show_link_path = is_manage_context ? manage_show_path(regardable.production, regardable) : my_show_path(regardable) %>
+    <%= render "shared/show_row",
+        show: regardable,
+        link_path: show_link_path,
+        show_production: true,
+        show_location: true %>
+  <% end %>
+<% end %>

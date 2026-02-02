@@ -64,8 +64,9 @@ class Person < ApplicationRecord
   # Rich text for producer notes about this person
   has_rich_text :producer_notes
 
-  # Messages addressed to this person
-  has_many :received_messages, as: :recipient, class_name: "Message", dependent: :destroy
+  # Messages addressed to this person (via MessageRecipient)
+  has_many :message_recipients, as: :recipient, dependent: :destroy
+  has_many :received_messages, through: :message_recipients, source: :message
   has_many :sent_messages, as: :sender, class_name: "Message", dependent: :nullify
 
   # Accept nested attributes for profile system

@@ -8,7 +8,9 @@
       ["Casting", manage_casting_path]
     ],
     text: @production.name,
-    links: []
+    links: [
+      { text: "Questionnaires", path: manage_casting_questionnaires_path(@production), icon: "clipboard-list" }
+    ]
   } %>
 
   <div class="pt-4 mt-2" data-controller="casting-filter">

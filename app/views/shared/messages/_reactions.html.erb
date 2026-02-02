@@ -1,0 +1,58 @@
+<%#
+  Reactions display and picker for a message
+  Shows existing reactions with counts and a button to add more
+%>
+
+<%
+  reaction_counts = message.reaction_counts
+  user_reaction = Current.user ? message.user_reaction(Current.user) : nil
+  is_manage = controller.controller_path.start_with?("manage")
+%>
+
+<div id="reactions_<%= message.id %>" class="flex items-center gap-1" data-controller="reaction-picker" data-reaction-picker-message-id-value="<%= message.id %>">
+  <%# Existing reactions %>
+  <% if reaction_counts.any? %>
+    <div class="flex items-center gap-1">
+      <% reaction_counts.each do |reaction_type, count| %>
+        <% is_user_reaction = user_reaction == reaction_type %>
+        <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
+            method: :post,
+            class: "inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer #{is_user_reaction ? 'bg-pink-100 text-pink-600 border border-pink-300' : 'bg-gray-100 text-pink-400 hover:bg-pink-50 hover:text-pink-600 border border-transparent'}",
+            data: { turbo_frame: "_top" } do %>
+          <%= MessageReaction.icon_for(reaction_type).html_safe %>
+          <span class="font-medium text-sm"><%= count %></span>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Add reaction button - only show if user hasn't reacted yet %>
+  <% unless user_reaction %>
+    <div class="relative">
+      <button
+        type="button"
+        class="inline-flex items-center justify-center w-8 h-8 rounded-full text-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer"
+        data-action="click->reaction-picker#toggle"
+        title="Add reaction">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </button>
+
+      <%# Reaction picker dropdown %>
+      <div data-reaction-picker-target="dropdown" class="hidden absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 z-50">
+        <div class="flex items-center gap-1">
+          <% MessageReaction::REACTIONS.each do |reaction_type| %>
+            <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
+                method: :post,
+                class: "w-8 h-8 flex items-center justify-center text-pink-400 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors cursor-pointer",
+                title: reaction_type.capitalize,
+                data: { turbo_frame: "_top", action: "click->reaction-picker#close" } do %>
+              <%= MessageReaction.icon_for(reaction_type).html_safe %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

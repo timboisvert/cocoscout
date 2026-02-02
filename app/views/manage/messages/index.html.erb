@@ -1,0 +1,123 @@
+<% content_for :title, "Messages" %>
+
+<div class="w-full pb-8" data-controller="inbox">
+  <%# New messages banner - shown when new messages arrive via ActionCable %>
+  <div data-inbox-target="banner" class="hidden sticky top-0 z-40 mb-4">
+    <button
+      type="button"
+      data-action="click->inbox#refresh"
+      class="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span data-inbox-target="count">New messages</span>
+    </button>
+  </div>
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Production Messages",
+    links: []
+  } %>
+
+  <%# Filter Bar %>
+  <%= form_with url: manage_messages_path, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+    <%= render "shared/filters/filter_bar",
+        toggle_label: "Filters",
+        wrapper_data_controller: "filter-select",
+        filter_groups: [
+          {
+            label: "Show",
+            filters: [
+              { text: "All", path: manage_messages_path(q: @search, production_id: @production_filter, order: @order), active: @filter == "all" },
+              { text: "Unread", path: manage_messages_path(filter: "unread", q: @search, production_id: @production_filter, order: @order), active: @filter == "unread" },
+              { text: "Sent by Me", path: manage_messages_path(filter: "sent_by_me", q: @search, production_id: @production_filter, order: @order), active: @filter == "sent_by_me" }
+            ]
+          },
+          { separator: true },
+          {
+            partial: "shared/filters/dropdown_filter",
+            locals: {
+              label: "Order",
+              name: "order",
+              options: [
+                { value: "newest", text: "Newest First" },
+                { value: "oldest", text: "Oldest First" }
+              ],
+              selected: @order || "newest",
+              data_attributes: {
+                action: "change->filter-select#update",
+                filter_select_filter_value: @filter,
+                filter_select_q_value: @search,
+                filter_select_production_id_value: @production_filter
+              }
+            }
+          },
+          (@accessible_productions.count > 1 ? { separator: true } : nil),
+          (@accessible_productions.count > 1 ? {
+            partial: "shared/filters/dropdown_filter",
+            locals: {
+              label: "Production",
+              name: "production_id",
+              options: [{ value: "", text: "All Productions" }] + @accessible_productions.map { |p| { value: p.id.to_s, text: p.name } },
+              selected: @production_filter.to_s,
+              data_attributes: {
+                action: "change->filter-select#update",
+                filter_select_filter_value: @filter,
+                filter_select_q_value: @search,
+                filter_select_order_value: @order
+              }
+            }
+          } : nil),
+          { separator: true },
+          {
+            partial: "shared/filters/search_input",
+            locals: {
+              placeholder: "Search messages...",
+              value: @search,
+              name: "q"
+            }
+          }
+        ].compact
+    %>
+    <%# Hidden fields to preserve filters when searching %>
+    <%= f.hidden_field :filter, value: @filter %>
+    <%= f.hidden_field :production_id, value: @production_filter %>
+  <% end %>
+
+  <% if @messages.empty? %>
+    <div class="mt-8 text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      <%
+        empty_title, empty_message = case @filter
+        when "unread"
+          ["All caught up!", "You have no unread messages."]
+        when "has_images"
+          ["No messages with images", "None of your messages contain images."]
+        when "sent_by_me"
+          ["No messages sent", "You haven't sent any messages yet."]
+        else
+          if @search.present?
+            ["No results", "No messages match \"#{@search}\"."]
+          elsif @production_filter.present?
+            ["No messages", "No messages for this production yet."]
+          else
+            ["No messages", "Messages sent on behalf of your productions will appear here."]
+          end
+        end
+      %>
+      <h3 class="mt-2 text-sm font-medium text-gray-900"><%= empty_title %></h3>
+      <p class="mt-1 text-sm text-gray-500"><%= empty_message %></p>
+    </div>
+  <% else %>
+    <div class="mt-4 space-y-4">
+      <% @messages.each do |message| %>
+        <%= render "shared/messages/message_card", message: message %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
