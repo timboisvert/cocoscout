@@ -419,7 +419,7 @@
       <%= render "shared/card_header", title: "Quick Links" %>
       <div class="p-4">
         <% links = [
-          { name: "Messages", path: manage_production_messages_path(@production) },
+          { name: "Messages", path: production_manage_messages_path(@production) },
           { name: "Manage Shows & Events", path: manage_production_shows_path(@production) },
           { name: "Manage Availability", path: manage_casting_availability_path(@production) },
           { name: "Manage Casting", path: manage_casting_production_path(@production) },
