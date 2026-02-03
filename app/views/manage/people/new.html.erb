@@ -143,6 +143,47 @@ Looking forward to working with you!
           </div>
         </div>
 
+        <%# Talent Pool Selection %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden mt-5" data-controller="toggle-visibility">
+          <%= render "shared/card_header", title: "Add to Talent Pool" %>
+          <div class="p-4">
+            <div class="space-y-3">
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input type="radio" name="invite_to_pool" value="yes" checked
+                       data-action="change->toggle-visibility#toggle"
+                       data-toggle-visibility-show-param="#talent-pool-select-single"
+                       class="mt-1 text-pink-500 focus:ring-pink-500">
+                <div>
+                  <span class="text-sm font-medium text-gray-900">Add to a talent pool</span>
+                  <p class="text-xs text-gray-500 mt-0.5">They'll be added to the selected talent pool when they accept the invitation.</p>
+                </div>
+              </label>
+
+              <div id="talent-pool-select-single" class="ml-6 mt-2">
+                <select name="talent_pool_id" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                  <% @talent_pools.each do |pool| %>
+                    <option value="<%= pool.id %>">
+                      <%= pool.name %>
+                      <% if pool.production %>(<%= pool.production.name %>)<% end %>
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input type="radio" name="invite_to_pool" value="no"
+                       data-action="change->toggle-visibility#toggle"
+                       data-toggle-visibility-hide-param="#talent-pool-select-single"
+                       class="mt-1 text-pink-500 focus:ring-pink-500">
+                <div>
+                  <span class="text-sm font-medium text-gray-900">Just invite to CocoScout</span>
+                  <p class="text-xs text-gray-500 mt-0.5">They'll be added to <%= Current.organization.name %> but not to any talent pool.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
           <%= render "shared/card_header", title: "Invitation Email" %>
           <div class="p-4">

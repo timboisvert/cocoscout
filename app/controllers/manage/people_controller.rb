@@ -11,6 +11,7 @@ module Manage
 
     def new
       @person = Person.new
+      load_talent_pools
     end
 
     # AJAX endpoint to check if an email has existing profiles
@@ -462,6 +463,25 @@ module Manage
         :name, :email, :pronouns, :resume, :headshot, :producer_notes,
         socials_attributes: %i[id platform handle name _destroy]
       )
+    end
+
+    # Load all talent pools available for invitations
+    def load_talent_pools
+      # Get productions that have received a share from another pool (they don't use their own)
+      productions_receiving_shares = TalentPoolShare.pluck(:production_id)
+
+      @talent_pools = TalentPool.joins(:production)
+                                .includes(:production)
+                                .where(productions: { organization_id: Current.organization.id })
+                                .where.not(production_id: productions_receiving_shares)
+                                .distinct
+                                .order(:name)
+
+      # Include the organization-level talent pool if set
+      if Current.organization.talent_pool_single? && Current.organization.organization_talent_pool
+        # In single mode, only show the org pool
+        @talent_pools = [ Current.organization.organization_talent_pool ]
+      end
     end
   end
 end
