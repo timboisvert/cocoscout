@@ -19,5 +19,8 @@ class UserInboxChannel < ApplicationCable::Channel
       sender_name: message.sender_name,
       is_reply: message.parent_message_id.present?
     })
+  rescue ArgumentError => e
+    # Solid Cable in Rails 8.1 has upsert compatibility issues with some adapters
+    Rails.logger.warn("UserInboxChannel broadcast failed: #{e.message}")
   end
 end

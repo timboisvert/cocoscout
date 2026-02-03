@@ -130,6 +130,26 @@
             <%# Show "Sent to Production Team" for production contact messages %>
             <span>·</span>
             <span>Sent to <span class="font-medium text-pink-600"><%= message.production.name %></span> Team</span>
+          <% elsif recipient_count == 1 %>
+            <%# Single recipient - show their name and headshot %>
+            <% recipient = message.recipient_people.first %>
+            <% if recipient %>
+              <span>·</span>
+              <span>To</span>
+              <% headshot_variant = recipient.safe_headshot_variant(:thumb) %>
+              <span data-controller="tooltip" data-tooltip-text-value="<%= recipient.name %>" class="relative">
+                <% if headshot_variant %>
+                  <%= image_tag rails_storage_proxy_url(headshot_variant),
+                      alt: recipient.name,
+                      class: "w-6 h-6 rounded-lg object-cover ring-2 ring-white" %>
+                <% else %>
+                  <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] ring-2 ring-white">
+                    <%= recipient.initials %>
+                  </div>
+                <% end %>
+              </span>
+              <span class="font-medium text-gray-700"><%= recipient.name %></span>
+            <% end %>
           <% elsif recipient_count > 1 %>
             <span>·</span>
             <span>Sent to <%= recipient_count %> people</span>

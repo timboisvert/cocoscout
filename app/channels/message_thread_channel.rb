@@ -24,39 +24,40 @@ class MessageThreadChannel < ApplicationCable::Channel
   def typing
     return unless @root
 
-    MessageThreadChannel.broadcast_to(
-      @root,
-      {
-        type: "typing",
-        user_id: current_user.id,
-        user_name: current_user.person&.name || current_user.email_address,
-        timestamp: Time.current.to_i
-      }
+    safe_broadcast(
+      type: "typing",
+      user_id: current_user.id,
+      user_name: current_user.person&.name || current_user.email_address,
+      timestamp: Time.current.to_i
     )
   end
 
   # Called when user stops typing
   def stopped_typing
-    MessageThreadChannel.broadcast_to(
-      @root,
-      {
-        type: "stopped_typing",
-        user_id: current_user.id
-      }
+    safe_broadcast(
+      type: "stopped_typing",
+      user_id: current_user.id
     )
   end
 
   private
 
   def broadcast_presence(action)
-    MessageThreadChannel.broadcast_to(
-      @root,
-      {
-        type: "presence",
-        action: action,
-        user_id: current_user.id,
-        user_name: current_user.person&.name || current_user.email_address
-      }
+    safe_broadcast(
+      type: "presence",
+      action: action,
+      user_id: current_user.id,
+      user_name: current_user.person&.name || current_user.email_address
     )
+  end
+
+  # Wrap broadcasts to handle Solid Cable compatibility issues in Rails 8.1
+  def safe_broadcast(payload)
+    return unless @root
+
+    MessageThreadChannel.broadcast_to(@root, payload)
+  rescue ArgumentError => e
+    # Solid Cable in Rails 8.1 has upsert compatibility issues with some adapters
+    Rails.logger.warn("MessageThreadChannel broadcast failed: #{e.message}")
   end
 end

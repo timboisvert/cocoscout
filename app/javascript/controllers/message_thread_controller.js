@@ -1,7 +1,22 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
 
-const consumer = createConsumer()
+// Create consumer lazily to ensure it uses the current session
+let consumer = null
+function getConsumer() {
+    if (!consumer) {
+        consumer = createConsumer()
+    }
+    return consumer
+}
+
+// Force reconnect when user changes (e.g., after impersonation)
+function resetConsumer() {
+    if (consumer) {
+        consumer.disconnect()
+        consumer = null
+    }
+}
 
 // Handles real-time updates for a message thread:
 // - New replies appearing live
@@ -21,13 +36,20 @@ export default class extends Controller {
         this.typingTimeout = null
         this.isTyping = false
 
+        // Check if user changed (e.g., after impersonation) and reset connection
+        const lastUserId = parseInt(sessionStorage.getItem('cableUserId') || '0', 10)
+        if (lastUserId && lastUserId !== this.currentUserIdValue) {
+            resetConsumer()
+        }
+        sessionStorage.setItem('cableUserId', this.currentUserIdValue.toString())
+
         // Listen for typing events from nested reply-form controllers
         this.boundHandleReplyTyping = this.handleReplyTyping.bind(this)
         this.element.addEventListener("reply-form:typing", this.boundHandleReplyTyping)
 
         // Try to connect to ActionCable, but don't break if it fails
         try {
-            this.subscription = consumer.subscriptions.create(
+            this.subscription = getConsumer().subscriptions.create(
                 { channel: "MessageThreadChannel", message_id: this.messageIdValue },
                 {
                     connected: () => this.handleConnected(),

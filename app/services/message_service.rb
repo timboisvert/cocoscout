@@ -207,13 +207,24 @@ class MessageService
       # For production messages, no explicit recipient needed (visibility handles it)
       if root.personal?
         # Find the other party in the conversation
-        other_person = if sender.is_a?(User) && sender.person
-          root.message_recipients.map(&:recipient).find { |r| r != sender.person }
-        else
-          root.message_recipients.first&.recipient
-        end
+        # This could be the original sender OR one of the original recipients
+        sender_person = sender.is_a?(User) ? sender.person : sender
 
-        recipients = other_person ? [ other_person ] : []
+        # Get original sender's person record
+        original_sender_person = root.sender.is_a?(User) ? root.sender.person : root.sender
+
+        # Get original recipients
+        original_recipients = root.message_recipients.map(&:recipient)
+
+        # If the replier is the original sender, reply to original recipients
+        # If the replier is one of the original recipients, reply to original sender
+        if sender_person == original_sender_person
+          # Sender is replying - send to original recipients (excluding themselves if they were included)
+          recipients = original_recipients.reject { |r| r == sender_person }
+        else
+          # Recipient is replying - send to original sender
+          recipients = original_sender_person ? [ original_sender_person ] : []
+        end
       else
         # For production/show messages, reply goes to original sender
         original_sender_person = root.sender.is_a?(Person) ? root.sender : root.sender.person
