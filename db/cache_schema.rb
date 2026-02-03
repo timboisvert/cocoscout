@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_03_041600) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_03_045635) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -1569,6 +1569,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_041600) do
     t.index ["channel"], name: "index_solid_cable_messages_on_channel"
     t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
     t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
+    t.index ["id"], name: "index_solid_cable_messages_on_id", unique: true
   end
 
   create_table "solid_cache_entries", force: :cascade do |t|

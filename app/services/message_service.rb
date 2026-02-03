@@ -270,16 +270,21 @@ class MessageService
       broadcast_parent_id = parent.id
 
       # Broadcast to the root message channel
-      MessageThreadChannel.broadcast_to(root, {
-        type: "new_reply",
-        message_id: message.id,
-        parent_id: broadcast_parent_id,
-        root_id: root.id,
-        sender_id: message.sender_id,
-        sender_name: message.sender_name,
-        depth: message.thread_depth,
-        html: html
-      })
+      begin
+        MessageThreadChannel.broadcast_to(root, {
+          type: "new_reply",
+          message_id: message.id,
+          parent_id: broadcast_parent_id,
+          root_id: root.id,
+          sender_id: message.sender_id,
+          sender_name: message.sender_name,
+          depth: message.thread_depth,
+          html: html
+        })
+      rescue ArgumentError => e
+        # Solid Cable can have issues with unique index lookups in Rails 8.1
+        Rails.logger.warn "ActionCable broadcast failed: #{e.message}"
+      end
     end
 
     # Broadcast to all subscribers' inboxes that a new message arrived
@@ -292,7 +297,13 @@ class MessageService
         next unless subscription.user
         next if subscription.user.id == sender_user_id # Don't notify sender
 
-        UserInboxChannel.broadcast_new_message(subscription.user, message)
+        begin
+          UserInboxChannel.broadcast_new_message(subscription.user, message)
+        rescue ArgumentError => e
+          # Solid Cable can have issues with unique index lookups in Rails 8.1
+          # Log but don't fail message creation
+          Rails.logger.warn "ActionCable broadcast failed: #{e.message}"
+        end
       end
     end
   end
