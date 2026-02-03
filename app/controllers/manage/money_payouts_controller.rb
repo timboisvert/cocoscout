@@ -236,13 +236,13 @@ module Manage
     end
 
     def default_payment_reminder_subject
-      EmailTemplateService.render_subject_without_prefix("payment_setup_reminder", {
+      ContentTemplateService.render_subject("payment_setup_reminder", {
         production_name: Current.organization.name
       })
     end
 
     def default_payment_reminder_body
-      EmailTemplateService.render_body("payment_setup_reminder", {
+      ContentTemplateService.render_body("payment_setup_reminder", {
         production_name: Current.organization.name,
         payment_setup_url: my_payments_setup_url
       })

@@ -34,10 +34,10 @@ module Manage
         @team_invitation.person_id = params[:team_invitation][:person_id]
       end
 
-      default_subject = EmailTemplateService.render_subject("team_invitation", {
+      default_subject = ContentTemplateService.render_subject("team_invitation", {
         organization_name: Current.organization.name
       })
-      default_message = EmailTemplateService.render_body("team_invitation", {
+      default_message = ContentTemplateService.render_body("team_invitation", {
         organization_name: Current.organization.name,
         accept_url: "[accept link will be included]"
       })

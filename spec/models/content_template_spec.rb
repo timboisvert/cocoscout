@@ -2,9 +2,9 @@
 
 require "rails_helper"
 
-RSpec.describe EmailTemplate, type: :model do
+RSpec.describe ContentTemplate, type: :model do
   describe "validations" do
-    subject { build(:email_template) }
+    subject { build(:content_template) }
 
     it "is valid with valid attributes" do
       expect(subject).to be_valid
@@ -17,7 +17,7 @@ RSpec.describe EmailTemplate, type: :model do
     end
 
     it "requires a unique key" do
-      create(:email_template, key: "test_key")
+      create(:content_template, key: "test_key")
       subject.key = "test_key"
       expect(subject).not_to be_valid
       expect(subject.errors[:key]).to include("has already been taken")
@@ -44,51 +44,69 @@ RSpec.describe EmailTemplate, type: :model do
 
   describe "scopes" do
     it ".active returns only active templates" do
-      active = create(:email_template, active: true)
-      create(:email_template, active: false)
+      active = create(:content_template, active: true)
+      create(:content_template, active: false)
 
-      expect(EmailTemplate.active).to eq([ active ])
+      expect(ContentTemplate.active).to eq([ active ])
     end
 
     it ".by_category filters by category" do
-      notification = create(:email_template, category: "notification")
-      create(:email_template, category: "invitation")
+      notification = create(:content_template, category: "notification")
+      create(:content_template, category: "invitation")
 
-      expect(EmailTemplate.by_category("notification")).to eq([ notification ])
+      expect(ContentTemplate.by_category("notification")).to eq([ notification ])
+    end
+  end
+
+  describe "channel" do
+    it "defaults to email channel" do
+      template = ContentTemplate.new
+      expect(template.channel).to eq("email")
+    end
+
+    it "can be set to message channel" do
+      template = build(:content_template, channel: :message)
+      expect(template.message?).to be true
+    end
+
+    it "can be set to both channels" do
+      template = build(:content_template, channel: :both)
+      expect(template.both?).to be true
     end
   end
 
   describe "template types" do
     it "#structured? returns true by default" do
-      template = build(:email_template, template_type: nil)
+      template = build(:content_template, template_type: nil)
       expect(template.structured?).to be true
     end
 
     it "#structured? returns true for structured type" do
-      template = build(:email_template, template_type: "structured")
+      template = build(:content_template, template_type: "structured")
       expect(template.structured?).to be true
     end
 
     it "#passthrough? returns true for passthrough type" do
-      template = build(:email_template, template_type: "passthrough")
+      template = build(:content_template, template_type: "passthrough")
       expect(template.passthrough?).to be true
       expect(template.structured?).to be false
     end
 
     it "#hybrid? returns true for hybrid type" do
-      template = build(:email_template, template_type: "hybrid")
+      template = build(:content_template, template_type: "hybrid")
       expect(template.hybrid?).to be true
       expect(template.structured?).to be false
     end
 
     it "#template_type_description returns human-readable description" do
-      template = build(:email_template, template_type: "passthrough")
+      template = build(:content_template, template_type: "passthrough")
       expect(template.template_type_description).to include("passed through")
     end
   end
+
   describe "#render_subject" do
     it "interpolates variables in the subject" do
-      template = build(:email_template, subject: "Hello {{recipient_name}}!")
+      template = build(:content_template, subject: "Hello {{recipient_name}}!")
 
       result = template.render_subject(recipient_name: "John")
 
@@ -96,7 +114,7 @@ RSpec.describe EmailTemplate, type: :model do
     end
 
     it "handles missing variables gracefully" do
-      template = build(:email_template, subject: "Hello {{recipient_name}}!")
+      template = build(:content_template, subject: "Hello {{recipient_name}}!")
 
       result = template.render_subject({})
 
@@ -106,7 +124,7 @@ RSpec.describe EmailTemplate, type: :model do
 
   describe "#render_body" do
     it "interpolates variables in the body" do
-      template = build(:email_template, body: "Dear {{name}}, your order {{order_id}} is ready.")
+      template = build(:content_template, body: "Dear {{name}}, your order {{order_id}} is ready.")
 
       result = template.render_body(name: "Jane", order_id: "12345")
 
@@ -114,7 +132,7 @@ RSpec.describe EmailTemplate, type: :model do
     end
 
     it "handles variables with extra whitespace" do
-      template = build(:email_template, body: "Hello {{ name }}!")
+      template = build(:content_template, body: "Hello {{ name }}!")
 
       result = template.render_body(name: "Bob")
 
@@ -124,7 +142,7 @@ RSpec.describe EmailTemplate, type: :model do
 
   describe "#variable_names" do
     it "extracts variable names from subject and body" do
-      template = build(:email_template,
+      template = build(:content_template,
                        subject: "Hello {{recipient_name}}",
                        body: "Your {{order_id}} for {{product}} is ready.")
 
@@ -132,7 +150,7 @@ RSpec.describe EmailTemplate, type: :model do
     end
 
     it "returns unique variable names" do
-      template = build(:email_template,
+      template = build(:content_template,
                        subject: "Hello {{name}}",
                        body: "{{name}}, your {{name}} is confirmed.")
 
@@ -142,7 +160,7 @@ RSpec.describe EmailTemplate, type: :model do
 
   describe "#variables_with_descriptions" do
     it "returns available variables with descriptions" do
-      template = build(:email_template,
+      template = build(:content_template,
                        available_variables: [
                          { name: "recipient", description: "The recipient's name" },
                          { name: "amount", description: "The payment amount" }
@@ -157,7 +175,7 @@ RSpec.describe EmailTemplate, type: :model do
     end
 
     it "handles string-keyed hashes" do
-      template = build(:email_template)
+      template = build(:content_template)
       template.available_variables = [
         { "name" => "test", "description" => "A test variable" }
       ]
@@ -168,4 +186,4 @@ RSpec.describe EmailTemplate, type: :model do
       expect(result.first[:description]).to eq("A test variable")
     end
   end
-end
+  end

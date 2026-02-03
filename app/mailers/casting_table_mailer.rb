@@ -18,7 +18,7 @@ class CastingTableMailer < ApplicationMailer
     @shows_by_production = build_shows_by_production_html
 
     # Get the email template
-    template = EmailTemplate.find_by(key: "casting_table_notification")
+    template = ContentTemplate.find_by(key: "casting_table_notification")
 
     if template
       subject = template.render_subject(production_names: @production_names)

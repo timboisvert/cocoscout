@@ -1,0 +1,215 @@
+<% content_for :title, "Cable Monitor" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path]
+    ],
+    text: "Cable Monitor",
+    links: []
+  } %>
+
+  <!-- Connection Status Banner -->
+  <div class="mt-4 p-4 rounded-lg <%= @connection_stats[:connected] ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' %>">
+    <div class="flex items-center gap-3">
+      <div class="w-3 h-3 rounded-full <%= @connection_stats[:connected] ? 'bg-green-500' : 'bg-red-500' %> animate-pulse"></div>
+      <span class="font-medium <%= @connection_stats[:connected] ? 'text-green-800' : 'text-red-800' %>">
+        <%= @connection_stats[:connected] ? 'Cable Connected' : 'Cable Disconnected' %>
+      </span>
+      <span class="text-sm text-gray-600">
+        Adapter: <code class="bg-gray-100 px-1 rounded"><%= @adapter %></code>
+      </span>
+      <% if @connection_stats[:note] %>
+        <span class="text-sm text-gray-500 italic"><%= @connection_stats[:note] %></span>
+      <% end %>
+      <% if @connection_stats[:error] %>
+        <span class="text-sm text-red-600"><%= @connection_stats[:error] %></span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+    <!-- Configuration Card -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Configuration" %>
+      <div class="p-4 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-600">Adapter</span>
+          <code class="text-sm bg-gray-100 px-2 py-1 rounded"><%= @adapter %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-600">URL</span>
+          <code class="text-sm bg-gray-100 px-2 py-1 rounded text-xs"><%= @url || 'default' %></code>
+        </div>
+        <% if @adapter == "solid_cable" %>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-600">Message Count</span>
+            <span class="text-sm font-medium"><%= number_with_delimiter(@connection_stats[:message_count] || 0) %></span>
+          </div>
+        <% end %>
+        <% if @connection_stats[:info] %>
+          <div class="pt-2 border-t border-gray-100">
+            <span class="text-xs text-gray-500">Redis Clients</span>
+            <div class="text-sm font-mono mt-1">
+              Connected: <%= @connection_stats[:info]["connected_clients"] %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Channels Card -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Channels" %>
+      <div class="p-4">
+        <div class="space-y-3">
+          <% @channels.each do |channel| %>
+            <div class="flex items-start gap-3 p-2 bg-gray-50 rounded">
+              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <div class="font-medium text-sm text-gray-900"><%= channel[:name] %></div>
+                <div class="text-xs text-gray-500"><%= channel[:description] %></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription Stats Card -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Message Subscriptions" %>
+      <div class="p-4">
+        <div class="grid grid-cols-3 gap-4">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@subscription_stats[:total_subscriptions]) %></div>
+            <div class="text-xs text-gray-500">Total</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@subscription_stats[:active_subscriptions]) %></div>
+            <div class="text-xs text-gray-500">Active</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-gray-400"><%= number_with_delimiter(@subscription_stats[:muted_subscriptions]) %></div>
+            <div class="text-xs text-gray-500">Muted</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @adapter == "solid_cable" && @recent_broadcasts.any? %>
+    <!-- Recent Broadcasts (Solid Cable only) -->
+    <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Recent Broadcasts" %>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Channel</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payload</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% @recent_broadcasts.each do |broadcast| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 text-sm text-gray-600"><%= time_ago_in_words(broadcast[:created_at]) %> ago</td>
+                <td class="px-4 py-2 text-sm font-mono text-gray-900"><%= broadcast[:channel] %></td>
+                <td class="px-4 py-2 text-xs font-mono text-gray-500 truncate max-w-xs"><%= broadcast[:payload_preview] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Recent Messages -->
+  <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Recent Messages (for Cable context)" %>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sender</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Visibility</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @recent_messages.each do |message| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-sm text-gray-600"><%= time_ago_in_words(message.created_at) %> ago</td>
+              <td class="px-4 py-2 text-sm text-gray-900"><%= message.sender_name %></td>
+              <td class="px-4 py-2 text-sm text-gray-900 truncate max-w-xs"><%= message.subject %></td>
+              <td class="px-4 py-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                  <%= message.message_type %>
+                </span>
+              </td>
+              <td class="px-4 py-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                  <%= case message.visibility
+                      when 'personal' then 'bg-blue-100 text-blue-800'
+                      when 'production' then 'bg-green-100 text-green-800'
+                      when 'show' then 'bg-purple-100 text-purple-800'
+                      else 'bg-gray-100 text-gray-800'
+                      end %>">
+                  <%= message.visibility %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- How to Test Cable -->
+  <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Testing Cable in Production" %>
+    <div class="p-4 space-y-4">
+      <div class="prose prose-sm max-w-none">
+        <h4 class="text-sm font-semibold text-gray-900">Quick Health Check</h4>
+        <ol class="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+          <li>Open two browser tabs logged in as different users who share a message thread</li>
+          <li>Send a message from one tab</li>
+          <li>The message should appear in real-time in the other tab without refresh</li>
+          <li>Check browser DevTools → Network → WS to see WebSocket connection</li>
+        </ol>
+
+        <h4 class="text-sm font-semibold text-gray-900 mt-4">Browser Console Check</h4>
+        <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto">// Check if Cable is connected
+ActionCable.getConfig()
+ActionCable.consumer.connection.isOpen()</pre>
+
+        <h4 class="text-sm font-semibold text-gray-900 mt-4">Server-Side Test (Rails Console)</h4>
+        <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto"># Test broadcast to a user
+user = User.find_by(email_address: "test@example.com")
+UserInboxChannel.broadcast_to(user, { type: "test", message: "Hello!" })
+
+# Test broadcast to a message thread
+message = Message.last
+MessageThreadChannel.broadcast_to(message.root_message, { type: "test" })</pre>
+
+        <% if @adapter == "solid_cable" %>
+          <h4 class="text-sm font-semibold text-gray-900 mt-4">Solid Cable Database Check</h4>
+          <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto"># Check recent broadcasts
+SolidCable::Message.order(created_at: :desc).limit(10)
+
+# Clear old messages (cleanup)
+SolidCable::Message.where("created_at < ?", 1.day.ago).delete_all</pre>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

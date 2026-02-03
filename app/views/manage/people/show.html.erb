@@ -37,7 +37,7 @@
         </div>
       </div>
     </div>
-    <% if @person.public_key.present? %>
+    <% if @person.public_key.present? && @person.public_key.match?(/\A[a-z0-9][a-z0-9-]{2,29}\z/) %>
       <div class="flex-shrink-0 flex items-center gap-2"
            data-controller="compose-message"
            data-compose-message-recipient-type-value="person"

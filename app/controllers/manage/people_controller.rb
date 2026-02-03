@@ -180,13 +180,13 @@ module Manage
     end
 
     def default_invitation_subject
-      EmailTemplateService.render_subject("person_invitation", {
+      ContentTemplateService.render_subject("person_invitation", {
         organization_name: Current.organization.name
       })
     end
 
     def default_invitation_message
-      EmailTemplateService.render_body("person_invitation", {
+      ContentTemplateService.render_body("person_invitation", {
         organization_name: Current.organization.name,
         setup_url: "[setup link will be included]"
       })

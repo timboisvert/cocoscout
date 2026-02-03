@@ -1,4 +1,4 @@
-<% content_for :title, "New Email Template - Superadmin" %>
+<% content_for :title, "New Content Template - Superadmin" %>
 
 <div class="w-full px-5 pt-5">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -6,13 +6,13 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
         ["Superadmin", superadmin_path],
-        ["Email Templates", email_templates_path]
+        ["Content Templates", content_templates_path]
     ],
-    text: "New Email Template",
+    text: "New Content Template",
     links: []
   } %>
 
   <div class="mt-4">
-    <%= render partial: "superadmin/email_template_form", locals: { template: @template, categories: @categories } %>
+    <%= render partial: "superadmin/content_template_form", locals: { template: @template, categories: @categories } %>
   </div>
 </div>

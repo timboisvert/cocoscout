@@ -505,7 +505,12 @@ module Manage
       end
 
       emails_sent = 0
+      messages_sent = 0
       auditionees_added_to_casts = 0
+
+      # Build notification batches for AuditionNotificationService
+      cast_notifications = []
+      rejection_notifications = []
 
       auditioned_assignables.each do |assignable|
         # Check if assignable has a cast assignment stage (they're being added to a cast)
@@ -547,18 +552,26 @@ module Manage
         # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
         recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
 
-        # Send the email to each recipient
+        # Collect notifications for each recipient
         recipients.each do |person|
           next unless email_body.present? && person.email.present?
 
           # Replace [Name] placeholder with actual name
           personalized_body = email_body.gsub("[Name]", person.name)
 
-          begin
-            Manage::AuditionMailer.casting_notification(person, @production, personalized_body, subject: email_subject, email_batch_id: email_batch&.id).deliver_later
-            emails_sent += 1
-          rescue StandardError => e
-            Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
+          if stage
+            cast_notifications << {
+              person: person,
+              talent_pool: talent_pools_by_id[stage.talent_pool_id],
+              body: personalized_body,
+              subject: email_subject
+            }
+          else
+            rejection_notifications << {
+              person: person,
+              body: personalized_body,
+              subject: email_subject
+            }
           end
         end
 
@@ -574,14 +587,31 @@ module Manage
         end
       end
 
+      # Send notifications via service
+      notification_results = AuditionNotificationService.send_casting_results(
+        production: @production,
+        audition_cycle: audition_cycle,
+        sender: Current.user,
+        cast_assignments: cast_notifications,
+        rejections: rejection_notifications,
+        email_batch: email_batch
+      )
+      messages_sent = notification_results[:messages_sent]
+      emails_sent = notification_results[:emails_sent]
+
       # Mark all remaining cast assignment stages as finalized (no longer destroy them)
       cast_assignment_stages.where(status: :pending).update_all(status: :finalized)
 
       # Mark the audition cycle as having finalized casting and disable audition voting
       audition_cycle.update(casting_finalized_at: Time.current, audition_voting_enabled: false)
 
+      notice_parts = []
+      notice_parts << "#{messages_sent} message#{'s' unless messages_sent == 1}" if messages_sent > 0
+      notice_parts << "#{emails_sent} email#{'s' unless emails_sent == 1}" if emails_sent > 0
+      notice_parts << "#{auditionees_added_to_casts} auditionee#{'s' unless auditionees_added_to_casts == 1} added to casts"
+
       redirect_to manage_casting_signups_auditions_cycle_path(@production, audition_cycle),
-                  notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{auditionees_added_to_casts} auditionee#{auditionees_added_to_casts != 1 ? 's' : ''} added to casts."
+                  notice: notice_parts.join(" and ") + "."
     end
 
     # POST /auditions/finalize_and_notify_invitations
@@ -636,7 +666,9 @@ module Manage
         )
       end
 
-      emails_sent = 0
+      # Build notification batches for AuditionNotificationService
+      invitation_notifications = []
+      not_invited_notifications = []
 
       requests_to_process.each do |request|
         requestable = request.requestable
@@ -665,7 +697,7 @@ module Manage
                        []
         end
 
-        # Send the email to each recipient
+        # Collect notifications for each recipient
         recipients.each do |recipient|
           next unless email_body.present? && recipient.email.present?
           # Check if user has audition invitation notifications enabled
@@ -674,11 +706,16 @@ module Manage
           # Replace [Name] placeholder with actual name
           personalized_body = email_body.gsub("[Name]", recipient.name)
 
-          begin
-            Manage::AuditionMailer.invitation_notification(recipient, @production, personalized_body, email_batch_id: email_batch&.id).deliver_later
-            emails_sent += 1
-          rescue StandardError => e
-            Rails.logger.error "Failed to send email to #{recipient.email}: #{e.message}"
+          if is_scheduled
+            invitation_notifications << {
+              person: recipient,
+              body: personalized_body
+            }
+          else
+            not_invited_notifications << {
+              person: recipient,
+              body: personalized_body
+            }
           end
         end
 
@@ -689,12 +726,31 @@ module Manage
         )
       end
 
+      # Send notifications via service
+      notification_results = AuditionNotificationService.send_audition_invitations(
+        production: @production,
+        audition_cycle: audition_cycle,
+        sender: Current.user,
+        invitations: invitation_notifications,
+        not_invited: not_invited_notifications,
+        email_batch: email_batch
+      )
+
+      messages_sent = notification_results[:messages_sent]
+      emails_sent = notification_results[:emails_sent]
+
       # Set finalize_audition_invitations to true so applicants can see results
       # Also disable both voting types since scheduling is finalized
       audition_cycle.update(finalize_audition_invitations: true, voting_enabled: false, audition_voting_enabled: false)
 
+      notice_parts = []
+      notice_parts << "#{messages_sent} message#{'s' unless messages_sent == 1}" if messages_sent > 0
+      notice_parts << "#{emails_sent} email#{'s' unless emails_sent == 1}" if emails_sent > 0
+      notice_parts << "sent successfully" if notice_parts.any?
+      notice_text = notice_parts.any? ? notice_parts.join(" and ") : "No notifications sent"
+
       redirect_to manage_review_signups_auditions_cycle_path(@production, audition_cycle),
-                  notice: "#{emails_sent} invitation email#{emails_sent != 1 ? 's' : ''} sent successfully."
+                  notice: notice_text
     end
 
     private
@@ -707,7 +763,7 @@ module Manage
     end
 
     def generate_default_cast_email(person, _talent_pool, production)
-      EmailTemplateService.render("audition_added_to_cast", {
+      ContentTemplateService.render("audition_added_to_cast", {
         recipient_name: person.name,
         production_name: production.name,
         confirm_by_date: "[date]"
@@ -715,21 +771,21 @@ module Manage
     end
 
     def generate_default_rejection_email(person, production)
-      EmailTemplateService.render("audition_not_cast", {
+      ContentTemplateService.render("audition_not_cast", {
         recipient_name: person.name,
         production_name: production.name
       })
     end
 
     def generate_default_invitation_email(person, production, _audition_cycle)
-      EmailTemplateService.render_body("audition_invitation", {
+      ContentTemplateService.render_body("audition_invitation", {
         recipient_name: person.name,
         production_name: production.name
       })
     end
 
     def generate_default_not_invited_email(person, production)
-      EmailTemplateService.render_body("audition_not_invited", {
+      ContentTemplateService.render_body("audition_not_invited", {
         recipient_name: person.name,
         production_name: production.name
       })

@@ -111,10 +111,17 @@ class Message < ApplicationRecord
   # Add regardable objects to this message
   def add_regards(*regardables)
     regardables.flatten.compact.each do |regardable|
-      message_regards.find_or_create_by!(
+      # Use find + create to avoid Rails 8.1 upsert issues with scoped associations
+      existing = message_regards.find_by(
         regardable_type: regardable.class.name,
         regardable_id: regardable.id
       )
+      unless existing
+        message_regards.create!(
+          regardable_type: regardable.class.name,
+          regardable_id: regardable.id
+        )
+      end
     end
   end
 
@@ -188,7 +195,9 @@ class Message < ApplicationRecord
   end
 
   def add_reaction!(user, emoji)
-    message_reactions.find_or_create_by!(user: user, emoji: emoji)
+    # Use find + create to avoid Rails 8.1 upsert issues with scoped associations
+    existing = message_reactions.find_by(user: user, emoji: emoji)
+    existing || message_reactions.create!(user: user, emoji: emoji)
   end
 
   def remove_reaction!(user, emoji)
@@ -247,7 +256,9 @@ class Message < ApplicationRecord
   def subscribe!(user, mark_read: false)
     return unless user
     root = root_message
-    subscription = MessageSubscription.find_or_create_by!(user: user, message: root)
+    # Use find + create to avoid Rails 8.1 upsert issues with scoped associations
+    subscription = MessageSubscription.find_by(user: user, message: root)
+    subscription ||= MessageSubscription.create!(user: user, message: root)
     subscription.mark_read! if mark_read
     subscription
   end

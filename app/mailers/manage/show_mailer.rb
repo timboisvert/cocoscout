@@ -13,7 +13,7 @@ module Manage
       subject = if email_subject.present?
         email_subject
       else
-        EmailTemplateService.render_subject("show_canceled", {
+        ContentTemplateService.render_subject("show_canceled", {
           production_name: production.name,
           event_type: show.event_type.titleize,
           event_date: show.date_and_time.strftime("%A, %B %-d, %Y")

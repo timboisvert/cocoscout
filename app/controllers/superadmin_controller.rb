@@ -8,8 +8,8 @@ class SuperadminController < ApplicationController
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
                          production_transfer production_transfer_execute
-                         email_templates email_template_new email_template_create email_template_edit email_template_update
-                         email_template_destroy email_template_preview search_users keys
+                         content_templates content_template_new content_template_create content_template_edit content_template_update
+                         content_template_destroy content_template_preview search_users keys
                          dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
   before_action :hide_sidebar
 
@@ -536,6 +536,76 @@ class SuperadminController < ApplicationController
     redirect_to queue_monitor_path, notice: "Successfully queued #{job_class}"
   rescue StandardError => e
     redirect_to queue_monitor_path, alert: "Failed to queue job: #{e.message}"
+  end
+
+  def cable
+    # Cable/WebSocket monitoring
+    @cable_config = ActionCable.server.config
+
+    # Get all channel classes
+    @channels = [
+      { name: "UserInboxChannel", description: "User inbox notifications for new messages" },
+      { name: "MessageThreadChannel", description: "Real-time message thread updates" }
+    ]
+
+    # Check if Cable is configured
+    @adapter = ActionCable.server.config.cable&.dig("adapter") || "not configured"
+    @url = ActionCable.server.config.url
+
+    # Get connection stats if available (Redis adapter)
+    @connection_stats = {}
+    begin
+      if @adapter == "redis"
+        redis_config = ActionCable.server.config.cable
+        redis_url = redis_config["url"] || ENV["REDIS_URL"]
+        if redis_url
+          require "redis"
+          redis = Redis.new(url: redis_url)
+          @connection_stats[:connected] = redis.ping == "PONG"
+          @connection_stats[:info] = redis.info("clients")
+          redis.close
+        end
+      elsif @adapter == "solid_cable"
+        # Solid Cable uses database
+        @connection_stats[:connected] = true
+        @connection_stats[:message_count] = SolidCable::Message.count rescue 0
+        @connection_stats[:recent_messages] = SolidCable::Message.order(created_at: :desc).limit(20) rescue []
+      elsif @adapter == "async"
+        @connection_stats[:connected] = true
+        @connection_stats[:note] = "Async adapter - in-memory, no persistence"
+      end
+    rescue StandardError => e
+      @connection_stats[:error] = e.message
+    end
+
+    # Get recent broadcast activity (if using Solid Cable)
+    @recent_broadcasts = []
+    if @adapter == "solid_cable"
+      begin
+        @recent_broadcasts = SolidCable::Message
+          .order(created_at: :desc)
+          .limit(50)
+          .map do |msg|
+            {
+              channel: msg.channel,
+              created_at: msg.created_at,
+              payload_preview: msg.payload.to_s.truncate(100)
+            }
+          end
+      rescue StandardError
+        # Table might not exist
+      end
+    end
+
+    # Message thread subscription stats
+    @subscription_stats = {
+      total_subscriptions: MessageSubscription.count,
+      active_subscriptions: MessageSubscription.active.count,
+      muted_subscriptions: MessageSubscription.muted.count
+    }
+
+    # Recent message activity (for context)
+    @recent_messages = Message.order(created_at: :desc).limit(10).includes(:sender)
   end
 
   def storage
@@ -1211,60 +1281,60 @@ class SuperadminController < ApplicationController
     redirect_to cache_monitor_path, alert: "Pattern clear failed: #{e.message}"
   end
 
-  # Email Templates Management
-  def email_templates
-    @templates = EmailTemplate.order(:category, :name)
-    @categories = EmailTemplate::CATEGORIES
+  # Content Templates Management (formerly Email Templates)
+  def content_templates
+    @templates = ContentTemplate.order(:category, :name)
+    @categories = ContentTemplate::CATEGORIES
   end
 
-  def email_template_new
-    @template = EmailTemplate.new
-    @categories = EmailTemplate::CATEGORIES
+  def content_template_new
+    @template = ContentTemplate.new
+    @categories = ContentTemplate::CATEGORIES
   end
 
-  def email_template_create
-    @template = EmailTemplate.new(email_template_params)
+  def content_template_create
+    @template = ContentTemplate.new(content_template_params)
 
     if @template.save
-      redirect_to email_templates_path, notice: "Email template '#{@template.name}' created successfully"
+      redirect_to content_templates_path, notice: "Template '#{@template.name}' created successfully"
     else
-      @categories = EmailTemplate::CATEGORIES
-      render :email_template_new, status: :unprocessable_entity
+      @categories = ContentTemplate::CATEGORIES
+      render :content_template_new, status: :unprocessable_entity
     end
   end
 
-  def email_template_edit
-    @template = EmailTemplate.find(params[:id])
-    @categories = EmailTemplate::CATEGORIES
+  def content_template_edit
+    @template = ContentTemplate.find(params[:id])
+    @categories = ContentTemplate::CATEGORIES
   end
 
-  def email_template_update
-    @template = EmailTemplate.find(params[:id])
+  def content_template_update
+    @template = ContentTemplate.find(params[:id])
 
-    if @template.update(email_template_params)
-      redirect_to email_templates_path, notice: "Email template '#{@template.name}' updated successfully"
+    if @template.update(content_template_params)
+      redirect_to content_templates_path, notice: "Template '#{@template.name}' updated successfully"
     else
-      @categories = EmailTemplate::CATEGORIES
-      render :email_template_edit, status: :unprocessable_entity
+      @categories = ContentTemplate::CATEGORIES
+      render :content_template_edit, status: :unprocessable_entity
     end
   end
 
-  def email_template_destroy
-    @template = EmailTemplate.find(params[:id])
+  def content_template_destroy
+    @template = ContentTemplate.find(params[:id])
     @template.destroy
-    redirect_to email_templates_path, notice: "Email template '#{@template.name}' deleted"
+    redirect_to content_templates_path, notice: "Template '#{@template.name}' deleted"
   end
 
-  def email_template_preview
-    @template = EmailTemplate.find(params[:id])
-    @preview = EmailTemplateService.preview(@template.key)
+  def content_template_preview
+    @template = ContentTemplate.find(params[:id])
+    @preview = ContentTemplateService.preview(@template.key)
 
     # Generate sample values for editable preview
     @sample_variables = @preview[:available_variables].map do |var|
       {
         name: var[:name],
         description: var[:description],
-        value: EmailTemplateService.send(:sample_value_for, var[:name], @template.key)
+        value: ContentTemplateService.send(:sample_value_for, var[:name], @template.key)
       }
     end
 
@@ -1570,11 +1640,10 @@ class SuperadminController < ApplicationController
     HTML
   end
 
-  def email_template_params
-    params.require(:email_template).permit(:key, :name, :subject, :body, :description, :category, :active,
-                                           :template_type, :mailer_class, :mailer_action, :notes,
-                                           :prepend_production_name,
-                                           available_variables: [ :name, :description ])
+  def content_template_params
+    params.require(:content_template).permit(:key, :name, :subject, :body, :message_body, :description, :category, :active,
+                                             :template_type, :mailer_class, :mailer_action, :notes, :channel,
+                                             available_variables: [ :name, :description ])
   end
 
   def demo_user_params

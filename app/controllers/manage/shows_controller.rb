@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -730,13 +730,13 @@ module Manage
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
 
       # Create email content for single occurrence
-      @single_subject = EmailTemplateService.render_subject_without_prefix("show_canceled", {
+      @single_subject = ContentTemplateService.render_subject("show_canceled", {
         production_name: @production.name,
         event_type: @show.event_type.titleize,
         event_date: @show.date_and_time.strftime("%A, %B %-d, %Y")
       })
 
-      @single_body = EmailTemplateService.render_body("show_canceled", {
+      @single_body = ContentTemplateService.render_body("show_canceled", {
         recipient_name: "{{recipient_name}}",
         production_name: @production.name,
         event_type: @show.event_type.titleize,
@@ -749,13 +749,13 @@ module Manage
         shows = @show.recurrence_group.order(:date_and_time)
         dates_list = shows.map { |s| s.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") }.join("<br>")
 
-        @all_subject = EmailTemplateService.render_subject_without_prefix("show_canceled", {
+        @all_subject = ContentTemplateService.render_subject("show_canceled", {
           production_name: @production.name,
           event_type: "#{@show.event_type.titleize} Series",
           event_date: "#{shows.count} occurrences"
         })
 
-        @all_body = EmailTemplateService.render_body("show_canceled", {
+        @all_body = ContentTemplateService.render_body("show_canceled", {
           recipient_name: "{{recipient_name}}",
           production_name: @production.name,
           event_type: "#{@show.event_type.titleize} series",
@@ -985,35 +985,84 @@ module Manage
       redirect_to manage_cancel_show_form_path(@production, @show)
     end
 
+    def transfer_select
+      # Get all productions the user has access to, except the current one
+      @available_productions = Current.user.accessible_productions
+                                       .where.not(id: @production.id)
+                                       .where(organization: Current.organization)
+                                       .order(:name)
+
+      if @available_productions.empty?
+        redirect_to manage_show_path(@production, @show),
+                    alert: "No other productions available to transfer to"
+      end
+    end
+
+    def transfer_preview
+      @target_production = Current.user.accessible_productions.find_by(id: params[:target_production_id])
+
+      unless @target_production
+        redirect_to manage_transfer_show_select_path(@production, @show),
+                    alert: "Please select a valid target production"
+        return
+      end
+
+      @recurring_scope = params[:recurring_scope] || "single"
+      @linked_scope = params[:linked_scope] || "single"
+
+      # Determine which shows to transfer
+      @shows_to_transfer = determine_shows_to_transfer(@show, @recurring_scope, @linked_scope)
+
+      # Build a summary of what's being transferred
+      @transfer_summary = build_transfer_summary(@shows_to_transfer, @target_production)
+    end
+
     def transfer
       target_production_id = params[:target_production_id]
-      target_production = Current.user.accessible_productions.find_by(id: target_production_id)
+      @target_production = Current.user.accessible_productions.find_by(id: target_production_id)
 
-      unless target_production
-        redirect_to manage_edit_show_path(@production, @show),
+      unless @target_production
+        redirect_to manage_show_path(@production, @show),
                     alert: "Target production not found or you don't have access"
         return
       end
 
-      if target_production.id == @production.id
-        redirect_to manage_edit_show_path(@production, @show),
+      if @target_production.id == @production.id
+        redirect_to manage_show_path(@production, @show),
                     alert: "Cannot move to the same production"
         return
       end
 
-      # Perform the transfer
-      result = ShowTransferService.transfer(@show, target_production)
+      recurring_scope = params[:recurring_scope] || "single"
+      linked_scope = params[:linked_scope] || "single"
 
-      if result[:success]
+      # Determine which shows to transfer
+      shows_to_transfer = determine_shows_to_transfer(@show, recurring_scope, linked_scope)
+
+      # Perform the transfers
+      success_count = 0
+      errors = []
+
+      shows_to_transfer.each do |show|
+        result = ShowTransferService.transfer(show, @target_production)
+        if result[:success]
+          success_count += 1
+        else
+          errors << "#{show.event_type} on #{show.date_and_time.strftime('%B %-d')}: #{result[:error]}"
+        end
+      end
+
+      if errors.empty?
         # Switch to the target production in the session
         session[:current_production_id_for_organization] ||= {}
-        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = target_production.id
+        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = @target_production.id
 
-        redirect_to manage_edit_show_path(target_production, @show),
-                    notice: "Successfully moved #{@show.event_type} to #{target_production.name}"
+        event_word = success_count == 1 ? "event" : "events"
+        redirect_to manage_show_path(@target_production, @show),
+                    notice: "Successfully transferred #{success_count} #{event_word} to #{@target_production.name}"
       else
-        redirect_to manage_edit_show_path(@production, @show),
-                    alert: result[:error] || "Failed to move #{@show.event_type}"
+        redirect_to manage_show_path(@production, @show),
+                    alert: "Some transfers failed: #{errors.join(', ')}"
       end
     end
 
@@ -1273,6 +1322,68 @@ module Manage
               .find(show_id)
     end
 
+    # Determine which shows to transfer based on recurring/linked scope
+    def determine_shows_to_transfer(show, recurring_scope, linked_scope)
+      shows = [ show ]
+
+      # If part of recurring series and user wants all recurring
+      if recurring_scope == "all" && show.recurring?
+        recurring_shows = show.recurrence_siblings.to_a
+        shows.concat(recurring_shows)
+      end
+
+      # If linked and user wants all linked
+      if linked_scope == "all" && show.linked?
+        linked_shows = show.event_linkage.shows.where.not(id: shows.map(&:id)).to_a
+        shows.concat(linked_shows)
+      end
+
+      shows.uniq
+    end
+
+    # Build a summary of what data will be transferred
+    def build_transfer_summary(shows, target_production)
+      show_ids = shows.map(&:id)
+
+      summary = {
+        cast_count: ShowPersonRoleAssignment.where(show_id: show_ids).count,
+        custom_roles_count: Role.where(show_id: show_ids).count,
+        signup_forms_count: SignUpFormInstance.where(show_id: show_ids).count,
+        financials_count: ShowFinancials.where(show_id: show_ids).count,
+        vacancies_count: RoleVacancy.where(show_id: show_ids).count,
+        warnings: []
+      }
+
+      # Check if there are any performers not in the target production's talent pool
+      cast_person_ids = ShowPersonRoleAssignment
+        .where(show_id: show_ids, assignable_type: "Person")
+        .pluck(:assignable_id)
+        .uniq
+
+      target_talent_pool = target_production.effective_talent_pool
+      target_production_person_ids = target_talent_pool.talent_pool_memberships
+        .where(member_type: "Person")
+        .pluck(:member_id)
+
+      people_not_in_target = cast_person_ids - target_production_person_ids
+      if people_not_in_target.any?
+        summary[:warnings] << "#{people_not_in_target.count} cast member(s) are not in #{target_production.name}'s talent pool"
+      end
+
+      # Check if linked events are being split
+      shows.each do |show|
+        if show.linked?
+          all_linked = show.event_linkage.shows.pluck(:id)
+          if (all_linked - show_ids).any?
+            summary[:warnings] << "Some linked events will not be transferred and the linkage will be broken"
+            break
+          end
+        end
+      end
+
+      summary
+    end
+
     # Only allow a list of trusted parameters through.
     def show_params
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
@@ -1374,19 +1485,27 @@ module Manage
         )
       end
 
+      messages_sent = 0
+      emails_sent = 0
+
       people.each do |person|
         # Replace placeholder with actual name
         personalized_body = email_body.gsub("[Recipient Name]", person.name)
 
-        Manage::ShowMailer.canceled_notification(
+        result = ShowNotificationService.send_cancellation_notification(
           person: person,
           show: shows.first, # Use first show for subject line context
           production: @production,
-          email_subject: email_subject,
-          email_body: personalized_body,
+          sender: Current.user,
+          body: personalized_body,
+          subject: email_subject,
           email_batch_id: email_batch&.id
-        ).deliver_later
+        )
+        messages_sent += result[:messages_sent]
+        emails_sent += result[:emails_sent]
       end
+
+      Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
     end
 
     # Infer recurrence pattern from a series of shows

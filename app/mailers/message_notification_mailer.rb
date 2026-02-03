@@ -18,7 +18,7 @@ class MessageNotificationMailer < ApplicationMailer
       thread_list: thread_list_html
     }
 
-    template = EmailTemplateService.render("unread_digest", template_variables)
+    template = ContentTemplateService.render("unread_digest", template_variables)
 
     mail(
       to: @user.email_address,

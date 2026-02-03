@@ -34,13 +34,13 @@ class UnreadDigestJob < ApplicationJob
     # 3. Haven't received a digest email in the throttle period (or never)
     # 4. The oldest unread message is older than INITIAL_DELAY
 
+    # Find users with unread messages (never read OR have updates since last read)
+    # Using a single query structure to avoid .or() incompatibility
     User
       .joins(:message_subscriptions)
-      .where(message_subscriptions: { last_read_at: nil })
-      .or(
-        User.joins(:message_subscriptions)
-          .joins("INNER JOIN messages ON messages.id = message_subscriptions.message_id")
-          .where("messages.updated_at > message_subscriptions.last_read_at")
+      .joins("INNER JOIN messages ON messages.id = message_subscriptions.message_id")
+      .where(
+        "message_subscriptions.last_read_at IS NULL OR messages.updated_at > message_subscriptions.last_read_at"
       )
       .where("users.last_unread_digest_sent_at IS NULL OR users.last_unread_digest_sent_at < ?", THROTTLE_PERIOD.ago)
       .distinct

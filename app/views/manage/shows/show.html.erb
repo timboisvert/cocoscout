@@ -91,6 +91,7 @@
                   <% unless is_past %>
                     <%= render "shared/button", text: cancel_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
                   <% end %>
+                  <%= render "shared/button", text: "Transfer Show", path: manage_transfer_show_select_path(@production, @show), variant: "primary", size: "small" %>
                 <% end %>
               </div>
             </div>

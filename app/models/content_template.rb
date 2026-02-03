@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
-class EmailTemplate < ApplicationRecord
+# ContentTemplate stores reusable templates for messages and emails.
+#
+# Templates can be delivered via different channels:
+# - :email - Send via email only (default for auth, invitations to non-users)
+# - :message - Create in-app message only
+# - :both - Create message AND send email notification
+#
+# Formerly EmailTemplate - renamed to reflect that templates now support
+# both email and in-app messaging channels.
+#
+class ContentTemplate < ApplicationRecord
   validates :key, presence: true, uniqueness: true
   validates :name, presence: true
   validates :subject, presence: true
@@ -9,14 +19,25 @@ class EmailTemplate < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :by_category, ->(category) { where(category: category) }
 
-  # Categories for organizing templates
+  # Channel determines delivery method
+  # - email: Send via email only (default for auth, invitations to non-users)
+  # - message: Create in-app message only
+  # - both: Create message AND send email notification
+  enum :channel, {
+    email: "email",
+    message: "message",
+    both: "both"
+  }, default: :email
+
+  # Categories for organizing templates by site section
   CATEGORIES = %w[
-    invitation
-    notification
-    reminder
-    confirmation
-    marketing
-    system
+    auth
+    profiles
+    casting
+    signups
+    shows
+    payments
+    messages
   ].freeze
 
   # Template types - describes how the template is used in the app
@@ -46,28 +67,8 @@ class EmailTemplate < ApplicationRecord
     template_type == "structured" || template_type.blank?
   end
 
-  # Check if production name should be prepended to subject
-  def prepend_production_name?
-    prepend_production_name == true
-  end
-
   # Render the subject with variable substitution
-  # If prepend_production_name is true and production_name is provided, it's added in brackets
   def render_subject(variables = {})
-    rendered = interpolate(subject, variables)
-
-    # Prepend production name if flag is set and production_name variable provided
-    # Check both symbol and string keys for compatibility
-    production_name = variables[:production_name] || variables["production_name"]
-    if prepend_production_name? && production_name.present?
-      rendered = "[#{production_name}] #{rendered}"
-    end
-
-    rendered
-  end
-
-  # Render the subject WITHOUT the production name prefix (for UI forms where prefix is shown separately)
-  def render_subject_without_prefix(variables = {})
     interpolate(subject, variables)
   end
 
@@ -76,9 +77,23 @@ class EmailTemplate < ApplicationRecord
     interpolate(body, variables)
   end
 
+  # Render the message body with variable substitution
+  # For "both" channel templates, uses message_body if present, otherwise falls back to body
+  # For message-only templates, uses body
+  def render_message_body(variables = {})
+    content = if both? && message_body.present?
+                message_body
+    else
+                body
+    end
+    interpolate(content, variables)
+  end
+
   # Returns the list of variable names used in the template
   def variable_names
-    (extract_variables(subject) + extract_variables(body)).uniq
+    texts = [ subject, body ]
+    texts << message_body if both? && message_body.present?
+    texts.compact.flat_map { |t| extract_variables(t) }.uniq
   end
 
   # Returns available variables with their descriptions

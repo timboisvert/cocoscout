@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_02_152201) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_03_041600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -318,6 +318,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_02_152201) do
     t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
   end
 
+  create_table "content_templates", force: :cascade do |t|
+    t.boolean "active", default: true
+    t.jsonb "available_variables", default: []
+    t.text "body", null: false
+    t.string "category"
+    t.string "channel", default: "email", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "key", null: false
+    t.string "mailer_action"
+    t.string "mailer_class"
+    t.text "message_body"
+    t.string "name", null: false
+    t.text "notes"
+    t.string "subject", null: false
+    t.string "template_type"
+    t.datetime "updated_at", null: false
+    t.jsonb "usage_locations"
+    t.index ["active"], name: "index_content_templates_on_active"
+    t.index ["category"], name: "index_content_templates_on_category"
+    t.index ["key"], name: "index_content_templates_on_key", unique: true
+  end
+
   create_table "contract_documents", force: :cascade do |t|
     t.bigint "contract_id", null: false
     t.datetime "created_at", null: false
@@ -443,28 +466,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_02_152201) do
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
     t.index ["sent_at"], name: "index_email_logs_on_sent_at"
     t.index ["user_id"], name: "index_email_logs_on_user_id"
-  end
-
-  create_table "email_templates", force: :cascade do |t|
-    t.boolean "active", default: true
-    t.jsonb "available_variables", default: []
-    t.text "body", null: false
-    t.string "category"
-    t.datetime "created_at", null: false
-    t.text "description"
-    t.string "key", null: false
-    t.string "mailer_action"
-    t.string "mailer_class"
-    t.string "name", null: false
-    t.text "notes"
-    t.boolean "prepend_production_name", default: false
-    t.string "subject", null: false
-    t.string "template_type"
-    t.datetime "updated_at", null: false
-    t.jsonb "usage_locations"
-    t.index ["active"], name: "index_email_templates_on_active"
-    t.index ["category"], name: "index_email_templates_on_category"
-    t.index ["key"], name: "index_email_templates_on_key", unique: true
   end
 
   create_table "event_linkages", force: :cascade do |t|

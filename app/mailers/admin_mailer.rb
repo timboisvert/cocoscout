@@ -6,7 +6,7 @@ class AdminMailer < ApplicationMailer
     @person = user.primary_person
 
     # Get the email template
-    template = EmailTemplate.find_by(key: "user_account_created")
+    template = ContentTemplate.find_by(key: "user_account_created")
 
     # Prepare variables for template rendering
     variables = {

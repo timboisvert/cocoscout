@@ -225,18 +225,18 @@ module Manage
     def default_vacancy_email_subject
       template_vars = vacancy_email_template_vars
       if linked_vacancy?
-        EmailTemplateService.render_subject_without_prefix("vacancy_invitation_linked", template_vars)
+        ContentTemplateService.render_subject("vacancy_invitation_linked", template_vars)
       else
-        EmailTemplateService.render_subject_without_prefix("vacancy_invitation", template_vars)
+        ContentTemplateService.render_subject("vacancy_invitation", template_vars)
       end
     end
 
     def default_vacancy_email_body
       template_vars = vacancy_email_template_vars
       if linked_vacancy?
-        EmailTemplateService.render_body("vacancy_invitation_linked", template_vars)
+        ContentTemplateService.render_body("vacancy_invitation_linked", template_vars)
       else
-        EmailTemplateService.render_body("vacancy_invitation", template_vars)
+        ContentTemplateService.render_body("vacancy_invitation", template_vars)
       end
     end
 

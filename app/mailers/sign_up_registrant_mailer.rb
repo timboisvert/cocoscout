@@ -8,7 +8,7 @@ class SignUpRegistrantMailer < ApplicationMailer
 
     return if @recipient_email.blank?
 
-    template = EmailTemplateService.render("sign_up_confirmation", template_variables)
+    template = ContentTemplateService.render("sign_up_confirmation", template_variables)
 
     mail(
       to: @recipient_email,
@@ -25,7 +25,7 @@ class SignUpRegistrantMailer < ApplicationMailer
 
     return if @recipient_email.blank?
 
-    template = EmailTemplateService.render("sign_up_queued", template_variables)
+    template = ContentTemplateService.render("sign_up_queued", template_variables)
 
     mail(
       to: @recipient_email,
@@ -42,7 +42,7 @@ class SignUpRegistrantMailer < ApplicationMailer
 
     return if @recipient_email.blank?
 
-    template = EmailTemplateService.render("sign_up_slot_assigned", template_variables)
+    template = ContentTemplateService.render("sign_up_slot_assigned", template_variables)
 
     mail(
       to: @recipient_email,
@@ -59,7 +59,7 @@ class SignUpRegistrantMailer < ApplicationMailer
 
     return if @recipient_email.blank?
 
-    template = EmailTemplateService.render("sign_up_slot_changed", template_variables)
+    template = ContentTemplateService.render("sign_up_slot_changed", template_variables)
 
     mail(
       to: @recipient_email,
@@ -76,7 +76,7 @@ class SignUpRegistrantMailer < ApplicationMailer
 
     return if @recipient_email.blank?
 
-    template = EmailTemplateService.render("sign_up_cancelled", template_variables)
+    template = ContentTemplateService.render("sign_up_cancelled", template_variables)
 
     mail(
       to: @recipient_email,

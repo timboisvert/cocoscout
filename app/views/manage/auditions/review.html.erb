@@ -247,7 +247,7 @@
                       </div>
                     <% end %>
                   </div>
-                  <%= fields_for :invitation_email_draft, EmailDraft.new(title: EmailTemplate.find_by(key: "audition_invitation")&.subject || "Auditions", body: EmailTemplateService.render_body("audition_invitation", { recipient_name: "[Name]", production_name: @production.name, audition_date: "[date]" })) do |email_form| %>
+                  <%= fields_for :invitation_email_draft, EmailDraft.new(title: ContentTemplate.find_by(key: "audition_invitation")&.subject || "Auditions", body: ContentTemplateService.render_body("audition_invitation", { recipient_name: "[Name]", production_name: @production.name, audition_date: "[date]" })) do |email_form| %>
                     <div class="space-y-3">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
@@ -294,7 +294,7 @@
                       </div>
                     <% end %>
                   </div>
-                  <%= fields_for :not_invited_email_draft, EmailDraft.new(title: EmailTemplate.find_by(key: "audition_not_invited")&.subject || "Auditions", body: EmailTemplateService.render_body("audition_not_invited", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
+                  <%= fields_for :not_invited_email_draft, EmailDraft.new(title: ContentTemplate.find_by(key: "audition_not_invited")&.subject || "Auditions", body: ContentTemplateService.render_body("audition_not_invited", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
                     <div class="space-y-3">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>

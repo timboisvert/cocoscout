@@ -1,0 +1,20 @@
+<% content_for :title, "Edit Content Template - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path],
+        ["Content Templates", content_templates_path]
+    ],
+    text: "Edit: #{@template.name}",
+    links: [
+      { text: "Preview", path: content_template_preview_path(@template), color: "pink" }
+    ]
+  } %>
+
+  <div class="mt-4">
+    <%= render partial: "superadmin/content_template_form", locals: { template: @template, categories: @categories } %>
+  </div>
+</div>

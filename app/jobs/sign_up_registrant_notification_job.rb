@@ -20,11 +20,15 @@ class SignUpRegistrantNotificationJob < ApplicationJob
     valid_types = %i[confirmation queued slot_assigned slot_changed cancelled]
     return unless valid_types.include?(notification_type.to_sym)
 
-    # Check if registrant has an email
-    recipient_email = registration.display_email
-    return if recipient_email.blank?
+    # Only send to users with accounts (messages only, no email fallback)
+    return unless registration.person&.user.present?
 
-    # Send the appropriate email
-    SignUpRegistrantMailer.public_send(notification_type, registration).deliver_later
+    # Send notification via service (messages only)
+    result = SignUpNotificationService.send_notification(
+      registration: registration,
+      notification_type: notification_type.to_sym
+    )
+
+    Rails.logger.info "[SignUpNotification] Sent #{notification_type}: #{result[:messages_sent]} messages"
   end
 end

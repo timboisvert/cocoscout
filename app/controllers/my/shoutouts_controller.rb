@@ -181,10 +181,10 @@ module My
           )
 
           # Send invitation email using template
-          invitation_subject = EmailTemplateService.render_subject("shoutout_invitation", {
+          invitation_subject = ContentTemplateService.render_subject("shoutout_invitation", {
             author_name: Current.user.person.name
           })
-          invitation_message = EmailTemplateService.render_body("shoutout_invitation", {
+          invitation_message = ContentTemplateService.render_body("shoutout_invitation", {
             author_name: Current.user.person.name,
             setup_url: "[setup link will be included]"
           })

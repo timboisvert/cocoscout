@@ -266,6 +266,25 @@
       </div>
     <% end %>
 
+    <!-- Cable Monitor -->
+    <%= link_to cable_monitor_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Cable Monitor</h3>
+              <p class="text-xs text-gray-500">WebSocket & real-time</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Cache Monitor -->
     <%= link_to cache_monitor_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
@@ -342,8 +361,8 @@
       </div>
     <% end %>
 
-    <!-- Email Templates -->
-    <%= link_to email_templates_path, class: "block" do %>
+    <!-- Content Templates -->
+    <%= link_to content_templates_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
         <div class="p-4">
           <div class="flex items-center gap-3">
@@ -353,7 +372,7 @@
               </svg>
             </div>
             <div>
-              <h3 class="font-semibold text-gray-900">Email Templates</h3>
+              <h3 class="font-semibold text-gray-900">Content Templates</h3>
               <p class="text-xs text-gray-500">Manage templates</p>
             </div>
           </div>

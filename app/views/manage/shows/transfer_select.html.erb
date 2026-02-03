@@ -1,0 +1,149 @@
+<% content_for :title, "Transfer #{@show.event_type.titleize}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)],
+      [@show.event_type.titleize, manage_show_path(@production, @show)]
+    ],
+    text: "Transfer to Another Production",
+    links: []
+  } %>
+
+  <!-- Event Info Card -->
+  <div class="mt-5 bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div class="p-6">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-lg font-semibold text-gray-900">
+            <%= @show.event_type.titleize %>
+            <% if @show.secondary_name.present? %>
+              <span class="text-gray-500 font-normal">- <%= @show.secondary_name %></span>
+            <% end %>
+          </h2>
+          <p class="text-sm text-gray-600 mt-1">
+            <%= @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") %>
+          </p>
+          <% if @show.location.present? %>
+            <p class="text-sm text-gray-500"><%= @show.location.name %></p>
+          <% end %>
+          <p class="text-sm text-gray-400 mt-2">Currently in: <strong class="text-gray-600"><%= @production.name %></strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transfer Form -->
+  <%= form_with url: manage_transfer_show_preview_path(@production, @show), method: :get, class: "mt-6" do |f| %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Select Destination Production" %>
+
+      <div class="p-6 space-y-6">
+        <!-- Production Selection -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Transfer to:</label>
+          <% if @available_productions.any? %>
+            <div class="space-y-2 max-h-80 overflow-y-auto">
+              <% @available_productions.each do |production| %>
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="target_production_id" value="<%= production.id %>"
+                         class="w-4 h-4 accent-pink-500"
+                         required>
+                  <div class="flex items-center gap-3 flex-1">
+                    <% if production.logo.attached? %>
+                      <%= image_tag production.logo.variant(:small), class: "w-10 h-10 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <span class="text-gray-400 text-sm font-medium"><%= production.name.first(2).upcase %></span>
+                      </div>
+                    <% end %>
+                    <div class="font-medium text-gray-900"><%= production.name %></div>
+                  </div>
+                </label>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+              <p>No other productions available to transfer to.</p>
+              <p class="text-sm mt-1">You need access to at least one other production.</p>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @show.recurring? || @show.linked? %>
+          <hr class="border-gray-200">
+
+          <!-- Recurring Event Options -->
+          <% if @show.recurring? %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                This is part of a recurring series (<%= @show.recurrence_group.count %> events)
+              </label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="recurring_scope" value="single" checked
+                         class="w-4 h-4 accent-pink-500">
+                  <div>
+                    <div class="font-medium text-gray-900">Transfer only this event</div>
+                    <div class="text-sm text-gray-500">The other <%= @show.recurrence_siblings.count %> events in the series will stay in <%= @production.name %></div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="recurring_scope" value="all"
+                         class="w-4 h-4 accent-pink-500">
+                  <div>
+                    <div class="font-medium text-gray-900">Transfer entire series</div>
+                    <div class="text-sm text-gray-500">All <%= @show.recurrence_group.count %> events will be moved together</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Linked Event Options -->
+          <% if @show.linked? %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                This event is linked to <%= @show.event_linkage.shows.count - 1 %> other event(s)
+              </label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="linked_scope" value="single" checked
+                         class="w-4 h-4 accent-pink-500">
+                  <div>
+                    <div class="font-medium text-gray-900">Transfer only this event</div>
+                    <div class="text-sm text-gray-500">This event will be unlinked from the others</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="linked_scope" value="all"
+                         class="w-4 h-4 accent-pink-500">
+                  <div>
+                    <div class="font-medium text-gray-900">Transfer all linked events</div>
+                    <div class="text-sm text-gray-500">All <%= @show.event_linkage.shows.count %> linked events will be moved together</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <!-- Actions -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+        <%= render "shared/button", text: "Cancel", path: manage_show_path(@production, @show), variant: "ghost-cancel", size: "medium" %>
+        <% if @available_productions.any? %>
+          <%= render "shared/button", text: "Continue to Preview", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

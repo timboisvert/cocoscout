@@ -69,7 +69,7 @@ class GroupInvitationsController < ApplicationController
 
       if invitation.save
         # Send invitation email
-        default_subject = EmailTemplateService.render_subject("group_invitation", {
+        default_subject = ContentTemplateService.render_subject("group_invitation", {
           group_name: @group.name
         })
         invitation_subject = params[:invitation_subject] || default_subject

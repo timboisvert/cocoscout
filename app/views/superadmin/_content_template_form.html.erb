@@ -1,4 +1,4 @@
-<%= form_with model: template, url: template.persisted? ? email_template_update_path(template) : email_template_create_path,
+<%= form_with model: template, url: template.persisted? ? content_template_update_path(template) : content_template_create_path,
               method: template.persisted? ? :patch : :post,
               class: "space-y-6" do |f| %>
 
@@ -50,11 +50,6 @@
             <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-400 text-pink-500 focus:ring-pink-500" %>
             <%= f.label :active, "Active", class: "text-sm text-gray-700" %>
           </div>
-
-          <div class="flex items-center gap-3 pt-2">
-            <%= f.check_box :prepend_production_name, class: "h-4 w-4 rounded border-gray-400 text-pink-500 focus:ring-pink-500" %>
-            <%= f.label :prepend_production_name, "Prepend [Production Name] to subject", class: "text-sm text-gray-700" %>
-          </div>
         </div>
       </div>
 
@@ -76,6 +71,23 @@
               <strong>Structured:</strong> Fixed layout with placeholders<br>
               <strong>Pass-through:</strong> Content from user input<br>
               <strong>Hybrid:</strong> Pre-filled but customizable
+            </p>
+          </div>
+
+          <div>
+            <%= f.label :channel, "Delivery Channel", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :channel,
+                options_for_select([
+                  ["Email Only", "email"],
+                  ["In-App Message Only", "message"],
+                  ["Both (Message + Email)", "both"]
+                ], template.channel || "email"),
+                {},
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+            <p class="text-xs text-gray-500 mt-2">
+              <strong>Email:</strong> Send via email only<br>
+              <strong>Message:</strong> Create in-app message only<br>
+              <strong>Both:</strong> Create message AND send email
             </p>
           </div>
 
@@ -125,7 +137,7 @@
             <% if template.available_variables.present? %>
               <% template.available_variables.each do |var| %>
                 <div class="flex items-center gap-2 variable-row">
-                  <input type="text" name="email_template[available_variables][][name]"
+                  <input type="text" name="content_template[available_variables][][name]"
                          value="<%= var.is_a?(Hash) ? var['name'] || var[:name] : var %>"
                          placeholder="variable_name"
                          class="flex-1 shadow-sm rounded-lg border border-gray-400 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-xs">
@@ -147,7 +159,7 @@
               const row = document.createElement('div');
               row.className = 'flex items-center gap-2 variable-row';
               row.innerHTML = \`
-                <input type="text" name="email_template[available_variables][][name]"
+                <input type="text" name="content_template[available_variables][][name]"
                        placeholder="variable_name"
                        class="flex-1 shadow-sm rounded-lg border border-gray-400 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-xs">
                 <button type="button" onclick="this.parentElement.remove()"
@@ -163,7 +175,7 @@
     <!-- Right Column: Email Content -->
     <div class="lg:col-span-2 space-y-4">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Email Content" %>
+        <%= render "shared/card_header", title: "Template Content" %>
         <div class="p-6 space-y-4">
           <div>
             <%= f.label :subject, class: "block text-sm font-medium text-gray-700" %>
@@ -174,26 +186,56 @@
           </div>
 
           <div>
-            <%= f.label :body, class: "block text-sm font-medium text-gray-700" %>
-            <%= f.text_area :body,
-                rows: 24,
-                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
-                placeholder: "<p>Dear {{recipient_name}},</p>
+            <% if template.both? %>
+              <%# For "both" channel, show Email Body (HTML) and Message Body (rich text) %>
+              <%= f.label :body, "Email Body", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.text_area :body,
+                  rows: 16,
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
+                  placeholder: "<p>Dear {{recipient_name}},</p>
 
 <p>You have been invited to audition for the role of {{role_name}} in {{production_title}}.</p>
 
 <p>{{sender_name}}</p>" %>
-            <p class="text-xs text-gray-500 mt-1">HTML supported. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders. Use <code class="bg-gray-100 px-1 rounded font-mono">{{#var}}...{{/var}}</code> for conditional blocks.</p>
+              <p class="text-xs text-gray-500 mt-1">HTML for email. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders.</p>
+            <% elsif template.message? %>
+              <%= f.label :body, class: "block text-sm font-medium text-gray-700" %>
+              <div class="mt-2">
+                <%= f.rich_text_area :body, class: "w-full min-h-[200px]" %>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Rich text formatting supported. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders.</p>
+            <% else %>
+              <%= f.label :body, class: "block text-sm font-medium text-gray-700" %>
+              <%= f.text_area :body,
+                  rows: 24,
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
+                  placeholder: "<p>Dear {{recipient_name}},</p>
+
+<p>You have been invited to audition for the role of {{role_name}} in {{production_title}}.</p>
+
+<p>{{sender_name}}</p>" %>
+              <p class="text-xs text-gray-500 mt-1">HTML supported. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders. Use <code class="bg-gray-100 px-1 rounded font-mono">{{#var}}...{{/var}}</code> for conditional blocks.</p>
+            <% end %>
           </div>
+
+          <% if template.both? %>
+            <div class="mt-6">
+              <%= f.label :message_body, "Message Body", class: "block text-sm font-medium text-gray-700" %>
+              <div class="mt-2">
+                <%= f.rich_text_area :message_body, class: "w-full min-h-[200px]" %>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Rich text for in-app messages. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders.</p>
+            </div>
+          <% end %>
         </div>
       </div>
 
       <!-- Actions -->
       <div class="flex items-center justify-between border-t border-gray-200 pt-6">
-        <%= render "shared/button", text: "Cancel", path: email_templates_path, variant: "ghost-cancel", size: "medium" %>
+        <%= render "shared/button", text: "Cancel", path: content_templates_path, variant: "ghost-cancel", size: "medium" %>
         <div class="flex items-center gap-3">
           <% if template.persisted? %>
-            <%= render "shared/button", text: "Preview", path: email_template_preview_path(template), variant: "outline", size: "medium" %>
+            <%= render "shared/button", text: "Preview", path: content_template_preview_path(template), variant: "outline", size: "medium" %>
           <% end %>
           <%= render "shared/button", text: (template.persisted? ? "Save Changes" : "Create Template"), variant: "primary", size: "medium", type: :submit %>
         </div>

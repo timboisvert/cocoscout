@@ -230,10 +230,10 @@ module Manage
         )
 
         # Send invitation email using the standard invitation template
-        invitation_subject = EmailTemplateService.render_subject("person_invitation", {
+        invitation_subject = ContentTemplateService.render_subject("person_invitation", {
           organization_name: Current.organization.name
         })
-        invitation_message = EmailTemplateService.render_body("person_invitation", {
+        invitation_message = ContentTemplateService.render_body("person_invitation", {
           organization_name: Current.organization.name,
           setup_url: "[setup link will be included]"
         })

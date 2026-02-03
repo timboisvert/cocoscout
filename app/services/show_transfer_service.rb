@@ -6,54 +6,69 @@ class ShowTransferService
       ActiveRecord::Base.transaction do
         old_production = show.production
 
-        # Update the production reference
+        # Update the production reference on the show
         show.update!(production_id: target_production.id)
 
-        # Handle show roles - if using custom roles, they need to move too
-        if show.use_custom_roles
-          # Custom show roles stay with the show, nothing to do
-        else
-          # Show was using production roles - check if same roles exist in target
-          # For now, keep assignments but they may need reconfiguration
+        # === SIGN-UP FORMS ===
+        # Transfer sign-up forms that belong directly to this show
+        SignUpForm.where(show_id: show.id).update_all(production_id: target_production.id)
+
+        # Transfer sign-up forms that have instances linked to this show
+        SignUpFormInstance.where(show_id: show.id).includes(:sign_up_form).each do |instance|
+          if instance.sign_up_form.present? && instance.sign_up_form.production_id == old_production.id
+            instance.sign_up_form.update!(production_id: target_production.id)
+          end
         end
 
-        # Move any show financials (they belong to the show, not production)
-        # Already handled by association
+        # Transfer sign-up forms linked via sign_up_form_shows join table
+        SignUpFormShow.where(show_id: show.id).includes(:sign_up_form).each do |form_show|
+          if form_show.sign_up_form.production_id == old_production.id
+            form_show.sign_up_form.update!(production_id: target_production.id)
+          end
+        end
 
-        # Update show payout references if they exist
+        # === CUSTOM ROLES ===
+        # Show-specific roles need their production_id updated
+        Role.where(show_id: show.id).update_all(production_id: target_production.id)
+
+        # === MESSAGES ===
+        # Update messages scoped to this show
+        Message.where(show_id: show.id, production_id: old_production.id)
+               .update_all(production_id: target_production.id)
+
+        # === TICKETING LINKS ===
+        # Ticketing show links reference a ticketing_production_link, may need to be cleared
+        # if the target production doesn't have the same ticketing setup
+        TicketingShowLink.where(show_id: show.id).each do |link|
+          unless link.ticketing_production_link&.production_id == target_production.id
+            link.destroy
+          end
+        end
+
+        # === SHOW PAYOUT ===
         if show.show_payout.present?
-          # The show_payout belongs_to :show, so it moves automatically
-          # But we may need to update payout_scheme if it was production-specific
+          # Clear payout scheme if it was from the old production
           if show.show_payout.payout_scheme&.production_id == old_production.id
-            # Clear the scheme - user will need to select a new one
             show.show_payout.update!(payout_scheme_id: nil)
           end
         end
 
-        # Handle recurring group if this is part of one
+        # === RECURRENCE GROUP ===
+        # Detach from recurrence group when transferring single show
         if show.recurrence_group_id.present?
-          recurrence_group = show.recurrence_group
-          remaining_in_group = recurrence_group.where.not(id: show.id).count
-
-          if remaining_in_group.zero?
-            # This was the last show in the group, remove the group reference
-            show.update!(recurrence_group_id: nil)
-          end
-          # Otherwise, the show is now detached from its recurrence group
           show.update!(recurrence_group_id: nil)
         end
 
-        # Handle event linkages
+        # === EVENT LINKAGES ===
+        # Detach from event linkage when transferring single show
         if show.event_linkage.present?
           linkage = show.event_linkage
           remaining_in_linkage = linkage.shows.where.not(id: show.id).count
 
           if remaining_in_linkage.zero?
-            # This was the only show in the linkage, destroy it
             linkage.destroy
           else
-            # Remove this show from the linkage
-            linkage.shows.delete(show)
+            show.update!(event_linkage_id: nil)
           end
         end
 
@@ -63,6 +78,7 @@ class ShowTransferService
       { success: false, error: e.message }
     rescue StandardError => e
       Rails.logger.error "ShowTransferService error: #{e.message}"
+      Rails.logger.error e.backtrace.first(10).join("\n")
       { success: false, error: "An unexpected error occurred" }
     end
   end

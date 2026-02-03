@@ -1338,6 +1338,9 @@ module Manage
     end
 
     def send_casting_emails(assignables_with_roles, email_body, subject, notification_type, email_batch_id: nil)
+      messages_sent = 0
+      emails_sent = 0
+
       assignables_with_roles.each do |assignable, role|
         # For groups, email all members with notifications enabled
         recipients = if assignable.is_a?(Group)
@@ -1357,10 +1360,28 @@ module Manage
                                          .gsub("[Production]", @production.name)
 
           if notification_type == :cast
-            Manage::CastingMailer.cast_notification(person, @show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
+            result = CastingNotificationService.send_cast_notification(
+              person: person,
+              show: @show,
+              production: @production,
+              sender: Current.user,
+              body: personalized_body,
+              subject: subject,
+              email_batch_id: email_batch_id
+            )
           else
-            Manage::CastingMailer.removed_notification(person, @show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
+            result = CastingNotificationService.send_removed_notification(
+              person: person,
+              show: @show,
+              production: @production,
+              sender: Current.user,
+              body: personalized_body,
+              subject: subject,
+              email_batch_id: email_batch_id
+            )
           end
+          messages_sent += result[:messages_sent]
+          emails_sent += result[:emails_sent]
         end
 
         # Record the notification (update existing or create new)
@@ -1374,6 +1395,8 @@ module Manage
           email_body: email_body
         )
       end
+
+      { messages_sent: messages_sent, emails_sent: emails_sent }
     end
 
     # Send a single consolidated email to a person with all their assignments across linked shows
@@ -1433,30 +1456,46 @@ module Manage
       primary_show = assignments.first[:show]
 
       if notification_type == :cast
-        Manage::CastingMailer.cast_notification(person, primary_show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
+        CastingNotificationService.send_cast_notification(
+          person: person,
+          show: primary_show,
+          production: @production,
+          sender: Current.user,
+          body: personalized_body,
+          subject: subject,
+          email_batch_id: email_batch_id
+        )
       else
-        Manage::CastingMailer.removed_notification(person, primary_show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
+        CastingNotificationService.send_removed_notification(
+          person: person,
+          show: primary_show,
+          production: @production,
+          sender: Current.user,
+          body: personalized_body,
+          subject: subject,
+          email_batch_id: email_batch_id
+        )
       end
     end
 
     def default_cast_email_subject
       variables = build_casting_email_variables
-      EmailTemplateService.render_subject_without_prefix("cast_notification", variables)
+      ContentTemplateService.render_subject("cast_notification", variables)
     end
 
     def default_cast_email_body
       variables = build_casting_email_variables
-      EmailTemplateService.render_body("cast_notification", variables)
+      ContentTemplateService.render_body("cast_notification", variables)
     end
 
     def default_removed_email_subject
       variables = build_casting_email_variables
-      EmailTemplateService.render_subject_without_prefix("removed_from_cast_notification", variables)
+      ContentTemplateService.render_subject("removed_from_cast_notification", variables)
     end
 
     def default_removed_email_body
       variables = build_casting_email_variables
-      EmailTemplateService.render_body("removed_from_cast_notification", variables)
+      ContentTemplateService.render_body("removed_from_cast_notification", variables)
     end
 
     # Build variables for casting email templates

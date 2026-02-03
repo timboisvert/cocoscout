@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-# Seeds for EmailTemplate records
-# Run with: rails db:seed:email_templates
-# Or: EmailTemplate.destroy_all && load(Rails.root.join("db/seeds/email_templates.rb"))
+# Seeds for ContentTemplate records
+# Run with: rails db:seed:content_templates
+# Or: ContentTemplate.destroy_all && load(Rails.root.join("db/seeds/content_templates.rb"))
 #
-# IMPORTANT: This file contains the ACTUAL email content that was previously
+# IMPORTANT: This file contains the ACTUAL content that was previously
 # hardcoded in controllers and views. When updating these templates, update
 # both this seed file AND the corresponding controller/view code to use
-# EmailTemplateService.render() with the same template key.
+# ContentTemplateService.render() with the same template key.
 
-module EmailTemplateSeeds
+module ContentTemplateSeeds
   class << self
     def seed!
       Rails.logger.info "Seeding email templates..."
@@ -22,13 +22,12 @@ module EmailTemplateSeeds
         {
           key: "talent_pool_message",
           name: "Talent Pool Message",
-          category: "notification",
+          category: "messages",
           subject: "{{subject}}",
           description: "Message sent from a user to a production's team via the talent pool. Subject and body are passed through as provided by the sender.",
           template_type: "passthrough",
           mailer_class: "My::TalentMessageMailer",
           mailer_action: "send_to_production",
-          prepend_production_name: true,
           body: "{{body_html}}",
           available_variables: [
             { name: "sender_name", description: "Name of the sender (person)" },
@@ -44,7 +43,7 @@ module EmailTemplateSeeds
         {
           key: "auth_signup",
           name: "Welcome Email",
-          category: "system",
+          category: "auth",
           subject: "Welcome to CocoScout",
           description: "Sent when a user creates a new account. Welcomes them and provides a link to sign in.",
           template_type: "structured",
@@ -64,7 +63,7 @@ module EmailTemplateSeeds
         {
           key: "auth_password_reset",
           name: "Password Reset",
-          category: "system",
+          category: "auth",
           subject: "Reset your CocoScout password",
           description: "Sent when a user requests a password reset. Contains a secure link to reset their password.",
           template_type: "structured",
@@ -89,7 +88,7 @@ module EmailTemplateSeeds
         {
           key: "group_invitation",
           name: "Group Invitation",
-          category: "invitation",
+          category: "profiles",
           subject: "You've been invited to join {{group_name}} on CocoScout",
           description: "Invites someone to join a group/ensemble. Supports custom messages from the inviter.",
           template_type: "hybrid",
@@ -117,7 +116,7 @@ module EmailTemplateSeeds
         {
           key: "shoutout_invitation",
           name: "Shoutout New User Invitation",
-          category: "invitation",
+          category: "profiles",
           subject: "{{author_name}} gave you a shoutout on CocoScout!",
           description: "Sent when someone gives a shoutout to a person not yet on CocoScout. Invites them to join.",
           template_type: "hybrid",
@@ -136,7 +135,7 @@ module EmailTemplateSeeds
         {
           key: "shoutout_received",
           name: "Shoutout Received",
-          category: "notification",
+          category: "profiles",
           subject: "{{author_name}} gave you a shoutout on CocoScout!",
           description: "Notifies an existing user when someone gives them a shoutout. Content is hidden - they must log in to see it.",
           body: <<~HTML,
@@ -159,7 +158,8 @@ module EmailTemplateSeeds
         {
           key: "vacancy_invitation",
           name: "Role Vacancy Invitation",
-          category: "invitation",
+          category: "shows",
+          channel: :both,
           subject: "[{{production_name}}] Replacement needed for {{show_date}} {{event_name}}",
           description: "Invites someone to fill a vacant role in a show. The subject and body are editable before sending.",
           template_type: "hybrid",
@@ -185,7 +185,8 @@ module EmailTemplateSeeds
         {
           key: "vacancy_invitation_linked",
           name: "Role Vacancy Invitation (Linked Shows)",
-          category: "invitation",
+          category: "shows",
+          channel: :both,
           subject: "[{{production_name}}] Replacement needed for {{show_count}} linked shows",
           description: "Invites someone to fill a vacant role across multiple linked shows.",
           template_type: "hybrid",
@@ -215,7 +216,7 @@ module EmailTemplateSeeds
         {
           key: "audition_added_to_cast",
           name: "Audition: Added to Cast",
-          category: "notification",
+          category: "casting",
           subject: "Audition Results for {{production_name}}",
           description: "Sent to auditionees who are being added to a cast/talent pool. From auditions_controller.rb#generate_default_cast_email",
           template_type: "hybrid",
@@ -237,7 +238,7 @@ module EmailTemplateSeeds
         {
           key: "audition_not_cast",
           name: "Audition: Not Being Added",
-          category: "notification",
+          category: "casting",
           subject: "Audition Results for {{production_name}}",
           description: "Sent to auditionees who are not being added to a cast. From auditions_controller.rb#generate_default_rejection_email",
           template_type: "hybrid",
@@ -258,7 +259,7 @@ module EmailTemplateSeeds
         {
           key: "audition_invitation",
           name: "Audition Invitation",
-          category: "invitation",
+          category: "signups",
           subject: "{{production_name}} Auditions",
           description: "Invites talent to audition. From auditions_controller.rb#generate_default_invitation_email",
           template_type: "hybrid",
@@ -279,7 +280,7 @@ module EmailTemplateSeeds
         {
           key: "audition_not_invited",
           name: "Audition: Not Invited",
-          category: "notification",
+          category: "signups",
           subject: "{{production_name}} Auditions",
           description: "Sent to those not being invited to audition. From auditions_controller.rb#generate_default_not_invited_email",
           template_type: "hybrid",
@@ -300,7 +301,7 @@ module EmailTemplateSeeds
         {
           key: "audition_request_notification",
           name: "Audition Request Received",
-          category: "notification",
+          category: "signups",
           subject: "[{{production_name}}] New audition request from {{requester_name}}",
           description: "Notifies producers when someone submits an audition request.",
           template_type: "structured",
@@ -322,7 +323,7 @@ module EmailTemplateSeeds
         {
           key: "talent_left_production",
           name: "Talent Left Production",
-          category: "notification",
+          category: "shows",
           subject: "[{{production_name}}] {{talent_name}} has left the talent pool",
           description: "Notifies producers when a talent removes themselves from a production's talent pool.",
           template_type: "structured",
@@ -347,13 +348,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_registration_notification",
           name: "Sign-Up Registration Received",
-          category: "notification",
+          category: "signups",
           subject: "New sign-up from {{registrant_name}}",
           description: "Notifies production team when someone registers for a sign-up form.",
           template_type: "structured",
           mailer_class: "Manage::SignUpMailer",
           mailer_action: "registration_notification",
-          prepend_production_name: true,
           body: <<~HTML,
             <p>Hello {{recipient_name}},</p>
             <p>A new registration has been submitted for <strong>{{sign_up_form_name}}</strong>.</p>
@@ -388,7 +388,7 @@ module EmailTemplateSeeds
         {
           key: "cast_notification",
           name: "Cast Notification",
-          category: "notification",
+          category: "casting",
           subject: "Cast Confirmation: {{production_name}} - {{show_dates}}",
           description: "Notifies someone they've been cast. From casting_controller.rb#default_cast_email_subject/body",
           template_type: "hybrid",
@@ -410,7 +410,7 @@ module EmailTemplateSeeds
         {
           key: "removed_from_cast_notification",
           name: "Removed from Cast Notification",
-          category: "notification",
+          category: "casting",
           subject: "Casting Update - {{production_name}} - {{show_dates}}",
           description: "Notifies someone they've been removed from a cast. From casting_controller.rb#default_removed_email_subject/body",
           template_type: "hybrid",
@@ -433,7 +433,8 @@ module EmailTemplateSeeds
         {
           key: "casting_table_notification",
           name: "Casting Table Notification",
-          category: "notification",
+          category: "casting",
+          channel: :message,
           subject: "Cast Confirmation: {{production_names}}",
           description: "Notifies someone they've been cast through a casting table. Multiple productions may be listed.",
           template_type: "hybrid",
@@ -452,7 +453,7 @@ module EmailTemplateSeeds
         {
           key: "production_message",
           name: "Production Message",
-          category: "notification",
+          category: "messages",
           subject: "{{subject}}",
           description: "General-purpose email from production team to talent. Can be used for casting announcements, directory messages, or any production-related communication. Subject and body are fully customizable.",
           template_type: "passthrough",
@@ -474,7 +475,7 @@ module EmailTemplateSeeds
         {
           key: "person_invitation",
           name: "Person Invitation to CocoScout",
-          category: "invitation",
+          category: "profiles",
           subject: "You've been invited to join {{organization_name}} on CocoScout",
           description: "Invites someone to join an organization. From people_controller.rb#default_invitation_subject/message",
           template_type: "hybrid",
@@ -499,7 +500,7 @@ module EmailTemplateSeeds
         {
           key: "questionnaire_invitation",
           name: "Questionnaire Invitation",
-          category: "reminder",
+          category: "signups",
           subject: "{{production_name}} - {{questionnaire_title}}",
           description: "Invites talent to complete a questionnaire. From questionnaires/show.html.erb",
           template_type: "hybrid",
@@ -525,7 +526,7 @@ module EmailTemplateSeeds
         {
           key: "team_invitation",
           name: "Team Invitation (Organization)",
-          category: "invitation",
+          category: "profiles",
           subject: "You've been invited to join {{organization_name}}'s team on CocoScout",
           description: "Invites someone to join an organization's management team. From team_controller.rb",
           template_type: "hybrid",
@@ -550,21 +551,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_confirmation",
           name: "Sign-Up Confirmation",
-          category: "confirmation",
+          category: "signups",
+          channel: :message,
           subject: "You're signed up for {{sign_up_form_name}}",
           description: "Sent to registrants when they successfully sign up for a slot.",
           template_type: "structured",
-          mailer_class: "SignUpRegistrantMailer",
-          mailer_action: "confirmation",
-          prepend_production_name: true,
-          body: <<~HTML,
-            <p>Hi {{registrant_name}},</p>
-            <p>You're confirmed for <strong>{{sign_up_form_name}}</strong>!</p>
-            <p><strong>Slot:</strong> {{slot_name}}</p>
-            <p><strong>Show:</strong> {{show_name}}</p>
-            <p><strong>Date:</strong> {{show_date}}</p>
-            <p>If you need to make changes or cancel your registration, you can do so from your account.</p>
-          HTML
+          body: "Hi {{registrant_name}},\n\nYou're confirmed for <strong>{{sign_up_form_name}}</strong>!\n\n<strong>Slot:</strong> {{slot_name}}\n<strong>Show:</strong> {{show_name}}\n<strong>Date:</strong> {{show_date}}\n\nIf you need to make changes or cancel your registration, you can do so from your account.",
           available_variables: [
             { name: "registrant_name", description: "Name of the registrant" },
             { name: "sign_up_form_name", description: "Name of the sign-up form" },
@@ -577,20 +569,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_queued",
           name: "Sign-Up Queued",
-          category: "confirmation",
+          category: "signups",
+          channel: :message,
           subject: "You've joined the queue for {{sign_up_form_name}}",
           description: "Sent to registrants when they are added to the queue awaiting slot assignment.",
           template_type: "structured",
-          mailer_class: "SignUpRegistrantMailer",
-          mailer_action: "queued",
-          prepend_production_name: true,
-          body: <<~HTML,
-            <p>Hi {{registrant_name}},</p>
-            <p>You've been added to the queue for <strong>{{sign_up_form_name}}</strong>.</p>
-            <p><strong>Show:</strong> {{show_name}}</p>
-            <p><strong>Date:</strong> {{show_date}}</p>
-            <p>The production team will assign you to a slot. You'll receive another email when your slot is confirmed.</p>
-          HTML
+          body: "Hi {{registrant_name}},\n\nYou've been added to the queue for <strong>{{sign_up_form_name}}</strong>.\n\n<strong>Show:</strong> {{show_name}}\n<strong>Date:</strong> {{show_date}}\n\nThe production team will assign you to a slot. You'll receive a message when your slot is confirmed.",
           available_variables: [
             { name: "registrant_name", description: "Name of the registrant" },
             { name: "sign_up_form_name", description: "Name of the sign-up form" },
@@ -602,21 +586,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_slot_assigned",
           name: "Sign-Up Slot Assigned",
-          category: "notification",
+          category: "signups",
+          channel: :message,
           subject: "You've been assigned a slot for {{sign_up_form_name}}",
           description: "Sent to registrants when they are moved from the queue to a specific slot.",
           template_type: "structured",
-          mailer_class: "SignUpRegistrantMailer",
-          mailer_action: "slot_assigned",
-          prepend_production_name: true,
-          body: <<~HTML,
-            <p>Hi {{registrant_name}},</p>
-            <p>Great news! You've been assigned a slot for <strong>{{sign_up_form_name}}</strong>.</p>
-            <p><strong>Slot:</strong> {{slot_name}}</p>
-            <p><strong>Show:</strong> {{show_name}}</p>
-            <p><strong>Date:</strong> {{show_date}}</p>
-            <p>If you need to make changes or cancel your registration, you can do so from your account.</p>
-          HTML
+          body: "Hi {{registrant_name}},\n\nGreat news! You've been assigned a slot for <strong>{{sign_up_form_name}}</strong>.\n\n<strong>Slot:</strong> {{slot_name}}\n<strong>Show:</strong> {{show_name}}\n<strong>Date:</strong> {{show_date}}\n\nIf you need to make changes or cancel your registration, you can do so from your account.",
           available_variables: [
             { name: "registrant_name", description: "Name of the registrant" },
             { name: "sign_up_form_name", description: "Name of the sign-up form" },
@@ -629,21 +604,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_slot_changed",
           name: "Sign-Up Slot Changed",
-          category: "notification",
+          category: "signups",
+          channel: :message,
           subject: "Your slot has been changed for {{sign_up_form_name}}",
           description: "Sent to registrants when they change their slot selection.",
           template_type: "structured",
-          mailer_class: "SignUpRegistrantMailer",
-          mailer_action: "slot_changed",
-          prepend_production_name: true,
-          body: <<~HTML,
-            <p>Hi {{registrant_name}},</p>
-            <p>Your registration for <strong>{{sign_up_form_name}}</strong> has been updated.</p>
-            <p><strong>New Slot:</strong> {{slot_name}}</p>
-            <p><strong>Show:</strong> {{show_name}}</p>
-            <p><strong>Date:</strong> {{show_date}}</p>
-            <p>If you have any questions, please contact the production team.</p>
-          HTML
+          body: "Hi {{registrant_name}},\n\nYour registration for <strong>{{sign_up_form_name}}</strong> has been updated.\n\n<strong>New Slot:</strong> {{slot_name}}\n<strong>Show:</strong> {{show_name}}\n<strong>Date:</strong> {{show_date}}\n\nIf you have any questions, please contact the production team.",
           available_variables: [
             { name: "registrant_name", description: "Name of the registrant" },
             { name: "sign_up_form_name", description: "Name of the sign-up form" },
@@ -656,20 +622,12 @@ module EmailTemplateSeeds
         {
           key: "sign_up_cancelled",
           name: "Sign-Up Cancelled",
-          category: "notification",
+          category: "signups",
+          channel: :message,
           subject: "Your sign-up has been cancelled",
           description: "Sent to registrants when their registration is cancelled.",
           template_type: "structured",
-          mailer_class: "SignUpRegistrantMailer",
-          mailer_action: "cancelled",
-          prepend_production_name: true,
-          body: <<~HTML,
-            <p>Hi {{registrant_name}},</p>
-            <p>Your registration for <strong>{{sign_up_form_name}}</strong> has been cancelled.</p>
-            <p><strong>Show:</strong> {{show_name}}</p>
-            <p><strong>Date:</strong> {{show_date}}</p>
-            <p>If this was a mistake or you'd like to sign up again, please visit the sign-up page.</p>
-          HTML
+          body: "Hi {{registrant_name}},\n\nYour registration for <strong>{{sign_up_form_name}}</strong> has been cancelled.\n\n<strong>Show:</strong> {{show_name}}\n<strong>Date:</strong> {{show_date}}\n\nIf this was a mistake or you'd like to sign up again, please visit the sign-up page.",
           available_variables: [
             { name: "registrant_name", description: "Name of the registrant" },
             { name: "sign_up_form_name", description: "Name of the sign-up form" },
@@ -686,13 +644,13 @@ module EmailTemplateSeeds
         {
           key: "show_canceled",
           name: "Show Canceled Notification",
-          category: "notification",
+          category: "shows",
+          channel: :both,
           subject: "{{event_type}} Canceled: {{event_date}}",
           description: "Sent to cast members when a show or event is canceled.",
           template_type: "structured",
           mailer_class: "Manage::ShowMailer",
           mailer_action: "canceled_notification",
-          prepend_production_name: true,
           body: <<~HTML,
             <p>Hello {{recipient_name}},</p>
             <p>We're writing to let you know that the following event has been <strong>canceled</strong>:</p>
@@ -715,7 +673,7 @@ module EmailTemplateSeeds
       ]
 
       templates.each do |attrs|
-        template = EmailTemplate.find_or_initialize_by(key: attrs[:key])
+        template = ContentTemplate.find_or_initialize_by(key: attrs[:key])
         template.assign_attributes(attrs.merge(active: true))
         if template.save
           Rails.logger.info "  ✓ #{template.key}"
@@ -724,10 +682,10 @@ module EmailTemplateSeeds
         end
       end
 
-      Rails.logger.info "Seeded #{EmailTemplate.count} email templates"
+      Rails.logger.info "Seeded #{ContentTemplate.count} content templates"
     end
   end
 end
 
 # Run if called directly
-EmailTemplateSeeds.seed! if __FILE__ == $PROGRAM_NAME
+ContentTemplateSeeds.seed! if __FILE__ == $PROGRAM_NAME
