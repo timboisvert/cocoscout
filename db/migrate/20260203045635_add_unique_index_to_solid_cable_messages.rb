@@ -1,10 +1,13 @@
 class AddUniqueIndexToSolidCableMessages < ActiveRecord::Migration[8.1]
   def change
-    # Rails 8.1 with Solid Cable requires a unique index on id for upsert operations
-    # The primary key constraint should suffice, but we need to ensure it exists
-    # If solid_cable_messages doesn't have a proper primary key, add unique index on id
-    unless index_exists?(:solid_cable_messages, :id, unique: true)
-      add_index :solid_cable_messages, :id, unique: true, if_not_exists: true
-    end
+    # solid_cable_messages is in the cable database, not the primary database
+    # This migration should be skipped - the fix is handled by the rescue blocks
+    # in message_service.rb
+    #
+    # If you need to add the index, run this directly on the cable database:
+    # bin/rails db:migrate:cable
+    #
+    # Or connect to the cable database and run:
+    # CREATE UNIQUE INDEX IF NOT EXISTS index_solid_cable_messages_on_id ON solid_cable_messages (id);
   end
 end
