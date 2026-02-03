@@ -17,6 +17,9 @@ class UserNotificationsChannel < ApplicationCable::Channel
         count: user.unread_message_count
       }
     )
+  rescue ArgumentError => e
+    # Solid Cable in Rails 8.1 has upsert compatibility issues
+    Rails.logger.warn("UserNotificationsChannel.broadcast_unread_count failed: #{e.message}")
   end
 
   # Class method to notify user of a new message
@@ -33,5 +36,8 @@ class UserNotificationsChannel < ApplicationCable::Channel
         message_url: Rails.application.routes.url_helpers.my_message_path(message.root_message)
       }
     )
+  rescue ArgumentError => e
+    # Solid Cable in Rails 8.1 has upsert compatibility issues
+    Rails.logger.warn("UserNotificationsChannel.broadcast_new_message failed: #{e.message}")
   end
 end

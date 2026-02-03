@@ -348,6 +348,9 @@ class Message < ApplicationRecord
       sender_id: sender.is_a?(User) ? sender.id : nil,
       message_id: id
     )
+  rescue ArgumentError => e
+    # Solid Cable in Rails 8.1 has upsert compatibility issues
+    Rails.logger.warn("Message#broadcast_to_thread failed: #{e.message}")
   end
 
   # Notify all subscribers about the new message (for unread counts)
