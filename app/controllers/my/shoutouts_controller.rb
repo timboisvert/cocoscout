@@ -88,12 +88,8 @@ module My
       @shoutout.replaces_shoutout = existing_shoutout if existing_shoutout
 
       if @shoutout.save
-        # Send email notification to recipient if they have an email and notifications enabled
-        if @shoutee.respond_to?(:email) && @shoutee.email.present?
-          if @shoutee.user.nil? || @shoutee.user.notification_enabled?(:shoutouts)
-            ShoutoutMailer.shoutout_received(@shoutout).deliver_later
-          end
-        end
+        # Send notification to recipient based on their account status
+        send_shoutout_notification(@shoutout)
         redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
       else
         render :new, status: :unprocessable_entity
@@ -101,6 +97,41 @@ module My
     end
 
     private
+
+    def send_shoutout_notification(shoutout)
+      shoutee = shoutout.shoutee
+      return unless shoutee.respond_to?(:email) && shoutee.email.present?
+
+      # Check notification preferences
+      return if shoutee.user.present? && !shoutee.user.notification_enabled?(:shoutouts)
+
+      shoutout_url = Rails.application.routes.url_helpers.profile_url(
+        shoutee,
+        host: ENV.fetch("HOST", "localhost:3000")
+      )
+
+      variables = {
+        recipient_name: shoutee.first_name || "there",
+        author_name: shoutout.author.name,
+        shoutout_message: shoutout.body,
+        shoutout_url: shoutout_url
+      }
+
+      if shoutee.user.present?
+        # User has an account - send in-app message (shoutout_notification is channel: :message)
+        rendered = ContentTemplateService.render("shoutout_notification", variables)
+        MessageService.send_direct(
+          sender: Current.user,
+          recipient_person: shoutee,
+          subject: rendered[:subject],
+          body: rendered[:body],
+          organization: nil
+        )
+      else
+        # No account - send email via ShoutoutMailer
+        ShoutoutMailer.shoutout_received(shoutout).deliver_later
+      end
+    end
 
     def handle_invite_shoutout
       invite_name = params[:invite_name]
@@ -135,10 +166,8 @@ module My
         @shoutout.replaces_shoutout = existing_shoutout if existing_shoutout
 
         if @shoutout.save
-          # Send email notification to recipient if they have notifications enabled
-          if @shoutee.email.present? && (@shoutee.user.nil? || @shoutee.user.notification_enabled?(:shoutouts))
-            ShoutoutMailer.shoutout_received(@shoutout).deliver_later
-          end
+          # Send notification to recipient
+          send_shoutout_notification(@shoutout)
           redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
         else
           redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Could not save shoutout."

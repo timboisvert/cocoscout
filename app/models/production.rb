@@ -21,7 +21,6 @@ class Production < ApplicationRecord
   has_many :sign_up_forms, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
-  has_many :posts, dependent: :destroy
   has_many :production_expenses, dependent: :destroy
   has_many :ticketing_production_links, dependent: :destroy
   has_many :ticketing_providers, through: :ticketing_production_links

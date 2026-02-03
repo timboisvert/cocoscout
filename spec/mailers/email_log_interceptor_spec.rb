@@ -34,7 +34,10 @@ RSpec.describe EmailLogInterceptor do
 
     it 'logs emails from person mailer' do
       organization = create(:organization)
-      person_invitation = create(:person_invitation, organization: organization)
+      recipient_user = create(:user)
+      person_invitation = create(:person_invitation, organization: organization, email: recipient_user.email_address)
+      # Create a person with the same email linked to the user so the interceptor can resolve
+      create(:person, email: recipient_user.email_address, user: recipient_user)
 
       expect do
         Manage::PersonMailer.person_invitation(person_invitation, 'Test Subject', 'Test message').deliver_now
@@ -49,13 +52,12 @@ RSpec.describe EmailLogInterceptor do
       sender = create(:user)
       email_batch = EmailBatch.create!(user: sender, subject: 'Batch', recipient_count: 2, sent_at: Time.current)
       production = create(:production)
-      show = create(:show, production: production)
 
       # Person without a linked user
       person = create(:person, user: nil, email: 'no_user@example.com')
 
       expect do
-        Manage::CastingMailer.cast_notification(person, show, '<p>hi</p>', 'You have been cast!', email_batch_id: email_batch.id).deliver_now
+        Manage::AuditionMailer.casting_notification(person, production, '<p>hi</p>', subject: 'You have been cast!', email_batch_id: email_batch.id).deliver_now
       end.to change(EmailLog, :count).by(1)
 
       log = EmailLog.last

@@ -76,7 +76,6 @@ class OrganizationJoinController < ApplicationController
       user.update!(default_person: person)
 
       # Notify admin
-      AdminMailer.user_account_created(user).deliver_later
 
       # Sign in the new user
       start_new_session_for user

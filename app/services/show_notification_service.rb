@@ -11,12 +11,14 @@
 #     show: show,
 #     production: production,
 #     sender: current_user,
-#     body: email_body,
-#     subject: email_subject,
+#     body: email_body,        # Optional - uses template if not provided
+#     subject: email_subject,  # Optional - uses template if not provided
 #     email_batch_id: batch.id
 #   )
 #
 class ShowNotificationService
+  TEMPLATE_KEY = "show_canceled"
+
   class << self
     # Send show cancellation notification
     #
@@ -24,17 +26,31 @@ class ShowNotificationService
     # @param show [Show] The cancelled show
     # @param production [Production] The production
     # @param sender [User] The user sending the notification
-    # @param body [String] The notification body (HTML)
-    # @param subject [String] The notification subject
+    # @param body [String, nil] Optional notification body (HTML) - uses template if nil
+    # @param subject [String, nil] Optional notification subject - uses template if nil
     # @param email_batch_id [Integer] Optional batch ID for tracking
     # @return [Hash] { messages_sent: Integer, emails_sent: Integer }
-    def send_cancellation_notification(person:, show:, production:, sender:, body:, subject:, email_batch_id: nil)
+    def send_cancellation_notification(person:, show:, production:, sender:, body: nil, subject: nil, email_batch_id: nil)
       result = { messages_sent: 0, emails_sent: 0 }
 
       return result unless person&.email.present?
 
       # Check template channel to determine delivery method
-      channel = ContentTemplateService.channel_for("show_canceled") || :message
+      channel = ContentTemplateService.channel_for(TEMPLATE_KEY) || :both
+
+      # Render template if custom body/subject not provided
+      if body.blank? || subject.blank?
+        rendered = ContentTemplateService.render(TEMPLATE_KEY, {
+          recipient_name: person.first_name || person.name,
+          production_name: production.name,
+          event_type: show.event_type&.titleize || "Event",
+          event_date: show.date_and_time&.strftime("%A, %B %-d, %Y") || "TBD",
+          show_name: show.secondary_name.presence || show.event_type&.titleize || "Event",
+          location: show.location&.name
+        })
+        subject = subject.presence || rendered[:subject]
+        body = body.presence || rendered[:body]
+      end
 
       # Send as in-app message
       if channel == :message || channel == :both

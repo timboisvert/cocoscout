@@ -13,25 +13,27 @@ RSpec.describe AuditionNotificationService do
 
   describe ".send_casting_results" do
     before do
-      # Create casting template
-      ContentTemplate.create!(
-        key: "audition_added_to_cast",
-        name: "Added to Cast",
-        subject: "Welcome to {{production_name}}",
-        body: "<p>Congratulations!</p>",
-        channel: "message",
-        active: true
-      )
+      # Update or create casting template for tests
+      ContentTemplate.find_or_create_by!(key: "audition_added_to_cast") do |t|
+        t.name = "Added to Cast"
+        t.subject = "Welcome to {{production_name}}"
+        t.body = "<p>Congratulations!</p>"
+        t.channel = "message"
+        t.active = true
+      end.tap do |t|
+        t.update!(channel: "message") # Ensure channel is set correctly for test
+      end
 
-      # Create rejection template
-      ContentTemplate.create!(
-        key: "audition_not_cast",
-        name: "Not Cast",
-        subject: "Thank you for auditioning",
-        body: "<p>Unfortunately...</p>",
-        channel: "message",
-        active: true
-      )
+      # Update or create rejection template for tests
+      ContentTemplate.find_or_create_by!(key: "audition_not_cast") do |t|
+        t.name = "Not Cast"
+        t.subject = "Thank you for auditioning"
+        t.body = "<p>Unfortunately...</p>"
+        t.channel = "message"
+        t.active = true
+      end.tap do |t|
+        t.update!(channel: "message")
+      end
     end
 
     context "with message channel template" do
@@ -50,7 +52,7 @@ RSpec.describe AuditionNotificationService do
         expect(result[:emails_sent]).to eq(0)
       end
 
-      it "sends emails to people without accounts" do
+      it "skips people without accounts (message-only)" do
         talent_pool = create(:talent_pool, production: production)
 
         result = described_class.send_casting_results(
@@ -61,8 +63,9 @@ RSpec.describe AuditionNotificationService do
           rejections: []
         )
 
+        # Service is message-only, so no notification for users without accounts
         expect(result[:messages_sent]).to eq(0)
-        expect(result[:emails_sent]).to eq(1)
+        expect(result[:emails_sent]).to eq(0)
       end
 
       it "processes both cast assignments and rejections" do
@@ -83,12 +86,12 @@ RSpec.describe AuditionNotificationService do
       end
     end
 
-    context "with email channel template" do
+    context "with email channel template (ignored - service is message-only)" do
       before do
         ContentTemplate.find_by(key: "audition_added_to_cast").update!(channel: "email")
       end
 
-      it "sends emails instead of messages" do
+      it "still sends messages regardless of template channel" do
         talent_pool = create(:talent_pool, production: production)
 
         result = described_class.send_casting_results(
@@ -99,17 +102,18 @@ RSpec.describe AuditionNotificationService do
           rejections: []
         )
 
-        expect(result[:messages_sent]).to eq(0)
-        expect(result[:emails_sent]).to eq(1)
+        # Service is message-only, ignores template channel setting
+        expect(result[:messages_sent]).to eq(1)
+        expect(result[:emails_sent]).to eq(0)
       end
     end
 
-    context "with both channel template" do
+    context "with both channel template (ignored - service is message-only)" do
       before do
         ContentTemplate.find_by(key: "audition_added_to_cast").update!(channel: "both")
       end
 
-      it "sends both message and email" do
+      it "still sends only messages regardless of template channel" do
         talent_pool = create(:talent_pool, production: production)
 
         result = described_class.send_casting_results(
@@ -120,8 +124,9 @@ RSpec.describe AuditionNotificationService do
           rejections: []
         )
 
+        # Service is message-only, ignores template channel setting
         expect(result[:messages_sent]).to eq(1)
-        expect(result[:emails_sent]).to eq(1)
+        expect(result[:emails_sent]).to eq(0)
       end
     end
 
@@ -144,25 +149,23 @@ RSpec.describe AuditionNotificationService do
 
   describe ".send_audition_invitations" do
     before do
-      # Create invitation template
-      ContentTemplate.create!(
-        key: "audition_invitation",
-        name: "Audition Invitation",
-        subject: "You're invited to audition",
-        body: "<p>Please come audition!</p>",
-        channel: "message",
-        active: true
-      )
+      # Update invitation template for tests
+      ContentTemplate.find_or_create_by!(key: "audition_invitation") do |t|
+        t.name = "Audition Invitation"
+        t.subject = "You're invited to audition"
+        t.body = "<p>Please come audition!</p>"
+        t.channel = "message"
+        t.active = true
+      end.tap { |t| t.update!(channel: "message") }
 
-      # Create not invited template
-      ContentTemplate.create!(
-        key: "audition_not_invited",
-        name: "Not Invited",
-        subject: "Audition Update",
-        body: "<p>Unfortunately...</p>",
-        channel: "message",
-        active: true
-      )
+      # Update not invited template for tests
+      ContentTemplate.find_or_create_by!(key: "audition_not_invited") do |t|
+        t.name = "Not Invited"
+        t.subject = "Audition Update"
+        t.body = "<p>Unfortunately...</p>"
+        t.channel = "message"
+        t.active = true
+      end.tap { |t| t.update!(channel: "message") }
     end
 
     context "with message channel template" do
@@ -179,7 +182,7 @@ RSpec.describe AuditionNotificationService do
         expect(result[:emails_sent]).to eq(0)
       end
 
-      it "sends emails to people without accounts" do
+      it "skips people without accounts (message-only)" do
         result = described_class.send_audition_invitations(
           production: production,
           audition_cycle: audition_cycle,
@@ -188,8 +191,9 @@ RSpec.describe AuditionNotificationService do
           not_invited: []
         )
 
+        # Service is message-only, so no notification for users without accounts
         expect(result[:messages_sent]).to eq(0)
-        expect(result[:emails_sent]).to eq(1)
+        expect(result[:emails_sent]).to eq(0)
       end
 
       it "processes both invitations and not invited" do
@@ -209,23 +213,23 @@ RSpec.describe AuditionNotificationService do
       end
     end
 
-    context "with email channel template" do
+    context "with email channel template (ignored - service is message-only)" do
       before do
         ContentTemplate.find_by(key: "audition_invitation").update!(channel: "email")
       end
 
-      it "sends emails using invitation_notification mailer" do
-        expect(Manage::AuditionMailer).to receive(:invitation_notification)
-          .with(person, production, "You're invited!", email_batch_id: nil)
-          .and_call_original
-
-        described_class.send_audition_invitations(
+      it "still sends messages regardless of template channel" do
+        result = described_class.send_audition_invitations(
           production: production,
           audition_cycle: audition_cycle,
           sender: sender,
           invitations: [ { person: person, body: "You're invited!" } ],
           not_invited: []
         )
+
+        # Service is message-only, ignores template channel setting
+        expect(result[:messages_sent]).to eq(1)
+        expect(result[:emails_sent]).to eq(0)
       end
     end
 
@@ -249,14 +253,13 @@ RSpec.describe AuditionNotificationService do
 
   describe "notification preferences" do
     before do
-      ContentTemplate.create!(
-        key: "audition_added_to_cast",
-        name: "Added to Cast",
-        subject: "Welcome",
-        body: "<p>Congratulations!</p>",
-        channel: "email",
-        active: true
-      )
+      ContentTemplate.find_or_create_by!(key: "audition_added_to_cast") do |t|
+        t.name = "Added to Cast"
+        t.subject = "Welcome"
+        t.body = "<p>Congratulations!</p>"
+        t.channel = "email"
+        t.active = true
+      end.tap { |t| t.update!(channel: "email") }
     end
 
     it "respects user notification preferences for audition_results" do
@@ -277,19 +280,18 @@ RSpec.describe AuditionNotificationService do
     end
   end
 
-  describe "email batch tracking" do
+  describe "email batch tracking (ignored - service is message-only)" do
     before do
-      ContentTemplate.create!(
-        key: "audition_added_to_cast",
-        name: "Added to Cast",
-        subject: "Welcome",
-        body: "<p>Congratulations!</p>",
-        channel: "email",
-        active: true
-      )
+      ContentTemplate.find_or_create_by!(key: "audition_added_to_cast") do |t|
+        t.name = "Added to Cast"
+        t.subject = "Welcome"
+        t.body = "<p>Congratulations!</p>"
+        t.channel = "email"
+        t.active = true
+      end.tap { |t| t.update!(channel: "email") }
     end
 
-    it "passes email_batch_id to mailer" do
+    it "sends messages regardless of email_batch (service is message-only)" do
       email_batch = EmailBatch.create!(
         user: sender,
         subject: "Test Batch",
@@ -299,11 +301,10 @@ RSpec.describe AuditionNotificationService do
 
       talent_pool = create(:talent_pool, production: production)
 
-      expect(Manage::AuditionMailer).to receive(:casting_notification)
-        .with(person, production, "Welcome!", subject: anything, email_batch_id: email_batch.id)
-        .and_call_original
+      # Service is message-only, so emails are not sent and mailer is not called
+      expect(Manage::AuditionMailer).not_to receive(:casting_notification)
 
-      described_class.send_casting_results(
+      result = described_class.send_casting_results(
         production: production,
         audition_cycle: audition_cycle,
         sender: sender,
@@ -311,6 +312,9 @@ RSpec.describe AuditionNotificationService do
         rejections: [],
         email_batch: email_batch
       )
+
+      expect(result[:messages_sent]).to eq(1)
+      expect(result[:emails_sent]).to eq(0)
     end
   end
 end

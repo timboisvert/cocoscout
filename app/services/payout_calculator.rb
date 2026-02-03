@@ -24,7 +24,7 @@ class PayoutCalculator
 
   def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil)
     @show = show
-    @rules = rules.deep_stringify_keys
+    @rules = rules&.deep_stringify_keys || {}
     @preview_financials = preview_financials
     @preview_performer_count = preview_performer_count
   end

@@ -6,4 +6,14 @@ FactoryBot.define do
     sequence(:name) { |n| "Production #{n}" }
     contact_email { 'contact@example.com' }
   end
+
+  factory :production_permission do
+    association :user
+    association :production
+    role { "manager" }
+
+    trait :viewer do
+      role { "viewer" }
+    end
+  end
 end

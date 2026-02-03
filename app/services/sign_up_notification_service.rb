@@ -6,33 +6,70 @@
 # sending them as in-app messages to users with accounts.
 #
 # Usage:
-#   SignUpNotificationService.send_notification(
-#     registration: registration,
-#     notification_type: :confirmation
-#   )
+#   SignUpNotificationService.notify_confirmation(registration)
+#   SignUpNotificationService.notify_queued(registration)
+#   SignUpNotificationService.notify_slot_assigned(registration)
+#   SignUpNotificationService.notify_slot_changed(registration)
+#   SignUpNotificationService.notify_cancelled(registration)
 #
 class SignUpNotificationService
-  NOTIFICATION_TYPES = %i[confirmation queued slot_assigned slot_changed cancelled].freeze
-
-  TEMPLATE_KEYS = {
-    confirmation: "sign_up_confirmation",
-    queued: "sign_up_queued",
-    slot_assigned: "sign_up_slot_assigned",
-    slot_changed: "sign_up_slot_changed",
-    cancelled: "sign_up_cancelled"
-  }.freeze
-
   class << self
-    # Send a sign-up notification as an in-app message
-    #
-    # @param registration [SignUpRegistration] The registration
-    # @param notification_type [Symbol] One of :confirmation, :queued, :slot_assigned, :slot_changed, :cancelled
-    # @return [Hash] { messages_sent: Integer }
-    def send_notification(registration:, notification_type:)
-      result = { messages_sent: 0 }
+    # Notify registrant of successful sign-up confirmation
+    def notify_confirmation(registration)
+      send_notification_for(
+        registration: registration,
+        template_key: "sign_up_confirmation"
+      )
+    end
 
-      # Validate notification type
-      return result unless NOTIFICATION_TYPES.include?(notification_type.to_sym)
+    # Notify registrant they are on the waitlist/queue
+    def notify_queued(registration)
+      send_notification_for(
+        registration: registration,
+        template_key: "sign_up_queued"
+      )
+    end
+
+    # Notify registrant a slot has been assigned
+    def notify_slot_assigned(registration)
+      send_notification_for(
+        registration: registration,
+        template_key: "sign_up_slot_assigned"
+      )
+    end
+
+    # Notify registrant their slot has changed
+    def notify_slot_changed(registration)
+      send_notification_for(
+        registration: registration,
+        template_key: "sign_up_slot_changed"
+      )
+    end
+
+    # Notify registrant their sign-up has been cancelled
+    def notify_cancelled(registration)
+      send_notification_for(
+        registration: registration,
+        template_key: "sign_up_cancelled"
+      )
+    end
+
+    # Legacy method for backwards compatibility
+    def send_notification(registration:, notification_type:)
+      case notification_type.to_sym
+      when :confirmation then notify_confirmation(registration)
+      when :queued then notify_queued(registration)
+      when :slot_assigned then notify_slot_assigned(registration)
+      when :slot_changed then notify_slot_changed(registration)
+      when :cancelled then notify_cancelled(registration)
+      else { messages_sent: 0 }
+      end
+    end
+
+    private
+
+    def send_notification_for(registration:, template_key:)
+      result = { messages_sent: 0 }
 
       # Get production and person context
       slot = registration.sign_up_slot
@@ -44,12 +81,21 @@ class SignUpNotificationService
       # Only send messages to users with accounts
       return result unless person&.user.present?
 
-      # Get template key
-      template_key = TEMPLATE_KEYS[notification_type.to_sym]
+      # Build template variables
+      show = instance&.show
+      show_name = show&.secondary_name.presence || show&.event_type&.titleize || instance&.show_name || "TBD"
+      show_date = show&.date_and_time&.strftime("%B %d, %Y at %l:%M %p") || instance&.show_date&.strftime("%B %d, %Y") || "TBD"
+
+      variables = {
+        registrant_name: registration.display_name || "Guest",
+        sign_up_form_name: form&.name || "Sign-Up",
+        slot_name: slot&.display_name || "TBD",
+        show_name: show_name,
+        show_date: show_date,
+        production_name: production&.name || ""
+      }
 
       # Render the template
-      variables = build_template_variables(registration, slot, instance, form, production)
-
       begin
         template = ContentTemplateService.render(template_key, variables)
       rescue StandardError => e
@@ -75,26 +121,9 @@ class SignUpNotificationService
       )
       result[:messages_sent] += 1 if message
 
-      Rails.logger.info "[SignUpNotification] Sent #{notification_type} message to #{person.name}"
+      Rails.logger.info "[SignUpNotification] Sent #{template_key} message to #{person.name}"
 
       result
-    end
-
-    private
-
-    def build_template_variables(registration, slot, instance, form, production)
-      show = instance&.show
-      show_name = show&.secondary_name.presence || show&.event_type&.titleize || instance&.show_name || "TBD"
-      show_date = show&.date_and_time&.strftime("%B %d, %Y at %l:%M %p") || instance&.show_date&.strftime("%B %d, %Y") || "TBD"
-
-      {
-        registrant_name: registration.display_name || "Guest",
-        sign_up_form_name: form&.name || "Sign-Up",
-        slot_name: slot&.display_name || "TBD",
-        show_name: show_name,
-        show_date: show_date,
-        production_name: production&.name || ""
-      }
     end
 
     def find_sender(production)

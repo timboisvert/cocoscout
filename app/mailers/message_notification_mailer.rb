@@ -13,7 +13,7 @@ class MessageNotificationMailer < ApplicationMailer
     thread_list_html = build_thread_list_html(unread_threads)
 
     template_variables = {
-      recipient_name: @user.person&.first_name || @user.email_address.split("@").first,
+      recipient_name: @user.person&.name&.split&.first || @user.email_address.split("@").first,
       inbox_url: my_messages_url,
       thread_list: thread_list_html
     }

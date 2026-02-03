@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# Pre-build validation hook for Kamal deployment
+#
+# This runs LOCALLY before building the Docker image.
+# Validates communications, routes, and optionally runs tests.
+#
+# Available environment variables:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_ROLES (if set)
+# KAMAL_DESTINATION (if set)
+# SKIP_TESTS - set to "1" to skip test suite (faster deploys for hotfixes)
+# SKIP_VALIDATION - set to "1" to skip all validation checks
+
+set -e
+
+echo ""
+echo "============================================================"
+echo "PRE-BUILD VALIDATION"
+echo "============================================================"
+echo ""
+
+# ============================================
+# Communications Validation
+# ============================================
+
+if [ "$SKIP_VALIDATION" = "1" ]; then
+  echo "⏭️  Skipping communications validation (SKIP_VALIDATION=1)"
+else
+  echo "🔍 Validating communications configuration..."
+  echo ""
+
+  # Run the communications validator and capture output
+  OUTPUT=$(bundle exec rake communications:validate 2>&1)
+
+  # Check if validation failed
+  if echo "$OUTPUT" | grep -q "❌ Failed: 0"; then
+    echo "$OUTPUT"
+    echo "✅ Communications validation passed"
+  else
+    echo "$OUTPUT"
+    echo ""
+    echo "❌ Communications validation FAILED!"
+    echo "   Fix the issues above before deploying."
+    echo ""
+    echo "   To skip this check (not recommended):"
+    echo "   SKIP_VALIDATION=1 kamal deploy"
+    echo ""
+    exit 1
+  fi
+fi
+
+echo ""
+
+# ============================================
+# Routes Validation
+# ============================================
+
+if [ "$SKIP_VALIDATION" = "1" ]; then
+  echo "⏭️  Skipping routes validation (SKIP_VALIDATION=1)"
+else
+  echo "🔗 Validating route helpers..."
+  echo ""
+
+  # Run the routes validator
+  if bundle exec rake routes:validate_helpers 2>&1; then
+    echo "✅ Route helpers validation passed"
+  else
+    echo ""
+    echo "❌ Route helpers validation FAILED!"
+    echo "   Fix the issues above before deploying."
+    echo ""
+    echo "   To skip this check (not recommended):"
+    echo "   SKIP_VALIDATION=1 kamal deploy"
+    echo ""
+    exit 1
+  fi
+fi
+
+echo ""
+
+# ============================================
+# Test Suite
+# ============================================
+
+if [ "$SKIP_TESTS" = "1" ]; then
+  echo "⏭️  Skipping test suite (SKIP_TESTS=1)"
+  echo ""
+  echo "⚠️  WARNING: Deploying without running tests!"
+  echo "   Only skip tests for critical hotfixes."
+  echo ""
+else
+  echo "🧪 Running test suite..."
+  echo ""
+
+  # Run RSpec tests
+  if bundle exec rspec --format progress; then
+    echo ""
+    echo "✅ All tests passed"
+  else
+    echo ""
+    echo "❌ Tests FAILED!"
+    echo "   Fix failing tests before deploying."
+    echo ""
+    echo "   To skip tests (not recommended for normal deploys):"
+    echo "   SKIP_TESTS=1 kamal deploy"
+    echo ""
+    exit 1
+  fi
+fi
+
+echo ""
+echo "============================================================"
+echo "PRE-BUILD VALIDATION COMPLETE"
+echo "============================================================"
+echo ""

@@ -81,49 +81,23 @@ class CastingNotificationService
 
     private
 
+    # Casting notifications are message-only (no email)
     def send_notification(template_key:, person:, show:, production:, sender:, body:, subject:, email_batch_id:, mailer_method:)
       result = { messages_sent: 0, emails_sent: 0 }
 
       return result unless person&.email.present?
 
-      # Check template channel to determine delivery method
-      channel = ContentTemplateService.channel_for(template_key) || :message
-
-      # Send as in-app message
-      if channel == :message || channel == :both
-        if person.user.present?
-          message = MessageService.send_direct(
-            sender: sender,
-            recipient_person: person,
-            subject: subject,
-            body: body,
-            production: production,
-            organization: production.organization
-          )
-          result[:messages_sent] += 1 if message
-        end
-      end
-
-      # Send as email (for :email or :both channels, or if user has no account)
-      if channel == :email || channel == :both || person.user.nil?
-        # Check user notification preferences
-        should_email = person.user.nil? || person.user.notification_enabled?(:casting_changes)
-
-        if should_email
-          begin
-            Manage::CastingMailer.public_send(
-              mailer_method,
-              person,
-              show,
-              body,
-              subject,
-              email_batch_id: email_batch_id
-            ).deliver_later
-            result[:emails_sent] += 1
-          rescue StandardError => e
-            Rails.logger.error "CastingNotificationService: Failed to send email to #{person.email}: #{e.message}"
-          end
-        end
+      # Only send to users with accounts (message-only)
+      if person.user.present?
+        message = MessageService.send_direct(
+          sender: sender,
+          recipient_person: person,
+          subject: subject,
+          body: body,
+          production: production,
+          organization: production.organization
+        )
+        result[:messages_sent] += 1 if message
       end
 
       result

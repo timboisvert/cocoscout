@@ -2,21 +2,21 @@
 
 module Manage
   class SignUpMailer < ApplicationMailer
-    def registration_notification(recipient_user, registration)
-      @recipient = recipient_user
-      @registration = registration
-      @slot = registration.sign_up_slot
+    # Called from SignUpProducerNotificationService with pre-rendered content
+    def registration_notification
+      @user = params[:user]
+      @registration = params[:registration]
+      @person = @user.person # For recipient entity tracking
+      @subject = params[:subject]
+      @body = params[:body]
+
+      @slot = @registration.sign_up_slot
       @form = @slot.sign_up_form
       @production = @form.production
-      @instance = @slot.sign_up_form_instance
-      @show = @instance&.show
-
-      # Get registrant name
-      @registrant_name = registration.person&.name || registration.guest_name || "Guest"
 
       mail(
-        to: recipient_user.email_address,
-        subject: "[#{@production.name}] New sign-up from #{@registrant_name}"
+        to: @user.email_address,
+        subject: @subject
       )
     end
   end

@@ -499,14 +499,61 @@ module Manage
       assignments_by_assignable.each do |(type, id), assignments|
         if type == "Person"
           person = Person.find(id)
-          CastingTableMailer.casting_notification(
-            person: person,
-            casting_table: @casting_table,
-            assignments: assignments
-          ).deliver_later
+          next unless person.user.present?
+
+          # Group assignments by production for display
+          assignments_by_production = assignments.group_by { |a| a.show.production }
+
+          # Build production names for subject
+          production_names = assignments_by_production.keys.map(&:name)
+          formatted_names = format_production_names_for_notification(production_names)
+
+          # Build shows list HTML grouped by production
+          shows_by_production = build_shows_by_production_html(assignments_by_production)
+
+          rendered = ContentTemplateService.render("casting_table_notification", {
+            person_name: person.first_name || "there",
+            production_names: formatted_names,
+            shows_by_production: shows_by_production
+          })
+
+          MessageService.send_direct(
+            sender: Current.user,
+            recipient_person: person,
+            subject: rendered[:subject],
+            body: rendered[:body],
+            production: assignments_by_production.keys.first,
+            organization: @casting_table.organization
+          )
         end
         # For groups, we could notify group members or skip
       end
+    end
+
+    def format_production_names_for_notification(names)
+      case names.length
+      when 0
+        ""
+      when 1
+        names.first
+      when 2
+        names.join(" and ")
+      else
+        "#{names[0..-2].join(', ')}, and #{names.last}"
+      end
+    end
+
+    def build_shows_by_production_html(assignments_by_production)
+      html = ""
+      assignments_by_production.each do |production, prod_assignments|
+        html += "<h3>#{production.name}</h3>\n<ul>\n"
+        prod_assignments.group_by(&:show).each do |show, show_assignments|
+          roles = show_assignments.map { |a| a.role.name }.join(", ")
+          html += "<li>#{show.display_name}: #{roles}</li>\n"
+        end
+        html += "</ul>\n"
+      end
+      html
     end
   end
 end

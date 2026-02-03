@@ -42,7 +42,7 @@ module Manage
 
       mail(
         to: recipient_user.email_address,
-        subject: "[#{@production.name}] New audition request from #{@requestable.name}"
+        subject: "New audition request from #{@requestable.name} for #{@production.name}"
       )
     end
 
@@ -54,7 +54,7 @@ module Manage
 
       mail(
         to: recipient_user.email_address,
-        subject: "[#{@production.name}] #{@person.name} has left the talent pool"
+        subject: "#{@person.name} has left #{@production.name}'s talent pool"
       )
     end
 

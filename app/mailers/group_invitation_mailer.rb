@@ -8,17 +8,23 @@ class GroupInvitationMailer < ApplicationMailer
     @custom_message = message
     @invited_by = group_invitation.invited_by
 
-    subject ||= "You've been invited to join #{@group.name} on CocoScout"
-    mail(to: @invitation.email, subject: subject)
-  end
+    accept_url = Rails.application.routes.url_helpers.accept_group_invitation_url(
+      @token,
+      host: ENV.fetch("HOST", "localhost:3000")
+    )
 
-  def existing_member_added(person, group, invited_by, subject = nil, message = nil)
-    @person = person
-    @group = group
-    @invited_by = invited_by
-    @custom_message = message
+    rendered = ContentTemplateService.render("group_invitation", {
+      group_name: @group.name,
+      inviter_name: @invited_by&.full_name || "A group member",
+      accept_url: accept_url,
+      custom_message: message
+    })
 
-    subject ||= "You've been added to #{@group.name} on CocoScout"
-    mail(to: @person.email, subject: subject)
+    @subject = subject.presence || rendered[:subject]
+    @body = rendered[:body]
+
+    mail(to: @invitation.email, subject: @subject) do |format|
+      format.html { render html: @body.html_safe }
+    end
   end
 end

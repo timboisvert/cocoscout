@@ -80,26 +80,31 @@ RSpec.describe Role, type: :model do
     end
 
     describe '#eligible?' do
-      let(:role) { create(:role, restricted: true) }
+      let(:role) { create(:role) }  # Start unrestricted
       let(:person) { create(:person) }
       let(:group) { create(:group) }
 
       it 'returns true for eligible person' do
         create(:role_eligibility, role: role, member: person)
+        role.update!(restricted: true)
         expect(role.eligible?(person)).to be true
       end
 
       it 'returns true for eligible group' do
         create(:role_eligibility, role: role, member: group)
+        role.update!(restricted: true)
         expect(role.eligible?(group)).to be true
       end
 
       it 'returns false for ineligible member' do
+        # Create eligibility for someone else so role can be restricted
+        other_person = create(:person)
+        create(:role_eligibility, role: role, member: other_person)
+        role.update!(restricted: true)
         expect(role.eligible?(person)).to be false
       end
 
       it 'returns true for any member when role is not restricted' do
-        role.update!(restricted: false)
         expect(role.eligible?(person)).to be true
       end
     end
@@ -131,13 +136,10 @@ RSpec.describe Role, type: :model do
       end
 
       context 'when role is restricted' do
-        before do
-          role.update!(restricted: true)
-        end
-
         it 'returns only eligible members who are also in the talent pool' do
           create(:role_eligibility, role: role, member: person1)
           create(:role_eligibility, role: role, member: group1)
+          role.update!(restricted: true)
 
           eligible = role.eligible_assignees([ talent_pool.id ])
           expect(eligible).to include(person1, group1)
@@ -146,7 +148,9 @@ RSpec.describe Role, type: :model do
 
         it 'does not return eligible members who are not in the talent pool' do
           person_not_in_pool = create(:person, organizations: [ organization ])
+          create(:role_eligibility, role: role, member: person1)  # Need at least one eligible
           create(:role_eligibility, role: role, member: person_not_in_pool)
+          role.update!(restricted: true)
 
           eligible = role.eligible_assignees([ talent_pool.id ])
           expect(eligible).not_to include(person_not_in_pool)

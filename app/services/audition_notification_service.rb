@@ -126,9 +126,20 @@ class AuditionNotificationService
     def send_cast_notification(production:, audition_cycle:, sender:,
                                person:, talent_pool:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_added_to_cast"
-      subject = custom_subject.presence || "[#{production.name}] Welcome to the cast!"
 
-      body = custom_body.presence || default_cast_body(person, production, talent_pool)
+      # Use custom content if provided, otherwise render from template
+      if custom_body.present? || custom_subject.present?
+        subject = custom_subject.presence || "Welcome to the #{production.name} cast!"
+        body = custom_body.presence || render_template_body(template_key, person, production, talent_pool)
+      else
+        rendered = ContentTemplateService.render(template_key, {
+          recipient_name: person.first_name || person.name,
+          production_name: production.name,
+          talent_pool_name: talent_pool&.name
+        })
+        subject = rendered[:subject]
+        body = rendered[:body]
+      end
 
       send_notification(
         template_key: template_key,
@@ -147,9 +158,19 @@ class AuditionNotificationService
     def send_rejection_notification(production:, audition_cycle:, sender:,
                                     person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_not_cast"
-      subject = custom_subject.presence || "[#{production.name}] Audition Results"
 
-      body = custom_body.presence || default_rejection_body(person, production)
+      # Use custom content if provided, otherwise render from template
+      if custom_body.present? || custom_subject.present?
+        subject = custom_subject.presence || "Audition results for #{production.name}"
+        body = custom_body.presence || render_template_body(template_key, person, production)
+      else
+        rendered = ContentTemplateService.render(template_key, {
+          recipient_name: person.first_name || person.name,
+          production_name: production.name
+        })
+        subject = rendered[:subject]
+        body = rendered[:body]
+      end
 
       send_notification(
         template_key: template_key,
@@ -168,9 +189,20 @@ class AuditionNotificationService
     def send_invitation_notification(production:, audition_cycle:, sender:,
                                      person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_invitation"
-      subject = custom_subject.presence || "#{production.name} Auditions"
 
-      body = custom_body.presence || default_invitation_body(person, production, audition_cycle)
+      # Use custom content if provided, otherwise render from template
+      if custom_body.present? || custom_subject.present?
+        subject = custom_subject.presence || "#{production.name} Auditions"
+        body = custom_body.presence || render_template_body(template_key, person, production, nil, audition_cycle)
+      else
+        rendered = ContentTemplateService.render(template_key, {
+          recipient_name: person.first_name || person.name,
+          production_name: production.name,
+          audition_cycle_name: audition_cycle&.name
+        })
+        subject = rendered[:subject]
+        body = rendered[:body]
+      end
 
       send_notification(
         template_key: template_key,
@@ -190,9 +222,19 @@ class AuditionNotificationService
     def send_not_invited_notification(production:, audition_cycle:, sender:,
                                       person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_not_invited"
-      subject = custom_subject.presence || "[#{production.name}] Audition Results"
 
-      body = custom_body.presence || default_not_invited_body(person, production)
+      # Use custom content if provided, otherwise render from template
+      if custom_body.present? || custom_subject.present?
+        subject = custom_subject.presence || "Audition update for #{production.name}"
+        body = custom_body.presence || render_template_body(template_key, person, production)
+      else
+        rendered = ContentTemplateService.render(template_key, {
+          recipient_name: person.first_name || person.name,
+          production_name: production.name
+        })
+        subject = rendered[:subject]
+        body = rendered[:body]
+      end
 
       send_notification(
         template_key: template_key,
@@ -209,7 +251,7 @@ class AuditionNotificationService
     end
 
     # Core notification delivery
-    # @param mailer_method [Symbol] :casting_notification or :invitation_notification
+    # All audition notifications are message-only (no email)
     def send_notification(template_key:, subject:, body:, production:, sender:,
                           person:, message_type:, visibility:, email_batch:,
                           mailer_method: :casting_notification)
@@ -217,105 +259,31 @@ class AuditionNotificationService
 
       return result unless person&.email.present?
 
-      # Check template channel to determine delivery method
-      channel = ContentTemplateService.channel_for(template_key) || :message
-
-      # Send as in-app message
-      if channel == :message || channel == :both
-        if person.user.present?
-          message = MessageService.send_direct(
-            sender: sender,
-            recipient_person: person,
-            subject: subject,
-            body: body,
-            production: production,
-            organization: production.organization
-          )
-          result[:messages_sent] += 1 if message
-        end
-      end
-
-      # Send as email (for :email or :both channels, or if user has no account)
-      if channel == :email || channel == :both || person.user.nil?
-        # Check user notification preferences
-        notification_type = mailer_method == :invitation_notification ? :audition_invitations : :audition_results
-        should_email = person.user.nil? || person.user.notification_enabled?(notification_type)
-
-        if should_email
-          begin
-            case mailer_method
-            when :invitation_notification
-              Manage::AuditionMailer.invitation_notification(
-                person,
-                production,
-                body,
-                email_batch_id: email_batch&.id
-              ).deliver_later
-            else
-              Manage::AuditionMailer.casting_notification(
-                person,
-                production,
-                body,
-                subject: subject,
-                email_batch_id: email_batch&.id
-              ).deliver_later
-            end
-            result[:emails_sent] += 1
-          rescue StandardError => e
-            Rails.logger.error "AuditionNotificationService: Failed to send email to #{person.email}: #{e.message}"
-          end
-        end
+      # Audition notifications are message-only - only send to users with accounts
+      if person.user.present?
+        message = MessageService.send_direct(
+          sender: sender,
+          recipient_person: person,
+          subject: subject,
+          body: body,
+          production: production,
+          organization: production.organization
+        )
+        result[:messages_sent] += 1 if message
       end
 
       result
     end
 
-    def default_cast_body(person, production, talent_pool)
-      <<~BODY
-        <p>Dear #{person.first_name || person.name},</p>
-
-        <p>Congratulations! You have been added to the cast for <strong>#{production.name}</strong>!</p>
-
-        <p>Please log in to your CocoScout account to view your schedule and any additional information.</p>
-
-        <p>Welcome to the team!</p>
-      BODY
-    end
-
-    def default_rejection_body(person, production)
-      <<~BODY
-        <p>Dear #{person.first_name || person.name},</p>
-
-        <p>Thank you for auditioning for <strong>#{production.name}</strong>.</p>
-
-        <p>After careful consideration, we are not able to offer you a role at this time. We appreciate your interest and encourage you to audition for future productions.</p>
-
-        <p>Best wishes,<br>The #{production.name} Team</p>
-      BODY
-    end
-
-    def default_invitation_body(person, production, audition_cycle)
-      <<~BODY
-        <p>Dear #{person.first_name || person.name},</p>
-
-        <p>You have been scheduled for an audition for <strong>#{production.name}</strong>!</p>
-
-        <p>Please log in to your CocoScout account to view your audition time and any preparation materials.</p>
-
-        <p>We look forward to seeing you!</p>
-      BODY
-    end
-
-    def default_not_invited_body(person, production)
-      <<~BODY
-        <p>Dear #{person.first_name || person.name},</p>
-
-        <p>Thank you for your interest in <strong>#{production.name}</strong>.</p>
-
-        <p>Unfortunately, we were not able to schedule you for an audition at this time. We encourage you to apply for future audition opportunities.</p>
-
-        <p>Best wishes,<br>The #{production.name} Team</p>
-      BODY
+    # Helper to render template body for fallback when custom subject but no custom body
+    def render_template_body(template_key, person, production, talent_pool = nil, audition_cycle = nil)
+      rendered = ContentTemplateService.render(template_key, {
+        recipient_name: person.first_name || person.name,
+        production_name: production.name,
+        talent_pool_name: talent_pool&.name,
+        audition_cycle_name: audition_cycle&.name
+      })
+      rendered[:body]
     end
   end
 end

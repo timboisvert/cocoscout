@@ -52,7 +52,6 @@ class AuthController < ApplicationController
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
         AuthMailer.signup(@user).deliver_later
-        AdminMailer.user_account_created(@user).deliver_later
 
         # Redirect to the last dashboard they were on (defaults to my_dashboard for new signups)
         last_dashboard_prefs = cookies.encrypted[:last_dashboard]

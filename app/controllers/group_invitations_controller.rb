@@ -32,15 +32,29 @@ class GroupInvitationsController < ApplicationController
         permission_level: params[:permission_level] || "view"
       )
 
-      # Send notification email if user has notifications enabled
-      if existing_person.user.nil? || existing_person.user.notification_enabled?(:group_invitations)
-        GroupInvitationMailer.existing_member_added(
-          existing_person,
+      # Send notification message if user has an account
+      if existing_person.user.present?
+        group_url = Rails.application.routes.url_helpers.group_url(
           @group,
-          Current.user.person,
-          params[:invitation_subject],
-          params[:invitation_message]
-        ).deliver_later
+          host: ENV.fetch("HOST", "localhost:3000")
+        )
+
+        rendered = ContentTemplateService.render("group_member_added", {
+          recipient_name: existing_person.first_name || "there",
+          group_name: @group.name,
+          added_by_name: Current.user.person&.full_name || "A group member",
+          group_url: group_url,
+          custom_message: params[:invitation_message]
+        })
+
+        MessageService.send_direct(
+          sender: Current.user,
+          recipient_person: existing_person,
+          subject: rendered[:subject],
+          body: rendered[:body],
+          production: nil,
+          organization: nil
+        )
       end
 
       respond_to do |format|
@@ -152,7 +166,6 @@ class GroupInvitationsController < ApplicationController
           @user = user
           render :accept, status: :unprocessable_entity and return
         end
-        AdminMailer.user_account_created(user).deliver_later
       else
         # No password provided
         @user = User.new(email_address: @invitation.email.downcase)

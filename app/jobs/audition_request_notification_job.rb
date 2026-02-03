@@ -24,7 +24,26 @@ class AuditionRequestNotificationJob < ApplicationJob
 
     # Send notification to each recipient
     recipients.each do |user|
-      Manage::AuditionMailer.audition_request_notification(user, audition_request).deliver_later
+      next unless user.person.present?
+
+      rendered = ContentTemplateService.render("audition_request_submitted", {
+        recipient_name: user.person.first_name || "there",
+        requestable_name: audition_request.person&.full_name || "An applicant",
+        production_name: production.name,
+        review_url: Rails.application.routes.url_helpers.manage_auditions_url(
+          production_id: production.id,
+          host: ENV.fetch("HOST", "localhost:3000")
+        )
+      })
+
+      MessageService.send_direct(
+        sender: nil,
+        recipient_person: user.person,
+        subject: rendered[:subject],
+        body: rendered[:body],
+        production: production,
+        organization: production.organization
+      )
     end
   end
 

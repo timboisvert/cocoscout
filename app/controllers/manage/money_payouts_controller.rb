@@ -40,30 +40,25 @@ module Manage
         return
       end
 
-      # Prepend organization name to subject
-      org_name = Current.organization.name
-      full_subject = "[#{org_name}] #{subject}"
-
-      # Create email batch for tracking
-      email_batch = EmailBatch.create!(
-        user: Current.user,
-        subject: full_subject,
-        recipient_count: missing_people.count { |p| p.email.present? },
-        sent_at: Time.current
-      )
-
-      # Send reminder emails to each person
+      # Send reminder messages to each person (message-only, no email)
       sent_count = 0
       missing_people.each do |person|
-        next unless person.email.present?
+        next unless person.user.present?
 
-        Manage::PaymentMailer.payment_setup_reminder(
-          person,
-          Current.organization,
-          full_subject,
-          body_html,
-          email_batch_id: email_batch.id
-        ).deliver_later
+        rendered = ContentTemplateService.render("payment_setup_reminder", {
+          person_name: person.first_name || "there",
+          organization_name: Current.organization.name,
+          custom_message: body_html
+        })
+
+        MessageService.send_direct(
+          sender: Current.user,
+          recipient_person: person,
+          subject: rendered[:subject],
+          body: rendered[:body],
+          production: @production,
+          organization: Current.organization
+        )
 
         sent_count += 1
       end

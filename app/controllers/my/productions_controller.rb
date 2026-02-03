@@ -214,12 +214,28 @@ module My
         next unless permission.notifications_enabled?
         next unless permission.user.present?
 
-        Manage::AuditionMailer.talent_left_production(
-          permission.user,
-          @production,
-          Current.user.person,
-          groups_removed
-        ).deliver_later
+        # Build the message
+        groups_text = groups_removed.any? ? groups_removed.join(", ") : "the production"
+        talent_pool_url = Rails.application.routes.url_helpers.manage_auditions_url(
+          production_id: @production.id,
+          host: ENV.fetch("HOST", "localhost:3000")
+        )
+        rendered = ContentTemplateService.render("talent_left_production", {
+          recipient_name: permission.user.person&.first_name || "there",
+          talent_name: Current.user.person&.full_name || "A talent",
+          production_name: @production.name,
+          groups_removed: groups_text,
+          talent_pool_url: talent_pool_url
+        })
+
+        MessageService.send_direct(
+          sender: nil,
+          recipient_person: permission.user.person,
+          subject: rendered[:subject],
+          body: rendered[:body],
+          production: @production,
+          organization: @production.organization
+        )
       end
     end
   end

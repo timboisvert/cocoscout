@@ -45,16 +45,18 @@ RSpec.describe ContentTemplate, type: :model do
   describe "scopes" do
     it ".active returns only active templates" do
       active = create(:content_template, active: true)
-      create(:content_template, active: false)
+      inactive = create(:content_template, active: false)
 
-      expect(ContentTemplate.active).to eq([ active ])
+      expect(ContentTemplate.active).to include(active)
+      expect(ContentTemplate.active).not_to include(inactive)
     end
 
     it ".by_category filters by category" do
       notification = create(:content_template, category: "notification")
-      create(:content_template, category: "invitation")
+      invitation = create(:content_template, category: "invitation")
 
-      expect(ContentTemplate.by_category("notification")).to eq([ notification ])
+      expect(ContentTemplate.by_category("notification")).to include(notification)
+      expect(ContentTemplate.by_category("notification")).not_to include(invitation)
     end
   end
 

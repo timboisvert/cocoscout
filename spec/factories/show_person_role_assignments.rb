@@ -6,8 +6,10 @@ FactoryBot.define do
       with_production { nil }
     end
 
-    association :show
-    association :assignable, factory: :person
+    show { association(:show) }
+
+    # Use create strategy for assignable to ensure it has an ID
+    assignable { association(:person, strategy: :create) }
 
     # Ensure role is eagerly built and linked
     role do

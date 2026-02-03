@@ -68,7 +68,7 @@
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-              <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, production: @production, placeholder: "Email subject..." %>
+              <%= email_form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Email subject..." %>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>
@@ -118,7 +118,7 @@
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-              <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, production: @production, placeholder: "Email subject..." %>
+              <%= email_form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Email subject..." %>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>

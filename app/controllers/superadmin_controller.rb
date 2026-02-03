@@ -9,7 +9,7 @@ class SuperadminController < ApplicationController
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
-                         content_template_destroy content_template_preview search_users keys
+                         content_template_destroy content_template_preview content_template_export content_template_import search_users keys
                          dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
   before_action :hide_sidebar
 
@@ -1347,6 +1347,108 @@ class SuperadminController < ApplicationController
     end
   end
 
+  # Export all content templates as JSON
+  def content_template_export
+    templates = ContentTemplate.order(:category, :key).map do |template|
+      {
+        key: template.key,
+        name: template.name,
+        subject: template.subject,
+        body: template.body,
+        message_body: template.message_body,
+        description: template.description,
+        category: template.category,
+        channel: template.channel,
+        template_type: template.template_type,
+        available_variables: template.available_variables,
+        usage_locations: template.usage_locations,
+        mailer_class: template.mailer_class,
+        mailer_action: template.mailer_action,
+        notes: template.notes,
+        active: template.active
+      }
+    end
+
+    export_data = {
+      exported_at: Time.current.iso8601,
+      exported_from: Rails.env,
+      version: "1.0",
+      template_count: templates.size,
+      templates: templates
+    }
+
+    send_data JSON.pretty_generate(export_data),
+              filename: "content_templates_#{Date.current}.json",
+              type: "application/json"
+  end
+
+  # Import content templates from JSON file
+  def content_template_import
+    if request.post?
+      unless params[:file].present?
+        redirect_to content_templates_path, alert: "Please select a file to import"
+        return
+      end
+
+      begin
+        file_content = params[:file].read
+        import_data = JSON.parse(file_content)
+
+        # Validate the import file structure
+        errors = validate_import_file(import_data)
+        if errors.any?
+          redirect_to content_templates_path, alert: "Import validation failed: #{errors.join(', ')}"
+          return
+        end
+
+        # Validate each template
+        template_errors = validate_templates(import_data["templates"])
+        if template_errors.any?
+          redirect_to content_templates_path, alert: "Template validation failed: #{template_errors.first(3).join('; ')}#{template_errors.size > 3 ? " (+#{template_errors.size - 3} more)" : ''}"
+          return
+        end
+
+        # All validations passed - now import
+        ActiveRecord::Base.transaction do
+          # Delete all existing templates
+          ContentTemplate.destroy_all
+
+          # Import all templates
+          import_data["templates"].each do |template_data|
+            ContentTemplate.create!(
+              key: template_data["key"],
+              name: template_data["name"],
+              subject: template_data["subject"],
+              body: template_data["body"],
+              message_body: template_data["message_body"],
+              description: template_data["description"],
+              category: template_data["category"],
+              channel: template_data["channel"] || "email",
+              template_type: template_data["template_type"],
+              available_variables: template_data["available_variables"] || [],
+              usage_locations: template_data["usage_locations"],
+              mailer_class: template_data["mailer_class"],
+              mailer_action: template_data["mailer_action"],
+              notes: template_data["notes"],
+              active: template_data.fetch("active", true)
+            )
+          end
+        end
+
+        redirect_to content_templates_path,
+                    notice: "Successfully imported #{import_data['templates'].size} templates (from #{import_data['exported_from']} on #{import_data['exported_at'].to_date})"
+      rescue JSON::ParserError => e
+        redirect_to content_templates_path, alert: "Invalid JSON file: #{e.message}"
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to content_templates_path, alert: "Import failed: #{e.message}"
+      rescue StandardError => e
+        redirect_to content_templates_path, alert: "Import failed: #{e.message}"
+      end
+    else
+      render :content_template_import
+    end
+  end
+
   # =========================================================================
   # Key Monitor (Short URL keys)
   # =========================================================================
@@ -1937,5 +2039,54 @@ class SuperadminController < ApplicationController
       current = current.next_month
     end
     result
+  end
+
+  # Validate the structure of an import file
+  def validate_import_file(data)
+    errors = []
+
+    unless data.is_a?(Hash)
+      errors << "File must contain a JSON object"
+      return errors
+    end
+
+    errors << "Missing 'version' field" unless data["version"].present?
+    errors << "Missing 'templates' array" unless data["templates"].is_a?(Array)
+    errors << "No templates found" if data["templates"].is_a?(Array) && data["templates"].empty?
+
+    errors
+  end
+
+  # Validate each template in the import
+  def validate_templates(templates)
+    errors = []
+    required_fields = %w[key name subject body]
+
+    templates.each_with_index do |template, index|
+      required_fields.each do |field|
+        if template[field].blank?
+          errors << "Template #{index + 1} (#{template['key'] || 'unknown'}): missing '#{field}'"
+        end
+      end
+
+      # Validate channel if present
+      if template["channel"].present? && !%w[email message both].include?(template["channel"])
+        errors << "Template #{template['key']}: invalid channel '#{template['channel']}'"
+      end
+
+      # Validate category if present
+      if template["category"].present? && !ContentTemplate::CATEGORIES.include?(template["category"])
+        errors << "Template #{template['key']}: invalid category '#{template['category']}'"
+      end
+    end
+
+    # Check for duplicate keys
+    keys = templates.map { |t| t["key"] }
+    duplicates = keys.select { |k| keys.count(k) > 1 }.uniq
+    duplicates.each do |key|
+      errors << "Duplicate template key: '#{key}'"
+    end
+
+    errors
   end
 end

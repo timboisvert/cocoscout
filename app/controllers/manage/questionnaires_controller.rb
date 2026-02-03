@@ -289,24 +289,7 @@ module Manage
 
       invitation_count = 0
 
-      # Calculate total email recipients for batch creation
-      email_recipients_count = person_recipients.count { |p| p.user.present? }
-      group_recipients.each do |group|
-        email_recipients_count += group.group_memberships.select(&:notifications_enabled?).count { |m| m.person.user.present? }
-      end
-
-      # Create email batch if sending to multiple people
-      email_batch = nil
-      if email_recipients_count > 1
-        email_batch = EmailBatch.create!(
-          user: Current.user,
-          subject: subject_template,
-          recipient_count: email_recipients_count,
-          sent_at: Time.current
-        )
-      end
-
-      # Create invitations for people and send emails
+      # Create invitations for people and send messages
       person_recipients.each do |person|
         QuestionnaireInvitation.create!(
           questionnaire: @questionnaire,
@@ -314,10 +297,29 @@ module Manage
         )
         invitation_count += 1
 
-        # Send email if person has a user account
+        # Send in-app message if person has a user account
         if person.user
-          Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
-                                                 message_template, email_batch_id: email_batch&.id).deliver_later
+          questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
+            @questionnaire,
+            host: ENV.fetch("HOST", "localhost:3000")
+          )
+
+          rendered = ContentTemplateService.render("questionnaire_invitation", {
+            person_name: person.first_name || "there",
+            questionnaire_title: @questionnaire.name,
+            production_name: @production.name,
+            questionnaire_url: questionnaire_url,
+            custom_message: message_template
+          })
+
+          MessageService.send_direct(
+            sender: Current.user,
+            recipient_person: person,
+            subject: rendered[:subject],
+            body: rendered[:body],
+            production: @production,
+            organization: @production.organization
+          )
         end
       end
 
@@ -329,12 +331,31 @@ module Manage
         )
         invitation_count += 1
 
-        # Send emails to all group members with notifications enabled
+        # Send messages to all group members with notifications enabled
         members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
         members_with_notifications.each do |person|
           if person.user
-            Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
-                                                   message_template, email_batch_id: email_batch&.id).deliver_later
+            questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
+              @questionnaire,
+              host: ENV.fetch("HOST", "localhost:3000")
+            )
+
+            rendered = ContentTemplateService.render("questionnaire_invitation", {
+              person_name: person.first_name || "there",
+              questionnaire_title: @questionnaire.name,
+              production_name: @production.name,
+              questionnaire_url: questionnaire_url,
+              custom_message: message_template
+            })
+
+            MessageService.send_direct(
+              sender: Current.user,
+              recipient_person: person,
+              subject: rendered[:subject],
+              body: rendered[:body],
+              production: @production,
+              organization: @production.organization
+            )
           end
         end
       end

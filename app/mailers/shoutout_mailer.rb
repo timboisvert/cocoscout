@@ -6,9 +6,23 @@ class ShoutoutMailer < ApplicationMailer
     @recipient = shoutout.shoutee
     @author = shoutout.author
 
-    mail(
-      to: @recipient.email,
-      subject: "#{@author.name} gave you a shoutout on CocoScout!"
+    profile_url = Rails.application.routes.url_helpers.profile_url(
+      @recipient,
+      host: ENV.fetch("HOST", "localhost:3000")
     )
+
+    rendered = ContentTemplateService.render("shoutout_notification", {
+      recipient_name: @recipient.first_name || "there",
+      author_name: @author.name,
+      shoutout_text: shoutout.body,
+      profile_url: profile_url
+    })
+
+    @subject = rendered[:subject]
+    @body = rendered[:body]
+
+    mail(to: @recipient.email, subject: @subject) do |format|
+      format.html { render html: @body.html_safe }
+    end
   end
 end
