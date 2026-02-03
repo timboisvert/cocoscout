@@ -1,11 +1,21 @@
-<% if notice.present? %>
+<%
+  # Support flash notice, query param notice, and cookie notice (for XHR-initiated redirects)
+  cookie_notice = cookies[:flash_notice]
+  if cookie_notice.present?
+    cookies.delete(:flash_notice)
+  end
+  display_notice = notice.presence || params[:notice].presence || cookie_notice
+  display_alert = local_assigns[:alert].presence || params[:alert].presence
+%>
+
+<% if display_notice.present? %>
   <div data-controller="notice" data-notice-timeout-value="2000" class="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-pink-500 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg" data-notice-target="container">
-    <span class="font-medium"><%= notice %></span>
+    <span class="font-medium"><%= display_notice %></span>
   </div>
 <% end %>
 
-<% if local_assigns[:alert].present? %>
+<% if display_alert.present? %>
   <div data-controller="notice" data-notice-timeout-value="5000" class="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-red-600 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg" data-notice-target="container">
-    <span class="font-medium"><%= alert %></span>
+    <span class="font-medium"><%= display_alert %></span>
   </div>
 <% end %>

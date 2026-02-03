@@ -29,6 +29,10 @@ export default class extends Controller {
         this.menuTarget.classList.toggle("hidden")
     }
 
+    close() {
+        this.menuTarget.classList.add("hidden")
+    }
+
     hide(event) {
         if (!this.element.contains(event.target)) {
             this.menuTarget.classList.add("hidden")

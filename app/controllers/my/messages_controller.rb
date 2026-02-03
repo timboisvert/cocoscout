@@ -135,6 +135,7 @@ class My::MessagesController < ApplicationController
     # Find the parent message - user needs to be subscribed to the ROOT message
     parent_message_id = params[:parent_message_id] || params[:id]
     parent = Message.find(parent_message_id)
+    images = params[:images]&.reject(&:blank?)
 
     # Find root message
     root_message = parent.root_message
@@ -150,6 +151,7 @@ class My::MessagesController < ApplicationController
       parent_message: parent,
       body: params[:body]
     )
+    message&.images&.attach(images) if images.present?
 
     respond_to do |format|
       format.html { redirect_to my_message_path(root_message), notice: "Reply sent" }

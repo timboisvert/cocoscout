@@ -46,8 +46,9 @@ export default class extends Controller {
     }
 
     close(event) {
-        // Close the current modal or fallback to imageModal
-        const modal = this.currentModal || document.getElementById('imageModal')
+        // If controller is on the modal itself, close this.element
+        // Otherwise, close the currentModal or fallback to imageModal
+        const modal = this.currentModal || (this.element.id ? this.element : document.getElementById('imageModal'))
         if (modal) {
             modal.classList.add('hidden')
             document.removeEventListener('keydown', this.keyHandler)

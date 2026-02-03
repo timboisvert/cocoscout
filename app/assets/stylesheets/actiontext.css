@@ -756,3 +756,8 @@ trix-editor .attachment__metadata .attachment__size {
     padding: 0.3em 0.4em;
   }
 }
+
+/* Hide the Trix attachment/paperclip button */
+trix-toolbar .trix-button--icon-attach {
+  display: none !important;
+}

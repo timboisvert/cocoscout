@@ -5,18 +5,22 @@ class My::ProductionMessagesController < ApplicationController
   def create
     subject = params[:subject]
     body = params[:body]
+    images = params[:images]&.reject(&:blank?)
 
     if subject.blank? || body.blank?
       redirect_back fallback_location: my_messages_path, alert: "Subject and message are required"
       return
     end
 
-    MessageService.send_to_production_team(
+    message = MessageService.send_to_production_team(
       production: @production,
       sender: Current.user,
       subject: subject,
       body: body
     )
+
+    # Attach images if provided
+    message&.images&.attach(images) if images.present?
 
     redirect_to my_messages_path, notice: "Message sent to #{@production.name} team"
   end

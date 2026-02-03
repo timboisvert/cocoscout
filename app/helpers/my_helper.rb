@@ -140,6 +140,6 @@ module MyHelper
   def can_moderate_post?(post)
     production = post.production
     ProductionPermission.exists?(production: production, user: Current.user) ||
-      OrganizationPermission.exists?(organization: production.organization, user: Current.user)
+      OrganizationRole.exists?(organization: production.organization, user: Current.user)
   end
 end

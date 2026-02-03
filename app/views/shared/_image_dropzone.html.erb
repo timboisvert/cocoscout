@@ -1,0 +1,71 @@
+<%#
+  Image Dropzone Component
+
+  A toggleable image upload zone with drag-and-drop support.
+  Shows an "Add image(s)" button that reveals a pretty dropzone when clicked.
+
+  Parameters:
+    size: "small" (for comment forms) or "medium" (default, for compose modal)
+    grid_cols: number of columns in preview grid (default: 5)
+%>
+
+<%
+  size = local_assigns[:size] || "medium"
+
+  # Size-specific styling
+  if size == "small"
+    dropzone_padding = "p-4"
+    icon_size = "w-8 h-8"
+    text_size = "text-sm"
+    subtext_size = "text-xs"
+  else
+    dropzone_padding = "p-6"
+    icon_size = "w-10 h-10"
+    text_size = "text-base"
+    subtext_size = "text-sm"
+  end
+%>
+
+<div data-controller="image-dropzone">
+  <%# Hidden file input %>
+  <input type="file"
+         name="images[]"
+         multiple
+         accept="image/*"
+         data-image-dropzone-target="input"
+         data-action="change->image-dropzone#filesSelected"
+         class="hidden">
+
+  <%# Toggle button - shows when dropzone is hidden %>
+  <button type="button"
+          data-image-dropzone-target="toggleButton"
+          data-action="click->image-dropzone#toggle"
+          class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-pink-300 hover:text-pink-600 transition-colors cursor-pointer">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    </svg>
+    Add image(s)
+  </button>
+
+  <%# Dropzone - hidden by default %>
+  <div data-image-dropzone-target="dropzone"
+       data-action="dragover->image-dropzone#dragOver dragleave->image-dropzone#dragLeave drop->image-dropzone#drop click->image-dropzone#openFilePicker"
+       class="hidden mt-2 border-2 border-dashed border-gray-200 rounded-xl <%= dropzone_padding %> cursor-pointer hover:border-pink-400 hover:bg-pink-50/30 transition-all">
+
+    <%# Placeholder content %>
+    <div data-image-dropzone-target="placeholder" class="flex flex-col items-center justify-center gap-2 text-gray-400">
+      <div class="<%= icon_size %> rounded-full bg-pink-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div class="text-center">
+        <p class="<%= text_size %> font-medium text-gray-600">Drop images here</p>
+        <p class="<%= subtext_size %> text-gray-400">or click to select files</p>
+      </div>
+    </div>
+
+    <%# Preview grid - uses flexbox for wrapping square thumbnails %>
+    <div data-image-dropzone-target="previews" class="hidden flex flex-wrap gap-2"></div>
+  </div>
+</div>

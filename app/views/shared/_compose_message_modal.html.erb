@@ -80,8 +80,10 @@
       <%# Form %>
       <form data-compose-message-target="form"
             method="post"
+            enctype="multipart/form-data"
             class="p-6 space-y-5"
-            data-action="submit->compose-message#submit">
+            data-action="submit->compose-message#submit"
+            data-turbo="false">
         <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
         <input type="hidden" name="recipient_type" data-compose-message-target="recipientType">
         <input type="hidden" name="recipient_id" data-compose-message-target="recipientId">
@@ -129,6 +131,9 @@
               class: "w-full min-h-[120px]",
               placeholder: "Write your message here..." %>
         </div>
+
+        <%# Image Attachments %>
+        <%= render "shared/image_dropzone", size: "medium" %>
 
         <%# Actions %>
         <div class="flex items-center justify-end gap-3 pt-2">

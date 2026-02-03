@@ -1,0 +1,134 @@
+<%#
+  Read Receipts Modal
+
+  Shows who has read a message in a modal dialog.
+  Triggered from the message card's ... menu.
+
+  Required:
+    message: The message to show read receipts for
+%>
+
+<%
+  recipients = message.message_recipients.includes(:recipient)
+  read_recipients = recipients.select { |r| r.read_at.present? }.sort_by(&:read_at).reverse
+  unread_recipients = recipients.select { |r| r.read_at.nil? }
+  read_count = read_recipients.size
+  total_count = recipients.size
+%>
+
+<div id="read-receipts-modal-<%= message.id %>"
+     class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col"
+       data-action="click->modal#stopPropagation">
+
+    <%# Header %>
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Read Receipts</h3>
+          <p class="text-sm text-gray-500"><%= read_count %> of <%= total_count %> read</p>
+        </div>
+      </div>
+      <button type="button"
+              data-action="click->modal#close"
+              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <%# Recipients List %>
+    <div class="flex-1 overflow-y-auto">
+      <% if read_recipients.any? %>
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-100">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Read</span>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% read_recipients.each do |mr| %>
+            <% person = mr.recipient %>
+            <% next unless person.is_a?(Person) %>
+            <li class="flex items-center gap-3 px-5 py-3">
+              <%# Headshot %>
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant,
+                    alt: person.name,
+                    class: "w-10 h-10 rounded-lg object-cover" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center">
+                  <span class="text-white font-medium text-sm"><%= person.initials %></span>
+                </div>
+              <% end %>
+
+              <%# Name %>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 truncate"><%= person.name %></p>
+                <p class="text-sm text-gray-500"><%= time_ago_in_words(mr.read_at) %> ago</p>
+              </div>
+
+              <%# Read checkmark %>
+              <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <% if unread_recipients.any? %>
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 <%= read_recipients.any? ? 'border-t' : '' %>">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Not Read</span>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% unread_recipients.each do |mr| %>
+            <% person = mr.recipient %>
+            <% next unless person.is_a?(Person) %>
+            <li class="flex items-center gap-3 px-5 py-3">
+              <%# Headshot %>
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant,
+                    alt: person.name,
+                    class: "w-10 h-10 rounded-lg object-cover opacity-60" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+                  <span class="text-white font-medium text-sm"><%= person.initials %></span>
+                </div>
+              <% end %>
+
+              <%# Name %>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-600 truncate"><%= person.name %></p>
+                <p class="text-sm text-gray-400">Not read yet</p>
+              </div>
+
+              <%# Waiting indicator %>
+              <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <% if total_count == 0 %>
+        <div class="px-5 py-8 text-center">
+          <p class="text-gray-500">No recipients for this message.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -107,8 +107,12 @@
         <% end %>
 
         <div class="flex-1">
-          <%= form_with url: reply_my_message_path(@root_message), method: :post, class: "space-y-3", data: { turbo: false } do |f| %>
+          <%= form_with url: reply_my_message_path(@root_message), method: :post, multipart: true, class: "space-y-3", data: { turbo: false } do |f| %>
             <%= f.rich_text_area :body, class: "w-full min-h-[100px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
+
+            <%# Image Attachments %>
+            <%= render "shared/image_dropzone", size: "small" %>
+
             <div class="flex justify-end gap-2">
               <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">
                 Cancel

@@ -268,6 +268,8 @@ export default class extends Controller {
 
     async submit(event) {
         event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation()
 
         const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
         const form = modal?.querySelector('[data-compose-message-target="form"]')
@@ -283,6 +285,20 @@ export default class extends Controller {
 
         try {
             const formData = new FormData(form)
+
+            // Get files from image-dropzone controller if present
+            const dropzoneElement = form.querySelector('[data-controller="image-dropzone"]')
+            if (dropzoneElement) {
+                const dropzoneController = this.application.getControllerForElementAndIdentifier(dropzoneElement, 'image-dropzone')
+                if (dropzoneController && dropzoneController.files && dropzoneController.files.length > 0) {
+                    // Remove any empty images entries and add our files
+                    formData.delete('images[]')
+                    dropzoneController.files.forEach(file => {
+                        formData.append('images[]', file)
+                    })
+                }
+            }
+
             const response = await fetch(form.action, {
                 method: 'POST',
                 body: formData,
@@ -293,9 +309,13 @@ export default class extends Controller {
 
             if (response.ok) {
                 this.close()
-                // Handle redirect or show success
+                // Set cookie for notice since flash is consumed by fetch
+                document.cookie = 'flash_notice=Message sent successfully; path=/; max-age=10'
+                // Handle redirect
                 if (response.redirected) {
                     window.location.href = response.url
+                } else {
+                    window.location.href = '/manage/messages'
                 }
             } else {
                 console.error('Failed to send message:', response.status)

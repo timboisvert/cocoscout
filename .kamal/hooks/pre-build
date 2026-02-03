@@ -33,15 +33,10 @@ else
   echo "🔍 Validating communications configuration..."
   echo ""
 
-  # Run the communications validator and capture output
-  OUTPUT=$(bundle exec rake communications:validate 2>&1)
-
-  # Check if validation failed
-  if echo "$OUTPUT" | grep -q "❌ Failed: 0"; then
-    echo "$OUTPUT"
+  # Run the communications validator (output streams directly)
+  if bundle exec rake communications:validate 2>&1; then
     echo "✅ Communications validation passed"
   else
-    echo "$OUTPUT"
     echo ""
     echo "❌ Communications validation FAILED!"
     echo "   Fix the issues above before deploying."

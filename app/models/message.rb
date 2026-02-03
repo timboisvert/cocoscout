@@ -81,6 +81,26 @@ class Message < ApplicationRecord
     false
   end
 
+  # Check if user can view read receipts for this message
+  # - Sender can always see read receipts for messages they sent
+  # - Production/org team members can see read receipts for production messages
+  def can_view_read_receipts_by?(user)
+    return false unless user
+    return false if message_recipients.empty?
+
+    # Sender can always see read receipts
+    return true if sender_type == "User" && sender_id == user.id
+    return true if sender_type == "Person" && user.person&.id == sender_id
+
+    # For production messages, team members can view read receipts
+    if production.present?
+      return true if ::ProductionPermission.exists?(production: production, user: user)
+      return true if ::OrganizationRole.exists?(organization: production.organization, user: user)
+    end
+
+    false
+  end
+
   # Messages visible to a user based on subscriptions
   scope :subscribed_by, ->(user) {
     joins(:message_subscriptions).where(message_subscriptions: { user: user, muted: false })

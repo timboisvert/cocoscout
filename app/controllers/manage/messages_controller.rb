@@ -121,6 +121,7 @@ module Manage
       body = params[:body]
       recipient_type = params[:recipient_type]
       recipient_id = params[:recipient_id]
+      images = params[:images]&.reject(&:blank?)
 
       if subject.blank? || body.blank?
         redirect_back fallback_location: manage_messages_path, alert: "Subject and message are required"
@@ -130,36 +131,39 @@ module Manage
       case recipient_type
       when "person"
         person = Current.organization.people.find(recipient_id)
-        MessageService.send_direct(
+        message = MessageService.send_direct(
           sender: Current.user,
           recipient_person: person,
           subject: subject,
           body: body,
           organization: Current.organization
         )
-        redirect_back fallback_location: manage_person_path(person), notice: "Message sent to #{person.name}"
+        message&.images&.attach(images) if images.present?
+        redirect_to manage_messages_path, notice: "Message sent to #{person.name}"
 
       when "group"
         group = Current.organization.groups.find(recipient_id)
         production = group.production || Current.production
-        MessageService.send_to_group(
+        message = MessageService.send_to_group(
           sender: Current.user,
           group: group,
           subject: subject,
           body: body,
           production: production
         )
-        redirect_back fallback_location: manage_directory_path, notice: "Message sent to #{group.name}"
+        message&.images&.attach(images) if images.present?
+        redirect_to manage_messages_path, notice: "Message sent to #{group.name}"
 
       when "show_cast"
         show = Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find(recipient_id)
-        MessageService.send_to_show_cast(
+        message = MessageService.send_to_show_cast(
           show: show,
           sender: Current.user,
           subject: subject,
           body: body
         )
-        redirect_back fallback_location: manage_show_path(show.production, show), notice: "Message sent to #{show.display_name} cast"
+        message&.images&.attach(images) if images.present?
+        redirect_to manage_messages_path, notice: "Message sent to #{show.display_name} cast"
 
       when "batch"
         # Handle batch messaging from directory selection
@@ -184,7 +188,7 @@ module Manage
 
         people_to_message.uniq!
 
-        MessageService.send_to_people(
+        message = MessageService.send_to_people(
           sender: Current.user,
           people: people_to_message,
           subject: subject,
@@ -192,8 +196,9 @@ module Manage
           message_type: :direct,
           organization: Current.organization
         )
+        message&.images&.attach(images) if images.present?
 
-        redirect_to manage_directory_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
+        redirect_to manage_messages_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
 
       else
         redirect_back fallback_location: manage_messages_path, alert: "Invalid recipient type"
@@ -205,6 +210,7 @@ module Manage
       parent_message_id = params[:parent_message_id] || params[:id]
       parent = Message.find(parent_message_id)
       root_message = parent.root_message
+      images = params[:images]&.reject(&:blank?)
 
       # Ensure user has access (subscribed to thread)
       unless root_message.subscribed?(Current.user)
@@ -217,6 +223,7 @@ module Manage
         parent_message: parent,
         body: params[:body]
       )
+      message&.images&.attach(images) if images.present?
 
       respond_to do |format|
         format.html { redirect_to manage_message_path(root_message), notice: "Reply sent" }

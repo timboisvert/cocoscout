@@ -61,8 +61,10 @@
       <%# Form %>
       <form data-contact-production-target="form"
             method="post"
+            enctype="multipart/form-data"
             class="p-6 space-y-5"
-            data-action="submit->contact-production#submit">
+            data-action="submit->contact-production#submit"
+            data-turbo="false">
         <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
 
         <%# Subject %>
@@ -84,14 +86,15 @@
           <label for="contact-body" class="block text-sm font-medium text-gray-700 mb-1.5">
             Message
           </label>
-          <textarea name="body"
-                    id="contact-body"
-                    data-contact-production-target="body"
-                    rows="5"
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors resize-none"
-                    placeholder="Write your message here..."
-                    required></textarea>
+          <%= rich_text_area_tag :body, nil,
+              id: "contact-body",
+              data: { "contact-production-target": "body" },
+              class: "w-full min-h-[120px]",
+              placeholder: "Write your message here..." %>
         </div>
+
+        <%# Image Attachments %>
+        <%= render "shared/image_dropzone", size: "medium" %>
 
         <%# Actions %>
         <div class="flex items-center justify-end gap-3 pt-2">
