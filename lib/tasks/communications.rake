@@ -179,8 +179,7 @@ namespace :communications do
     sign_up_registration_notification: {
       name: "Sign-Up Registration Notification (Producer)",
       category: :signups,
-      channel: :both,
-      mailer: "Manage::SignUpMailer#registration_notification",
+      channel: :message,
       service: "SignUpProducerNotificationService",
       template_key: "sign_up_registration_notification",
       description: "Notify producers of new sign-up registration",

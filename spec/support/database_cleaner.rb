@@ -43,7 +43,7 @@ def seed_content_templates
     { key: "sign_up_slot_assigned", name: "Slot Assigned", subject: "Assigned", body: "Assigned", category: "sign_ups", channel: "message" },
     { key: "sign_up_slot_changed", name: "Slot Changed", subject: "Changed", body: "Changed", category: "sign_ups", channel: "message" },
     { key: "sign_up_cancelled", name: "Sign-Up Cancelled", subject: "Cancelled", body: "Cancelled", category: "sign_ups", channel: "message" },
-    { key: "sign_up_registration_notification", name: "Registration Notification", subject: "New signup", body: "New signup", category: "sign_ups", channel: "both" },
+    { key: "sign_up_registration_notification", name: "Registration Notification", subject: "New signup", body: "New signup", category: "sign_ups", channel: "message" },
     { key: "unread_digest", name: "Unread Digest", subject: "Unread messages", body: "Check inbox", category: "messaging", channel: "email" },
     { key: "group_member_added", name: "Member Added", subject: "Added", body: "Added to group", category: "groups", channel: "message" },
     { key: "shoutout_notification", name: "Shoutout Notification", subject: "Shoutout", body: "You got a shoutout", category: "social", channel: "message" },
