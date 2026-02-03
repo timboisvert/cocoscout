@@ -987,9 +987,11 @@ module Manage
 
     def transfer_select
       # Get all productions the user has access to, except the current one
+      # Exclude third-party productions (they can't own shows)
       @available_productions = Current.user.accessible_productions
                                        .where.not(id: @production.id)
                                        .where(organization: Current.organization)
+                                       .where.not(production_type: :third_party)
                                        .order(:name)
 
       if @available_productions.empty?
