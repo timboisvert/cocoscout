@@ -80,10 +80,21 @@ module Manage
 
     private
 
+    def selected_talent_pool
+      return nil if params[:invite_to_pool] == "no"
+      return nil if params[:talent_pool_id].blank?
+
+      # Verify the talent pool belongs to this organization
+      TalentPool.joins(:production)
+                .where(productions: { organization_id: Current.organization.id })
+                .find_by(id: params[:talent_pool_id])
+    end
+
     def invite_selected_profiles(profile_ids)
       profiles = Person.where(id: profile_ids, email: person_params[:email]&.downcase)
       invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
       invitation_message = params[:person][:invitation_message] || default_invitation_message
+      talent_pool = selected_talent_pool
 
       invited_names = []
 
@@ -103,7 +114,8 @@ module Manage
         # Create and send invitation
         person_invitation = PersonInvitation.create!(
           email: person.email,
-          organization: Current.organization
+          organization: Current.organization,
+          talent_pool: talent_pool
         )
         Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
@@ -142,9 +154,12 @@ module Manage
         person.update!(user: user)
       end
 
+      talent_pool = selected_talent_pool
+
       person_invitation = PersonInvitation.create!(
         email: person.email,
-        organization: Current.organization
+        organization: Current.organization,
+        talent_pool: talent_pool
       )
       Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
@@ -167,10 +182,12 @@ module Manage
 
         invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
         invitation_message = params[:person][:invitation_message] || default_invitation_message
+        talent_pool = selected_talent_pool
 
         person_invitation = PersonInvitation.create!(
           email: @person.email,
-          organization: Current.organization
+          organization: Current.organization,
+          talent_pool: talent_pool
         )
         Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
@@ -300,6 +317,7 @@ module Manage
 
       invitation_subject = params[:invitation_subject] || default_invitation_subject
       invitation_message = params[:invitation_message] || default_invitation_message
+      talent_pool = selected_talent_pool
 
       @invited = []
       @skipped = []
@@ -358,7 +376,8 @@ module Manage
               # Send invitation
               person_invitation = PersonInvitation.create!(
                 email: existing_person.email,
-                organization: Current.organization
+                organization: Current.organization,
+                talent_pool: talent_pool
               )
               Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
               @invited << { email: email, name: existing_person.name, new_account: true }
@@ -385,7 +404,8 @@ module Manage
 
               person_invitation = PersonInvitation.create!(
                 email: person.email,
-                organization: Current.organization
+                organization: Current.organization,
+                talent_pool: talent_pool
               )
               Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
@@ -467,21 +487,43 @@ module Manage
 
     # Load all talent pools available for invitations
     def load_talent_pools
+      # In single mode, only show the org pool
+      if Current.organization.talent_pool_single? && Current.organization.organization_talent_pool
+        @talent_pools = [ Current.organization.organization_talent_pool ]
+        @talent_pool_options = [ {
+          pool: Current.organization.organization_talent_pool,
+          display_name: Current.organization.name
+        } ]
+        return
+      end
+
       # Get productions that have received a share from another pool (they don't use their own)
       productions_receiving_shares = TalentPoolShare.pluck(:production_id)
 
-      @talent_pools = TalentPool.joins(:production)
-                                .includes(:production)
-                                .where(productions: { organization_id: Current.organization.id })
-                                .where.not(production_id: productions_receiving_shares)
-                                .distinct
-                                .order(:name)
+      pools = TalentPool.joins(:production)
+                        .includes(:production, :shared_productions)
+                        .where(productions: { organization_id: Current.organization.id })
+                        .where.not(production_id: productions_receiving_shares)
+                        .distinct
+                        .order(:name)
 
-      # Include the organization-level talent pool if set
-      if Current.organization.talent_pool_single? && Current.organization.organization_talent_pool
-        # In single mode, only show the org pool
-        @talent_pools = [ Current.organization.organization_talent_pool ]
+      # Build display options
+      @talent_pool_options = pools.map do |pool|
+        shared_prod_names = pool.shared_productions.pluck(:name)
+
+        display_name = if shared_prod_names.any?
+          # Shared pool: "Shared by Show1, Show2, and Show3"
+          all_names = [ pool.production.name ] + shared_prod_names
+          "Shared by #{all_names.to_sentence}"
+        else
+          # Single production pool: just show production name
+          pool.production.name
+        end
+
+        { pool: pool, display_name: display_name }
       end
+
+      @talent_pools = pools
     end
   end
 end
