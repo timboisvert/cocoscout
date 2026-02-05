@@ -127,14 +127,9 @@ class SignUpNotificationService
     end
 
     def find_sender(production)
-      # Use the production's primary team member or organization owner as sender
+      # Use the organization owner as the sender for notifications
       return nil unless production
 
-      # Try to find the organization's primary team member
-      primary_role = production.organization.organization_roles.find_by(primary: true)
-      return primary_role.user if primary_role&.user.present?
-
-      # Fall back to organization owner
       production.organization.owner
     end
   end
