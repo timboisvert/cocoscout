@@ -2,6 +2,40 @@
   "ignored_warnings": [
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "35b439a99ab30b078366f6df51f4c7771f758fea4b56451a6442bd5a30fe97e1",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/cancel.html.erb",
+      "line": 82,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Uncancel This #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"success\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "cancel",
+          "line": 732,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/cancel",
+            "file": "app/views/manage/shows/cancel.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/cancel"
+      },
+      "user_input": "Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 2,
       "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
       "check_name": "CrossSiteScripting",
@@ -35,7 +69,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 169,
+          "line": 241,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -89,7 +123,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 169,
+          "line": 241,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -102,6 +136,40 @@
         "template": "shared/messages/_reactions"
       },
       "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "4ce01672189ac01678ec7ba21ff6f81cea96f29d519d824a7c0ea416956cbf3c",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/productions/agreement_status.html.erb",
+      "line": 12,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Send Reminder to #{Current.organization.productions.find(params[:production_id]).people_without_agreement_signature.order(:name).count} Unsigned\", { :path => send_agreement_reminders_manage_production_path(Current.organization.productions.find(params[:production_id])), :method => :post, :variant => \"primary\", :data => ({ :turbo_confirm => (\"Send a reminder message to all #{Current.organization.productions.find(params[:production_id]).people_without_agreement_signature.order(:name).count} #{\"performer\".pluralize(Current.organization.productions.find(params[:production_id]).people_without_agreement_signature.order(:name).count)} who haven't signed yet?\") }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ProductionsController",
+          "method": "agreement_status",
+          "line": 229,
+          "file": "app/controllers/manage/productions_controller.rb",
+          "rendered": {
+            "name": "manage/productions/agreement_status",
+            "file": "app/views/manage/productions/agreement_status.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/productions/agreement_status"
+      },
+      "user_input": "Current.organization.productions.find(params[:production_id]).people_without_agreement_signature.order(:name).count",
       "confidence": "Medium",
       "cwe_id": [
         79
@@ -141,6 +209,40 @@
         79
       ],
       "note": "False positive: .size returns an integer which cannot contain XSS payload"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 2,
+      "fingerprint": "730caecaae6cb9b2805f1f3ce0279af23f5e74f01b96d3acf3b660362b425e8f",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/my/productions/show.html.erb",
+      "line": 386,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "Production.find(params[:id]).agreement_signature_for(Current.user.person).content_snapshot",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "My::ProductionsController",
+          "method": "show",
+          "line": 157,
+          "file": "app/controllers/my/productions_controller.rb",
+          "rendered": {
+            "name": "my/productions/show",
+            "file": "app/views/my/productions/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "my/productions/show"
+      },
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -209,7 +311,109 @@
         79
       ],
       "note": "False positive: .count returns an integer which cannot contain XSS payload"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "b49b1af1a999d74e9276a4871909f4040c02d17f9e1315a86564769d70a77594",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/cancel.html.erb",
+      "line": 244,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Delete All #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).recurrence_group.count} Occurrences\", { :variant => \"danger\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "cancel",
+          "line": 732,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/cancel",
+            "file": "app/views/manage/shows/cancel.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/cancel"
+      },
+      "user_input": "Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).recurrence_group.count",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "d4ae03b34ae8b0a8b8fba3b2c1f067361dbeb4cea2db50f076f30633cac2ae32",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/cancel.html.erb",
+      "line": 250,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Delete This #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"danger\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "cancel",
+          "line": 732,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/cancel",
+            "file": "app/views/manage/shows/cancel.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/cancel"
+      },
+      "user_input": "Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "fc12c7b78d04c6eec87d26848b04f99477ebef302315c149b27e277964e746de",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/cancel.html.erb",
+      "line": 213,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Cancel #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"warning\", :size => \"medium\", :type => :submit, :data => ({ :\"cancel-show-target\" => \"submitButton\", :\"turbo-confirm\" => (\"Are you sure you want to cancel this #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.downcase}?\") }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "cancel",
+          "line": 732,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/cancel",
+            "file": "app/views/manage/shows/cancel.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/cancel"
+      },
+      "user_input": "Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     }
   ],
-  "brakeman_version": "8.0.1"
+  "brakeman_version": "8.0.2"
 }
