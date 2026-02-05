@@ -61,7 +61,10 @@ module Manage
       # Apply ordering
       @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
       @messages = @messages.limit(100)
-      @unread_count = Current.user.unread_message_count
+
+      # Unread count scoped to this organization's messages
+      org_message_ids = Message.where(organization: Current.organization).pluck(:id)
+      @unread_count = Current.user.message_subscriptions.unread.where(message_id: org_message_ids).count
     end
 
     # GET /manage/messages/production/:production_id
