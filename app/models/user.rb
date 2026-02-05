@@ -268,10 +268,20 @@ class User < ApplicationRecord
 
   SMS_NOTIFICATION_TYPES = %w[show_cancellation vacancy_notification].freeze
 
-  # Check if SMS is fully enabled (has phone and master toggle on)
+  # Check if phone number has been verified
+  def phone_verified?
+    phone_verified_at.present? && person&.phone.present?
+  end
+
+  # Check if verification is pending
+  def phone_verification_pending?
+    phone_pending_verification.present? && phone_verification_sent_at.present? && phone_verification_sent_at > 10.minutes.ago
+  end
+
+  # Check if SMS is fully enabled (has verified phone and master toggle on)
   def sms_enabled?
     phone = person&.phone
-    phone.present? && notification_preferences["sms_enabled"] != false
+    phone.present? && phone_verified? && notification_preferences["sms_enabled"] != false
   end
 
   # Check if a specific SMS notification type is enabled

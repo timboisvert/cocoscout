@@ -166,8 +166,9 @@ module Manage
         redirect_to manage_messages_path, notice: "Message sent to #{show.display_name} cast"
 
       when "batch"
-        # Handle batch messaging from directory selection
+        # Handle batch messaging from directory selection or agreement reminders
         person_ids = params[:person_ids]&.select(&:present?) || []
+        send_separately = params[:send_separately] == "1" || params[:send_separately] == "on"
 
         if person_ids.empty?
           redirect_back fallback_location: manage_directory_path, alert: "Please select at least one person or group."
@@ -188,17 +189,36 @@ module Manage
 
         people_to_message.uniq!
 
-        message = MessageService.send_to_people(
-          sender: Current.user,
-          people: people_to_message,
-          subject: subject,
-          body: body,
-          message_type: :direct,
-          organization: Current.organization
-        )
-        message&.images&.attach(images) if images.present?
-
-        redirect_to manage_messages_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
+        if send_separately
+          # Send individual messages to each person
+          messages_sent = 0
+          people_to_message.each do |person|
+            message = MessageService.send_direct(
+              sender: Current.user,
+              recipient_person: person,
+              subject: subject,
+              body: body,
+              organization: Current.organization
+            )
+            if message
+              message.images.attach(images) if images.present?
+              messages_sent += 1
+            end
+          end
+          redirect_to manage_messages_path, notice: "Sent #{messages_sent} individual #{'message'.pluralize(messages_sent)}."
+        else
+          # Send as a single message to all recipients (default behavior)
+          message = MessageService.send_to_people(
+            sender: Current.user,
+            people: people_to_message,
+            subject: subject,
+            body: body,
+            message_type: :direct,
+            organization: Current.organization
+          )
+          message&.images&.attach(images) if images.present?
+          redirect_to manage_messages_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
+        end
 
       else
         redirect_back fallback_location: manage_messages_path, alert: "Invalid recipient type"

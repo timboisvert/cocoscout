@@ -10,7 +10,7 @@ class SmsLog < ApplicationRecord
   validates :sms_type, presence: true
   validates :status, presence: true
 
-  SMS_TYPES = %w[ show_cancellation vacancy_notification ].freeze
+  SMS_TYPES = %w[ show_cancellation vacancy_notification phone_verification ].freeze
   STATUSES = %w[ pending sent failed ].freeze
 
   validates :sms_type, inclusion: { in: SMS_TYPES }

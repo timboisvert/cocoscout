@@ -1,0 +1,100 @@
+<% content_for :title, "Agreements Monitor" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path]
+    ],
+    text: "Agreements Monitor",
+    links: []
+  } %>
+
+  <!-- Stats Overview -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+    <!-- Organizations Using Agreements -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900"><%= @orgs_with_agreements %><span class="text-sm font-normal text-gray-400">/<%= @orgs_total %></span></div>
+          <div class="text-xs text-gray-500">Orgs with Templates</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Productions Requiring Agreements -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900"><%= @productions_with_agreements %><span class="text-sm font-normal text-gray-400">/<%= @productions_total %></span></div>
+          <div class="text-xs text-gray-500">Productions Requiring</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Signatures -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@total_signatures) %></div>
+          <div class="text-xs text-gray-500">Total Signatures</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900"><%= @signatures_this_week %></div>
+          <div class="text-xs text-gray-500">Signatures This Week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Default Agreement Template -->
+  <div class="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Default Agreement Template", subtitle: "This template is used as the starting point when organizations create new agreement templates." %>
+    <div class="p-6">
+      <%= form_with url: agreements_monitor_path, method: :patch, local: true do |f| %>
+        <div class="mb-4">
+          <%= rich_text_area_tag :default_template, @default_template_content,
+              class: "w-full min-h-[300px]",
+              placeholder: "Enter the default agreement template content..." %>
+        </div>
+        <div class="text-xs text-gray-500 mb-4">
+          <p class="font-medium mb-1">Available variables:</p>
+          <code class="text-pink-600">{{production_name}}</code>,
+          <code class="text-pink-600">{{organization_name}}</code>,
+          <code class="text-pink-600">{{performer_name}}</code>,
+          <code class="text-pink-600">{{current_date}}</code>
+        </div>
+        <div class="flex justify-end">
+          <%= render "shared/button", text: "Save Template", variant: "primary", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

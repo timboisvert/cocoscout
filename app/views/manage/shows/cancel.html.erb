@@ -4,11 +4,7 @@
      data-controller="cancel-show"
      data-cancel-show-event-type-value="<%= @show.event_type.titleize %>"
      data-cancel-show-single-date-value="<%= @show.date_and_time.strftime('%B %-d, %Y') %>"
-     data-cancel-show-occurrence-count-value="<%= @show.recurring? ? @show.recurrence_group.count : 1 %>"
-     data-cancel-show-single-subject-value="<%= @single_subject %>"
-     data-cancel-show-all-subject-value="<%= @all_subject %>"
-     data-cancel-show-single-body-value="<%= j(@single_body.to_s) %>"
-     data-cancel-show-all-body-value="<%= j(@all_body.to_s) %>">
+     data-cancel-show-occurrence-count-value="<%= @show.recurring? ? @show.recurrence_group.count : 1 %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -73,21 +69,18 @@
 
         <% if @show.recurring? %>
           <div class="flex flex-wrap gap-2">
-            <%= button_to "Uncancel Only This Occurrence",
-                manage_uncancel_show_path(@production, @show, scope: "this"),
-                method: :patch,
-                class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
+            <%= button_to manage_uncancel_show_path(@production, @show, scope: "this"), method: :patch do %>
+              <%= render "shared/button", text: "Uncancel Only This Occurrence", variant: "success", size: "medium", type: :submit %>
+            <% end %>
 
-            <%= button_to "Uncancel All Canceled Occurrences",
-                manage_uncancel_show_path(@production, @show, scope: "all"),
-                method: :patch,
-                class: "rounded-lg px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer transition-colors" %>
+            <%= button_to manage_uncancel_show_path(@production, @show, scope: "all"), method: :patch do %>
+              <%= render "shared/button", text: "Uncancel All Canceled Occurrences", variant: "success", size: "medium", type: :submit %>
+            <% end %>
           </div>
         <% else %>
-          <%= button_to "Uncancel This #{@show.event_type.titleize}",
-              manage_uncancel_show_path(@production, @show),
-              method: :patch,
-              class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
+          <%= button_to manage_uncancel_show_path(@production, @show), method: :patch do %>
+            <%= render "shared/button", text: "Uncancel This #{@show.event_type.titleize}", variant: "success", size: "medium", type: :submit %>
+          <% end %>
         <% end %>
       </div>
     </div>
@@ -101,8 +94,6 @@
         <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, data: { "cancel-show-target": "cancelForm" } do |f| %>
           <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
           <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
-          <input type="hidden" name="email_subject" value="" data-cancel-show-target="emailSubjectField">
-          <input type="hidden" name="email_body" value="" data-cancel-show-target="emailBodyField">
           <% @role_categories.each do |category| %>
             <input type="hidden" name="role_categories[]" value="<%= category %>" data-cancel-show-target="categoryField" data-category="<%= category %>">
           <% end %>
@@ -125,22 +116,34 @@
               </div>
             <% end %>
 
-            <% if @people_with_email.any? %>
-              <!-- Notify Cast Toggle -->
-              <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                <div>
-                  <p class="text-sm font-medium text-gray-700">Notify cast members</p>
-                  <p class="text-xs text-gray-500 mt-1"><%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox"
-                         data-cancel-show-target="notifyCheckbox"
-                         data-action="change->cancel-show#toggleNotifySection"
-                         class="sr-only peer">
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
+            <!-- Notify Cast Toggle -->
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <p class="text-sm font-medium text-gray-700 <%= 'text-gray-400' unless @people_with_email.any? %>">Notify cast members</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  <% if @people_with_email.any? %>
+                    <%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification<br>
+                    <% if @people_with_sms.any? %>
+                      <%= @people_with_sms.count %> <%= 'person'.pluralize(@people_with_sms.count) %> will also receive a text message
+                    <% else %>
+                      No one in the cast has SMS notifications enabled
+                    <% end %>
+                  <% else %>
+                    No cast members to notify
+                  <% end %>
+                </p>
               </div>
+              <label class="relative inline-flex items-center <%= @people_with_email.any? ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' %>">
+                <input type="checkbox"
+                       data-cancel-show-target="notifyCheckbox"
+                       data-action="change->cancel-show#toggleNotifySection"
+                       <%= 'disabled' unless @people_with_email.any? %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
 
+            <% if @people_with_email.any? %>
               <!-- Notify Cast Section (Hidden by default) -->
               <div data-cancel-show-target="notifySection" class="hidden pt-4">
                 <% if @role_categories.size > 1 %>
@@ -202,33 +205,13 @@
                     <% end %>
                   </div>
                 </div>
-
-                <!-- Email Compose -->
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                    <input type="text"
-                           data-cancel-show-target="emailSubject"
-                           value="<%= @email_draft.title %>"
-                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500">
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                    <%= form_with model: @email_draft, url: "#", id: "email-draft-form", data: { "cancel-show-target": "emailDraftForm" } do |form| %>
-                      <%= form.rich_text_area :body,
-                        class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
-                    <% end %>
-                  </div>
-                </div>
               </div>
             <% end %>
           </div>
 
           <div class="mt-6">
-            <%= f.submit "Cancel #{@show.event_type.titleize}",
-                class: "rounded-lg px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium cursor-pointer transition-colors",
-                data: { "cancel-show-target": "submitButton", turbo_confirm: "Are you sure you want to cancel this #{@show.event_type.downcase}?" } %>
+            <%= render "shared/button", text: "Cancel #{@show.event_type.titleize}", variant: "warning", size: "medium", type: :submit,
+                data: { "cancel-show-target": "submitButton", "turbo-confirm": "Are you sure you want to cancel this #{@show.event_type.downcase}?" } %>
           </div>
         <% end %>
       </div>
@@ -251,24 +234,21 @@
 
       <% if @show.recurring? %>
         <div class="flex flex-wrap gap-2">
-          <%= button_to "Delete Only This Occurrence",
-              manage_delete_show_path(@production, @show, scope: "this"),
-              method: :delete,
-              class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
-              data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } %>
+          <%= button_to manage_delete_show_path(@production, @show, scope: "this"), method: :delete,
+              data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } do %>
+            <%= render "shared/button", text: "Delete Only This Occurrence", variant: "danger", size: "medium", type: :submit %>
+          <% end %>
 
-          <%= button_to "Delete All #{@show.recurrence_group.count} Occurrences",
-              manage_delete_show_path(@production, @show, scope: "all"),
-              method: :delete,
-              class: "rounded-lg px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium cursor-pointer transition-colors",
-              data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } %>
+          <%= button_to manage_delete_show_path(@production, @show, scope: "all"), method: :delete,
+              data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } do %>
+            <%= render "shared/button", text: "Delete All #{@show.recurrence_group.count} Occurrences", variant: "danger", size: "medium", type: :submit %>
+          <% end %>
         </div>
       <% else %>
-        <%= button_to "Delete This #{@show.event_type.titleize}",
-            manage_delete_show_path(@production, @show, scope: "this"),
-            method: :delete,
-            class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
-            data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } %>
+        <%= button_to manage_delete_show_path(@production, @show, scope: "this"), method: :delete,
+            data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } do %>
+          <%= render "shared/button", text: "Delete This #{@show.event_type.titleize}", variant: "danger", size: "medium", type: :submit %>
+        <% end %>
       <% end %>
     </div>
   </div>

@@ -76,15 +76,17 @@ For form submit buttons:
 ```
 
 ### Checkboxes
-All checkboxes must be styled with pink accent color:
+**CRITICAL: All checkboxes MUST include the `accent-pink-500` class for pink accent color!**
+
+This is frequently forgotten. ALWAYS add `accent-pink-500` to checkbox classes.
 
 ```erb
-<%= form.check_box :field_name, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+<%= form.check_box :field_name, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
 ```
 
 Key classes:
+- `accent-pink-500` - **REQUIRED** - Pink accent for native browser styling (THE MOST IMPORTANT ONE)
 - `text-pink-600` - Pink checkmark color
-- `accent-pink-600` - Pink accent for native browser styling
 - `focus:ring-pink-500` - Pink focus ring
 - `border-gray-300` - Standard border color
 - `rounded` - Rounded corners

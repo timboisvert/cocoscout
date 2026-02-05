@@ -151,7 +151,7 @@
           <% if message.message_type == "production_contact" && message.production.present? %>
             <%# Show "Sent to Production Team" for production contact messages %>
             <span>·</span>
-            <span>Sent to <span class="font-medium text-pink-600"><%= message.production.name %></span> Team</span>
+            <span>Sent to <span class="font-medium text-pink-600"><%= message.production.name %></span> production team</span>
           <% elsif recipient_count == 1 %>
             <%# Single recipient - show their name and headshot %>
             <% recipient = message.recipient_people.first %>

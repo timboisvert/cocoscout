@@ -135,8 +135,23 @@
         <%# Image Attachments %>
         <%= render "shared/image_dropzone", size: "medium" %>
 
+        <%# Send Separately Toggle - only shown for batch messages %>
+        <div data-compose-message-target="sendSeparatelySection" class="hidden">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox"
+                   name="send_separately"
+                   data-compose-message-target="sendSeparately"
+                   data-action="change->compose-message#toggleSendSeparately"
+                   class="h-4 w-4 mt-0.5 rounded border-gray-300 accent-pink-500">
+            <span>
+              <span class="text-sm text-gray-700">Send as separate message threads</span>
+              <p class="text-xs text-gray-500 mt-0.5">Each person will receive their own conversation instead of a group message.</p>
+            </span>
+          </label>
+        </div>
+
         <%# Actions %>
-        <div class="flex items-center justify-end gap-3 pt-2">
+        <div class="flex items-center justify-end gap-3">
           <%= render "shared/button",
               text: "Cancel",
               variant: "ghost",

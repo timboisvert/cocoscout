@@ -2,10 +2,10 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
     before_action :ensure_user_is_global_manager, only: %i[new create]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
     skip_before_action :show_manage_sidebar, only: %i[new create]
 
     def index
@@ -220,6 +220,59 @@ module Manage
       end
     end
 
+    def agreement_status
+      return redirect_to edit_manage_production_path(@production), alert: "No agreement configured for this production" unless @production.agreement_template.present?
+
+      @stats = @production.agreement_signature_stats
+      @signed = @production.agreement_signatures.includes(:person).order("people.name")
+      @unsigned = @production.people_without_agreement_signature.order(:name)
+    end
+
+    def send_agreement_reminders
+      return redirect_to edit_manage_production_path(@production), alert: "No agreement configured" unless @production.agreement_template.present?
+
+      unsigned_people = @production.people_without_agreement_signature
+
+      if unsigned_people.empty?
+        redirect_to agreement_status_manage_production_path(@production), notice: "Everyone has already signed the agreement!"
+        return
+      end
+
+      # Create a bulk message to unsigned performers about the agreement
+      conversation = Conversation.create!(
+        organization: @production.organization,
+        created_by: Current.user,
+        subject: "Agreement Signature Required: #{@production.name}",
+        message_type: :announcement
+      )
+
+      agreement_url = Rails.application.routes.url_helpers.my_production_agreement_url(@production, host: Rails.application.config.action_mailer.default_url_options[:host])
+
+      body = <<~MESSAGE
+        Hi,
+
+        This is a reminder that you need to sign the performer agreement for **#{@production.name}** to be eligible for casting.
+
+        Please review and sign the agreement here:
+        #{agreement_url}
+
+        Thank you!
+      MESSAGE
+
+      message = conversation.messages.create!(
+        sender: Current.person,
+        body: body
+      )
+
+      # Add all unsigned people as participants
+      unsigned_people.each do |person|
+        conversation.conversation_participants.find_or_create_by!(person: person)
+      end
+
+      redirect_to agreement_status_manage_production_path(@production),
+                  notice: "Reminder sent to #{unsigned_people.count} #{'performer'.pluralize(unsigned_people.count)} who haven't signed"
+    end
+
     private
 
     # Use callbacks to share common setup or constraints between actions.
@@ -268,7 +321,8 @@ module Manage
                                          :show_upcoming_event_types,
                                          :cast_talent_pool_ids,
                                          :auto_create_event_pages, :auto_create_event_pages_mode,
-                                         :event_visibility_overrides).merge(organization_id: Current.organization&.id)
+                                         :event_visibility_overrides,
+                                         :agreement_template_id, :agreement_required).merge(organization_id: Current.organization&.id)
     end
 
     # Convert event_visibility checkboxes to JSON stored in event_visibility_overrides

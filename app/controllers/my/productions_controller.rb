@@ -206,6 +206,56 @@ module My
       end
     end
 
+    def agreement
+      @person = Current.user.person
+      return redirect_to my_dashboard_path, alert: "No profile found." unless @person
+
+      @production = Production.find(params[:id])
+
+      # Verify user is in talent pool
+      unless @person.in_talent_pool_for?(@production)
+        redirect_to my_productions_path, alert: "You're not in the talent pool for this production."
+        return
+      end
+
+      @signature = @production.agreement_signature_for(@person)
+      @agreement_content = @production.rendered_agreement_content(@person)
+    end
+
+    def sign_agreement
+      @person = Current.user.person
+      return redirect_to my_dashboard_path, alert: "No profile found." unless @person
+
+      @production = Production.find(params[:id])
+
+      # Verify user is in talent pool
+      unless @person.in_talent_pool_for?(@production)
+        redirect_to my_productions_path, alert: "You're not in the talent pool for this production."
+        return
+      end
+
+      # Check if already signed
+      if @production.agreement_signed_by?(@person)
+        redirect_to my_production_agreement_path(@production), notice: "You've already signed this agreement."
+        return
+      end
+
+      # Check if agreement exists
+      unless @production.agreement_template.present?
+        redirect_to my_production_path(@production), alert: "No agreement is required for this production."
+        return
+      end
+
+      # Create the signature
+      AgreementSignature.sign!(
+        person: @person,
+        production: @production,
+        request: request
+      )
+
+      redirect_to my_production_agreement_path(@production), notice: "Thank you for signing the agreement!"
+    end
+
     private
 
     def notify_producers_of_departure(groups_removed)

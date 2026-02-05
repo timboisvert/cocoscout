@@ -19,18 +19,22 @@ import { Controller } from "@hotwired/stimulus"
  *   </button>
  */
 export default class extends Controller {
-    static targets = ["modal", "form", "subject", "body", "submitButton", "recipientName", "recipientType", "recipientId", "title", "recipientSection", "singleRecipient", "recipientHeadshot", "batchRecipients"]
+    static targets = ["modal", "form", "subject", "body", "submitButton", "recipientName", "recipientType", "recipientId", "title", "recipientSection", "singleRecipient", "recipientHeadshot", "batchRecipients", "sendSeparatelySection", "sendSeparately"]
     static values = {
         recipientType: String,  // "person", "group", "production_team", "show_cast", "batch"
         recipientId: Number,
         recipientName: String,
         recipientHeadshot: String,  // URL to headshot image
         recipientInitials: String,  // Initials if no headshot
-        castMembers: Array          // Array of {name, headshot} for show_cast type
+        castMembers: Array,          // Array of {name, headshot} for show_cast type
+        batchPersonIds: Array,       // Array of person IDs for batch mode
+        scriptId: String             // ID of script tag containing ALL data as JSON
     }
 
     connect() {
         this.keyHandler = this.handleKeydown.bind(this)
+        this.templateSubjectValue = ''
+        this.templateBodyValue = ''
     }
 
     disconnect() {
@@ -43,36 +47,120 @@ export default class extends Controller {
         }
     }
 
+    // New method that loads ALL data from a script tag - no data attributes needed
+    openFromScript(event) {
+        event?.preventDefault()
+
+        const scriptId = this.scriptIdValue
+        if (!scriptId) {
+            console.error('No script ID provided')
+            return
+        }
+
+        const scriptTag = document.getElementById(scriptId)
+        if (!scriptTag) {
+            console.error('Script tag not found:', scriptId)
+            return
+        }
+
+        let data
+        try {
+            data = JSON.parse(scriptTag.textContent)
+        } catch (e) {
+            console.error('Failed to parse script data:', e)
+            return
+        }
+
+        // Set all values from the script data
+        this.recipientTypeValue = data.recipientType || ''
+        this.recipientNameValue = data.recipientName || ''
+        this.castMembersValue = data.castMembers || []
+        this.batchPersonIdsValue = data.batchPersonIds || []
+        this.templateSubjectValue = data.templateSubject || ''
+        this.templateBodyValue = data.templateBody || ''
+
+        // Now open the modal with all the data loaded
+        this._openModal()
+    }
+
     open(event) {
         event?.preventDefault()
 
         // Get recipient info from the trigger button's data attributes if provided
+        // Check both the trigger element AND this.element (controller element) since
+        // the data may be on either one depending on how the button is structured
         const trigger = event?.currentTarget
-        if (trigger) {
-            if (trigger.dataset.composeMessageRecipientTypeValue) {
-                this.recipientTypeValue = trigger.dataset.composeMessageRecipientTypeValue
+        const sources = [trigger, this.element].filter(Boolean)
+
+        console.log('Sources:', sources)
+        console.log('this.element:', this.element)
+        console.log('this.element dataset:', this.element?.dataset)
+
+        // Reset template values before reading new ones
+        this.templateSubjectValue = ''
+        this.templateBodyValue = ''
+        this.templateDataIdValue = ''
+
+        for (const source of sources) {
+            console.log('Source dataset keys:', Object.keys(source.dataset))
+            if (source.dataset.composeMessageRecipientTypeValue && !this.recipientTypeValue) {
+                this.recipientTypeValue = source.dataset.composeMessageRecipientTypeValue
             }
-            if (trigger.dataset.composeMessageRecipientIdValue) {
-                this.recipientIdValue = parseInt(trigger.dataset.composeMessageRecipientIdValue)
+            if (source.dataset.composeMessageRecipientIdValue && !this.recipientIdValue) {
+                this.recipientIdValue = parseInt(source.dataset.composeMessageRecipientIdValue)
             }
-            if (trigger.dataset.composeMessageRecipientNameValue) {
-                this.recipientNameValue = trigger.dataset.composeMessageRecipientNameValue
+            if (source.dataset.composeMessageRecipientNameValue && !this.recipientNameValue) {
+                this.recipientNameValue = source.dataset.composeMessageRecipientNameValue
             }
-            if (trigger.dataset.composeMessageRecipientHeadshotValue) {
-                this.recipientHeadshotValue = trigger.dataset.composeMessageRecipientHeadshotValue
+            if (source.dataset.composeMessageRecipientHeadshotValue && !this.recipientHeadshotValue) {
+                this.recipientHeadshotValue = source.dataset.composeMessageRecipientHeadshotValue
             }
-            if (trigger.dataset.composeMessageRecipientInitialsValue) {
-                this.recipientInitialsValue = trigger.dataset.composeMessageRecipientInitialsValue
+            if (source.dataset.composeMessageRecipientInitialsValue && !this.recipientInitialsValue) {
+                this.recipientInitialsValue = source.dataset.composeMessageRecipientInitialsValue
             }
-            if (trigger.dataset.composeMessageCastMembersValue) {
+            if (source.dataset.composeMessageCastMembersValue && (!this.castMembersValue || this.castMembersValue.length === 0)) {
                 try {
-                    this.castMembersValue = JSON.parse(trigger.dataset.composeMessageCastMembersValue)
+                    this.castMembersValue = JSON.parse(source.dataset.composeMessageCastMembersValue)
                 } catch (e) {
                     this.castMembersValue = []
                 }
             }
+            if (source.dataset.composeMessageBatchPersonIdsValue && (!this.batchPersonIdsValue || this.batchPersonIdsValue.length === 0)) {
+                try {
+                    this.batchPersonIdsValue = JSON.parse(source.dataset.composeMessageBatchPersonIdsValue)
+                } catch (e) {
+                    this.batchPersonIdsValue = []
+                }
+            }
+            if (source.dataset.composeMessageTemplateDataIdValue && !this.templateDataIdValue) {
+                this.templateDataIdValue = source.dataset.composeMessageTemplateDataIdValue
+            }
         }
 
+        // Load template data from script tag if specified
+        console.log('Template data ID:', this.templateDataIdValue)
+        if (this.templateDataIdValue) {
+            const scriptTag = document.getElementById(this.templateDataIdValue)
+            console.log('Script tag found:', scriptTag)
+            console.log('Script tag content:', scriptTag?.textContent)
+            if (scriptTag) {
+                try {
+                    const templateData = JSON.parse(scriptTag.textContent)
+                    console.log('Parsed template data:', templateData)
+                    this.templateSubjectValue = templateData.subject || ''
+                    this.templateBodyValue = templateData.body || ''
+                } catch (e) {
+                    console.error('Failed to parse template data:', e)
+                }
+            }
+        } else {
+            console.log('No template data ID set')
+        }
+
+        this._openModal()
+    }
+
+    _openModal() {
         // Find the modal (it may be outside this controller's element)
         const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
         if (!modal) {
@@ -89,10 +177,70 @@ export default class extends Controller {
         if (typeInput) typeInput.value = this.recipientTypeValue
         if (idInput) idInput.value = this.recipientIdValue
 
-        // Set form action based on recipient type
+        // Handle batch person IDs - add them as hidden fields
         const form = modal.querySelector('[data-compose-message-target="form"]')
         if (form) {
+            // Remove any existing person_ids fields
+            form.querySelectorAll('input[name="person_ids[]"]').forEach(el => el.remove())
+
+            // Add new person_ids for batch mode
+            if (this.recipientTypeValue === 'batch' && this.batchPersonIdsValue?.length > 0) {
+                this.batchPersonIdsValue.forEach(id => {
+                    const input = document.createElement('input')
+                    input.type = 'hidden'
+                    input.name = 'person_ids[]'
+                    input.value = id
+                    form.appendChild(input)
+                })
+            }
+
             form.action = this.getFormAction()
+        }
+
+        // Show/hide send separately section based on recipient type
+        const sendSeparatelySection = modal.querySelector('[data-compose-message-target="sendSeparatelySection"]')
+        const sendSeparatelyCheckbox = modal.querySelector('[data-compose-message-target="sendSeparately"]')
+        if (sendSeparatelySection) {
+            const isBatchOrMultiple = this.recipientTypeValue === 'batch' ||
+                (this.recipientTypeValue === 'show_cast' && this.castMembersValue?.length > 1)
+            if (isBatchOrMultiple) {
+                sendSeparatelySection.classList.remove('hidden')
+            } else {
+                sendSeparatelySection.classList.add('hidden')
+            }
+            // Reset the checkbox
+            if (sendSeparatelyCheckbox) {
+                sendSeparatelyCheckbox.checked = false
+            }
+        }
+
+        // Calculate and store recipient count for use in toggleSendSeparately
+        const recipientCount = this.batchPersonIdsValue?.length || this.castMembersValue?.length || 1
+        modal.dataset.recipientCount = recipientCount
+
+        // Reset submit button text
+        const submitButton = modal.querySelector('[data-compose-message-target="submitButton"]')
+        if (submitButton) {
+            const textTarget = submitButton.querySelector('span') || submitButton
+            if (recipientCount > 1) {
+                textTarget.textContent = `Send to ${recipientCount} People`
+            } else {
+                textTarget.textContent = 'Send Message'
+            }
+        }
+
+        // Pre-fill subject and body from template if provided
+        const subjectInput = modal.querySelector('[data-compose-message-target="subject"]')
+        const bodyInput = modal.querySelector('trix-editor')
+
+        if (subjectInput && this.templateSubjectValue) {
+            subjectInput.value = this.templateSubjectValue
+        }
+
+        if (bodyInput && this.templateBodyValue) {
+            // Convert simple markdown to HTML for Trix
+            const html = this.markdownToHtml(this.templateBodyValue)
+            bodyInput.editor.loadHTML(html)
         }
 
         // Show modal
@@ -101,7 +249,6 @@ export default class extends Controller {
         document.body.classList.add('overflow-hidden')
 
         // Focus the subject field
-        const subjectInput = modal.querySelector('[data-compose-message-target="subject"]')
         if (subjectInput) {
             setTimeout(() => subjectInput.focus(), 100)
         }
@@ -142,8 +289,13 @@ export default class extends Controller {
             return
         }
 
-        // For batch mode, the directory-selection controller handles this
-        if (this.recipientTypeValue === 'batch') {
+        // For batch mode with cast members data, show stacked headshots
+        if (this.recipientTypeValue === 'batch' && this.castMembersValue?.length > 0) {
+            if (singleRecipient) singleRecipient.classList.add('hidden')
+            if (batchRecipients) {
+                batchRecipients.classList.remove('hidden')
+                batchRecipients.innerHTML = this.renderStackedHeadshots(this.castMembersValue)
+            }
             return
         }
 
@@ -215,6 +367,25 @@ export default class extends Controller {
         return '/manage/messages'
     }
 
+    toggleSendSeparately(event) {
+        const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
+        const submitButton = modal?.querySelector('[data-compose-message-target="submitButton"]')
+        const isChecked = event.target.checked
+
+        if (submitButton && modal) {
+            // Get recipient count from data attribute stored when modal opened
+            const recipientCount = parseInt(modal.dataset.recipientCount) || 1
+            const textTarget = submitButton.querySelector('span') || submitButton
+            if (isChecked && recipientCount > 1) {
+                textTarget.textContent = `Send to ${recipientCount} People Separately`
+            } else if (recipientCount > 1) {
+                textTarget.textContent = `Send to ${recipientCount} People`
+            } else {
+                textTarget.textContent = 'Send Message'
+            }
+        }
+    }
+
     close() {
         const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
         if (modal) {
@@ -251,8 +422,26 @@ export default class extends Controller {
                 batchRecipients.innerHTML = ''
             }
 
+            // Reset send separately section
+            const sendSeparatelySection = modal.querySelector('[data-compose-message-target="sendSeparatelySection"]')
+            const sendSeparatelyCheckbox = modal.querySelector('[data-compose-message-target="sendSeparately"]')
+            if (sendSeparatelySection) {
+                sendSeparatelySection.classList.add('hidden')
+            }
+            if (sendSeparatelyCheckbox) {
+                sendSeparatelyCheckbox.checked = false
+            }
+
+            // Reset submit button text
+            const submitButton = modal.querySelector('[data-compose-message-target="submitButton"]')
+            if (submitButton) {
+                submitButton.textContent = 'Send Message'
+                submitButton.disabled = false
+            }
+
             // Reset values
             this.castMembersValue = []
+            this.batchPersonIdsValue = []
         }
     }
 
@@ -332,5 +521,22 @@ export default class extends Controller {
                 submitButton.textContent = 'Send Message'
             }
         }
+    }
+
+    // Convert simple markdown to HTML for Trix editor
+    markdownToHtml(text) {
+        if (!text) return ''
+
+        return text
+            // Convert **bold** to <strong>
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            // Convert *italic* to <em>
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            // Convert [text](url) to <a href="url">text</a>
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+            // Convert double newlines to paragraph breaks
+            .split(/\n\n+/)
+            .map(p => `<div>${p.replace(/\n/g, '<br>')}</div>`)
+            .join('')
     }
 }

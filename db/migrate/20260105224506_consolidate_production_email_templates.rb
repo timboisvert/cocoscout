@@ -1,67 +1,73 @@
 class ConsolidateProductionEmailTemplates < ActiveRecord::Migration[8.1]
   def up
-    # Find the two templates we're consolidating
-    cast_email = EmailTemplate.find_by(key: "cast_email")
-    contact_message = EmailTemplate.find_by(key: "contact_message")
-
     # Create the new consolidated template
-    EmailTemplate.create!(
-      key: "production_message",
-      name: "Production Message",
-      category: "notification",
-      subject: "{{subject}}",
-      description: "General-purpose email from production team to talent. Can be used for casting announcements, directory messages, or any production-related communication. Subject and body are fully customizable.",
-      template_type: "passthrough",
-      mailer_class: "Manage::ProductionMailer",
-      mailer_action: "send_message",
-      body: "{{body_content}}",
-      available_variables: [
-        { name: "subject", description: "Custom email subject" },
-        { name: "body_content", description: "Custom HTML body content" }
-      ],
-      active: true
-    )
+    execute <<-SQL
+      INSERT INTO email_templates (key, name, category, subject, description, template_type, mailer_class, mailer_action, body, available_variables, active, created_at, updated_at)
+      VALUES (
+        'production_message',
+        'Production Message',
+        'notification',
+        '{{subject}}',
+        'General-purpose email from production team to talent. Can be used for casting announcements, directory messages, or any production-related communication. Subject and body are fully customizable.',
+        'passthrough',
+        'Manage::ProductionMailer',
+        'send_message',
+        '{{body_content}}',
+        '[{"name":"subject","description":"Custom email subject"},{"name":"body_content","description":"Custom HTML body content"}]',
+        true,
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (key) DO NOTHING
+    SQL
 
     # Delete the old templates
-    cast_email&.destroy
-    contact_message&.destroy
+    execute "DELETE FROM email_templates WHERE key IN ('cast_email', 'contact_message')"
   end
 
   def down
     # Recreate the original templates
-    EmailTemplate.create!(
-      key: "cast_email",
-      name: "Cast Email (Free-form)",
-      category: "notification",
-      subject: "{{subject}}",
-      description: "Generic casting-related email with fully customizable content.",
-      template_type: "passthrough",
-      mailer_class: "Manage::CastingMailer",
-      mailer_action: "cast_email",
-      body: "{{body_content}}",
-      available_variables: [
-        { name: "subject", description: "Custom email subject" },
-        { name: "body_content", description: "Custom HTML body content" }
-      ]
-    )
+    execute <<-SQL
+      INSERT INTO email_templates (key, name, category, subject, description, template_type, mailer_class, mailer_action, body, available_variables, active, created_at, updated_at)
+      VALUES (
+        'cast_email',
+        'Cast Email (Free-form)',
+        'notification',
+        '{{subject}}',
+        'Generic casting-related email with fully customizable content.',
+        'passthrough',
+        'Manage::CastingMailer',
+        'cast_email',
+        '{{body_content}}',
+        '[{"name":"subject","description":"Custom email subject"},{"name":"body_content","description":"Custom HTML body content"}]',
+        true,
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (key) DO NOTHING
+    SQL
 
-    EmailTemplate.create!(
-      key: "contact_message",
-      name: "Contact Message",
-      category: "marketing",
-      subject: "{{subject}}",
-      description: "General-purpose contact email from producers to talent. The subject and body are fully customizable.",
-      template_type: "passthrough",
-      mailer_class: "Manage::ContactMailer",
-      mailer_action: "send_message",
-      body: "{{body_content}}",
-      available_variables: [
-        { name: "subject", description: "Custom email subject" },
-        { name: "body_content", description: "Custom HTML body content" }
-      ]
-    )
+    execute <<-SQL
+      INSERT INTO email_templates (key, name, category, subject, description, template_type, mailer_class, mailer_action, body, available_variables, active, created_at, updated_at)
+      VALUES (
+        'contact_message',
+        'Contact Message',
+        'marketing',
+        '{{subject}}',
+        'General-purpose contact email from producers to talent. The subject and body are fully customizable.',
+        'passthrough',
+        'Manage::ContactMailer',
+        'send_message',
+        '{{body_content}}',
+        '[{"name":"subject","description":"Custom email subject"},{"name":"body_content","description":"Custom HTML body content"}]',
+        true,
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (key) DO NOTHING
+    SQL
 
     # Delete the consolidated template
-    EmailTemplate.find_by(key: "production_message")&.destroy
+    execute "DELETE FROM email_templates WHERE key = 'production_message'"
   end
 end

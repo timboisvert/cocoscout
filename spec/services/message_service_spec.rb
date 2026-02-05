@@ -118,22 +118,77 @@ RSpec.describe MessageService do
   end
 
   describe ".send_to_production_cast" do
-    # Note: This test is pending because production.cast_people method doesn't exist yet
-    # When the method is implemented, this test can be enabled
-    xit "creates a production-scoped message" do
-      # TODO: Implement when production.cast_people is available
+    let(:role) { create(:role, production: production) }
+    let(:cast_person) { create(:person, user: create(:user)) }
+
+    before do
+      create(:show_person_role_assignment, show: show, role: role, assignable: cast_person)
+    end
+
+    it "creates a production-scoped message" do
+      message = described_class.send_to_production_cast(
+        production: production,
+        sender: sender,
+        subject: "Production Update",
+        body: "Important information"
+      )
+
+      expect(message).to be_persisted
+      expect(message.production).to eq(production)
+      expect(message.visibility).to eq("production")
+      expect(message.message_type).to eq("cast_contact")
+    end
+
+    it "includes cast members as recipients" do
+      message = described_class.send_to_production_cast(
+        production: production,
+        sender: sender,
+        subject: "Production Update",
+        body: "Content"
+      )
+
+      expect(message.recipient?(cast_person)).to be true
     end
   end
 
   describe ".send_to_talent_pool" do
-    # Note: These tests require proper talent pool setup which is complex
-    # When the test infrastructure is improved, these can be enabled
-    xit "creates a talent pool message" do
-      # TODO: Requires proper talent pool setup with production.effective_talent_pool
+    let(:talent_pool) { production.talent_pool }
+    let(:pool_person1) { create(:person, user: create(:user)) }
+    let(:pool_person2) { create(:person, user: create(:user)) }
+
+    before do
+      create(:talent_pool_membership, talent_pool: talent_pool, member: pool_person1)
+      create(:talent_pool_membership, talent_pool: talent_pool, member: pool_person2)
     end
 
-    xit "can filter to specific person_ids" do
-      # TODO: Requires proper talent pool setup
+    it "creates a talent pool message" do
+      message = described_class.send_to_talent_pool(
+        production: production,
+        sender: sender,
+        subject: "Talent Pool Update",
+        body: "Hello everyone"
+      )
+
+      expect(message).to be_persisted
+      expect(message.production).to eq(production)
+      expect(message.visibility).to eq("production")
+      expect(message.message_type).to eq("talent_pool")
+      expect(message.recipient?(pool_person1)).to be true
+      expect(message.recipient?(pool_person2)).to be true
+    end
+
+    it "can filter to specific person_ids" do
+      message = described_class.send_to_talent_pool(
+        production: production,
+        sender: sender,
+        subject: "Targeted Message",
+        body: "Just for you",
+        person_ids: [ pool_person1.id ]
+      )
+
+      expect(message).to be_persisted
+      expect(message.recipient?(pool_person1)).to be true
+      expect(message.recipient?(pool_person2)).to be false
     end
   end
 

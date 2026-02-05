@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "aws-sdk-sns"
+
 # Service for sending SMS messages via AWS SNS
 #
 # Usage:
@@ -42,6 +44,17 @@ class SmsService
           sms_log.update!(
             status: "failed",
             error_message: "AWS SNS not configured"
+          )
+          return sms_log
+        end
+
+        # Check for test mode (development only)
+        if test_mode?
+          Rails.logger.info("SMS Test Mode: Would send to +1#{normalized_phone}: #{truncate_message(message)}")
+          sms_log.update!(
+            status: "sent",
+            sns_message_id: "TEST_MODE_#{SecureRandom.hex(8)}",
+            sent_at: Time.current
           )
           return sms_log
         end
@@ -134,6 +147,15 @@ class SmsService
         production: production,
         organization: production.organization
       )
+    end
+
+    # Test mode methods - only works in development
+    def test_mode=(value)
+      Thread.current[:sms_test_mode] = value if Rails.env.development?
+    end
+
+    def test_mode?
+      Rails.env.development? && Thread.current[:sms_test_mode] == true
     end
 
     private

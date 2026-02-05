@@ -49,6 +49,9 @@ class Person < ApplicationRecord
   has_many :show_advance_waivers, dependent: :destroy
   has_many :payroll_line_items, dependent: :destroy
 
+  # Agreements
+  has_many :agreement_signatures, dependent: :destroy
+
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_resumes, as: :profileable, dependent: :destroy
@@ -109,6 +112,13 @@ class Person < ApplicationRecord
     return "" if name.blank?
 
     name.split.map { |word| word[0] }.join.upcase
+  end
+
+  # Extract first name from full name
+  def first_name
+    return nil if name.blank?
+
+    name.split.first
   end
 
   # Format phone number for display: (XXX) XXX-XXXX
@@ -620,5 +630,33 @@ class Person < ApplicationRecord
 
     # Update the timestamp
     self.public_key_changed_at = Time.current
+  end
+
+  # Agreement methods
+
+  # Check if person has signed the agreement for a production
+  def agreement_signed_for?(production)
+    agreement_signatures.exists?(production: production)
+  end
+
+  # Get productions where this person needs to sign an agreement
+  # (in talent pool, agreement required, not yet signed)
+  def pending_agreements
+    signed_production_ids = agreement_signatures.pluck(:production_id)
+
+    Production.joins(:talent_pools)
+              .joins("INNER JOIN talent_pool_memberships ON talent_pool_memberships.talent_pool_id = talent_pools.id")
+              .where(talent_pool_memberships: { member_type: "Person", member_id: id })
+              .where(agreement_required: true)
+              .where.not(agreement_template_id: nil)
+              .where.not(id: signed_production_ids)
+              .distinct
+  end
+
+  # Check if person can be cast in a production (agreement signed if required)
+  def can_be_cast_in?(production)
+    return true unless production.agreement_required?
+
+    production.agreement_signed_by?(self)
   end
 end

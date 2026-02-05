@@ -69,9 +69,19 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">My Assignments</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Calendar</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Messages</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Settings</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
+      <% if @production.agreement_template.present? %>
+        <% has_signed = @production.agreement_signed_by?(@person) %>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 cursor-pointer whitespace-nowrap flex items-center gap-1.5 <%= has_signed ? 'text-gray-500' : 'text-pink-600' %>">
+          Agreement
+          <% unless has_signed %>
+            <span class="w-2 h-2 bg-pink-400 rounded-full"></span>
+          <% end %>
+        </button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Settings</button>
+      <% else %>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Settings</button>
+      <% end %>
     </nav>
 
     <!-- Tab 1: My Assignments -->
@@ -332,26 +342,7 @@
       <% end %>
     </div>
 
-    <!-- Tab 3: Messages -->
-    <div data-tabs-target="panel" class="hidden">
-      <% if @production_messages.any? %>
-        <div class="space-y-4">
-          <% @production_messages.each do |message| %>
-            <%= render "shared/messages/feed_card", message: message, scope: :my %>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="text-center py-12 text-gray-500 bg-white border border-gray-200 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-12 mx-auto mb-3 text-gray-300">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-          </svg>
-          <p>No messages yet.</p>
-          <p class="text-sm mt-2">Messages about this production will appear here.</p>
-        </div>
-      <% end %>
-    </div>
-
-    <!-- Tab 4: Notes -->
+    <!-- Tab 3: Notes -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%= render "shared/card_header", title: "Production Notes" %>
@@ -367,7 +358,80 @@
       </div>
     </div>
 
-    <!-- Tab 5: Settings -->
+    <% if @production.agreement_template.present? %>
+      <!-- Tab 4: Agreement -->
+      <div data-tabs-target="panel" class="hidden">
+        <% signature = @production.agreement_signature_for(@person) %>
+        <% agreement_content = @production.rendered_agreement_content(@person) %>
+
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <% if signature.present? %>
+            <!-- Already Signed -->
+            <div class="p-4 bg-pink-50 border-b border-pink-200">
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-700">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <div>
+                  <p class="text-sm font-medium text-pink-800">Agreement Signed</p>
+                  <p class="text-sm text-pink-700">You signed this agreement on <%= signature.signed_on %></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-6">
+              <div class="prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
+                <%= signature.content_snapshot.html_safe %>
+              </div>
+            </div>
+
+          <% else %>
+            <!-- Needs Signature -->
+            <div class="p-4 bg-pink-50 border-b border-pink-200">
+              <div class="flex items-start gap-3">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-200 flex-shrink-0 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-700">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </span>
+                <div>
+                  <p class="text-sm font-medium text-pink-800">Agreement Required</p>
+                  <p class="text-sm text-pink-700">
+                    Please review and sign this agreement to be eligible for casting in <%= @production.name %>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-6">
+              <div class="prose prose-sm max-w-none text-gray-700 mb-6 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
+                <%= agreement_content %>
+              </div>
+
+              <%= form_with url: my_sign_production_agreement_path(@production), method: :post, class: "border-t border-gray-200 pt-6" do |f| %>
+                <div class="flex items-start gap-3 mb-6">
+                  <input type="checkbox"
+                         id="agree_checkbox"
+                         required
+                         class="mt-1 h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500">
+                  <label for="agree_checkbox" class="text-sm text-gray-700">
+                    I have read and agree to the terms of this agreement
+                  </label>
+                </div>
+
+                <%= render "shared/button", text: "Sign Agreement", variant: "primary", size: "medium", type: :submit %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Tab 6: Settings -->
+    <% end %>
+
+    <!-- Tab 4/5: Settings -->
     <div data-tabs-target="panel" class="hidden">
       <div class="border border-red-200 rounded-lg overflow-hidden">
         <div class="bg-red-50 px-4 py-3 border-b border-red-200">

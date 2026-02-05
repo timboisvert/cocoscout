@@ -10,11 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_05_163437) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "extensions.pg_stat_statements"
-  enable_extension "extensions.pgcrypto"
-  enable_extension "extensions.uuid-ossp"
   enable_extension "pg_catalog.plpgsql"
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
@@ -29,18 +26,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
-    t.string "name", limit: 8000, null: false
+    t.string "name", null: false
     t.bigint "record_id", null: false
-    t.string "record_type", limit: 8000, null: false
+    t.string "record_type", null: false
     t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id", "name"], name: "index_action_text_rich_texts_uniqueness", unique: true
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
-    t.string "name", limit: 8000, null: false
+    t.string "name", null: false
     t.bigint "record_id", null: false
-    t.string "record_type", limit: 8000, null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
@@ -72,10 +72,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.index ["show_payout_line_item_id"], name: "index_advance_recoveries_on_show_payout_line_item_id"
   end
 
-  create_table "answers", force: :cascade do |t|
-    t.integer "audition_request_id", null: false
+  create_table "agreement_signatures", force: :cascade do |t|
+    t.bigint "agreement_template_id"
+    t.text "content_snapshot", null: false
     t.datetime "created_at", null: false
-    t.integer "question_id", null: false
+    t.string "ip_address"
+    t.bigint "person_id", null: false
+    t.bigint "production_id", null: false
+    t.datetime "signed_at", null: false
+    t.integer "template_version"
+    t.datetime "updated_at", null: false
+    t.text "user_agent"
+    t.index ["agreement_template_id"], name: "index_agreement_signatures_on_agreement_template_id"
+    t.index ["person_id", "production_id"], name: "index_agreement_signatures_on_person_id_and_production_id", unique: true
+    t.index ["person_id"], name: "index_agreement_signatures_on_person_id"
+    t.index ["production_id"], name: "index_agreement_signatures_on_production_id"
+  end
+
+  create_table "agreement_templates", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", default: 1, null: false
+    t.index ["organization_id", "active"], name: "index_agreement_templates_on_organization_id_and_active"
+    t.index ["organization_id"], name: "index_agreement_templates_on_organization_id"
+  end
+
+  create_table "answers", force: :cascade do |t|
+    t.bigint "audition_request_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "question_id", null: false
     t.datetime "updated_at", null: false
     t.string "value"
     t.index ["audition_request_id"], name: "index_answers_on_audition_request_id"
@@ -99,7 +128,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.boolean "include_availability_section", default: false
     t.boolean "notify_on_submission", default: true, null: false
     t.datetime "opens_at"
-    t.integer "production_id", null: false
+    t.bigint "production_id", null: false
     t.boolean "require_all_audition_availability", default: false
     t.boolean "require_all_availability", default: false
     t.string "reviewer_access_type", default: "managers", null: false
@@ -135,7 +164,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
   end
 
   create_table "audition_requests", force: :cascade do |t|
-    t.integer "audition_cycle_id", null: false
+    t.bigint "audition_cycle_id", null: false
     t.datetime "created_at", null: false
     t.datetime "invitation_notification_sent_at"
     t.boolean "notified_scheduled"
@@ -943,6 +972,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
   end
 
   create_table "productions", force: :cascade do |t|
+    t.boolean "agreement_required", default: false, null: false
+    t.bigint "agreement_template_id"
     t.boolean "auto_create_event_pages", default: true
     t.string "auto_create_event_pages_mode", default: "all"
     t.text "cast_talent_pool_ids"
@@ -957,7 +988,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.text "event_visibility_overrides"
     t.string "name"
     t.text "old_keys"
-    t.integer "organization_id", null: false
+    t.bigint "organization_id", null: false
     t.string "production_type", default: "in_house", null: false
     t.string "public_key"
     t.datetime "public_key_changed_at"
@@ -967,6 +998,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.boolean "show_upcoming_events", default: true, null: false
     t.string "show_upcoming_events_mode", default: "all"
     t.datetime "updated_at", null: false
+    t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
     t.index ["contract_id"], name: "index_productions_on_contract_id"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
@@ -1024,7 +1056,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
 
   create_table "question_options", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "question_id", null: false
+    t.bigint "question_id", null: false
     t.string "text"
     t.datetime "updated_at", null: false
     t.index ["question_id"], name: "index_question_options_on_question_id"
@@ -1083,7 +1115,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.datetime "created_at", null: false
     t.integer "position"
     t.string "question_type"
-    t.integer "questionable_id", null: false
+    t.bigint "questionable_id", null: false
     t.string "questionable_type", null: false
     t.boolean "required", default: false, null: false
     t.string "text"
@@ -1173,7 +1205,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.string "ip_address"
     t.datetime "updated_at", null: false
     t.string "user_agent"
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
@@ -1340,10 +1372,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.datetime "created_at", null: false
     t.string "guest_email"
     t.string "guest_name"
-    t.integer "person_id"
+    t.bigint "person_id"
     t.integer "position", default: 0, null: false
     t.bigint "role_id"
-    t.integer "show_id", null: false
+    t.bigint "show_id", null: false
     t.datetime "updated_at", null: false
     t.index ["assignable_type", "assignable_id"], name: "index_show_role_assignments_on_assignable"
     t.index ["person_id"], name: "index_show_person_role_assignments_on_person_id"
@@ -1371,7 +1403,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.bigint "location_space_id"
     t.text "notes"
     t.string "online_location_info"
-    t.integer "production_id", null: false
+    t.bigint "production_id", null: false
     t.boolean "public_profile_visible"
     t.string "recurrence_group_id"
     t.string "recurrence_pattern"
@@ -1561,17 +1593,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
   end
 
-  create_table "solid_cable_messages", force: :cascade do |t|
-    t.binary "channel", null: false
-    t.bigint "channel_hash", null: false
-    t.datetime "created_at", null: false
-    t.binary "payload", null: false
-    t.index ["channel"], name: "index_solid_cable_messages_on_channel"
-    t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
-    t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
-    t.index ["id"], name: "index_solid_cable_messages_on_id", unique: true
-  end
-
   create_table "solid_cache_entries", force: :cascade do |t|
     t.integer "byte_size", null: false
     t.datetime "created_at", null: false
@@ -1721,6 +1742,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.index ["starts_at"], name: "index_space_rentals_on_starts_at"
   end
 
+  create_table "system_settings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key"
+    t.datetime "updated_at", null: false
+    t.text "value"
+    t.index ["key"], name: "index_system_settings_on_key", unique: true
+  end
+
   create_table "talent_pool_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "member_id", null: false
@@ -1746,7 +1775,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
   create_table "talent_pools", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
-    t.integer "production_id", null: false
+    t.bigint "production_id", null: false
     t.datetime "updated_at", null: false
     t.index ["production_id"], name: "index_talent_pools_on_production_id"
   end
@@ -1929,6 +1958,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.datetime "password_reset_sent_at"
     t.string "password_reset_token"
     t.bigint "person_id"
+    t.string "phone_pending_verification"
+    t.string "phone_verification_code"
+    t.datetime "phone_verification_sent_at"
+    t.datetime "phone_verified_at"
     t.datetime "updated_at", null: false
     t.datetime "welcomed_at"
     t.datetime "welcomed_production_at"
@@ -1940,9 +1973,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
     t.index ["person_id"], name: "index_users_on_person_id"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "advance_recoveries", "person_advances"
   add_foreign_key "advance_recoveries", "show_payout_line_items"
+  add_foreign_key "agreement_signatures", "agreement_templates"
+  add_foreign_key "agreement_signatures", "people"
+  add_foreign_key "agreement_signatures", "productions"
+  add_foreign_key "agreement_templates", "organizations"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
   add_foreign_key "audition_cycles", "productions"
@@ -2031,6 +2069,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_03_165223) do
   add_foreign_key "production_expenses", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "productions", "agreement_templates"
   add_foreign_key "productions", "contracts"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"

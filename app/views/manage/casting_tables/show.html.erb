@@ -37,7 +37,7 @@
               <th class="px-1 py-2 text-center min-w-[50px] max-w-[50px]">
                 <div class="flex flex-col items-center gap-1">
                   <div class="h-20 flex items-end justify-center pb-1">
-                    <span class="text-xs text-gray-600 whitespace-nowrap [writing-mode:vertical-rl] rotate-180" title="<%= member.name %>"><%= member.name.split.first %></span>
+                    <span class="text-xs text-gray-600 whitespace-nowrap [writing-mode:vertical-rl] rotate-180" title="<%= member.name %>"><%= member.first_name %></span>
                   </div>
                   <% if member.respond_to?(:safe_headshot_variant) %>
                     <% headshot = member.safe_headshot_variant(:thumb) %>

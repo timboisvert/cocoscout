@@ -338,4 +338,33 @@ module ApplicationHelper
     # Insert the class into the SVG tag
     svg.sub("<svg ", "<svg class=\"#{css_class}\" ").html_safe
   end
+
+  # Simple markdown to HTML conversion for agreement content
+  # Handles: headers, bold, lists, paragraphs
+  def markdown_to_html(text)
+    return "" if text.blank?
+
+    html = text.dup
+
+    # Convert headers (# Header)
+    html.gsub!(/^### (.+)$/, '<h3 class="text-md font-semibold text-gray-900 mt-4 mb-2">\1</h3>')
+    html.gsub!(/^## (.+)$/, '<h2 class="text-lg font-semibold text-gray-900 mt-6 mb-3">\1</h2>')
+    html.gsub!(/^# (.+)$/, '<h1 class="text-xl font-bold text-gray-900 mb-4">\1</h1>')
+
+    # Convert bold (**text**)
+    html.gsub!(/\*\*(.+?)\*\*/, '<strong>\1</strong>')
+
+    # Convert italic (*text*)
+    html.gsub!(/\*(.+?)\*/, '<em>\1</em>')
+
+    # Convert unordered lists (- item)
+    html.gsub!(/^- (.+)$/, '<li class="ml-4">\1</li>')
+
+    # Wrap consecutive list items in ul
+    html.gsub!(/((?:<li[^>]*>.*<\/li>\n?)+)/) do |match|
+      "<ul class=\"list-disc list-inside space-y-1 my-2\">#{match}</ul>"
+    end
+
+    html.html_safe
+  end
 end

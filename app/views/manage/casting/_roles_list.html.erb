@@ -435,8 +435,8 @@
                   <% else %>
                     <%# Empty slot - check for vacancy or show drop zone %>
                     <%
-                      # Find if there's an open vacancy for this role
-                      slot_vacancy = open_vacancies.find { |v| v.slot_position == slot_position } if open_vacancies.any?
+                      # Find if there's an open vacancy for this role (vacancies are per-role, not per-slot)
+                      slot_vacancy = open_vacancies.first if open_vacancies.any?
                     %>
                     <% if slot_vacancy && !is_linked %>
                       <%# Non-linked show with open vacancy - show who can't make it %>

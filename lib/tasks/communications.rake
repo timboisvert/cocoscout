@@ -293,7 +293,8 @@ namespace :communications do
       service: "ShowNotificationService",
       template_key: "show_canceled",
       description: "Notify cast of show cancellation",
-      callers: [ "ShowNotificationService.notify_cancellation" ]
+      callers: [ "ShowNotificationService.send_cancellation_notification" ],
+      variables: %w[recipient_name production_name event_type event_date show_name location]
     },
     vacancy_invitation: {
       name: "Vacancy Invitation",
@@ -361,6 +362,20 @@ namespace :communications do
       template_key: "payment_setup_reminder",
       description: "Remind talent to set up payment info",
       callers: [ "Manage::MoneyPayoutsController#send_reminders" ]
+    },
+
+    # ============================================
+    # CASTING
+    # ============================================
+    request_agreement_signature: {
+      name: "Request Agreement Signature",
+      category: :casting,
+      channel: :message,
+      template_key: "request_agreement_signature",
+      description: "Request talent to sign the production agreement",
+      callers: [ "Manage::ProductionsController (via view)" ],
+      notes: "Template rendered in view via ContentTemplateService.render_body, then sent via compose modal",
+      variables: %w[recipient_name production_name agreement_url]
     },
 
     # ============================================
@@ -1019,6 +1034,11 @@ namespace :communications do
         # Get variables the code provides (from static analysis)
         provided_vars = code_variables[template_key] || []
 
+        # If code tracing failed, check if registry has variables defined
+        if provided_vars.empty? && config[:variables].present?
+          provided_vars = config[:variables].map(&:to_s)
+        end
+
         # If we couldn't find code for this template, skip (other validations cover this)
         if provided_vars.empty?
           # Check if this is a passthrough/hybrid template where content comes from user
@@ -1054,10 +1074,27 @@ namespace :communications do
           content = File.read(file)
           next unless content.include?("ContentTemplateService")
 
-          # Check for TEMPLATE_KEY constant pattern: TEMPLATE_KEY = "literal" ... render(TEMPLATE_KEY, variables)
-          if content =~ /TEMPLATE_KEY\s*=\s*["']([^"']+)["']/ && content.include?("ContentTemplateService.render(TEMPLATE_KEY")
+          # Check for TEMPLATE_KEY constant pattern: TEMPLATE_KEY = "literal" ... render(TEMPLATE_KEY, { variables })
+          if content =~ /TEMPLATE_KEY\s*=\s*["']([^"']+)["']/
             template_key = $1
             variables[template_key] ||= []
+
+            # Find inline variables hash: render(TEMPLATE_KEY, { var1: ..., var2: ... })
+            if (inline_match = content.match(/ContentTemplateService\.render\s*\(\s*TEMPLATE_KEY\s*,\s*\{/m))
+              pos = inline_match.end(0)
+              brace_count = 1
+              end_pos = pos
+              while brace_count > 0 && end_pos < content.length
+                case content[end_pos]
+                when "{" then brace_count += 1
+                when "}" then brace_count -= 1
+                end
+                end_pos += 1
+              end
+              var_hash = content[pos...end_pos - 1]
+              var_names = var_hash.scan(/(\w+):/).flatten
+              variables[template_key].concat(var_names).uniq!
+            end
 
             # Find build_template_variables method or variables hash
             if (vars_match = content.match(/def\s+build_template_variables.*?\{/m))

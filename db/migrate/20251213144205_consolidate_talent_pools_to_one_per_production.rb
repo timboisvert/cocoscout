@@ -53,14 +53,16 @@ class ConsolidateTalentPoolsToOnePerProduction < ActiveRecord::Migration[8.1]
     SQL
 
     # Rename all remaining talent pools to "Talent Pool" for consistency
-    TalentPool.update_all(name: "Talent Pool")
+    execute "UPDATE talent_pools SET name = 'Talent Pool'"
 
     # Create talent pools for any productions that don't have one
-    Production.left_joins(:talent_pools)
-              .where(talent_pools: { id: nil })
-              .find_each do |production|
-      TalentPool.create!(production: production, name: "Talent Pool")
-    end
+    execute <<-SQL
+      INSERT INTO talent_pools (production_id, name, created_at, updated_at)
+      SELECT p.id, 'Talent Pool', NOW(), NOW()
+      FROM productions p
+      LEFT JOIN talent_pools tp ON tp.production_id = p.id
+      WHERE tp.id IS NULL
+    SQL
   end
 
   def down

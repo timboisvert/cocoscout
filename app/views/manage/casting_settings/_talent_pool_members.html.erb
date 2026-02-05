@@ -19,7 +19,7 @@
               <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                 <% if member.is_a?(Person) %>
                   <div class="text-2xl font-bold text-gray-500">
-                    <%= member.name.split.map(&:first).join.upcase %>
+                    <%= member.initials %>
                   </div>
                 <% else %>
                   <svg class="w-1/2 h-1/2 text-blue-400" fill="currentColor" viewBox="0 0 24 24">

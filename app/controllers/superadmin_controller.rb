@@ -10,7 +10,7 @@ class SuperadminController < ApplicationController
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
-                         dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
+                         agreements update_default_agreement tasks]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -400,6 +400,22 @@ class SuperadminController < ApplicationController
 
   def sms_log
     @sms_log = SmsLog.find(params[:id])
+  end
+
+  def toggle_sms_test_mode
+    # Only allow in development
+    unless Rails.env.development?
+      redirect_to sms_logs_path, alert: "SMS test mode is only available in development"
+      return
+    end
+
+    if session[:sms_test_mode]
+      session.delete(:sms_test_mode)
+      redirect_to sms_logs_path, notice: "SMS Test Mode disabled - messages will be sent for real"
+    else
+      session[:sms_test_mode] = true
+      redirect_to sms_logs_path, notice: "SMS Test Mode enabled - messages will be logged but not sent"
+    end
   end
 
   def queue
@@ -1281,6 +1297,28 @@ class SuperadminController < ApplicationController
     redirect_to cache_monitor_path, alert: "Pattern clear failed: #{e.message}"
   end
 
+  # Agreements Monitor
+  def agreements
+    # Stats
+    @orgs_with_agreements = Organization.joins(:agreement_templates).distinct.count
+    @orgs_total = Organization.count
+    @productions_with_agreements = Production.where(agreement_required: true).count
+    @productions_total = Production.count
+    @total_signatures = AgreementSignature.count
+    @signatures_this_month = AgreementSignature.where("created_at >= ?", Time.current.beginning_of_month).count
+    @signatures_this_week = AgreementSignature.where("created_at >= ?", 7.days.ago).count
+
+    # Default template content (stored in SystemSetting)
+    @default_template_content = SystemSetting.get("default_agreement_template", default_agreement_content)
+  end
+
+  def update_default_agreement
+    SystemSetting.set("default_agreement_template", params[:default_template])
+    redirect_to agreements_monitor_path, notice: "Default agreement template updated."
+  rescue => e
+    redirect_to agreements_monitor_path, alert: "Failed to update template: #{e.message}"
+  end
+
   # Content Templates Management (formerly Email Templates)
   def content_templates
     @templates = ContentTemplate.order(:category, :name)
@@ -1515,78 +1553,25 @@ class SuperadminController < ApplicationController
   end
 
   # =========================================================================
+  # Rake Tasks
+  # =========================================================================
+
+  def tasks
+    @tasks = load_rake_tasks
+  end
+
+  # =========================================================================
   # Dev Tools (development only)
   # =========================================================================
 
-  def dev_tools
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    @stats = DevSeedService.stats
-  end
-
-  def dev_create_users
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    count = params[:count].to_i
-    count = 10 if count <= 0
-
-    created = DevSeedService.create_users(count)
-    redirect_to dev_tools_path, notice: "Created #{created} test users."
-  end
-
-  def dev_submit_auditions
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    count = params[:count].to_i
-    count = 10 if count <= 0
-
-    submitted = DevSeedService.submit_audition_requests(count_per_cycle: count)
-    redirect_to dev_tools_path, notice: "Submitted #{submitted} audition requests."
-  end
-
-  def dev_submit_signups
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    count = params[:count].to_i
-    count = 10 if count <= 0
-
-    registered = DevSeedService.submit_signups(count_per_form: count)
-    redirect_to dev_tools_path, notice: "Registered #{registered} sign-ups."
-  end
-
-  def dev_delete_signups
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    deleted = DevSeedService.delete_all_signups
-    redirect_to dev_tools_path, notice: "Deleted #{deleted} sign-up forms."
-  end
-
-  def dev_delete_users
-    unless Rails.env.development?
-      redirect_to superadmin_path, alert: "Dev tools only available in development."
-      return
-    end
-
-    deleted = DevSeedService.delete_test_users
-    redirect_to dev_tools_path, notice: "Deleted #{deleted} test users."
-  end
-
   private
+
+  # Default agreement template content used as the starting point
+  def default_agreement_content
+    <<~HTML.strip
+      <div><strong>Performer Agreement for {{production_name}}</strong></div><div><br></div><div><strong>Code of Conduct</strong></div><div><br></div><div>As a performer with {{organization_name}}, I agree to:</div><div><br></div><ul><li>Treat all cast, crew, and staff with respect and professionalism</li><li>Arrive on time for all scheduled calls and performances</li><li>Communicate promptly about any conflicts or issues</li><li>Maintain a safe and inclusive environment for all</li><li>Follow all venue rules and policies</li></ul><div><br></div><div><strong>Attendance &amp; Communication</strong></div><div><br></div><ul><li>I will notify production management at least 48 hours in advance if I cannot make a scheduled performance</li><li>I will check CocoScout regularly for schedule updates and messages</li><li>I will respond to messages from production within 24 hours</li></ul><div><br></div><div><strong>Compensation</strong></div><div><br></div><div>[Add your payment terms here - e.g., payment schedule, rates, etc.]</div><div><br></div><div><strong>Acknowledgment</strong></div><div><br></div><div>By signing below, I acknowledge that I have read, understand, and agree to abide by this agreement for my participation in {{production_name}}.</div><div><br></div><div>Signed on {{current_date}} by {{performer_name}}.</div>
+    HTML
+  end
 
   # Find the demo organization (handles name changes)
   def find_demo_organization
@@ -2088,5 +2073,44 @@ class SuperadminController < ApplicationController
     end
 
     errors
+  end
+
+  # Load custom rake tasks from lib/tasks with their descriptions
+  def load_rake_tasks
+    # Parse rake -T output for our custom namespaces only
+    output = `cd #{Rails.root} && bin/rake -T 2>/dev/null`
+
+    # Only include tasks from our custom lib/tasks files
+    custom_namespaces = %w[communications demo routes]
+
+    tasks_by_namespace = Hash.new { |h, k| h[k] = [] }
+
+    output.each_line do |line|
+      next unless line.start_with?("rake ")
+
+      # Remove "rake " prefix and split on "#"
+      line = line.sub(/^rake\s+/, "").strip
+      parts = line.split(/\s+#\s+/, 2)
+      next if parts.length < 2
+
+      task_name = parts[0].strip
+      description = parts[1].strip
+
+      # Parse namespace from task name
+      name_parts = task_name.split(":")
+      namespace = name_parts.first
+
+      # Only include our custom namespaces
+      next unless custom_namespaces.include?(namespace)
+
+      tasks_by_namespace[namespace] << {
+        name: task_name,
+        description: description
+      }
+    end
+
+    # Sort namespaces and tasks within each namespace
+    tasks_by_namespace.transform_values! { |tasks| tasks.sort_by { |t| t[:name] } }
+    tasks_by_namespace.sort.to_h
   end
 end

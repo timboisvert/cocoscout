@@ -1,0 +1,15 @@
+<% content_for :title, "Edit Agreement Template" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Organizations", manage_organizations_path],
+      [@organization.name, manage_organization_path(@organization)],
+      ["Agreement Templates", manage_agreement_templates_path]
+    ],
+    text: @agreement_template.name
+  } %>
+
+  <%= render "form", agreement_template: @agreement_template %>
+</div>

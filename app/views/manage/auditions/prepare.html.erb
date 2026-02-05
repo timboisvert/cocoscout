@@ -257,7 +257,7 @@
                         <%= image_tag user.person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
                       <% else %>
                         <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
-                          <%= user.person.name.split.map(&:first).join.upcase[0..1] %>
+                          <%= user.person.initials[0..1] %>
                         </div>
                       <% end %>
                     </div>
@@ -283,7 +283,7 @@
                         <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
                       <% else %>
                         <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
-                          <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                          <%= person.initials[0..1] %>
                         </div>
                       <% end %>
                     </div>
@@ -310,7 +310,7 @@
                         <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
                       <% else %>
                         <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
-                          <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                          <%= person.initials[0..1] %>
                         </div>
                       <% end %>
                     </div>
@@ -371,11 +371,11 @@
                             <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
                           <% else %>
                             <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-bold text-gray-500">
-                              <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                              <%= person.initials[0..1] %>
                             </div>
                           <% end %>
                         </div>
-                        <div class="text-[10px] text-gray-700 truncate mt-1 text-center" title="<%= person.name %>"><%= person.name.split.first %></div>
+                        <div class="text-[10px] text-gray-700 truncate mt-1 text-center" title="<%= person.name %>"><%= person.first_name %></div>
                       </label>
                     <% end %>
                   </div>

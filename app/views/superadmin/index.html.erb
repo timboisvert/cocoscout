@@ -380,6 +380,25 @@
       </div>
     <% end %>
 
+    <!-- Agreements Monitor -->
+    <%= link_to agreements_monitor_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Agreements</h3>
+              <p class="text-xs text-gray-500">Stats & default template</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Key Monitor -->
     <%= link_to keys_monitor_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
@@ -418,23 +437,24 @@
       </div>
     <% end %>
 
-    <% if Rails.env.development? %>
-      <!-- Dev Tools -->
-      <%= link_to dev_tools_path, class: "block" do %>
-        <div class="border border-amber-300 rounded-lg overflow-hidden hover:border-amber-500 transition-all bg-amber-50 h-full">
-          <div class="p-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-amber-200 flex items-center justify-center">
-                <span class="text-lg">🛠️</span>
-              </div>
-              <div>
-                <h3 class="font-semibold text-gray-900">Dev Tools</h3>
-                <p class="text-xs text-gray-600">Test users & activity</p>
-              </div>
+    <!-- Rake Tasks -->
+    <%= link_to tasks_monitor_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Rake Tasks</h3>
+              <p class="text-xs text-gray-500">Browse available tasks</p>
             </div>
           </div>
         </div>
-      <% end %>
+      </div>
     <% end %>
+
   </div>
 </div>

@@ -14,9 +14,9 @@
   <!-- Tabs Navigation -->
   <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto mt-4">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
-    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Organization Team Members</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Team Members</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Messages</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Agreements</button>
     <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Ticketing</button>
     <% if @is_owner %>
       <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
@@ -375,90 +375,59 @@
     <% end %>
   </div>
 
-  <!-- Tab 4: Messages -->
+  <!-- Tab 4: Agreements -->
   <div data-tabs-target="panel" class="hidden">
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Message Board Settings" %>
-      <div class="p-6 bg-white space-y-6">
-        <p class="text-sm text-gray-600">
-          Configure how message boards work for your organization's productions.
-        </p>
-
-        <%= form_with model: [:manage, @organization], method: :patch, data: { turbo: false } do |f| %>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Forum Mode</label>
-              <div class="space-y-2">
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <%= f.radio_button :forum_mode, "per_production", class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", data: { action: "change->org-messages#toggleForumName" } %>
-                  <div>
-                    <span class="text-sm font-medium text-gray-900">One forum per production</span>
-                    <p class="text-xs text-gray-500">Each production has its own separate message board.</p>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Agreement Templates", action_text: "New Template", action_path: new_manage_agreement_template_path %>
+      <div class="p-6">
+        <% if @agreement_templates.any? %>
+          <div class="space-y-3">
+            <% @agreement_templates.each do |template| %>
+              <%= link_to edit_manage_agreement_template_path(template), class: "block bg-gray-50 rounded-lg border border-gray-200 p-4 hover:bg-gray-100 hover:border-gray-300 transition-colors" do %>
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-semibold text-gray-900"><%= template.name %></h3>
+                      <% unless template.active? %>
+                        <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600">Inactive</span>
+                      <% end %>
+                      <span class="text-xs text-gray-400">v<%= template.version %></span>
+                    </div>
+                    <% if template.description.present? %>
+                      <p class="text-sm text-gray-600 mt-1"><%= template.description %></p>
+                    <% end %>
+                    <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                      <span>
+                        <% production_count = template.productions.count %>
+                        <%= production_count %> <%= "production".pluralize(production_count) %>
+                      </span>
+                      <span>
+                        <% signature_count = template.total_signatures %>
+                        <%= signature_count %> <%= "signature".pluralize(signature_count) %>
+                      </span>
+                    </div>
                   </div>
-                </label>
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <%= f.radio_button :forum_mode, "shared", class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", data: { action: "change->org-messages#toggleForumName" } %>
-                  <div>
-                    <span class="text-sm font-medium text-gray-900">Shared forum</span>
-                    <p class="text-xs text-gray-500">All productions share one organization-wide message board.</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Shared Forum Name Field -->
-            <div id="shared-forum-name-field" class="<%= @organization.forum_shared? ? '' : 'hidden' %>">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Forum Name</label>
-              <%= f.text_field :shared_forum_name,
-                  placeholder: @organization.name,
-                  class: "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500" %>
-              <p class="text-xs text-gray-500 mt-1">Leave blank to use your organization name.</p>
-            </div>
-
-            <div class="pt-4">
-              <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
-            </div>
+                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No agreement templates</h3>
+            <p class="text-sm text-gray-600 mb-4">Create templates for performer agreements that can be used across productions.</p>
+            <%= link_to new_manage_agreement_template_path do %>
+              <%= render "shared/button", text: "Create Template", variant: "primary", size: "medium" %>
+            <% end %>
           </div>
         <% end %>
       </div>
     </div>
-
-    <% if @organization.forum_per_production? && @productions.any? %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden mt-6">
-        <%= render "shared/card_header", title: "Production Forum Settings" %>
-        <div class="p-6 bg-white">
-          <p class="text-sm text-gray-600 mb-4">
-            Enable or disable the message board for individual productions.
-          </p>
-
-          <div class="space-y-2">
-            <% @productions.each do |production| %>
-              <div class="flex items-center justify-between py-2 px-3 border border-gray-200 rounded-lg">
-                <div class="flex items-center gap-3">
-                  <% if production.logo.attached? %>
-                    <%= image_tag production.safe_logo_variant(:small), alt: production.name, class: "w-8 h-8 object-contain rounded" %>
-                  <% else %>
-                    <div class="w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
-                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
-                    </div>
-                  <% end %>
-                  <span class="text-sm font-medium text-gray-900"><%= production.name %></span>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox"
-                         class="sr-only peer"
-                         <%= "checked" if production.forum_enabled? %>
-                         data-action="change->org-messages#toggleProduction"
-                         data-production-id="<%= production.id %>"
-                         data-url="<%= toggle_production_forum_manage_organization_path(@organization, production_id: production.id) %>">
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
   </div>
 
   <!-- Tab 5: Ticketing Integrations -->

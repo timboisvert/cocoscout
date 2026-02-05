@@ -728,55 +728,13 @@ module Manage
         group.group_memberships.each { |gm| all_person_ids << gm.person_id }
       end
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
-
-      # Create email content for single occurrence
-      @single_subject = ContentTemplateService.render_subject("show_canceled", {
-        production_name: @production.name,
-        event_type: @show.event_type.titleize,
-        event_date: @show.date_and_time.strftime("%A, %B %-d, %Y")
-      })
-
-      @single_body = ContentTemplateService.render_body("show_canceled", {
-        recipient_name: "{{recipient_name}}",
-        production_name: @production.name,
-        event_type: @show.event_type.titleize,
-        event_date: @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p"),
-        location: @show.location&.name
-      })
-
-      # Create email content for all occurrences (if recurring)
-      if @show.recurring?
-        shows = @show.recurrence_group.order(:date_and_time)
-        dates_list = shows.map { |s| s.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") }.join("<br>")
-
-        @all_subject = ContentTemplateService.render_subject("show_canceled", {
-          production_name: @production.name,
-          event_type: "#{@show.event_type.titleize} Series",
-          event_date: "#{shows.count} occurrences"
-        })
-
-        @all_body = ContentTemplateService.render_body("show_canceled", {
-          recipient_name: "{{recipient_name}}",
-          production_name: @production.name,
-          event_type: "#{@show.event_type.titleize} series",
-          event_date: "the following dates:<br>#{dates_list}",
-          location: @show.location&.name
-        })
-      end
-
-      @email_draft = EmailDraft.new(
-        emailable: @show,
-        title: @single_subject,
-        body: @single_body
-      )
+      @people_with_sms = @people_with_email.select { |p| p.user&.sms_notification_enabled?(:show_cancellation) }
     end
 
     def cancel_show
       scope = params[:scope] || "this"
       event_label = @show.event_type.titleize
       notify_cast = params[:notify_cast] == "1"
-      email_subject = params[:email_subject]
-      email_body = params[:email_body]
       role_categories = params[:role_categories]&.reject(&:blank?)
 
       if scope == "all" && @show.recurring?
@@ -784,9 +742,9 @@ module Manage
         shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
         count = @show.recurrence_group.update_all(canceled: true)
 
-        # Send notifications if requested
-        if notify_cast && email_body.present?
-          send_cancellation_notifications(shows_to_cancel, email_subject, email_body, role_categories)
+        # Send notifications if requested (uses template automatically)
+        if notify_cast
+          send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
@@ -796,9 +754,9 @@ module Manage
         # Cancel just this occurrence
         @show.update!(canceled: true)
 
-        # Send notifications if requested
-        if notify_cast && email_body.present?
-          send_cancellation_notifications([ @show ], email_subject, email_body, role_categories)
+        # Send notifications if requested (uses template automatically)
+        if notify_cast
+          send_cancellation_notifications([ @show ], nil, nil, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
@@ -1481,7 +1439,7 @@ module Manage
       if people.size > 1
         email_batch = EmailBatch.create!(
           user: Current.user,
-          subject: email_subject,
+          subject: email_subject || "Show Canceled",
           recipient_count: people.size,
           sent_at: Time.current
         )
@@ -1491,8 +1449,8 @@ module Manage
       emails_sent = 0
 
       people.each do |person|
-        # Replace placeholder with actual name
-        personalized_body = email_body.gsub("[Recipient Name]", person.name)
+        # If email_body is provided, personalize it; otherwise let the service use the template
+        personalized_body = email_body&.gsub("[Recipient Name]", person.name)
 
         result = ShowNotificationService.send_cancellation_notification(
           person: person,

@@ -30,6 +30,10 @@ class Production < ApplicationRecord
   has_many :payroll_runs, dependent: :destroy
   has_many :person_advances, dependent: :destroy
 
+  # Agreements
+  belongs_to :agreement_template, optional: true
+  has_many :agreement_signatures, dependent: :destroy
+
   belongs_to :organization
   belongs_to :contract, optional: true
 
@@ -103,6 +107,29 @@ class Production < ApplicationRecord
   # Useful for queries that need talent_pool_id IN (...)
   def effective_talent_pool_ids
     [ effective_talent_pool.id ]
+  end
+
+  # Returns all unique people assigned to any show in this production
+  # Includes both direct Person assignments and Group member expansions
+  def cast_people
+    # Get person IDs directly assigned to shows
+    person_ids = show_person_role_assignments
+      .where(assignable_type: "Person")
+      .pluck(:assignable_id)
+      .uniq
+
+    # Get group IDs assigned to shows, then expand to their members
+    group_ids = show_person_role_assignments
+      .where(assignable_type: "Group")
+      .pluck(:assignable_id)
+      .uniq
+
+    if group_ids.any?
+      group_member_ids = GroupMembership.where(group_id: group_ids).pluck(:person_id)
+      person_ids = (person_ids + group_member_ids).uniq
+    end
+
+    Person.where(id: person_ids)
   end
 
   # Returns true if this production's talent pool is shared with other productions
@@ -337,6 +364,87 @@ class Production < ApplicationRecord
     parsed_show_upcoming_event_types.include?(event_type.to_s)
   end
 
+  def create_default_talent_pool
+    talent_pools.create!(name: "Talent Pool")
+  end
+
+  # Contract-related helpers
+  def third_party?
+    type_third_party?
+  end
+
+  def governed_by_contract?
+    contract.present? && contract.status_active?
+  end
+
+  def contract_locked?
+    governed_by_contract?
+  end
+
+  # Agreement methods
+
+  # Returns true if this production requires performers to sign an agreement
+  def agreement_required?
+    agreement_required && agreement_template.present?
+  end
+
+  # Returns the agreement content for this production
+  def agreement_content
+    agreement_template&.content
+  end
+
+  # Render agreement with variables substituted for a specific person
+  def rendered_agreement_content(person = nil)
+    return nil unless agreement_template
+
+    variables = {
+      production_name: name,
+      organization_name: organization.name,
+      performer_name: person&.name || "Performer",
+      current_date: Date.current.strftime("%B %-d, %Y")
+    }
+    agreement_template.render_content(variables)
+  end
+
+  # Check if a person has signed the agreement
+  def agreement_signed_by?(person)
+    agreement_signatures.exists?(person: person)
+  end
+
+  # Get signature for a person
+  def agreement_signature_for(person)
+    agreement_signatures.find_by(person: person)
+  end
+
+  # People in talent pool who haven't signed
+  def people_without_agreement_signature
+    return Person.none unless agreement_required?
+
+    signed_person_ids = agreement_signatures.pluck(:person_id)
+    member_ids = effective_talent_pool.members.select { |m| m.is_a?(Person) }.map(&:id)
+    Person.where(id: member_ids).where.not(id: signed_person_ids)
+  end
+
+  # People in talent pool who have signed
+  def people_with_agreement_signature
+    return Person.none unless agreement_required?
+
+    signed_person_ids = agreement_signatures.pluck(:person_id)
+    member_ids = effective_talent_pool.members.select { |m| m.is_a?(Person) }.map(&:id)
+    Person.where(id: member_ids).where(id: signed_person_ids)
+  end
+
+  # Count of signed vs total in talent pool
+  def agreement_signature_stats
+    return { signed: 0, total: 0, percent: 100 } unless agreement_required?
+
+    total = effective_talent_pool.members.select { |m| m.is_a?(Person) }.count
+    signed = agreement_signatures.count
+    percent = total > 0 ? (signed * 100.0 / total).round : 100
+
+    { signed: signed, total: total, percent: percent }
+  end
+
   private
 
   def generate_public_key
@@ -411,22 +519,5 @@ class Production < ApplicationRecord
     return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png])
 
     errors.add(:logo, "Logo must be a JPEG, JPG, or PNG file")
-  end
-
-  def create_default_talent_pool
-    talent_pools.create!(name: "Talent Pool")
-  end
-
-  # Contract-related helpers
-  def third_party?
-    type_third_party?
-  end
-
-  def governed_by_contract?
-    contract.present? && contract.status_active?
-  end
-
-  def contract_locked?
-    governed_by_contract?
   end
 end

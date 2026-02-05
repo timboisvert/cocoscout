@@ -7,11 +7,15 @@ class AddOwnerToOrganizations < ActiveRecord::Migration[8.1]
     # Set existing organizations to be owned by their first manager
     reversible do |dir|
       dir.up do
-        Organization.reset_column_information
-        Organization.find_each do |org|
-          manager = org.user_roles.find_by(company_role: 'manager')&.user
-          org.update_column(:owner_id, manager&.id) if manager
-        end
+        execute <<-SQL
+          UPDATE organizations
+          SET owner_id = (
+            SELECT user_id FROM user_roles
+            WHERE user_roles.organization_id = organizations.id
+            AND user_roles.company_role = 'manager'
+            LIMIT 1
+          )
+        SQL
       end
     end
 

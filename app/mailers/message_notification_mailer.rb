@@ -1,4 +1,6 @@
 class MessageNotificationMailer < ApplicationMailer
+  include ActionView::Helpers::SanitizeHelper
+
   # Send digest of unread messages after user hasn't checked their inbox
   # user: The User who has unread messages
   # unread_threads: Array of { message:, unread_count: } hashes

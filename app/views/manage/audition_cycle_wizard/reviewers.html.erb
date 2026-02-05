@@ -39,13 +39,13 @@
                       <% else %>
                         <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                           <div class="text-lg font-bold text-gray-500">
-                            <%= user.person.name.split.map(&:first).join.upcase %>
+                            <%= user.person.initials %>
                           </div>
                         </div>
                       <% end %>
                     </div>
                     <div class="text-xs font-medium text-gray-900 truncate" title="<%= user.person.name %>">
-                      <%= user.person.name.split.first %>
+                      <%= user.person.first_name %>
                     </div>
                     <div class="text-[10px] text-gray-500 truncate">
                       <%= team_member[:role] %>
@@ -90,13 +90,13 @@
                       <% else %>
                         <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                           <div class="text-lg font-bold text-gray-500">
-                            <%= person.name.split.map(&:first).join.upcase %>
+                            <%= person.initials %>
                           </div>
                         </div>
                       <% end %>
                     </div>
                     <div class="text-xs font-medium text-gray-900 truncate" title="<%= person.name %>">
-                      <%= person.name.split.first %>
+                      <%= person.first_name %>
                     </div>
                   </div>
                 <% end %>
@@ -147,13 +147,13 @@
                   <% else %>
                     <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                       <div class="text-lg font-bold text-gray-500">
-                        <%= person.name.split.map(&:first).join.upcase %>
+                        <%= person.initials %>
                       </div>
                     </div>
                   <% end %>
                 </div>
                 <div class="text-xs font-medium text-gray-900 truncate text-center" title="<%= person.name %>">
-                  <%= person.name.split.first %>
+                  <%= person.first_name %>
                 </div>
               </label>
             <% end %>

@@ -13,7 +13,7 @@
 class ContentTemplate < ApplicationRecord
   validates :key, presence: true, uniqueness: true
   validates :name, presence: true
-  validates :subject, presence: true
+  validates :subject, presence: true, if: :requires_subject?
   validates :body, presence: true
 
   scope :active, -> { where(active: true) }
@@ -110,6 +110,12 @@ class ContentTemplate < ApplicationRecord
   end
 
   private
+
+  # Subject is required for email templates (email or both channels)
+  # but not for message-only or system templates
+  def requires_subject?
+    email? || both?
+  end
 
   # Interpolate variables in the format {{variable_name}}
   # Also handles mustache-style conditionals: {{#var}}content{{/var}}

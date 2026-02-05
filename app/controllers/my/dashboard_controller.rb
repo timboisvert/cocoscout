@@ -358,6 +358,13 @@ module My
                                       .where(person_id: people_ids)
                                       .includes(role_vacancy: [ :role, { show: :production } ])
                                       .order("shows.date_and_time ASC")
+
+      # Pending agreement signatures for productions where user is in talent pool
+      # Find productions that require agreements but user hasn't signed
+      @pending_agreements = @productions
+        .select(&:agreement_required?)
+        .reject { |production| production.agreement_signed_by?(@person) }
+        .sort_by(&:name)
     end
 
     def dismiss_onboarding
