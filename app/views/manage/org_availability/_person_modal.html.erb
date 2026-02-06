@@ -1,0 +1,237 @@
+<div data-controller="availability-popup">
+  <%# Header %>
+  <div class="flex items-center justify-between px-6 py-3 bg-pink-50 border-b border-pink-100">
+    <h2 class="text-base font-semibold text-gray-900">Availability</h2>
+    <button type="button" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+            data-action="click->org-availability#closePersonModal">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="p-6 relative">
+    <%# Person card - compact %>
+    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+      <% headshot = @member.safe_headshot_variant(:thumb) %>
+      <% if headshot %>
+        <%= image_tag headshot, class: "w-12 h-12 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+          <%= @member.initials %>
+        </div>
+      <% end %>
+      <div>
+        <div class="font-semibold text-gray-900"><%= @member.name %></div>
+        <% if @member.respond_to?(:email) && @member.email.present? %>
+          <div class="text-sm text-gray-500"><%= @member.email %></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Tabs for filter %>
+    <div data-controller="tabs">
+      <nav class="flex space-x-1 border-b border-gray-200 mb-4">
+        <button type="button"
+                data-tabs-target="tab"
+                data-index="0"
+                data-action="click->tabs#select click->org-availability#filterPersonByDate"
+                data-member-type="<%= @member.class.name %>"
+                data-member-id="<%= @member.id %>"
+                class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= @filter_by == 'date' ? 'bg-white text-pink-600 border-pink-500' : 'bg-gray-50 text-gray-500 border-transparent hover:text-gray-700' %>">
+          By Date
+        </button>
+        <button type="button"
+                data-tabs-target="tab"
+                data-index="1"
+                data-action="click->tabs#select click->org-availability#filterPersonByProduction"
+                data-member-type="<%= @member.class.name %>"
+                data-member-id="<%= @member.id %>"
+                class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= @filter_by == 'production' ? 'bg-white text-pink-600 border-pink-500' : 'bg-gray-50 text-gray-500 border-transparent hover:text-gray-700' %>">
+          By Production
+        </button>
+      </nav>
+
+      <%# Shows list %>
+      <% if @shows_data.any? %>
+        <%
+          # Group by production if filter_by is production
+          if @filter_by == 'production'
+            grouped = @shows_data.group_by { |d| d[:show].production }
+          else
+            grouped = { nil => @shows_data }
+          end
+        %>
+
+        <div class="space-y-2 max-h-[400px] overflow-y-auto">
+          <% grouped.each do |production, shows| %>
+            <% if production %>
+              <div class="text-xs font-medium text-pink-600 uppercase tracking-wide mt-3 mb-1"><%= production.name %></div>
+            <% end %>
+
+            <div class="space-y-1">
+              <% shows.each do |show_data| %>
+                <%
+                  show = show_data[:show]
+                  availability = show_data[:availability]
+                  is_cast = show_data[:is_cast]
+                  is_signed_up = show_data[:is_signed_up]
+                  cast_roles = show_data[:cast_roles] || []
+                  registration = show_data[:registration]
+                  is_person = @member.is_a?(Person)
+                %>
+                <div class="flex items-stretch border border-gray-200 rounded-lg hover:bg-gray-50 transition overflow-visible relative <%= is_person ? 'cursor-pointer' : '' %>"
+                     <% if is_person %>
+                     data-action="click->availability-popup#openPopup"
+                     data-show-id="<%= show.id %>"
+                     data-member-id="<%= @member.id %>"
+                     data-member-name="<%= @member.name %>"
+                     data-cast-roles="<%= cast_roles.to_json %>"
+                     data-is-signed-up="<%= is_signed_up %>"
+                     <% end %>>
+                  <%# Left panel (50%): Show info %>
+                  <div class="w-1/2 flex items-center gap-3 p-3">
+                    <%# Date Box %>
+                    <div class="flex-shrink-0 w-11 text-center">
+                      <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                      <div class="text-lg font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                      <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                    </div>
+                    <%# Show Details %>
+                    <div class="flex-1 min-w-0">
+                      <% if @filter_by != 'production' %>
+                        <div class="text-xs text-gray-400 mb-0"><%= show.production.name %></div>
+                      <% end %>
+                      <div class="font-medium text-sm text-gray-900 truncate">
+                        <%= show.display_name %>
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <%# Middle panel (25%): Availability %>
+                  <div class="w-1/4 flex items-center justify-center border-l border-gray-200">
+                    <%
+                      if availability == 'available'
+                        avail_display = "A"
+                        avail_class = "text-pink-500 font-medium"
+                      elsif availability == 'unavailable'
+                        avail_display = "U"
+                        avail_class = "text-gray-400"
+                      else
+                        avail_display = "—"
+                        avail_class = "text-gray-300"
+                      end
+                    %>
+                    <span class="text-sm <%= avail_class %>"><%= avail_display %></span>
+                  </div>
+
+                  <%# Right panel (25%): Casting or Registration status %>
+                  <div class="w-1/4 flex flex-col justify-center px-3 py-2 border-l border-gray-200">
+                    <% if is_cast %>
+                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Casting</div>
+                      <% if cast_roles.any? %>
+                        <div class="text-sm font-semibold text-pink-500"><%= cast_roles.join(', ') %></div>
+                      <% end %>
+                    <% elsif is_signed_up && registration %>
+                      <%
+                        slot = registration.sign_up_slot
+                        form = slot&.sign_up_form
+                        is_open_list = form&.slot_generation_mode == 'open_list'
+                      %>
+                      <% if is_open_list %>
+                        <div class="text-sm font-semibold text-pink-500">Registered</div>
+                      <% else %>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wide">Registration</div>
+                        <%
+                          if slot&.name.present? && slot.name !~ /\A\d+\z/
+                            slot_display = slot.name
+                          elsif form&.slot_generation_mode == 'time_based' && slot&.start_time.present?
+                            slot_display = slot.start_time.strftime("%l:%M %p").strip
+                          else
+                            slot_display = "Position #{registration.position}"
+                          end
+                        %>
+                        <div class="text-sm font-semibold text-pink-500"><%= slot_display %></div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center text-gray-500 py-8">
+          No upcoming shows found for this person.
+        </div>
+      <% end %>
+    </div>
+
+    <%# Action Popup (hidden by default) %>
+    <div class="hidden fixed z-[60] bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[220px] max-w-[300px]"
+         data-availability-popup-target="popup">
+      <div class="text-xs font-medium text-gray-500 uppercase mb-2" data-availability-popup-target="popupTitle">Actions</div>
+      <div class="space-y-1" data-availability-popup-target="popupContent">
+        <!-- Populated dynamically -->
+      </div>
+      <div class="mt-2 pt-2 border-t border-gray-200">
+        <button type="button" class="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-1 cursor-pointer" data-action="click->availability-popup#closePopup">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# JSON data for all shows' roles and sign-up forms %>
+  <script type="application/json" data-availability-popup-target="rolesData">
+  <%= raw({
+    shows: @shows_data.each_with_object({}) { |show_data, hash|
+      show = show_data[:show]
+      roles = @all_roles_by_show[show.id] || []
+      sign_up_form = @sign_up_forms_by_show[show.id]
+
+      sign_up_form_data = nil
+      if sign_up_form
+        instance = sign_up_form.sign_up_form_instances.find_by(show: show)
+        slots_data = []
+        if instance
+          instance.sign_up_slots.order(:position).each do |slot|
+            confirmed_count = slot.sign_up_registrations.where(status: ['confirmed', 'waitlisted']).count
+            slots_data << {
+              id: slot.id,
+              name: slot.name,
+              position: slot.position,
+              capacity: slot.capacity || 1,
+              current_count: confirmed_count,
+              available: confirmed_count < (slot.capacity || 1)
+            }
+          end
+        end
+        sign_up_form_data = {
+          id: sign_up_form.id,
+          name: sign_up_form.name,
+          is_open: @sign_up_form_open_by_show[show.id],
+          slot_mode: sign_up_form.slot_generation_mode,
+          show_in_past: show.date_and_time < Time.current,
+          slots: slots_data
+        }
+      end
+
+      hash[show.id] = {
+        roles: roles.map { |r| {
+          id: r.id,
+          name: r.name,
+          quantity: r.quantity || 1,
+          current_count: @role_counts_by_show[[show.id, r.id]] || 0,
+          restricted: r.restricted?,
+          eligible_members: r.restricted? ? r.eligible_members.map { |m| { type: m.class.name, id: m.id } } : nil
+        }},
+        sign_up_form: sign_up_form_data
+      }
+    }
+  }.to_json) %>
+  </script>
+</div>
