@@ -11,7 +11,7 @@ gem "image_processing", "~> 1.2"
 gem "importmap-rails"
 gem "kamal", require: false
 gem "mail", "~> 2.9.0" # Pin to 2.8.x to avoid breaking changes in 2.9.0
-gem "pagy", "~> 43.2.2"
+gem "pagy", "~> 43.2.9"
 gem "pg"
 gem "propshaft"
 gem "puma", ">= 5.0"
