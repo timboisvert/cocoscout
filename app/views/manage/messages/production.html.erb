@@ -26,6 +26,25 @@
         <h1 class="text-xl font-bold text-gray-900 truncate coustard-regular"><%= @production.name %></h1>
         <p class="text-sm text-gray-500">Messages</p>
       </div>
+
+      <%# Contact Talent Pool Button %>
+      <% talent_pool = @production.effective_talent_pool %>
+      <% if talent_pool %>
+        <% talent_pool_members = talent_pool.people.distinct %>
+        <div data-controller="compose-message"
+             data-compose-message-recipient-type-value="talent_pool"
+             data-compose-message-recipient-id-value="<%= talent_pool.id %>"
+             data-compose-message-recipient-name-value="<%= talent_pool.name %>"
+             data-compose-message-production-id-value="<%= @production.id %>"
+             data-compose-message-cast-members-value="<%= talent_pool_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
+          <%= render "shared/button",
+              text: "Contact Talent Pool",
+              variant: "primary",
+              size: "small",
+              type: :button,
+              data: { action: "click->compose-message#open" } %>
+        </div>
+      <% end %>
     </div>
   </div>
 
@@ -52,3 +71,6 @@
     </div>
   <% end %>
 </div>
+
+<%# Compose Message Modal %>
+<%= render "shared/compose_message_modal" %>

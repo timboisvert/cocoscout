@@ -168,6 +168,33 @@ module Manage
         message&.images&.attach(images) if images.present?
         redirect_to manage_messages_path, notice: "Message sent to #{show.display_name} cast"
 
+      when "talent_pool"
+        production_id = params[:production_id]
+        production = production_id.present? ? Current.organization.productions.find(production_id) : nil
+        talent_pool = production&.effective_talent_pool || TalentPool.find(recipient_id)
+
+        # Get all people in the talent pool
+        people = Person.joins(:talent_pool_memberships)
+                       .where(talent_pool_memberships: { talent_pool_id: talent_pool.id })
+                       .distinct
+
+        if people.empty?
+          redirect_back fallback_location: manage_messages_path, alert: "No members found in #{talent_pool.name}"
+          return
+        end
+
+        message = MessageService.send_to_people(
+          sender: Current.user,
+          people: people.to_a,
+          subject: subject,
+          body: body,
+          message_type: :direct,
+          production: production,
+          organization: Current.organization
+        )
+        message&.images&.attach(images) if images.present?
+        redirect_to manage_messages_path, notice: "Message sent to #{people.count} #{'member'.pluralize(people.count)} in #{talent_pool.name}"
+
       when "batch"
         # Handle batch messaging from directory selection or agreement reminders
         person_ids = params[:person_ids]&.select(&:present?) || []

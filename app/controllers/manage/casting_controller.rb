@@ -1521,10 +1521,18 @@ module Manage
         "<li>#{date}: #{show_name}</li>"
       end.join("\n")
 
+      # Get all unique role names from the show(s)
+      all_roles = all_shows.flat_map { |s| s.show_person_role_assignments.includes(:role).map(&:role) }.uniq
+      role_names = all_roles.map(&:name).uniq
+      role_name = role_names.first || "Cast Member"
+      role_names_list = role_names.join(", ")
+
       {
         production_name: @production.name,
         show_dates: show_dates,
-        shows_list: shows_list
+        shows_list: shows_list,
+        role_name: role_name,
+        role_names: role_names_list
       }
     end
 

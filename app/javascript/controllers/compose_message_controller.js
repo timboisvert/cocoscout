@@ -21,14 +21,15 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "form", "subject", "body", "submitButton", "recipientName", "recipientType", "recipientId", "title", "recipientSection", "singleRecipient", "recipientHeadshot", "batchRecipients", "sendSeparatelySection", "sendSeparately"]
     static values = {
-        recipientType: String,  // "person", "group", "production_team", "show_cast", "batch"
+        recipientType: String,  // "person", "group", "production_team", "show_cast", "batch", "talent_pool"
         recipientId: Number,
         recipientName: String,
         recipientHeadshot: String,  // URL to headshot image
         recipientInitials: String,  // Initials if no headshot
         castMembers: Array,          // Array of {name, headshot} for show_cast type
         batchPersonIds: Array,       // Array of person IDs for batch mode
-        scriptId: String             // ID of script tag containing ALL data as JSON
+        scriptId: String,            // ID of script tag containing ALL data as JSON
+        productionId: Number         // Production ID for talent_pool messages
     }
 
     connect() {
@@ -92,17 +93,12 @@ export default class extends Controller {
         const trigger = event?.currentTarget
         const sources = [trigger, this.element].filter(Boolean)
 
-        console.log('Sources:', sources)
-        console.log('this.element:', this.element)
-        console.log('this.element dataset:', this.element?.dataset)
-
         // Reset template values before reading new ones
         this.templateSubjectValue = ''
         this.templateBodyValue = ''
         this.templateDataIdValue = ''
 
         for (const source of sources) {
-            console.log('Source dataset keys:', Object.keys(source.dataset))
             if (source.dataset.composeMessageRecipientTypeValue && !this.recipientTypeValue) {
                 this.recipientTypeValue = source.dataset.composeMessageRecipientTypeValue
             }
@@ -135,26 +131,23 @@ export default class extends Controller {
             if (source.dataset.composeMessageTemplateDataIdValue && !this.templateDataIdValue) {
                 this.templateDataIdValue = source.dataset.composeMessageTemplateDataIdValue
             }
+            if (source.dataset.composeMessageProductionIdValue && !this.productionIdValue) {
+                this.productionIdValue = parseInt(source.dataset.composeMessageProductionIdValue)
+            }
         }
 
         // Load template data from script tag if specified
-        console.log('Template data ID:', this.templateDataIdValue)
         if (this.templateDataIdValue) {
             const scriptTag = document.getElementById(this.templateDataIdValue)
-            console.log('Script tag found:', scriptTag)
-            console.log('Script tag content:', scriptTag?.textContent)
             if (scriptTag) {
                 try {
                     const templateData = JSON.parse(scriptTag.textContent)
-                    console.log('Parsed template data:', templateData)
                     this.templateSubjectValue = templateData.subject || ''
                     this.templateBodyValue = templateData.body || ''
                 } catch (e) {
                     console.error('Failed to parse template data:', e)
                 }
             }
-        } else {
-            console.log('No template data ID set')
         }
 
         this._openModal()
@@ -177,11 +170,11 @@ export default class extends Controller {
         if (typeInput) typeInput.value = this.recipientTypeValue
         if (idInput) idInput.value = this.recipientIdValue
 
-        // Handle batch person IDs - add them as hidden fields
+        // Handle batch person IDs and production_id field
         const form = modal.querySelector('[data-compose-message-target="form"]')
         if (form) {
-            // Remove any existing person_ids fields
             form.querySelectorAll('input[name="person_ids[]"]').forEach(el => el.remove())
+            form.querySelectorAll('input[name="production_id"]').forEach(el => el.remove())
 
             // Add new person_ids for batch mode
             if (this.recipientTypeValue === 'batch' && this.batchPersonIdsValue?.length > 0) {
@@ -192,6 +185,15 @@ export default class extends Controller {
                     input.value = id
                     form.appendChild(input)
                 })
+            }
+
+            // Add production_id for talent_pool messages
+            if (this.recipientTypeValue === 'talent_pool' && this.productionIdValue) {
+                const input = document.createElement('input')
+                input.type = 'hidden'
+                input.name = 'production_id'
+                input.value = this.productionIdValue
+                form.appendChild(input)
             }
 
             form.action = this.getFormAction()
@@ -260,9 +262,9 @@ export default class extends Controller {
         const nameTarget = modal.querySelector('[data-compose-message-target="recipientName"]')
         const headshotTarget = modal.querySelector('[data-compose-message-target="recipientHeadshot"]')
 
-        // For show_cast with cast members
-        if (this.recipientTypeValue === 'show_cast' && this.castMembersValue?.length > 0) {
-            // If only 1 cast member, show as single recipient (no tooltip, name next to headshot)
+        // For show_cast or talent_pool with cast members
+        if ((this.recipientTypeValue === 'show_cast' || this.recipientTypeValue === 'talent_pool') && this.castMembersValue?.length > 0) {
+            // If only 1 member, show as single recipient (no tooltip, name next to headshot)
             if (this.castMembersValue.length === 1) {
                 const member = this.castMembersValue[0]
                 if (singleRecipient) singleRecipient.classList.remove('hidden')
@@ -279,7 +281,7 @@ export default class extends Controller {
                     }
                 }
             } else {
-                // Multiple cast members - show stacked headshots with tooltips
+                // Multiple members - show stacked headshots with tooltips
                 if (singleRecipient) singleRecipient.classList.add('hidden')
                 if (batchRecipients) {
                     batchRecipients.classList.remove('hidden')

@@ -266,6 +266,25 @@ class My::MessagesController < ApplicationController
       production_ids.merge(shared_group_production_ids)
     end
 
+    # Productions where user is cast in shows (person or group assignments)
+    if people_ids.any?
+      cast_production_ids = Production
+        .joins(shows: :show_person_role_assignments)
+        .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: people_ids })
+        .distinct
+        .pluck(:id)
+      production_ids.merge(cast_production_ids)
+    end
+
+    if group_ids.any?
+      group_cast_production_ids = Production
+        .joins(shows: :show_person_role_assignments)
+        .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: group_ids })
+        .distinct
+        .pluck(:id)
+      production_ids.merge(group_cast_production_ids)
+    end
+
     Production.where(id: production_ids).order(:name)
   end
 end

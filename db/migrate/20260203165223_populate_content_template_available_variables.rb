@@ -36,8 +36,8 @@ class PopulateContentTemplateAvailableVariables < ActiveRecord::Migration[8.1]
     "audition_not_cast" => %w[recipient_name production_name],
 
     # Casting
-    "cast_notification" => %w[production_name show_dates shows_list],
-    "removed_from_cast_notification" => %w[production_name show_dates shows_list],
+    "cast_notification" => %w[production_name show_dates shows_list role_name role_names],
+    "removed_from_cast_notification" => %w[production_name show_dates shows_list role_name role_names],
     "casting_table_notification" => %w[person_name production_names shows_by_production],
 
     # Shows
