@@ -113,8 +113,13 @@ class AccountController < ApplicationController
     # Handle email notification preferences only
     notification_params = params[:notifications] || {}
     User::NOTIFICATION_PREFERENCE_KEYS.each do |key|
-      enabled = notification_params[key] == "1"
-      Current.user.set_notification_preference(key, enabled)
+      if key == "message_digest"
+        # message_digest is a direct column, not in notification_preferences
+        Current.user.message_digest_enabled = (notification_params[key] == "1")
+      else
+        enabled = notification_params[key] == "1"
+        Current.user.set_notification_preference(key, enabled)
+      end
     end
 
     if Current.user.save

@@ -263,7 +263,7 @@
             </label>
           </div>
 
-          <div class="flex items-center justify-between py-3">
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <div>
               <p class="text-sm font-medium text-gray-700">Shoutouts</p>
               <p class="text-xs text-gray-500 mt-1">Get notified when someone sends you a shoutout</p>
@@ -271,6 +271,18 @@
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="hidden" name="notifications[shoutouts]" value="0">
               <input type="checkbox" name="notifications[shoutouts]" value="1" <%= 'checked' if Current.user.notification_enabled?(:shoutouts) %> class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between py-3">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Message Digest</p>
+              <p class="text-xs text-gray-500 mt-1">Get reminded about unread messages (adapts to your engagement: daily if you check, less often if you don't)</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="notifications[message_digest]" value="0">
+              <input type="checkbox" name="notifications[message_digest]" value="1" <%= 'checked' if Current.user.message_digest_enabled %> class="sr-only peer">
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>

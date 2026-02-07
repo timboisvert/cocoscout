@@ -249,6 +249,7 @@ class User < ApplicationRecord
     audition_invitations
     group_invitations
     shoutouts
+    message_digest
   ].freeze
 
   def notification_enabled?(key)

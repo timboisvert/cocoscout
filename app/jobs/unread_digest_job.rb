@@ -3,10 +3,11 @@
 # Sends digest emails to users who have unread messages and haven't
 # checked their inbox recently.
 #
-# Strategy:
-# - Wait 1 hour after messages arrive before sending digest
-# - If user hasn't visited inbox since the message arrived, send digest
-# - Don't send another digest for 3 days, even if new messages arrive
+# Adaptive throttle strategy:
+# - Wait 1 hour after messages arrive before sending first digest
+# - Start with 1 day throttle (baseline frequency)
+# - If user checks inbox after digest: reset to 1 day (they're engaged)
+# - If user ignores digest: double the throttle (1 → 2 → 4 → 8 → 14 days max)
 # - Only send if user actually has unread messages
 #
 # Run this job every 15 minutes via cron/recurring schedule
@@ -16,8 +17,8 @@ class UnreadDigestJob < ApplicationJob
   # How long to wait before sending first digest after new message
   INITIAL_DELAY = 1.hour
 
-  # How long to wait before sending another digest after the last one
-  THROTTLE_PERIOD = 3.days
+  # Maximum throttle period for unresponsive users
+  MAX_THROTTLE_DAYS = 14
 
   def perform
     users_needing_digest.find_each do |user|
@@ -29,20 +30,23 @@ class UnreadDigestJob < ApplicationJob
 
   def users_needing_digest
     # Users who:
-    # 1. Have at least one unread message subscription
-    # 2. Haven't visited their inbox since the oldest unread message
-    # 3. Haven't received a digest email in the throttle period (or never)
-    # 4. The oldest unread message is older than INITIAL_DELAY
+    # 1. Have message digests enabled
+    # 2. Have at least one unread message subscription
+    # 3. Haven't received a digest email in their current throttle period (or never)
 
     # Find users with unread messages (never read OR have updates since last read)
     # Using a single query structure to avoid .or() incompatibility
     User
+      .where(message_digest_enabled: true)
       .joins(:message_subscriptions)
       .joins("INNER JOIN messages ON messages.id = message_subscriptions.message_id")
       .where(
         "message_subscriptions.last_read_at IS NULL OR messages.updated_at > message_subscriptions.last_read_at"
       )
-      .where("users.last_unread_digest_sent_at IS NULL OR users.last_unread_digest_sent_at < ?", THROTTLE_PERIOD.ago)
+      .where(
+        "users.last_unread_digest_sent_at IS NULL OR " \
+        "users.last_unread_digest_sent_at < NOW() - (users.digest_throttle_days || ' days')::interval"
+      )
       .distinct
   end
 
@@ -59,13 +63,31 @@ class UnreadDigestJob < ApplicationJob
       return
     end
 
+    # Adjust throttle based on whether user checked inbox after last digest
+    adjust_throttle(user)
+
     # Send the digest
     MessageNotificationMailer.unread_digest(user: user, unread_threads: unread_threads).deliver_later
 
     # Update tracking
     user.update!(last_unread_digest_sent_at: Time.current)
 
-    Rails.logger.info "[UnreadDigestJob] Sent digest to #{user.email_address} with #{unread_threads.size} threads"
+    Rails.logger.info "[UnreadDigestJob] Sent digest to #{user.email_address} with #{unread_threads.size} threads (throttle: #{user.digest_throttle_days} days)"
+  end
+
+  def adjust_throttle(user)
+    # If this is the first digest ever, keep baseline
+    return if user.last_unread_digest_sent_at.nil?
+
+    # Check if user visited inbox since last digest was sent
+    if user.last_inbox_visit_at.present? && user.last_inbox_visit_at > user.last_unread_digest_sent_at
+      # User is engaged - reset to baseline frequency
+      user.update!(digest_throttle_days: 1)
+    else
+      # User didn't check - back off by doubling, up to max
+      new_throttle = [ user.digest_throttle_days * 2, MAX_THROTTLE_DAYS ].min
+      user.update!(digest_throttle_days: new_throttle)
+    end
   end
 
   def collect_unread_threads(user)

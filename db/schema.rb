@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_05_163437) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_07_215457) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "pg_stat_statements"
-  enable_extension "pgcrypto"
-  enable_extension "plpgsql"
+  enable_extension "extensions.pg_stat_statements"
+  enable_extension "extensions.pgcrypto"
+  enable_extension "extensions.uuid-ossp"
+  enable_extension "pg_catalog.plpgsql"
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -1952,6 +1953,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_05_163437) do
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "default_person_id"
+    t.integer "digest_throttle_days", default: 1, null: false
     t.jsonb "dismissed_announcements", default: [], null: false
     t.string "email_address", null: false
     t.datetime "email_changed_at"
