@@ -12,10 +12,10 @@
 
 ActiveRecord::Schema[8.1].define(version: 2026_02_07_215457) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "extensions.pg_stat_statements"
-  enable_extension "extensions.pgcrypto"
-  enable_extension "extensions.uuid-ossp"
-  enable_extension "pg_catalog.plpgsql"
+  enable_extension "plpgsql"
+  enable_extension "pg_stat_statements"
+  enable_extension "pgcrypto"
+  enable_extension "uuid-ossp"
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
     t.datetime "created_at", null: false
