@@ -96,19 +96,62 @@ export default class extends Controller {
 
         item.dataset.bookingIndex = this.bookingIndex++
 
-        // Pre-select default location and populate spaces
         const locationSelect = clone.querySelector('[data-field="location_id"]')
         const spaceSelect = clone.querySelector('[data-field="space_id"]')
-        if (locationSelect && this.defaultLocationIdValue) {
-            locationSelect.value = this.defaultLocationIdValue
-            if (spaceSelect) {
-                this.updateSpaceDropdown(spaceSelect, this.defaultLocationIdValue)
+        const startsAtInput = clone.querySelector('[data-field="starts_at"]')
+        const durationSelect = clone.querySelector('[data-field="duration"]')
+
+        // Look for the last single event in the list to copy values from
+        const existingItems = this.bookingsListTarget.querySelectorAll('.booking-item[data-booking-type="single"]')
+        const lastItem = existingItems.length > 0 ? existingItems[existingItems.length - 1] : null
+
+        if (lastItem) {
+            const lastLocationId = lastItem.querySelector('[data-field="location_id"]')?.value
+            const lastSpaceId = lastItem.querySelector('[data-field="space_id"]')?.value
+            const lastStartsAt = lastItem.querySelector('[data-field="starts_at"]')?.value
+            const lastDuration = lastItem.querySelector('[data-field="duration"]')?.value
+
+            // Copy location and populate spaces
+            if (locationSelect && lastLocationId) {
+                locationSelect.value = lastLocationId
+                if (spaceSelect) {
+                    this.updateSpaceDropdown(spaceSelect, lastLocationId)
+                    if (lastSpaceId) spaceSelect.value = lastSpaceId
+                }
+            }
+
+            // Copy duration
+            if (durationSelect && lastDuration) {
+                durationSelect.value = lastDuration
+            }
+
+            // Copy date/time + 1 day
+            if (startsAtInput && lastStartsAt) {
+                const lastDate = new Date(lastStartsAt)
+                if (!isNaN(lastDate.getTime())) {
+                    lastDate.setDate(lastDate.getDate() + 1)
+                    // Format as datetime-local value: YYYY-MM-DDTHH:MM
+                    const year = lastDate.getFullYear()
+                    const month = String(lastDate.getMonth() + 1).padStart(2, '0')
+                    const day = String(lastDate.getDate()).padStart(2, '0')
+                    const hours = String(lastDate.getHours()).padStart(2, '0')
+                    const minutes = String(lastDate.getMinutes()).padStart(2, '0')
+                    startsAtInput.value = `${year}-${month}-${day}T${hours}:${minutes}`
+                }
+            }
+        } else {
+            // No previous event — use default location
+            if (locationSelect && this.defaultLocationIdValue) {
+                locationSelect.value = this.defaultLocationIdValue
+                if (spaceSelect) {
+                    this.updateSpaceDropdown(spaceSelect, this.defaultLocationIdValue)
+                }
             }
         }
 
         this.bookingsListTarget.appendChild(clone)
 
-        // Focus the date/time input since location is pre-selected
+        // Focus the date/time input so user can adjust
         const dateTimeInput = this.bookingsListTarget.lastElementChild.querySelector('[data-field="starts_at"]')
         if (dateTimeInput) dateTimeInput.focus()
     }
