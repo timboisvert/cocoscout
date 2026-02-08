@@ -10,9 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_07_215457) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_08_000000) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
+  enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
   enable_extension "pgcrypto"
   enable_extension "uuid-ossp"
@@ -610,6 +610,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_215457) do
     t.string "state"
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_locations_on_organization_id"
+  end
+
+  create_table "message_poll_options", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "message_poll_id", null: false
+    t.integer "position", default: 0, null: false
+    t.string "text", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_poll_id", "position"], name: "index_message_poll_options_on_message_poll_id_and_position"
+    t.index ["message_poll_id"], name: "index_message_poll_options_on_message_poll_id"
+  end
+
+  create_table "message_poll_votes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "message_poll_option_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["message_poll_option_id", "user_id"], name: "idx_poll_votes_unique", unique: true
+    t.index ["message_poll_option_id"], name: "index_message_poll_votes_on_message_poll_option_id"
+    t.index ["user_id"], name: "index_message_poll_votes_on_user_id"
+  end
+
+  create_table "message_polls", force: :cascade do |t|
+    t.boolean "anonymous", default: false, null: false
+    t.boolean "closed", default: false, null: false
+    t.datetime "closes_at"
+    t.datetime "created_at", null: false
+    t.integer "max_votes", default: 1, null: false
+    t.bigint "message_id", null: false
+    t.string "question", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id"], name: "index_message_polls_on_message_id", unique: true
   end
 
   create_table "message_reactions", force: :cascade do |t|
@@ -2041,6 +2073,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_215457) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "message_poll_options", "message_polls"
+  add_foreign_key "message_poll_votes", "message_poll_options"
+  add_foreign_key "message_poll_votes", "users"
+  add_foreign_key "message_polls", "messages"
   add_foreign_key "message_reactions", "messages"
   add_foreign_key "message_reactions", "users"
   add_foreign_key "message_recipients", "messages"

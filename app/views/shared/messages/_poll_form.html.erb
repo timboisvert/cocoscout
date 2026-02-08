@@ -1,0 +1,136 @@
+<%#
+  Poll Composer - Add a poll to a composed message
+
+  Includes an "Add Poll" toggle button and an expandable poll form section
+  with question input, options list, and multiple-vote settings.
+
+  Usage: render "shared/messages/poll_form"
+%>
+
+<div data-controller="poll-composer">
+  <%# Toggle button - shows when poll section is hidden %>
+  <div data-poll-composer-target="toggleButton">
+    <%= render "shared/button",
+        text: "Add a poll",
+        variant: "ghost",
+        size: "small",
+        icon: "list",
+        type: :button,
+        data: { action: "click->poll-composer#toggle" } %>
+  </div>
+
+  <%# Poll form section - hidden by default %>
+  <div data-poll-composer-target="section" class="hidden">
+    <div class="rounded-xl border border-pink-200 bg-pink-50/30 p-4 space-y-4">
+      <%# Header with remove button %>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
+            <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          </div>
+          <span class="text-sm font-semibold text-gray-700">Poll</span>
+        </div>
+        <button type="button"
+                class="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                data-action="click->poll-composer#removePoll"
+                title="Remove poll">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <%# Question %>
+      <div>
+        <input type="text"
+               name="message_poll[question]"
+               data-poll-composer-target="question"
+               placeholder="Ask a question..."
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors font-medium">
+      </div>
+
+      <%# Options list %>
+      <div class="space-y-2" data-poll-composer-target="optionsList">
+        <%# Default Option 1 %>
+        <div class="flex items-center gap-2 group" data-poll-composer-target="optionItem">
+          <div class="flex-1 relative">
+            <input type="text"
+                   name="message_poll[message_poll_options_attributes][0][text]"
+                   placeholder="Option 1"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+            <input type="hidden"
+                   name="message_poll[message_poll_options_attributes][0][position]"
+                   value="0">
+          </div>
+          <button type="button"
+                  class="invisible opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all cursor-pointer"
+                  data-action="click->poll-composer#removeOption"
+                  title="Remove option">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <%# Default Option 2 %>
+        <div class="flex items-center gap-2 group" data-poll-composer-target="optionItem">
+          <div class="flex-1 relative">
+            <input type="text"
+                   name="message_poll[message_poll_options_attributes][1][text]"
+                   placeholder="Option 2"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+            <input type="hidden"
+                   name="message_poll[message_poll_options_attributes][1][position]"
+                   value="1">
+          </div>
+          <button type="button"
+                  class="invisible opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all cursor-pointer"
+                  data-action="click->poll-composer#removeOption"
+                  title="Remove option">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <%# Add option button %>
+      <%= render "shared/button",
+          text: "Add option",
+          variant: "ghost",
+          size: "small",
+          icon: "plus",
+          type: :button,
+          data: { action: "click->poll-composer#addOption" } %>
+
+      <%# Settings %>
+      <div class="border-t border-pink-200 pt-3 space-y-3">
+        <%# Max votes - hidden default that gets overridden when multiple votes enabled %>
+        <input type="hidden" name="message_poll[max_votes]" value="1" data-poll-composer-target="maxVotesHidden">
+
+        <%# Multiple votes toggle %>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox"
+                 data-poll-composer-target="multipleVotes"
+                 data-action="change->poll-composer#toggleMultipleVotes"
+                 class="h-4 w-4 rounded border-gray-300 accent-pink-500">
+          <span class="text-sm text-gray-700">Allow multiple votes</span>
+        </label>
+
+        <%# Max votes (shown when multiple votes enabled) %>
+        <div data-poll-composer-target="maxVotesWrapper" class="hidden flex items-center gap-2 ml-6">
+          <label class="text-sm text-gray-600">Max votes per person:</label>
+          <input type="number"
+                 name="message_poll[max_votes]"
+                 data-poll-composer-target="maxVotes"
+                 value="2"
+                 min="2"
+                 max="10"
+                 class="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

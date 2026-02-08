@@ -227,6 +227,11 @@
     <%= render "shared/messages/image_gallery", message: message, style: :lightbox %>
   <% end %>
 
+  <%# Poll %>
+  <% if message.message_poll.present? %>
+    <%= render "shared/messages/poll", poll: message.message_poll, message: message %>
+  <% end %>
+
   <%# Regarding Card (Show only) %>
   <% if show_regardable.present? %>
     <div class="px-4 pb-3">

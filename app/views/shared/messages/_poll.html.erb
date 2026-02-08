@@ -1,0 +1,143 @@
+<%#
+  Poll Display - Shows a poll within a message card
+
+  Renders the poll question, votable options with percentage bars,
+  vote counts, and the user's selections highlighted in pink.
+
+  Parameters:
+    poll: MessagePoll record (required)
+    message: Message record (required, for determining paths)
+%>
+
+<%
+  is_manage = controller.controller_path.start_with?("manage")
+  total_voters = poll.total_voters
+  user_vote_ids = Current.user ? poll.user_vote_option_ids(Current.user) : []
+  has_voted = user_vote_ids.any?
+  can_vote = Current.user && poll.can_vote?(Current.user)
+  is_creator = Current.user && poll.created_by?(Current.user)
+  show_results = has_voted || !poll.accepting_votes? || is_creator
+  vote_path = is_manage ? vote_poll_manage_message_path(message) : vote_poll_my_message_path(message)
+  close_path = is_manage ? close_poll_manage_message_path(message) : close_poll_my_message_path(message)
+%>
+
+<div id="poll_<%= poll.id %>" class="px-4 pb-3">
+  <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <%# Poll Header %>
+    <div class="px-4 py-3 bg-gradient-to-r from-pink-50 to-white border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
+            <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          </div>
+          <span class="text-sm font-semibold text-gray-900"><%= poll.question %></span>
+        </div>
+        <% if !poll.accepting_votes? %>
+          <span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Closed</span>
+        <% elsif poll.max_votes > 1 %>
+          <span class="text-xs text-gray-500">Select up to <%= poll.max_votes %></span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Options %>
+    <div class="p-4 space-y-2">
+      <% poll.message_poll_options.includes(:message_poll_votes).each do |option| %>
+        <% voted_for = user_vote_ids.include?(option.id) %>
+        <% percentage = option.vote_percentage(total_voters) %>
+        <% votes = option.votes_count %>
+
+        <% if show_results %>
+          <%# Results view - show bars with percentages %>
+          <% if poll.accepting_votes? && Current.user %>
+            <%# Clickable result bars (can toggle vote) %>
+            <%= button_to vote_path, method: :post, params: { option_id: option.id },
+                class: "w-full text-left cursor-pointer group",
+                data: { turbo_frame: "_top" } do %>
+              <div class="relative rounded-lg overflow-hidden border transition-colors
+                          <%= voted_for ? 'border-pink-300 bg-pink-50' : 'border-gray-200 hover:border-pink-200' %>">
+                <%# Background bar %>
+                <div class="absolute inset-0 <%= voted_for ? 'bg-pink-100' : 'bg-gray-100' %> transition-all"
+                     style="width: <%= percentage %>%"></div>
+                <%# Content %>
+                <div class="relative flex items-center justify-between px-3 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <% if voted_for %>
+                      <svg class="w-4 h-4 text-pink-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    <% end %>
+                    <span class="text-sm font-medium <%= voted_for ? 'text-pink-700' : 'text-gray-700' %>">
+                      <%= option.text %>
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500"><%= votes %></span>
+                    <span class="text-sm font-semibold <%= voted_for ? 'text-pink-600' : 'text-gray-600' %>">
+                      <%= percentage %>%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <%# Static result bars (poll closed or not logged in) %>
+            <div class="relative rounded-lg overflow-hidden border
+                        <%= voted_for ? 'border-pink-300 bg-pink-50' : 'border-gray-200' %>">
+              <div class="absolute inset-0 <%= voted_for ? 'bg-pink-100' : 'bg-gray-100' %> transition-all"
+                   style="width: <%= percentage %>%"></div>
+              <div class="relative flex items-center justify-between px-3 py-2.5">
+                <div class="flex items-center gap-2">
+                  <% if voted_for %>
+                    <svg class="w-4 h-4 text-pink-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  <% end %>
+                  <span class="text-sm font-medium <%= voted_for ? 'text-pink-700' : 'text-gray-700' %>">
+                    <%= option.text %>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500"><%= votes %></span>
+                  <span class="text-sm font-semibold <%= voted_for ? 'text-pink-600' : 'text-gray-600' %>">
+                    <%= percentage %>%
+                  </span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+        <% else %>
+          <%# Voting view - clean buttons to vote %>
+          <%= button_to vote_path, method: :post, params: { option_id: option.id },
+              class: "w-full text-left cursor-pointer",
+              data: { turbo_frame: "_top" } do %>
+            <div class="rounded-lg border border-gray-200 px-3 py-2.5 hover:border-pink-300 hover:bg-pink-50/50 transition-colors">
+              <span class="text-sm font-medium text-gray-700"><%= option.text %></span>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%# Footer - vote count and close button %>
+    <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+      <span class="text-xs text-gray-500">
+        <%= total_voters %> <%= "vote".pluralize(total_voters) %>
+        <% if poll.closes_at.present? && poll.accepting_votes? %>
+          · Closes <%= time_ago_in_words(poll.closes_at) %> from now
+        <% end %>
+      </span>
+
+      <% if is_creator && poll.accepting_votes? %>
+        <%= button_to close_path, method: :post,
+            class: "text-xs font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer",
+            data: { turbo_frame: "_top", turbo_confirm: "Close this poll? No more votes will be accepted." } do %>
+          Close Poll
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

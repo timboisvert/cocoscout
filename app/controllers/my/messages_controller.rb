@@ -15,7 +15,7 @@ class My::MessagesController < ApplicationController
 
     # Base query - show root messages for threads user is subscribed to
     @messages = Current.user.subscribed_message_threads
-                           .includes(:sender, :message_recipients, :child_messages, :production, :show, images_attachments: :blob)
+                           .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
 
     # Apply filters
     case @filter
@@ -57,7 +57,7 @@ class My::MessagesController < ApplicationController
     # Get messages for this production that user is subscribed to
     @messages = Current.user.subscribed_message_threads
                            .where(production: @production)
-                           .includes(:sender, :message_recipients, :child_messages, :show, images_attachments: :blob)
+                           .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
                            .order(updated_at: :desc)
 
     @pagy, @messages = pagy(@messages, items: 25)
@@ -86,7 +86,7 @@ class My::MessagesController < ApplicationController
 
     # Load all messages in thread (root + descendants)
     @thread_messages = Message.where(id: [ @root_message.id ] + @root_message.descendant_ids)
-                              .includes(:sender, :message_recipients)
+                              .includes(:sender, :message_recipients, message_poll: :message_poll_options)
                               .order(:created_at)
   end
 
@@ -207,6 +207,63 @@ class My::MessagesController < ApplicationController
     else
       redirect_to my_message_path(root), notice: "Reply deleted"
     end
+  end
+
+  # POST /my/messages/:id/vote_poll
+  def vote_poll
+    message = Message.find(params[:id])
+    root_message = message.root_message
+
+    unless root_message.subscribed?(Current.user)
+      redirect_to my_messages_path, alert: "You don't have access to this message"
+      return
+    end
+
+    poll = message.message_poll
+    unless poll
+      redirect_back fallback_location: my_messages_path, alert: "No poll found"
+      return
+    end
+
+    option = poll.message_poll_options.find_by(id: params[:option_id])
+    unless option
+      redirect_back fallback_location: my_message_path(root_message), alert: "Invalid poll option"
+      return
+    end
+
+    unless poll.accepting_votes?
+      redirect_back fallback_location: my_message_path(root_message), alert: "This poll is closed"
+      return
+    end
+
+    existing_vote = option.message_poll_votes.find_by(user: Current.user)
+    if existing_vote
+      # Toggle off - remove vote
+      existing_vote.destroy!
+    else
+      # Add vote (max_votes validated in model)
+      vote = option.message_poll_votes.new(user: Current.user)
+      unless vote.save
+        redirect_back fallback_location: my_message_path(root_message), alert: vote.errors.full_messages.first
+        return
+      end
+    end
+
+    redirect_back fallback_location: my_message_path(root_message)
+  end
+
+  # POST /my/messages/:id/close_poll
+  def close_poll
+    message = Message.find(params[:id])
+    poll = message.message_poll
+
+    unless poll && poll.created_by?(Current.user)
+      redirect_back fallback_location: my_messages_path, alert: "Only the poll creator can close it"
+      return
+    end
+
+    poll.close!
+    redirect_back fallback_location: my_message_path(message.root_message), notice: "Poll closed"
   end
 
   private

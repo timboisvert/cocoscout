@@ -20,6 +20,10 @@ class Message < ApplicationRecord
   # Reactions
   has_many :message_reactions, dependent: :destroy
 
+  # Poll
+  has_one :message_poll, dependent: :destroy
+  accepts_nested_attributes_for :message_poll, reject_if: proc { |attrs| attrs["question"].blank? }
+
   # Multi-regarding support (additional context objects)
   has_many :message_regards, dependent: :destroy
 

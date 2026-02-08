@@ -434,6 +434,15 @@ export default class extends Controller {
                 sendSeparatelyCheckbox.checked = false
             }
 
+            // Reset poll section via its Stimulus controller
+            const pollComposerEl = modal.querySelector('[data-controller="poll-composer"]')
+            if (pollComposerEl) {
+                const pollController = this.application.getControllerForElementAndIdentifier(pollComposerEl, 'poll-composer')
+                if (pollController) {
+                    pollController.removePoll()
+                }
+            }
+
             // Reset submit button text
             const submitButton = modal.querySelector('[data-compose-message-target="submitButton"]')
             if (submitButton) {

@@ -162,6 +162,8 @@ Rails.application.routes.draw do
         post :mute
         post :unmute
         post "react/:emoji", action: :react, as: :react
+        post :vote_poll
+        post :close_poll
         delete :destroy
       end
       collection do
@@ -268,6 +270,8 @@ Rails.application.routes.draw do
       member do
         post :reply
         post "react/:emoji", action: :react, as: :react
+        post :vote_poll
+        post :close_poll
         delete :destroy
       end
       collection do

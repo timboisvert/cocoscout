@@ -35,7 +35,7 @@ module Manage
           "private", "User", Current.user.id,
           "private", private_received_ids
         )
-        .includes(:sender, :message_recipients, :child_messages, :production, :show, images_attachments: :blob)
+        .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
 
       # Apply filters
       case @filter
@@ -90,7 +90,7 @@ module Manage
           "private", "User", Current.user.id,
           "private", private_received_ids
         )
-        .includes(:sender, :message_recipients, :child_messages, :show, images_attachments: :blob)
+        .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
         .order(updated_at: :desc)
         .limit(100)
 
@@ -113,7 +113,7 @@ module Manage
 
       # Load all messages in thread
       @thread_messages = Message.where(id: [ @root_message.id ] + @root_message.descendant_ids)
-                                .includes(:sender, :message_recipients)
+                                .includes(:sender, :message_recipients, message_poll: :message_poll_options)
                                 .order(:created_at)
     end
 
@@ -142,6 +142,7 @@ module Manage
           organization: Current.organization
         )
         message&.images&.attach(images) if images.present?
+        attach_poll!(message) if poll_params_present?
         redirect_to manage_messages_path, notice: "Message sent to #{person.name}"
 
       when "group"
@@ -155,6 +156,7 @@ module Manage
           production: production
         )
         message&.images&.attach(images) if images.present?
+        attach_poll!(message) if poll_params_present?
         redirect_to manage_messages_path, notice: "Message sent to #{group.name}"
 
       when "show_cast"
@@ -166,6 +168,7 @@ module Manage
           body: body
         )
         message&.images&.attach(images) if images.present?
+        attach_poll!(message) if poll_params_present?
         redirect_to manage_messages_path, notice: "Message sent to #{show.display_name} cast"
 
       when "talent_pool"
@@ -193,6 +196,7 @@ module Manage
           organization: Current.organization
         )
         message&.images&.attach(images) if images.present?
+        attach_poll!(message) if poll_params_present?
         redirect_to manage_messages_path, notice: "Message sent to #{people.count} #{'member'.pluralize(people.count)} in #{talent_pool.name}"
 
       when "batch"
@@ -247,6 +251,7 @@ module Manage
             organization: Current.organization
           )
           message&.images&.attach(images) if images.present?
+          attach_poll!(message) if poll_params_present?
           redirect_to manage_messages_path, notice: "Message sent to #{people_to_message.count} #{'recipient'.pluralize(people_to_message.count)}."
         end
 
@@ -331,10 +336,87 @@ module Manage
       end
     end
 
+    # POST /manage/messages/:id/vote_poll
+    def vote_poll
+      message = Message.find(params[:id])
+      poll = message.message_poll
+
+      unless poll
+        redirect_back fallback_location: manage_messages_path, alert: "No poll found"
+        return
+      end
+
+      option = poll.message_poll_options.find_by(id: params[:option_id])
+      unless option
+        redirect_back fallback_location: manage_message_path(message.root_message), alert: "Invalid poll option"
+        return
+      end
+
+      unless poll.accepting_votes?
+        redirect_back fallback_location: manage_message_path(message.root_message), alert: "This poll is closed"
+        return
+      end
+
+      existing_vote = option.message_poll_votes.find_by(user: Current.user)
+      if existing_vote
+        # Toggle off - remove vote
+        existing_vote.destroy!
+      else
+        # Add vote (max_votes validated in model)
+        vote = option.message_poll_votes.new(user: Current.user)
+        unless vote.save
+          redirect_back fallback_location: manage_message_path(message.root_message), alert: vote.errors.full_messages.first
+          return
+        end
+      end
+
+      redirect_back fallback_location: manage_message_path(message.root_message)
+    end
+
+    # POST /manage/messages/:id/close_poll
+    def close_poll
+      message = Message.find(params[:id])
+      poll = message.message_poll
+
+      unless poll && poll.created_by?(Current.user)
+        redirect_back fallback_location: manage_messages_path, alert: "Only the poll creator can close it"
+        return
+      end
+
+      poll.close!
+      redirect_back fallback_location: manage_message_path(message.root_message), notice: "Poll closed"
+    end
+
     private
 
     def message_not_found
       redirect_to manage_messages_path, alert: "Message not found"
+    end
+
+    def poll_params_present?
+      params[:message_poll].present? && params[:message_poll][:question].present?
+    end
+
+    def attach_poll!(message)
+      return unless message && poll_params_present?
+
+      poll_attrs = params.require(:message_poll).permit(
+        :question, :max_votes,
+        message_poll_options_attributes: [ :text, :position ]
+      ).to_h
+
+      # Default max_votes to 1 if not set
+      poll_attrs["max_votes"] ||= 1
+
+      # Filter out blank options
+      if poll_attrs["message_poll_options_attributes"]
+        poll_attrs["message_poll_options_attributes"] = poll_attrs["message_poll_options_attributes"]
+          .values
+          .reject { |opt| opt["text"].blank? }
+          .each_with_index.map { |opt, i| opt.merge("position" => i) }
+      end
+
+      message.create_message_poll!(poll_attrs)
     end
   end
 end
