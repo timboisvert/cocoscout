@@ -309,16 +309,24 @@ module Manage
       removed_payment_ids = @amend_data["removed_payment_ids"] || []
 
       success = @contract.transaction do
-        # Remove rentals
-        @contract.space_rentals.where(id: removed_rental_ids).destroy_all if removed_rental_ids.any?
+        # Remove rentals and their associated shows
+        if removed_rental_ids.any?
+          Show.where(space_rental_id: removed_rental_ids).destroy_all
+          @contract.space_rentals.where(id: removed_rental_ids).destroy_all
+        end
 
-        # Add new bookings as space_rentals
+        # Find the production for this contract (needed to create shows)
+        production = @contract.productions.first
+        prod_data = @contract.draft_data["production"] || {}
+        event_type = prod_data["event_type"].presence || "show"
+
+        # Add new bookings as space_rentals AND create corresponding shows
         new_bookings.each do |booking|
           starts_at = Time.zone.parse(booking["starts_at"])
           duration_hours = (booking["duration"] || 2).to_f
           ends_at = starts_at + duration_hours.hours
 
-          @contract.space_rentals.create!(
+          rental = @contract.space_rentals.create!(
             location_id: booking["location_id"],
             location_space_id: booking["space_id"].presence,
             starts_at: starts_at,
@@ -326,6 +334,17 @@ module Manage
             notes: booking["notes"],
             confirmed: true
           )
+
+          # Create a show for the new rental so it appears in Shows & Events
+          if production
+            production.shows.create!(
+              date_and_time: rental.starts_at,
+              location: rental.location,
+              location_space: rental.location_space,
+              space_rental: rental,
+              event_type: event_type
+            )
+          end
         end
 
         # Remove payments
