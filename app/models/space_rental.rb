@@ -57,12 +57,17 @@ class SpaceRental < ApplicationRecord
     return if starts_at.blank? || ends_at.blank?
     return if location_space_id.blank? # Skip overlap check for entire venue bookings
 
+    # Use a 1-minute buffer to allow back-to-back bookings (e.g., one ends at 6 PM,
+    # another starts at 6 PM). Without this, microsecond precision differences
+    # could cause exact-boundary events to be flagged as overlapping.
+    buffer = 1.minute
+
     overlapping = SpaceRental
       .joins(:contract)
       .where(location_space_id: location_space_id)
       .where.not(id: id)
       .where.not(contracts: { status: "cancelled" })
-      .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", ends_at, starts_at)
+      .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", ends_at - buffer, starts_at + buffer)
 
     if overlapping.any?
       # Build detailed error message with specific conflict times
@@ -75,6 +80,21 @@ class SpaceRental < ApplicationRecord
       end
 
       errors.add(:base, "This time slot overlaps with existing rentals: #{conflict_details}")
+    end
+
+    # Also check for non-contract shows (shows without a space_rental) at the same space.
+    # Shows only have date_and_time (no end time), so check if any show starts during this rental.
+    conflicting_shows = Show
+      .where(location_space_id: location_space_id, canceled: false)
+      .where(space_rental_id: nil)
+      .where("date_and_time > ? AND date_and_time < ?", starts_at + buffer, ends_at - buffer)
+
+    if conflicting_shows.any?
+      show_details = conflicting_shows.limit(3).map do |show|
+        "#{show.display_name} on #{show.date_and_time.strftime('%b %-d at %-I:%M %p')}"
+      end.join(", ")
+
+      errors.add(:base, "This time slot conflicts with existing events: #{show_details}")
     end
   end
 end
