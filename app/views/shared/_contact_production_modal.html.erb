@@ -93,8 +93,11 @@
               placeholder: "Write your message here..." %>
         </div>
 
-        <%# Image Attachments %>
-        <%= render "shared/image_dropzone", size: "medium" %>
+        <%# Image Attachments & Poll - buttons side by side, expanded panels full width below %>
+        <div class="-mt-3 flex flex-wrap items-start gap-2">
+          <%= render "shared/image_dropzone", size: "medium" %>
+          <%= render "shared/messages/poll_form" %>
+        </div>
 
         <%# Actions %>
         <div class="flex items-center justify-end gap-3 pt-2">

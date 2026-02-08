@@ -91,6 +91,24 @@ export default class extends Controller {
             if (this.hasFormTarget) {
                 this.formTarget.reset()
             }
+
+            // Reset poll section via its Stimulus controller
+            const pollComposerEl = this.modalTarget.querySelector('[data-controller="poll-composer"]')
+            if (pollComposerEl) {
+                const pollController = this.application.getControllerForElementAndIdentifier(pollComposerEl, 'poll-composer')
+                if (pollController) {
+                    pollController.removePoll()
+                }
+            }
+
+            // Reset image dropzone via its Stimulus controller
+            const dropzoneEl = this.modalTarget.querySelector('[data-controller="image-dropzone"]')
+            if (dropzoneEl) {
+                const dropzoneController = this.application.getControllerForElementAndIdentifier(dropzoneEl, 'image-dropzone')
+                if (dropzoneController) {
+                    dropzoneController.close()
+                }
+            }
         }
     }
 

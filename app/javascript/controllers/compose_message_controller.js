@@ -443,6 +443,15 @@ export default class extends Controller {
                 }
             }
 
+            // Reset image dropzone via its Stimulus controller
+            const dropzoneEl = modal.querySelector('[data-controller="image-dropzone"]')
+            if (dropzoneEl) {
+                const dropzoneController = this.application.getControllerForElementAndIdentifier(dropzoneEl, 'image-dropzone')
+                if (dropzoneController) {
+                    dropzoneController.close()
+                }
+            }
+
             // Reset submit button text
             const submitButton = modal.querySelector('[data-compose-message-target="submitButton"]')
             if (submitButton) {

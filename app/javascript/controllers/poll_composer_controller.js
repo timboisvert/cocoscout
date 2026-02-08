@@ -31,6 +31,7 @@ export default class extends Controller {
         if (isHidden) {
             section.classList.remove("hidden")
             this.toggleButtonTarget.classList.add("hidden")
+            this.element.classList.add("w-full")
             // Focus the question input
             setTimeout(() => this.questionTarget.focus(), 100)
         } else {
@@ -41,6 +42,7 @@ export default class extends Controller {
     removePoll() {
         this.sectionTarget.classList.add("hidden")
         this.toggleButtonTarget.classList.remove("hidden")
+        this.element.classList.remove("w-full")
 
         // Reset form fields
         this.questionTarget.value = ""

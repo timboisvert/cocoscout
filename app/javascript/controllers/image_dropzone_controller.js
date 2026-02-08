@@ -137,9 +137,39 @@ export default class extends Controller {
             if (this.hasToggleButtonTarget) {
                 if (isHidden) {
                     this.toggleButtonTarget.classList.add('hidden')
+                    this.element.classList.add('w-full')
                 }
             }
         }
+    }
+
+    close(event) {
+        event?.preventDefault()
+        event?.stopPropagation()
+
+        // Clear files
+        this.files = []
+        if (this.hasInputTarget) {
+            this.inputTarget.value = ''
+        }
+
+        // Reset previews
+        if (this.hasPreviewsTarget) {
+            this.previewsTarget.innerHTML = ''
+            this.previewsTarget.classList.add('hidden')
+        }
+        if (this.hasPlaceholderTarget) {
+            this.placeholderTarget.classList.remove('hidden')
+        }
+
+        // Hide dropzone, show toggle button
+        if (this.hasDropzoneTarget) {
+            this.dropzoneTarget.classList.add('hidden')
+        }
+        if (this.hasToggleButtonTarget) {
+            this.toggleButtonTarget.classList.remove('hidden')
+        }
+        this.element.classList.remove('w-full')
     }
 
     show() {
@@ -149,6 +179,7 @@ export default class extends Controller {
         if (this.hasToggleButtonTarget) {
             this.toggleButtonTarget.classList.add('hidden')
         }
+        this.element.classList.add('w-full')
     }
 
     hide() {
@@ -157,6 +188,9 @@ export default class extends Controller {
         }
         if (this.hasToggleButtonTarget && this.files.length === 0) {
             this.toggleButtonTarget.classList.remove('hidden')
+        }
+        if (this.files.length === 0) {
+            this.element.classList.remove('w-full')
         }
     }
 

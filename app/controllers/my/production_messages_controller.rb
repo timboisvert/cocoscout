@@ -22,6 +22,9 @@ class My::ProductionMessagesController < ApplicationController
     # Attach images if provided
     message&.images&.attach(images) if images.present?
 
+    # Attach poll if provided
+    attach_poll!(message) if poll_params_present?
+
     redirect_to my_messages_path, notice: "Message sent to #{@production.name} team"
   end
 
@@ -94,5 +97,31 @@ class My::ProductionMessagesController < ApplicationController
     end
 
     Production.where(id: production_ids)
+  end
+
+  def poll_params_present?
+    params[:message_poll].present? && params[:message_poll][:question].present?
+  end
+
+  def attach_poll!(message)
+    return unless message && poll_params_present?
+
+    poll_attrs = params.require(:message_poll).permit(
+      :question, :max_votes,
+      message_poll_options_attributes: [ :text, :position ]
+    ).to_h
+
+    # Default max_votes to 1 if not set
+    poll_attrs["max_votes"] ||= 1
+
+    # Filter out blank options
+    if poll_attrs["message_poll_options_attributes"]
+      poll_attrs["message_poll_options_attributes"] = poll_attrs["message_poll_options_attributes"]
+        .values
+        .reject { |opt| opt["text"].blank? }
+        .each_with_index.map { |opt, i| opt.merge("position" => i) }
+    end
+
+    message.create_message_poll!(poll_attrs)
   end
 end

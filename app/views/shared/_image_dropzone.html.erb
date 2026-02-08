@@ -26,7 +26,7 @@
   end
 %>
 
-<div data-controller="image-dropzone" class="-mt-2">
+<div data-controller="image-dropzone">
   <%# Hidden file input %>
   <input type="file"
          name="images[]"
@@ -49,23 +49,35 @@
 
   <%# Dropzone - hidden by default %>
   <div data-image-dropzone-target="dropzone"
-       data-action="dragover->image-dropzone#dragOver dragleave->image-dropzone#dragLeave drop->image-dropzone#drop click->image-dropzone#openFilePicker"
-       class="hidden mt-2 border-2 border-dashed border-gray-200 rounded-xl <%= dropzone_padding %> cursor-pointer hover:border-pink-400 hover:bg-pink-50/30 transition-all">
+       class="hidden mt-2 relative w-full">
+    <%# Close button %>
+    <button type="button"
+            class="absolute top-2 right-2 z-10 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-white/80 transition-colors cursor-pointer"
+            data-action="click->image-dropzone#close"
+            title="Remove images">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
 
-    <%# Placeholder content %>
-    <div data-image-dropzone-target="placeholder" class="flex flex-col items-center justify-center gap-2 text-gray-400">
-      <div class="<%= icon_size %> rounded-full bg-pink-50 flex items-center justify-center">
-        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
+    <div data-action="dragover->image-dropzone#dragOver dragleave->image-dropzone#dragLeave drop->image-dropzone#drop click->image-dropzone#openFilePicker"
+         class="border-2 border-dashed border-gray-200 rounded-xl <%= dropzone_padding %> cursor-pointer hover:border-pink-400 hover:bg-pink-50/30 transition-all">
+
+      <%# Placeholder content %>
+      <div data-image-dropzone-target="placeholder" class="flex flex-col items-center justify-center gap-2 text-gray-400">
+        <div class="<%= icon_size %> rounded-full bg-pink-50 flex items-center justify-center">
+          <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="text-center">
+          <p class="<%= text_size %> font-medium text-gray-600">Drop images here</p>
+          <p class="<%= subtext_size %> text-gray-400">or click to select files</p>
+        </div>
       </div>
-      <div class="text-center">
-        <p class="<%= text_size %> font-medium text-gray-600">Drop images here</p>
-        <p class="<%= subtext_size %> text-gray-400">or click to select files</p>
-      </div>
+
+      <%# Preview grid - uses flexbox for wrapping square thumbnails %>
+      <div data-image-dropzone-target="previews" class="hidden flex flex-wrap gap-2"></div>
     </div>
-
-    <%# Preview grid - uses flexbox for wrapping square thumbnails %>
-    <div data-image-dropzone-target="previews" class="hidden flex flex-wrap gap-2"></div>
   </div>
 </div>

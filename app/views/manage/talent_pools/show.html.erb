@@ -27,6 +27,26 @@
     links: []
   } %>
 
+  <%# Contact Talent Pool Button %>
+  <% talent_pool_members = @talent_pool.people.distinct %>
+  <% if talent_pool_members.any? %>
+    <div class="-mt-3 mb-4 flex items-center">
+      <div data-controller="compose-message"
+           data-compose-message-recipient-type-value="talent_pool"
+           data-compose-message-recipient-id-value="<%= @talent_pool.id %>"
+           data-compose-message-recipient-name-value="<%= pool_display_name %>"
+           data-compose-message-production-id-value="<%= @production.id %>"
+           data-compose-message-cast-members-value="<%= talent_pool_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
+        <%= render "shared/button",
+            text: "Contact Talent Pool",
+            variant: "primary",
+            size: "small",
+            type: :button,
+            data: { action: "click->compose-message#open" } %>
+      </div>
+    </div>
+  <% end %>
+
   <p class="text-sm text-gray-500 mb-4">The talent pool contains the people and groups available for casting in this production.</p>
 
   <div data-talent-pool-inline-target="membersList">
@@ -170,3 +190,5 @@
     </div>
   <% end %>
 </div>
+
+<%= render "shared/compose_message_modal" %>
