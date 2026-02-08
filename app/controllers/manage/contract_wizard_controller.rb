@@ -273,10 +273,14 @@ module Manage
         # Single event - just one booking
         return [] if rule["starts_at"].blank?
 
+        # Parse through Time.zone to ensure correct timezone (datetime-local inputs
+        # have no timezone info, so we must interpret them in the app's timezone)
+        parsed_starts_at = Time.zone.parse(rule["starts_at"])
+
         bookings << {
           "location_id" => rule["location_id"],
           "space_id" => rule["space_id"],
-          "starts_at" => rule["starts_at"],
+          "starts_at" => parsed_starts_at.iso8601,
           "duration" => rule["duration"] || "2",
           "notes" => rule["notes"]
         }
