@@ -42,7 +42,14 @@ hardcoded_patterns = [
   "%There has been a change to the casting for%"
 ]
 
-all_patterns = uninterpolated_patterns + hardcoded_patterns
+# Pattern D: Old template content (pre-rendered with old template before user updated it)
+# The current template does NOT have "Congratulations!" — if a message has it,
+# it was rendered from the old version of the template.
+old_template_patterns = [
+  "%Congratulations! You have been cast%"
+]
+
+all_patterns = uninterpolated_patterns + hardcoded_patterns + old_template_patterns
 
 affected_rich_texts = ActionText::RichText.where(record_type: "Message", name: "body")
   .where(
