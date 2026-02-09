@@ -1,5 +1,7 @@
 <% audition_session ||= AuditionSession.new %>
-<%= form_with(model: [:manage, @production, @audition_cycle, audition_session], class: "contents") do |form| %>
+<% form_url = audition_session.persisted? ? manage_update_signups_auditions_cycle_session_path(@production, @audition_cycle, audition_session) : manage_create_signups_auditions_cycle_session_path(@production, @audition_cycle) %>
+<% form_method = audition_session.persisted? ? :patch : :post %>
+<%= form_with(url: form_url, method: form_method, scope: :audition_session, class: "contents") do |form| %>
   <% if audition_session.errors.any? %>
     <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mb-3">
       <h2><%= pluralize(audition_session.errors.count, "error") %> prohibited this audition_session from being saved:</h2>

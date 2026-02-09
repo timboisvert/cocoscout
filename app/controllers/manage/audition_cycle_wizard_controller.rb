@@ -127,7 +127,7 @@ module Manage
 
       # Generate sessions
       @wizard_state[:audition_sessions] ||= []
-      current_time = Time.parse(start_at)
+      current_time = Time.zone.parse(start_at)
 
       count.times do |i|
         @wizard_state[:audition_sessions] << {
@@ -154,7 +154,7 @@ module Manage
 
       @wizard_state[:audition_sessions] ||= []
       @wizard_state[:audition_sessions] << {
-        start_at: Time.parse(start_at).iso8601,
+        start_at: Time.zone.parse(start_at).iso8601,
         duration_minutes: duration,
         location_id: location_id
       }
@@ -168,7 +168,7 @@ module Manage
       session_data = @wizard_state[:audition_sessions][index]
 
       if session_data
-        session_data[:start_at] = Time.parse(params[:start_at]).iso8601 if params[:start_at].present?
+        session_data[:start_at] = Time.zone.parse(params[:start_at]).iso8601 if params[:start_at].present?
         session_data[:duration_minutes] = params[:duration_minutes].to_i if params[:duration_minutes].present?
         session_data[:location_id] = params[:location_id] if params[:location_id].present?
         save_wizard_state
@@ -287,7 +287,7 @@ module Manage
           if @wizard_state[:allow_in_person_auditions] && @wizard_state[:audition_sessions].present?
             @wizard_state[:audition_sessions].each do |session_data|
               @audition_cycle.audition_sessions.create!(
-                start_at: Time.parse(session_data[:start_at]),
+                start_at: Time.zone.parse(session_data[:start_at]),
                 location_id: session_data[:location_id]
               )
             end
