@@ -15,7 +15,7 @@
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
 
-  <%= form_with(url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, class: "contents") do |form| %>
+  <%= form_with(model: @audition_cycle, url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, class: "contents") do |form| %>
 
     <%= render partial: "shared/top_menu", locals: {
       breadcrumbs: [],
