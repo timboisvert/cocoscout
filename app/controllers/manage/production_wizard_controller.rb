@@ -145,6 +145,12 @@ module Manage
     end
 
     def create_production
+      # Validate wizard state is present
+      if @wizard_state[:name].blank?
+        flash.now[:alert] = "Your wizard session has expired. Please start again."
+        render :review, status: :unprocessable_entity and return
+      end
+
       ActiveRecord::Base.transaction do
         # Create the production
         @production = Current.organization.productions.new(
@@ -195,22 +201,22 @@ module Manage
             )
           end
         end
-
-        # Clean up temp files
-        cleanup_temp_files
-
-        # Clear wizard state
-        clear_wizard_state
-
-        # Set production in session
-        session[:current_production_id_for_organization] ||= {}
-        session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
-
-        # Auto-dismiss welcome screen after creating first production
-        Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
-
-        redirect_to manage_production_path(@production), notice: "#{@production.name} has been created!"
       end
+
+      # Clean up temp files
+      cleanup_temp_files
+
+      # Clear wizard state
+      clear_wizard_state
+
+      # Set production in session
+      session[:current_production_id_for_organization] ||= {}
+      session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
+
+      # Auto-dismiss welcome screen after creating first production
+      Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
+
+      redirect_to manage_production_path(@production), notice: "#{@production.name} has been created!"
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_entity
@@ -225,16 +231,20 @@ module Manage
     private
 
     def load_wizard_state
-      @wizard_state = session[:production_wizard_state] || {}
+      @wizard_state = Rails.cache.read(wizard_cache_key) || {}
       @wizard_state = @wizard_state.with_indifferent_access
     end
 
     def save_wizard_state
-      session[:production_wizard_state] = @wizard_state
+      Rails.cache.write(wizard_cache_key, @wizard_state.to_h, expires_in: 24.hours)
     end
 
     def clear_wizard_state
-      session.delete(:production_wizard_state)
+      Rails.cache.delete(wizard_cache_key)
+    end
+
+    def wizard_cache_key
+      "production_wizard:#{Current.user.id}:#{Current.organization.id}"
     end
 
     def store_temp_file(uploaded_file)
@@ -302,7 +312,7 @@ module Manage
       day_of_week = recurring_params[:day_of_week].to_i
       time_str = recurring_params[:time] || "20:00"
       start_date = Date.parse(recurring_params[:start_date]) rescue Date.current
-      count = (recurring_params[:count] || 8).to_i
+      count = (recurring_params[:count] || 8).to_i.clamp(1, 104)
       location_id = recurring_params[:location_id]
 
       shows = []

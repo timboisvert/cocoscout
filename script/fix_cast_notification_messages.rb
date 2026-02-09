@@ -123,9 +123,14 @@ if confirmation == "yes"
       production = msg.production
       next unless production
 
-      # Try to find the matching ShowCastNotification records for better data
-      # These link to the specific shows, roles, and people notified
+      # Find the recipient of this message to look up their specific roles
+      recipient = msg.message_recipients.first&.recipient
+      next unless recipient
+
+      # Try to find the matching ShowCastNotification records for THIS recipient
+      # These link to the specific shows and roles this person was cast in
       scns = ShowCastNotification.where(notification_type: :cast)
+        .where(assignable: recipient)
         .where("notified_at BETWEEN ? AND ?", msg.created_at - 1.minute, msg.created_at + 1.minute)
         .joins(:show).where(shows: { production_id: production.id })
 

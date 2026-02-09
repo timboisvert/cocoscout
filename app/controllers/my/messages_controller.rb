@@ -80,8 +80,13 @@ class My::MessagesController < ApplicationController
     subscription&.mark_read!
 
     # Also mark as read for the user's person if they're a recipient
-    if Current.user.person
-      @root_message.mark_read_for!(Current.user.person)
+    # A user can have multiple Person records (one per org), so find the one
+    # that's actually a recipient on this message
+    if Current.user.people.any?
+      recipient_person = @root_message.message_recipients
+                          .where(recipient_type: "Person", recipient_id: Current.user.people.select(:id))
+                          .first&.recipient
+      recipient_person&.then { |p| @root_message.mark_read_for!(p) }
     end
 
     # Load all messages in thread (root + descendants)

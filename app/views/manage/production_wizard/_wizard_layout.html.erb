@@ -1,7 +1,7 @@
 <% content_for :title, "Create Production - #{step_name}" %>
 
 <div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
