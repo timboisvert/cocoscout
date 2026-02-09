@@ -1439,7 +1439,7 @@ module Manage
       if people.size > 1
         email_batch = EmailBatch.create!(
           user: Current.user,
-          subject: email_subject || "Show Canceled",
+          subject: email_subject || ContentTemplateService.render_subject("show_canceled", { production_name: @production.name }),
           recipient_count: people.size,
           sent_at: Time.current
         )

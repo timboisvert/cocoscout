@@ -10,8 +10,8 @@ module Manage
 
       headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
 
-      # Use provided subject or fall back to default
-      email_subject = subject.presence || "Audition Results for #{production.name}"
+      # Use provided subject or fall back to template
+      email_subject = subject.presence || ContentTemplateService.render_subject("audition_added_to_cast", { production_name: production.name })
 
       mail(
         to: person.email,
@@ -29,7 +29,7 @@ module Manage
 
       mail(
         to: person.email,
-        subject: "#{production.name} Auditions"
+        subject: ContentTemplateService.render_subject("audition_invitation", { production_name: production.name })
       )
     end
 
@@ -42,7 +42,7 @@ module Manage
 
       mail(
         to: recipient_user.email_address,
-        subject: "New audition request from #{@requestable.name} for #{@production.name}"
+        subject: ContentTemplateService.render_subject("audition_request_submitted", { requestable_name: @requestable.name, production_name: @production.name })
       )
     end
 
@@ -54,7 +54,7 @@ module Manage
 
       mail(
         to: recipient_user.email_address,
-        subject: "#{@person.name} has left #{@production.name}'s talent pool"
+        subject: ContentTemplateService.render_subject("talent_left_production", { person_name: @person.name, production_name: @production.name })
       )
     end
 

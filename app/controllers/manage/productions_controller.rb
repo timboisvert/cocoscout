@@ -238,30 +238,25 @@ module Manage
         return
       end
 
-      # Create a bulk message to unsigned performers about the agreement
+      # Render agreement reminder from content template
+      agreement_url = Rails.application.routes.url_helpers.my_production_agreement_url(@production, host: Rails.application.config.action_mailer.default_url_options[:host])
+
+      rendered = ContentTemplateService.render("request_agreement_signature", {
+        recipient_name: "everyone",
+        production_name: @production.name,
+        agreement_url: agreement_url
+      })
+
       conversation = Conversation.create!(
         organization: @production.organization,
         created_by: Current.user,
-        subject: "Agreement Signature Required: #{@production.name}",
+        subject: rendered[:subject],
         message_type: :announcement
       )
 
-      agreement_url = Rails.application.routes.url_helpers.my_production_agreement_url(@production, host: Rails.application.config.action_mailer.default_url_options[:host])
-
-      body = <<~MESSAGE
-        Hi,
-
-        This is a reminder that you need to sign the performer agreement for **#{@production.name}** to be eligible for casting.
-
-        Please review and sign the agreement here:
-        #{agreement_url}
-
-        Thank you!
-      MESSAGE
-
       message = conversation.messages.create!(
         sender: Current.person,
-        body: body
+        body: rendered[:body]
       )
 
       # Add all unsigned people as participants

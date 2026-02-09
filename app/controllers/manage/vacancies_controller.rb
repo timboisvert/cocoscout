@@ -151,7 +151,7 @@ module Manage
       if eligible_people.size > 1
         email_batch = EmailBatch.create!(
           user: Current.user,
-          subject: email_subject || "You're invited to fill a role in #{@production.name}",
+          subject: email_subject || ContentTemplateService.render_subject("vacancy_invitation", { production_name: @production.name }),
           recipient_count: eligible_people.size,
           sent_at: Time.current
         )

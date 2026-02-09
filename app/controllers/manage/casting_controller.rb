@@ -1401,56 +1401,10 @@ module Manage
 
     # Send a single consolidated email to a person with all their assignments across linked shows
     def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type, email_batch_id: nil)
-      # Build a list of all shows and roles for this person
-      shows_info = assignments.map do |a|
-        show = a[:show]
-        role = a[:role]
-        {
-          show_name: show.display_name,
-          show_date: show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
-          role_name: role.name
-        }
-      end
-
-      # For the personalized body, if there are multiple shows, create a list
-      if shows_info.size == 1
-        # Single show - use the standard replacement
-        info = shows_info.first
-        personalized_body = email_body.gsub("[Name]", person.name)
-                                       .gsub("[Role]", info[:role_name])
-                                       .gsub("[Show]", info[:show_name])
-                                       .gsub("[Date]", info[:show_date])
-                                       .gsub("[Production]", @production.name)
-      else
-        # Multiple shows - build a consolidated message
-        shows_list = shows_info.map do |info|
-          "<li>#{info[:show_date]}: #{info[:show_name]}</li>"
-        end.join("\n")
-
-        personalized_body = <<~BODY
-          <p>You have been cast as #{shows_info.first[:role_name]} in the following shows/events for #{@production.name}:</p>
-
-          <ul>
-          #{shows_list}
-          </ul>
-
-          <p>Please let us know if you have any scheduling conflicts or questions.</p>
-        BODY
-
-        if notification_type == :removed
-          personalized_body = <<~BODY
-            <p>There has been a change to the casting for #{@production.name}.</p>
-
-            <p>You are no longer cast in the following shows/events:</p>
-
-            <ul>
-            #{shows_list}
-            </ul>
-
-            <p>If you have any questions, please contact us.</p>
-          BODY
-        end
-      end
+      # The email_body has already been rendered from the ContentTemplate with variables
+      # substituted (production_name, show_dates, shows_list, role_name, etc.)
+      # Just pass it through directly.
+      personalized_body = email_body
 
       # Use the first show as the primary for the mailer (it needs a show reference)
       primary_show = assignments.first[:show]

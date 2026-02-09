@@ -129,7 +129,7 @@ class AuditionNotificationService
 
       # Use custom content if provided, otherwise render from template
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || "Welcome to the #{production.name} cast!"
+        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name, talent_pool_name: talent_pool&.name })
         body = custom_body.presence || render_template_body(template_key, person, production, talent_pool)
       else
         rendered = ContentTemplateService.render(template_key, {
@@ -161,7 +161,7 @@ class AuditionNotificationService
 
       # Use custom content if provided, otherwise render from template
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || "Audition results for #{production.name}"
+        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name })
         body = custom_body.presence || render_template_body(template_key, person, production)
       else
         rendered = ContentTemplateService.render(template_key, {
@@ -192,13 +192,13 @@ class AuditionNotificationService
 
       # Use custom content if provided, otherwise render from template
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || "#{production.name} Auditions"
+        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name, audition_cycle_name: nil })
         body = custom_body.presence || render_template_body(template_key, person, production, nil, audition_cycle)
       else
         rendered = ContentTemplateService.render(template_key, {
           recipient_name: person.first_name || person.name,
           production_name: production.name,
-          audition_cycle_name: audition_cycle&.name
+          audition_cycle_name: nil
         })
         subject = rendered[:subject]
         body = rendered[:body]
@@ -225,7 +225,7 @@ class AuditionNotificationService
 
       # Use custom content if provided, otherwise render from template
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || "Audition update for #{production.name}"
+        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name })
         body = custom_body.presence || render_template_body(template_key, person, production)
       else
         rendered = ContentTemplateService.render(template_key, {
@@ -281,7 +281,7 @@ class AuditionNotificationService
         recipient_name: person.first_name || person.name,
         production_name: production.name,
         talent_pool_name: talent_pool&.name,
-        audition_cycle_name: audition_cycle&.name
+        audition_cycle_name: nil
       })
       rendered[:body]
     end

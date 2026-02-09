@@ -1568,9 +1568,7 @@ class SuperadminController < ApplicationController
 
   # Default agreement template content used as the starting point
   def default_agreement_content
-    <<~HTML.strip
-      <div><strong>Performer Agreement for {{production_name}}</strong></div><div><br></div><div><strong>Code of Conduct</strong></div><div><br></div><div>As a performer with {{organization_name}}, I agree to:</div><div><br></div><ul><li>Treat all cast, crew, and staff with respect and professionalism</li><li>Arrive on time for all scheduled calls and performances</li><li>Communicate promptly about any conflicts or issues</li><li>Maintain a safe and inclusive environment for all</li><li>Follow all venue rules and policies</li></ul><div><br></div><div><strong>Attendance &amp; Communication</strong></div><div><br></div><ul><li>I will notify production management at least 48 hours in advance if I cannot make a scheduled performance</li><li>I will check CocoScout regularly for schedule updates and messages</li><li>I will respond to messages from production within 24 hours</li></ul><div><br></div><div><strong>Compensation</strong></div><div><br></div><div>[Add your payment terms here - e.g., payment schedule, rates, etc.]</div><div><br></div><div><strong>Acknowledgment</strong></div><div><br></div><div>By signing below, I acknowledge that I have read, understand, and agree to abide by this agreement for my participation in {{production_name}}.</div><div><br></div><div>Signed on {{current_date}} by {{performer_name}}.</div>
-    HTML
+    AgreementTemplateDefaults::DEFAULT_CONTENT
   end
 
   # Find the demo organization (handles name changes)

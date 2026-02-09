@@ -498,7 +498,7 @@ module Manage
       if total_recipients > 1
         email_batch = EmailBatch.create!(
           user: Current.user,
-          subject: "Audition Results for #{@production.name}",
+          subject: ContentTemplateService.render_subject("audition_added_to_cast", { production_name: @production.name }),
           recipient_count: total_recipients,
           sent_at: Time.current
         )
@@ -660,7 +660,7 @@ module Manage
       if total_recipients > 1
         email_batch = EmailBatch.create!(
           user: Current.user,
-          subject: "#{@production.name} Auditions",
+          subject: ContentTemplateService.render_subject("audition_invitation", { production_name: @production.name }),
           recipient_count: total_recipients,
           sent_at: Time.current
         )

@@ -102,7 +102,18 @@ class SmsService
 
       production = show.production
       dashboard_url = my_dashboard_url(host: default_host)
-      message = "CocoScout: #{production.name} - #{show.display_name} on #{show.date_and_time.strftime('%b %-d')} cancelled. #{dashboard_url} Reply STOP to opt out."
+
+      template = ContentTemplate.active.find_by(key: "sms_show_cancellation")
+      message = if template
+        template.render_body({
+          "production_name" => production.name,
+          "show_name" => show.display_name,
+          "show_date" => show.date_and_time.strftime("%b %-d"),
+          "dashboard_url" => dashboard_url
+        })
+      else
+        "CocoScout: #{production.name} - #{show.display_name} on #{show.date_and_time.strftime('%b %-d')} cancelled. #{dashboard_url} Reply STOP to opt out."
+      end
 
       send_sms(
         phone: phone,
@@ -132,9 +143,28 @@ class SmsService
         else
           my_dashboard_url(host: default_host)
         end
-        "CocoScout: Vacancy for #{role.name} in #{production.name} on #{show.date_and_time.strftime('%b %-d')}. #{link} Reply STOP to opt out."
+        template = ContentTemplate.active.find_by(key: "sms_vacancy_created")
+        if template
+          template.render_body({
+            "role_name" => role.name,
+            "production_name" => production.name,
+            "show_date" => show.date_and_time.strftime("%b %-d"),
+            "link" => link
+          })
+        else
+          "CocoScout: Vacancy for #{role.name} in #{production.name} on #{show.date_and_time.strftime('%b %-d')}. #{link} Reply STOP to opt out."
+        end
       when "filled"
-        "CocoScout: Vacancy filled - #{role.name} for #{production.name} on #{show.date_and_time.strftime('%b %-d')}. Reply STOP to opt out."
+        template = ContentTemplate.active.find_by(key: "sms_vacancy_filled")
+        if template
+          template.render_body({
+            "role_name" => role.name,
+            "production_name" => production.name,
+            "show_date" => show.date_and_time.strftime("%b %-d")
+          })
+        else
+          "CocoScout: Vacancy filled - #{role.name} for #{production.name} on #{show.date_and_time.strftime('%b %-d')}. Reply STOP to opt out."
+        end
       else
         return nil
       end
