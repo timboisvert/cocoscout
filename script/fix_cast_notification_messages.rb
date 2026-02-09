@@ -18,39 +18,39 @@ puts "=" * 70
 puts
 
 # ── Step 1: Find messages with cast notification body that needs fixing ──
-# Search strategies:
-# 1. Hardcoded multi-show body: "You have been cast as ... in the following shows/events for"
-# 2. Hardcoded removed notification: "There has been a change to the casting for"
-# 3. Broader: any recent cast-related messages (catches single-show path where
-#    [Name]/[Role] gsubs didn't match {{variable}} template syntax)
+# The broken send_consolidated_cast_email had two failure modes:
+#
+# A) Single-show path: Did .gsub("[Name]", ...) but template uses {{variable}},
+#    so gsubs matched nothing. The raw template with literal {{role_name}},
+#    {{shows_list}}, etc. was sent to recipients.
+#
+# B) Multi-show path: Used a completely hardcoded <<~BODY that contained
+#    "You have been cast as [role] in the following shows/events for [production]"
+#
+# C) Removed notification: "There has been a change to the casting for"
 
-hardcoded_patterns = [
-  "You have been cast as%in the following shows/events for",
-  "There has been a change to the casting for"
+# Pattern A: Raw template placeholders sent as literal text
+uninterpolated_patterns = [
+  "%{{role_name}}%",
+  "%{{shows_list}}%",
+  "%{{production_name}}%"
 ]
 
-# First pass: exact hardcoded patterns
+# Pattern B & C: Hardcoded body text
+hardcoded_patterns = [
+  "%You have been cast as%in the following shows/events for%",
+  "%There has been a change to the casting for%"
+]
+
+all_patterns = uninterpolated_patterns + hardcoded_patterns
+
 affected_rich_texts = ActionText::RichText.where(record_type: "Message", name: "body")
   .where(
-    hardcoded_patterns.map { "body LIKE ?" }.join(" OR "),
-    *hardcoded_patterns.map { |p| "%#{p}%" }
+    all_patterns.map { "body LIKE ?" }.join(" OR "),
+    *all_patterns
   )
 
-puts "Found #{affected_rich_texts.count} messages with hardcoded cast notification body"
-
-# Second pass: broader search for any recent cast messages (includes single-show path)
-recent_cast_messages = ActionText::RichText.where(record_type: "Message", name: "body")
-  .where("created_at > ?", 30.days.ago)
-  .where("body LIKE ? OR body LIKE ? OR body LIKE ?",
-         "%Congratulations! You have been cast%",
-         "%You have been cast as%",
-         "%have been cast for%")
-
-# Merge both sets (dedup by id)
-all_affected_ids = (affected_rich_texts.pluck(:id) + recent_cast_messages.pluck(:id)).uniq
-affected_rich_texts = ActionText::RichText.where(id: all_affected_ids)
-
-puts "Found #{affected_rich_texts.count} total cast notification messages to review"
+puts "Found #{affected_rich_texts.count} messages with broken cast notification body"
 puts
 
 affected_rich_texts.each do |rt|
@@ -69,8 +69,8 @@ puts "-" * 70
 puts "Checking ShowCastNotification records with hardcoded body..."
 
 affected_notifications = ShowCastNotification.where(
-  hardcoded_patterns.map { "email_body LIKE ?" }.join(" OR "),
-  *hardcoded_patterns.map { |p| "%#{p}%" }
+  all_patterns.map { "email_body LIKE ?" }.join(" OR "),
+  *all_patterns
 )
 
 puts "Found #{affected_notifications.count} ShowCastNotification records with hardcoded body"
