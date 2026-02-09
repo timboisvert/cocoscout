@@ -86,10 +86,19 @@ module Manage
     def send_invitations
       invite_mode = params[:invite_mode]
 
-      # Get email content from EmailDraft form fields
+      # Get email content from EmailDraft form fields (may contain {{placeholders}})
       email_draft_params = params[:email_draft] || {}
-      email_subject = email_draft_params[:title].presence || default_vacancy_email_subject
-      email_body = email_draft_params[:body].to_s.presence || default_vacancy_email_body
+      email_subject_template = email_draft_params[:title].presence || default_vacancy_email_subject
+      email_body_template = email_draft_params[:body].to_s.presence || default_vacancy_email_body
+
+      # Interpolate template variables for this vacancy
+      template_vars = vacancy_email_template_vars
+      email_subject = email_subject_template.dup
+      email_body = email_body_template.dup
+      template_vars.each do |key, value|
+        email_subject.gsub!(/\{\{\s*#{Regexp.escape(key.to_s)}\s*\}\}/, value.to_s)
+        email_body.gsub!(/\{\{\s*#{Regexp.escape(key.to_s)}\s*\}\}/, value.to_s)
+      end
 
       # IDs to exclude: already invited, already cast in this show, or the person who vacated
       already_invited_ids = @vacancy.invitations.pluck(:person_id)
@@ -223,21 +232,15 @@ module Manage
     end
 
     def default_vacancy_email_subject
-      template_vars = vacancy_email_template_vars
-      if linked_vacancy?
-        ContentTemplateService.render_subject("vacancy_invitation_linked", template_vars)
-      else
-        ContentTemplateService.render_subject("vacancy_invitation", template_vars)
-      end
+      template_key = linked_vacancy? ? "vacancy_invitation_linked" : "vacancy_invitation"
+      template = ContentTemplate.active.find_by(key: template_key)
+      template&.subject || "You're invited to fill a role"
     end
 
     def default_vacancy_email_body
-      template_vars = vacancy_email_template_vars
-      if linked_vacancy?
-        ContentTemplateService.render_body("vacancy_invitation_linked", template_vars)
-      else
-        ContentTemplateService.render_body("vacancy_invitation", template_vars)
-      end
+      template_key = linked_vacancy? ? "vacancy_invitation_linked" : "vacancy_invitation"
+      template = ContentTemplate.active.find_by(key: template_key)
+      template&.body || ""
     end
 
     def linked_vacancy?

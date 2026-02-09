@@ -242,7 +242,7 @@ module Manage
       agreement_url = Rails.application.routes.url_helpers.my_production_agreement_url(@production, host: Rails.application.config.action_mailer.default_url_options[:host])
 
       rendered = ContentTemplateService.render("request_agreement_signature", {
-        recipient_name: "everyone",
+        recipient_name: "team",
         production_name: @production.name,
         agreement_url: agreement_url
       })

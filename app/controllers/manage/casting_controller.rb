@@ -1337,74 +1337,31 @@ module Manage
       params.require(:email_draft).permit(:title, :body)
     end
 
-    def send_casting_emails(assignables_with_roles, email_body, subject, notification_type, email_batch_id: nil)
-      messages_sent = 0
-      emails_sent = 0
-
-      assignables_with_roles.each do |assignable, role|
-        # For groups, email all members with notifications enabled
-        recipients = if assignable.is_a?(Group)
-                       assignable.group_memberships.select(&:notifications_enabled?).map(&:person)
-        else
-                       [ assignable ]
-        end
-
-        recipients.each do |person|
-          next unless person.email.present?
-
-          # Personalize the email body
-          personalized_body = email_body.gsub("[Name]", person.name)
-                                         .gsub("[Role]", role.name)
-                                         .gsub("[Show]", @show.display_name)
-                                         .gsub("[Date]", @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"))
-                                         .gsub("[Production]", @production.name)
-
-          if notification_type == :cast
-            result = CastingNotificationService.send_cast_notification(
-              person: person,
-              show: @show,
-              production: @production,
-              sender: Current.user,
-              body: personalized_body,
-              subject: subject,
-              email_batch_id: email_batch_id
-            )
-          else
-            result = CastingNotificationService.send_removed_notification(
-              person: person,
-              show: @show,
-              production: @production,
-              sender: Current.user,
-              body: personalized_body,
-              subject: subject,
-              email_batch_id: email_batch_id
-            )
-          end
-          messages_sent += result[:messages_sent]
-          emails_sent += result[:emails_sent]
-        end
-
-        # Record the notification (update existing or create new)
-        notification = @show.show_cast_notifications.find_or_initialize_by(
-          assignable: assignable,
-          role: role
-        )
-        notification.update!(
-          notification_type: notification_type,
-          notified_at: Time.current,
-          email_body: email_body
-        )
-      end
-
-      { messages_sent: messages_sent, emails_sent: emails_sent }
-    end
-
     # Send a single consolidated email to a person with all their assignments across linked shows
     def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type, email_batch_id: nil)
-      # The email_body has already been rendered from the ContentTemplate with variables
-      # substituted (production_name, show_dates, shows_list, role_name, etc.)
-      # Just pass it through directly.
-      personalized_body = email_body
+      # The email_body is the template with {{placeholders}} (from the preview editor).
+      # Personalize it for this specific recipient by substituting their actual values.
+      shows = assignments.map { |a| a[:show] }.uniq.sort_by(&:date_and_time)
+      role_names = assignments.map { |a| a[:role].name }.uniq
+      dates = shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
+      show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
+      shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")
+
+      variables = {
+        "production_name" => @production.name,
+        "show_dates" => show_dates,
+        "shows_list" => shows_list,
+        "role_name" => role_names.join(", "),
+        "role_names" => role_names.join(", ")
+      }
+
+      # Interpolate {{placeholders}} in the body and subject
+      personalized_body = email_body.dup
+      personalized_subject = subject.dup
+      variables.each do |key, value|
+        personalized_body.gsub!(/\{\{\s*#{Regexp.escape(key)}\s*\}\}/, value.to_s)
+        personalized_subject.gsub!(/\{\{\s*#{Regexp.escape(key)}\s*\}\}/, value.to_s)
+      end
 
       # Use the first show as the primary for the mailer (it needs a show reference)
       primary_show = assignments.first[:show]
@@ -1416,7 +1373,7 @@ module Manage
           production: @production,
           sender: Current.user,
           body: personalized_body,
-          subject: subject,
+          subject: personalized_subject,
           email_batch_id: email_batch_id
         )
       else
@@ -1426,20 +1383,20 @@ module Manage
           production: @production,
           sender: Current.user,
           body: personalized_body,
-          subject: subject,
+          subject: personalized_subject,
           email_batch_id: email_batch_id
         )
       end
     end
 
     def default_cast_email_subject
-      variables = build_casting_email_variables
-      ContentTemplateService.render_subject("cast_notification", variables)
+      template = ContentTemplate.active.find_by(key: "cast_notification")
+      template&.subject || "Cast Confirmation"
     end
 
     def default_cast_email_body
-      variables = build_casting_email_variables
-      ContentTemplateService.render_body("cast_notification", variables)
+      template = ContentTemplate.active.find_by(key: "cast_notification")
+      template&.body || ""
     end
 
     def default_removed_email_subject
@@ -1448,8 +1405,8 @@ module Manage
     end
 
     def default_removed_email_body
-      variables = build_casting_email_variables
-      ContentTemplateService.render_body("removed_from_cast_notification", variables)
+      template = ContentTemplate.active.find_by(key: "removed_from_cast_notification")
+      template&.body || ""
     end
 
     # Build variables for casting email templates
