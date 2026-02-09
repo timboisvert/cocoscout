@@ -23,8 +23,8 @@ module Manage
         load_per_production_pools
       end
 
-      # For the switch modal previews
-      @productions = @organization.productions.type_in_house.order(:name)
+      # For the switch modal previews (filtered by user access)
+      @productions = Current.user.accessible_productions.type_in_house.order(:name)
     end
 
     # Show confirmation modal for switching to single mode
@@ -472,7 +472,7 @@ module Manage
     end
 
     def load_per_production_pools
-      productions = Current.organization.productions.type_in_house
+      productions = Current.user.accessible_productions.type_in_house
                            .includes(:talent_pools)
                            .order(:name)
 

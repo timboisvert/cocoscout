@@ -48,12 +48,11 @@ module Manage
         redirect_to select_organization_path and return
       end
 
-      # Build org-level home page data
-      @productions = Current.organization.productions.order(:name)
+      # Build org-level home page data (filtered by user access)
+      @productions = Current.user.accessible_productions.order(:name)
       @production_dashboards = {}
 
       @productions.each do |production|
-        next unless Current.user.role_for_production(production).present?
         @production_dashboards[production.id] = DashboardService.new(production).generate
       end
 

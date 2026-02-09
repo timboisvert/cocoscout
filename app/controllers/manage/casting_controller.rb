@@ -22,8 +22,8 @@ module Manage
       end
       session[:casting_hide_canceled] = @hide_canceled
 
-      # Get all in-house productions for the organization (exclude third-party)
-      @productions = Current.organization.productions.type_in_house.order(:name)
+      # Get all in-house productions the user has access to (exclude third-party)
+      @productions = Current.user.accessible_productions.type_in_house.order(:name)
 
       # Get shows with casting enabled across all in-house productions
       base_shows = Show.where(production: @productions, casting_enabled: true)

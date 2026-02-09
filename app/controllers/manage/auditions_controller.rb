@@ -16,8 +16,8 @@ module Manage
     def org_index
       @filter = params[:filter] # 'in_person' or 'video'
 
-      # Get all in-house productions for the organization (exclude third-party)
-      @productions = Current.organization.productions.type_in_house.includes(:audition_cycles).order(:name)
+      # Get in-house productions the user has access to (exclude third-party)
+      @productions = Current.user.accessible_productions.type_in_house.includes(:audition_cycles).order(:name)
 
       # Get all active audition cycles across all productions
       @all_active_cycles = AuditionCycle.where(production: @productions, active: true)

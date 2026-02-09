@@ -16,8 +16,8 @@ module Manage
       # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
-      # Get all productions for the organization
-      @productions = Current.organization.productions.order(:name)
+      # Get productions the user has access to
+      @productions = Current.user.accessible_productions.order(:name)
 
       # Get shows across all productions, eager load location, event_linkage, and production
       @shows = Show.where(production: @productions)
@@ -95,8 +95,8 @@ module Manage
       @filter = params[:filter] || session[:shows_filter] || "upcoming"
       session[:shows_filter] = @filter
 
-      # Get all productions for the organization
-      @productions = Current.organization.productions.order(:name)
+      # Get productions the user has access to
+      @productions = Current.user.accessible_productions.order(:name)
 
       # Get shows across all productions, eager load location and production
       @shows = Show.where(production: @productions)
