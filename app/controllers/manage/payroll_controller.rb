@@ -186,8 +186,8 @@ module Manage
       @unpaid_line_items_count = unpaid_show_line_items.count
       @unpaid_amount = unpaid_show_line_items.sum("show_payout_line_items.amount - COALESCE(show_payout_line_items.advance_deduction, 0)")
 
-      # Get production breakdown for context
-      @productions = Current.organization.productions.where.not(production_type: "third_party").order(:name)
+      # Get production breakdown for context (filtered by user access)
+      @productions = Current.user.accessible_productions.where.not(production_type: "third_party").order(:name)
     end
 
     def set_payroll_run
@@ -208,7 +208,7 @@ module Manage
     end
 
     def in_house_production_ids
-      @in_house_production_ids ||= Current.organization.productions.where.not(production_type: "third_party").pluck(:id)
+      @in_house_production_ids ||= Current.user.accessible_productions.where.not(production_type: "third_party").pluck(:id)
     end
 
     def unpaid_show_line_items

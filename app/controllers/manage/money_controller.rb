@@ -6,8 +6,8 @@ module Manage
       # Financial summary for selected period
       @selected_period = (params[:period].presence || "all_time").to_sym
 
-      # Get all productions for the current organization
-      @productions = Current.organization.productions.order(:name)
+      # Get productions the user has access to
+      @productions = Current.user.accessible_productions.order(:name)
 
       # Build summary data for each production
       @production_summaries = @productions.map do |production|

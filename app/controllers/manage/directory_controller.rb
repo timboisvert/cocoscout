@@ -19,14 +19,15 @@ module Manage
       @type = "all" unless %w[people groups all].include?(@type)
       @sort = "name_asc" unless %w[name_asc name_desc date_asc date_desc].include?(@sort)
 
-      # Load all talent pools for the filter dropdown
+      # Load talent pools for the filter dropdown, scoped to user's accessible productions
       # A production that has received a share from another pool doesn't use its own pool
       # So exclude pools belonging to productions that have received a share
       productions_receiving_shares = TalentPoolShare.pluck(:production_id)
+      accessible_production_ids = Current.user.accessible_productions.pluck(:id)
 
       @talent_pools = TalentPool.joins(:production)
                                 .includes(:production, :shared_productions)
-                                .where(productions: { organization_id: Current.organization.id })
+                                .where(productions: { organization_id: Current.organization.id, id: accessible_production_ids })
                                 .where.not(production_id: productions_receiving_shares)
                                 .distinct
                                 .order(:name)

@@ -20,8 +20,8 @@ module Manage
     def org_index
       @filter = params[:filter] # 'registrations' or 'waitlists'
 
-      # Get all in-house productions for the organization (exclude third-party)
-      @productions = Current.organization.productions.type_in_house.includes(:sign_up_forms).order(:name)
+      # Get in-house productions the user has access to (exclude third-party)
+      @productions = Current.user.accessible_productions.type_in_house.includes(:sign_up_forms).order(:name)
 
       # Get all sign-up forms across all productions
       @all_sign_up_forms = SignUpForm.where(production: @productions)

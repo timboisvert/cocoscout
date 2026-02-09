@@ -23,7 +23,7 @@ module Manage
     end
 
     def show
-      @productions = Current.organization.productions.order(:name)
+      @productions = Current.user.accessible_productions.order(:name)
 
       # Calculate match scores for all productions if not already suggested
       @production_scores = @productions.map do |production|

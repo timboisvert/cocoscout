@@ -11,7 +11,7 @@ module Manage
     def org_index
       @filter = params[:filter] || "all"
 
-      @questionnaires_by_production = Current.organization.productions
+      @questionnaires_by_production = Current.user.accessible_productions
         .includes(:questionnaires)
         .order(:name)
         .map do |prod|
@@ -31,7 +31,7 @@ module Manage
 
     # Step 0: Select Production (when entering from org-level)
     def select_production
-      @productions = Current.organization.productions.order(:name)
+      @productions = Current.user.accessible_productions.order(:name)
     end
 
     def save_production_selection
@@ -39,14 +39,14 @@ module Manage
 
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.user.accessible_productions.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 
-      production = Current.organization.productions.find_by(id: production_id)
+      production = Current.user.accessible_productions.find_by(id: production_id)
       unless production
         flash.now[:alert] = "Production not found"
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.user.accessible_productions.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 

@@ -5,8 +5,8 @@ module Manage
     def index
       @providers = Current.organization.ticketing_providers.order(:name)
 
-      # Get all productions with their ticketing status
-      @productions = Current.organization.productions.order(:name)
+      # Get productions the user has access to
+      @productions = Current.user.accessible_productions.order(:name)
 
       # Build summary for each production
       @production_summaries = @productions.map do |production|

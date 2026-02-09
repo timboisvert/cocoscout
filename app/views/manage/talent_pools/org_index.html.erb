@@ -11,34 +11,36 @@
     links: []
   } %>
 
-  <%# Mode Toggle Section %>
-  <div class="mt-4 mb-6 bg-white border border-gray-200 rounded-lg p-4">
-    <div class="flex items-center justify-between">
-      <div>
-        <h3 class="text-sm font-semibold text-gray-900">Talent Pool Organization</h3>
-        <p class="text-sm text-gray-500 mt-0.5">
+  <%# Mode Toggle Section - only visible to org-level managers %>
+  <% if Current.user.manager? %>
+    <div class="mt-4 mb-6 bg-white border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-semibold text-gray-900">Talent Pool Organization</h3>
+          <p class="text-sm text-gray-500 mt-0.5">
+            <% if @is_single_mode %>
+              Using a single talent pool shared across all productions.
+            <% else %>
+              Each production has its own talent pool.
+            <% end %>
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
           <% if @is_single_mode %>
-            Using a single talent pool shared across all productions.
+            <%= link_to manage_casting_talent_pools_switch_to_per_production_confirm_path,
+                        data: { turbo_frame: "talent_pool_mode_modal" } do %>
+              <%= render "shared/button", text: "Switch to Per-Production", variant: "secondary", size: "small", tag: :span %>
+            <% end %>
           <% else %>
-            Each production has its own talent pool.
+            <%= link_to manage_casting_talent_pools_switch_to_single_confirm_path,
+                        data: { turbo_frame: "talent_pool_mode_modal" } do %>
+              <%= render "shared/button", text: "Switch to Single Pool", variant: "secondary", size: "small", tag: :span %>
+            <% end %>
           <% end %>
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <% if @is_single_mode %>
-          <%= link_to manage_casting_talent_pools_switch_to_per_production_confirm_path,
-                      data: { turbo_frame: "talent_pool_mode_modal" } do %>
-            <%= render "shared/button", text: "Switch to Per-Production", variant: "secondary", size: "small", tag: :span %>
-          <% end %>
-        <% else %>
-          <%= link_to manage_casting_talent_pools_switch_to_single_confirm_path,
-                      data: { turbo_frame: "talent_pool_mode_modal" } do %>
-            <%= render "shared/button", text: "Switch to Single Pool", variant: "secondary", size: "small", tag: :span %>
-          <% end %>
-        <% end %>
+        </div>
       </div>
     </div>
-  </div>
+  <% end %>
 
   <div class="pt-2">
     <% if @is_single_mode %>

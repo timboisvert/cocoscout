@@ -142,8 +142,8 @@ module Manage
     end
 
     def load_all_productions
-      # Only show in-house productions on the payouts page (not third-party/renters)
-      @productions = Current.organization.productions.where.not(production_type: "third_party").order(:name)
+      # Only show in-house productions the user has access to (not third-party/renters)
+      @productions = Current.user.accessible_productions.where.not(production_type: "third_party").order(:name)
       @production_summaries = @productions.map do |production|
         build_payout_summary(production)
       end
@@ -211,7 +211,7 @@ module Manage
     end
 
     def people_missing_payment_info
-      productions = @production ? [ @production ] : Current.organization.productions
+      productions = @production ? [ @production ] : Current.user.accessible_productions
 
       awaiting_payout_ids = productions.flat_map { |prod| prod.show_payouts.where(status: "awaiting_payout").pluck(:id) }
 

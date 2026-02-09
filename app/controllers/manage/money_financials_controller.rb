@@ -24,7 +24,7 @@ module Manage
         # All productions view - show list of productions with summaries
         return redirect_to manage_path unless Current.organization
 
-        @productions = Current.organization.productions.order(:name)
+        @productions = Current.user.accessible_productions.order(:name)
         @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
         @production_summaries = @productions.map do |production|
           if production.type_third_party?

@@ -12,7 +12,7 @@ module Manage
     # Step 0: Select Production (when entering from org-level)
     def select_production
       # Exclude third-party productions as they don't have casting/sign-ups
-      @productions = Current.organization.productions.type_in_house.order(:name)
+      @productions = Current.user.accessible_productions.type_in_house.order(:name)
     end
 
     def save_production_selection
@@ -20,15 +20,15 @@ module Manage
 
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
-        @productions = Current.organization.productions.type_in_house.order(:name)
+        @productions = Current.user.accessible_productions.type_in_house.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 
       # Only allow in-house productions for sign-up forms
-      production = Current.organization.productions.type_in_house.find_by(id: production_id)
+      production = Current.user.accessible_productions.type_in_house.find_by(id: production_id)
       unless production
         flash.now[:alert] = "Production not found"
-        @productions = Current.organization.productions.type_in_house.order(:name)
+        @productions = Current.user.accessible_productions.type_in_house.order(:name)
         render :select_production, status: :unprocessable_entity and return
       end
 
