@@ -14,10 +14,10 @@
   } %>
 
   <%# Filter bar with production dropdown and time range %>
-  <div class="flex flex-wrap items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-lg mb-4">
+  <div class="flex flex-wrap items-center gap-3 md:gap-4 px-3 md:px-4 py-3 bg-white border border-gray-200 rounded-lg mb-4">
     <%# Production dropdown %>
     <div class="flex items-center gap-2">
-      <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Production</span>
+      <span class="hidden md:inline text-xs font-medium text-gray-500 uppercase tracking-wide">Production</span>
       <div class="relative">
         <select
           onchange="window.location.href = this.value"
@@ -33,17 +33,18 @@
       </div>
     </div>
 
-    <%# Separator %>
-    <div class="w-px h-6 bg-gray-200"></div>
+    <%# Separator - hidden on mobile %>
+    <div class="hidden md:block w-px h-6 bg-gray-200"></div>
 
     <%# Time range buttons %>
     <div class="flex items-center gap-2">
-      <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Time Range</span>
+      <span class="hidden md:inline text-xs font-medium text-gray-500 uppercase tracking-wide">Time Range</span>
       <div class="flex gap-1">
-        <% [[3, "3 months"], [6, "6 months"], [12, "12 months"]].each do |months, label| %>
+        <% [[3, "3mo"], [6, "6mo"], [12, "12mo"]].each do |months, label| %>
           <a href="<%= manage_org_availability_path(months: months, production_id: @selected_production_id) %>"
-             class="px-3 py-1.5 rounded text-xs font-medium transition <%= @months == months ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
-            <%= label %>
+             class="px-2 md:px-3 py-1.5 rounded text-xs font-medium transition <%= @months == months ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
+            <span class="md:hidden"><%= label %></span>
+            <span class="hidden md:inline"><%= months %> months</span>
           </a>
         <% end %>
       </div>
@@ -52,8 +53,8 @@
     <%# Spacer to push key to right %>
     <div class="flex-1"></div>
 
-    <%# Key/Legend %>
-    <div class="flex items-center gap-4 text-xs text-gray-500">
+    <%# Key/Legend - hidden on mobile %>
+    <div class="hidden md:flex items-center gap-4 text-xs text-gray-500">
       <span class="font-medium text-gray-400 uppercase tracking-wide">Key:</span>
       <span class="flex items-center gap-1"><span class="text-pink-500 font-medium">A</span> Available</span>
       <span class="flex items-center gap-1"><span class="text-gray-400 font-medium">U</span> Unavailable</span>
@@ -71,7 +72,7 @@
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50 sticky top-0 z-20">
             <tr>
-              <th class="sticky left-0 z-30 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px] min-w-[300px] max-w-[300px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative">
+              <th class="sticky left-0 z-30 bg-gray-50 px-2 md:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px] min-w-[120px] max-w-[120px] md:w-[300px] md:min-w-[300px] md:max-w-[300px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative">
                 Event
               </th>
               <% @members.each do |member| %>
@@ -105,8 +106,8 @@
 
               <%# Production separator bar %>
               <tr class="bg-pink-50">
-                <td class="sticky left-0 z-10 bg-pink-50 px-3 py-1 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-pink-200 relative">
-                  <span class="text-xs font-medium text-pink-700"><%= production.name %></span>
+                <td class="sticky left-0 z-10 bg-pink-50 px-2 md:px-3 py-1 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-pink-200 relative">
+                  <span class="text-xs font-medium text-pink-700 truncate block max-w-[100px] md:max-w-none"><%= production.name %></span>
                 </td>
                 <% @members.each do |member| %>
                   <td class="bg-pink-50"></td>
@@ -116,10 +117,17 @@
               <% shows.each do |show| %>
                 <tr class="hover:bg-gray-50 group">
                   <%# Show info (left sticky column) %>
-                  <td class="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 cursor-pointer after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative"
+                  <td class="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-2 md:px-3 py-2 cursor-pointer after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative"
                       data-action="click->org-availability#openShowModal"
                       data-show-id="<%= show.id %>">
-                    <div class="flex items-center gap-3">
+                    <%# Mobile: Condensed view %>
+                    <div class="md:hidden">
+                      <div class="text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%b %-d") %></div>
+                      <div class="text-sm font-bold text-gray-900"><%= show.date_and_time.strftime("%l:%M%P").strip %></div>
+                      <div class="text-xs text-gray-500 truncate max-w-[100px]" title="<%= show.display_name %>"><%= show.display_name %></div>
+                    </div>
+                    <%# Desktop: Full view %>
+                    <div class="hidden md:flex items-center gap-3">
                       <%# Date Box %>
                       <div class="flex-shrink-0 w-12 text-center">
                         <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>

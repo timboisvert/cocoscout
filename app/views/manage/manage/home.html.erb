@@ -56,14 +56,14 @@
       all_upcoming_shows.sort_by! { |s| s[:show].date_and_time }
     %>
 
-    <!-- Open Calls with Auditionees -->
-    <% if all_open_calls.any? %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-        <%= render "shared/card_header", title: "Audition Cycles", links: [
-          { text: "All Auditions", path: manage_signups_all_auditions_path }
-        ] %>
-        <div class="p-4">
-          <div class="space-y-1">
+    <!-- Audition Cycles -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Audition Cycles", links: [
+        { text: "All Auditions", path: manage_signups_all_auditions_path }
+      ] %>
+      <div class="p-4">
+        <% if all_open_calls.any? %>
+        <div class="space-y-1">
             <% all_open_calls.each do |call_data| %>
               <% cycle = call_data[:call] %>
               <% production = call_data[:production] %>
@@ -122,13 +122,20 @@
                 </div>
               <% end %>
             <% end %>
-          </div>
         </div>
+        <% else %>
+        <p class="text-sm text-gray-500">No open audition cycles.</p>
+        <% end %>
       </div>
-    <% end %>
+    </div>
 
     <!-- Sign-Up Forms -->
-    <% if all_sign_up_forms.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Sign-Up Forms", links: [
+        { text: "All Sign-Ups", path: manage_signups_path }
+      ] %>
+      <div class="p-4">
+        <% if all_sign_up_forms.any? %>
       <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
         <%= render "shared/card_header", title: "Sign-Up Forms", links: [
           { text: "All Sign-Ups", path: manage_signups_path }
@@ -211,9 +218,11 @@
               <% end %>
             <% end %>
           </div>
-        </div>
+        <% else %>
+        <p class="text-sm text-gray-500">No active sign-up forms.</p>
+        <% end %>
       </div>
-    <% end %>
+    </div>
 
     <!-- Open Vacancies -->
     <% if all_open_vacancies.any? %>
@@ -298,17 +307,17 @@
       </div>
     <% end %>
 
-    <!-- Upcoming Shows & Availability -->
-    <% if all_upcoming_shows.any? %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-        <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)", links: [
-          { text: "All Shows", path: manage_shows_path }
-        ] %>
-        <div class="p-4">
-          <div class="space-y-1">
-            <% all_upcoming_shows.first(10).each do |show_data| %>
-              <% show = show_data[:show] %>
-              <% production = show_data[:production] %>
+    <!-- Upcoming Shows & Events -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)", links: [
+        { text: "All Shows", path: manage_shows_path }
+      ] %>
+      <div class="p-4">
+        <% if all_upcoming_shows.any? %>
+        <div class="space-y-1">
+          <% all_upcoming_shows.first(10).each do |show_data| %>
+            <% show = show_data[:show] %>
+            <% production = show_data[:production] %>
               <%= link_to manage_show_path(production, show), class: "block no-underline" do %>
                 <div class="px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
                   <div class="flex flex-col sm:flex-row sm:items-stretch gap-3 sm:gap-4">
@@ -424,9 +433,11 @@
               </div>
             <% end %>
           </div>
-        </div>
+        <% else %>
+        <p class="text-sm text-gray-500">No upcoming shows or events in the next 45 days.</p>
+        <% end %>
       </div>
-    <% end %>
+    </div>
 
   <% else %>
     <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center mt-6">
