@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_10_204859) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_10_211033) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -175,6 +175,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_10_204859) do
     t.integer "status", default: 0
     t.datetime "updated_at", null: false
     t.string "video_url"
+    t.datetime "video_viewed_at"
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
     t.index ["requestable_type", "requestable_id", "created_at"], name: "index_ar_on_requestable_and_created"
     t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"

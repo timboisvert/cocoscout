@@ -206,12 +206,24 @@
                   <div class="w-full md:w-1/2 flex items-center border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 md:border-l md:border-gray-200 md:pl-4">
                     <div class="flex-1 min-w-0">
                       <% if form.slot_generation_mode == 'open_list' %>
-                        <%# Open list - show status instead of slot numbers %>
+                        <%# Open list - show status badge %>
                         <% on_waitlist = registrations.any? { |r| r.status == 'waitlisted' } %>
-                        <div class="text-[10px] text-gray-400 uppercase tracking-wide">Status</div>
-                        <div class="text-sm font-medium <%= on_waitlist ? 'text-amber-600' : 'text-green-600' %>">
-                          <%= on_waitlist ? 'On Waitlist' : 'Signed Up' %>
+                        <div class="mb-1">
+                          <% if on_waitlist %>
+                            <span class="inline-flex items-center bg-amber-500 text-white px-2.5 py-1 text-sm font-medium rounded">On Waitlist</span>
+                          <% else %>
+                            <span class="inline-flex items-center bg-gray-500 text-white px-2.5 py-1 text-sm font-medium rounded">Signed up</span>
+                          <% end %>
                         </div>
+                        <%
+                          # For repeated events, include instance_id so they go to the right date
+                          link_params = form.scope == 'repeated' && instance ? { instance_id: instance.id } : {}
+                        %>
+                        <% if form.short_code.present? %>
+                          <%= link_to my_sign_up_form_path(form.short_code, **link_params), class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
+                            View Registration
+                          <% end %>
+                        <% end %>
                       <% else %>
                         <%# Numbered/time-based slots - show slot info %>
                         <div class="text-[10px] text-gray-400 uppercase tracking-wide">
@@ -223,15 +235,6 @@
                           <div class="text-sm font-medium text-gray-900">
                             <%= registrations.map { |r| r.sign_up_slot&.display_name }.compact.join(", ") %>
                           </div>
-                        <% end %>
-                      <% end %>
-                      <%
-                        # For repeated events, include instance_id so they go to the right date
-                        link_params = form.scope == 'repeated' && instance ? { instance_id: instance.id } : {}
-                      %>
-                      <% if form.short_code.present? %>
-                        <%= link_to my_sign_up_form_path(form.short_code, **link_params), class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
-                          View Registration
                         <% end %>
                       <% end %>
                     </div>
@@ -283,12 +286,12 @@
                     <div class="flex-1 min-w-0">
                       <div class="mb-2">
                         <% if cycle.video_only? %>
-                          <span class="inline-flex items-center bg-green-500 text-white px-2.5 py-1 text-sm font-medium rounded">
-                            Video Submitted
+                          <span class="inline-flex items-center bg-gray-500 text-white px-2.5 py-1 text-sm font-medium rounded">
+                            Video Audition Received
                           </span>
                         <% else %>
-                          <span class="inline-flex items-center bg-green-500 text-white px-2.5 py-1 text-sm font-medium rounded">
-                            Signed Up
+                          <span class="inline-flex items-center bg-gray-500 text-white px-2.5 py-1 text-sm font-medium rounded">
+                            Sign-up Received
                           </span>
                         <% end %>
                       </div>

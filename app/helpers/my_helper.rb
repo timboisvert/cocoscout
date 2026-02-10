@@ -2,19 +2,23 @@
 
 module MyHelper
   # Status badge/label constants
-  AUDITION_OFFERED_BADGE = '<div class="bg-pink-500 text-white px-2 py-1 text-sm rounded-lg">Audition Offered</div>'
-  NO_AUDITION_OFFERED_BADGE = '<div class="bg-red-500 text-white px-2 py-1 text-sm rounded-lg">No Audition Offered</div>'
-  IN_REVIEW_BADGE = '<div class="bg-gray-500 text-white px-2 py-1 text-sm rounded-lg">In Review</div>'
-  CAST_SPOT_OFFERED_BADGE = '<div class="bg-pink-500 text-white px-2 py-1 text-sm rounded-lg">Cast Spot Offered</div>'
-  NO_CAST_SPOT_OFFERED_BADGE = '<div class="bg-red-500 text-white px-2 py-1 text-sm rounded-lg">No Cast Spot Offered</div>'
+  AUDITION_OFFERED_BADGE = '<span class="inline-flex items-center bg-pink-500 text-white px-2.5 py-1 text-sm font-medium rounded">Audition Offered</span>'
+  NO_AUDITION_OFFERED_BADGE = '<span class="inline-flex items-center bg-red-500 text-white px-2.5 py-1 text-sm font-medium rounded">No Audition Offered</span>'
+  IN_REVIEW_BADGE = '<span class="inline-flex items-center bg-amber-500 text-white px-2.5 py-1 text-sm font-medium rounded">In Review</span>'
+  SIGNUP_RECEIVED_BADGE = '<span class="inline-flex items-center bg-gray-500 text-white px-2.5 py-1 text-sm font-medium rounded">Sign-up Received</span>'
+  VIDEO_RECEIVED_BADGE = '<span class="inline-flex items-center bg-gray-500 text-white px-2.5 py-1 text-sm font-medium rounded">Video Audition Received</span>'
+  CAST_SPOT_OFFERED_BADGE = '<span class="inline-flex items-center bg-pink-500 text-white px-2.5 py-1 text-sm font-medium rounded">Cast Spot Offered</span>'
+  NO_CAST_SPOT_OFFERED_BADGE = '<span class="inline-flex items-center bg-red-500 text-white px-2.5 py-1 text-sm font-medium rounded">No Cast Spot Offered</span>'
 
   # Status text constants (used in explanatory messages)
   AUDITION_OFFERED_TEXT = "Congratulations! You have been offered an audition for this production"
   NO_AUDITION_OFFERED_TEXT = "Unfortunately, you have not been offered an audition for this production"
-  AUDITION_IN_REVIEW_TEXT = "Your sign-up is in review. Results will be shared once audition decisions have been finalized."
+  AUDITION_IN_REVIEW_TEXT = "Your sign-up is being reviewed by the production team."
+  SIGNUP_RECEIVED_TEXT = "Your sign-up has been received and will be reviewed soon."
+  VIDEO_RECEIVED_TEXT = "Your video audition has been received and will be reviewed soon."
   CAST_SPOT_OFFERED_TEXT = "Congratulations! You have been offered a cast spot for this production"
   NO_CAST_SPOT_OFFERED_TEXT = "Unfortunately, you have not been offered a cast spot for this production"
-  CAST_IN_REVIEW_TEXT = "Your video audition is in review. Results will be shared once casting decisions have been finalized."
+  CAST_IN_REVIEW_TEXT = "Your video audition is being reviewed by the production team."
 
   def in_person_signup_status_name(audition_request)
     cycle = audition_request.audition_cycle
@@ -33,9 +37,14 @@ module MyHelper
       return NO_AUDITION_OFFERED_BADGE.html_safe
     end
 
-    # If audition invitations haven't been finalized, show "In Review"
+    # If audition invitations haven't been finalized, show review status
     if cycle.finalize_audition_invitations != true
-      return IN_REVIEW_BADGE.html_safe
+      # Check if anyone has voted on this request - if so, show "In Review"
+      if audition_request.audition_request_votes.exists?
+        return IN_REVIEW_BADGE.html_safe
+      else
+        return SIGNUP_RECEIVED_BADGE.html_safe
+      end
     end
 
     # Check if they were actually scheduled for an audition (have an Audition record)
@@ -64,9 +73,14 @@ module MyHelper
       end
     end
 
-    # If audition invitations haven't been finalized, show "In Review"
+    # If audition invitations haven't been finalized, show review status
     if cycle.finalize_audition_invitations != true
-      return AUDITION_IN_REVIEW_TEXT
+      # Check if anyone has voted on this request
+      if audition_request.audition_request_votes.exists?
+        return AUDITION_IN_REVIEW_TEXT
+      else
+        return SIGNUP_RECEIVED_TEXT
+      end
     end
 
     # Check if they were actually scheduled for an audition
@@ -102,9 +116,14 @@ module MyHelper
       end
     end
 
-    # If casting hasn't been finalized, show "In Review"
+    # If casting hasn't been finalized, show review status
     if cycle.casting_finalized_at.blank?
-      return IN_REVIEW_BADGE.html_safe
+      # Check if anyone has voted on this request - if so, show "In Review"
+      if audition_request.audition_request_votes.exists?
+        return IN_REVIEW_BADGE.html_safe
+      else
+        return VIDEO_RECEIVED_BADGE.html_safe
+      end
     end
 
     if is_cast
@@ -139,9 +158,14 @@ module MyHelper
       end
     end
 
-    # If casting hasn't been finalized, show "In Review"
+    # If casting hasn't been finalized, show review status
     if cycle.casting_finalized_at.blank?
-      return CAST_IN_REVIEW_TEXT
+      # Check if anyone has voted on this request
+      if audition_request.audition_request_votes.exists?
+        return CAST_IN_REVIEW_TEXT
+      else
+        return VIDEO_RECEIVED_TEXT
+      end
     end
 
     if is_cast
