@@ -106,17 +106,30 @@
         <% end %>
 
         <div class="flex-1">
-          <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, class: "space-y-3", data: { turbo: false } do |f| %>
+          <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, data: { turbo: false } do |f| %>
             <%= f.rich_text_area :body, class: "w-full min-h-[80px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
 
-            <%# Image Attachments %>
-            <%= render "shared/image_dropzone", size: "small" %>
-
-            <div class="flex justify-end gap-2">
-              <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">
-                Cancel
-              </button>
-              <%= render "shared/button", text: "Post Comment", variant: "primary", size: "medium", type: :submit %>
+            <div data-controller="image-dropzone">
+              <input type="file" name="images[]" multiple accept="image/*" data-image-dropzone-target="input" data-action="change->image-dropzone#filesSelected" class="hidden">
+              <div class="flex items-center justify-between mt-2">
+                <div data-image-dropzone-target="toggleButton">
+                  <%= render "shared/button", text: "Add image(s)", variant: "ghost", size: "small", icon: "photo", type: :button, data: { action: "click->image-dropzone#toggle" } %>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">Cancel</button>
+                  <%= render "shared/button", text: "Post Comment", variant: "primary", size: "small", type: :submit %>
+                </div>
+              </div>
+              <div data-image-dropzone-target="dropzone" class="hidden mt-2 relative">
+                <button type="button" class="absolute top-2 right-2 z-10 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-white/80 transition-colors cursor-pointer" data-action="click->image-dropzone#close" title="Remove images"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <div data-action="dragover->image-dropzone#dragOver dragleave->image-dropzone#dragLeave drop->image-dropzone#drop click->image-dropzone#openFilePicker" class="border-2 border-dashed border-gray-200 rounded-xl p-4 cursor-pointer hover:border-pink-400 hover:bg-pink-50/30 transition-all">
+                  <div data-image-dropzone-target="placeholder" class="flex flex-col items-center justify-center gap-2 text-gray-400">
+                    <div class="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center"><svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                    <div class="text-center"><p class="text-sm font-medium text-gray-600">Drop images here</p><p class="text-xs text-gray-400">or click to select files</p></div>
+                  </div>
+                  <div data-image-dropzone-target="previews" class="hidden flex flex-wrap gap-2"></div>
+                </div>
+              </div>
             </div>
           <% end %>
         </div>

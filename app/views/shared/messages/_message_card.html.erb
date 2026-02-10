@@ -262,8 +262,12 @@
         <% else %>
           <%# Feed context: Reply count as link %>
           <% if reply_count > 0 %>
-            <%= link_to message_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer" do %>
+            <%= link_to message_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
               <%= reply_count %> <%= reply_count == 1 ? 'comment' : 'comments' %>
+            <% end %>
+          <% else %>
+            <%= link_to message_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
+              Comment
             <% end %>
           <% end %>
         <% end %>

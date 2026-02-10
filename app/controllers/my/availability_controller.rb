@@ -404,8 +404,9 @@ module My
 
       @availability = ShowAvailability.find_or_initialize_by(available_entity: entity, show: @show)
       @availability.status = params[:status]
+      @availability.note = params[:note] if params.key?(:note)
       if @availability.save
-        render json: { status: @availability.status }
+        render json: { status: @availability.status, note: @availability.note }
       else
         render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
@@ -413,7 +414,25 @@ module My
       # Race condition: another request created the record, so find and update it
       @availability = ShowAvailability.find_by!(available_entity: entity, show: @show)
       @availability.update!(status: params[:status])
-      render json: { status: @availability.status }
+      render json: { status: @availability.status, note: @availability.note }
+    end
+
+    def update_note
+      @show = Show.find(params[:show_id])
+
+      entity_key = params[:entity_key]
+      entity = resolve_entity_from_key(entity_key)
+
+      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+
+      @availability = ShowAvailability.find_by(available_entity: entity, show: @show)
+      return render json: { error: "Not found" }, status: :not_found unless @availability
+
+      if @availability.update(note: params[:note])
+        render json: { status: @availability.status, note: @availability.note }
+      else
+        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
     end
 
     def update_audition_session

@@ -19,6 +19,8 @@
   awaiting_count = summary[:awaiting_payout_count] || 0
   paid_amount = summary[:paid_amount] || 0
   paid_count = summary[:paid_count] || 0
+  outstanding_advances = summary[:outstanding_advances] || 0
+  total_advances = summary[:total_advances] || 0
   row_link_path = local_assigns[:link_path] || manage_money_production_payouts_path(production)
 %>
 
@@ -50,7 +52,7 @@
       </div>
 
       <%# Panel 2: Awaiting Payout %>
-      <div class="w-full lg:w-1/3 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Awaiting Payout</div>
         <% if awaiting_payout > 0 %>
           <div class="text-sm font-medium text-pink-600"><%= number_to_currency(awaiting_payout) %></div>
@@ -61,11 +63,26 @@
       </div>
 
       <%# Panel 3: Total Paid %>
-      <div class="w-full lg:w-1/3 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Total Paid</div>
         <% if paid_amount > 0 %>
           <div class="text-sm font-medium text-green-600"><%= number_to_currency(paid_amount) %></div>
           <div class="text-xs text-gray-500"><%= paid_count %> <%= "show".pluralize(paid_count) %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">$0.00</div>
+        <% end %>
+      </div>
+
+      <%# Panel 4: Advances %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Advances</div>
+        <% if total_advances > 0 %>
+          <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_advances) %></div>
+          <% if outstanding_advances > 0 %>
+            <div class="text-xs text-amber-600"><%= number_to_currency(outstanding_advances) %> outstanding</div>
+          <% else %>
+            <div class="text-xs text-green-600">All settled</div>
+          <% end %>
         <% else %>
           <div class="text-sm text-gray-400">$0.00</div>
         <% end %>

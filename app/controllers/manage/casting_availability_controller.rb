@@ -483,7 +483,7 @@ module Manage
 
       result = {}
       availabilities.each do |sa|
-        result[[ sa.show_id, sa.available_entity_type, sa.available_entity_id ]] = sa.status
+        result[[ sa.show_id, sa.available_entity_type, sa.available_entity_id ]] = { status: sa.status, note: sa.note }
       end
       result
     end
@@ -595,6 +595,7 @@ module Manage
         {
           show: show,
           availability: avail&.status,
+          availability_note: avail&.note,
           is_cast: cast.present?,
           cast_roles: cast&.map { |a| a.role.name } || [],
           is_signed_up: registration.present?,
@@ -644,6 +645,7 @@ module Manage
         {
           member: member,
           availability: avail&.status,
+          availability_note: avail&.note,
           is_cast: cast_lookup[member_key].present?,
           cast_roles: cast_lookup[member_key]&.map { |a| a.role.name } || [],
           is_signed_up: registration.present?,

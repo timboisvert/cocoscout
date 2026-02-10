@@ -142,7 +142,9 @@
                     <%
                       member_key = [member.class.name, member.id]
                       show_key = [show.id, member.class.name, member.id]
-                      availability = @availability[show_key]
+                      availability_data = @availability[show_key]
+                      availability = availability_data&.[](:status)
+                      availability_note = availability_data&.[](:note)
                       is_cast = @cast_assignments[show_key].present?
                       is_signed_up = @sign_up_registrations[show_key].present?
 

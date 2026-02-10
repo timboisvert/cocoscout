@@ -151,16 +151,18 @@
               <% end %>
               <% if has_multiple_orgs %>
                 <% other_orgs.each do |org| %>
-                  <%= link_to manage_organization_path(org), data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0" do %>
-                    <% org_logo_other = org.logo if org.respond_to?(:logo) && org.logo&.attached? %>
-                    <% if org_logo_other %>
-                      <%= image_tag org_logo_other, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
-                    <% else %>
-                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] flex-shrink-0">
-                        <%= org.name[0..1].upcase %>
-                      </div>
-                    <% end %>
-                    <span class="text-xs font-medium text-gray-700 truncate"><%= org.name %></span>
+                  <%= form_with url: set_organization_path(id: org.id), method: :post do |form| %>
+                    <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer">
+                      <% org_logo_other = org.logo if org.respond_to?(:logo) && org.logo&.attached? %>
+                      <% if org_logo_other %>
+                        <%= image_tag org_logo_other, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] flex-shrink-0">
+                          <%= org.name[0..1].upcase %>
+                        </div>
+                      <% end %>
+                      <span class="text-xs font-medium text-gray-700 truncate"><%= org.name %></span>
+                    </button>
                   <% end %>
                 <% end %>
               <% end %>

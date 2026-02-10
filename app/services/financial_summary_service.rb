@@ -138,6 +138,9 @@ class FinancialSummaryService
     # In future, operating_expenses would be subtracted here
     net_income = gross_profit
 
+    # Contract revenue (incoming payments from contracts)
+    contract_revenue = calculate_contract_revenue(production_ids, date_range)
+
     {
       show_count: scope.count,
       shows_with_data: shows_with_data,
@@ -154,6 +157,7 @@ class FinancialSummaryService
       ticket_revenue: ticket_revenue,
       flat_fee_revenue: flat_fee_revenue,
       other_revenue: other_revenue,
+      contract_revenue: contract_revenue,
       expense_by_category: expense_by_category,
       # Legacy keys for backward compatibility during transition
       total_revenue: gross_revenue,
@@ -162,5 +166,23 @@ class FinancialSummaryService
       profit_margin: gross_margin,
       retained: net_income
     }
+  end
+
+  def calculate_contract_revenue(production_ids, date_range)
+    # Contracts belong to organizations, not productions.
+    # Get the organization IDs from the productions.
+    org_ids = Production.where(id: production_ids).pluck(:organization_id).uniq
+    scope = Contract.where(organization_id: org_ids).where(status: :active)
+
+    if date_range
+      # Only include contracts that overlap with the date range
+      scope = scope.where("contract_start_date <= ? OR contract_start_date IS NULL", date_range.last)
+                   .where("contract_end_date >= ? OR contract_end_date IS NULL", date_range.first)
+    end
+
+    # Only count payments that have actually been paid
+    scope.sum { |contract| contract.contract_payments.where(direction: "incoming").status_paid.sum(:amount) }
+  rescue
+    0.0
   end
 end

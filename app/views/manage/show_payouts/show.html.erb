@@ -777,9 +777,30 @@
                               <% if item.is_guest? %>
                                 <button type="button"
                                         data-action="click->payment-actions#showGuestPaymentModal"
-                                        class="text-blue-500 hover:text-blue-600 underline cursor-pointer">(add payment info)</button>
+                                        class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(add payment info)</button>
                               <% else %>
-                                <span class="text-gray-400">(no payment method)</span>
+                                <span class="relative" data-controller="quick-payment">
+                                  <button type="button"
+                                          data-action="click->quick-payment#toggle"
+                                          class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(add payment info)</button>
+                                  <div data-quick-payment-target="popup" class="hidden absolute left-0 top-6 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-64">
+                                    <%= form_with url: manage_quick_payment_info_money_show_payout_path(@show, item.payee_id), method: :patch, local: true, class: "space-y-3" do |f| %>
+                                      <div class="text-sm font-medium text-gray-900 mb-2"><%= item.payee_name %></div>
+                                      <div>
+                                        <label class="text-xs text-gray-500 block mb-1">Venmo Handle</label>
+                                        <input type="text" name="venmo_handle" placeholder="@username" value="<%= item.payee.respond_to?(:venmo_identifier) ? item.payee.formatted_venmo_identifier : '' %>" class="w-full text-sm px-2.5 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+                                      </div>
+                                      <div>
+                                        <label class="text-xs text-gray-500 block mb-1">Zelle Email or Phone</label>
+                                        <input type="text" name="zelle_email" placeholder="email@example.com" value="<%= item.payee.respond_to?(:zelle_identifier) ? item.payee.formatted_zelle_identifier : '' %>" class="w-full text-sm px-2.5 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+                                      </div>
+                                      <div class="flex gap-2">
+                                        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+                                        <button type="button" data-action="click->quick-payment#close" class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
+                                      </div>
+                                    <% end %>
+                                  </div>
+                                </span>
                               <% end %>
                             <% end %>
                           </div>

@@ -43,7 +43,7 @@ module Manage
       end
 
       # Always redirect to manage - production auto-selection happens there if needed
-      redirect_to manage_path
+      redirect_to manage_path, status: :see_other
     end
 
     private

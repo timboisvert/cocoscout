@@ -34,7 +34,7 @@
     </div>
 
     <%# Middle panel (25%): Availability %>
-    <div class="w-1/4 flex items-center justify-center border-l border-gray-200">
+    <div class="w-1/4 flex flex-col items-center justify-center border-l border-gray-200">
       <%
         if member_data[:availability] == 'available'
           avail_display = "A"
@@ -48,6 +48,9 @@
         end
       %>
       <span class="text-sm <%= avail_class %>"><%= avail_display %></span>
+      <% if member_data[:availability_note].present? && member_data[:availability] == 'available' %>
+        <span class="text-[9px] italic text-gray-500 truncate max-w-full px-1" title="<%= member_data[:availability_note] %>"><%= member_data[:availability_note] %></span>
+      <% end %>
     </div>
 
     <%# Right panel (25%): Casting and/or Registration status %>

@@ -13,7 +13,7 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments, :issue_advances, :reset_calculation
+      :update_guest_payments, :quick_payment_info, :issue_advances, :reset_calculation
     ]
 
     def show
@@ -463,6 +463,35 @@ module Manage
 
       redirect_to manage_money_show_payout_path(@show),
                   notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
+    end
+
+    def quick_payment_info
+      person = Person.find(params[:person_id])
+
+      venmo_handle = params[:venmo_handle]&.strip.presence
+      zelle_email = params[:zelle_email]&.strip.presence
+
+      if venmo_handle
+        # Normalize: remove @ prefix
+        venmo_handle = venmo_handle.delete("@")
+        person.update!(
+          venmo_identifier: venmo_handle,
+          venmo_identifier_type: "USER_HANDLE",
+          preferred_payment_method: "venmo"
+        )
+      end
+
+      if zelle_email
+        identifier_type = zelle_email.include?("@") ? "EMAIL" : "PHONE"
+        person.update!(
+          zelle_identifier: zelle_email,
+          zelle_identifier_type: identifier_type,
+          preferred_payment_method: person.venmo_configured? ? person.preferred_payment_method : "zelle"
+        )
+      end
+
+      redirect_to manage_money_show_payout_path(@show),
+                  notice: "Payment info updated for #{person.name}."
     end
 
     # Issue advances to cast members for this show

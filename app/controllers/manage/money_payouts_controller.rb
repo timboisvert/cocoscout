@@ -187,7 +187,9 @@ module Manage
         awaiting_payout_count: awaiting_payout.count,
         awaiting_payout_amount: awaiting_payout.sum(:total_payout) || 0,
         paid_count: paid_payouts.count,
-        paid_amount: paid_payouts.sum(:total_payout) || 0
+        paid_amount: paid_payouts.sum(:total_payout) || 0,
+        outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
+        total_advances: production.person_advances.sum(:original_amount)
       }
     end
 

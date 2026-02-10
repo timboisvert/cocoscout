@@ -117,6 +117,9 @@
                     <% end %>
                   <% end %>
                 </div>
+                <% if availability&.note.present? && current_status == 'available' %>
+                  <div class="text-xs italic text-gray-500 mt-1 truncate" title="<%= availability.note %>"><%= availability.note %></div>
+                <% end %>
               </div>
             </div>
           </div>

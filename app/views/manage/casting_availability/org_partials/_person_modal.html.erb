@@ -74,6 +74,7 @@
                 <%
                   show = show_data[:show]
                   availability = show_data[:availability]
+                  availability_note = show_data[:availability_note]
                   is_cast = show_data[:is_cast]
                   is_signed_up = show_data[:is_signed_up]
                   cast_roles = show_data[:cast_roles] || []
@@ -112,7 +113,7 @@
                   </div>
 
                   <%# Middle panel (25%): Availability %>
-                  <div class="w-1/4 flex items-center justify-center border-l border-gray-200">
+                  <div class="w-1/4 flex flex-col items-center justify-center border-l border-gray-200">
                     <%
                       if availability == 'available'
                         avail_display = "A"
@@ -126,6 +127,9 @@
                       end
                     %>
                     <span class="text-sm <%= avail_class %>"><%= avail_display %></span>
+                    <% if availability_note.present? && availability == 'available' %>
+                      <span class="text-[10px] italic text-gray-500 truncate max-w-full px-1" title="<%= availability_note %>"><%= availability_note %></span>
+                    <% end %>
                   </div>
 
                   <%# Right panel (25%): Casting or Registration status %>

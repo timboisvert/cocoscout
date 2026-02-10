@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static values = { showId: Number, status: String, personId: Number, updateUrl: String }
-    static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText"]
+    static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText", "noteInput", "noteContainer", "saveButton"]
 
     connect() {
         // Only update buttons if this is a show row (has showIdValue)
@@ -131,5 +131,79 @@ export default class extends Controller {
                 link.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-50');
             }
         });
+
+        // Show/hide note container based on status
+        const noteContainer = row.querySelector('[data-availability-target="noteContainer"]');
+        if (noteContainer) {
+            if (currentStatus === 'available') {
+                noteContainer.classList.remove('hidden');
+            } else {
+                noteContainer.classList.add('hidden');
+            }
+        }
+    }
+
+    showSaveButton(event) {
+        const input = event.currentTarget;
+        const showRow = input.closest('[data-availability-show-id-value]');
+        if (!showRow) return;
+
+        // Hide all other save buttons first
+        document.querySelectorAll('[data-availability-target="saveButton"]').forEach(btn => {
+            if (!showRow.contains(btn)) {
+                btn.classList.add('hidden');
+                btn.textContent = 'Save';
+                btn.classList.remove('bg-green-500');
+                btn.classList.add('bg-pink-500', 'hover:bg-pink-600');
+            }
+        });
+
+        const saveBtn = showRow.querySelector('[data-availability-target="saveButton"]');
+        if (saveBtn) {
+            saveBtn.classList.remove('hidden');
+        }
+    }
+
+    saveNote(event) {
+        const button = event.currentTarget;
+        const showRow = button.closest('[data-availability-show-id-value]');
+        if (!showRow) return;
+
+        const input = showRow.querySelector('[data-availability-target="noteInput"]');
+        if (!input) return;
+
+        const showId = showRow.dataset.availabilityShowIdValue;
+        const entityKey = showRow.dataset.availabilityEntityKey;
+        const entityType = showRow.dataset.availabilityEntityTypeValue;
+        const note = input.value.trim();
+
+        fetch(`/my/availability/${showId}/note`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({ note, entity_key: entityKey, entity_type: entityType })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // Show checkmark feedback
+                    const originalText = button.textContent;
+                    button.textContent = '✓';
+                    button.classList.remove('bg-pink-500', 'hover:bg-pink-600');
+                    button.classList.add('bg-green-500');
+                    setTimeout(() => {
+                        button.classList.add('hidden');
+                        button.textContent = originalText;
+                        button.classList.remove('bg-green-500');
+                        button.classList.add('bg-pink-500', 'hover:bg-pink-600');
+                    }, 1500);
+                    // Blur the input
+                    input.blur();
+                }
+            });
     }
 }

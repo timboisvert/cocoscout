@@ -194,6 +194,7 @@ Rails.application.routes.draw do
     get   "/availability",                  to: "availability#index",       as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
+    patch "/availability/:show_id/note",    to: "availability#update_note",  as: "update_availability_note"
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/signups",                       to: "sign_ups#index",           as: "sign_ups"
@@ -1066,6 +1067,8 @@ Rails.application.routes.draw do
     delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
     post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
     post "money/shows/:id/payouts/update_guest_payments", to: "show_payouts#update_guest_payments", as: "update_guest_payments_money_show_payout"
+    # Quick update a person's payment info (Venmo/Zelle)
+    patch "money/shows/:id/payouts/quick_payment_info/:person_id", to: "show_payouts#quick_payment_info", as: "quick_payment_info_money_show_payout"
     # Show advances - issue advances to cast members for a show
     post "money/shows/:id/payouts/issue_advances", to: "show_payouts#issue_advances", as: "issue_advances_money_show_payout"
     # Reset calculation - clear calculated state and line items

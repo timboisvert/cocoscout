@@ -11,4 +11,5 @@ class ShowAvailability < ApplicationRecord
   }, default: :unset
 
   validates :available_entity_id, uniqueness: { scope: %i[show_id available_entity_type] }
+  validates :note, length: { maximum: 100 }
 end
