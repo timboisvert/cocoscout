@@ -57,9 +57,9 @@ module Manage
       @active_sign_up_forms = @sign_up_forms.select { |f| f.current_status[:accepting_registrations] }
       @sign_up_forms_count = @sign_up_forms.count
 
-      # Audition stats
+      # Audition stats - only count active (non-archived) sign-ups
       @active_audition_cycle = @production.active_audition_cycle
-      @audition_requests_count = @active_audition_cycle&.audition_requests&.count || 0
+      @audition_requests_count = @active_audition_cycle&.audition_requests&.active&.count || 0
       @past_audition_cycles_count = @production.audition_cycles.where(active: false).count
 
       # Sign-up form wizard in progress?

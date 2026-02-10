@@ -80,7 +80,7 @@ Looking forward to working with you!
 
     <!-- Single person form (Invite Directly) -->
     <div data-tabs-target="panel" data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path %>">
-      
+
       <%# Step 1: Search Section %>
       <div data-invite-search-target="searchSection">
         <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -137,7 +137,7 @@ Looking forward to working with you!
                 <p class="font-medium text-gray-900" data-invite-search-target="selectedPersonName"></p>
                 <p class="text-sm text-gray-500" data-invite-search-target="selectedPersonEmail"></p>
               </div>
-              <button type="button" 
+              <button type="button"
                       class="text-sm text-pink-600 hover:text-pink-700 font-medium"
                       data-action="invite-search#backToSearch">
                 Change
@@ -150,7 +150,7 @@ Looking forward to working with you!
       <%# Invite Form (shown when inviting) %>
       <div data-invite-search-target="inviteForm" class="hidden">
         <%= form_with(model: [:manage, @person], class: "contents") do |person_form| %>
-          
+
           <%# Hidden field for existing person ID %>
           <input type="hidden" name="selected_profile_ids[]" value="" data-invite-search-target="selectedPersonIdInput">
 
@@ -203,9 +203,9 @@ Looking forward to working with you!
                     <span class="text-sm text-gray-500">(optional)</span>
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" 
-                           name="invite_to_pool" 
-                           value="yes" 
+                    <input type="checkbox"
+                           name="invite_to_pool"
+                           value="yes"
                            class="sr-only peer"
                            data-action="change->toggle-section#toggle"
                            data-toggle-section-target="toggle">
@@ -258,7 +258,7 @@ Looking forward to working with you!
 
           <div class="flex items-center gap-3 pt-2">
             <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit, icon: "paper-airplane" %>
-            <button type="button" 
+            <button type="button"
                     class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
                     data-action="invite-search#backToSearch">
               Back to Search

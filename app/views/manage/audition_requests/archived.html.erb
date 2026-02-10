@@ -1,0 +1,98 @@
+<% content_for :title, "Archived Sign-ups" %>
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)],
+      ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)],
+      ["Open Sign-ups", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle)]
+    ],
+    text: "Archived Sign-ups",
+    links: []
+  } %>
+
+  <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+    <div class="flex items-start gap-3">
+      <%= icon("archive-box", class: "w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5") %>
+      <div>
+        <p class="text-sm text-amber-800 font-medium">Archived Sign-ups</p>
+        <p class="text-sm text-amber-700 mt-1">
+          These sign-ups have been archived and are not included in the active counts.
+          You can restore them to make them active again.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-1 mb-4">
+    <% if @audition_requests.any? %>
+      <% @audition_requests.each do |audition_request| %>
+        <% requestable = audition_request.requestable %>
+
+        <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, audition_request),
+            class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200",
+            data: { turbo_prefetch: false } do %>
+
+          <%# Left Section: Headshot & Name %>
+          <div class="flex-1 flex items-center gap-4">
+            <% if requestable.present? %>
+              <div class="flex-shrink-0">
+                <% headshot_url = safe_headshot_url(requestable) %>
+                <% if headshot_url %>
+                  <%= image_tag headshot_url, class: "relative inline-block h-8 w-8 !rounded-md object-cover object-center" %>
+                <% else %>
+                  <% if requestable.is_a?(Person) %>
+                    <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-black text-xs font-bold">
+                      <%= requestable.initials %>
+                    </div>
+                  <% else %>
+                    <%# Group without headshot %>
+                    <div class="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate">
+                  <%= truncate(requestable.name, length: 50, omission: "...") %>
+                </div>
+              </div>
+            <% else %>
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">
+                  ?
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-500">[Deleted]</div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Right Section: Archived date %>
+          <div class="flex items-center text-sm text-gray-500">
+            <%= icon("archive-box", class: "w-4 h-4 mr-1") %>
+            Archived <%= audition_request.archived_at.strftime("%b %-d, %Y") %>
+          </div>
+
+        <% end %>
+      <% end %>
+    <% else %>
+      <div class="p-6 text-center bg-white border border-gray-200 rounded-lg">
+        <p class="text-gray-500 text-sm">No archived sign-ups</p>
+        <%= link_to "← Back to Open Sign-ups", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), class: "text-sm text-pink-500 hover:underline mt-2 inline-block" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @audition_requests.any? %>
+    <div class="mt-4">
+      <%= link_to "← Back to Open Sign-ups", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), class: "text-sm text-pink-500 hover:underline" %>
+    </div>
+  <% end %>
+</div>

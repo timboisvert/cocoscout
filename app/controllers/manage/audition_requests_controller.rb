@@ -5,8 +5,8 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability cast_vote votes]
-    before_action :ensure_user_is_manager, except: %i[index show cast_vote votes]
+    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability cast_vote votes archive unarchive]
+    before_action :ensure_user_is_manager, except: %i[index show cast_vote votes archived]
     before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability cast_vote]
 
     def index
@@ -16,7 +16,8 @@ module Manage
         return
       end
 
-      @audition_requests = @audition_cycle.audition_requests.order(:created_at)
+      @audition_requests = @audition_cycle.audition_requests.active.order(:created_at)
+      @archived_count = @audition_cycle.audition_requests.archived.count
     end
 
     def show
@@ -182,6 +183,22 @@ module Manage
       else
         render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
+    end
+
+    def archive
+      @audition_request.archive!
+      redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+                  notice: "Sign-up archived successfully"
+    end
+
+    def unarchive
+      @audition_request.unarchive!
+      redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                  notice: "Sign-up restored successfully"
+    end
+
+    def archived
+      @audition_requests = @audition_cycle.audition_requests.archived.order(:created_at)
     end
 
     private

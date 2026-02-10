@@ -10,8 +10,25 @@ class AuditionRequest < ApplicationRecord
 
   validates :video_url, presence: true, if: -> { audition_cycle&.video_only? }
 
+  # Scopes for archived/active requests
+  scope :active, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
+
   # Cache invalidation - when request changes, invalidate the counts cache
   after_commit :invalidate_cycle_caches, on: %i[create update destroy]
+
+  # Archive methods
+  def archived?
+    archived_at.present?
+  end
+
+  def archive!
+    update!(archived_at: Time.current)
+  end
+
+  def unarchive!
+    update!(archived_at: nil)
+  end
 
   # Helper method for backward compatibility - auditions are always for individual people
   def person

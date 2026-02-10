@@ -89,7 +89,7 @@
         <p class="text-gray-600 mb-4">Auditionees have submitted their video uploads. Review their submissions.</p>
 
         <div class="bg-gray-50 rounded-lg p-4">
-          <p class="text-gray-700 font-semibold mb-2">Total Submissions: <span class="text-lg"><%= audition_cycle.audition_requests.count %></span></p>
+          <p class="text-gray-700 font-semibold mb-2">Total Submissions: <span class="text-lg"><%= audition_cycle.audition_requests.active.count %></span></p>
           <p class="text-sm text-gray-600">Video auditions don't require in-person sessions.</p>
         </div>
         </div>

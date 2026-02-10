@@ -19,7 +19,7 @@ module Manage
     def show
       # Summary view for archived auditions
       @custom_questions = @audition_cycle.questions.order(:position)
-      @audition_requests = @audition_cycle.audition_requests.includes(:requestable).order(created_at: :desc)
+      @audition_requests = @audition_cycle.audition_requests.active.includes(:requestable).order(created_at: :desc)
 
       # For in-person auditions, get person requests (not group requests)
       @accepted_requests = @audition_requests.where(requestable_type: "Person")

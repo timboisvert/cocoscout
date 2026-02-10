@@ -68,14 +68,14 @@ class AuditionCycle < ApplicationRecord
   end
 
   def counts
-    Rails.cache.fetch([ "audition_cycle_counts_v3", id, audition_requests.maximum(:updated_at)&.to_i ],
+    Rails.cache.fetch([ "audition_cycle_counts_v4", id, audition_requests.maximum(:updated_at)&.to_i ],
                       expires_in: 2.minutes) do
       # Count scheduled vs not scheduled for in-person, or cast vs not cast for video upload
       scheduled_count = audition_sessions.joins(:auditions).distinct.count("auditions.auditionable_id")
       cast_count = cast_assignment_stages.count
 
       {
-        total: audition_requests.count,
+        total: audition_requests.active.count,
         scheduled: scheduled_count,
         cast: cast_count
       }
@@ -83,10 +83,10 @@ class AuditionCycle < ApplicationRecord
   end
 
   def vote_summary
-    Rails.cache.fetch([ "audition_cycle_vote_summary_v2", id, AuditionRequestVote.where(audition_request_id: audition_requests.select(:id)).maximum(:updated_at)&.to_i ],
+    Rails.cache.fetch([ "audition_cycle_vote_summary_v3", id, AuditionRequestVote.where(audition_request_id: audition_requests.active.select(:id)).maximum(:updated_at)&.to_i ],
                       expires_in: 2.minutes) do
-      total_requests = audition_requests.count
-      votes = AuditionRequestVote.where(audition_request_id: audition_requests.select(:id))
+      total_requests = audition_requests.active.count
+      votes = AuditionRequestVote.where(audition_request_id: audition_requests.active.select(:id))
 
       {
         total_requests: total_requests,

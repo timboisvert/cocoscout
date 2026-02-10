@@ -51,8 +51,8 @@ class DashboardService
     is_open = call.opens_at <= Time.current && (call.closes_at.nil? || call.closes_at >= Time.current)
     return { total_open: 0, with_auditionees: [] } unless is_open
 
-    # Use size instead of count to avoid extra query if already loaded
-    auditionee_count = call.audition_requests.size
+    # Only count active (non-archived) audition requests
+    auditionee_count = call.audition_requests.active.size
 
     {
       total_open: 1,

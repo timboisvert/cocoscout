@@ -28,29 +28,33 @@
           </div>
         </div>
 
-        <% if current_user_can_manage? || Current.user&.superadmin? %>
-          <%# Organization Box %>
+        <% if current_user_can_manage? && @audition_request.present? %>
+          <%# Actions Box %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <%= render "shared/card_header", title: "Organization" %>
-            <div class="p-4">
-              <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
-                <%= link_to "Remove from #{Current.organization.name}",
-                    remove_from_organization_manage_person_path(person),
-                    data: {
-                      turbo_method: :post,
-                      turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?"
-                    },
-                    class: "text-sm text-pink-500 hover:underline"
-                %>
+            <%= render "shared/card_header", title: "Actions" %>
+            <div class="p-4 space-y-2">
+              <% if @audition_request.archived? %>
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-2">
+                  <p class="text-sm text-amber-800">
+                    <%= icon("archive-box", class: "w-4 h-4 inline mr-1") %>
+                    This sign-up was archived on <%= @audition_request.archived_at.strftime("%b %-d, %Y") %>
+                  </p>
+                </div>
+                <%= link_to "Restore Sign-up",
+                    manage_unarchive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                    data: { turbo_method: :post, turbo_confirm: "Are you sure you want to restore this sign-up? It will appear in the active sign-ups list again." },
+                    class: "text-sm text-pink-500 hover:underline" %>
+              <% else %>
+                <%= link_to "Archive Sign-up",
+                    manage_archive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                    data: { turbo_method: :post, turbo_confirm: "Are you sure you want to archive this sign-up? They will be removed from the active sign-ups list but their request will be preserved." },
+                    class: "block text-sm text-pink-500 hover:underline" %>
               <% end %>
 
-              <% if @audition_request.present? %>
-                <%= link_to "Delete Audition Request",
-                    manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
-                    data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this audition request?" },
-                    class: "block text-sm text-pink-500 hover:underline mt-1"
-                %>
-              <% end %>
+              <%= link_to "Delete Sign-up",
+                  manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                  data: { turbo_method: :delete, turbo_confirm: "⚠️ PERMANENTLY DELETE this sign-up?\n\nThis will completely remove their audition request, answers, votes, and all associated data. This cannot be undone.\n\nIf you just want to remove them from the active list, use 'Archive' instead." },
+                  class: "block text-sm text-pink-500 hover:underline" %>
             </div>
           </div>
         <% end %>

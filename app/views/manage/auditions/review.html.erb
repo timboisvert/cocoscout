@@ -40,7 +40,7 @@
                 <% if @audition_cycle.video_only? %>
                   Total Video Auditions
                 <% else %>
-                  Total Audition Requests
+                  Open Sign-ups
                 <% end %>
               </p>
             </div>
@@ -134,8 +134,8 @@
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
 
-        <% # Get all audition requests %>
-        <% all_audition_requests = @audition_cycle.audition_requests.includes(:requestable) %>
+        <% # Get all active (non-archived) audition requests %>
+        <% all_audition_requests = @audition_cycle.audition_requests.active.includes(:requestable) %>
 
         <% # Get all scheduled auditionables (people and groups) for this audition cycle %>
         <% scheduled_auditionables = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.auditionable_type', 'auditions.auditionable_id').map { |type, id| [type, id] }.to_set %>

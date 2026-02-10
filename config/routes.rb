@@ -504,12 +504,15 @@ Rails.application.routes.draw do
 
     # Sign-ups > Auditions > Requests
     get  "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#index", as: "signups_auditions_cycle_requests"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/archived", to: "audition_requests#archived", as: "archived_signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/new", to: "audition_requests#new", as: "new_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#create", as: "create_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#show", as: "signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/:id/unarchive", to: "audition_requests#unarchive", as: "unarchive_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_video", to: "audition_requests#edit_video", as: "edit_video_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_session_availability_signups_auditions_cycle_request"

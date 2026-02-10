@@ -89,9 +89,9 @@ class SignUpProducerNotificationService
         show_date: show_date,
         production_name: production.name,
         event_info: "#{show_name} on #{show_date}",
-        registrations_url: Rails.application.routes.url_helpers.manage_sign_up_form_registrations_url(
+        registrations_url: Rails.application.routes.url_helpers.manage_signups_form_url(
           production_id: production.id,
-          sign_up_form_id: form.id,
+          id: form.id,
           host: default_host
         )
       }

@@ -1,4 +1,4 @@
-<% content_for :title, "Audition Requests" %>
+<% content_for :title, "Open Sign-ups" %>
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -8,8 +8,8 @@
       ["Auditions", manage_signups_auditions_path(@production)],
       ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
-    text: @audition_cycle.video_only? ? "Video Auditions" : "Audition Requests",
-    links: []
+    text: @audition_cycle.video_only? ? "Video Auditions" : "Open Sign-ups",
+    links: @archived_count && @archived_count > 0 ? [{ text: "Archived (#{@archived_count})", path: manage_archived_signups_auditions_cycle_requests_path(@production, @audition_cycle) }] : []
   } %>
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
