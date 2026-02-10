@@ -9,7 +9,7 @@
       ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
     text: @audition_cycle.video_only? ? "Video Auditions" : "Open Sign-ups",
-    links: @archived_count && @archived_count > 0 ? [{ text: "Archived (#{@archived_count})", path: manage_archived_signups_auditions_cycle_requests_path(@production, @audition_cycle) }] : []
+    links: []
   } %>
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
@@ -142,5 +142,11 @@
         No one has signed up for an audition yet.
       <% end %>
     </p>
+  <% end %>
+
+  <% if @archived_count && @archived_count > 0 %>
+    <div class="mt-6 text-center">
+      <%= link_to "View #{@archived_count} archived #{'sign-up'.pluralize(@archived_count)}", manage_archived_signups_auditions_cycle_requests_path(@production, @audition_cycle), class: "text-sm text-gray-500 hover:underline" %>
+    </div>
   <% end %>
 </div>
