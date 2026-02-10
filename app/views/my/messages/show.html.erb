@@ -1,16 +1,21 @@
 <% content_for :title, @root_message.subject %>
 
-<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @root_message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>">
+<%
+  # Check if we came from a production-scoped page (via nested route or query param)
+  from_production_id = params[:production_id] || params[:from_production]
+  from_production = from_production_id ? Production.find_by(id: from_production_id) : nil
+  show_production_header = from_production.present?
+
+  # Auto-focus comment form
+  focus_comment = params[:focus] == 'comment'
+%>
+
+<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @root_message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>" data-message-thread-focus-comment-value="<%= focus_comment %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%
     subscription = Current.user.message_subscriptions.find_by(message: @root_message)
     is_muted = subscription&.muted?
-
-    # Check if we came from a production-scoped page
-    from_production_id = params[:from_production]
-    from_production = from_production_id ? Production.find_by(id: from_production_id) : nil
-    show_production_header = from_production.present?
   %>
 
   <% if show_production_header && from_production %>

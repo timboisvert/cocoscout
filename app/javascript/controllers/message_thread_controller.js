@@ -27,7 +27,8 @@ export default class extends Controller {
     static targets = ["replies", "typingIndicator", "presenceCount", "commentForm", "commentBody"]
     static values = {
         messageId: Number,
-        currentUserId: Number
+        currentUserId: Number,
+        focusComment: Boolean
     }
 
     connect() {
@@ -59,6 +60,12 @@ export default class extends Controller {
             )
         } catch (error) {
             console.warn("Could not connect to MessageThreadChannel:", error)
+        }
+
+        // Auto-open comment form if focusComment value is true
+        if (this.focusCommentValue) {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => this.showCommentForm(), 150)
         }
     }
 

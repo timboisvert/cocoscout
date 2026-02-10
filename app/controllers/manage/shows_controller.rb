@@ -1204,7 +1204,7 @@ module Manage
           email: person.email,
           organization: Current.organization
         )
-        Manage::PersonMailer.person_invitation(person_invitation, nil, nil).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
       end
 
       # Create attendance record marked as present (walk-in linked to person)

@@ -169,6 +169,7 @@ Rails.application.routes.draw do
       collection do
         post :mark_all_read
         get "production/:production_id", action: :production, as: :production
+        get "production/:production_id/:id", action: :show, as: :production_message
       end
     end
 
@@ -277,6 +278,7 @@ Rails.application.routes.draw do
       end
       collection do
         get "production/:production_id", action: :production, as: :production
+        get "production/:production_id/:id", action: :show, as: :production_message
       end
     end
 
@@ -677,7 +679,7 @@ Rails.application.routes.draw do
     get  "/directory/people/new", to: "people#new", as: "new_directory_person"
     post "/directory/people", to: "people#create", as: "create_directory_person"
     get  "/directory/people/search", to: "people#search", as: "search_directory_people"
-    post "/directory/people/batch_invite", to: "people#batch_invite", as: "batch_invite_directory_people"
+    get  "/directory/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_directory_people"
     get  "/directory/people/check_email", to: "people#check_email", as: "check_email_directory_people"
     get  "/directory/people/:id", to: "people#show", as: "directory_person"
     get  "/directory/people/:id/edit", to: "people#edit", as: "edit_directory_person"
@@ -749,7 +751,7 @@ Rails.application.routes.draw do
     resources :people, except: [ :destroy ] do
       collection do
         get :search
-        post :batch_invite
+        get :search_for_invite
         get :check_email
       end
       member do

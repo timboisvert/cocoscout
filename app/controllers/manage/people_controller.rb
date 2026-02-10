@@ -78,6 +78,48 @@ module Manage
       end
     end
 
+    # AJAX endpoint to search for people to invite
+    def search_for_invite
+      q = params[:q].to_s.strip
+
+      if q.blank? || q.length < 2
+        render partial: "manage/people/invite_search_results",
+               locals: {
+                 org_members: [],
+                 global_people: [],
+                 query: q,
+                 show_invite: false
+               }
+        return
+      end
+
+      # Search within organization (people only)
+      org_people = Current.organization.people.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).limit(10).to_a
+
+      # Search globally in CocoScout (people not in this org)
+      org_person_ids = Current.organization.people.pluck(:id)
+      global_people = Person.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).where.not(id: org_person_ids).limit(10).to_a
+
+      # Determine if we should show invite option
+      # Show invite if query looks like an email and we didn't find exact matches
+      show_invite = q.include?("@") && org_people.none? { |m| m.email&.downcase == q.downcase } &&
+                   global_people.none? { |p| p.email&.downcase == q.downcase }
+
+      render partial: "manage/people/invite_search_results",
+             locals: {
+               org_members: org_people,
+               global_people: global_people,
+               query: q,
+               show_invite: show_invite
+             }
+    end
+
     private
 
     def selected_talent_pool
@@ -92,9 +134,9 @@ module Manage
 
     def invite_selected_profiles(profile_ids)
       profiles = Person.where(id: profile_ids, email: person_params[:email]&.downcase)
-      invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
-      invitation_message = params[:person][:invitation_message] || default_invitation_message
       talent_pool = selected_talent_pool
+      invitation_subject = params[:invitation_subject]
+      invitation_body = params[:invitation_body]
 
       invited_names = []
 
@@ -117,22 +159,19 @@ module Manage
           organization: Current.organization,
           talent_pool: talent_pool
         )
-        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation, subject: invitation_subject, body: invitation_body).deliver_later
 
         invited_names << person.name
       end
 
       if invited_names.count == 1
-        redirect_to [ :manage, profiles.first ], notice: "Invitation sent to #{invited_names.first}"
+        redirect_to new_manage_person_path, notice: "Invitation sent to #{invited_names.first}"
       else
-        redirect_to manage_people_path, notice: "Invitations sent to #{invited_names.to_sentence}"
+        redirect_to new_manage_person_path, notice: "Invitations sent to #{invited_names.to_sentence}"
       end
     end
 
     def invite_single_profile(person)
-      invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
-      invitation_message = params[:person][:invitation_message] || default_invitation_message
-
       # Validate email before proceeding
       unless person.email.present? && person.email.match?(URI::MailTo::EMAIL_REGEXP)
         redirect_to [ :manage, person ], alert: "Cannot send invitation: #{person.email.presence || 'No email'} is not a valid email address"
@@ -161,10 +200,12 @@ module Manage
         organization: Current.organization,
         talent_pool: talent_pool
       )
-      Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+      invitation_subject = params[:invitation_subject]
+      invitation_body = params[:invitation_body]
+      Manage::PersonMailer.person_invitation(person_invitation, subject: invitation_subject, body: invitation_body).deliver_later
 
-      redirect_to [ :manage, person ],
-                  notice: "User account created and invitation sent to #{person.name}"
+      redirect_to new_manage_person_path,
+                  notice: "Invitation sent to #{person.name}"
     end
 
     def create_new_person_and_invite
@@ -180,8 +221,6 @@ module Manage
         )
         @person.update!(user: user)
 
-        invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
-        invitation_message = params[:person][:invitation_message] || default_invitation_message
         talent_pool = selected_talent_pool
 
         person_invitation = PersonInvitation.create!(
@@ -189,25 +228,14 @@ module Manage
           organization: Current.organization,
           talent_pool: talent_pool
         )
-        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+        invitation_subject = params[:invitation_subject]
+        invitation_body = params[:invitation_body]
+        Manage::PersonMailer.person_invitation(person_invitation, subject: invitation_subject, body: invitation_body).deliver_later
 
-        redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
+        redirect_to new_manage_person_path, notice: "Invitation sent to #{@person.name}"
       else
         render :new, status: :unprocessable_entity
       end
-    end
-
-    def default_invitation_subject
-      ContentTemplateService.render_subject("person_invitation", {
-        organization_name: Current.organization.name
-      })
-    end
-
-    def default_invitation_message
-      ContentTemplateService.render_body("person_invitation", {
-        organization_name: Current.organization.name,
-        setup_url: "[setup link will be included]"
-      })
     end
 
     public
@@ -311,129 +339,6 @@ module Manage
       }
     end
 
-    def batch_invite
-      emails_text = params[:emails].to_s
-      email_lines = emails_text.split(/\r?\n/).map(&:strip).reject(&:blank?)
-
-      invitation_subject = params[:invitation_subject] || default_invitation_subject
-      invitation_message = params[:invitation_message] || default_invitation_message
-      talent_pool = selected_talent_pool
-
-      @invited = []
-      @skipped = []
-      @skipped_multiple_profiles = []
-      @errors = []
-
-      email_lines.each do |email|
-        email = email.downcase
-
-        # Validate email format
-        unless email.match?(/\A[\w+\-.]+@[a-z\d-]+(\.[a-z\d-]+)*\.[a-z]+\z/i)
-          @errors << { email: email, reason: "Invalid email format" }
-          next
-        end
-
-        # Check if multiple profiles have this email
-        profiles_with_email = Person.where(email: email)
-        if profiles_with_email.count > 1
-          @skipped_multiple_profiles << { email: email, count: profiles_with_email.count }
-          next
-        end
-
-        # Check if user already exists (by login email)
-        existing_user = User.find_by(email_address: email)
-        if existing_user
-          existing_person = existing_user.person
-          if existing_person.organizations.include?(Current.organization)
-            @skipped << { email: email, name: existing_person.name, reason: "Already in organization" }
-          else
-            existing_person.organizations << Current.organization
-            @invited << { email: email, name: existing_person.name, new_account: false }
-          end
-          next
-        end
-
-        # Check if exactly one person exists with this email
-        existing_person = profiles_with_email.first
-
-        if existing_person
-          if existing_person.organizations.include?(Current.organization)
-            @skipped << { email: email, name: existing_person.name, reason: "Already in organization" }
-            next
-          end
-
-          # Person exists - add to org and create user if needed
-          existing_person.organizations << Current.organization
-
-          if existing_person.user.nil?
-            begin
-              user = User.create!(
-                email_address: existing_person.email,
-                password: User.generate_secure_password
-              )
-              existing_person.update!(user: user)
-
-              # Send invitation
-              person_invitation = PersonInvitation.create!(
-                email: existing_person.email,
-                organization: Current.organization,
-                talent_pool: talent_pool
-              )
-              Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
-              @invited << { email: email, name: existing_person.name, new_account: true }
-            rescue ActiveRecord::RecordInvalid => e
-              @errors << { email: email, reason: e.record.errors.full_messages.join(", ") }
-            end
-          else
-            @invited << { email: email, name: existing_person.name, new_account: false }
-          end
-        else
-          # Create new person and user
-          name = email.split("@").first.gsub(/[._-]/, " ").titleize
-          person = Person.new(name: name, email: email)
-
-          if person.save
-            begin
-              person.organizations << Current.organization
-
-              user = User.create!(
-                email_address: person.email,
-                password: User.generate_secure_password
-              )
-              person.update!(user: user)
-
-              person_invitation = PersonInvitation.create!(
-                email: person.email,
-                organization: Current.organization,
-                talent_pool: talent_pool
-              )
-              Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
-
-              @invited << { email: email, name: person.name, new_account: true }
-            rescue ActiveRecord::RecordInvalid => e
-              @errors << { email: email, reason: e.record.errors.full_messages.join(", ") }
-            end
-          else
-            @errors << { email: email, reason: person.errors.full_messages.join(", ") }
-          end
-        end
-      end
-
-      @person = Person.new  # For the form
-
-      # If there are errors, only show the failed emails in the textarea
-      if @errors.any?
-        @batch_emails = @errors.map { |e| e[:email] }.join("\n")
-        render :new, status: :unprocessable_entity
-      elsif @invited.any? || @skipped.any? || @skipped_multiple_profiles.any?
-        # All processed successfully - show results
-        @batch_results = true
-        render :new
-      else
-        render :new
-      end
-    end
-
     def add_to_cast
       @talent_pool = TalentPool.find(params[:talent_pool_id])
       @person = Current.organization.people.find(params[:person_id])
@@ -497,24 +402,32 @@ module Manage
         return
       end
 
-      # Get productions that have received a share from another pool (they don't use their own)
-      productions_receiving_shares = TalentPoolShare.pluck(:production_id)
+      # Get productions in this org that have received a share from another pool (they don't use their own)
+      org_production_ids = Current.organization.productions.pluck(:id)
+      productions_receiving_shares = TalentPoolShare.where(production_id: org_production_ids).pluck(:production_id)
 
-      pools = TalentPool.joins(:production)
-                        .includes(:production, :shared_productions)
-                        .where(productions: { organization_id: Current.organization.id })
-                        .where.not(production_id: productions_receiving_shares)
-                        .distinct
-                        .order(:name)
+      # Find pools, excluding those whose productions receive shares from elsewhere
+      all_pools = TalentPool.joins(:production)
+                            .includes(:production, :shared_productions)
+                            .where(productions: { organization_id: Current.organization.id })
+                            .where.not(production_id: productions_receiving_shares)
+                            .order(:name)
+
+      # Deduplicate by production - keep the pool that has shares, or the first one if none have shares
+      pools_by_production = all_pools.group_by(&:production_id)
+      pools = pools_by_production.values.map do |production_pools|
+        # Prefer pool with shares, otherwise take the first one
+        production_pools.find { |p| p.shared_productions.any? } || production_pools.first
+      end.compact.sort_by { |p| p.name.downcase }
 
       # Build display options
       @talent_pool_options = pools.map do |pool|
         shared_prod_names = pool.shared_productions.pluck(:name)
 
         display_name = if shared_prod_names.any?
-          # Shared pool: "Shared by Show1, Show2, and Show3"
+          # Shared pool: "Show1 / Show2 / Show3"
           all_names = [ pool.production.name ] + shared_prod_names
-          "Shared by #{all_names.to_sentence}"
+          all_names.join(" / ")
         else
           # Single production pool: just show production name
           pool.production.name

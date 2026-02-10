@@ -60,20 +60,7 @@ class PilotController < ApplicationController
     end
 
     # Send email
-    if organization_id.present?
-      organization = Organization.find(organization_id)
-      Manage::PersonMailer.person_invitation(
-        person_invitation,
-        "You've been invited to join #{organization.name} on CocoScout",
-        "Welcome to CocoScout!\n\n#{organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-      ).deliver_later
-    else
-      Manage::PersonMailer.person_invitation(
-        person_invitation,
-        "You've been invited to join CocoScout",
-        "Welcome to CocoScout!\n\nYou've been invited to join CocoScout, the platform for managing productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-      ).deliver_later
-    end
+    Manage::PersonMailer.person_invitation(person_invitation).deliver_later
 
     render json: {
       success: true,
@@ -128,11 +115,7 @@ class PilotController < ApplicationController
         )
 
         # Send invitation email
-        Manage::PersonMailer.person_invitation(
-          person_invitation,
-          "You've been invited to join CocoScout",
-          "Welcome to CocoScout!\n\nYou've been invited to join CocoScout, the platform for managing productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-        ).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
       end
 
       # Store in session
@@ -207,11 +190,7 @@ class PilotController < ApplicationController
         )
 
         # Send invitation email
-        Manage::PersonMailer.person_invitation(
-          person_invitation,
-          "You've been invited to join CocoScout",
-          "Welcome to CocoScout!\n\nYou've been invited to join CocoScout, the platform for managing productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-        ).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
       end
 
       # Store in session for PRODUCER
@@ -460,11 +439,7 @@ class PilotController < ApplicationController
       )
 
       # Send invitation email
-      Manage::PersonMailer.person_invitation(
-        person_invitation,
-        "You've been invited to join #{organization.name} on CocoScout",
-        "Welcome to CocoScout!\n\n#{organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-      ).deliver_later
+      Manage::PersonMailer.person_invitation(person_invitation).deliver_later
 
       # Store additional producers in session
       session[:pilot_producer_state][:additional_producers] ||= []

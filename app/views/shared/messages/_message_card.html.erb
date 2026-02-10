@@ -36,19 +36,27 @@
   # Determine correct paths based on controller context
   is_manage_context = controller.class.name.start_with?("Manage::")
 
+  # For production-scoped pages, use the nested URL pattern
+  production_for_message_path = local_assigns[:hide_production_via] && message.production ? message.production : nil
+
   if is_manage_context
-    message_path = manage_message_path(message)
+    if production_for_message_path
+      message_path = production_message_manage_messages_path(production_for_message_path, message)
+      comment_path = production_message_manage_messages_path(production_for_message_path, message, focus: :comment)
+    else
+      message_path = manage_message_path(message)
+      comment_path = manage_message_path(message, focus: :comment)
+    end
     production_link = production_context ? production_manage_messages_path(production_context) : nil
   else
-    message_path = my_message_path(message)
+    if production_for_message_path
+      message_path = production_message_my_messages_path(production_for_message_path, message)
+      comment_path = production_message_my_messages_path(production_for_message_path, message, focus: :comment)
+    else
+      message_path = my_message_path(message)
+      comment_path = my_message_path(message, focus: :comment)
+    end
     production_link = production_context ? production_my_messages_path(production_context) : nil
-  end
-
-  # For feed cards on production pages, pass production ID to maintain context
-  if is_feed && local_assigns[:hide_production_via] && message.production
-    message_path = is_manage_context ?
-      manage_message_path(message, from_production: message.production_id) :
-      my_message_path(message, from_production: message.production_id)
   end
 
   # Show regardable (only Shows are shown as cards)
@@ -262,11 +270,11 @@
         <% else %>
           <%# Feed context: Reply count as link %>
           <% if reply_count > 0 %>
-            <%= link_to message_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
+            <%= link_to comment_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
               <%= reply_count %> <%= reply_count == 1 ? 'comment' : 'comments' %>
             <% end %>
           <% else %>
-            <%= link_to message_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
+            <%= link_to comment_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
               Comment
             <% end %>
           <% end %>

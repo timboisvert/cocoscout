@@ -33,6 +33,15 @@ RSpec.describe EmailLogInterceptor do
     end
 
     it 'logs emails from person mailer' do
+      # Ensure the person_invitation template exists with correct content
+      template = ContentTemplate.find_or_initialize_by(key: "person_invitation")
+      template.update!(
+        name: "Person Invitation",
+        subject: "You've been invited to join {{organization_name}} on CocoScout",
+        body: "<p>Welcome!</p><p><a href=\"{{setup_url}}\">Set up your account</a></p>",
+        active: true
+      )
+
       organization = create(:organization)
       recipient_user = create(:user)
       person_invitation = create(:person_invitation, organization: organization, email: recipient_user.email_address)
@@ -40,12 +49,12 @@ RSpec.describe EmailLogInterceptor do
       create(:person, email: recipient_user.email_address, user: recipient_user)
 
       expect do
-        Manage::PersonMailer.person_invitation(person_invitation, 'Test Subject', 'Test message').deliver_now
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_now
       end.to change(EmailLog, :count).by(1)
 
       log = EmailLog.last
       expect(log.recipient).to eq(person_invitation.email)
-      expect(log.subject).to eq('Test Subject')
+      expect(log.subject).to include('invited to join')
     end
 
     it 'falls back to email_batch.user when recipient has no linked user' do

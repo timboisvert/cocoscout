@@ -1,0 +1,110 @@
+<%# Search results for invite page - shows org members, global CocoScout users, and invite option %>
+
+<% if query.blank? || query.length < 2 %>
+  <p class="text-gray-500 text-sm p-4">Type at least 2 characters to search...</p>
+<% elsif org_members.empty? && global_people.empty? && !show_invite %>
+  <div class="p-4 text-center">
+    <div class="text-gray-500 text-sm mb-3">No results found for "<%= query %>"</div>
+    <% if query.include?("@") %>
+      <p class="text-xs text-gray-400 mb-3">Want to invite this person?</p>
+      <button type="button"
+              class="text-pink-600 hover:text-pink-700 text-sm font-medium"
+              data-action="invite-search#showInviteForm"
+              data-email="<%= query %>">
+        <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %>
+        Invite <%= query %>
+      </button>
+    <% else %>
+      <p class="text-xs text-gray-400">Try searching by email to invite someone new</p>
+    <% end %>
+  </div>
+<% else %>
+
+  <%# Organization Members Section - Already in org %>
+  <% if org_members.any? %>
+    <div class="mb-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-2">
+        Already in <%= Current.organization.name %>
+      </div>
+      <div class="space-y-2">
+        <% org_members.each do |member| %>
+          <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50 relative w-full">
+            <% headshot_variant = member.safe_headshot_variant(:tile) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                <%= member.initials %>
+              </div>
+            <% end %>
+            <div class="flex-grow min-w-0">
+              <span class="font-medium text-sm block truncate"><%= member.name %></span>
+              <% if member.email.present? %>
+                <span class="text-xs text-gray-500 block truncate"><%= member.email %></span>
+              <% end %>
+            </div>
+            <span class="text-xs text-gray-500 flex-shrink-0">Already a member</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Global CocoScout Users Section - Can invite %>
+  <% if global_people.any? %>
+    <div class="mb-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-2">
+        On CocoScout (Not in Your Org)
+      </div>
+      <div class="space-y-2">
+        <% global_people.each do |person| %>
+          <div class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all relative w-full">
+            <% headshot_variant = person.safe_headshot_variant(:tile) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
+                <%= person.initials %>
+              </div>
+            <% end %>
+            <div class="flex-grow min-w-0">
+              <span class="font-medium text-sm block truncate"><%= person.name %></span>
+              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+            </div>
+            <button type="button"
+              class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 cursor-pointer flex-shrink-0"
+              data-action="invite-search#selectPerson"
+              data-person-id="<%= person.id %>"
+              data-person-name="<%= person.name %>"
+              data-person-email="<%= person.email %>"
+            >
+              Invite
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Invite Option - Show if email search with no exact matches %>
+  <% if show_invite %>
+    <div class="border-t border-gray-200 pt-4 mt-2">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-2">
+        Invite New Person
+      </div>
+      <div class="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+        <p class="text-sm text-gray-600 mb-3">
+          Can't find who you're looking for? Invite them to CocoScout.
+        </p>
+        <button type="button"
+                class="w-full px-4 py-2 text-pink-600 bg-white rounded-lg text-sm font-medium shadow hover:bg-pink-50 transition-all border border-pink-300 cursor-pointer"
+                data-action="invite-search#showInviteForm"
+                data-email="<%= query %>">
+          <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %>
+          Invite <%= query %>
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+<% end %>

@@ -367,7 +367,12 @@ module Manage
         # Toggle off - remove vote
         existing_vote.destroy!
       else
-        # Add vote (max_votes validated in model)
+        # For single-vote polls (max_votes = 1), remove any existing vote first
+        if poll.max_votes == 1
+          poll.message_poll_votes.where(user: Current.user).destroy_all
+        end
+
+        # Add vote (max_votes validated in model for multi-vote polls)
         vote = option.message_poll_votes.new(user: Current.user)
         unless vote.save
           redirect_back fallback_location: manage_message_path(message.root_message), alert: vote.errors.full_messages.first

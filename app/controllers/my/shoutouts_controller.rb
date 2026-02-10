@@ -209,17 +209,16 @@ module My
             organization: nil
           )
 
-          # Send invitation email using template
-          invitation_subject = ContentTemplateService.render_subject("shoutout_invitation", {
-            author_name: Current.user.person.name
-          })
-          invitation_message = ContentTemplateService.render_body("shoutout_invitation", {
+          # Send invitation email using shoutout-specific template
+          rendered = ContentTemplateService.render("shoutout_invitation", {
             author_name: Current.user.person.name,
-            setup_url: "[setup link will be included]"
+            setup_url: "{{setup_url}}"
           })
-
-          Manage::PersonMailer.person_invitation(person_invitation, invitation_subject,
-                                                 invitation_message).deliver_later
+          Manage::PersonMailer.person_invitation(
+            person_invitation,
+            subject: rendered[:subject],
+            body: rendered[:body]
+          ).deliver_later
 
           redirect_to my_shoutouts_path(tab: "given"),
                       notice: "Shoutout sent and invitation delivered to #{invite_name}!"

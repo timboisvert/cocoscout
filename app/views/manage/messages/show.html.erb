@@ -19,14 +19,17 @@
   # Get all replies in the thread
   all_replies = @message.child_messages.includes(:sender, :child_messages).order(created_at: :asc)
 
-  # Check if we came from a production-scoped page
-  from_production_id = params[:from_production]
+  # Check if we came from a production-scoped page (via nested route or query param)
+  from_production_id = params[:production_id] || params[:from_production]
   from_production = from_production_id ? Production.find_by(id: from_production_id) : nil
   show_production_header = from_production.present?
   hide_via_links = from_production.present?
+
+  # Auto-focus comment form
+  focus_comment = params[:focus] == 'comment'
 %>
 
-<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>">
+<div class="w-full" data-controller="message-thread" data-message-thread-message-id-value="<%= @message.id %>" data-message-thread-current-user-id-value="<%= Current.user.id %>" data-message-thread-focus-comment-value="<%= focus_comment %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <% if show_production_header && from_production %>

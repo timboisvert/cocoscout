@@ -162,7 +162,7 @@ When marking messages as read, the system updates BOTH:
 def unread_message_count
   message_subscriptions
     .joins(:conversation)
-    .where("message_subscriptions.last_read_at < conversations.updated_at 
+    .where("message_subscriptions.last_read_at < conversations.updated_at
             OR message_subscriptions.last_read_at IS NULL")
     .joins("INNER JOIN messages ON messages.conversation_id = conversations.id")
     .where("messages.created_at > COALESCE(message_subscriptions.last_read_at, '1970-01-01')")
@@ -261,7 +261,7 @@ If issues arise after deployment:
 ## Timeline Estimate
 
 - Phase 1 (Single Source): 2-3 days
-- Phase 2 (Optimization): 1-2 days  
+- Phase 2 (Optimization): 1-2 days
 - Phase 3 (Real-Time): 1 day
 - Phase 4 (Cleanup): 1 day
 - Testing & QA: 2-3 days

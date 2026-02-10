@@ -132,11 +132,13 @@ export default class extends Controller {
             this.maxVotesWrapperTarget.classList.remove("hidden")
             // Disable hidden default so the visible input takes precedence
             this.maxVotesHiddenTarget.disabled = true
+            this.maxVotesTarget.disabled = false
         } else {
             this.maxVotesWrapperTarget.classList.add("hidden")
             this.maxVotesTarget.value = "2"
-            // Re-enable hidden default (value=1)
+            // Re-enable hidden default (value=1) and disable visible input
             this.maxVotesHiddenTarget.disabled = false
+            this.maxVotesTarget.disabled = true
         }
     }
 }

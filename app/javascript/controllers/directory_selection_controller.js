@@ -213,6 +213,9 @@ export default class extends Controller {
         // Set hidden fields for batch mode
         const form = modal.querySelector('form')
         if (form) {
+            // Set form action to the messages endpoint
+            form.action = '/manage/messages'
+
             // Set recipient type to batch
             let recipientTypeField = form.querySelector('input[name="recipient_type"]')
             if (recipientTypeField) {

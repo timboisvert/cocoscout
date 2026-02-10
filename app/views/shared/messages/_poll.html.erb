@@ -44,10 +44,11 @@
 
     <%# Options %>
     <div class="p-4 space-y-2">
-      <% poll.message_poll_options.includes(:message_poll_votes).each do |option| %>
+      <% poll.message_poll_options.includes(message_poll_votes: { user: :default_person }).each do |option| %>
         <% voted_for = user_vote_ids.include?(option.id) %>
         <% percentage = option.vote_percentage(total_voters) %>
         <% votes = option.votes_count %>
+        <% voters = is_creator ? option.message_poll_votes.map(&:user).compact : [] %>
 
         <% if show_results %>
           <%# Results view - show bars with percentages %>
@@ -82,6 +83,32 @@
                 </div>
               </div>
             <% end %>
+            <%# Voter avatars for poll creator %>
+            <% if is_creator && voters.any? %>
+              <div class="flex items-center gap-1 mt-1 ml-1">
+                <div class="flex -space-x-1.5">
+                  <% voters.first(8).each do |voter| %>
+                    <% person = voter.default_person %>
+                    <% headshot = person&.safe_headshot_variant(:thumb) %>
+                    <span data-controller="tooltip" data-tooltip-text-value="<%= person&.name || voter.email_address %>" class="relative">
+                      <% if headshot %>
+                        <%= image_tag rails_storage_proxy_url(headshot), alt: person.name, class: "w-5 h-5 rounded-full object-cover ring-1 ring-white" %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] ring-1 ring-white">
+                          <%= person&.initials || voter.email_address.first.upcase %>
+                        </div>
+                      <% end %>
+                    </span>
+                  <% end %>
+                  <% if voters.size > 8 %>
+                    <span class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-[8px] font-medium ring-1 ring-white">
+                      +<%= voters.size - 8 %>
+                    </span>
+                  <% end %>
+                </div>
+                <span class="text-[10px] text-gray-400 ml-1"><%= voters.map { |v| v.default_person&.first_name || v.email_address.split('@').first }.join(', ') %></span>
+              </div>
+            <% end %>
           <% else %>
             <%# Static result bars (poll closed or not logged in) %>
             <div class="relative rounded-lg overflow-hidden border
@@ -107,6 +134,32 @@
                 </div>
               </div>
             </div>
+            <%# Voter avatars for poll creator (static bars) %>
+            <% if is_creator && voters.any? %>
+              <div class="flex items-center gap-1 mt-1 ml-1">
+                <div class="flex -space-x-1.5">
+                  <% voters.first(8).each do |voter| %>
+                    <% person = voter.default_person %>
+                    <% headshot = person&.safe_headshot_variant(:thumb) %>
+                    <span data-controller="tooltip" data-tooltip-text-value="<%= person&.name || voter.email_address %>" class="relative">
+                      <% if headshot %>
+                        <%= image_tag rails_storage_proxy_url(headshot), alt: person.name, class: "w-5 h-5 rounded-full object-cover ring-1 ring-white" %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] ring-1 ring-white">
+                          <%= person&.initials || voter.email_address.first.upcase %>
+                        </div>
+                      <% end %>
+                    </span>
+                  <% end %>
+                  <% if voters.size > 8 %>
+                    <span class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-[8px] font-medium ring-1 ring-white">
+                      +<%= voters.size - 8 %>
+                    </span>
+                  <% end %>
+                </div>
+                <span class="text-[10px] text-gray-400 ml-1"><%= voters.map { |v| v.default_person&.first_name || v.email_address.split('@').first }.join(', ') %></span>
+              </div>
+            <% end %>
           <% end %>
 
         <% else %>
@@ -122,22 +175,25 @@
       <% end %>
     </div>
 
-    <%# Footer - vote count and close button %>
-    <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
-      <span class="text-xs text-gray-500">
-        <%= total_voters %> <%= "vote".pluralize(total_voters) %>
-        <% if poll.closes_at.present? && poll.accepting_votes? %>
-          · Closes <%= time_ago_in_words(poll.closes_at) %> from now
-        <% end %>
-      </span>
+    <%# Footer - only shown if there's something to display %>
+    <% show_closes_at = poll.closes_at.present? && poll.accepting_votes? %>
+    <% show_close_button = is_creator && poll.accepting_votes? %>
+    <% if show_closes_at || show_close_button %>
+      <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+        <span class="text-xs text-gray-500">
+          <% if show_closes_at %>
+            Closes <%= time_ago_in_words(poll.closes_at) %> from now
+          <% end %>
+        </span>
 
-      <% if is_creator && poll.accepting_votes? %>
-        <%= button_to close_path, method: :post,
-            class: "text-xs font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer",
-            data: { turbo_frame: "_top", turbo_confirm: "Close this poll? No more votes will be accepted." } do %>
-          Close Poll
+        <% if show_close_button %>
+          <%= button_to close_path, method: :post,
+              class: "text-xs font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer",
+              data: { turbo_frame: "_top", turbo_confirm: "Close this poll? No more votes will be accepted." } do %>
+            Close Poll
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
   </div>
 </div>

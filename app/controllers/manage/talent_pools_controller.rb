@@ -230,15 +230,7 @@ module Manage
         )
 
         # Send invitation email using the standard invitation template
-        invitation_subject = ContentTemplateService.render_subject("person_invitation", {
-          organization_name: Current.organization.name
-        })
-        invitation_message = ContentTemplateService.render_body("person_invitation", {
-          organization_name: Current.organization.name,
-          setup_url: "[setup link will be included]"
-        })
-
-        Manage::PersonMailer.person_invitation(invitation, invitation_subject, invitation_message).deliver_later
+        Manage::PersonMailer.person_invitation(invitation).deliver_later
 
         render json: {
           success: true,
