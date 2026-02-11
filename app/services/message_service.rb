@@ -180,7 +180,10 @@ class MessageService
       root_message = message.root_message
 
       # Subscribe sender and mark as read (sender shouldn't see their own message as unread)
-      root_message.subscribe!(sender, mark_read: true) if sender.is_a?(User)
+      # But NOT for system-generated messages - the sender shouldn't see automated notifications
+      if sender.is_a?(User) && !system_generated
+        root_message.subscribe!(sender, mark_read: true)
+      end
 
       # Subscribe all recipients
       recipients.each do |person|
