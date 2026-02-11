@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_10_214249) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_11_203816) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -708,6 +708,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_10_214249) do
     t.string "sender_type", null: false
     t.bigint "show_id"
     t.string "subject", null: false
+    t.boolean "system_generated", default: false, null: false
     t.datetime "updated_at", null: false
     t.string "visibility", default: "private", null: false
     t.index ["parent_message_id"], name: "index_messages_on_parent_message_id"

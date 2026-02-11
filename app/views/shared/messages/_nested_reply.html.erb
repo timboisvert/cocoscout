@@ -22,6 +22,9 @@
 
   # Check if this is the last item in the collection
   is_last = local_assigns[:reply_counter] == (local_assigns[:reply_iteration] || 1) - 1 rescue false
+
+  # Check if sender identity selector should be shown (root was sent as production team)
+  root_sent_as_team = root_message.sent_as_production_team?
 %>
 
 <div class="relative" data-controller="reply-form" data-reply-form-parent-id-value="<%= reply.id %>" data-message-id="<%= reply.id %>">
@@ -117,8 +120,12 @@
         </div>
       </div>
 
-      <%# Action Bar: Reactions | Reply - Full width with background (hide for deleted) %>
-      <% unless reply.deleted? %>
+      <%# Action Bar: Reactions only for deleted, Reactions + Reply for active %>
+      <% if reply.deleted? %>
+        <div class="px-3 py-1.5 bg-gray-50 border-t border-gray-100">
+          <%= render "shared/messages/reactions", message: reply %>
+        </div>
+      <% else %>
         <div class="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
           <%= render "shared/messages/reactions", message: reply %>
           <button
@@ -137,12 +144,110 @@
 
       <%# Inline Reply Form (hidden by default, hide for deleted) %>
       <% unless reply.deleted? %>
-      <div data-reply-form-target="form" class="hidden border-t border-gray-100 p-4 bg-gray-50">
-        <%= form_with url: reply_path, method: :post, class: "space-y-3", data: { turbo: false, action: "turbo:submit-end->reply-form#submitted" } do |f| %>
+      <div data-reply-form-target="form" class="hidden border-t border-gray-100 p-4 bg-gray-50" data-controller="reply-sender">
+        <%= form_with url: reply_path, method: :post, class: "space-y-3", data: { turbo: false, action: "turbo:submit-end->reply-form#submitted" }, id: "nested-reply-form-#{reply.id}" do |f| %>
           <%= f.hidden_field :parent_message_id, value: reply.id %>
+
+          <% if root_sent_as_team %>
+            <%# Sender Identity Selector %>
+            <div class="pb-3 mb-3 border-b border-gray-200">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-gray-500">From:</span>
+                <div class="relative flex-1" data-controller="dropdown">
+                  <input type="hidden" name="sender_identity" value="production_team" data-reply-sender-target="input">
+                  <button type="button"
+                          data-action="click->dropdown#toggle"
+                          data-reply-sender-target="button"
+                          class="flex items-center justify-between gap-2 w-full text-left px-2 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-white transition-colors cursor-pointer text-sm">
+                    <div class="flex items-center gap-2">
+                      <div data-reply-sender-target="icon" class="flex-shrink-0">
+                        <% if root_message.production %>
+                          <% nested_prod_logo = root_message.production.safe_logo_variant(:small) %>
+                          <% if nested_prod_logo %>
+                            <%= image_tag nested_prod_logo, alt: root_message.production.name, class: "w-5 h-5 rounded object-cover" %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center border border-pink-200">
+                              <span class="text-[9px] font-bold text-pink-600"><%= root_message.production.initials %></span>
+                            </div>
+                          <% end %>
+                        <% else %>
+                          <div class="w-5 h-5 rounded bg-pink-500 flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </div>
+                        <% end %>
+                      </div>
+                      <span data-reply-sender-target="label" class="font-medium text-gray-900"><%= root_message.production&.name || "Production Team" %></span>
+                    </div>
+                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div data-dropdown-target="menu" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    <button type="button"
+                            data-action="click->reply-sender#select click->dropdown#close"
+                            data-value="production_team"
+                            data-label="<%= root_message.production&.name || 'Production Team' %>"
+                            class="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 transition-colors cursor-pointer text-left">
+                      <% if root_message.production %>
+                        <% nested_prod_logo2 = root_message.production.safe_logo_variant(:small) %>
+                        <% if nested_prod_logo2 %>
+                          <%= image_tag nested_prod_logo2, alt: root_message.production.name, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-5 h-5 rounded bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center flex-shrink-0 border border-pink-200">
+                            <span class="text-[9px] font-bold text-pink-600"><%= root_message.production.initials %></span>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded bg-pink-500 flex items-center justify-center flex-shrink-0">
+                          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                      <% end %>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900"><%= root_message.production&.name || "Production Team" %></div>
+                        <div class="text-xs text-gray-500">Visible to team</div>
+                      </div>
+                    </button>
+                    <button type="button"
+                            data-action="click->reply-sender#select click->dropdown#close"
+                            data-value="personal"
+                            data-label="<%= Current.user&.person&.name || 'Just Me' %>"
+                            class="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 transition-colors cursor-pointer text-left border-t border-gray-100">
+                      <% nested_current_person = Current.user&.person %>
+                      <% if nested_current_person %>
+                        <% nested_sender_headshot = nested_current_person.safe_headshot_variant(:thumb) %>
+                        <% if nested_sender_headshot %>
+                          <%= image_tag nested_sender_headshot, alt: nested_current_person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
+                            <span class="text-[9px] font-bold text-gray-600"><%= nested_current_person.initials %></span>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded bg-gray-400 flex items-center justify-center flex-shrink-0">
+                          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      <% end %>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900"><%= Current.user&.person&.name || "Just Me" %></div>
+                        <div class="text-xs text-gray-500">Private reply</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
           <div class="flex items-start gap-3">
             <% current_person = Current.user&.person %>
-            <% if current_person %>
+            <% if current_person && !root_sent_as_team %>
+              <%# Only show headshot when no sender identity selector (personal messages) %>
               <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
                 <%= image_tag headshot_variant, alt: current_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>

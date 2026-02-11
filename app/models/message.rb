@@ -170,12 +170,22 @@ class Message < ApplicationRecord
   end
 
   # Human-readable sender name
+  # For production/show-scoped messages, show "Production Team" or production name
   def sender_name
-    case sender
-    when User then sender.person&.name || sender.email_address
-    when Person then sender.name
-    else "CocoScout"
+    if sent_as_production_team?
+      production&.name || "Production Team"
+    else
+      case sender
+      when User then sender.person&.name || sender.email_address
+      when Person then sender.name
+      else "CocoScout"
+      end
     end
+  end
+
+  # Whether this message was sent "as the production team" (visible to team, not personal)
+  def sent_as_production_team?
+    %w[production show].include?(visibility) && %w[cast_contact talent_pool].include?(message_type)
   end
 
   # Get recipient count

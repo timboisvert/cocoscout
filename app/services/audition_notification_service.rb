@@ -260,6 +260,7 @@ class AuditionNotificationService
       return result unless person&.email.present?
 
       # Audition notifications are message-only - only send to users with accounts
+      # system_generated: true so it doesn't appear in sender's sent folder
       if person.user.present?
         message = MessageService.send_direct(
           sender: sender,
@@ -267,7 +268,8 @@ class AuditionNotificationService
           subject: subject,
           body: body,
           production: production,
-          organization: production.organization
+          organization: production.organization,
+          system_generated: true
         )
         result[:messages_sent] += 1 if message
       end

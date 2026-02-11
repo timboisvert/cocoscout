@@ -1,0 +1,53 @@
+<%#
+  Message Avatar Component
+
+  Renders the avatar for a message sender (production logo or person headshot)
+
+  Required:
+    message: The message object
+    sender_person: The sender's Person record (or nil)
+
+  Optional:
+    size: :small (w-8 h-8), :medium (w-11 h-11, default), :large (w-14 h-14)
+%>
+
+<%
+  size = local_assigns[:size] || :medium
+  size_classes = case size
+    when :small then "w-8 h-8"
+    when :large then "w-14 h-14"
+    else "w-11 h-11"
+  end
+  text_size = case size
+    when :small then "text-xs"
+    when :large then "text-base"
+    else "text-sm"
+  end
+%>
+
+<% if message.sent_as_production_team? && message.production %>
+  <%# Production logo %>
+  <% logo_variant = message.production.safe_logo_variant(:small) %>
+  <% if logo_variant %>
+    <%= image_tag rails_storage_proxy_url(logo_variant), alt: message.production.name, class: "#{size_classes} rounded-lg object-cover flex-shrink-0" %>
+  <% else %>
+    <div class="<%= size_classes %> rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+      <span class="text-white font-bold <%= text_size %>"><%= message.production.initials %></span>
+    </div>
+  <% end %>
+<% elsif sender_person %>
+  <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+  <% if headshot_variant %>
+    <%= image_tag rails_storage_proxy_url(headshot_variant), alt: sender_person.name, class: "#{size_classes} rounded-lg object-cover flex-shrink-0" %>
+  <% else %>
+    <div class="<%= size_classes %> rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold <%= text_size %> flex-shrink-0">
+      <%= sender_person.initials %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="<%= size_classes %> rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+    <svg class="<%= size == :small ? 'w-4 h-4' : 'w-6 h-6' %> text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+  </div>
+<% end %>

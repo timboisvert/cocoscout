@@ -73,20 +73,22 @@ class ContentTemplate < ApplicationRecord
   end
 
   # Render the body with variable substitution
+  # Converts double newlines to paragraph breaks and single newlines to <br> tags
   def render_body(variables = {})
-    interpolate(body, variables)
+    format_html(interpolate(body, variables))
   end
 
   # Render the message body with variable substitution
   # For "both" channel templates, uses message_body if present, otherwise falls back to body
   # For message-only templates, uses body
+  # Converts double newlines to paragraph breaks and single newlines to <br> tags
   def render_message_body(variables = {})
     content = if both? && message_body.present?
                 message_body
     else
                 body
     end
-    interpolate(content, variables)
+    format_html(interpolate(content, variables))
   end
 
   # Returns the list of variable names used in the template
@@ -141,6 +143,32 @@ class ContentTemplate < ApplicationRecord
       result.gsub!(/\{\{\s*#{Regexp.escape(key.to_s)}\s*\}\}/, value.to_s)
     end
     result
+  end
+
+  # Convert plain text with newlines to HTML
+  # Double newlines become paragraph breaks, single newlines become <br> tags
+  def format_html(text)
+    return text if text.blank?
+
+    # If the text already has block-level HTML tags, don't wrap in paragraphs
+    # Just convert remaining newlines to <br> tags
+    if text =~ /<(p|div|ul|ol|table|h[1-6])/i
+      # Just convert newlines to <br> tags where they don't follow a closing tag
+      text.gsub(/(?<!\>)\n/, "<br>\n")
+    else
+      # Split on double newlines to create paragraphs
+      paragraphs = text.split(/\n{2,}/)
+
+      if paragraphs.length > 1
+        # Wrap each paragraph in <p> tags, convert single newlines to <br>
+        paragraphs.map do |para|
+          "<p>#{para.gsub("\n", "<br>\n")}</p>"
+        end.join("\n")
+      else
+        # Single paragraph - just convert newlines to <br> tags
+        text.gsub("\n", "<br>\n")
+      end
+    end
   end
 
   # Extract variable names from text (looks for {{variable_name}})

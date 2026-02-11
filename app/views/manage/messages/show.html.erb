@@ -92,24 +92,115 @@
     </div>
 
     <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
-    <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-      <div class="flex gap-3">
-        <% current_person = Current.user&.person %>
-        <% if current_person %>
-          <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
-          <% if headshot_variant %>
-            <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
-              <%= current_person.initials %>
+    <%
+      # Determine if sender identity selector should be shown
+      # Show it if the original message was sent as production team
+      root_sent_as_team = @message.sent_as_production_team?
+      default_sender_identity = root_sent_as_team ? "production_team" : "personal"
+    %>
+    <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4" data-controller="reply-sender">
+      <% if root_sent_as_team %>
+        <%# Sender Identity Selector - shown only for production team messages %>
+        <div class="pb-4 mb-4 border-b border-gray-100">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-500">From:</span>
+            <div class="relative flex-1" data-controller="dropdown">
+              <input type="hidden" name="sender_identity" value="<%= default_sender_identity %>" data-reply-sender-target="input" form="reply-form-<%= @message.id %>">
+              <button type="button"
+                      data-action="click->dropdown#toggle"
+                      data-reply-sender-target="button"
+                      class="flex items-center justify-between gap-2 w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <div data-reply-sender-target="icon" class="flex-shrink-0">
+                    <% if @message.production %>
+                      <% prod_logo_btn = @message.production.safe_logo_variant(:small) %>
+                      <% if prod_logo_btn %>
+                        <%= image_tag prod_logo_btn, alt: @message.production.name, class: "w-6 h-6 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center border border-pink-200">
+                          <span class="text-xs font-bold text-pink-600"><%= @message.production.initials %></span>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded-lg bg-pink-500 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                    <% end %>
+                  </div>
+                  <span data-reply-sender-target="label" class="text-sm font-medium text-gray-900"><%= @message.production&.name || "Production Team" %></span>
+                </div>
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div data-dropdown-target="menu" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button type="button"
+                        data-action="click->reply-sender#select click->dropdown#close"
+                        data-value="production_team"
+                        data-label="<%= @message.production&.name || 'Production Team' %>"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-pink-50 transition-colors cursor-pointer text-left">
+                  <% if @message.production %>
+                    <% prod_logo = @message.production.safe_logo_variant(:small) %>
+                    <% if prod_logo %>
+                      <%= image_tag prod_logo, alt: @message.production.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center flex-shrink-0 border border-pink-200">
+                        <span class="text-xs font-bold text-pink-600"><%= @message.production.initials %></span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900"><%= @message.production&.name || "Production Team" %></div>
+                    <div class="text-xs text-gray-500">Visible to all team members</div>
+                  </div>
+                </button>
+                <button type="button"
+                        data-action="click->reply-sender#select click->dropdown#close"
+                        data-value="personal"
+                        data-label="<%= Current.user&.person&.name || 'Just Me' %>"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-pink-50 transition-colors cursor-pointer text-left border-t border-gray-100">
+                  <% current_person_for_sender = Current.user&.person %>
+                  <% if current_person_for_sender %>
+                    <% sender_headshot = current_person_for_sender.safe_headshot_variant(:thumb) %>
+                    <% if sender_headshot %>
+                      <%= image_tag sender_headshot, alt: current_person_for_sender.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        <span class="text-xs font-bold text-gray-600"><%= current_person_for_sender.initials %></span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded-lg bg-gray-400 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900"><%= Current.user&.person&.name || "Just Me" %></div>
+                    <div class="text-xs text-gray-500">Only visible to the recipient</div>
+                  </div>
+                </button>
+              </div>
             </div>
-          <% end %>
-        <% else %>
-          <div class="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0"></div>
-        <% end %>
+          </div>
+        </div>
+      <% end %>
 
-        <div class="flex-1">
-          <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, data: { turbo: false } do |f| %>
+      <div>
+        <div>
+          <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, data: { turbo: false }, id: "reply-form-#{@message.id}" do |f| %>
+            <% if root_sent_as_team %>
+              <%# Hidden field for sender_identity - the actual value is set by the selector above %>
+            <% end %>
             <%= f.rich_text_area :body, class: "w-full min-h-[80px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
 
             <div data-controller="image-dropzone">

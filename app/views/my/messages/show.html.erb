@@ -88,26 +88,27 @@
     <%# Original Message %>
     <%= render "shared/messages/message_card", message: @root_message, context: :show %>
 
-    <%# Thread Replies - Nested Tree View %>
-    <% direct_replies = @root_message.child_messages.includes(:sender, :child_messages).order(:created_at) %>
-    <div class="mt-6">
-      <div class="space-y-4" data-message-thread-target="replies">
-        <%= render partial: "shared/messages/nested_reply", collection: direct_replies, as: :reply, locals: { depth: 0 } %>
+    <% unless @root_message.system_generated? %>
+      <%# Thread Replies - Nested Tree View %>
+      <% direct_replies = @root_message.child_messages.includes(:sender, :child_messages).order(:created_at) %>
+      <div class="mt-6">
+        <div class="space-y-4" data-message-thread-target="replies">
+          <%= render partial: "shared/messages/nested_reply", collection: direct_replies, as: :reply, locals: { depth: 0 } %>
+        </div>
       </div>
-    </div>
 
-    <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
-    <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-      <div class="flex items-start gap-4">
-        <% current_person = Current.user.person %>
-        <% if current_person %>
-          <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
-          <% if headshot_variant %>
-            <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
-              <%= current_person.initials %>
-            </div>
+      <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
+      <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <div class="flex items-start gap-4">
+          <% current_person = Current.user.person %>
+          <% if current_person %>
+            <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                <%= current_person.initials %>
+              </div>
           <% end %>
         <% end %>
 
@@ -141,5 +142,6 @@
         </div>
       </div>
     </div>
+    <% end %>
   </div>
 </div>

@@ -220,13 +220,18 @@
           <%= render "shared/card_header", title: "Casting" do %>
             <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
             <% cast_members = @show.people.distinct %>
-            <div data-controller="compose-message"
-                 data-compose-message-recipient-type-value="show_cast"
-                 data-compose-message-recipient-id-value="<%= @show.id %>"
-                 data-compose-message-recipient-name-value="<%= @show.display_name %> Cast"
-                 data-compose-message-cast-members-value="<%= cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
-              <%= render "shared/button", text: "Contact Cast", variant: "primary", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
-            </div>
+            <% if cast_members.any? %>
+              <% cast_members_json = cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil } }.to_json %>
+              <div data-controller="compose-message"
+                   data-compose-message-recipient-type-value="show_cast"
+                   data-compose-message-recipient-id-value="<%= @show.id %>"
+                   data-compose-message-recipient-name-value="<%= @show.display_name %> Cast"
+                   data-compose-message-cast-members-value="<%= cast_members_json %>">
+                <%= render "shared/button", text: "Contact Cast", variant: "primary", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
+              </div>
+            <% else %>
+              <%= render "shared/button", text: "Contact Cast", variant: "secondary", size: "small", type: :button, disabled: true %>
+            <% end %>
           <% end %>
           <div class="p-4">
             <%

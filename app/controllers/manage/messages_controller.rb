@@ -20,12 +20,14 @@ module Manage
       # Managers see:
       # 1. All production/show-scoped messages for accessible productions
       # 2. Private messages where they're sender or recipient (their personal DMs)
+      # Excludes system-generated messages (automated notifications)
       private_received_ids = Message.joins(:message_recipients)
                                     .where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
                                     .select(:id)
 
       @messages = Message
         .where(organization: Current.organization)
+        .where(system_generated: false)
         .root_messages
         .where(
           "(messages.visibility IN (?) AND messages.production_id IN (?)) OR " +
@@ -74,6 +76,7 @@ module Manage
                                 .find(params[:production_id])
 
       # Get all messages for this production (production + show scoped, plus private messages)
+      # Excludes system-generated messages (automated notifications)
       person_ids = Current.user.people.pluck(:id)
       private_received_ids = Message.joins(:message_recipients)
                                     .where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
@@ -81,6 +84,7 @@ module Manage
 
       @messages = Message
         .where(production: @production)
+        .where(system_generated: false)
         .root_messages
         .where(
           "visibility IN (?) OR " +
@@ -101,6 +105,11 @@ module Manage
     def show
       @message = Message.find(params[:id])
       @root_message = @message.root_message
+
+      # Clear focus param if trying to comment on a deleted message
+      if @root_message.deleted? && params[:focus] == "comment"
+        redirect_to manage_message_path(@root_message) and return
+      end
 
       # Mark as read for user's person if they're a recipient
       # A user can have multiple Person records (one per org), so find the one
@@ -166,11 +175,15 @@ module Manage
 
       when "show_cast"
         show = Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find(recipient_id)
+        # Determine visibility based on sender_identity param
+        # production_team (default) = :show (team + show cast), personal = :personal (only sender + recipients)
+        visibility = params[:sender_identity] == "personal" ? :personal : :show
         message = MessageService.send_to_show_cast(
           show: show,
           sender: Current.user,
           subject: subject,
-          body: body
+          body: body,
+          visibility: visibility
         )
         message&.images&.attach(images) if images.present?
         attach_poll!(message) if poll_params_present?
@@ -191,14 +204,18 @@ module Manage
           return
         end
 
+        # Determine visibility based on sender_identity param
+        # production_team (default) = :production (all team), personal = :personal (only sender + recipients)
+        visibility = params[:sender_identity] == "personal" ? :personal : :production
         message = MessageService.send_to_people(
           sender: Current.user,
           people: people.to_a,
           subject: subject,
           body: body,
-          message_type: :direct,
+          message_type: :talent_pool,
           production: production,
-          organization: Current.organization
+          organization: Current.organization,
+          visibility: visibility
         )
         message&.images&.attach(images) if images.present?
         attach_poll!(message) if poll_params_present?
@@ -272,16 +289,31 @@ module Manage
       root_message = parent.root_message
       images = params[:images]&.reject(&:blank?)
 
+      # Prevent replying to deleted messages
+      if parent.deleted?
+        redirect_to manage_message_path(root_message), alert: "Cannot reply to a deleted message"
+        return
+      end
+
       # Ensure user has access (subscribed to thread)
       unless root_message.subscribed?(Current.user)
         redirect_to manage_messages_path, alert: "You don't have access to this thread"
         return
       end
 
+      # Determine visibility from sender_identity param
+      # "production_team" -> inherit from root, "personal" -> personal visibility
+      visibility = if params[:sender_identity] == "personal"
+        "personal"
+      else
+        nil # inherit from root message
+      end
+
       message = MessageService.reply(
         sender: Current.user,
         parent_message: parent,
-        body: params[:body]
+        body: params[:body],
+        visibility: visibility
       )
       message&.images&.attach(images) if images.present?
 

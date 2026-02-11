@@ -10,22 +10,34 @@
 <%= link_to my_message_path(thread), class: "block hover:bg-gray-50 transition-colors bg-white rounded-lg border border-gray-200 overflow-hidden" do %>
   <div class="flex items-start gap-3 p-4 <%= unread ? 'bg-pink-50' : '' %>">
     <%# Sender headshot %>
-    <% sender_person = thread.sender.is_a?(Person) ? thread.sender : thread.sender.person %>
-    <% if sender_person&.profile_headshots&.primary&.first %>
-      <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-      <% if headshot_variant %>
-        <%= image_tag headshot_variant, alt: sender_person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+    <% if thread.sent_as_production_team? && thread.production %>
+      <%# Production logo %>
+      <% logo_variant = thread.production.safe_logo_variant(:small) %>
+      <% if logo_variant %>
+        <%= image_tag logo_variant, alt: thread.production.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
       <% else %>
-        <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0">
-          <%= sender_person.initials %>
+        <div class="w-12 h-12 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+          <span class="text-white font-bold text-sm"><%= thread.production.initials %></span>
         </div>
       <% end %>
     <% else %>
-      <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-      </div>
+      <% sender_person = thread.sender.is_a?(Person) ? thread.sender : thread.sender.person %>
+      <% if sender_person&.profile_headshots&.primary&.first %>
+        <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
+        <% if headshot_variant %>
+          <%= image_tag headshot_variant, alt: sender_person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0">
+            <%= sender_person.initials %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+      <% end %>
     <% end %>
 
     <div class="flex-1 min-w-0">

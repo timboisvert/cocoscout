@@ -14,6 +14,8 @@ class My::MessagesController < ApplicationController
     @order = params[:order] || "newest"
 
     # Base query - show root messages for threads user is subscribed to
+    # Note: system-generated messages (automated notifications) ARE shown here
+    # because talent needs to see their sign-up confirmations, casting notices, etc.
     @messages = Current.user.subscribed_message_threads
                            .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
 
@@ -55,6 +57,7 @@ class My::MessagesController < ApplicationController
     @production = Production.find(params[:production_id])
 
     # Get messages for this production that user is subscribed to
+    # Note: system-generated messages ARE shown here (talent needs to see their notifications)
     @messages = Current.user.subscribed_message_threads
                            .where(production: @production)
                            .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
@@ -68,6 +71,11 @@ class My::MessagesController < ApplicationController
     @show_my_sidebar = true
     @message = Message.find(params[:id])
     @root_message = @message.root_message
+
+    # Clear focus param if trying to comment on a deleted message
+    if @root_message.deleted? && params[:focus] == "comment"
+      redirect_to my_message_path(@root_message) and return
+    end
 
     # Ensure user has access (subscribed to thread)
     unless @root_message.subscribed?(Current.user)
@@ -144,6 +152,12 @@ class My::MessagesController < ApplicationController
 
     # Find root message
     root_message = parent.root_message
+
+    # Prevent replying to deleted messages
+    if parent.deleted?
+      redirect_to my_message_path(root_message), alert: "Cannot reply to a deleted message"
+      return
+    end
 
     # Ensure user is subscribed to the thread
     unless root_message.subscribed?(Current.user)

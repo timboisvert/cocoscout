@@ -31,10 +31,22 @@
       <% talent_pool = @production.effective_talent_pool %>
       <% if talent_pool %>
         <% talent_pool_members = talent_pool.people.distinct %>
+        <%
+          # Determine display name for the talent pool
+          pool_productions = [talent_pool.production] + talent_pool.shared_productions.to_a
+          single_pool_mode = Current.organization.talent_pool_single?
+          if single_pool_mode
+            talent_pool_display_name = "#{Current.organization.name} Talent Pool"
+          elsif pool_productions.size > 1
+            talent_pool_display_name = "Shared Talent Pool"
+          else
+            talent_pool_display_name = "#{talent_pool.production.name} Talent Pool"
+          end
+        %>
         <div data-controller="compose-message"
              data-compose-message-recipient-type-value="talent_pool"
              data-compose-message-recipient-id-value="<%= talent_pool.id %>"
-             data-compose-message-recipient-name-value="<%= talent_pool.name %>"
+             data-compose-message-recipient-name-value="<%= talent_pool_display_name %>"
              data-compose-message-production-id-value="<%= @production.id %>"
              data-compose-message-cast-members-value="<%= talent_pool_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
           <%= render "shared/button",

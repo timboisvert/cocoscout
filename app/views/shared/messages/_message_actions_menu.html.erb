@@ -1,0 +1,58 @@
+<%#
+  Message Actions Menu Component
+
+  Renders the 3-dot menu with delete and read receipts options
+
+  Required:
+    message: The message object
+    message_path: The path to the message (for delete link)
+    can_delete: Whether the current user can delete this message
+    can_view_receipts: Whether the current user can view read receipts
+%>
+
+<% if can_delete || can_view_receipts %>
+  <div class="relative z-10 flex-shrink-0" data-controller="dropdown modal">
+    <button
+      type="button"
+      class="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+      data-action="click->dropdown#toggle"
+      title="More options">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+      </svg>
+    </button>
+    <div
+      data-dropdown-target="menu"
+      class="hidden absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+      <% if can_view_receipts %>
+        <button
+          type="button"
+          data-action="click->modal#open click->dropdown#close"
+          data-modal-id="read-receipts-modal-<%= message.id %>"
+          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Read Receipts
+        </button>
+      <% end %>
+      <% if can_delete %>
+        <%= link_to message_path,
+            method: :delete,
+            data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this message?" },
+            class: "flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Delete
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Read Receipts Modal - rendered outside dropdown for proper z-index %>
+  <% if can_view_receipts %>
+    <%= render "shared/messages/read_receipts_modal", message: message %>
+  <% end %>
+<% end %>

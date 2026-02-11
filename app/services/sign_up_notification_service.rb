@@ -83,8 +83,8 @@ class SignUpNotificationService
 
       # Build template variables
       show = instance&.show
-      show_name = show&.secondary_name.presence || show&.event_type&.titleize || instance&.show_name || "TBD"
-      show_date = show&.date_and_time&.strftime("%B %d, %Y at %l:%M %p") || instance&.show_date&.strftime("%B %d, %Y") || "TBD"
+      show_name = show&.secondary_name.presence || show&.event_type&.titleize || form&.name || "TBD"
+      show_date = show&.date_and_time&.strftime("%B %d, %Y at %l:%M %p") || "TBD"
 
       variables = {
         registrant_name: registration.display_name || "Guest",
@@ -110,14 +110,15 @@ class SignUpNotificationService
       sender = find_sender(production)
       return result unless sender.present?
 
-      # Send as in-app message
+      # Send as in-app message (system_generated: true so it doesn't appear in sender's sent folder)
       message = MessageService.send_direct(
         sender: sender,
         recipient_person: person,
         subject: subject,
         body: body,
         production: production,
-        organization: production&.organization
+        organization: production&.organization,
+        system_generated: true
       )
       result[:messages_sent] += 1 if message
 

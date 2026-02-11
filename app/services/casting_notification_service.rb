@@ -82,6 +82,7 @@ class CastingNotificationService
     private
 
     # Casting notifications are message-only (no email)
+    # system_generated: true so it doesn't appear in sender's sent folder
     def send_notification(template_key:, person:, show:, production:, sender:, body:, subject:, email_batch_id:, mailer_method:)
       result = { messages_sent: 0, emails_sent: 0 }
 
@@ -95,7 +96,8 @@ class CastingNotificationService
           subject: subject,
           body: body,
           production: production,
-          organization: production.organization
+          organization: production.organization,
+          system_generated: true
         )
         result[:messages_sent] += 1 if message
       end

@@ -27,8 +27,9 @@ class NotificationDeliveryService
     # @param production [Production, nil] Optional production context
     # @param organization [Organization, nil] Optional organization context
     # @param email_batch_id [Integer, nil] Optional email batch ID for tracking
+    # @param system_generated [Boolean] Whether this is an automated transactional message
     # @return [Hash] { message: Message, email_sent: Boolean }
-    def deliver(template_key:, variables:, sender:, recipient:, production: nil, organization: nil, email_batch_id: nil)
+    def deliver(template_key:, variables:, sender:, recipient:, production: nil, organization: nil, email_batch_id: nil, system_generated: false)
       result = { message: nil, email_sent: false }
 
       # Get the channel from the template
@@ -47,7 +48,8 @@ class NotificationDeliveryService
           subject: subject,
           body: body,
           production: production,
-          organization: organization || production&.organization
+          organization: organization || production&.organization,
+          system_generated: system_generated
         )
       end
 
@@ -74,8 +76,9 @@ class NotificationDeliveryService
     # @param recipients [Array<Person>] The people receiving the notification
     # @param production [Production, nil] Optional production context
     # @param organization [Organization, nil] Optional organization context
+    # @param system_generated [Boolean] Whether this is an automated transactional message
     # @return [Hash] { messages_sent: Integer, emails_sent: Integer }
-    def deliver_to_many(template_key:, variables_proc:, sender:, recipients:, production: nil, organization: nil)
+    def deliver_to_many(template_key:, variables_proc:, sender:, recipients:, production: nil, organization: nil, system_generated: false)
       results = { messages_sent: 0, emails_sent: 0 }
 
       # Create email batch if sending to multiple recipients
@@ -102,7 +105,8 @@ class NotificationDeliveryService
           recipient: recipient,
           production: production,
           organization: organization,
-          email_batch_id: email_batch&.id
+          email_batch_id: email_batch&.id,
+          system_generated: system_generated
         )
 
         results[:messages_sent] += 1 if result[:message]

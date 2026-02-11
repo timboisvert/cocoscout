@@ -1,9 +1,16 @@
 <%
   # Get all productions that share this talent pool (owner first, then shared)
   pool_productions = [@talent_pool.production] + @talent_pool.shared_productions.to_a
-  production_names = pool_productions.map(&:name).join(", ")
   single_pool_mode = Current.organization.talent_pool_single?
-  pool_display_name = single_pool_mode ? "#{Current.organization.name} Talent Pool" : production_names
+
+  # Determine display name for the talent pool
+  if single_pool_mode
+    pool_display_name = "#{Current.organization.name} Talent Pool"
+  elsif pool_productions.size > 1
+    pool_display_name = "Shared Talent Pool"
+  else
+    pool_display_name = "#{@talent_pool.production.name} Talent Pool"
+  end
 %>
 <% content_for :title, "Talent Pool - #{pool_display_name}" %>
 

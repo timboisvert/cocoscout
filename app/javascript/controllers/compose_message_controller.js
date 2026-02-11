@@ -19,7 +19,7 @@ import { Controller } from "@hotwired/stimulus"
  *   </button>
  */
 export default class extends Controller {
-    static targets = ["modal", "form", "subject", "body", "submitButton", "recipientName", "recipientType", "recipientId", "title", "recipientSection", "singleRecipient", "recipientHeadshot", "batchRecipients", "sendSeparatelySection", "sendSeparately"]
+    static targets = ["modal", "form", "subject", "body", "submitButton", "recipientName", "recipientType", "recipientId", "title", "recipientSection", "singleRecipient", "recipientHeadshot", "batchRecipients", "sendSeparatelySection", "sendSeparately", "senderIdentitySection", "senderIdentity", "senderIdentityButton", "senderIdentityLabel", "senderIdentityHint"]
     static values = {
         recipientType: String,  // "person", "group", "production_team", "show_cast", "batch", "talent_pool"
         recipientId: Number,
@@ -99,29 +99,29 @@ export default class extends Controller {
         this.templateDataIdValue = ''
 
         for (const source of sources) {
-            if (source.dataset.composeMessageRecipientTypeValue && !this.recipientTypeValue) {
+            if (source.dataset.composeMessageRecipientTypeValue) {
                 this.recipientTypeValue = source.dataset.composeMessageRecipientTypeValue
             }
-            if (source.dataset.composeMessageRecipientIdValue && !this.recipientIdValue) {
+            if (source.dataset.composeMessageRecipientIdValue) {
                 this.recipientIdValue = parseInt(source.dataset.composeMessageRecipientIdValue)
             }
-            if (source.dataset.composeMessageRecipientNameValue && !this.recipientNameValue) {
+            if (source.dataset.composeMessageRecipientNameValue) {
                 this.recipientNameValue = source.dataset.composeMessageRecipientNameValue
             }
-            if (source.dataset.composeMessageRecipientHeadshotValue && !this.recipientHeadshotValue) {
+            if (source.dataset.composeMessageRecipientHeadshotValue) {
                 this.recipientHeadshotValue = source.dataset.composeMessageRecipientHeadshotValue
             }
-            if (source.dataset.composeMessageRecipientInitialsValue && !this.recipientInitialsValue) {
+            if (source.dataset.composeMessageRecipientInitialsValue) {
                 this.recipientInitialsValue = source.dataset.composeMessageRecipientInitialsValue
             }
-            if (source.dataset.composeMessageCastMembersValue && (!this.castMembersValue || this.castMembersValue.length === 0)) {
+            if (source.dataset.composeMessageCastMembersValue) {
                 try {
                     this.castMembersValue = JSON.parse(source.dataset.composeMessageCastMembersValue)
                 } catch (e) {
                     this.castMembersValue = []
                 }
             }
-            if (source.dataset.composeMessageBatchPersonIdsValue && (!this.batchPersonIdsValue || this.batchPersonIdsValue.length === 0)) {
+            if (source.dataset.composeMessageBatchPersonIdsValue) {
                 try {
                     this.batchPersonIdsValue = JSON.parse(source.dataset.composeMessageBatchPersonIdsValue)
                 } catch (e) {
@@ -216,6 +216,30 @@ export default class extends Controller {
             }
         }
 
+        // Show sender identity section for all message types (person, group, show_cast, talent_pool, batch)
+        // This allows users to choose whether to send as "Production Team" or "Just Me"
+        const senderIdentitySection = modal.querySelector('[data-compose-message-target="senderIdentitySection"]')
+        if (senderIdentitySection) {
+            // Always show the sender identity section
+            senderIdentitySection.classList.remove('hidden')
+            // Reset to production_team by default
+            const hiddenInput = senderIdentitySection.querySelector('input[name="sender_identity"]')
+            if (hiddenInput) hiddenInput.value = 'production_team'
+            const label = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityLabel"]')
+            const hint = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityHint"]')
+            const button = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityButton"]')
+            const iconContainer = button?.querySelector('div:first-child > div:first-child')
+            if (label) label.textContent = 'Production Team'
+            if (hint) hint.textContent = '(visible to all team members)'
+            if (iconContainer) {
+                iconContainer.classList.remove('bg-gray-400')
+                iconContainer.classList.add('bg-pink-500')
+                iconContainer.innerHTML = `<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>`
+            }
+        }
+
         // Calculate and store recipient count for use in toggleSendSeparately
         const recipientCount = this.batchPersonIdsValue?.length || this.castMembersValue?.length || 1
         modal.dataset.recipientCount = recipientCount
@@ -262,31 +286,14 @@ export default class extends Controller {
         const nameTarget = modal.querySelector('[data-compose-message-target="recipientName"]')
         const headshotTarget = modal.querySelector('[data-compose-message-target="recipientHeadshot"]')
 
-        // For show_cast or talent_pool with cast members
+        // For show_cast or talent_pool with cast members - always show name label + headshots
         if ((this.recipientTypeValue === 'show_cast' || this.recipientTypeValue === 'talent_pool') && this.castMembersValue?.length > 0) {
-            // If only 1 member, show as single recipient (no tooltip, name next to headshot)
-            if (this.castMembersValue.length === 1) {
-                const member = this.castMembersValue[0]
-                if (singleRecipient) singleRecipient.classList.remove('hidden')
-                if (batchRecipients) batchRecipients.classList.add('hidden')
-
-                if (nameTarget) nameTarget.textContent = member.name
-                if (headshotTarget) {
-                    if (member.headshot) {
-                        headshotTarget.innerHTML = `<img src="${member.headshot}" alt="${member.name}" class="w-8 h-8 rounded-lg object-cover ring-2 ring-white">`
-                    } else {
-                        const initials = this.getInitials(member.name)
-                        headshotTarget.innerHTML = initials
-                        headshotTarget.className = 'w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs ring-2 ring-white'
-                    }
-                }
-            } else {
-                // Multiple members - show stacked headshots with tooltips
-                if (singleRecipient) singleRecipient.classList.add('hidden')
-                if (batchRecipients) {
-                    batchRecipients.classList.remove('hidden')
-                    batchRecipients.innerHTML = this.renderStackedHeadshots(this.castMembersValue)
-                }
+            if (singleRecipient) singleRecipient.classList.add('hidden')
+            if (batchRecipients) {
+                batchRecipients.classList.remove('hidden')
+                // Add the recipient name (e.g., "Comedy Pageant Cast") before headshots
+                const nameLabel = this.recipientNameValue ? `<span class="text-sm font-medium text-gray-900 mr-2">${this.recipientNameValue}</span>` : ''
+                batchRecipients.innerHTML = nameLabel + this.renderStackedHeadshots(this.castMembersValue)
             }
             return
         }
@@ -460,8 +467,25 @@ export default class extends Controller {
             }
 
             // Reset values
+            this.recipientTypeValue = ''
+            this.recipientIdValue = null
+            this.recipientNameValue = ''
+            this.recipientHeadshotValue = ''
+            this.recipientInitialsValue = ''
             this.castMembersValue = []
             this.batchPersonIdsValue = []
+            this.productionIdValue = null
+
+            // Reset sender identity to production_team (but keep section visible)
+            const senderIdentitySection = modal.querySelector('[data-compose-message-target="senderIdentitySection"]')
+            if (senderIdentitySection) {
+                const hiddenInput = senderIdentitySection.querySelector('input[name="sender_identity"]')
+                if (hiddenInput) hiddenInput.value = 'production_team'
+                const label = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityLabel"]')
+                const hint = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityHint"]')
+                if (label) label.textContent = 'Production Team'
+                if (hint) hint.textContent = '(visible to all team members)'
+            }
         }
     }
 
@@ -473,6 +497,62 @@ export default class extends Controller {
 
     stopPropagation(event) {
         event.stopPropagation()
+    }
+
+    closeDropdowns(event) {
+        // Close any open dropdowns in the modal when clicking elsewhere
+        // But not if clicking on the dropdown button itself
+        const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
+        if (!modal) return
+
+        const dropdowns = modal.querySelectorAll('[data-controller="dropdown"]')
+        dropdowns.forEach(dropdown => {
+            if (!dropdown.contains(event.target)) {
+                const menu = dropdown.querySelector('[data-dropdown-target="menu"]')
+                if (menu) menu.classList.add('hidden')
+            }
+        })
+    }
+
+    selectSenderIdentity(event) {
+        event.preventDefault()
+        const value = event.currentTarget.dataset.value
+        const modal = this.hasModalTarget ? this.modalTarget : document.getElementById('compose-message-modal')
+
+        // Update hidden input
+        const hiddenInput = modal.querySelector('input[name="sender_identity"]')
+        if (hiddenInput) hiddenInput.value = value
+
+        // Update button display
+        const label = modal.querySelector('[data-compose-message-target="senderIdentityLabel"]')
+        const hint = modal.querySelector('[data-compose-message-target="senderIdentityHint"]')
+        const button = modal.querySelector('[data-compose-message-target="senderIdentityButton"]')
+        const iconContainer = button?.querySelector('div:first-child > div:first-child')
+
+        if (value === 'production_team') {
+            if (label) label.textContent = 'Production Team'
+            if (hint) hint.textContent = '(visible to all team members)'
+            if (iconContainer) {
+                iconContainer.classList.remove('bg-gray-400')
+                iconContainer.classList.add('bg-pink-500')
+                iconContainer.innerHTML = `<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>`
+            }
+        } else {
+            if (label) label.textContent = 'Just Me'
+            if (hint) hint.textContent = '(private conversation)'
+            if (iconContainer) {
+                iconContainer.classList.remove('bg-pink-500')
+                iconContainer.classList.add('bg-gray-400')
+                iconContainer.innerHTML = `<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>`
+            }
+        }
+
+        // Close dropdown by clicking elsewhere
+        document.body.click()
     }
 
     async submit(event) {

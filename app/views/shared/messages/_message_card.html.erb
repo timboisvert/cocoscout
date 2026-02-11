@@ -20,6 +20,9 @@
   is_feed = context == :feed
   is_show = context == :show
 
+  # System-generated messages have different display rules
+  is_system_generated = message.system_generated?
+
   # Message metadata
   reply_count = message.descendant_ids.count
   sender_person = message.sender.is_a?(Person) ? message.sender : message.sender&.person
@@ -69,217 +72,204 @@
     <%= link_to message_path, class: "absolute inset-0 z-0", "aria-label": message.subject || "View message" do %><% end %>
   <% end %>
 
-  <%# Header %>
-  <div class="p-4 pb-3 bg-gray-50/80">
-    <div class="flex items-start gap-3">
-      <%# Avatar %>
-      <% if sender_person %>
-        <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-        <% if headshot_variant %>
-          <%= image_tag rails_storage_proxy_url(headshot_variant), alt: sender_person.name, class: "w-11 h-11 rounded-lg object-cover flex-shrink-0" %>
-        <% else %>
-          <div class="w-11 h-11 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
-            <%= sender_person.initials %>
-          </div>
-        <% end %>
-      <% else %>
-        <div class="w-11 h-11 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-          <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+  <%# Compact Header %>
+  <% can_delete = !message.deleted? && message.can_be_deleted_by?(Current.user) %>
+  <% can_view_receipts = message.can_view_read_receipts_by?(Current.user) %>
+
+  <%#
+    Determine recipient context label based on message type and regardables:
+    - Show cast: "[Show Name] Cast" + cast member headshots
+    - Talent pool: "Talent Pool" + member headshots
+    - Group: "Group Name" + member headshots
+    - Multiple people: "X people" + headshots
+    - Single person: just show name
+  %>
+  <%
+    recipient_context_label = nil
+    show_recipient_headshots = false
+
+    if message.message_type == "production_contact" && message.production.present?
+      recipient_context_label = "#{message.production.name} Team"
+    elsif message.message_type == "cast_contact" && message.show.present?
+      recipient_context_label = "#{message.show.display_name} Cast"
+      show_recipient_headshots = true
+    elsif message.message_type == "talent_pool" && message.production.present?
+      recipient_context_label = "Talent Pool"
+      show_recipient_headshots = true
+    elsif recipient_count > 1
+      recipient_context_label = "#{recipient_count} people"
+      show_recipient_headshots = true
+    elsif recipient_count == 1
+      # Single recipient - just show their name, no special context
+      show_recipient_headshots = false
+    end
+  %>
+
+  <div class="p-3 bg-gray-50/80">
+    <div class="flex items-center gap-2">
+      <%# Avatar - system icon for automated messages, otherwise normal avatar %>
+      <% if is_system_generated %>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center flex-shrink-0 border border-pink-200">
+          <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
           </svg>
         </div>
+      <% else %>
+        <%= render "shared/messages/message_avatar", message: message, sender_person: sender_person, size: :small %>
       <% end %>
 
-      <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-semibold text-gray-900"><%= message.sender_name %></span>
-            <% if production_context %>
-              <span class="text-gray-500">via</span>
-              <% if production_link %>
-                <%= link_to production_context.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
-              <% else %>
-                <span class="font-medium text-pink-600"><%= production_context.name %></span>
-              <% end %>
+      <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap text-sm">
+        <%# Sender + via inline - system messages show "Automated Notification" %>
+        <% if is_system_generated %>
+          <span class="font-semibold text-gray-700">Automated Notification</span>
+          <% if message.production %>
+            <span class="text-gray-400">from</span>
+            <% if production_link %>
+              <%= link_to message.production.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
+            <% else %>
+              <span class="font-medium text-pink-600"><%= message.production.name %></span>
             <% end %>
-          </div>
-
-          <%# Actions menu - show if user can delete or view read receipts %>
-          <% can_delete = !message.deleted? && message.can_be_deleted_by?(Current.user) %>
-          <% can_view_receipts = message.can_view_read_receipts_by?(Current.user) %>
-          <% if can_delete || can_view_receipts %>
-            <div class="relative z-10 flex-shrink-0" data-controller="dropdown modal">
-              <button
-                type="button"
-                class="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors cursor-pointer"
-                data-action="click->dropdown#toggle"
-                title="More options">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                </svg>
-              </button>
-              <div
-                data-dropdown-target="menu"
-                class="hidden absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <% if can_view_receipts %>
-                  <button
-                    type="button"
-                    data-action="click->modal#open click->dropdown#close"
-                    data-modal-id="read-receipts-modal-<%= message.id %>"
-                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Read Receipts
-                  </button>
-                <% end %>
-                <% if can_delete %>
-                  <%= link_to message_path,
-                      method: :delete,
-                      data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this message?" },
-                      class: "flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer" do %>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    Delete
-                  <% end %>
-                <% end %>
-              </div>
-            </div>
           <% end %>
-
-          <%# Read Receipts Modal - rendered outside dropdown for proper z-index %>
-          <% if can_view_receipts %>
-            <%= render "shared/messages/read_receipts_modal", message: message %>
-          <% end %>
-        </div>
-        <div class="flex items-center gap-2 text-sm text-gray-500 mt-1">
-          <span><%= message.created_at.strftime("%B %-d, %Y at %-I:%M %p") %></span>
-          <% if message.message_type == "production_contact" && message.production.present? %>
-            <%# Show "Sent to Production Team" for production contact messages %>
-            <span>·</span>
-            <span>Sent to <span class="font-medium text-pink-600"><%= message.production.name %></span> production team</span>
-          <% elsif recipient_count == 1 %>
-            <%# Single recipient - show their name and headshot %>
-            <% recipient = message.recipient_people.first %>
-            <% if recipient %>
-              <span>·</span>
-              <span>To</span>
-              <% headshot_variant = recipient.safe_headshot_variant(:thumb) %>
-              <span data-controller="tooltip" data-tooltip-text-value="<%= recipient.name %>" class="relative">
-                <% if headshot_variant %>
-                  <%= image_tag rails_storage_proxy_url(headshot_variant),
-                      alt: recipient.name,
-                      class: "w-6 h-6 rounded-lg object-cover ring-2 ring-white" %>
-                <% else %>
-                  <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] ring-2 ring-white">
-                    <%= recipient.initials %>
-                  </div>
-                <% end %>
-              </span>
-              <span class="font-medium text-gray-700"><%= recipient.name %></span>
+        <% elsif message.sent_as_production_team? && production_link %>
+          <%= link_to message.sender_name, production_link, class: "relative z-10 font-semibold text-pink-600 hover:text-pink-700 hover:underline" %>
+        <% else %>
+          <span class="font-semibold text-gray-900"><%= message.sender_name %></span>
+          <%# Show "via Production" only for non-personal messages that aren't sent as production team %>
+          <% if production_context && !message.sent_as_production_team? && message.visibility != "personal" %>
+            <span class="text-gray-400">via</span>
+            <% if production_link %>
+              <%= link_to production_context.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
+            <% else %>
+              <span class="font-medium text-pink-600"><%= production_context.name %></span>
             <% end %>
-          <% elsif recipient_count > 1 %>
-            <span>·</span>
-            <span>Sent to <%= recipient_count %> people</span>
-            <%# Stacked recipient headshots %>
-            <div class="flex items-center -space-x-1.5 ml-1">
-              <% message.recipient_people.limit(6).each do |person| %>
+          <% end %>
+        <% end %>
+
+        <span class="text-gray-300">·</span>
+        <span class="text-gray-500"><%= message.created_at.strftime("%b %-d") %></span>
+
+        <%# Recipients with context label and headshots %>
+        <% if recipient_context_label %>
+          <span class="text-gray-300">·</span>
+          <span class="text-gray-500">To <span class="font-medium text-gray-700"><%= recipient_context_label %></span></span>
+          <% if show_recipient_headshots && recipient_count > 0 %>
+            <div class="flex items-center -space-x-1">
+              <% message.recipient_people.limit(8).each do |person| %>
                 <% headshot_variant = person.safe_headshot_variant(:thumb) %>
                 <span data-controller="tooltip" data-tooltip-text-value="<%= person.name %>" class="relative">
                   <% if headshot_variant %>
                     <%= image_tag rails_storage_proxy_url(headshot_variant),
                         alt: person.name,
-                        class: "w-6 h-6 rounded-lg object-cover ring-2 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default" %>
+                        class: "w-6 h-6 rounded-lg object-cover ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default" %>
                   <% else %>
-                    <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] ring-2 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
+                    <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[9px] ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
                       <%= person.initials %>
                     </div>
                   <% end %>
                 </span>
               <% end %>
-              <% if recipient_count > 6 %>
-                <span data-controller="tooltip" data-tooltip-text-value="<%= recipient_count - 6 %> more" class="relative">
-                  <div class="w-6 h-6 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-[10px] ring-2 ring-white relative z-10">
-                    +<%= recipient_count - 6 %>
+              <% if recipient_count > 8 %>
+                <span data-controller="tooltip" data-tooltip-text-value="<%= recipient_count - 8 %> more" class="relative">
+                  <div class="w-6 h-6 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-[9px] ring-1 ring-white relative z-10">
+                    +<%= recipient_count - 8 %>
                   </div>
                 </span>
               <% end %>
             </div>
           <% end %>
-          <% if is_unread %>
-            <span class="w-2 h-2 bg-pink-500 rounded-full"></span>
+        <% elsif recipient_count == 1 %>
+          <% recipient = message.recipient_people.first %>
+          <% if recipient %>
+            <span class="text-gray-300">·</span>
+            <span class="text-gray-500">To</span>
+            <span class="font-medium text-gray-700"><%= recipient.name %></span>
+          <% end %>
+        <% end %>
+
+        <% if is_unread %>
+          <span class="w-2 h-2 bg-pink-500 rounded-full"></span>
+        <% end %>
+      </div>
+
+      <%= render "shared/messages/message_actions_menu", message: message, message_path: message_path, can_delete: can_delete, can_view_receipts: can_view_receipts %>
+    </div>
+  </div>
+
+  <% if message.deleted? %>
+    <%# Deleted message placeholder %>
+    <div class="px-4 py-4">
+      <span class="text-sm text-gray-400 italic">This message has been deleted</span>
+    </div>
+  <% else %>
+    <%# Subject %>
+    <% if message.subject.present? %>
+      <div class="px-4 pt-4 pb-2">
+        <h2 class="text-lg font-bold text-gray-900"><%= message.subject %></h2>
+      </div>
+    <% end %>
+
+    <%# Body %>
+    <div class="px-4 pb-3">
+      <div class="prose prose-sm max-w-none text-gray-800">
+        <%= message.body %>
+      </div>
+    </div>
+
+    <%# Images %>
+    <% if message.images.attached? %>
+      <%= render "shared/messages/image_gallery", message: message, style: :lightbox %>
+    <% end %>
+
+    <%# Poll %>
+    <% if message.message_poll.present? %>
+      <%= render "shared/messages/poll", poll: message.message_poll, message: message %>
+    <% end %>
+
+    <%# Regarding Card (Show only) %>
+    <% if show_regardable.present? %>
+      <div class="px-4 pb-3">
+        <%= render "shared/messages/regarding_card", regardable: show_regardable %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Action Bar - hidden for system-generated messages %>
+  <% unless is_system_generated %>
+    <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/80">
+      <div class="flex items-center justify-between relative z-10">
+        <%# Left: Reactions %>
+        <%= render "shared/messages/reactions", message: message %>
+
+        <%# Right: Comments/Reply info %>
+        <div class="flex items-center gap-3">
+          <% if is_show %>
+            <%# Show context: typing indicator + Comment button %>
+            <% if reply_count > 0 %>
+              <span class="text-sm text-pink-600 font-medium"><%= reply_count %> <%= reply_count == 1 ? 'reply' : 'replies' %></span>
+            <% end %>
+            <% unless message.deleted? %>
+              <span data-message-thread-target="typingIndicator" class="text-sm text-gray-500 italic hidden"></span>
+              <button
+                type="button"
+                class="text-sm font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer"
+                data-action="click->message-thread#showCommentForm">
+                Comment
+              </button>
+            <% end %>
+          <% else %>
+            <%# Feed context: Reply count as link %>
+            <% if reply_count > 0 %>
+              <%= link_to comment_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
+                <%= reply_count %> <%= reply_count == 1 ? 'comment' : 'comments' %>
+              <% end %>
+            <% elsif !message.deleted? %>
+              <%= link_to comment_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
+                Comment
+              <% end %>
+            <% end %>
           <% end %>
         </div>
       </div>
     </div>
-  </div>
-
-  <%# Subject %>
-  <% if message.subject.present? %>
-    <div class="px-4 pt-4 pb-2">
-      <h2 class="text-lg font-bold text-gray-900"><%= message.subject %></h2>
-    </div>
   <% end %>
-
-  <%# Body %>
-  <div class="px-4 pb-3">
-    <div class="prose prose-sm max-w-none text-gray-800">
-      <%= message.body %>
-    </div>
-  </div>
-
-  <%# Images %>
-  <% if message.images.attached? %>
-    <%= render "shared/messages/image_gallery", message: message, style: :lightbox %>
-  <% end %>
-
-  <%# Poll %>
-  <% if message.message_poll.present? %>
-    <%= render "shared/messages/poll", poll: message.message_poll, message: message %>
-  <% end %>
-
-  <%# Regarding Card (Show only) %>
-  <% if show_regardable.present? %>
-    <div class="px-4 pb-3">
-      <%= render "shared/messages/regarding_card", regardable: show_regardable %>
-    </div>
-  <% end %>
-
-  <%# Action Bar %>
-  <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/80">
-    <div class="flex items-center justify-between relative z-10">
-      <%# Left: Reactions %>
-      <%= render "shared/messages/reactions", message: message %>
-
-      <%# Right: Comments/Reply info %>
-      <div class="flex items-center gap-3">
-        <% if is_show %>
-          <%# Show context: typing indicator + Comment button %>
-          <% if reply_count > 0 %>
-            <span class="text-sm text-pink-600 font-medium"><%= reply_count %> <%= reply_count == 1 ? 'reply' : 'replies' %></span>
-          <% end %>
-          <span data-message-thread-target="typingIndicator" class="text-sm text-gray-500 italic hidden"></span>
-          <button
-            type="button"
-            class="text-sm font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer"
-            data-action="click->message-thread#showCommentForm">
-            Comment
-          </button>
-        <% else %>
-          <%# Feed context: Reply count as link %>
-          <% if reply_count > 0 %>
-            <%= link_to comment_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
-              <%= reply_count %> <%= reply_count == 1 ? 'comment' : 'comments' %>
-            <% end %>
-          <% else %>
-            <%= link_to comment_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
-              Comment
-            <% end %>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
-  </div>
 </div>

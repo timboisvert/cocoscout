@@ -1,20 +1,8 @@
 <%# Partial for displaying a directory entry as a tile %>
-<div class="relative group"
-     data-directory-selection-target="item"
-     data-entry-id="<%= entry.id %>"
-     data-entry-type="<%= entry.class.name %>"
-     data-entry-name="<%= entry.name %>"
-     data-entry-headshot="<%= entry.safe_headshot_variant(:thumb) ? url_for(entry.safe_headshot_variant(:thumb)) : '' %>"
-     data-action="click->directory-selection#clickItem">
-
-  <%# Checkbox for bulk selection - hidden by default, shown in top-left corner %>
-  <input type="checkbox"
-         class="hidden absolute top-2 left-2 z-10 w-5 h-5 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer"
-         data-directory-selection-target="checkbox"
-         data-action="change->directory-selection#toggleCheckbox click->directory-selection#preventNavigation">
+<div class="relative group">
 
 <%= link_to (entry.is_a?(Person) ? manage_person_path(entry) : manage_group_path(entry)),
-            data: { turbo_frame: "_top", directory_selection_target: "link" },
+            data: { turbo_frame: "_top" },
             class: "block" do %>
   <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
     <% if entry.headshot&.attached? %>

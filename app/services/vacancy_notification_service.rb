@@ -134,7 +134,7 @@ class VacancyNotificationService
 
         rendered = ContentTemplateService.render(template_key, variables)
 
-        # Send as in-app message
+        # Send as in-app message (system_generated: true so it doesn't appear in sender's sent folder)
         if channel == :message || channel == :both
           if person.present?
             message = MessageService.send_direct(
@@ -143,7 +143,8 @@ class VacancyNotificationService
               subject: rendered[:subject],
               body: rendered[:body],
               production: production,
-              organization: production.organization
+              organization: production.organization,
+              system_generated: true
             )
             result[:messages_sent] += 1 if message
           end

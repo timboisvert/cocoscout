@@ -175,74 +175,6 @@
       ]
   %>
 
-  <%# Results Count and Selection Controls - Wrap in controller %>
-  <div data-controller="directory-selection">
-    <div class="mb-3 flex items-center justify-between">
-      <div class="text-sm text-gray-600">
-        <% if @people_count > 0 && @groups_count > 0 %>
-          <%= pluralize(@people_count, "person") %>, <%= pluralize(@groups_count, "group") %>
-        <% elsif @people_count > 0 %>
-          <%= pluralize(@people_count, "person") %>
-        <% elsif @groups_count > 0 %>
-          <%= pluralize(@groups_count, "group") %>
-        <% else %>
-          No results
-        <% end %>
-        <% if @search.present? %>
-          matching "<%= @search %>"
-        <% end %>
-      </div>
-
-      <%# Selection Controls %>
-      <div class="flex items-center gap-3">
-        <%# Selection count - shown when items selected %>
-        <span class="hidden text-sm font-medium text-gray-700" data-directory-selection-target="selectedCount">
-          <span data-directory-selection-target="count">0</span> selected
-        </span>
-
-        <%# Select All Button - shown in selection mode %>
-        <button type="button"
-                data-action="click->directory-selection#selectAll"
-                data-directory-selection-target="selectAllButton"
-                class="hidden px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">
-          Select All
-        </button>
-
-        <%# Bulk Actions Dropdown - shown when items selected %>
-        <div class="hidden relative" data-directory-selection-target="bulkActions">
-          <button type="button"
-                  data-action="click->directory-selection#toggleDropdown"
-                  class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600 inline-flex items-center gap-2">
-            Bulk Actions
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div class="hidden absolute right-0 mt-1 w-36 bg-white rounded border border-gray-200 shadow-lg z-50"
-               data-directory-selection-target="dropdown">
-            <button type="button"
-                    data-action="click->directory-selection#openContactModal"
-                    class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-pink-50 first:rounded-t cursor-pointer">
-              Send Message
-            </button>
-            <button type="button"
-                    data-action="click->directory-selection#clearSelection"
-                    class="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-pink-50 border-t border-gray-100 last:rounded-b cursor-pointer">
-              Clear Selection
-            </button>
-          </div>
-        </div>
-
-        <%# Select Multiple Button - shown when not in selection mode %>
-        <button type="button"
-                data-action="click->directory-selection#enableSelectionMode"
-                data-directory-selection-target="selectButton"
-                class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600">
-          Select
-        </button>
-      </div>
-    </div>
-
   <% if @entries.any? %>
 
     <%# Tile View %>
@@ -301,7 +233,6 @@
       </div>
   <% end %>
 
-  </div><%# Close directory-selection controller %>
   </div><%# Close module content wrapper %>
 </div>
 
