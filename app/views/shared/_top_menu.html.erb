@@ -1,5 +1,6 @@
 <%# Default links to empty array if not provided %>
 <% links = local_assigns.fetch(:links, []) %>
+<% extra_buttons = local_assigns[:extra_buttons] %>
 
 <div class="flex flex-col sm:flex-row sm:items-top sm:justify-between gap-2 sm:gap-4 mb-4 border-b-1 border-gray-200 pb-2">
 
@@ -20,8 +21,11 @@
 
   </div>
 
-  <% if links.count > 0 %>
+  <% if links.count > 0 || extra_buttons.present? %>
     <div class="flex gap-2 flex-wrap flex-shrink-0">
+      <%# Extra buttons (custom HTML) come first %>
+      <%= extra_buttons %>
+      
       <% links.each do |link| %>
         <%
           # For Manage controllers, check permissions

@@ -8,18 +8,24 @@
     sender_person: The sender's Person record (or nil)
 
   Optional:
-    size: :small (w-8 h-8), :medium (w-11 h-11, default), :large (w-14 h-14)
+    size: :xsmall (w-6 h-6), :small (w-8 h-8), :reply (w-9 h-9), :medium (w-10 h-10), :default (w-11 h-11), :list (w-12 h-12), :large (w-14 h-14)
 %>
 
 <%
-  size = local_assigns[:size] || :medium
+  size = local_assigns[:size] || :default
   size_classes = case size
+    when :xsmall then "w-6 h-6"
     when :small then "w-8 h-8"
+    when :reply then "w-9 h-9"
+    when :medium then "w-10 h-10"
+    when :list then "w-12 h-12"
     when :large then "w-14 h-14"
     else "w-11 h-11"
   end
   text_size = case size
+    when :xsmall then "text-[10px]"
     when :small then "text-xs"
+    when :reply then "text-xs"
     when :large then "text-base"
     else "text-sm"
   end
@@ -46,7 +52,7 @@
   <% end %>
 <% else %>
   <div class="<%= size_classes %> rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-    <svg class="<%= size == :small ? 'w-4 h-4' : 'w-6 h-6' %> text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="<%= size.in?([:xsmall, :small]) ? 'w-4 h-4' : 'w-6 h-6' %> text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
     </svg>
   </div>

@@ -25,19 +25,12 @@
      data-talent-pool-inline-remove-group-url-value="<%= manage_casting_talent_pool_remove_group_path(@production) %>"
      data-talent-pool-inline-members-url-value="<%= manage_casting_talent_pool_path(@production) %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Casting", manage_casting_path],
-      ["Talent Pools", manage_casting_talent_pools_path]
-    ],
-    text: pool_display_name,
-    links: []
-  } %>
 
-  <%# Contact Talent Pool Button %>
+  <%# Build Contact Talent Pool button for top_menu %>
   <% talent_pool_members = @talent_pool.people.distinct %>
+  <% contact_button = nil %>
   <% if talent_pool_members.any? %>
-    <div class="-mt-3 mb-4 flex items-center">
+    <% contact_button = capture do %>
       <div data-controller="compose-message"
            data-compose-message-recipient-type-value="talent_pool"
            data-compose-message-recipient-id-value="<%= @talent_pool.id %>"
@@ -51,8 +44,18 @@
             type: :button,
             data: { action: "click->compose-message#open" } %>
       </div>
-    </div>
+    <% end %>
   <% end %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      ["Talent Pools", manage_casting_talent_pools_path]
+    ],
+    text: pool_display_name,
+    links: [],
+    extra_buttons: contact_button
+  } %>
 
   <p class="text-sm text-gray-500 mb-4">The talent pool contains the people and groups available for casting in this production.</p>
 

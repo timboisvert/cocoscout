@@ -15,18 +15,7 @@
     <% replies.each do |reply| %>
       <% sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
       <div class="flex gap-3">
-        <% if sender_person %>
-          <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-          <% if headshot_variant %>
-            <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
-              <%= sender_person.initials %>
-            </div>
-          <% end %>
-        <% else %>
-          <div class="w-8 h-8 rounded-lg bg-gray-200 flex-shrink-0"></div>
-        <% end %>
+        <%= render "shared/messages/message_avatar", message: reply, sender_person: sender_person, size: :small %>
 
         <div class="flex-1 min-w-0">
           <div class="bg-gray-100 rounded-2xl px-4 py-2">
@@ -53,18 +42,7 @@
       <div class="relative">
         <%# Main comment %>
         <div class="flex gap-3">
-          <% if sender_person %>
-            <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-            <% if headshot_variant %>
-              <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-            <% else %>
-              <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
-                <%= sender_person.initials %>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="w-8 h-8 rounded-lg bg-gray-200 flex-shrink-0"></div>
-          <% end %>
+          <%= render "shared/messages/message_avatar", message: reply, sender_person: sender_person, size: :small %>
 
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline gap-2">
@@ -86,18 +64,7 @@
                 <% nested_replies.each do |nested| %>
                   <% nested_person = nested.sender.is_a?(Person) ? nested.sender : nested.sender&.person %>
                   <div class="flex gap-2">
-                    <% if nested_person %>
-                      <% nested_headshot = nested_person.safe_headshot_variant(:thumb) %>
-                      <% if nested_headshot %>
-                        <%= image_tag nested_headshot, alt: nested_person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
-                      <% else %>
-                        <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] flex-shrink-0">
-                          <%= nested_person.initials %>
-                        </div>
-                      <% end %>
-                    <% else %>
-                      <div class="w-6 h-6 rounded-lg bg-gray-200 flex-shrink-0"></div>
-                    <% end %>
+                    <%= render "shared/messages/message_avatar", message: nested, sender_person: nested_person, size: :xsmall %>
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-baseline gap-2">
@@ -131,18 +98,7 @@
     <% replies.each do |reply| %>
       <% sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
       <div class="py-2 flex gap-2 hover:bg-gray-100 px-2 -mx-2 rounded" x-data="{ expanded: false }">
-        <% if sender_person %>
-          <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-          <% if headshot_variant %>
-            <%= image_tag headshot_variant, alt: sender_person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[10px] flex-shrink-0">
-              <%= sender_person.initials %>
-            </div>
-          <% end %>
-        <% else %>
-          <div class="w-6 h-6 rounded-lg bg-gray-200 flex-shrink-0"></div>
-        <% end %>
+        <%= render "shared/messages/message_avatar", message: reply, sender_person: sender_person, size: :small %>
 
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">

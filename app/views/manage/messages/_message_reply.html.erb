@@ -1,23 +1,10 @@
 <% depth ||= 1 %>
 
 <div class="flex gap-3 pb-4 <%= 'border-l-2 border-gray-200 pl-4 ml-4' if depth > 1 %>">
-  <%# Avatar %>
+  <%# Avatar - uses shared partial for production team vs personal avatar %>
   <div class="flex-shrink-0">
     <% sender = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person %>
-    <% if sender %>
-      <% headshot = sender.safe_headshot_variant(:thumb) %>
-      <% if headshot %>
-        <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover border border-gray-200" %>
-      <% else %>
-        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs border border-gray-200">
-          <%= sender.initials %>
-        </div>
-      <% end %>
-    <% else %>
-      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs border border-gray-200">
-        ?
-      </div>
-    <% end %>
+    <%= render "shared/messages/message_avatar", message: reply, sender_person: sender, size: :small %>
   </div>
 
   <%# Content %>

@@ -105,7 +105,6 @@
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-500">From:</span>
             <div class="relative flex-1" data-controller="dropdown">
-              <input type="hidden" name="sender_identity" value="<%= default_sender_identity %>" data-reply-sender-target="input" form="reply-form-<%= @message.id %>">
               <button type="button"
                       data-action="click->dropdown#toggle"
                       data-reply-sender-target="button"
@@ -199,7 +198,8 @@
         <div>
           <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, data: { turbo: false }, id: "reply-form-#{@message.id}" do |f| %>
             <% if root_sent_as_team %>
-              <%# Hidden field for sender_identity - the actual value is set by the selector above %>
+              <%# Hidden field for sender_identity - synced with the selector above via Stimulus %>
+              <input type="hidden" name="sender_identity" value="<%= default_sender_identity %>" data-reply-sender-target="input">
             <% end %>
             <%= f.rich_text_area :body, class: "w-full min-h-[80px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
 

@@ -149,12 +149,12 @@ class MessageService
       recipients = Array(recipients).uniq.select { |p| p.is_a?(Person) && p.user.present? }
       return nil if recipients.empty?
 
-      # If replying, inherit context from parent
+      # If replying, inherit context from parent (but NOT visibility - that's explicitly passed)
       if parent_message
         production ||= parent_message.production
         show ||= parent_message.show
-        visibility = parent_message.visibility.to_sym if parent_message.visibility
         organization ||= parent_message.organization
+        # Note: visibility is NOT inherited here - it's explicitly set by the caller
       end
 
       # Create the message
@@ -214,8 +214,13 @@ class MessageService
     def reply(sender:, parent_message:, body:, visibility: nil)
       root = parent_message.root_message
 
+      Rails.logger.info "[MessageService.reply] visibility param: #{visibility.inspect}"
+      Rails.logger.info "[MessageService.reply] root.visibility: #{root.visibility.inspect}"
+
       # Determine visibility: use explicit override or inherit from root
       reply_visibility = visibility || root.visibility
+
+      Rails.logger.info "[MessageService.reply] reply_visibility: #{reply_visibility.inspect}"
 
       # For direct messages, recipient is the other party
       # For production messages, no explicit recipient needed (visibility handles it)

@@ -42,29 +42,8 @@
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div class="p-4">
         <div class="flex items-start gap-3">
-          <%# Avatar %>
-          <% if sender_person %>
-            <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-            <% if headshot_variant %>
-              <%# Use explicit host for broadcast renders, otherwise use default %>
-              <% if local_assigns[:broadcast_host] %>
-                <% img_url = "#{local_assigns[:broadcast_protocol]}://#{local_assigns[:broadcast_host]}#{rails_storage_proxy_path(headshot_variant)}" %>
-              <% else %>
-                <% img_url = rails_storage_proxy_url(headshot_variant) %>
-              <% end %>
-              <%= image_tag img_url, alt: sender_person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
-            <% else %>
-              <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
-                <%= sender_person.initials %>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-              </svg>
-            </div>
-          <% end %>
+          <%# Avatar - uses shared partial for production team vs personal avatar %>
+          <%= render "shared/messages/message_avatar", message: reply, sender_person: sender_person, size: :reply %>
 
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">

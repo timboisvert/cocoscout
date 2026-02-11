@@ -11,18 +11,7 @@
 
 <%# Facebook-style comment bubble with rounded-lg per CLAUDE.md %>
 <div class="flex gap-2">
-  <% if sender_person %>
-    <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-    <% if headshot_variant %>
-      <%= image_tag headshot_variant, alt: sender_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-    <% else %>
-      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold flex-shrink-0">
-        <%= sender_person.initials %>
-      </div>
-    <% end %>
-  <% else %>
-    <div class="w-8 h-8 rounded-lg bg-gray-200 flex-shrink-0"></div>
-  <% end %>
+  <%= render "shared/messages/message_avatar", message: message, sender_person: sender_person, size: :small %>
   <div class="flex-1">
     <div class="bg-gray-100 rounded-2xl px-3 py-2 inline-block max-w-full">
       <span class="font-semibold text-gray-900 text-sm"><%= message.sender_name %></span>

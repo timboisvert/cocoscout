@@ -5,24 +5,9 @@
 %>
 <%= link_to my_message_path(message), class: "block hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0" do %>
   <div class="flex items-start gap-3 p-4 <%= is_unread ? 'bg-pink-50 border-l-4 border-l-pink-500' : 'bg-white border-l-4 border-l-transparent' %>">
-    <%# Sender headshot %>
+    <%# Sender avatar - uses shared partial for production team vs personal avatar %>
     <% sender_person = message.sender.is_a?(Person) ? message.sender : message.sender.person %>
-    <% if sender_person&.profile_headshots&.primary&.first %>
-      <% headshot_variant = sender_person.safe_headshot_variant(:thumb) %>
-      <% if headshot_variant %>
-        <%= image_tag headshot_variant, alt: sender_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-      <% else %>
-        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
-          <%= sender_person.initials %>
-        </div>
-      <% end %>
-    <% else %>
-      <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-      </div>
-    <% end %>
+    <%= render "shared/messages/message_avatar", message: message, sender_person: sender_person, size: :medium %>
 
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2 flex-wrap mb-1">
