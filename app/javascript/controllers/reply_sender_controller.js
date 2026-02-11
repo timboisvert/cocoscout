@@ -4,27 +4,13 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["input", "button", "label", "icon"]
 
-    connect() {
-        console.log("[reply-sender] Connected")
-        console.log("[reply-sender] Has input target:", this.hasInputTarget)
-        if (this.hasInputTarget) {
-            console.log("[reply-sender] Input value:", this.inputTarget.value)
-        }
-    }
-
     select(event) {
         const value = event.currentTarget.dataset.value
         const label = event.currentTarget.dataset.label
 
-        console.log("[reply-sender] Selecting:", value, label)
-        console.log("[reply-sender] Has input target:", this.hasInputTarget)
-
         // Update hidden input
         if (this.hasInputTarget) {
             this.inputTarget.value = value
-            console.log("[reply-sender] Updated input to:", this.inputTarget.value)
-        } else {
-            console.error("[reply-sender] No input target found!")
         }
 
         // Update button label
