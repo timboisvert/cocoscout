@@ -184,8 +184,9 @@ class Message < ApplicationRecord
   end
 
   # Whether this message was sent "as the production team" (visible to team, not personal)
+  # Shows production logo instead of sender's headshot when true
   def sent_as_production_team?
-    %w[production show].include?(visibility) && %w[cast_contact talent_pool].include?(message_type)
+    %w[production show].include?(visibility)
   end
 
   # Get recipient count
