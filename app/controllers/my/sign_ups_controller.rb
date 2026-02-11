@@ -50,6 +50,7 @@ module My
 
       @audition_requests = if requestable_conditions.any?
                              AuditionRequest
+                               .active
                                .eager_load(audition_cycle: :production)
                                .where(requestable_conditions.join(" OR "), *requestable_params)
                                .to_a

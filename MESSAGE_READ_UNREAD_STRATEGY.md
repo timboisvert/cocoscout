@@ -199,23 +199,27 @@ end
 
 ### Phase 4: Clean Up Redundant Code
 
-1. Deprecate per-message `read_at` updates in controllers
-2. Remove dual-tracking in `MessagesController#index`
-3. Consolidate read-marking logic into `MessageSubscription#mark_as_read!`
+1. ~~Deprecate per-message `read_at` updates in controllers~~ **KEPT** - Required for Read Receipts feature
+2. ~~Remove dual-tracking in `MessagesController#index`~~ **KEPT** - `mark_read_for!` needed for read receipts, `mark_read!` for unread counts
+3. Consolidate read-marking logic into `MessageSubscription#mark_as_read!` ✅
+
+**Note:** The dual-tracking serves different purposes:
+- `MessageSubscription.unread_count` → Badge counts and unread indicators (optimized)
+- `MessageRecipient.read_at` → Read Receipts feature (shows who read when)
 
 ---
 
 ## Implementation Checklist
 
-- [ ] Add `unread_count` column to `message_subscriptions` table
-- [ ] Create migration with backfill of existing unread counts
-- [ ] Update `User#unread_message_count` to use new column
-- [ ] Update `MessagesController` to use `subscription.mark_as_read!`
-- [ ] Update `ConversationsController` similarly
-- [ ] Update message creation to increment `unread_count` for recipients
-- [ ] Update `UnreadDigestJob` to use unified logic
-- [ ] Add ActionCable broadcast on unread count change
-- [ ] Add database index on `message_subscriptions(user_id, unread_count)`
+- [x] Add `unread_count` column to `message_subscriptions` table
+- [x] Create migration with backfill of existing unread counts
+- [x] Update `User#unread_message_count` to use new column
+- [x] Update `MessagesController` to use `subscription.mark_as_read!`
+- [x] Update `ConversationsController` similarly
+- [x] Update message creation to increment `unread_count` for recipients
+- [x] Update `UnreadDigestJob` to use unified logic
+- [x] Add ActionCable broadcast on unread count change
+- [x] Add database index on `message_subscriptions(user_id, unread_count)`
 - [ ] Write comprehensive tests for edge cases
 - [ ] Monitor performance after deployment
 

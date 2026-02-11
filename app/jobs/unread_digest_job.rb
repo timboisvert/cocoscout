@@ -31,18 +31,13 @@ class UnreadDigestJob < ApplicationJob
   def users_needing_digest
     # Users who:
     # 1. Have message digests enabled
-    # 2. Have at least one unread message subscription
+    # 2. Have at least one unread message subscription (using counter cache)
     # 3. Haven't received a digest email in their current throttle period (or never)
 
-    # Find users with unread messages (never read OR have updates since last read)
-    # Using a single query structure to avoid .or() incompatibility
     User
       .where(message_digest_enabled: true)
       .joins(:message_subscriptions)
-      .joins("INNER JOIN messages ON messages.id = message_subscriptions.message_id")
-      .where(
-        "message_subscriptions.last_read_at IS NULL OR messages.updated_at > message_subscriptions.last_read_at"
-      )
+      .where("message_subscriptions.unread_count > 0")
       .where(
         "users.last_unread_digest_sent_at IS NULL OR " \
         "users.last_unread_digest_sent_at < NOW() - (users.digest_throttle_days || ' days')::interval"
@@ -91,27 +86,14 @@ class UnreadDigestJob < ApplicationJob
   end
 
   def collect_unread_threads(user)
-    user.message_subscriptions.includes(message: :production).filter_map do |subscription|
-      next unless subscription.unread?
-
+    user.message_subscriptions.unread.includes(message: :production).filter_map do |subscription|
       root_message = subscription.message
-      unread_count = count_unread_in_thread(root_message, subscription.last_read_at)
 
+      # Use the counter cache for unread count
+      unread_count = subscription.unread_count
       next if unread_count == 0
 
       { message: root_message, unread_count: unread_count }
-    end
-  end
-
-  def count_unread_in_thread(root_message, last_read_at)
-    if last_read_at.nil?
-      # Never read - count all messages in thread
-      1 + root_message.descendant_ids.count
-    else
-      # Count messages newer than last_read_at
-      Message.where(id: [ root_message.id ] + root_message.descendant_ids)
-             .where("created_at > ?", last_read_at)
-             .count
     end
   end
 

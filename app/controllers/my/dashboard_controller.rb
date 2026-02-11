@@ -192,6 +192,7 @@ module My
       @open_audition_request_entities = []
 
       all_requests = AuditionRequest
+                     .active
                      .joins(:audition_cycle)
                      .where(audition_cycles: { active: true, form_reviewed: true })
                      .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)

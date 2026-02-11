@@ -44,7 +44,7 @@ module Manage
           sign_up_forms_count: sign_up_forms.count,
           active_sign_up_forms_count: active_forms.count,
           active_audition_cycle: active_audition_cycle,
-          audition_requests_count: active_audition_cycle&.audition_requests&.count || 0,
+          audition_requests_count: active_audition_cycle&.audition_requests&.active&.count || 0,
           past_audition_cycles_count: past_audition_cycles.count
         }
       end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_10_211033) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_10_214249) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -175,7 +175,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_10_211033) do
     t.integer "status", default: 0
     t.datetime "updated_at", null: false
     t.string "video_url"
-    t.datetime "video_viewed_at"
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
     t.index ["requestable_type", "requestable_id", "created_at"], name: "index_ar_on_requestable_and_created"
     t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"
@@ -688,11 +687,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_10_211033) do
     t.datetime "last_read_at"
     t.bigint "message_id", null: false
     t.boolean "muted", default: false, null: false
+    t.integer "unread_count", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["message_id", "muted"], name: "index_message_subscriptions_on_message_id_and_muted"
     t.index ["message_id"], name: "index_message_subscriptions_on_message_id"
     t.index ["user_id", "message_id"], name: "index_message_subscriptions_on_user_id_and_message_id", unique: true
+    t.index ["user_id", "unread_count"], name: "index_message_subscriptions_on_user_id_and_unread_count"
     t.index ["user_id"], name: "index_message_subscriptions_on_user_id"
   end
 

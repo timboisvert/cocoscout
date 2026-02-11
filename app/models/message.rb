@@ -377,13 +377,16 @@ class Message < ApplicationRecord
     Rails.logger.warn("Message#broadcast_to_thread failed: #{e.message}")
   end
 
-  # Notify all subscribers about the new message (for unread counts)
+  # Notify all subscribers about the new message (increment unread counts)
   def notify_subscribers
     root = root_message
     sender_user = sender.is_a?(User) ? sender : nil
 
     root.message_subscriptions.includes(:user).find_each do |subscription|
       next if subscription.user == sender_user # Don't notify sender
+
+      # Increment unread count for this subscription
+      subscription.increment_unread!
 
       UserNotificationsChannel.broadcast_unread_count(subscription.user)
 

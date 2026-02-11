@@ -33,8 +33,8 @@ class User < ApplicationRecord
   end
 
   def unread_message_count
-    # Count threads with unread messages (subscription-based)
-    message_subscriptions.active.count { |sub| sub.unread? }
+    # Sum unread counts across all active subscriptions (optimized via counter cache)
+    message_subscriptions.active.sum(:unread_count)
   end
 
   # Get root messages for threads user is subscribed to

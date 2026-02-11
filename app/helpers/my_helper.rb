@@ -102,6 +102,11 @@ module MyHelper
       assignable_id: requestable.id
     )
 
+    # If already cast, show cast status immediately (regardless of finalization)
+    if is_cast
+      return CAST_SPOT_OFFERED_BADGE.html_safe
+    end
+
     # If cycle is archived (not active)
     unless cycle.active
       # If casting was finalized before archiving, show the actual status
@@ -109,11 +114,7 @@ module MyHelper
         return NO_CAST_SPOT_OFFERED_BADGE.html_safe
       end
 
-      if is_cast
-        return CAST_SPOT_OFFERED_BADGE.html_safe
-      else
-        return NO_CAST_SPOT_OFFERED_BADGE.html_safe
-      end
+      return NO_CAST_SPOT_OFFERED_BADGE.html_safe
     end
 
     # If casting hasn't been finalized, show review status
@@ -126,11 +127,7 @@ module MyHelper
       end
     end
 
-    if is_cast
-      CAST_SPOT_OFFERED_BADGE.html_safe
-    else
-      NO_CAST_SPOT_OFFERED_BADGE.html_safe
-    end
+    NO_CAST_SPOT_OFFERED_BADGE.html_safe
   end
 
   def video_audition_status_text(audition_request)
@@ -144,6 +141,11 @@ module MyHelper
       assignable_id: requestable.id
     )
 
+    # If already cast, show cast status immediately (regardless of finalization)
+    if is_cast
+      return CAST_SPOT_OFFERED_TEXT
+    end
+
     # If cycle is archived (not active)
     unless cycle.active
       # If casting was finalized before archiving, show the actual status
@@ -151,11 +153,7 @@ module MyHelper
         return NO_CAST_SPOT_OFFERED_TEXT
       end
 
-      if is_cast
-        return CAST_SPOT_OFFERED_TEXT
-      else
-        return NO_CAST_SPOT_OFFERED_TEXT
-      end
+      return NO_CAST_SPOT_OFFERED_TEXT
     end
 
     # If casting hasn't been finalized, show review status
@@ -168,11 +166,7 @@ module MyHelper
       end
     end
 
-    if is_cast
-      CAST_SPOT_OFFERED_TEXT
-    else
-      NO_CAST_SPOT_OFFERED_TEXT
-    end
+    NO_CAST_SPOT_OFFERED_TEXT
   end
 
   # Check if current user can moderate (delete) posts for a given post
