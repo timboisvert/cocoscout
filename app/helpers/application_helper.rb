@@ -367,4 +367,31 @@ module ApplicationHelper
 
     html.html_safe
   end
+
+  # Auto-link URLs in ActionText content
+  # Converts plain text URLs to clickable links while preserving existing links
+  def auto_link_content(content)
+    return content if content.blank?
+
+    # Get the HTML string from ActionText
+    html = content.to_s
+
+    # Use Nokogiri to parse and process only text nodes (not already-linked content)
+    doc = Nokogiri::HTML::DocumentFragment.parse(html)
+
+    # Process text nodes that aren't inside anchor tags
+    doc.traverse do |node|
+      if node.text? && !node.ancestors.any? { |a| a.name == "a" }
+        text = node.content
+        # Check if there are any URLs in this text
+        if text =~ URI::DEFAULT_PARSER.make_regexp(%w[http https])
+          # Replace the text node with auto-linked HTML
+          linked_html = auto_link(text, html: { target: "_blank", rel: "noopener noreferrer" })
+          node.replace(Nokogiri::HTML::DocumentFragment.parse(linked_html))
+        end
+      end
+    end
+
+    doc.to_html.html_safe
+  end
 end

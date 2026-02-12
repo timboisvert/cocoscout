@@ -11,7 +11,7 @@
         <span class="text-sm text-gray-500"><%= time_ago_in_words(message.created_at) %> ago</span>
       </div>
       <div class="prose prose-sm max-w-none">
-        <%= message.body %>
+        <%= auto_link_content(message.body) %>
       </div>
     </div>
   </div>
