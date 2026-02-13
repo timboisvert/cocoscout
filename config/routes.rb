@@ -928,61 +928,6 @@ Rails.application.routes.draw do
     post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
     get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
 
-    # Ticket fee templates
-    resources :ticket_fee_templates, only: [ :index, :create, :update, :destroy ], path: "money/fees"
-
-    # ===========================================
-    # TICKETING SECTION (mirrors Money section structure)
-    # ===========================================
-
-    # Main ticketing hub (organization level)
-    get "ticketing", to: "ticketing#index", as: "ticketing_index"
-
-    # Provider management
-    get  "ticketing/providers",          to: "ticketing_providers#index",   as: "ticketing_providers"
-    get  "ticketing/providers/new",      to: "ticketing_provider_wizard#platform", as: "ticketing_providers_new"
-    get  "ticketing/providers/:id",      to: "ticketing_providers#show",    as: "ticketing_provider"
-    get  "ticketing/providers/:id/edit", to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
-    patch "ticketing/providers/:id",     to: "ticketing_providers#update"
-    delete "ticketing/providers/:id",    to: "ticketing_providers#destroy"
-    post "ticketing/providers/:id/test", to: "ticketing_providers#test",    as: "test_ticketing_provider"
-    post "ticketing/providers/:id/sync", to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
-
-    # Provider wizard (connect new platform)
-    get  "ticketing/wizard",             to: "ticketing_provider_wizard#platform",         as: "ticketing_wizard"
-    post "ticketing/wizard/platform",    to: "ticketing_provider_wizard#save_platform",    as: "ticketing_wizard_save_platform"
-    get  "ticketing/wizard/credentials", to: "ticketing_provider_wizard#credentials",      as: "ticketing_wizard_credentials"
-    post "ticketing/wizard/credentials", to: "ticketing_provider_wizard#save_credentials", as: "ticketing_wizard_save_credentials"
-    get  "ticketing/wizard/test",        to: "ticketing_provider_wizard#test",             as: "ticketing_wizard_test"
-    post "ticketing/wizard/retry",       to: "ticketing_provider_wizard#retry_test",       as: "ticketing_wizard_retry"
-    get  "ticketing/wizard/review",      to: "ticketing_provider_wizard#review",           as: "ticketing_wizard_review"
-    post "ticketing/wizard/create",      to: "ticketing_provider_wizard#create_provider",  as: "ticketing_wizard_create"
-    delete "ticketing/wizard/cancel",    to: "ticketing_provider_wizard#cancel",           as: "ticketing_wizard_cancel"
-
-    # Pending events (events that need manual linking)
-    get  "ticketing/pending",     to: "ticketing_pending_events#index", as: "ticketing_pending_events"
-    get  "ticketing/pending/:id", to: "ticketing_pending_events#show",  as: "ticketing_pending_event"
-    post "ticketing/pending/:id/link",    to: "ticketing_pending_events#link",    as: "link_ticketing_pending_event"
-    post "ticketing/pending/:id/dismiss", to: "ticketing_pending_events#dismiss", as: "dismiss_ticketing_pending_event"
-    post "ticketing/sync/:provider_id",   to: "ticketing_pending_events#sync_now", as: "ticketing_sync_now"
-
-    # Production-level ticketing (like /money/financials/:production_id)
-    get "ticketing/:production_id", to: "ticketing_productions#show", as: "ticketing_production"
-
-    # Production links (events linked to this production)
-    scope "ticketing/:production_id" do
-      get  "links",                   to: "ticketing_production_links#index",         as: "ticketing_production_links"
-      get  "links/new",               to: "ticketing_production_links#new",           as: "new_ticketing_production_link"
-      post "links",                   to: "ticketing_production_links#create",        as: "create_ticketing_production_link"
-      get  "links/:id",               to: "ticketing_production_links#show",          as: "ticketing_production_link"
-      get  "links/:id/edit",          to: "ticketing_production_links#edit",          as: "edit_ticketing_production_link"
-      patch "links/:id",              to: "ticketing_production_links#update",        as: "update_ticketing_production_link"
-      delete "links/:id",             to: "ticketing_production_links#destroy",       as: "destroy_ticketing_production_link"
-      post "links/:id/sync",          to: "ticketing_production_links#sync",          as: "sync_ticketing_production_link"
-      get  "links/:id/match",         to: "ticketing_production_links#match",         as: "match_ticketing_production_link"
-      post "links/:id/apply_matches", to: "ticketing_production_links#apply_matches", as: "apply_matches_ticketing_production_link"
-    end
-
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses
     scope "money/financials/:production_id" do

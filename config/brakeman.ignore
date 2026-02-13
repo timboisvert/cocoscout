@@ -246,40 +246,6 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "74acd1976f39ea828900c245ada884b3441f4297b19c3a2e8ff7843528963500",
-      "check_name": "LinkToHref",
-      "message": "Potentially unsafe model attribute in `link_to` href",
-      "file": "app/views/manage/ticketing_production_links/show.html.erb",
-      "line": 66,
-      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to(Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url, Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"text-sm text-pink-600 hover:text-pink-800\")",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::TicketingProductionLinksController",
-          "method": "show",
-          "line": 18,
-          "file": "app/controllers/manage/ticketing_production_links_controller.rb",
-          "rendered": {
-            "name": "manage/ticketing_production_links/show",
-            "file": "app/views/manage/ticketing_production_links/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/ticketing_production_links/show"
-      },
-      "user_input": "Current.organization.productions.find(params[:production_id]).ticketing_production_links.find(params[:id]).safe_provider_event_url",
-      "confidence": "Weak",
-      "cwe_id": [
-        79
-      ],
-      "note": "safe_provider_event_url method validates URL scheme is http/https only, preventing javascript: XSS"
-    },
-    {
-      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "92375953037532faa7c168ce996f0d07341bf335f78ff4df3532587f37df9c39",
       "check_name": "RenderInline",

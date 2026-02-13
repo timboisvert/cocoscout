@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_11_203816) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1335,7 +1335,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_203816) do
     t.string "revenue_type", default: "ticket_sales"
     t.bigint "show_id", null: false
     t.integer "ticket_count", default: 0
-    t.jsonb "ticket_fees", default: []
     t.decimal "ticket_revenue", precision: 10, scale: 2, default: "0.0"
     t.datetime "updated_at", null: false
     t.index ["show_id"], name: "index_show_financials_on_show_id", unique: true
@@ -1844,133 +1843,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_203816) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
-  create_table "ticket_fee_templates", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.decimal "flat_per_ticket", precision: 10, scale: 4, default: "0.0"
-    t.boolean "is_default", default: false
-    t.string "name", null: false
-    t.bigint "organization_id", null: false
-    t.decimal "percentage", precision: 5, scale: 4, default: "0.0"
-    t.datetime "updated_at", null: false
-    t.index ["organization_id", "name"], name: "index_ticket_fee_templates_on_organization_id_and_name", unique: true
-    t.index ["organization_id"], name: "index_ticket_fee_templates_on_organization_id"
-  end
-
-  create_table "ticketing_pending_events", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.datetime "dismissed_at"
-    t.bigint "dismissed_by_id"
-    t.datetime "first_occurrence_at"
-    t.datetime "last_occurrence_at"
-    t.float "match_confidence"
-    t.bigint "matched_production_link_id"
-    t.integer "occurrence_count", default: 0
-    t.jsonb "provider_event_data", default: {}
-    t.string "provider_event_id", null: false
-    t.string "provider_event_name"
-    t.string "status", default: "pending", null: false
-    t.bigint "suggested_production_id"
-    t.bigint "ticketing_provider_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["dismissed_by_id"], name: "index_ticketing_pending_events_on_dismissed_by_id"
-    t.index ["matched_production_link_id"], name: "index_ticketing_pending_events_on_matched_production_link_id"
-    t.index ["status"], name: "index_ticketing_pending_events_on_status"
-    t.index ["suggested_production_id"], name: "index_ticketing_pending_events_on_suggested_production_id"
-    t.index ["ticketing_provider_id", "provider_event_id"], name: "idx_pending_events_provider_event", unique: true
-    t.index ["ticketing_provider_id"], name: "index_ticketing_pending_events_on_ticketing_provider_id"
-  end
-
-  create_table "ticketing_production_links", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.jsonb "field_mappings", default: {}
-    t.string "last_sync_hash"
-    t.datetime "last_synced_at"
-    t.bigint "production_id", null: false
-    t.string "provider_event_id", null: false
-    t.string "provider_event_name"
-    t.string "provider_event_url"
-    t.boolean "sync_enabled", default: true
-    t.boolean "sync_ticket_sales", default: true
-    t.jsonb "ticket_type_mappings", default: {}
-    t.bigint "ticketing_provider_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["production_id", "ticketing_provider_id"], name: "idx_ticketing_prod_links_unique", unique: true
-    t.index ["production_id"], name: "index_ticketing_production_links_on_production_id"
-    t.index ["provider_event_id"], name: "index_ticketing_production_links_on_provider_event_id"
-    t.index ["ticketing_provider_id"], name: "index_ticketing_production_links_on_ticketing_provider_id"
-  end
-
-  create_table "ticketing_providers", force: :cascade do |t|
-    t.text "access_token_ciphertext"
-    t.text "api_key_ciphertext"
-    t.boolean "auto_sync_enabled", default: true
-    t.integer "consecutive_failures", default: 0
-    t.datetime "created_at", null: false
-    t.text "last_sync_error"
-    t.string "last_sync_status"
-    t.datetime "last_synced_at"
-    t.string "name", null: false
-    t.bigint "organization_id", null: false
-    t.string "provider_account_id"
-    t.string "provider_account_name"
-    t.string "provider_type", null: false
-    t.text "refresh_token_ciphertext"
-    t.integer "sync_interval_minutes", default: 15
-    t.datetime "token_expires_at"
-    t.datetime "updated_at", null: false
-    t.index ["organization_id", "provider_type"], name: "index_ticketing_providers_on_organization_id_and_provider_type"
-    t.index ["organization_id"], name: "index_ticketing_providers_on_organization_id"
-    t.index ["provider_account_id"], name: "index_ticketing_providers_on_provider_account_id"
-  end
-
-  create_table "ticketing_show_links", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.decimal "gross_revenue", precision: 10, scale: 2
-    t.string "last_sync_hash"
-    t.datetime "last_synced_at"
-    t.decimal "net_revenue", precision: 10, scale: 2
-    t.string "provider_occurrence_id"
-    t.string "provider_ticket_page_url"
-    t.datetime "provider_updated_at"
-    t.bigint "show_id", null: false
-    t.text "sync_notes"
-    t.string "sync_status"
-    t.jsonb "ticket_breakdown", default: []
-    t.bigint "ticketing_production_link_id", null: false
-    t.integer "tickets_available"
-    t.integer "tickets_capacity"
-    t.integer "tickets_sold", default: 0
-    t.datetime "updated_at", null: false
-    t.index ["provider_occurrence_id"], name: "index_ticketing_show_links_on_provider_occurrence_id"
-    t.index ["show_id", "ticketing_production_link_id"], name: "idx_ticketing_show_links_unique", unique: true
-    t.index ["show_id"], name: "index_ticketing_show_links_on_show_id"
-    t.index ["ticketing_production_link_id"], name: "index_ticketing_show_links_on_ticketing_production_link_id"
-  end
-
-  create_table "ticketing_sync_logs", force: :cascade do |t|
-    t.datetime "completed_at"
-    t.datetime "created_at", null: false
-    t.jsonb "details", default: {}
-    t.text "error_backtrace"
-    t.text "error_message"
-    t.integer "records_created", default: 0
-    t.integer "records_failed", default: 0
-    t.integer "records_processed", default: 0
-    t.integer "records_updated", default: 0
-    t.datetime "started_at"
-    t.string "status", null: false
-    t.string "sync_type", null: false
-    t.bigint "ticketing_production_link_id"
-    t.bigint "ticketing_provider_id", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id"
-    t.index ["status"], name: "index_ticketing_sync_logs_on_status"
-    t.index ["ticketing_production_link_id"], name: "index_ticketing_sync_logs_on_ticketing_production_link_id"
-    t.index ["ticketing_provider_id", "created_at"], name: "idx_ticketing_sync_logs_provider_created"
-    t.index ["ticketing_provider_id"], name: "index_ticketing_sync_logs_on_ticketing_provider_id"
-    t.index ["user_id"], name: "index_ticketing_sync_logs_on_user_id"
-  end
-
   create_table "training_credits", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "institution", limit: 200, null: false
@@ -2198,19 +2070,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_203816) do
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
-  add_foreign_key "ticket_fee_templates", "organizations"
-  add_foreign_key "ticketing_pending_events", "productions", column: "suggested_production_id"
-  add_foreign_key "ticketing_pending_events", "ticketing_production_links", column: "matched_production_link_id"
-  add_foreign_key "ticketing_pending_events", "ticketing_providers"
-  add_foreign_key "ticketing_pending_events", "users", column: "dismissed_by_id"
-  add_foreign_key "ticketing_production_links", "productions"
-  add_foreign_key "ticketing_production_links", "ticketing_providers"
-  add_foreign_key "ticketing_providers", "organizations"
-  add_foreign_key "ticketing_show_links", "shows"
-  add_foreign_key "ticketing_show_links", "ticketing_production_links"
-  add_foreign_key "ticketing_sync_logs", "ticketing_production_links"
-  add_foreign_key "ticketing_sync_logs", "ticketing_providers"
-  add_foreign_key "ticketing_sync_logs", "users"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

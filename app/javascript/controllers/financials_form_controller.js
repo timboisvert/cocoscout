@@ -35,10 +35,7 @@ export default class extends Controller {
     "receiptFileName",
     "receiptFileNameText",
     "receiptExpenseItemId",
-    "receiptUploadButton",
-    // Ticket Fees targets
-    "ticketFeesSection",
-    "ticketFeesTotal"
+    "receiptUploadButton"
   ]
 
   connect() {
@@ -52,22 +49,10 @@ export default class extends Controller {
     if (revenueType === "flat_fee") {
       this.ticketSalesFieldsTarget.classList.add("hidden")
       this.flatFeeFieldsTarget.classList.remove("hidden")
-      if (this.hasTicketFeesSectionTarget) {
-        this.ticketFeesSectionTarget.classList.add("hidden")
-      }
     } else {
       this.ticketSalesFieldsTarget.classList.remove("hidden")
       this.flatFeeFieldsTarget.classList.add("hidden")
-      if (this.hasTicketFeesSectionTarget) {
-        this.ticketFeesSectionTarget.classList.remove("hidden")
-      }
     }
-  }
-
-  // Update ticket fees when checkboxes are changed
-  updateTicketFees(event) {
-    // Fees are calculated on form submit based on ticket count/revenue
-    // This could be enhanced to show live calculations
   }
 
   // ===== Other Revenue Modal Methods =====

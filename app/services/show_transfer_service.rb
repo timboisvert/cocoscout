@@ -36,15 +36,6 @@ class ShowTransferService
         Message.where(show_id: show.id, production_id: old_production.id)
                .update_all(production_id: target_production.id)
 
-        # === TICKETING LINKS ===
-        # Ticketing show links reference a ticketing_production_link, may need to be cleared
-        # if the target production doesn't have the same ticketing setup
-        TicketingShowLink.where(show_id: show.id).each do |link|
-          unless link.ticketing_production_link&.production_id == target_production.id
-            link.destroy
-          end
-        end
-
         # === SHOW PAYOUT ===
         if show.show_payout.present?
           # Clear payout scheme if it was from the old production

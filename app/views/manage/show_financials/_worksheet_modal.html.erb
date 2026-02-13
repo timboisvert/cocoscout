@@ -108,61 +108,6 @@
             </div>
           </div>
 
-          <!-- Ticket Fees (only shown for ticket sales) -->
-          <%
-            fee_templates = Current.organization.ticket_fee_templates.default_first
-            current_ticket_fees = @show_financials.ticket_fees || []
-          %>
-          <% if fee_templates.any? %>
-            <div data-financials-form-target="ticketFeesSection" class="bg-gray-50 rounded-lg p-4 <%= @show_financials.flat_fee? ? 'hidden' : '' %>">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                  <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
-                  </svg>
-                  Ticket Fees
-                </h3>
-              </div>
-              <p class="text-sm text-gray-600 mb-3">Select fee templates to apply to this show's ticket sales.</p>
-              <div class="space-y-2">
-                <% fee_templates.each do |template| %>
-                  <%
-                    is_selected = current_ticket_fees.any? { |f| f["template_id"] == template.id }
-                    fee_data = template.to_fee_hash(
-                      ticket_count: @show_financials.ticket_count.to_i,
-                      ticket_revenue: @show_financials.ticket_revenue.to_f
-                    )
-                  %>
-                  <label class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-pink-300 transition-colors">
-                    <input type="checkbox"
-                           name="show_financials[ticket_fee_template_ids][]"
-                           value="<%= template.id %>"
-                           <%= is_selected ? 'checked' : '' %>
-                           data-action="change->financials-form#updateTicketFees"
-                           data-template-id="<%= template.id %>"
-                           data-template-name="<%= template.name %>"
-                           data-template-flat="<%= template.flat_per_ticket %>"
-                           data-template-pct="<%= template.percentage %>"
-                           class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600">
-                    <div class="flex-1">
-                      <div class="font-medium text-sm text-gray-900"><%= template.name %></div>
-                      <div class="text-xs text-gray-500"><%= template.fee_description %></div>
-                    </div>
-                    <div class="text-sm font-medium text-orange-600" data-financials-form-target="feeAmount<%= template.id %>">
-                      <%= number_to_currency(fee_data["amount"]) %>
-                    </div>
-                  </label>
-                <% end %>
-              </div>
-              <% if current_ticket_fees.any? %>
-                <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
-                  <span class="text-sm font-medium text-gray-700">Total Fees</span>
-                  <span data-financials-form-target="ticketFeesTotal" class="text-sm font-semibold text-orange-600"><%= number_to_currency(@show_financials.calculated_ticket_fees) %></span>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-
           <!-- Other Revenue -->
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="flex items-center justify-between mb-3">

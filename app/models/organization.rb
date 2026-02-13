@@ -6,8 +6,6 @@ class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
-  has_many :ticket_fee_templates, dependent: :destroy
-  has_many :ticketing_providers, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
   has_many :organization_roles, dependent: :destroy
   has_many :users, through: :organization_roles

@@ -1608,14 +1608,12 @@ class DemoSeeder
 
       # Keep expenses reasonable (10-15% of revenue)
       expenses = past ? (ticket_revenue * rand(0.10..0.15)).round : nil
-      ticket_fees = past ? (ticket_revenue * rand(0.02..0.04)).round : nil
 
       financials = ShowFinancials.create!(
         show: show,
         revenue_type: "ticket_sales",
         ticket_revenue: ticket_revenue,
         ticket_count: ticket_count,
-        ticket_fees: ticket_fees,
         expenses: expenses,
         data_confirmed: past
       )
@@ -1630,7 +1628,7 @@ class DemoSeeder
         )
 
         # Calculate payout pool: 65-75% of net revenue goes to performers
-        net_revenue = ticket_revenue - (expenses || 0) - (ticket_fees || 0)
+        net_revenue = ticket_revenue - (expenses || 0)
         payout_pool = (net_revenue * rand(0.65..0.75)).round
 
         # Get performing cast members

@@ -112,7 +112,7 @@ class VacancyNotificationService
         role_name: role.name,
         show_date: show.date_and_time.strftime("%B %-d at %-I:%M %p"),
         production_name: production.name,
-        show_url: Rails.application.routes.url_helpers.manage_casting_show_url(
+        show_url: Rails.application.routes.url_helpers.manage_casting_show_cast_url(
           production_id: production.id,
           show_id: show.id,
           host: default_host

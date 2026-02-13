@@ -79,6 +79,41 @@ class ShowPayout < ApplicationRecord
     update!(total_payout: line_items.sum(:amount))
   end
 
+  # Total advance deductions from all line items
+  def total_advance_deductions
+    line_items.sum(:advance_deduction)
+  end
+
+  # Net total (what actually needs to be paid out)
+  def total_net_payout
+    (total_payout || 0) - total_advance_deductions
+  end
+
+  # Check if advance deductions are stale (out of sync with current advance state)
+  # Returns true if:
+  # 1. Line items show deductions but those advances are now settled (already recovered)
+  # 2. There are outstanding advances for performers that aren't reflected in deductions
+  def advance_deductions_stale?
+    return false unless calculated_at.present?
+
+    person_ids = line_items.where(payee_type: "Person").pluck(:payee_id).compact
+    return false if person_ids.empty?
+
+    # Check for outstanding advances that aren't being deducted
+    outstanding_advances = PersonAdvance
+      .where(production: production, person_id: person_ids)
+      .outstanding
+      .paid
+      .sum(:remaining_balance)
+
+    # Current deductions in line items
+    current_deductions = total_advance_deductions
+
+    # If there are outstanding advances but no/different deductions, it's stale
+    # (This catches: new advances issued after calculation, or advances partially settled elsewhere)
+    outstanding_advances > 0 && current_deductions == 0
+  end
+
   # Display status - combines stored status with derived states
   def display_status
     return :paid if paid?

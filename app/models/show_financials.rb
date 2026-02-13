@@ -99,40 +99,14 @@ class ShowFinancials < ApplicationRecord
     primary_revenue + calculated_other_revenue
   end
 
-  # Calculate ticket fees from stored fees array
-  def calculated_ticket_fees
-    return 0 unless ticket_sales? && ticket_fees.is_a?(Array) && ticket_fees.any?
-
-    ticket_fees.sum do |fee|
-      fee["amount"].to_f
-    end
-  end
-
-  # Recalculate ticket fees from templates
-  def recalculate_ticket_fees!
-    return unless ticket_sales?
-
-    self.ticket_fees = ticket_fees.map do |fee|
-      template = TicketFeeTemplate.find_by(id: fee["template_id"])
-      if template
-        template.to_fee_hash(ticket_count: ticket_count.to_i, ticket_revenue: ticket_revenue.to_f)
-      else
-        # Keep the fee but recalculate amount
-        flat_total = (fee["flat"].to_f) * ticket_count.to_i
-        pct_total = (fee["pct"].to_f) / 100.0 * ticket_revenue.to_f
-        fee.merge("amount" => (flat_total + pct_total).round(2))
-      end
-    end
-  end
-
   # Calculate production expense allocations for this show
   def calculated_production_expenses
     show.production_expense_allocations.sum(:allocated_amount).to_f
   end
 
-  # Net revenue after expenses, ticket fees, and production expense allocations
+  # Net revenue after expenses and production expense allocations
   def net_revenue
-    total_revenue - calculated_expenses - calculated_ticket_fees - calculated_production_expenses
+    total_revenue - calculated_expenses - calculated_production_expenses
   end
 
   # Average ticket price (if any tickets sold)

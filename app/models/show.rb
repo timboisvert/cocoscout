@@ -54,7 +54,6 @@ class Show < ApplicationRecord
   # Payouts
   has_one :show_financials, dependent: :destroy
   has_one :show_payout, dependent: :destroy
-  has_one :ticketing_show_link, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 
   # Attendance tracking

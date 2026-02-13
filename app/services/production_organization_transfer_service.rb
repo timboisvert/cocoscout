@@ -54,7 +54,6 @@ class ProductionOrganizationTransferService
     analyze_permissions_and_team
     analyze_messages
     analyze_financial_data
-    analyze_ticketing
     analyze_casting_tables
     analyze_contracts
 
@@ -67,7 +66,6 @@ class ProductionOrganizationTransferService
 
     ActiveRecord::Base.transaction do
       # 1. Break external connections
-      break_ticketing_connections
       break_contract_connections
       break_casting_table_connections
       break_payroll_connections
@@ -291,18 +289,6 @@ class ProductionOrganizationTransferService
     end
   end
 
-  def analyze_ticketing
-    links_count = production.ticketing_production_links.count
-    if links_count > 0
-      @analysis[:warnings] << {
-        category: "Ticketing Integration",
-        message: "Ticketing provider links will be removed (#{links_count} connections)",
-        details: production.ticketing_production_links.includes(:ticketing_provider).map { |l| l.ticketing_provider&.name }
-      }
-      @analysis[:data_loss] << "Ticketing provider integration (#{links_count} links)"
-    end
-  end
-
   def analyze_casting_tables
     casting_table_entries = CastingTableProduction.where(production: production)
     if casting_table_entries.any?
@@ -326,12 +312,6 @@ class ProductionOrganizationTransferService
   end
 
   # === EXECUTION METHODS ===
-
-  def break_ticketing_connections
-    count = production.ticketing_production_links.count
-    production.ticketing_production_links.destroy_all
-    @changes_made << "Removed #{count} ticketing links" if count > 0
-  end
 
   def break_contract_connections
     if production.contract_id.present?

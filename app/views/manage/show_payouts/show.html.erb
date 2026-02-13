@@ -94,7 +94,7 @@
       {
         id: item.id,
         name: item.payee_name,
-        amount: item.amount,
+        amount: item.net_amount,
         venmo_handle: item.payee.respond_to?(:formatted_venmo_identifier) ? item.payee.formatted_venmo_identifier : nil,
         venmo_ready: item.payee_venmo_ready?
       }
@@ -682,9 +682,39 @@
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-gray-900">Payout Breakdown</h3>
           <% if @show_payout.total_payout %>
-            <span class="text-lg font-semibold text-pink-600">Total: <%= number_to_currency(@show_payout.total_payout) %></span>
+            <div class="text-right">
+              <% if @show_payout.total_advance_deductions > 0 %>
+                <div class="text-xs text-gray-400">Gross: <%= number_to_currency(@show_payout.total_payout) %></div>
+                <span class="text-lg font-semibold text-pink-600">Net: <%= number_to_currency(@show_payout.total_net_payout) %></span>
+                <div class="text-xs text-amber-600">−<%= number_to_currency(@show_payout.total_advance_deductions) %> advances repaid</div>
+              <% else %>
+                <span class="text-lg font-semibold text-pink-600">Total: <%= number_to_currency(@show_payout.total_payout) %></span>
+              <% end %>
+            </div>
           <% end %>
         </div>
+
+        <%# Show stale calculation warning if there are outstanding advances not reflected %>
+        <% if @show_payout.advance_deductions_stale? && !@show_payout.paid? %>
+          <div class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-pink-800">Outstanding advances not applied</p>
+                  <p class="text-xs text-pink-700 mt-0.5">Some performers have paid advances that haven't been deducted from this payout.</p>
+                </div>
+              </div>
+              <%= button_to manage_calculate_money_show_payout_path(@show),
+                  method: :post,
+                  class: "flex-shrink-0" do %>
+                <%= render "shared/button", text: "Recalculate", variant: "primary", size: "small" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
 
         <% if has_line_items %>
           <%
@@ -700,7 +730,7 @@
             <%
               # Get unpaid items for the walkthrough
               unpaid_items = line_items.reject(&:paid?)
-              unpaid_total = unpaid_items.sum(&:amount)
+              unpaid_total = unpaid_items.sum(&:net_amount)
             %>
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
               <div class="flex items-center justify-between flex-wrap gap-3">
@@ -832,7 +862,15 @@
                       </div>
                     </td>
                     <td class="py-3 text-right">
-                      <span class="font-semibold <%= item.manually_paid? ? 'text-green-700' : 'text-gray-900' %>"><%= number_to_currency(item.amount) %></span>
+                      <% if item.advance_deduction.to_f > 0 %>
+                        <div class="text-right">
+                          <span class="text-xs text-gray-400 line-through"><%= number_to_currency(item.amount) %></span>
+                          <div class="font-semibold <%= item.manually_paid? ? 'text-green-700' : 'text-gray-900' %>"><%= number_to_currency(item.net_amount) %></div>
+                          <span class="text-[10px] text-amber-600">−<%= number_to_currency(item.advance_deduction) %> advance repaid</span>
+                        </div>
+                      <% else %>
+                        <span class="font-semibold <%= item.manually_paid? ? 'text-green-700' : 'text-gray-900' %>"><%= number_to_currency(item.amount) %></span>
+                      <% end %>
                     </td>
                     <td class="py-3 pl-4 hidden sm:table-cell">
                       <span class="text-sm text-gray-500"><%= item.calculation_explanation %></span>
@@ -1003,12 +1041,18 @@
                       <!-- Amount -->
                       <div class="bg-gray-50 rounded-xl p-4 mb-6 text-center">
                         <div class="text-sm text-gray-500 mb-1">Amount to Pay</div>
-                        <div class="text-4xl font-bold text-gray-900"><%= number_to_currency(item.amount) %></div>
+                        <% if item.advance_deduction.to_f > 0 %>
+                          <div class="text-sm text-gray-400 line-through"><%= number_to_currency(item.amount) %></div>
+                          <div class="text-4xl font-bold text-gray-900"><%= number_to_currency(item.net_amount) %></div>
+                          <div class="text-xs text-amber-600 mt-1">−<%= number_to_currency(item.advance_deduction) %> advance deducted</div>
+                        <% else %>
+                          <div class="text-4xl font-bold text-gray-900"><%= number_to_currency(item.amount) %></div>
+                        <% end %>
                       </div>
 
                       <!-- Payment Info or Setup Needed -->
                       <% payment_info = item.payee_preferred_payment %>
-                      <% if item.amount == 0 %>
+                      <% if item.net_amount == 0 %>
                         <!-- Zero amount - just mark as complete -->
                         <div class="mb-6">
                           <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center">
@@ -1057,9 +1101,9 @@
                               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
                             </svg>
                             <% if payment_info[:method] == "venmo" %>
-                              <p class="text-sm text-gray-700">Open Venmo on your phone, send <strong><%= number_to_currency(item.amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                              <p class="text-sm text-gray-700">Open Venmo on your phone, send <strong><%= number_to_currency(item.net_amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
                             <% elsif payment_info[:method] == "zelle" %>
-                              <p class="text-sm text-gray-700">Open your bank's Zelle, send <strong><%= number_to_currency(item.amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                              <p class="text-sm text-gray-700">Open your bank's Zelle, send <strong><%= number_to_currency(item.net_amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
                             <% end %>
                           </div>
                         </div>
@@ -1076,7 +1120,7 @@
                                 data: {
                                   action: "click->payment-actions#openVenmo",
                                   venmo_handle: item.payee.venmo_identifier,
-                                  venmo_amount: item.amount,
+                                  venmo_amount: item.net_amount,
                                   venmo_note: "#{@production.name} - #{@show.date_and_time.strftime('%b %-d')}"
                                 } %>
                           <% end %>
