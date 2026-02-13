@@ -165,10 +165,13 @@ class My::MessagesController < ApplicationController
       return
     end
 
+    # Replies from /my/messages are always personal (not "as production team")
+    # Only producers using /manage/messages can choose to reply as production team
     message = MessageService.reply(
       sender: Current.user,
       parent_message: parent,
-      body: params[:body]
+      body: params[:body],
+      visibility: "personal"
     )
     message&.images&.attach(images) if images.present?
 
