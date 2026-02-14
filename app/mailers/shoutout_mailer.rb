@@ -14,7 +14,7 @@ class ShoutoutMailer < ApplicationMailer
     rendered = ContentTemplateService.render("shoutout_notification", {
       recipient_name: @recipient.first_name || "there",
       author_name: @author.name,
-      shoutout_text: shoutout.body,
+      shoutout_text: shoutout.content,
       profile_url: profile_url
     })
 

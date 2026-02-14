@@ -105,15 +105,15 @@ module My
       # Check notification preferences
       return if shoutee.user.present? && !shoutee.user.notification_enabled?(:shoutouts)
 
-      shoutout_url = Rails.application.routes.url_helpers.profile_url(
-        shoutee,
+      shoutout_url = Rails.application.routes.url_helpers.my_shoutouts_url(
+        tab: "received",
         host: ENV.fetch("HOST", "localhost:3000")
       )
 
       variables = {
         recipient_name: shoutee.first_name || "there",
         author_name: shoutout.author.name,
-        shoutout_message: shoutout.body,
+        shoutout_message: shoutout.content,
         shoutout_url: shoutout_url
       }
 
@@ -128,8 +128,8 @@ module My
           organization: nil
         )
       else
-        # No account - send email via ShoutoutMailer
-        ShoutoutMailer.shoutout_received(shoutout).deliver_later
+        # No account - send email via AppMailer
+        AppMailer.shoutout_notification(shoutout).send_template.deliver_later
       end
     end
 
