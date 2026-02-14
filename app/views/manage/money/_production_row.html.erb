@@ -64,20 +64,40 @@
       </div>
 
       <% if is_third_party %>
+        <%# Check for revenue share contracts %>
+        <% is_revenue_share = summary[:is_revenue_share] %>
+        <% our_share = summary[:our_share] %>
+        <% their_share = summary[:their_share] %>
+
         <%# Third-party: Contract Revenue %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Contract Revenue</div>
-          <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
+          <% if is_revenue_share %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Revenue Share</div>
+            <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Split</div>
+            <div class="text-[10px] text-gray-500">We receive <%= our_share %>%</div>
+          <% else %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Contract Revenue</div>
+            <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
+          <% end %>
         </div>
 
         <%# Third-party: Pending Payments %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Pending</div>
-          <% pending_amount = summary[:pending_amount] || 0 %>
-          <% if pending_amount > 0 %>
-            <div class="text-sm font-medium text-amber-600"><%= number_to_currency(pending_amount) %></div>
+          <% if is_revenue_share %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Received</div>
+            <% if gross_revenue > 0 %>
+              <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
+            <% else %>
+              <div class="text-sm text-gray-400">TBD</div>
+            <% end %>
           <% else %>
-            <div class="text-sm text-gray-400">$0.00</div>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Pending</div>
+            <% pending_amount = summary[:pending_amount] || 0 %>
+            <% if pending_amount > 0 %>
+              <div class="text-sm font-medium text-amber-600"><%= number_to_currency(pending_amount) %></div>
+            <% else %>
+              <div class="text-sm text-gray-400">$0.00</div>
+            <% end %>
           <% end %>
         </div>
 

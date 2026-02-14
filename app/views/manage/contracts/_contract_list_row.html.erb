@@ -17,6 +17,13 @@
   is_behind = late_payments.any?
   total_value = contract.contract_payments.sum(&:amount)
 
+  # Check for revenue share
+  payment_structure = contract.draft_payment_structure
+  is_revenue_share = payment_structure == "revenue_share"
+  payment_config = contract.draft_payment_config
+  our_share = payment_config["revenue_our_share"].to_i if is_revenue_share
+  their_share = payment_config["revenue_their_share"].to_i if is_revenue_share
+
   # Get services from draft or actual data
   services = contract.draft_services.presence || []
 
@@ -88,7 +95,10 @@
       <%# Panel 3 (25%): Value & Payment Status %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
-        <% if total_value > 0 %>
+        <% if is_revenue_share %>
+          <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Revenue Share</div>
+          <div class="text-[10px] text-gray-500">We receive <%= our_share %>% of ticket sales</div>
+        <% elsif total_value > 0 %>
           <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_value) %></div>
           <div class="flex items-center gap-1">
             <% if is_paid %>

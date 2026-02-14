@@ -76,6 +76,13 @@ module Manage
       overdue_payments = contract.overdue_payments
       overdue_amount = overdue_payments.sum(:amount)
 
+      # Check for revenue share
+      payment_structure = contract.draft_payment_structure
+      is_revenue_share = payment_structure == "revenue_share"
+      payment_config = contract.draft_payment_config
+      our_share = is_revenue_share ? payment_config["revenue_our_share"].to_i : nil
+      their_share = is_revenue_share ? payment_config["revenue_their_share"].to_i : nil
+
       {
         production: production,
         is_third_party: true,
@@ -86,6 +93,9 @@ module Manage
         pending_count: pending_payments.count,
         overdue_amount: overdue_amount,
         overdue_count: overdue_payments.count,
+        is_revenue_share: is_revenue_share,
+        our_share: our_share,
+        their_share: their_share,
         # Zero out in-house specific fields
         show_expenses: 0,
         production_expenses: 0,
@@ -105,6 +115,9 @@ module Manage
         pending_count: 0,
         overdue_amount: 0,
         overdue_count: 0,
+        is_revenue_share: false,
+        our_share: nil,
+        their_share: nil,
         show_expenses: 0,
         production_expenses: 0,
         total_payouts: 0,
