@@ -17,13 +17,24 @@ class ContractPayment < ApplicationRecord
     cancelled: "cancelled"
   }, default: :pending, prefix: :status
 
-  validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :amount, numericality: { greater_than: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
   validates :direction, presence: true
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
   scope :by_due_date, -> { order(:due_date) }
+
+  # Check if payment amount is to be determined (e.g., revenue share)
+  def amount_tbd?
+    amount_tbd
+  end
+
+  # Check if this is a revenue share payment (amount determined after events)
+  def revenue_share?
+    description&.downcase&.include?("revenue share")
+  end
 
   # Check if payment is overdue
   def overdue?

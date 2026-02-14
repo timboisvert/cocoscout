@@ -81,7 +81,7 @@
                       </span>
                     </div>
                     <div class="text-sm text-gray-600">
-                      <%= single_show.date_and_time.strftime("%l:%M %p").strip %>
+                      <%= single_show.time_range_display %>
                       <% if single_show.location.present? %>
                         · <%= single_show.location.name %>
                       <% elsif single_show.is_online %>

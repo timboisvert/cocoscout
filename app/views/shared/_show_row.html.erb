@@ -157,11 +157,11 @@
         <% end %>
       </div>
       <div class="text-sm text-gray-600">
-        <%# Show event start time if space rental has different event time, otherwise show date_and_time %>
+        <%# Show time range if duration is set, otherwise just start time %>
         <% if show.space_rental&.has_separate_event_time? %>
-          <%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p") %>
+          <%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p").strip %><% if show.duration_minutes.present? %> – <%= show.ends_at.strftime("%l:%M %p").strip %><% end %>
         <% else %>
-          <%= show.date_and_time.strftime("%l:%M %p") %>
+          <%= show.time_range_display || show.date_and_time.strftime("%l:%M %p").strip %>
         <% end %>
         <% if show.call_time_enabled? && show.call_time.present? %>
           · Call <%= show.call_time.strftime("%l:%M %p") %>
@@ -489,7 +489,7 @@
           <div class="flex flex-wrap gap-1 mt-1">
             <% local_assigns[:services].each do |service| %>
               <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                <%= service %>
+                <%= service.is_a?(Hash) ? (service["name"] || service[:name]) : service %>
               </span>
             <% end %>
           </div>

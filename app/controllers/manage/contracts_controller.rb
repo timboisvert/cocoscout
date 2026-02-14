@@ -339,6 +339,7 @@ module Manage
           if production
             production.shows.create!(
               date_and_time: rental.starts_at,
+              duration_minutes: (duration_hours * 60).to_i,
               location: rental.location,
               location_space: rental.location_space,
               space_rental: rental,

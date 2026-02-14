@@ -93,7 +93,7 @@
                   <div class="flex-1">
                     <p class="text-sm font-medium <%= is_past ? 'text-gray-400' : 'text-gray-900' %>">
                       <%= event_show.date_and_time.strftime("%A, %B %d") %>
-                      <span class="<%= is_past ? 'text-gray-400' : 'text-gray-500' %> font-normal">at <%= event_show.date_and_time.strftime("%l:%M %p").strip %></span>
+                      <span class="<%= is_past ? 'text-gray-400' : 'text-gray-500' %> font-normal"><%= event_show.time_range_display %></span>
                     </p>
                     <p class="text-xs <%= is_past ? 'text-gray-400' : 'text-gray-500' %>">
                       <%= event_show.display_name %>

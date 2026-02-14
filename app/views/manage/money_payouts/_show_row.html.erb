@@ -76,7 +76,7 @@
             <% end %>
           </div>
           <div class="text-sm text-gray-600 <%= 'line-through' if is_canceled %>">
-            <%= show.date_and_time.strftime("%l:%M %p").strip %>
+            <%= show.time_range_display %>
             <% if show.location.present? %>
               &middot; <%= show.location.name %>
             <% elsif show.is_online %>

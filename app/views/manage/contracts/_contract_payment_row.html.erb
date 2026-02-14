@@ -54,7 +54,11 @@
     <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
       <div class="flex-1">
         <div class="text-2xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
-          <%= number_to_currency(payment.amount) %>
+          <% if payment.amount_tbd? %>
+            TBD
+          <% else %>
+            <%= number_to_currency(payment.amount) %>
+          <% end %>
         </div>
         <% if is_late %>
           <div class="text-xs text-pink-600">
@@ -100,7 +104,7 @@
           <div class="bg-gray-50 rounded-lg p-4 text-center">
             <div class="text-sm text-gray-500 mb-1">Payment Amount</div>
             <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
-              <%= number_to_currency(payment.amount) %>
+              <% if payment.amount_tbd? %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
             </div>
             <div class="text-sm text-gray-600 mt-2">
               <%= contract.contractor_name %> · <%= payment.description.presence || "Payment" %>

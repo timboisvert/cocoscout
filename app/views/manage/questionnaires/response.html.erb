@@ -82,8 +82,8 @@
             <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
               <div class="flex-1">
                 <div class="text-sm font-medium text-gray-900">
-                  <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> at
-                  <%= show.date_and_time.strftime("%l:%M %p") %>
+                  <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> ·
+                  <%= show.time_range_display %>
                 </div>
                 <div class="flex items-center gap-2 mt-1">
                   <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">

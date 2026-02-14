@@ -217,7 +217,7 @@
                           <%= affected_show.display_name %>
                         </div>
                         <div class="text-sm text-gray-600">
-                          <%= affected_show.date_and_time.strftime("%l:%M %p").strip %>
+                          <%= affected_show.time_range_display %>
                           <% if affected_show.is_online %>
                             · Online
                           <% elsif affected_show.location.present? %>
@@ -241,7 +241,7 @@
                       <%= show.display_name %>
                     </div>
                     <div class="text-sm text-gray-600">
-                      <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                      <%= show.time_range_display %>
                       <% if show.is_online %>
                         · Online
                       <% elsif show.location.present? %>
@@ -318,7 +318,7 @@
                         <%= show.display_name %>
                       </div>
                       <div class="text-sm text-gray-600">
-                        <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                        <%= show.time_range_display %>
                         <% if show.is_online %>
                           · Online
                         <% elsif show.location.present? %>

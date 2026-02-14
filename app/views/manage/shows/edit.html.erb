@@ -131,9 +131,22 @@
 
         <!-- Single Event Fields (shown when editing just this occurrence) -->
         <div data-recurring-edit-target="singleFields" class="<%= @show.recurring? ? '' : '' %>">
-          <div class="w-full">
-            <%= form.label :date_and_time, "Date and Time" %>
-            <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
+          <div class="flex flex-wrap gap-4">
+            <div>
+              <%= form.label :date_and_time, "Date and Time" %>
+              <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
+            </div>
+            <div>
+              <%= form.label :duration_minutes, "Duration" %>
+              <%= form.select :duration_minutes,
+                options_for_select(
+                  [["30 minutes", 30], ["1 hour", 60], ["1.5 hours", 90]] + (2..24).map { |h| ["#{h} hours", h * 60] },
+                  @show.duration_minutes || Show::DEFAULT_DURATION_MINUTES
+                ),
+                {},
+                { class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2" }
+              %>
+            </div>
           </div>
         </div>
 
@@ -184,6 +197,18 @@
                         action: "change->recurring-edit#updatePatternOptions"
                       } %>
                   <p class="text-sm text-gray-500 mt-1">This will become the new first event in the series</p>
+                </div>
+
+                <div>
+                  <%= form.label :duration_minutes, "Event Duration" %>
+                  <%= form.select :duration_minutes,
+                      options_for_select(
+                        [["30 minutes", 30], ["1 hour", 60], ["1.5 hours", 90]] + (2..24).map { |h| ["#{h} hours", h * 60] },
+                        @show.duration_minutes || Show::DEFAULT_DURATION_MINUTES
+                      ),
+                      {},
+                      { class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" }
+                  %>
                 </div>
 
                 <div>

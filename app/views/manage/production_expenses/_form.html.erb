@@ -136,7 +136,7 @@
                   <div class="text-sm font-medium text-gray-900">
                     <%= show.date_and_time.strftime("%b %d, %Y") %> - <%= show.display_name %>
                   </div>
-                  <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
+                  <div class="text-xs text-gray-500"><%= show.time_range_display %></div>
                 </div>
               </label>
             <% end %>

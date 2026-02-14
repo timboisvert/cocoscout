@@ -581,8 +581,7 @@ class SlotManagementService
     when "event_start"
       show.date_and_time
     when "event_end"
-      # Assume 2 hour event duration if not specified
-      show.date_and_time + 2.hours
+      show.ends_at
     when "custom"
       offset = sign_up_form.closes_offset_value.to_i
       unit = sign_up_form.closes_offset_unit == "days" ? :days : :hours

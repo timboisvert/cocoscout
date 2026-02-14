@@ -195,6 +195,7 @@ module Manage
             @production.shows.create!(
               event_type: show_data[:event_type] || show_data["event_type"] || "show",
               date_and_time: show_data[:date_and_time] || show_data["date_and_time"],
+              duration_minutes: (show_data[:duration_minutes] || show_data["duration_minutes"]).presence&.to_i,
               location_id: show_data[:location_id] || show_data["location_id"],
               is_online: show_data[:is_online] || show_data["is_online"] || false,
               casting_enabled: true

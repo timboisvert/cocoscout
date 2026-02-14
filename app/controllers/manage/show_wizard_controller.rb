@@ -83,6 +83,7 @@ module Manage
     def save_schedule
       @wizard_state[:event_frequency] = params[:event_frequency]
       @wizard_state[:date_and_time] = params[:date_and_time]
+      @wizard_state[:duration_minutes] = params[:duration_minutes].presence&.to_i
       @wizard_state[:recurrence_pattern] = params[:recurrence_pattern]
       @wizard_state[:recurrence_end_type] = params[:recurrence_end_type]
       @wizard_state[:recurrence_start_datetime] = params[:recurrence_start_datetime]
@@ -177,6 +178,7 @@ module Manage
       @show = @production.shows.new(
         event_type: @wizard_state[:event_type],
         date_and_time: @wizard_state[:date_and_time],
+        duration_minutes: @wizard_state[:duration_minutes],
         location_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_id],
         is_online: @wizard_state[:is_online],
         online_location_info: @wizard_state[:online_location_info],
@@ -225,6 +227,7 @@ module Manage
         show = @production.shows.new(
           event_type: @wizard_state[:event_type],
           date_and_time: date,
+          duration_minutes: @wizard_state[:duration_minutes],
           location_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_id],
           is_online: @wizard_state[:is_online],
           online_location_info: @wizard_state[:online_location_info],

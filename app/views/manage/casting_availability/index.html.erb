@@ -62,7 +62,7 @@
                     <%= show.date_and_time.strftime("%a, %b %-d") %>
                   </div>
                   <div class="text-xs sm:text-sm font-semibold text-gray-900 mt-0.5">
-                    <%= show.date_and_time.strftime("%-I:%M %p") %>
+                    <%= show.time_range_display %>
                   </div>
                   <% if show.secondary_name.present? %>
                     <div class="hidden sm:block text-xs text-gray-500 truncate mt-0.5 max-w-[130px] mx-auto" title="<%= show.secondary_name %>">

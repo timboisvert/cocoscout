@@ -69,7 +69,7 @@
                 </div>
                 <div class="text-right">
                   <div class="font-semibold <%= payment.direction == 'incoming' ? 'text-green-600' : 'text-red-600' %>">
-                    <%= payment.direction == 'incoming' ? '+' : '-' %><%= number_to_currency(payment.amount) %>
+                    <%= payment.direction == 'incoming' ? '+' : '-' %><% if payment.amount_tbd? %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
                   </div>
                   <div class="text-xs">
                     <% case payment.status %>

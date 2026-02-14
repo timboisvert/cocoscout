@@ -14,6 +14,7 @@ class CalendarEvent < ApplicationRecord
       event_type: show.event_type,
       secondary_name: show.secondary_name,
       start: show.date_and_time&.iso8601,
+      end: show.ends_at&.iso8601,
       location: show.location&.full_address,
       canceled: show.canceled?,
       is_online: show.is_online?,

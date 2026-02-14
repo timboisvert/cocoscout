@@ -68,7 +68,7 @@
                 <% end %>
               </div>
               <div class="text-sm text-gray-600">
-                <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                <%= show.time_range_display %>
                 <% if show.location.present? %>
                   · <%= show.location.name %>
                 <% elsif show.is_online %>
@@ -207,7 +207,7 @@
                   <%= show.display_name %>
                 </span>
                 <div class="text-xs text-gray-600">
-                  <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                  <%= show.time_range_display %>
                   <% if show.location.present? %>
                     · <%= show.location.name %>
                   <% elsif show.is_online %>

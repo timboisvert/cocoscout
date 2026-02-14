@@ -74,7 +74,7 @@
                 <%= allocation.show.display_name %>
               </div>
               <div class="text-sm text-gray-500">
-                <%= allocation.show.date_and_time.strftime("%l:%M %p").strip %>
+                <%= allocation.show.time_range_display %>
                 <% if allocation.show.location %>
                   &middot; <%= allocation.show.location.name %>
                 <% end %>

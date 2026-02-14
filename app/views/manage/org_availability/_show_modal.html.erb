@@ -24,7 +24,7 @@
           <%= @show.display_name %>
         </div>
         <div class="text-sm text-gray-500">
-          <%= @show.date_and_time.strftime("%l:%M %p").strip %>
+          <%= @show.time_range_display %>
         </div>
         <% if @show.location %>
           <div class="text-xs text-gray-400 mt-1"><%= @show.location.name %></div>

@@ -61,8 +61,8 @@
                   <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                     <div class="flex-1 min-w-0 mr-4">
                       <div class="text-sm font-semibold text-gray-900">
-                        <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
-                        <%= show.date_and_time.strftime("%l:%M %p") %>
+                        <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> ·
+                        <%= show.time_range_display %>
                       </div>
                       <div class="flex items-center gap-2 mt-1 flex-wrap">
                         <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type

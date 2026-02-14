@@ -138,7 +138,7 @@
                 </span>
               </span>
               <span class="font-medium <%= payment["direction"] == "incoming" ? 'text-green-600' : 'text-red-600' %>">
-                <%= payment["direction"] == "incoming" ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %>
+                <%= payment["direction"] == "incoming" ? '+' : '-' %><% if payment["amount_tbd"] %>TBD<% else %>$<%= '%.2f' % payment["amount"].to_f %><% end %>
               </span>
             </li>
           <% end %>

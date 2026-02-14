@@ -209,6 +209,7 @@ class Contract < ApplicationRecord
       contract_payments.create!(
         description: payment["description"],
         amount: payment["amount"],
+        amount_tbd: payment["amount_tbd"] || false,
         direction: payment["direction"],
         due_date: payment["due_date"],
         notes: payment["notes"]
@@ -227,8 +228,10 @@ class Contract < ApplicationRecord
 
     # Create shows for each space rental (booking)
     space_rentals.reload.each do |rental|
+      duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
       production.shows.create!(
         date_and_time: rental.starts_at,
+        duration_minutes: duration_minutes,
         location: rental.location,
         location_space: rental.location_space,
         space_rental: rental,

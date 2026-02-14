@@ -148,7 +148,7 @@
                     </div>
                   </div>
                   <div class="font-semibold <%= payment.direction == 'incoming' ? 'text-green-600' : 'text-red-600' %>">
-                    <%= payment.direction == 'incoming' ? '+' : '-' %><%= number_to_currency(payment.amount) %>
+                    <%= payment.direction == 'incoming' ? '+' : '-' %><% if payment.respond_to?(:amount_tbd?) && payment.amount_tbd? %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
                   </div>
                 </div>
               <% end %>
@@ -183,7 +183,7 @@
                     </div>
                   </div>
                   <div class="font-semibold <%= payment["direction"] == 'incoming' ? 'text-green-600' : 'text-red-600' %>">
-                    <%= payment["direction"] == 'incoming' ? '+' : '-' %><%= number_to_currency(payment["amount"].to_f) %>
+                    <%= payment["direction"] == 'incoming' ? '+' : '-' %><% if payment["amount_tbd"] %>TBD<% else %><%= number_to_currency(payment["amount"].to_f) %><% end %>
                   </div>
                 </div>
               <% end %>

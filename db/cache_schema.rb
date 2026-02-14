@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_14_001041) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -384,6 +384,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_001041) do
 
   create_table "contract_payments", force: :cascade do |t|
     t.decimal "amount", precision: 10, scale: 2, null: false
+    t.boolean "amount_tbd", default: false, null: false
     t.bigint "contract_id", null: false
     t.datetime "created_at", null: false
     t.string "description"
@@ -1432,6 +1433,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_001041) do
     t.string "casting_source"
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
+    t.integer "duration_minutes"
     t.bigint "event_linkage_id"
     t.string "event_type", default: "show", null: false
     t.boolean "is_online", default: false, null: false

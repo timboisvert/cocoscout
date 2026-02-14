@@ -706,14 +706,84 @@ export default class extends Controller {
                 const ourShare = parseInt(this.hasRevenueOurShareTarget ? this.revenueOurShareTarget.value : 0) || 0
                 const hasGuarantee = this.hasRevenueGuaranteeTarget && this.revenueGuaranteeTarget.checked
                 const guaranteeAmount = parseFloat(this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : 0) || 0
+                const settlement = this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "same_day"
 
                 if (ourShare > 0) {
-                    payments.push({
-                        description: `Revenue Share (${ourShare}% to venue)`,
-                        amount: 0, // Amount TBD based on actual revenue
-                        direction: "incoming",
-                        due_date: this.getDateDaysFromNow(30)
-                    })
+                    // Generate payments based on settlement terms
+                    if (settlement === "monthly" && this.bookingDates.length > 0) {
+                        // Group bookings by month and create a payment for each month
+                        const monthsWithEvents = new Map()
+                        this.bookingDates.forEach(bookingDate => {
+                            const date = new Date(bookingDate)
+                            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                            if (!monthsWithEvents.has(monthKey)) {
+                                monthsWithEvents.set(monthKey, date)
+                            }
+                        })
+
+                        // Create a payment for each month, due at the end of that month
+                        Array.from(monthsWithEvents.entries()).forEach(([monthKey, firstEventDate]) => {
+                            const [year, month] = monthKey.split('-').map(Number)
+                            // Last day of the month (day 0 of next month = last day of current month)
+                            const dueDate = new Date(year, month, 0)
+                            const monthName = firstEventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+                            payments.push({
+                                description: `Revenue Share - ${monthName} (${ourShare}% to venue)`,
+                                amount: 0,
+                                amount_tbd: true,
+                                direction: "incoming",
+                                due_date: this.formatDateForInput(dueDate)
+                            })
+                        })
+                    } else if (settlement === "weekly" && this.bookingDates.length > 0) {
+                        // Create weekly settlements based on booking dates
+                        const weeksWithEvents = new Map()
+                        this.bookingDates.forEach(bookingDate => {
+                            const date = new Date(bookingDate)
+                            // Get the Monday of that week
+                            const day = date.getDay()
+                            const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+                            const weekStart = new Date(date.setDate(diff))
+                            const weekKey = weekStart.toISOString().split('T')[0]
+                            if (!weeksWithEvents.has(weekKey)) {
+                                weeksWithEvents.set(weekKey, new Date(bookingDate))
+                            }
+                        })
+
+                        Array.from(weeksWithEvents.entries()).forEach(([weekKey, firstEventDate], index) => {
+                            const weekDate = new Date(weekKey)
+                            // Due the following Monday
+                            const dueDate = new Date(weekDate)
+                            dueDate.setDate(dueDate.getDate() + 7)
+
+                            payments.push({
+                                description: `Revenue Share - Week ${index + 1} (${ourShare}% to venue)`,
+                                amount: 0,
+                                amount_tbd: true,
+                                direction: "incoming",
+                                due_date: this.formatDateForInput(dueDate)
+                            })
+                        })
+                    } else {
+                        // Same day or next day - create one payment per event
+                        this.bookingDates.forEach((bookingDate, index) => {
+                            const eventDate = new Date(bookingDate)
+                            let dueDate = new Date(eventDate)
+
+                            if (settlement === "next_day") {
+                                dueDate.setDate(dueDate.getDate() + 1)
+                            }
+
+                            payments.push({
+                                description: `Revenue Share - Event ${index + 1} (${ourShare}% to venue)`,
+                                amount: 0,
+                                amount_tbd: true,
+                                direction: "incoming",
+                                due_date: this.formatDateForInput(dueDate)
+                            })
+                        })
+                    }
                 }
                 if (hasGuarantee && guaranteeAmount > 0) {
                     payments.push({

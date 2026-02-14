@@ -170,4 +170,49 @@ RSpec.describe Show, type: :model do
       expect(show.poster).to be_attached
     end
   end
+
+  describe 'duration methods' do
+    let(:show) { build(:show, date_and_time: Time.zone.parse('2025-03-15 19:00:00')) }
+
+    describe '#ends_at' do
+      it 'returns date_and_time plus duration_minutes when set' do
+        show.duration_minutes = 180
+        expect(show.ends_at).to eq(Time.zone.parse('2025-03-15 22:00:00'))
+      end
+
+      it 'uses default 120 minutes when duration_minutes is nil' do
+        show.duration_minutes = nil
+        expect(show.ends_at).to eq(Time.zone.parse('2025-03-15 21:00:00'))
+      end
+    end
+
+    describe '#duration_hours' do
+      it 'returns duration in hours when set' do
+        show.duration_minutes = 90
+        expect(show.duration_hours).to eq(1.5)
+      end
+
+      it 'uses default 120 minutes when duration_minutes is nil' do
+        show.duration_minutes = nil
+        expect(show.duration_hours).to eq(2.0)
+      end
+    end
+
+    describe '#time_range_display' do
+      it 'returns formatted time range when duration is set' do
+        show.duration_minutes = 120
+        expect(show.time_range_display).to eq('7:00 PM – 9:00 PM')
+      end
+
+      it 'returns only start time when duration is nil' do
+        show.duration_minutes = nil
+        expect(show.time_range_display).to eq('7:00 PM')
+      end
+
+      it 'handles different durations correctly' do
+        show.duration_minutes = 90
+        expect(show.time_range_display).to eq('7:00 PM – 8:30 PM')
+      end
+    end
+  end
 end

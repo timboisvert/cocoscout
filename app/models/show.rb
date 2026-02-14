@@ -201,6 +201,52 @@ class Show < ApplicationRecord
     date_and_time < Time.current
   end
 
+  # Duration helpers
+  DEFAULT_DURATION_MINUTES = 120
+
+  # Returns the end time based on duration_minutes, space rental, or default 2 hours
+  def ends_at
+    return nil unless date_and_time
+
+    # If show has its own duration_minutes, use it
+    if duration_minutes.present?
+      return date_and_time + duration_minutes.minutes
+    end
+
+    # If show has a space rental, use the event end time from the rental
+    if space_rental.present?
+      return space_rental.effective_event_ends_at
+    end
+
+    # Default to 2 hours
+    date_and_time + DEFAULT_DURATION_MINUTES.minutes
+  end
+
+  # Duration in hours (for display purposes)
+  def duration_hours
+    if duration_minutes.present?
+      duration_minutes / 60.0
+    elsif space_rental.present?
+      ((space_rental.effective_event_ends_at - space_rental.effective_event_starts_at) / 60).to_f / 60.0
+    else
+      DEFAULT_DURATION_MINUTES / 60.0
+    end
+  end
+
+  # Display time range like "7:00 PM – 9:00 PM" or just "7:00 PM" if no duration
+  def time_range_display
+    return nil unless date_and_time
+
+    # Use space rental's event start time if available, otherwise use date_and_time
+    start_time = space_rental&.effective_event_starts_at || date_and_time
+    start_str = start_time.strftime("%-I:%M %p")
+
+    # Show end time if we have explicit duration or a space rental
+    return start_str unless duration_minutes.present? || space_rental.present?
+    end_str = ends_at.strftime("%-I:%M %p")
+    "#{start_str} – #{end_str}"
+  end
+
   # Display name for the show (secondary_name if set, otherwise production name + event type)
   # For third-party productions, we don't append the event type since they often have unique names
   def display_name

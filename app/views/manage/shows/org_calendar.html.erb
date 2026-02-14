@@ -60,11 +60,7 @@
                       class: "block mb-1" do %>
                     <% is_past = show.date_and_time < Time.current %>
                     <div class="text-xs p-1 rounded border <%= event_type_badge_classes(show.event_type, style: :calendar, is_past: is_past) %> <%= 'opacity-50 line-through' if show.canceled %>">
-                      <% if show.space_rental&.has_separate_event_time? %>
-                        <div class="font-semibold"><%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p").strip %></div>
-                      <% else %>
-                        <div class="font-semibold"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
-                      <% end %>
+                      <div class="font-semibold"><%= show.time_range_display %></div>
                       <% if show.secondary_name.present? %>
                         <div class="truncate"><%= show.secondary_name %></div>
                       <% end %>

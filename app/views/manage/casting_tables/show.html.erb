@@ -71,7 +71,7 @@
                 <%# Mobile: Condensed view %>
                 <div class="md:hidden">
                   <div class="text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%b %-d") %></div>
-                  <div class="text-sm font-bold text-gray-900"><%= show.date_and_time.strftime("%l:%M%P").strip %></div>
+                  <div class="text-sm font-bold text-gray-900"><%= show.time_range_display %></div>
                   <div class="text-xs text-gray-500 truncate max-w-[100px]" title="<%= show.display_name %>"><%= show.display_name %></div>
                 </div>
                 <%# Desktop: Full view %>
@@ -88,7 +88,7 @@
                       <%= show.display_name %>
                     </div>
                     <div class="text-xs text-gray-600">
-                      <%= show.date_and_time.strftime("%l:%M %p").strip %> · <%= show.production.name %>
+                      <%= show.time_range_display %> · <%= show.production.name %>
                     </div>
                   </div>
                 </div>

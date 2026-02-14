@@ -87,8 +87,7 @@ module CalendarSync
     end
 
     def event_end_time(show)
-      # Default to 2 hours if no end time
-      show.date_and_time + 2.hours
+      show.ends_at
     end
   end
 end
