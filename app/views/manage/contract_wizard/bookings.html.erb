@@ -82,7 +82,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time <span class="text-pink-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Rental Start <span class="text-pink-500">*</span></label>
             <input type="datetime-local" data-contract-bookings-target="singleDateTime" value="<%= single_rule['starts_at'] %>"
                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
@@ -97,7 +97,34 @@
           </div>
         </div>
 
-        <div>
+        <%# Event time toggle %>
+        <div class="border-t border-gray-200 pt-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" data-contract-bookings-target="singleEventTimeToggle"
+                   data-action="change->contract-bookings#toggleSingleEventTime"
+                   <%= 'checked' if single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %>
+                   class="sr-only peer">
+            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
+          </label>
+          <div data-contract-bookings-target="singleEventTimeRow" class="<%= 'hidden' unless single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %> mt-3">
+            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                <input type="datetime-local" data-contract-bookings-target="singleEventTime" value="<%= single_rule['event_starts_at'] %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                <input type="datetime-local" data-contract-bookings-target="singleEventEndTime" value="<%= single_rule['event_ends_at'] %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-200 pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
           <input type="text" data-contract-bookings-target="singleNotes" value="<%= single_rule['notes'] %>" placeholder="e.g., Setup time included"
                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
@@ -217,7 +244,32 @@
           </div>
         </div>
 
-        <div>
+        <%# Event time toggle %>
+        <div class="border-t border-gray-200 pt-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                   class="sr-only peer">
+            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
+          </label>
+          <div data-event-time-row class="hidden mt-3">
+            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                <input type="datetime-local" data-field="event_starts_at"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                <input type="datetime-local" data-field="event_ends_at"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-200 pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
           <input type="text" data-field="notes" placeholder="e.g., Setup time included"
                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
@@ -363,7 +415,32 @@
           </div>
         </div>
 
-        <div>
+        <%# Event time toggle %>
+        <div class="border-t border-gray-200 pt-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                   class="sr-only peer">
+            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
+          </label>
+          <div data-event-time-row class="hidden mt-3">
+            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                <input type="time" data-field="event_time"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                <input type="time" data-field="event_end_time"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-200 pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
           <input type="text" data-field="notes" placeholder="e.g., Weekly rehearsal"
                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">

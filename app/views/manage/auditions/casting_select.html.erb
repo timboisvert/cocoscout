@@ -32,68 +32,42 @@
     </div>
 
     <div class="flex flex-col lg:flex-row gap-6">
-      <!-- Left side: Talent Pool -->
+      <!-- Left side: Decision Buckets -->
       <div class="w-full lg:w-1/2">
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <%= render "shared/card_header", title: "Talent Pool" do %>
+        <!-- Add to Cast Bucket -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-4">
+          <%= render "shared/card_header", title: "Add to Cast" do %>
             <p class="text-xs text-gray-500">
-              <span class="hidden lg:inline">Drag auditionees here to add them to <%= @production.name %>'s talent pool.</span>
-              <span class="lg:hidden">Tap an auditionee below then tap here to add them.</span>
+              <span class="hidden lg:inline">Drag auditionees here to add them to the talent pool.</span>
+              <span class="lg:hidden">Tap + to add auditionees to cast.</span>
             </p>
           <% end %>
           <div class="p-4">
-            <!-- New Talent Pool Members Drop Zone -->
-            <div class="border-2 border-dashed border-pink-300 rounded-lg p-4 mb-4"
+            <div class="border-2 border-dashed border-pink-300 rounded-lg p-4 min-h-[100px]"
                  data-casting-drag-target="dropZone"
-                 data-drag-drop-type="cast"
+                 data-decision-type="cast"
                  data-talent-pool-id="<%= @talent_pool.id %>"
                  data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
-              <p class="text-xs text-pink-600 font-medium mb-3 hidden lg:block">Drop auditionees here to add to talent pool</p>
-              <p class="text-xs text-pink-600 font-medium mb-3 lg:hidden">Tap + to add auditionees to talent pool</p>
-              <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == @talent_pool.id } %>
+              <p class="text-xs text-pink-600 font-medium mb-3 hidden lg:block">Drop here to add to cast</p>
+              <p class="text-xs text-pink-600 font-medium mb-3 lg:hidden">Tap + to add to cast</p>
+              <% cast_stages = @cast_assignment_stages.select { |s| s.cast? } %>
 
               <% if cast_stages.any? %>
                 <div class="flex flex-wrap gap-3">
                   <% cast_stages.each do |stage| %>
                     <% assignable = stage.assignable %>
-                    <div class="flex flex-col items-center relative group cursor-grab active:cursor-grabbing w-18"
-                        draggable="true"
-                        data-casting-drag-target="person"
-                        data-auditionee-type="<%= assignable.class.name %>"
-                        data-auditionee-id="<%= assignable.id %>"
-                        data-auditionee-name="<%= assignable.name %>"
-                        data-source-talent-pool-id="<%= @talent_pool.id %>"
-                        data-action="dragstart->casting-drag#dragStartPerson dragend->casting-drag#dragEnd">
-                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-16 h-16 rounded-md object-cover pointer-events-none", draggable: false %>
-                      <% elsif assignable.is_a?(Person) %>
-                        <div class="w-16 h-16 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm pointer-events-none">
-                          <%= assignable.initials %>
-                        </div>
-                      <% else %>
-                        <div class="w-16 h-16 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
-                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                        </div>
-                      <% end %>
-                      <span class="text-[10px] text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= assignable.name %></span>
-                      <button type="button"
-                        class="absolute bottom-4 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
-                        data-action="click->casting-drag#removePerson"
-                        data-talent-pool-id="<%= @talent_pool.id %>"
-                        data-auditionee-type="<%= assignable.class.name %>"
-                        data-auditionee-id="<%= assignable.id %>">
-                        Remove
-                      </button>
-                    </div>
+                    <%= render "manage/auditions/casting_person_tile",
+                               assignable: assignable,
+                               stage: stage,
+                               talent_pool: @talent_pool,
+                               decision_type: "cast" %>
                   <% end %>
                   <%# Mobile add button (inline with existing members) %>
                   <button type="button"
                     class="lg:hidden flex flex-col items-center justify-center w-16 h-20 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-all cursor-pointer"
                     data-action="click->casting-drag#openAddModal"
-                    data-talent-pool-id="<%= @talent_pool.id %>">
+                    data-talent-pool-id="<%= @talent_pool.id %>"
+                    data-decision-type="cast">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
@@ -102,53 +76,79 @@
                 </div>
               <% else %>
                 <%# Empty state with mobile add button %>
-                <div class="hidden lg:flex items-center justify-center p-4 text-gray-400 text-sm min-h-16">
-                  <span>No new members yet</span>
+                <div class="hidden lg:flex items-center justify-center p-4 text-gray-400 text-sm min-h-[60px]">
+                  <span>No one added to cast yet</span>
                 </div>
                 <button type="button"
-                  class="lg:hidden flex items-center justify-center gap-2 w-full p-4 text-gray-500 text-sm min-h-16 hover:text-pink-500 transition-all cursor-pointer"
+                  class="lg:hidden flex items-center justify-center gap-2 w-full p-4 text-gray-500 text-sm min-h-[60px] hover:text-pink-500 transition-all cursor-pointer"
                   data-action="click->casting-drag#openAddModal"
-                  data-talent-pool-id="<%= @talent_pool.id %>">
+                  data-talent-pool-id="<%= @talent_pool.id %>"
+                  data-decision-type="cast">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
-                  <span>Tap to add auditionees</span>
+                  <span>Tap to add to cast</span>
                 </button>
               <% end %>
             </div>
+          </div>
+        </div>
 
-            <!-- Separator -->
-            <div class="border-t border-gray-200 my-4"></div>
+        <!-- Reject Bucket -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <%= render "shared/card_header", title: "Reject" do %>
+            <p class="text-xs text-gray-500">
+              <span class="hidden lg:inline">Drag auditionees here to send rejection notices.</span>
+              <span class="lg:hidden">Tap to reject auditionees.</span>
+            </p>
+          <% end %>
+          <div class="p-4">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[100px]"
+                 data-casting-drag-target="dropZone"
+                 data-decision-type="rejected"
+                 data-talent-pool-id="<%= @talent_pool.id %>"
+                 data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
+              <p class="text-xs text-gray-500 font-medium mb-3 hidden lg:block">Drop here to reject</p>
+              <p class="text-xs text-gray-500 font-medium mb-3 lg:hidden">Tap to reject</p>
+              <% rejected_stages = @cast_assignment_stages.select { |s| s.rejected? } %>
 
-            <!-- Current Talent Pool Members -->
-            <div>
-              <p class="text-xs text-gray-500 font-medium mb-3">Current Talent Pool Members</p>
-              <% if @current_talent_pool_members.any? %>
+              <% if rejected_stages.any? %>
                 <div class="flex flex-wrap gap-3">
-                  <% @current_talent_pool_members.each do |member| %>
-                    <div class="flex flex-col items-center w-18">
-                      <% headshot_variant = member.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: member.name, class: "w-16 h-16 rounded-md object-cover opacity-75" %>
-                      <% elsif member.is_a?(Person) %>
-                        <div class="w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm">
-                          <%= member.initials %>
-                        </div>
-                      <% else %>
-                        <div class="w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center text-gray-500">
-                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                        </div>
-                      <% end %>
-                      <span class="text-[10px] text-gray-500 font-medium mt-1 text-center truncate w-full"><%= member.name %></span>
-                    </div>
+                  <% rejected_stages.each do |stage| %>
+                    <% assignable = stage.assignable %>
+                    <%= render "manage/auditions/casting_person_tile",
+                               assignable: assignable,
+                               stage: stage,
+                               talent_pool: @talent_pool,
+                               decision_type: "rejected" %>
                   <% end %>
+                  <%# Mobile add button (inline with existing members) %>
+                  <button type="button"
+                    class="lg:hidden flex flex-col items-center justify-center w-16 h-20 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-red-400 hover:text-red-500 transition-all cursor-pointer"
+                    data-action="click->casting-drag#openAddModal"
+                    data-talent-pool-id="<%= @talent_pool.id %>"
+                    data-decision-type="rejected">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span class="text-[10px] mt-1">Reject</span>
+                  </button>
                 </div>
               <% else %>
-                <div class="text-gray-400 text-sm">
-                  <span>No current members</span>
+                <%# Empty state with mobile add button %>
+                <div class="hidden lg:flex items-center justify-center p-4 text-gray-400 text-sm min-h-[60px]">
+                  <span>No one rejected yet</span>
                 </div>
+                <button type="button"
+                  class="lg:hidden flex items-center justify-center gap-2 w-full p-4 text-gray-500 text-sm min-h-[60px] hover:text-red-500 transition-all cursor-pointer"
+                  data-action="click->casting-drag#openAddModal"
+                  data-talent-pool-id="<%= @talent_pool.id %>"
+                  data-decision-type="rejected">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span>Tap to reject</span>
+                </button>
               <% end %>
             </div>
           </div>
@@ -160,16 +160,20 @@
         <div class="lg:sticky lg:top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
           <%= render "shared/card_header", title: "Auditionees" do %>
             <p class="text-xs text-gray-500">
-              <span class="hidden lg:inline">People who auditioned. Drag them to the talent pool.</span>
-              <span class="lg:hidden">Tap to add to the talent pool.</span>
+              People who auditioned.
             </p>
           <% end %>
           <div class="p-2 space-y-1 overflow-y-auto flex-1">
             <% @auditioned_people.each do |auditionee| %>
-              <% is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id } %>
-              <% vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]] %>
+              <%
+                stage = @cast_assignment_stages.find { |s| s.assignable_type == auditionee.class.name && s.assignable_id == auditionee.id }
+                is_assigned = stage.present?
+                is_cast = stage&.cast?
+                is_rejected = stage&.rejected?
+                vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
+              %>
 
-              <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200 cursor-grab <%= 'opacity-40' if is_assigned %>"
+              <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white cursor-grab <%= is_cast ? 'border-pink-300 bg-pink-50' : is_rejected ? 'border-red-300 bg-red-50' : 'border-gray-200' %>"
                   data-casting-drag-target="auditionee"
                   data-auditionee-type="<%= auditionee.class.name %>"
                   data-auditionee-id="<%= auditionee.id %>"
@@ -179,24 +183,45 @@
 
                 <%# Left Section: Headshot & Name (50%) %>
                 <div class="w-1/2 flex items-center gap-3 pointer-events-none">
-                  <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: auditionee.name, class: "h-10 w-10 rounded-lg object-cover", draggable: false %>
-                  <% elsif auditionee.is_a?(Person) %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-sm">
-                      <%= auditionee.initials %>
-                    </div>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                  <% end %>
+                  <%# Decision indicator badge %>
+                  <div class="relative">
+                    <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: auditionee.name, class: "h-10 w-10 rounded-lg object-cover", draggable: false %>
+                    <% elsif auditionee.is_a?(Person) %>
+                      <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-sm">
+                        <%= auditionee.initials %>
+                      </div>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                    <% end %>
+                    <% if is_cast %>
+                      <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      </div>
+                    <% elsif is_rejected %>
+                      <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </div>
+                    <% end %>
+                  </div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-medium text-sm <%= is_assigned ? 'text-gray-400' : 'text-gray-900' %> truncate">
+                    <div class="font-medium text-sm text-gray-900 truncate">
                       <%= auditionee.name %>
                     </div>
+                    <% if is_cast %>
+                      <div class="text-[10px] text-pink-600 font-medium">Added to cast</div>
+                    <% elsif is_rejected %>
+                      <div class="text-[10px] text-red-600 font-medium">Rejected</div>
+                    <% end %>
                   </div>
                 </div>
 
@@ -232,7 +257,7 @@
     <div data-casting-drag-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->casting-drag#closeAddModal">
       <div class="bg-white w-full rounded-t-2xl max-h-[80vh] flex flex-col" data-action="click->casting-drag#stopPropagation">
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <h2 class="text-lg font-semibold text-gray-900">Add to Talent Pool</h2>
+          <h2 class="text-lg font-semibold text-gray-900" data-casting-drag-target="modalTitle">Select Auditionees</h2>
           <button type="button" data-action="click->casting-drag#closeAddModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -241,47 +266,62 @@
         </div>
         <div class="p-4 overflow-y-auto">
           <p class="text-xs text-gray-500 mb-3">Sorted by yes votes</p>
-          <div class="space-y-1">
+          <div class="space-y-2">
             <%
               # Sort auditionees by yes votes descending
               sorted_auditionees = @auditioned_people.sort_by do |auditionee|
                 vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
-                is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id }
-                # Sort: assigned last, then by yes votes descending
-                [is_assigned ? 1 : 0, -(vote_counts&.dig(:yes) || 0)]
+                # Sort: by yes votes descending
+                -(vote_counts&.dig(:yes) || 0)
               end
             %>
             <% sorted_auditionees.each do |auditionee| %>
               <%
-                is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id }
+                stage = @cast_assignment_stages.find { |s| s.assignable_type == auditionee.class.name && s.assignable_id == auditionee.id }
+                is_cast = stage&.cast?
+                is_rejected = stage&.rejected?
                 vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
               %>
-              <button type="button"
-                class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_assigned ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
-                data-action="click->casting-drag#addFromModal"
-                data-auditionee-type="<%= auditionee.class.name %>"
-                data-auditionee-id="<%= auditionee.id %>"
-                data-auditionee-name="<%= auditionee.name %>"
-                <%= 'disabled' if is_assigned %>>
-                <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: auditionee.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-                <% elsif auditionee.is_a?(Person) %>
-                  <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
-                    <%= auditionee.initials %>
-                  </div>
-                <% else %>
-                  <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                <% end %>
-                <div class="flex-1 text-left min-w-0">
+              <div class="flex items-center gap-3 p-3 rounded-lg border <%= is_cast ? 'border-pink-300 bg-pink-50' : is_rejected ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white' %>">
+                <%# Headshot with badge %>
+                <div class="relative flex-shrink-0">
+                  <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: auditionee.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% elsif auditionee.is_a?(Person) %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm">
+                      <%= auditionee.initials %>
+                    </div>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                  <% if is_cast %>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="white" class="w-2.5 h-2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    </div>
+                  <% elsif is_rejected %>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="white" class="w-2.5 h-2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                  <% end %>
+                </div>
+
+                <%# Name and votes %>
+                <div class="flex-1 min-w-0">
                   <div class="font-medium text-sm text-gray-900 truncate"><%= auditionee.name %></div>
                   <div class="text-xs text-gray-500">
-                    <% if is_assigned %>
-                      Already added
+                    <% if is_cast %>
+                      <span class="text-pink-600">Added to cast</span>
+                    <% elsif is_rejected %>
+                      <span class="text-red-600">Rejected</span>
                     <% elsif vote_counts %>
                       <span class="text-green-600"><%= vote_counts[:yes] %> yes</span>
                       · <%= vote_counts[:no] %> no
@@ -291,12 +331,37 @@
                     <% end %>
                   </div>
                 </div>
-                <% unless is_assigned %>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                <% end %>
-              </button>
+
+                <%# Action buttons %>
+                <div class="flex items-center gap-1">
+                  <%# Add to Cast button %>
+                  <button type="button"
+                    class="p-2 rounded-lg transition-all cursor-pointer <%= is_cast ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-pink-100 hover:text-pink-600' %>"
+                    data-action="click->casting-drag#addFromModal"
+                    data-auditionee-type="<%= auditionee.class.name %>"
+                    data-auditionee-id="<%= auditionee.id %>"
+                    data-auditionee-name="<%= auditionee.name %>"
+                    data-decision-type="cast"
+                    title="Add to cast">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  </button>
+                  <%# Reject button %>
+                  <button type="button"
+                    class="p-2 rounded-lg transition-all cursor-pointer <%= is_rejected ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600' %>"
+                    data-action="click->casting-drag#addFromModal"
+                    data-auditionee-type="<%= auditionee.class.name %>"
+                    data-auditionee-id="<%= auditionee.id %>"
+                    data-auditionee-name="<%= auditionee.name %>"
+                    data-decision-type="rejected"
+                    title="Reject">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             <% end %>
           </div>
         </div>

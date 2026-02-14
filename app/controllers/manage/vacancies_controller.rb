@@ -182,10 +182,6 @@ module Manage
           VacancyInvitationMailer.invitation_email(invitation, email_batch_id: email_batch&.id).deliver_later
         end
 
-        # Send SMS notification if user has SMS enabled for vacancy notifications
-        if person.user&.sms_notification_enabled?("vacancy_notification")
-          SmsService.send_vacancy_notification(user: person.user, vacancy: @vacancy, event: :created, invitation: invitation)
-        end
         invited_count += 1
       end
 

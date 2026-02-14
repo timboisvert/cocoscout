@@ -7,7 +7,6 @@ class ApplicationController < ActionController::Base
 
   before_action :track_my_dashboard
   before_action :show_my_sidebar
-  before_action :set_sms_test_mode
 
   def track_my_dashboard
     # Only track if user is on a My:: controller page (not AuthController or other base controllers)
@@ -22,10 +21,5 @@ class ApplicationController < ActionController::Base
 
   def show_my_sidebar
     @show_my_sidebar = true if Current.user.present?
-  end
-
-  def set_sms_test_mode
-    # Set SMS test mode from session (development only)
-    SmsService.test_mode = session[:sms_test_mode] if Rails.env.development?
   end
 end

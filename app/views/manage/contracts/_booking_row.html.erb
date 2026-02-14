@@ -35,6 +35,11 @@
           <span class="text-gray-400 mx-1">·</span>
           <%= rental.duration_hours %> hours
         </div>
+        <% if rental.has_separate_event_time? %>
+          <div class="text-sm text-pink-600">
+            Event: <%= rental.effective_event_starts_at.strftime("%l:%M %p").strip %> - <%= rental.effective_event_ends_at.strftime("%l:%M %p").strip %>
+          </div>
+        <% end %>
       </div>
     </div>
 

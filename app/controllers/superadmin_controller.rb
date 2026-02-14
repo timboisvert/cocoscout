@@ -379,45 +379,6 @@ class SuperadminController < ApplicationController
     @email_log = EmailLog.find(params[:id])
   end
 
-  def sms_logs
-    @sms_logs = SmsLog
-                .includes(:user, :organization, :production)
-                .order(created_at: :desc)
-                .limit(100)
-
-    # Filter by user if requested
-    @sms_logs = @sms_logs.where(user_id: params[:user_id]) if params[:user_id].present?
-
-    # Filter by phone if requested
-    @sms_logs = @sms_logs.where("phone LIKE ?", "%#{params[:phone]}%") if params[:phone].present?
-
-    # Filter by type if requested
-    @sms_logs = @sms_logs.where(sms_type: params[:sms_type]) if params[:sms_type].present?
-
-    # Filter by status if requested
-    @sms_logs = @sms_logs.where(status: params[:status]) if params[:status].present?
-  end
-
-  def sms_log
-    @sms_log = SmsLog.find(params[:id])
-  end
-
-  def toggle_sms_test_mode
-    # Only allow in development
-    unless Rails.env.development?
-      redirect_to sms_logs_path, alert: "SMS test mode is only available in development"
-      return
-    end
-
-    if session[:sms_test_mode]
-      session.delete(:sms_test_mode)
-      redirect_to sms_logs_path, notice: "SMS Test Mode disabled - messages will be sent for real"
-    else
-      session[:sms_test_mode] = true
-      redirect_to sms_logs_path, notice: "SMS Test Mode enabled - messages will be logged but not sent"
-    end
-  end
-
   def queue
     # Get overall stats
     @total_jobs = SolidQueue::Job.count

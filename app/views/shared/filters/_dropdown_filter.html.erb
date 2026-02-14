@@ -23,31 +23,47 @@
 #     }
 %>
 
+<%
+  # Find the selected option text
+  selected_option = options.find { |o| o[:value].to_s == selected.to_s }
+  selected_text = selected_option ? selected_option[:text] : options.first&.dig(:text) || "Select"
+%>
 <div class="flex items-center gap-2">
   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
-  <div class="relative">
-    <select
-      name="<%= name %>"
-      <% if data_attributes %>
-        <% data_attributes.each do |key, value| %>
-          <%
-            # For 'action', use it directly as data-action
-            # For other keys like filter_select_search_value, dasherize them
-            attr_name = key.to_s == 'action' ? 'action' : key.to_s.dasherize
-          %>
-          data-<%= attr_name %>="<%= value %>"
-        <% end %>
-      <% end %>
-      class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600"
+  <div class="relative" data-controller="dropdown">
+    <button
+      type="button"
+      data-action="click->dropdown#toggle"
+      class="inline-flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600"
     >
-      <% options.each do |option| %>
-        <% if option[:condition].nil? || option[:condition] %>
-          <option value="<%= option[:value] %>" <%= 'selected' if selected == option[:value] %>><%= option[:text] %></option>
+      <span class="max-w-[200px] truncate"><%= selected_text %></span>
+      <svg class="w-4 h-4 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    <div data-dropdown-target="menu" class="hidden absolute left-0 mt-1 min-w-[140px] py-1 bg-pink-500 rounded-lg shadow-lg z-50">
+      <div class="flex flex-col">
+        <% options.each do |option| %>
+          <% next unless option[:condition].nil? || option[:condition] %>
+          <% is_selected = option[:value].to_s == selected.to_s %>
+          <%
+            # Build URL with data attributes
+            url_params = {}
+            if data_attributes
+              param_name = data_attributes[:filter_select_param_value] || name
+              url_params[param_name.to_sym] = option[:value]
+              url_params[:filter] = data_attributes[:filter_select_filter_value] if data_attributes[:filter_select_filter_value]
+              url_params[:event_type] = data_attributes[:filter_select_event_type_value] if data_attributes[:filter_select_event_type_value]
+            end
+          %>
+          <%= link_to url_for(url_params),
+                  data: { turbo_prefetch: false },
+                  class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white transition whitespace-nowrap hover:bg-pink-600 first:rounded-t-lg last:rounded-b-lg" do %>
+            <%= option[:text] %>
+          <% end %>
         <% end %>
-      <% end %>
-    </select>
-    <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-    </svg>
+      </div>
+    </div>
   </div>
 </div>

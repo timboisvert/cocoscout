@@ -27,13 +27,28 @@
   %>
 
   <div class="border-t border-gray-200 pt-4 mt-2" data-controller="casting-filter">
-    <%= render "shared/filters/filter_bar", filter_groups: [
+    <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
       {
         label: "View",
         filters: [
-          { text: "Upcoming", path: manage_casting_path(filter: "upcoming", hide_canceled: @hide_canceled), active: @filter == "upcoming" },
-          { text: "Past", path: manage_casting_path(filter: "past", hide_canceled: @hide_canceled), active: @filter == "past" }
+          { text: "Upcoming", path: manage_casting_path(filter: "upcoming", hide_canceled: @hide_canceled, production: @production_filter), active: @filter == "upcoming" },
+          { text: "Past", path: manage_casting_path(filter: "past", hide_canceled: @hide_canceled, production: @production_filter), active: @filter == "past" }
         ]
+      },
+      { separator: true },
+      {
+        partial: "shared/filters/dropdown_filter",
+        locals: {
+          label: "Production",
+          name: "production",
+          options: [{ value: "", text: "All Productions" }] + @productions.map { |p| { value: p.id.to_s, text: p.name } },
+          selected: @production_filter.to_s,
+          data_attributes: {
+            action: "change->filter-select#update",
+            filter_select_param_value: "production",
+            filter_select_filter_value: @filter
+          }
+        }
       },
       { separator: true },
       {

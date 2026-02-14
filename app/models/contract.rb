@@ -188,11 +188,17 @@ class Contract < ApplicationRecord
       space_id = booking["location_space_id"] || booking["space_id"]
       space_id = nil if space_id.blank? # Convert empty string to nil
 
+      # Handle event_starts_at if different from rental start
+      event_starts_at = booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil
+      event_ends_at = booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil
+
       space_rentals.create!(
         location_id: location_id,
         location_space_id: space_id,
         starts_at: starts_at,
         ends_at: ends_at,
+        event_starts_at: event_starts_at,
+        event_ends_at: event_ends_at,
         notes: booking["notes"],
         confirmed: true
       )

@@ -277,13 +277,27 @@ module Manage
         # have no timezone info, so we must interpret them in the app's timezone)
         parsed_starts_at = Time.zone.parse(rule["starts_at"])
 
-        bookings << {
+        booking = {
           "location_id" => rule["location_id"],
           "space_id" => rule["space_id"],
           "starts_at" => parsed_starts_at.iso8601,
           "duration" => rule["duration"] || "2",
           "notes" => rule["notes"]
         }
+
+        # Include event_starts_at if different from rental start
+        if rule["event_starts_at"].present?
+          parsed_event_starts_at = Time.zone.parse(rule["event_starts_at"])
+          booking["event_starts_at"] = parsed_event_starts_at.iso8601
+        end
+
+        # Include event_ends_at if different from rental end
+        if rule["event_ends_at"].present?
+          parsed_event_ends_at = Time.zone.parse(rule["event_ends_at"])
+          booking["event_ends_at"] = parsed_event_ends_at.iso8601
+        end
+
+        bookings << booking
       elsif mode == "recurring"
         # Generate recurring bookings based on pattern
         location_id = rule["location_id"]
@@ -327,16 +341,33 @@ module Manage
         # Generate bookings until end_date (with a safety limit of 52)
         max_events = 52
         count = 0
+        event_time = rule["event_time"] # Optional different time for actual event start
+        event_end_time = rule["event_end_time"] # Optional different time for actual event end
+
         while current_date <= end_date && count < max_events
           starts_at = DateTime.parse("#{current_date} #{time}")
 
-          bookings << {
+          booking = {
             "location_id" => location_id,
             "space_id" => space_id,
             "starts_at" => starts_at.iso8601,
             "duration" => duration,
             "notes" => notes
           }
+
+          # Add event_starts_at if event_time is specified
+          if event_time.present?
+            event_starts_at = DateTime.parse("#{current_date} #{event_time}")
+            booking["event_starts_at"] = event_starts_at.iso8601
+          end
+
+          # Add event_ends_at if event_end_time is specified
+          if event_end_time.present?
+            event_ends_at = DateTime.parse("#{current_date} #{event_end_time}")
+            booking["event_ends_at"] = event_ends_at.iso8601
+          end
+
+          bookings << booking
 
           count += 1
 

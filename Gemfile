@@ -3,7 +3,6 @@
 source "https://rubygems.org"
 
 gem "aws-sdk-s3", require: false
-gem "aws-sdk-sns", require: false
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "icalendar", "~> 2.10"

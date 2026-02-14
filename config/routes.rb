@@ -45,10 +45,6 @@ Rails.application.routes.draw do
   post  "/account/profiles/:id/archive",  to: "account#archive_profile",     as: "archive_profile_account"
   get   "/account/notifications",         to: "account#notifications",       as: "account_notifications"
   patch "/account/notifications",         to: "account#update_notifications"
-  post  "/account/sms/send_verification", to: "account#send_sms_verification", as: "send_sms_verification"
-  post  "/account/sms/verify",            to: "account#verify_sms",            as: "verify_sms"
-  patch "/account/sms/preferences",       to: "account#update_sms_preferences", as: "update_sms_preferences"
-  delete "/account/sms/remove",           to: "account#remove_sms",            as: "remove_sms"
   get   "/account/subscription",          to: "account#billing",             as: "account_billing"
   get   "/account/organizations",         to: "account#organizations",       as: "account_organizations"
   delete "/account/organizations/:id/leave", to: "account#leave_organization", as: "leave_organization_account"
@@ -62,9 +58,6 @@ Rails.application.routes.draw do
     post "/change_email",       to: "superadmin#change_email",        as: "change_email_user"
     get  "/email_logs",         to: "superadmin#email_logs",          as: "email_logs"
     get  "/email_logs/:id",     to: "superadmin#email_log",           as: "email_log"
-    get  "/sms_logs",           to: "superadmin#sms_logs",            as: "sms_logs"
-    get  "/sms_logs/:id",       to: "superadmin#sms_log",             as: "sms_log"
-    post "/sms_test_mode",      to: "superadmin#toggle_sms_test_mode", as: "toggle_sms_test_mode"
     get  "/queue",              to: "superadmin#queue",               as: "queue_monitor"
     get  "/queue/failed",       to: "superadmin#queue_failed",        as: "queue_failed"
     post "/queue/retry/:id",    to: "superadmin#queue_retry",         as: "queue_retry"
@@ -151,7 +144,6 @@ Rails.application.routes.draw do
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
-    post  "/dismiss_announcement",          to: "dashboard#dismiss_announcement", as: "dismiss_announcement"
 
     # Messages
     resources :messages, only: [ :index, :show ] do

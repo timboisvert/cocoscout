@@ -24,19 +24,35 @@
   %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">
-    <%= render "shared/filters/filter_bar", filter_groups: [
+    <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
     {
       label: "View",
       filters: [
-        { text: "Upcoming", path: manage_shows_path(filter: "upcoming", event_type: @event_type_filter.join(",")), active: @filter == "upcoming" },
-        { text: "Past", path: manage_shows_path(filter: "past", event_type: @event_type_filter.join(",")), active: @filter == "past" }
+        { text: "Upcoming", path: manage_shows_path(filter: "upcoming", event_type: @event_type_filter.join(","), production: @production_filter), active: @filter == "upcoming" },
+        { text: "Past", path: manage_shows_path(filter: "past", event_type: @event_type_filter.join(","), production: @production_filter), active: @filter == "past" }
       ]
     },
     { separator: true },
     {
-      partial: "shared/filters/event_type_filter",
+      partial: "shared/filters/dropdown_filter",
       locals: {
-        path_helper: ->(event_type:, entity:, filter:) { manage_shows_path(event_type: event_type, filter: filter) },
+        label: "Production",
+        name: "production",
+        options: [{ value: "", text: "All Productions" }] + @productions.map { |p| { value: p.id.to_s, text: p.name } },
+        selected: @production_filter.to_s,
+        data_attributes: {
+          action: "change->filter-select#update",
+          filter_select_param_value: "production",
+          filter_select_event_type_value: @event_type_filter.join(","),
+          filter_select_filter_value: @filter
+        }
+      }
+    },
+    { separator: true },
+    {
+      partial: "shared/filters/event_type_multiselect_filter",
+      locals: {
+        path_helper: ->(event_type:, entity:, filter: nil) { manage_shows_path(event_type: event_type, filter: filter || @filter, production: @production_filter) },
         event_type_filter: @event_type_filter,
         entity_filter: [],
         filter: @filter

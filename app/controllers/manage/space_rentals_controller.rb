@@ -40,7 +40,7 @@ module Manage
 
     def rental_params
       params.require(:space_rental).permit(
-        :location_space_id, :starts_at, :ends_at, :notes, :confirmed
+        :location_space_id, :starts_at, :ends_at, :event_starts_at, :event_ends_at, :notes, :confirmed
       )
     end
   end

@@ -7,6 +7,7 @@ export default class extends Controller {
         "bookingMode", "rulesJson",
         // Single mode fields
         "singleLocation", "singleSpace", "singleDateTime", "singleDuration", "singleNotes",
+        "singleEventTimeToggle", "singleEventTimeRow", "singleEventTime", "singleEventEndTime",
         // Multiple mode
         "bookingsList", "formError",
         // Templates
@@ -85,6 +86,48 @@ export default class extends Controller {
 
     singleLocationChanged() {
         this.updateSpaceDropdown(this.singleSpaceTarget, this.singleLocationTarget.value)
+    }
+
+    toggleSingleEventTime() {
+        const isChecked = this.singleEventTimeToggleTarget.checked
+        if (isChecked) {
+            this.singleEventTimeRowTarget.classList.remove("hidden")
+
+            // Set min/max constraints based on rental period
+            const rentalStart = this.singleDateTimeTarget.value
+            if (rentalStart) {
+                const startDate = new Date(rentalStart)
+                const duration = parseFloat(this.singleDurationTarget.value) || 2
+                const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000)
+                const rentalEnd = this.formatDateTimeLocal(endDate)
+
+                this.singleEventTimeTarget.min = rentalStart
+                this.singleEventTimeTarget.max = rentalEnd
+                this.singleEventEndTimeTarget.min = rentalStart
+                this.singleEventEndTimeTarget.max = rentalEnd
+
+                // Default to same times as rental if not set
+                if (!this.singleEventTimeTarget.value) {
+                    this.singleEventTimeTarget.value = rentalStart
+                }
+                if (!this.singleEventEndTimeTarget.value) {
+                    this.singleEventEndTimeTarget.value = rentalEnd
+                }
+            }
+        } else {
+            this.singleEventTimeRowTarget.classList.add("hidden")
+            this.singleEventTimeTarget.value = ""
+            this.singleEventEndTimeTarget.value = ""
+        }
+    }
+
+    formatDateTimeLocal(date) {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${year}-${month}-${day}T${hours}:${minutes}`
     }
 
     // ==================== MULTIPLE MODE ====================
@@ -228,6 +271,74 @@ export default class extends Controller {
         }
     }
 
+    toggleItemEventTime(event) {
+        const item = event.currentTarget.closest(".booking-item")
+        const eventTimeRow = item.querySelector('[data-event-time-row]')
+        const isChecked = event.currentTarget.checked
+
+        if (eventTimeRow) {
+            if (isChecked) {
+                eventTimeRow.classList.remove("hidden")
+                // For single events, default to same times as rental
+                if (item.dataset.bookingType === "single") {
+                    const eventStartsAtInput = item.querySelector('[data-field="event_starts_at"]')
+                    const eventEndsAtInput = item.querySelector('[data-field="event_ends_at"]')
+                    const startsAtInput = item.querySelector('[data-field="starts_at"]')
+                    const durationSelect = item.querySelector('[data-field="duration"]')
+
+                    if (startsAtInput?.value) {
+                        const startDate = new Date(startsAtInput.value)
+                        const duration = parseFloat(durationSelect?.value) || 2
+                        const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000)
+                        const rentalEnd = this.formatDateTimeLocal(endDate)
+
+                        // Set min/max constraints
+                        if (eventStartsAtInput) {
+                            eventStartsAtInput.min = startsAtInput.value
+                            eventStartsAtInput.max = rentalEnd
+                            if (!eventStartsAtInput.value) eventStartsAtInput.value = startsAtInput.value
+                        }
+                        if (eventEndsAtInput) {
+                            eventEndsAtInput.min = startsAtInput.value
+                            eventEndsAtInput.max = rentalEnd
+                            if (!eventEndsAtInput.value) eventEndsAtInput.value = rentalEnd
+                        }
+                    }
+                } else {
+                    // For recurring events, default to same time as rental time
+                    const eventTimeInput = item.querySelector('[data-field="event_time"]')
+                    const eventEndTimeInput = item.querySelector('[data-field="event_end_time"]')
+                    const timeInput = item.querySelector('[data-field="time"]')
+                    const durationSelect = item.querySelector('[data-field="duration"]')
+
+                    if (timeInput?.value) {
+                        const [hours, minutes] = timeInput.value.split(':').map(Number)
+                        const duration = parseFloat(durationSelect?.value) || 2
+                        const endHours = hours + Math.floor(duration)
+                        const endMinutes = minutes + Math.round((duration % 1) * 60)
+                        const adjustedHours = (endHours + Math.floor(endMinutes / 60)) % 24
+                        const adjustedMinutes = endMinutes % 60
+                        const rentalEndTime = `${String(adjustedHours).padStart(2, '0')}:${String(adjustedMinutes).padStart(2, '0')}`
+
+                        // Set min/max constraints (time inputs)
+                        if (eventTimeInput) {
+                            eventTimeInput.min = timeInput.value
+                            eventTimeInput.max = rentalEndTime
+                            if (!eventTimeInput.value) eventTimeInput.value = timeInput.value
+                        }
+                        if (eventEndTimeInput) {
+                            eventEndTimeInput.min = timeInput.value
+                            eventEndTimeInput.max = rentalEndTime
+                            if (!eventEndTimeInput.value) eventEndTimeInput.value = rentalEndTime
+                        }
+                    }
+                }
+            } else {
+                eventTimeRow.classList.add("hidden")
+            }
+        }
+    }
+
     renderExistingRules() {
         this.rules.forEach(rule => {
             if (rule.mode === "recurring") {
@@ -265,6 +376,20 @@ export default class extends Controller {
             if (data.space_id) {
                 spaceSelect.value = data.space_id
             }
+        }
+
+        // Restore event time toggle state
+        if (data.event_starts_at || data.event_ends_at) {
+            const addedItem = this.bookingsListTarget.lastElementChild
+            const eventTimeToggle = addedItem.querySelector('[data-field="event_time_toggle"]')
+            const eventTimeRow = addedItem.querySelector('[data-event-time-row]')
+            const eventStartsAtInput = addedItem.querySelector('[data-field="event_starts_at"]')
+            const eventEndsAtInput = addedItem.querySelector('[data-field="event_ends_at"]')
+
+            if (eventTimeToggle) eventTimeToggle.checked = true
+            if (eventTimeRow) eventTimeRow.classList.remove("hidden")
+            if (eventStartsAtInput && data.event_starts_at) eventStartsAtInput.value = data.event_starts_at
+            if (eventEndsAtInput && data.event_ends_at) eventEndsAtInput.value = data.event_ends_at
         }
     }
 
@@ -315,6 +440,19 @@ export default class extends Controller {
             setTimeout(() => {
                 this.updateFrequencyFields(addedItem)
             }, 0)
+
+            // Restore event time toggle state
+            if (data.event_time || data.event_end_time) {
+                const eventTimeToggle = addedItem.querySelector('[data-field="event_time_toggle"]')
+                const eventTimeRow = addedItem.querySelector('[data-event-time-row]')
+                const eventTimeInput = addedItem.querySelector('[data-field="event_time"]')
+                const eventEndTimeInput = addedItem.querySelector('[data-field="event_end_time"]')
+
+                if (eventTimeToggle) eventTimeToggle.checked = true
+                if (eventTimeRow) eventTimeRow.classList.remove("hidden")
+                if (eventTimeInput && data.event_time) eventTimeInput.value = data.event_time
+                if (eventEndTimeInput && data.event_end_time) eventEndTimeInput.value = data.event_end_time
+            }
         }
     }
 
@@ -363,14 +501,28 @@ export default class extends Controller {
             return null
         }
 
-        return [{
+        const rule = {
             mode: "single",
             location_id: locationId,
             space_id: this.singleSpaceTarget.value,
             starts_at: startsAt,
             duration: this.singleDurationTarget.value,
             notes: this.singleNotesTarget.value
-        }]
+        }
+
+        // Include event_starts_at if toggle is checked and value exists
+        if (this.hasSingleEventTimeToggleTarget && this.singleEventTimeToggleTarget.checked) {
+            const eventStartsAt = this.singleEventTimeTarget.value
+            if (eventStartsAt) {
+                rule.event_starts_at = eventStartsAt
+            }
+            const eventEndsAt = this.singleEventEndTimeTarget.value
+            if (eventEndsAt) {
+                rule.event_ends_at = eventEndsAt
+            }
+        }
+
+        return [rule]
     }
 
     collectMultipleModeRules() {
@@ -396,14 +548,29 @@ export default class extends Controller {
                     return
                 }
 
-                rules.push({
+                const singleRule = {
                     mode: "single",
                     location_id: locationId,
                     space_id: item.querySelector('[data-field="space_id"]')?.value || "",
                     starts_at: startsAt,
                     duration: item.querySelector('[data-field="duration"]')?.value || "2",
                     notes: item.querySelector('[data-field="notes"]')?.value || ""
-                })
+                }
+
+                // Include event_starts_at if toggle is checked
+                const eventTimeToggle = item.querySelector('[data-field="event_time_toggle"]')
+                if (eventTimeToggle?.checked) {
+                    const eventStartsAt = item.querySelector('[data-field="event_starts_at"]')?.value
+                    if (eventStartsAt) {
+                        singleRule.event_starts_at = eventStartsAt
+                    }
+                    const eventEndsAt = item.querySelector('[data-field="event_ends_at"]')?.value
+                    if (eventEndsAt) {
+                        singleRule.event_ends_at = eventEndsAt
+                    }
+                }
+
+                rules.push(singleRule)
             } else {
                 const startDate = item.querySelector('[data-field="start_date"]')?.value
                 if (!startDate) {
@@ -412,7 +579,7 @@ export default class extends Controller {
                     return
                 }
 
-                rules.push({
+                const recurringRule = {
                     mode: "recurring",
                     location_id: locationId,
                     space_id: item.querySelector('[data-field="space_id"]')?.value || "",
@@ -425,7 +592,22 @@ export default class extends Controller {
                     end_date: item.querySelector('[data-field="end_date"]')?.value || "",
                     duration: item.querySelector('[data-field="duration"]')?.value || "2",
                     notes: item.querySelector('[data-field="notes"]')?.value || ""
-                })
+                }
+
+                // Include event_time if toggle is checked
+                const eventTimeToggle = item.querySelector('[data-field="event_time_toggle"]')
+                if (eventTimeToggle?.checked) {
+                    const eventTime = item.querySelector('[data-field="event_time"]')?.value
+                    if (eventTime) {
+                        recurringRule.event_time = eventTime
+                    }
+                    const eventEndTime = item.querySelector('[data-field="event_end_time"]')?.value
+                    if (eventEndTime) {
+                        recurringRule.event_end_time = eventEndTime
+                    }
+                }
+
+                rules.push(recurringRule)
             }
         })
 

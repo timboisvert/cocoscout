@@ -1,6 +1,6 @@
-<!-- Casting Changes Summary -->
+<!-- Add or Reject Summary -->
 <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-  <%= render "shared/card_header", title: "Casting Changes" %>
+  <%= render "shared/card_header", title: "Add or Reject" %>
   <div class="p-6">
     <% if has_sent_notifications %>
       <%# After notifications sent - show finalized people and newly added (pending) people %>
@@ -62,36 +62,64 @@
 
       <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     <% else %>
-      <%# Before notifications sent - show pending changes %>
-      <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your talent pool.</p>
+      <%# Before notifications sent - show pending changes by decision type %>
+      <p class="text-sm text-gray-500 mb-4">Click "Make Decisions" to identify people you want to add to your talent pool or reject.</p>
 
-      <% pending_cast_stages = @cast_assignment_stages.where(status: :pending) %>
-      <% if pending_cast_stages.any? %>
+      <% pending_cast_stages = @cast_assignment_stages.where(status: :pending, decision_type: :cast) %>
+      <% pending_reject_stages = @cast_assignment_stages.where(status: :pending, decision_type: :rejected) %>
+      <% if pending_cast_stages.any? || pending_reject_stages.any? %>
         <div class="space-y-4 mb-6">
-          <div class="border-l-4 border-pink-500 pl-4">
-            <h4 class="text-sm font-semibold text-gray-900 mb-2">Pending</h4>
-            <div class="flex flex-wrap gap-2">
-              <% pending_cast_stages.each do |stage| %>
-                <% assignable = stage.assignable %>
-                <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
-                <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
-                  <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                  <% else %>
-                    <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                      <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
-                    </div>
+          <%# Adding to Cast %>
+          <% if pending_cast_stages.any? %>
+            <div class="border-l-4 border-pink-500 pl-4">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Adding to Cast</h4>
+              <div class="flex flex-wrap gap-2">
+                <% pending_cast_stages.each do |stage| %>
+                  <% assignable = stage.assignable %>
+                  <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
+                  <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-pink-200 bg-pink-50 hover:border-pink-400 hover:bg-pink-100 transition-all" do %>
+                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
+                        <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
+                      </div>
+                    <% end %>
+                    <%= assignable.name %>
                   <% end %>
-                  <%= assignable.name %>
                 <% end %>
-              <% end %>
+              </div>
             </div>
-          </div>
+          <% end %>
+
+          <%# Rejecting %>
+          <% if pending_reject_stages.any? %>
+            <div class="border-l-4 border-red-500 pl-4">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Rejecting</h4>
+              <div class="flex flex-wrap gap-2">
+                <% pending_reject_stages.each do |stage| %>
+                  <% assignable = stage.assignable %>
+                  <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
+                  <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100 transition-all" do %>
+                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-red-200 flex items-center justify-center text-red-700 font-bold text-xs flex-shrink-0">
+                        <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
+                      </div>
+                    <% end %>
+                    <%= assignable.name %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
         </div>
       <% end %>
 
-      <%= render partial: "shared/button", locals: { text: "Select New Cast Members", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Make Decisions", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     <% end %>
   </div>
 </div>

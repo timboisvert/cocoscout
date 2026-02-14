@@ -122,12 +122,7 @@
                 <p class="text-sm font-medium text-gray-700 <%= 'text-gray-400' unless @people_with_email.any? %>">Notify cast members</p>
                 <p class="text-xs text-gray-500 mt-1">
                   <% if @people_with_email.any? %>
-                    <%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification<br>
-                    <% if @people_with_sms.any? %>
-                      <%= @people_with_sms.count %> <%= 'person'.pluralize(@people_with_sms.count) %> will also receive a text message
-                    <% else %>
-                      No one in the cast has SMS notifications enabled
-                    <% end %>
+                    <%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification
                   <% else %>
                     No cast members to notify
                   <% end %>

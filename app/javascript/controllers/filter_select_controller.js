@@ -13,12 +13,19 @@ export default class extends Controller {
         const qValue = select.dataset.filterSelectQValue
         const productionIdValue = select.dataset.filterSelectProductionIdValue
         const orderValue = select.dataset.filterSelectOrderValue
+        const eventTypeValue = select.dataset.filterSelectEventTypeValue
+        const paramValue = select.dataset.filterSelectParamValue
 
         if (searchValue) params.set("q", searchValue)
         if (qValue) params.set("q", qValue)
         if (showValue) params.set("show", showValue)
 
-        if (select.name === "filter") {
+        // Generic param handling - allows any param name to be updated
+        if (paramValue) {
+            if (select.value) params.set(paramValue, select.value)
+            if (filterValue) params.set("filter", filterValue)
+            if (eventTypeValue) params.set("event_type", eventTypeValue)
+        } else if (select.name === "filter") {
             params.set("filter", select.value)
             if (typeValue) params.set("type", typeValue)
             if (productionIdValue) params.set("production_id", productionIdValue)

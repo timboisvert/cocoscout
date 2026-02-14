@@ -1,0 +1,74 @@
+<%
+# Multi-select dropdown filter for event types
+#
+# Parameters:
+#   path_helper: Method - Method that generates the path (e.g., method(:my_shows_calendar_path))
+#   event_type_filter: Array - Currently selected event types (e.g., ["show", "rehearsal"])
+#   entity_filter: Array - Currently selected entities (passed through to maintain state)
+#   label: String (optional) - Label for the filter group (default: "Type")
+#   Additional params: Any other params to pass to path_helper (as keyword arguments)
+#
+# Example usage:
+#    render "shared/filters/event_type_multiselect_filter",
+#       path_helper: method(:my_shows_calendar_path),
+#       event_type_filter: @event_type_filter,
+#       entity_filter: @entity_filter,
+#       label: "Type",
+#       month: params[:month]
+%>
+<%
+label ||= "Type"
+all_types = EventTypes.all
+
+# Extract path helper params
+path_params = local_assigns.except(:path_helper, :event_type_filter, :entity_filter, :label)
+
+# Determine display text
+all_selected = event_type_filter.sort == all_types.sort
+display_text = if all_selected
+  "All Event Types"
+else
+  event_type_filter.map { |t| EventTypes.labels[t] }.join(", ")
+end
+%>
+<div class="flex items-center gap-2">
+  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
+  <div class="relative" data-controller="dropdown">
+    <button
+      type="button"
+      data-action="click->dropdown#toggle"
+      class="inline-flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600"
+    >
+      <span class="max-w-[200px] truncate"><%= display_text %></span>
+      <svg class="w-4 h-4 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    <div data-dropdown-target="menu" class="hidden absolute left-0 mt-1 min-w-[140px] py-1 bg-pink-500 rounded-lg shadow-lg z-50">
+      <div class="flex flex-col">
+        <% all_types.each do |event_type| %>
+          <%
+            # Build toggle URL for this event type
+            current_types = event_type_filter.dup
+            event_url_types = if current_types.include?(event_type)
+              current_types - [event_type]
+            else
+              current_types + [event_type]
+            end
+            event_url_types = [event_type] if event_url_types.empty? # Keep at least one
+
+            event_label = EventTypes.labels[event_type].pluralize
+            is_selected = event_type_filter.include?(event_type)
+          %>
+          <%= link_to path_helper.call(**path_params, event_type: event_url_types.join(","), entity: entity_filter.join(",")),
+                  data: { turbo_prefetch: false },
+                  class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition whitespace-nowrap hover:bg-pink-600 first:rounded-t-lg last:rounded-b-lg #{is_selected ? 'text-white' : 'text-pink-200'}" do %>
+            <svg class="w-3.5 h-3.5 <%= is_selected ? '' : 'opacity-40' %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+            <%= event_label %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

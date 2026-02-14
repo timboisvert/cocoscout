@@ -1,20 +1,22 @@
 <% pending_stages_local = @cast_assignment_stages.where(status: :pending) %>
-<% # Get assignable [type, id] tuples to exclude: pending, finalized stages, and people already notified for rejections %>
-<% assigned_assignable_ids = pending_stages_local.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
+<% # Separate pending stages by decision type %>
+<% cast_pending_stages = pending_stages_local.where(decision_type: :cast) %>
+<% rejected_pending_stages = pending_stages_local.where(decision_type: :rejected) %>
+<% # Get assignable [type, id] tuples to exclude: only finalized stages and people already notified for rejections %>
 <% notified_assignable_ids = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
 <% # Also exclude people who were notified of rejection for this cycle (only applies to Person, not Group) %>
 <% rejection_notified_person_ids = @auditioned_people.select { |p| p.is_a?(Person) && p.casting_notification_sent_at.present? && p.notified_for_audition_cycle_id == @audition_cycle.id }.map { |p| ['Person', p.id] } %>
-<% excluded_assignable_ids = (assigned_assignable_ids + notified_assignable_ids + rejection_notified_person_ids).uniq %>
-<% unassigned_people = @auditioned_people.reject { |auditionee| excluded_assignable_ids.include?([auditionee.class.name, auditionee.id]) } %>
+<% # People explicitly marked for rejection (not auto-rejected) %>
+<% rejected_people = rejected_pending_stages.map(&:assignable).uniq %>
 
 <%# Show the box if: notifications not sent yet OR there are new pending stages to notify %>
-<% show_notify_box = !has_sent_notifications || pending_stages_local.any? %>
+<% show_notify_box = !has_sent_notifications || cast_pending_stages.any? || rejected_pending_stages.any? %>
 
 <% if show_notify_box %>
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6">
-    <%= render "shared/card_header", title: "Finalize Casting and Notify" %>
-    <div class="p-6">
-      <% if pending_stages_local.any? %>
+    <%= render "shared/card_header", title: "Email Notifications" %>
+    <div class="p-4">
+      <% if cast_pending_stages.any? || rejected_pending_stages.any? %>
         <%# There are pending stages to notify %>
         <% if has_sent_notifications %>
           <%# After notifications sent but there are new changes - show warning and form %>
@@ -28,7 +30,7 @@
               <div class="flex-1">
                 <h4 class="text-sm font-semibold text-yellow-900 mb-1">New Casting Changes Need Notification</h4>
                 <% notified_count = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
-                <% pending_count = pending_stages_local.map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
+                <% pending_count = (cast_pending_stages.to_a + rejected_pending_stages.to_a).map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
                 <p class="text-sm text-yellow-800 mb-0">
                   <%= notified_count %> <%= 'auditionee'.pluralize(notified_count) %> <%= notified_count == 1 ? 'has' : 'have' %> already been notified.
                   <%= pending_count %> <%= 'auditionee'.pluralize(pending_count) %> still need<%= pending_count == 1 ? 's' : '' %> to be notified.
@@ -37,8 +39,8 @@
             </div>
           </div>
         <% end %>
-        <% staged_casts = pending_stages_local.any? ? [@production.effective_talent_pool] : [] %>
-        <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
+        <% staged_casts = cast_pending_stages.any? ? [@production.effective_talent_pool] : [] %>
+        <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: cast_pending_stages, staged_casts: staged_casts, rejected_people: rejected_people %>
       <% elsif has_sent_notifications %>
         <%# After notifications sent and no new changes - show finalized message with toggle %>
         <div data-controller="show-toggle">
@@ -67,8 +69,8 @@
           </div>
 
           <div data-show-toggle-target="content" class="hidden">
-            <% staged_casts = pending_stages_local.any? ? [@production.effective_talent_pool] : [] %>
-            <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
+            <% staged_casts = cast_pending_stages.any? ? [@production.effective_talent_pool] : [] %>
+            <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: cast_pending_stages, staged_casts: staged_casts, rejected_people: rejected_people %>
           </div>
         </div>
       <% else %>

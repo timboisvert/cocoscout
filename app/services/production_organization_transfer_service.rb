@@ -469,10 +469,8 @@ class ProductionOrganizationTransferService
 
   def update_log_organization_references
     email_count = EmailLog.where(production_id: production.id).update_all(organization_id: target_org.id)
-    sms_count = SmsLog.where(production_id: production.id).update_all(organization_id: target_org.id)
 
     @changes_made << "Updated #{email_count} email logs" if email_count > 0
-    @changes_made << "Updated #{sms_count} SMS logs" if sms_count > 0
   end
 
   def update_payroll_run_references

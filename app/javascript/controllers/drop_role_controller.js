@@ -1405,8 +1405,10 @@ export default class extends Controller {
     // Update the linkage sync section with fresh HTML from the server
     updateLinkageSyncSection(linkageSyncHtml) {
         const syncSection = document.getElementById('linkage-sync-section');
-        if (syncSection && linkageSyncHtml) {
-            syncSection.outerHTML = linkageSyncHtml;
+        if (syncSection) {
+            // Use innerHTML so the wrapper div stays in place
+            // Empty string hides the bar, content shows it
+            syncSection.innerHTML = linkageSyncHtml || '';
         }
     }
 

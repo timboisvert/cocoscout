@@ -129,115 +129,6 @@ class AccountController < ApplicationController
     end
   end
 
-  def send_sms_verification
-    phone = params[:phone].to_s.gsub(/\D/, "").last(10)
-
-    if phone.length != 10
-      redirect_to account_notifications_path, alert: "Please enter a valid 10-digit US phone number."
-      return
-    end
-
-    # Generate 6-digit verification code
-    code = SecureRandom.random_number(100000..999999).to_s
-
-    # Store pending verification
-    Current.user.update!(
-      phone_pending_verification: phone,
-      phone_verification_code: code,
-      phone_verification_sent_at: Time.current
-    )
-
-    # Send SMS with verification code (or skip sending in test mode)
-    if SmsService.test_mode?
-      # In test mode, don't actually send SMS - code will be shown in the view
-      redirect_to account_notifications_path, notice: "Verification code sent to #{format_phone(phone)}. Enter it below."
-    else
-      # Send actual SMS
-      SmsService.send_sms(
-        phone: phone,
-        message: "Your CocoScout verification code is: #{code}. It expires in 10 minutes.",
-        sms_type: "phone_verification",
-        user: Current.user
-      )
-      redirect_to account_notifications_path, notice: "Verification code sent to #{format_phone(phone)}. Enter it below."
-    end
-  end
-
-  def verify_sms
-    code = params[:verification_code].to_s.strip
-
-    unless Current.user.phone_verification_code.present?
-      redirect_to account_notifications_path, alert: "No verification pending. Please enter your phone number first."
-      return
-    end
-
-    # Check if code expired (10 minutes)
-    if Current.user.phone_verification_sent_at < 10.minutes.ago
-      Current.user.update!(
-        phone_verification_code: nil,
-        phone_verification_sent_at: nil,
-        phone_pending_verification: nil
-      )
-      redirect_to account_notifications_path, alert: "Verification code expired. Please request a new one."
-      return
-    end
-
-    if code != Current.user.phone_verification_code
-      redirect_to account_notifications_path, alert: "Invalid verification code. Please try again."
-      return
-    end
-
-    # Verification successful - save phone to person and mark verified
-    person = Current.user.person
-    if person
-      person.update!(phone: Current.user.phone_pending_verification)
-    end
-
-    Current.user.update!(
-      phone_verified_at: Time.current,
-      phone_verification_code: nil,
-      phone_verification_sent_at: nil,
-      phone_pending_verification: nil
-    )
-
-    redirect_to account_notifications_path, notice: "Phone number verified! You can now enable text message notifications."
-  end
-
-  def update_sms_preferences
-    # Only allow if phone is verified
-    unless Current.user.phone_verified?
-      redirect_to account_notifications_path, alert: "Please verify your phone number first."
-      return
-    end
-
-    sms_params = params[:sms_notifications] || {}
-    Current.user.set_notification_preference("sms_enabled", sms_params[:enabled] == "1")
-    Current.user.set_notification_preference("sms_show_cancellation", sms_params[:show_cancellation] == "1")
-    Current.user.set_notification_preference("sms_vacancy_notification", sms_params[:vacancy_notification] == "1")
-
-    if Current.user.save
-      redirect_to account_notifications_path, notice: "Text message preferences updated."
-    else
-      redirect_to account_notifications_path, alert: "Failed to update preferences."
-    end
-  end
-
-  def remove_sms
-    person = Current.user.person
-    person&.update!(phone: nil)
-
-    Current.user.update!(
-      phone_verified_at: nil,
-      phone_verification_code: nil,
-      phone_verification_sent_at: nil,
-      phone_pending_verification: nil
-    )
-    Current.user.set_notification_preference("sms_enabled", false)
-    Current.user.save!
-
-    redirect_to account_notifications_path, notice: "Phone number removed and text notifications disabled."
-  end
-
   def billing
   end
 
@@ -410,11 +301,6 @@ class AccountController < ApplicationController
   end
 
   private
-
-  def format_phone(phone)
-    return phone unless phone.present? && phone.length == 10
-    "(#{phone[0..2]}) #{phone[3..5]}-#{phone[6..9]}"
-  end
 
   def set_account_sidebar
     @show_account_sidebar = true

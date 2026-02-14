@@ -46,6 +46,10 @@ class Show < ApplicationRecord
 
   has_many :show_cast_notifications, dependent: :destroy
 
+  # Casting tables
+  has_many :casting_table_events, dependent: :destroy
+  has_many :casting_table_draft_assignments, dependent: :destroy
+
   # Sign-up forms can be associated with specific shows
   has_many :sign_up_forms, dependent: :destroy
   has_many :sign_up_form_instances, dependent: :destroy
@@ -112,7 +116,6 @@ class Show < ApplicationRecord
   # Sign-up form instance management
   after_commit :create_sign_up_form_instances, on: :create
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
-  after_commit :send_sms_on_cancel, on: :update, if: :just_canceled?
   after_commit :sync_sign_up_form_instances_on_date_change, on: :update, if: :saved_change_to_date_and_time?
   before_destroy :cleanup_sign_up_form_instances
 
@@ -680,20 +683,6 @@ class Show < ApplicationRecord
       end
       # Run status job to calculate correct state based on current time
       UpdateSignUpStatusesJob.perform_now
-    end
-  end
-
-  def just_canceled?
-    saved_change_to_canceled? && canceled?
-  end
-
-  def send_sms_on_cancel
-    # Send SMS to cast members who have show cancellation SMS enabled
-    cast_people.includes(:user).find_each do |person|
-      user = person.user
-      if user&.sms_notification_enabled?("show_cancellation")
-        SmsService.send_show_cancellation(user: user, show: self)
-      end
     end
   end
 

@@ -19,8 +19,12 @@ module Manage
       # Get productions the user has access to
       @productions = Current.user.accessible_productions.order(:name)
 
+      # Handle production filter
+      @production_filter = params[:production].presence
+
       # Get shows across all productions, eager load location, event_linkage, and production
-      @shows = Show.where(production: @productions)
+      base_productions = @production_filter ? @productions.where(id: @production_filter) : @productions
+      @shows = Show.where(production: base_productions)
                    .includes(:location, :production, event_linkage: :shows)
 
       # Apply event type filter
@@ -728,7 +732,6 @@ module Manage
         group.group_memberships.each { |gm| all_person_ids << gm.person_id }
       end
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
-      @people_with_sms = @people_with_email.select { |p| p.user&.sms_notification_enabled?(:show_cancellation) }
     end
 
     def cancel_show

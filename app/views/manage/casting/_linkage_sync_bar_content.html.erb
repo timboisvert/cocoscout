@@ -1,0 +1,47 @@
+<%#
+  Linkage Sync Bar Content - The inner content for the sync bar
+  This is rendered inside the #linkage-sync-section wrapper div.
+
+  When sync_info[:all_in_sync] is true, this renders empty content (hiding the bar).
+  When out of sync, this renders the warning bar with a Sync Now button.
+
+  Parameters:
+    - show: The current show
+    - linked_shows: Array of linked Show objects
+    - sync_info: Hash with sync status info from build_linkage_sync_info
+    - production: The Production object
+%>
+
+<% if sync_info.present? && !sync_info[:all_in_sync] && linked_shows.any? %>
+  <div class="bg-white border border-amber-300 rounded-lg overflow-hidden mb-4">
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+      <%# Left: Sync status info (flexible) %>
+      <div class="flex-1 flex items-center gap-3 px-4 py-3">
+        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div>
+          <span class="text-sm font-medium text-gray-900">
+            <%= linked_shows.count %> linked <%= "event".pluralize(linked_shows.count) %> out of sync
+          </span>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Roles or cast assignments differ from this event
+          </p>
+        </div>
+      </div>
+
+      <%# Right: Fixed-width panel with Sync Now button %>
+      <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
+        <%= render "shared/button",
+            text: "Sync Now",
+            variant: "primary",
+            size: "small",
+            path: manage_casting_show_copy_to_linked_path(production, show_id: show.id),
+            method: :post,
+            data: { turbo_confirm: "This will copy this event's roles and cast to all #{linked_shows.count} linked events, replacing their current roles and assignments. Continue?" } %>
+      </div>
+    </div>
+  </div>
+<% end %>

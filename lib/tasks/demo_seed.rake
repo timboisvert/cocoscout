@@ -176,18 +176,6 @@ class DemoSeeder
         return
       end
 
-      # Clean up SmsLogs that reference demo users or org
-      if defined?(SmsLog)
-        sms_log_count = 0
-        if org
-          sms_log_count += SmsLog.where(organization_id: org.id).delete_all
-        end
-        if demo_user_ids.any?
-          sms_log_count += SmsLog.where(user_id: demo_user_ids).delete_all
-        end
-        puts "Deleted #{sms_log_count} SMS logs" if sms_log_count > 0
-      end
-
       # Clean up CastingTables before destroying org (FK constraint on shows)
       if org
         casting_table_count = org.casting_tables.count
@@ -232,11 +220,6 @@ class DemoSeeder
       # Reset organization contents without destroying the org itself
       # This prevents issues with users who have the org selected in their session
       puts "  Resetting organization contents..."
-
-      # Clean up SmsLogs
-      if defined?(SmsLog)
-        SmsLog.where(organization_id: org.id).delete_all
-      end
 
       # Clean up CastingTables (FK constraint on shows)
       org.casting_tables.destroy_all

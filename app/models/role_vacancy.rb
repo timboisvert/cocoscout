@@ -76,14 +76,6 @@ class RoleVacancy < ApplicationRecord
 
     # Notify team after the transaction completes
     VacancyNotificationJob.perform_later(id, "filled")
-
-    # Send SMS to invited people who haven't claimed (so they know it's filled)
-    invitations.pending.includes(person: :user).find_each do |invitation|
-      user = invitation.person&.user
-      if user&.sms_notification_enabled?("vacancy_notification")
-        SmsService.send_vacancy_notification(user: user, vacancy: self, event: :filled)
-      end
-    end
   end
 
   def cancel!(by: nil)

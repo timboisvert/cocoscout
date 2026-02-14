@@ -3,9 +3,6 @@
 module My
   class DashboardController < ApplicationController
     def index
-      # Load announcements for this user
-      @announcements = AnnouncementService.announcements_for(Current.user)
-
       # Get all active profiles and their IDs
       @people = Current.user.people.active.order(:created_at).to_a
       @all_profiles = @people # alias for backward compatibility with view
@@ -371,16 +368,6 @@ module My
     def dismiss_onboarding
       Current.user.people.active.update_all(profile_welcomed_at: Time.current)
       redirect_to my_dashboard_path
-    end
-
-    def dismiss_announcement
-      announcement_id = params[:announcement_id]
-      Current.user.dismiss_announcement!(announcement_id) if announcement_id.present?
-
-      respond_to do |format|
-        format.html { redirect_to my_dashboard_path }
-        format.turbo_stream { head :ok }
-      end
     end
   end
 end

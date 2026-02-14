@@ -55,15 +55,16 @@ export default class extends Controller {
         const auditioneeType = button.dataset.auditioneeType;
         const auditioneeId = button.dataset.auditioneeId;
         const auditioneeName = button.dataset.auditioneeName;
-        const talentPoolId = this.currentTalentPoolId;
+        const decisionType = button.dataset.decisionType || "cast"
+        const talentPoolId = this.currentTalentPoolId
 
-        if (!talentPoolId || !auditioneeId) return;
+        if (!talentPoolId || !auditioneeId) return
 
         // Close modal immediately
-        this.closeAddModal();
+        this.closeAddModal()
 
-        const csrfToken = document.querySelector('meta[name=csrf-token]').content;
-        this.addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, this.productionIdValue);
+        const csrfToken = document.querySelector('meta[name=csrf-token]').content
+        this.addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, this.productionIdValue, decisionType)
     }
 
     // When dragging from the right column (auditionees)
@@ -89,12 +90,14 @@ export default class extends Controller {
         const auditioneeId = item.dataset.auditioneeId
         const auditioneeName = item.dataset.auditioneeName
         const sourceTalentPoolId = item.dataset.sourceTalentPoolId
+        const sourceDecisionType = item.dataset.decisionType || "cast"
 
         event.dataTransfer.effectAllowed = "move"
         event.dataTransfer.setData("auditioneeType", auditioneeType)
         event.dataTransfer.setData("auditioneeId", auditioneeId)
         event.dataTransfer.setData("auditioneeName", auditioneeName)
         event.dataTransfer.setData("sourceTalentPoolId", sourceTalentPoolId)
+        event.dataTransfer.setData("sourceDecisionType", sourceDecisionType)
         event.dataTransfer.setData("sourceType", "assigned")
 
         item.classList.add("opacity-50")
@@ -110,14 +113,19 @@ export default class extends Controller {
 
         const dropZone = event.target.closest("[data-casting-drag-target='dropZone']")
         if (dropZone) {
-            dropZone.classList.add("bg-pink-50", "border-pink-400")
+            const decisionType = dropZone.dataset.decisionType || "cast"
+            if (decisionType === "rejected") {
+                dropZone.classList.add("bg-red-50", "border-red-400")
+            } else {
+                dropZone.classList.add("bg-pink-50", "border-pink-400")
+            }
         }
     }
 
     dragLeave(event) {
         const dropZone = event.target.closest("[data-casting-drag-target='dropZone']")
         if (dropZone && !dropZone.contains(event.relatedTarget)) {
-            dropZone.classList.remove("bg-pink-50", "border-pink-400")
+            dropZone.classList.remove("bg-pink-50", "border-pink-400", "bg-red-50", "border-red-400")
         }
     }
 
@@ -126,7 +134,7 @@ export default class extends Controller {
         const dropZone = event.target.closest("[data-casting-drag-target='dropZone']")
 
         if (dropZone) {
-            dropZone.classList.remove("bg-pink-50", "border-pink-400")
+            dropZone.classList.remove("bg-pink-50", "border-pink-400", "bg-red-50", "border-red-400")
 
             const auditioneeType = event.dataTransfer.getData("auditioneeType")
             const auditioneeId = event.dataTransfer.getData("auditioneeId")
@@ -136,36 +144,41 @@ export default class extends Controller {
             const sourceType = event.dataTransfer.getData("sourceType")
             const sourceTalentPoolId = event.dataTransfer.getData("sourceTalentPoolId")
             const targetTalentPoolId = dropZone.dataset.talentPoolId
+            const decisionType = dropZone.dataset.decisionType || "cast"
 
-            // Don't allow dropping on the same cast
+            // Don't allow dropping on the same cast (unless changing decision type)
             if (sourceType === "assigned" && sourceTalentPoolId === targetTalentPoolId) {
-                return
+                // Allow if changing decision type
+                const sourceDecisionType = event.dataTransfer.getData("sourceDecisionType")
+                if (sourceDecisionType === decisionType) {
+                    return
+                }
             }
 
             if (targetTalentPoolId) {
                 if (auditioneeType && auditioneeId) {
-                    this.moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType)
+                    this.moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType, decisionType)
                 }
             }
         }
     }
 
-    moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType) {
+    moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType, decisionType) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
         const productionId = this.element.dataset.productionId
 
         // If moving from another cast, first remove from source
         if (sourceType === "assigned" && sourceTalentPoolId) {
             this.removeFromCast(auditioneeType, auditioneeId, sourceTalentPoolId, () => {
-                this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId)
+                this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId, decisionType)
             })
         } else {
             // Adding from auditionee list
-            this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId)
+            this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId, decisionType)
         }
     }
 
-    addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, productionId) {
+    addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, productionId, decisionType = "cast") {
         fetch(`/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
@@ -175,7 +188,8 @@ export default class extends Controller {
             body: JSON.stringify({
                 talent_pool_id: talentPoolId,
                 auditionee_type: auditioneeType,
-                auditionee_id: auditioneeId
+                auditionee_id: auditioneeId,
+                decision_type: decisionType
             })
         })
             .then(response => {

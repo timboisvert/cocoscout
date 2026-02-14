@@ -36,6 +36,11 @@
           duration = booking["duration"].to_f
           notes = booking["notes"]
           has_notes = notes.present?
+
+          # Event times (may differ from rental)
+          event_starts_at = booking["event_starts_at"].present? ? DateTime.parse(booking["event_starts_at"]) : nil
+          event_ends_at = booking["event_ends_at"].present? ? DateTime.parse(booking["event_ends_at"]) : nil
+          has_separate_event_time = event_starts_at.present? || event_ends_at.present?
         %>
         <div class="flex items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
           <%# Left section - Date/Time info %>
@@ -53,13 +58,33 @@
 
             <%# Details %>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900">
-                <% if starts_at %>
-                  <%= starts_at.strftime("%l:%M %p").strip %>
-                  <span class="text-gray-400 font-normal">·</span>
-                  <span class="text-gray-600 font-normal"><%= duration == duration.to_i ? "#{duration.to_i} hr#{'s' if duration > 1}" : "#{duration} hrs" %></span>
-                <% end %>
-              </div>
+              <% if has_separate_event_time %>
+                <%# Show both rental and event times %>
+                <div class="text-sm text-gray-500">
+                  <span class="text-gray-400">Rental:</span>
+                  <% if starts_at %>
+                    <%= starts_at.strftime("%l:%M %p").strip %>
+                    <span class="text-gray-300">·</span>
+                    <span><%= duration == duration.to_i ? "#{duration.to_i} hr#{'s' if duration > 1}" : "#{duration} hrs" %></span>
+                  <% end %>
+                </div>
+                <div class="font-medium text-pink-600">
+                  <span class="text-pink-400">Event:</span>
+                  <%= (event_starts_at || starts_at).strftime("%l:%M %p").strip %>
+                  <span class="text-pink-300">–</span>
+                  <% rental_ends_at = starts_at + duration.hours if starts_at %>
+                  <%= (event_ends_at || rental_ends_at)&.strftime("%l:%M %p")&.strip %>
+                </div>
+              <% else %>
+                <%# Original display %>
+                <div class="font-medium text-gray-900">
+                  <% if starts_at %>
+                    <%= starts_at.strftime("%l:%M %p").strip %>
+                    <span class="text-gray-400 font-normal">·</span>
+                    <span class="text-gray-600 font-normal"><%= duration == duration.to_i ? "#{duration.to_i} hr#{'s' if duration > 1}" : "#{duration} hrs" %></span>
+                  <% end %>
+                </div>
+              <% end %>
               <div class="text-sm text-gray-500 truncate">
                 <% if location %>
                   <%= location.name %><%= space ? " · #{space.name}" : "" %>

@@ -11,6 +11,7 @@ class SpaceRental < ApplicationRecord
   validates :ends_at, presence: true
   validate :ends_after_starts
   validate :no_overlapping_rentals, on: :create
+  validate :event_times_within_rental
 
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }
   scope :past, -> { where("ends_at < ?", Time.current).order(starts_at: :desc) }
@@ -27,6 +28,22 @@ class SpaceRental < ApplicationRecord
   # Duration in hours
   def duration_hours
     ((ends_at - starts_at) / 1.hour).round(1)
+  end
+
+  # Event start time (defaults to rental start if not set)
+  def effective_event_starts_at
+    event_starts_at || starts_at
+  end
+
+  # Check if event has separate times from the rental
+  def has_separate_event_time?
+    (event_starts_at.present? && event_starts_at != starts_at) ||
+      (event_ends_at.present? && event_ends_at != ends_at)
+  end
+
+  # Returns the effective event end time (or falls back to rental end)
+  def effective_event_ends_at
+    event_ends_at || ends_at
   end
 
   # Display helpers
@@ -50,6 +67,32 @@ class SpaceRental < ApplicationRecord
 
     if ends_at <= starts_at
       errors.add(:ends_at, "must be after start time")
+    end
+  end
+
+  def event_times_within_rental
+    return if starts_at.blank? || ends_at.blank?
+
+    if event_starts_at.present?
+      if event_starts_at < starts_at
+        errors.add(:event_starts_at, "cannot be before rental start time")
+      end
+      if event_starts_at > ends_at
+        errors.add(:event_starts_at, "cannot be after rental end time")
+      end
+    end
+
+    if event_ends_at.present?
+      if event_ends_at < starts_at
+        errors.add(:event_ends_at, "cannot be before rental start time")
+      end
+      if event_ends_at > ends_at
+        errors.add(:event_ends_at, "cannot be after rental end time")
+      end
+    end
+
+    if event_starts_at.present? && event_ends_at.present? && event_ends_at <= event_starts_at
+      errors.add(:event_ends_at, "must be after event start time")
     end
   end
 

@@ -108,7 +108,7 @@
   <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
   <% end %>
   <%# Left Section: Date & Show Details %>
-  <div class="<%= has_right_panel ? 'w-full md:w-1/3' : 'flex-1' %> flex items-center gap-4">
+  <div class="<%= has_right_panel ? 'w-full md:w-1/2' : 'flex-1' %> flex items-center gap-4">
     <%# Date Box %>
     <div class="flex-shrink-0 w-14 text-center">
       <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
@@ -157,14 +157,19 @@
         <% end %>
       </div>
       <div class="text-sm text-gray-600">
-        <%= show.date_and_time.strftime("%l:%M %p") %>
+        <%# Show event start time if space rental has different event time, otherwise show date_and_time %>
+        <% if show.space_rental&.has_separate_event_time? %>
+          <%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p") %>
+        <% else %>
+          <%= show.date_and_time.strftime("%l:%M %p") %>
+        <% end %>
         <% if show.call_time_enabled? && show.call_time.present? %>
           · Call <%= show.call_time.strftime("%l:%M %p") %>
         <% end %>
         <% if show_location %>
           <% if show.is_online %>
             · Online
-          <% elsif show.location.present? %>
+          <% elsif show.location.present? && !show.space_rental.present? %>
             · <%= show.location.name %>
           <% end %>
         <% end %>
@@ -478,19 +483,18 @@
     <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex flex-col justify-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
       <% rental = show.space_rental %>
       <% if rental %>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-medium text-gray-900"><%= rental.space_name %></span>
-        </div>
-      <% end %>
-      <% if local_assigns[:services].present? && local_assigns[:services].any? %>
-        <div class="flex flex-wrap gap-1">
-          <% local_assigns[:services].each do |service| %>
-            <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-              <%= service %>
-            </span>
-          <% end %>
-        </div>
-      <% elsif rental.nil? %>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide">Space Rental: <%= rental.space_name %></div>
+        <div class="text-sm text-gray-700"><%= rental.starts_at.strftime("%l:%M %p").strip %> – <%= rental.ends_at.strftime("%l:%M %p").strip %></div>
+        <% if local_assigns[:services].present? && local_assigns[:services].any? %>
+          <div class="flex flex-wrap gap-1 mt-1">
+            <% local_assigns[:services].each do |service| %>
+              <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                <%= service %>
+              </span>
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
         <span class="text-sm text-gray-400">Third-party rental</span>
       <% end %>
     </div>

@@ -25,9 +25,9 @@
     },
     { separator: true },
     {
-      partial: "shared/filters/event_type_filter",
+      partial: "shared/filters/event_type_multiselect_filter",
       locals: {
-        path_helper: ->(event_type:, entity:, filter:) { manage_production_shows_path(@production, event_type: event_type, filter: filter) },
+        path_helper: ->(event_type:, entity:, filter: nil) { manage_production_shows_path(@production, event_type: event_type, filter: filter || @filter) },
         event_type_filter: @event_type_filter,
         entity_filter: [],
         filter: @filter

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_14_001041) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -277,6 +277,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
     t.string "assignable_type"
     t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
+    t.integer "decision_type", default: 0, null: false
     t.string "email_group_id"
     t.text "notification_email"
     t.integer "status", default: 0, null: false
@@ -1596,28 +1597,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
     t.index ["sign_up_form_instance_id"], name: "index_sign_up_slots_on_sign_up_form_instance_id"
   end
 
-  create_table "sms_logs", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.text "error_message"
-    t.text "message", null: false
-    t.bigint "organization_id"
-    t.string "phone", null: false
-    t.bigint "production_id"
-    t.datetime "sent_at"
-    t.string "sms_type", null: false
-    t.string "sns_message_id"
-    t.string "status", default: "pending", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id"
-    t.index ["organization_id"], name: "index_sms_logs_on_organization_id"
-    t.index ["phone"], name: "index_sms_logs_on_phone"
-    t.index ["production_id"], name: "index_sms_logs_on_production_id"
-    t.index ["sent_at"], name: "index_sms_logs_on_sent_at"
-    t.index ["sms_type"], name: "index_sms_logs_on_sms_type"
-    t.index ["status"], name: "index_sms_logs_on_status"
-    t.index ["user_id"], name: "index_sms_logs_on_user_id"
-  end
-
   create_table "socials", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "handle", null: false
@@ -1777,6 +1756,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
     t.bigint "contract_id", null: false
     t.datetime "created_at", null: false
     t.datetime "ends_at", null: false
+    t.datetime "event_ends_at"
+    t.datetime "event_starts_at"
     t.bigint "location_id", null: false
     t.bigint "location_space_id"
     t.text "notes"
@@ -1863,7 +1844,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
     t.datetime "created_at", null: false
     t.bigint "default_person_id"
     t.integer "digest_throttle_days", default: 1, null: false
-    t.jsonb "dismissed_announcements", default: [], null: false
     t.string "email_address", null: false
     t.datetime "email_changed_at"
     t.integer "included_production_ids", default: [], null: false, array: true
@@ -1879,10 +1859,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
     t.datetime "password_reset_sent_at"
     t.string "password_reset_token"
     t.bigint "person_id"
-    t.string "phone_pending_verification"
-    t.string "phone_verification_code"
-    t.datetime "phone_verification_sent_at"
-    t.datetime "phone_verified_at"
     t.datetime "updated_at", null: false
     t.datetime "welcomed_at"
     t.datetime "welcomed_production_at"
@@ -2052,9 +2028,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_13_033439) do
   add_foreign_key "sign_up_slots", "roles"
   add_foreign_key "sign_up_slots", "sign_up_form_instances"
   add_foreign_key "sign_up_slots", "sign_up_forms"
-  add_foreign_key "sms_logs", "organizations"
-  add_foreign_key "sms_logs", "productions"
-  add_foreign_key "sms_logs", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

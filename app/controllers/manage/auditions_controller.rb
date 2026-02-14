@@ -405,12 +405,21 @@ module Manage
       talent_pool = @production.effective_talent_pool
       auditionee_type = params[:auditionee_type]
       auditionee_id = params[:auditionee_id]
+      decision_type = params[:decision_type] || "cast"
 
-      CastAssignmentStage.find_or_create_by(
+      # Remove any existing stage for this auditionee (in case they're being moved between buckets)
+      CastAssignmentStage.where(
+        audition_cycle_id: @audition_cycle.id,
+        assignable_type: auditionee_type,
+        assignable_id: auditionee_id
+      ).destroy_all
+
+      CastAssignmentStage.create!(
         audition_cycle_id: @audition_cycle.id,
         talent_pool_id: talent_pool.id,
         assignable_type: auditionee_type,
-        assignable_id: auditionee_id
+        assignable_id: auditionee_id,
+        decision_type: decision_type
       )
 
       head :ok
@@ -439,53 +448,19 @@ module Manage
       end
 
       # Get all cast assignment stages
-      cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:talent_pool)
-
-      # Get auditionees who need notifications:
-      # 1. Auditionees with pending stages (being added now)
-      # 2. Auditionees who auditioned but have no stages at all AND haven't been notified yet
-      cast_assignment_stages.where(status: :pending).pluck(:assignable_type, :assignable_id).uniq
-      finalized_stage_tuples = cast_assignment_stages.where(status: :finalized).pluck(:assignable_type,
-                                                                                      :assignable_id).uniq
-
-      # Get auditioned assignables - for video-only cycles, use audition requests
-      # For in-person or hybrid cycles, use auditions from audition sessions
-      if audition_cycle.video_only?
-        audition_requests = audition_cycle.audition_requests.includes(:requestable)
-        audition_tuples = audition_requests.map { |r| [ r.requestable_type, r.requestable_id ] }.uniq
-      else
-        audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
-        audition_tuples = Audition.where(audition_session_id: audition_session_ids)
-                                  .select(:auditionable_type, :auditionable_id)
-                                  .distinct
-                                  .pluck(:auditionable_type, :auditionable_id)
-      end
-
-      # Load all auditioned assignables efficiently
-      person_ids = audition_tuples.select { |type, _| type == "Person" }.map(&:last)
-      group_ids = audition_tuples.select { |type, _| type == "Group" }.map(&:last)
-
-      people = Person.where(id: person_ids).index_by(&:id)
-      groups = Group.where(id: group_ids).includes(:group_memberships).index_by(&:id)
-
-      all_auditioned_assignables = audition_tuples.map do |type, id|
-        type == "Person" ? people[id] : groups[id]
-      end.compact
-
-      # Exclude auditionees who:
-      # 1. Are already finalized (have been notified of acceptance), OR
-      # 2. Have been notified of rejection for this cycle (only applies to Person)
-      auditioned_assignables = all_auditioned_assignables.reject do |assignable|
-        finalized_stage_tuples.include?([ assignable.class.name, assignable.id ]) ||
-          (assignable.is_a?(Person) && assignable.casting_notification_sent_at.present? && assignable.notified_for_audition_cycle_id == audition_cycle.id)
-      end
+      cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:talent_pool, :assignable)
 
       # Get the effective talent pool for this production (may be shared)
       talent_pool = @production.effective_talent_pool
       talent_pools_by_id = talent_pool ? { talent_pool.id => talent_pool } : {}
 
-      # Count total recipients for batch creation
-      total_recipients = auditioned_assignables.sum do |assignable|
+      # Get pending stages for recipient count
+      pending_stages = cast_assignment_stages.where(status: :pending).includes(:assignable)
+
+      # Count total recipients for batch creation (only people with pending stages)
+      total_recipients = pending_stages.sum do |stage|
+        assignable = stage.assignable
+        next 0 unless assignable
         if assignable.is_a?(Group)
           assignable.group_memberships.select(&:notifications_enabled?).count { |m| m.person.email.present? }
         else
@@ -512,79 +487,85 @@ module Manage
       cast_notifications = []
       rejection_notifications = []
 
-      auditioned_assignables.each do |assignable|
-        # Check if assignable has a cast assignment stage (they're being added to a cast)
-        stage = cast_assignment_stages.find do |s|
-          s.assignable_type == assignable.class.name && s.assignable_id == assignable.id
-        end
+      # Get pending stages grouped by decision type
+      pending_cast_stages = cast_assignment_stages.where(status: :pending, decision_type: :cast)
+      pending_rejection_stages = cast_assignment_stages.where(status: :pending, decision_type: :rejected)
 
-        # Determine which email template to use
-        email_subject = nil
-        email_body = nil
-        if stage
-          # Default "added to cast" email
-          talent_pool = talent_pools_by_id[stage.talent_pool_id]
-          email_result = generate_default_cast_email(assignable, talent_pool, @production)
-          email_subject = email_result[:subject]
-          email_body = email_result[:body]
+      # Process cast assignments (people being added to talent pool)
+      pending_cast_stages.each do |stage|
+        assignable = stage.assignable
+        next unless assignable
 
-          # Add assignable to the actual talent pool (not just the staging area)
-          membership_exists = TalentPoolMembership.exists?(
+        talent_pool = talent_pools_by_id[stage.talent_pool_id]
+        email_result = generate_default_cast_email(assignable, talent_pool, @production)
+        email_subject = email_result[:subject]
+        email_body = email_result[:body]
+
+        # Add assignable to the actual talent pool (not just the staging area)
+        membership_exists = TalentPoolMembership.exists?(
+          talent_pool_id: talent_pool.id,
+          member_type: assignable.class.name,
+          member_id: assignable.id
+        )
+        unless membership_exists
+          TalentPoolMembership.create!(
             talent_pool_id: talent_pool.id,
             member_type: assignable.class.name,
             member_id: assignable.id
           )
-          unless membership_exists
-            TalentPoolMembership.create!(
-              talent_pool_id: talent_pool.id,
-              member_type: assignable.class.name,
-              member_id: assignable.id
-            )
-            auditionees_added_to_casts += 1
-          end
-        else
-          # Default "not being added" email
-          email_result = generate_default_rejection_email(assignable, @production)
-          email_subject = email_result[:subject]
-          email_body = email_result[:body]
+          auditionees_added_to_casts += 1
         end
 
         # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
         recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
 
-        # Collect notifications for each recipient
         recipients.each do |person|
           next unless email_body.present? && person.email.present?
 
-          # Replace [Name] placeholder with actual name
           personalized_body = email_body.gsub("[Name]", person.name)
-
-          if stage
-            cast_notifications << {
-              person: person,
-              talent_pool: talent_pools_by_id[stage.talent_pool_id],
-              body: personalized_body,
-              subject: email_subject
-            }
-          else
-            rejection_notifications << {
-              person: person,
-              body: personalized_body,
-              subject: email_subject
-            }
-          end
+          cast_notifications << {
+            person: person,
+            talent_pool: talent_pool,
+            body: personalized_body,
+            subject: email_subject
+          }
         end
 
-        # Update stage or person notification tracking
-        if stage
-          stage.update(notification_email: email_body, status: :finalized)
-        elsif assignable.is_a?(Person)
-          # For people not being added (no stage), track that they've been notified
+        stage.update(notification_email: email_body, status: :finalized)
+      end
+
+      # Process rejections (people explicitly marked for rejection)
+      pending_rejection_stages.each do |stage|
+        assignable = stage.assignable
+        next unless assignable
+
+        email_result = generate_default_rejection_email(assignable, @production)
+        email_subject = email_result[:subject]
+        email_body = email_result[:body]
+
+        # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
+        recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
+
+        recipients.each do |person|
+          next unless email_body.present? && person.email.present?
+
+          personalized_body = email_body.gsub("[Name]", person.name)
+          rejection_notifications << {
+            person: person,
+            body: personalized_body,
+            subject: email_subject
+          }
+        end
+
+        # Track notification for person
+        if assignable.is_a?(Person)
           assignable.update(
             casting_notification_sent_at: Time.current,
             notified_for_audition_cycle_id: audition_cycle.id
           )
         end
+
+        stage.update(notification_email: email_body, status: :finalized)
       end
 
       # Send notifications via service

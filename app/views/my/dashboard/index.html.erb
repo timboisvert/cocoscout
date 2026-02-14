@@ -1,10 +1,5 @@
 <div class="w-full">
 
-  <!-- Announcements -->
-  <% if @announcements.present? %>
-    <%= render "shared/announcement_bar", announcements: @announcements %>
-  <% end %>
-
   <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
   <% if (primary = @people.first) %>
     <%= render "my/dashboard/onboarding_checklist", person: primary %>

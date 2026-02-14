@@ -1,5 +1,5 @@
 <%# Audition Finalize Notification Form - Simplified (Built-in Groups Only) %>
-<% if staged_casts.any? || unassigned_people.any? %>
+<% if staged_casts.any? || rejected_people.any? %>
   <% # Build cast_people arrays for each talent pool, only include pools with people %>
   <% cast_people_by_pool = {} %>
   <% staged_casts.each do |talent_pool| %>
@@ -10,9 +10,7 @@
   <% staged_casts_with_people = staged_casts.select { |tp| cast_people_by_pool[tp.id].present? } %>
 
   <%= form_with url: manage_finalize_and_notify_signups_auditions_cycle_path(@production, audition_cycle), method: :post, local: true do |f| %>
-    <div class="mt-6" data-controller="tabs">
-      <h4 class="text-lg font-semibold text-gray-900 mb-4">Email Notifications</h4>
-
+    <div data-controller="tabs">
     <%# Tabs - always show for visual consistency %>
     <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
       <% staged_casts_with_people.each_with_index do |talent_pool, idx| %>
@@ -28,7 +26,7 @@
         </button>
       <% end %>
 
-      <% if unassigned_people.any? %>
+      <% if rejected_people.any? %>
         <button
           type="button"
           data-tabs-target="tab"
@@ -36,7 +34,7 @@
           data-action="click->tabs#select"
           class="px-4 py-2 text-sm font-medium border-b-2 <%= staged_casts_with_people.empty? ? 'text-pink-600 border-pink-600' : 'text-gray-500 border-transparent' %> hover:text-pink-600"
         >
-          Not Being Added (<%= unassigned_people.size %>)
+          Rejecting (<%= rejected_people.size %>)
         </button>
       <% end %>
     </nav>
@@ -92,19 +90,19 @@
       </div>
     <% end %>
 
-    <%# Panel for unassigned people %>
-    <% if unassigned_people.any? %>
+    <%# Panel for rejected people %>
+    <% if rejected_people.any? %>
       <div data-tabs-target="panel" class="<%= 'hidden' if staged_casts_with_people.any? %>">
         <div class="mb-4">
-          <h5 class="text-sm font-semibold text-gray-900 mb-3">Auditionees not being added to the cast:</h5>
+          <h5 class="text-sm font-semibold text-gray-900 mb-3">Auditionees being rejected:</h5>
           <div class="flex flex-wrap gap-2">
-            <% unassigned_people.each do |auditionee| %>
+            <% rejected_people.each do |auditionee| %>
               <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
-              <div class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200">
+              <div class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-red-200 bg-red-50">
                 <% if headshot_variant %>
                   <%= image_tag headshot_variant, alt: auditionee.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
                 <% else %>
-                  <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                  <div class="w-5 h-5 rounded bg-red-200 flex items-center justify-center text-red-700 font-bold text-xs flex-shrink-0">
                     <%= auditionee.is_a?(Person) ? auditionee.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
                   </div>
                 <% end %>

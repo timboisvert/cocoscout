@@ -25,8 +25,12 @@ module Manage
       # Get all in-house productions the user has access to (exclude third-party)
       @productions = Current.user.accessible_productions.type_in_house.order(:name)
 
+      # Handle production filter
+      @production_filter = params[:production].presence
+
       # Get shows with casting enabled across all in-house productions
-      base_shows = Show.where(production: @productions, casting_enabled: true)
+      base_productions = @production_filter ? @productions.where(id: @production_filter) : @productions
+      base_shows = Show.where(production: base_productions, casting_enabled: true)
                        .includes(:production, :location, :custom_roles, show_person_role_assignments: :role)
 
       # Apply canceled filter
@@ -385,16 +389,15 @@ module Manage
       fully_cast = progress[:percentage] == 100
 
       # Render linkage sync section if this is a linked show
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
@@ -494,16 +497,15 @@ module Manage
       progress = @show.casting_progress
       fully_cast = progress[:percentage] == 100
 
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
@@ -581,16 +583,15 @@ module Manage
       fully_cast = progress[:percentage] == 100
 
       # Render linkage sync section if this is a linked show
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
@@ -688,16 +689,15 @@ module Manage
       fully_cast = progress[:percentage] == 100
 
       # Render linkage sync section if this is a linked show
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
@@ -782,16 +782,15 @@ module Manage
       fully_cast = percentage == 100
 
       # Render linkage sync section if this is a linked show
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
@@ -1063,16 +1062,15 @@ module Manage
       progress = @show.casting_progress
       fully_cast = progress[:percentage] == 100
 
-      linkage_sync_html = nil
+      linkage_sync_html = ""
       if is_linked && sync_info.present?
         linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_section",
+          partial: "manage/casting/linkage_sync_bar_content",
           locals: {
             show: @show,
             linked_shows: linked_shows,
             sync_info: sync_info,
-            production: @production,
-            fully_cast: fully_cast
+            production: @production
           }
         )
       end
