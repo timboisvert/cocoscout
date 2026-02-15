@@ -1,0 +1,17 @@
+<% content_for :title, "Add Ticketing Provider" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Providers", manage_ticketing_providers_path]
+    ],
+    text: "Add Provider",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= render "form", provider: @provider %>
+  </div>
+</div>

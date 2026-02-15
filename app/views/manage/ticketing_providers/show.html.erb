@@ -1,0 +1,135 @@
+<% content_for :title, @provider.name %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Providers", manage_ticketing_providers_path]
+  ],
+  text: @provider.name,
+  links: [
+    { text: "Test Connection", path: manage_test_ticketing_provider_path(@provider), data: { turbo_method: :post } },
+    { text: "Sync All", path: manage_sync_ticketing_provider_path(@provider), data: { turbo_method: :post } },
+    { text: "Edit", path: manage_edit_ticketing_provider_path(@provider) }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Status Card %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <%= @provider.provider_type.titleize %>
+        </span>
+        <% if @provider.status_active? %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
+            Active
+          </span>
+        <% else %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 ml-2">
+            Inactive
+          </span>
+        <% end %>
+      </div>
+      <div class="text-sm text-gray-500">
+        <% if @provider.last_synced_at %>
+          Last synced <%= time_ago_in_words(@provider.last_synced_at) %> ago
+        <% else %>
+          Never synced
+        <% end %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <div>
+        <div class="text-sm text-gray-500">Active Listings</div>
+        <div class="text-2xl font-bold"><%= @provider.ticket_listings.active.count %></div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Total Sales</div>
+        <div class="text-2xl font-bold"><%= @provider.ticket_listings.joins(ticket_offers: :ticket_sales).count %></div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">API Configured</div>
+        <div class="text-2xl font-bold">
+          <% if @provider.configured? %>
+            <span class="text-green-600">Yes</span>
+          <% else %>
+            <span class="text-red-600">No</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Sync Rules %>
+  <% if @sync_rules.any? %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <h3 class="font-medium text-gray-900 mb-4">Active Sync Rules</h3>
+      <div class="space-y-2">
+        <% @sync_rules.each do |rule| %>
+          <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+            <div>
+              <span class="font-medium"><%= rule.name %></span>
+              <span class="text-sm text-gray-500 ml-2">Every <%= rule.sync_interval_minutes %> minutes</span>
+            </div>
+            <%= link_to "View", manage_ticket_sync_rule_path(rule), class: "text-pink-600 hover:text-pink-800 text-sm" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Recent Listings %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-medium text-gray-900">Recent Listings</h3>
+    </div>
+
+    <% if @recent_listings.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sync</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @recent_listings.each do |listing| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= listing.show_ticketing.show.display_name %></div>
+                <div class="text-sm text-gray-500"><%= listing.show_ticketing.show.production.name %></div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  <%= case listing.status
+                      when 'published' then 'bg-green-100 text-green-800'
+                      when 'draft' then 'bg-gray-100 text-gray-600'
+                      when 'paused' then 'bg-yellow-100 text-yellow-800'
+                      else 'bg-red-100 text-red-800'
+                      end %>">
+                  <%= listing.status.titleize %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-gray-500">
+                <% if listing.last_synced_at %>
+                  <%= time_ago_in_words(listing.last_synced_at) %> ago
+                <% else %>
+                  Never
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        No listings yet for this provider.
+      </div>
+    <% end %>
+  </div>
+</div>

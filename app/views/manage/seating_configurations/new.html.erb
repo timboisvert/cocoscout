@@ -1,0 +1,17 @@
+<% content_for :title, "New Seating Configuration" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Seating", manage_seating_configurations_path]
+    ],
+    text: "New Configuration",
+    links: []
+  } %>
+
+  <div class="max-w-3xl">
+    <%= render "form", configuration: @configuration %>
+  </div>
+</div>

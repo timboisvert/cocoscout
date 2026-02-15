@@ -1016,6 +1016,69 @@ Rails.application.routes.draw do
     # Reset calculation - clear calculated state and line items
     delete "money/shows/:id/payouts/reset_calculation", to: "show_payouts#reset_calculation", as: "reset_calculation_money_show_payout"
 
+    # Ticketing section - org-level
+    get "ticketing", to: "ticketing#index", as: "ticketing_index"
+
+    # Ticketing Providers (integration settings)
+    get "ticketing/providers", to: "ticketing_providers#index", as: "ticketing_providers"
+    get "ticketing/providers/new", to: "ticketing_providers#new", as: "new_ticketing_provider"
+    post "ticketing/providers", to: "ticketing_providers#create", as: "create_ticketing_provider"
+    get "ticketing/providers/:id", to: "ticketing_providers#show", as: "ticketing_provider"
+    get "ticketing/providers/:id/edit", to: "ticketing_providers#edit", as: "edit_ticketing_provider"
+    patch "ticketing/providers/:id", to: "ticketing_providers#update"
+    put "ticketing/providers/:id", to: "ticketing_providers#update"
+    delete "ticketing/providers/:id", to: "ticketing_providers#destroy"
+    post "ticketing/providers/:id/test_connection", to: "ticketing_providers#test_connection", as: "test_ticketing_provider"
+    post "ticketing/providers/:id/sync", to: "ticketing_providers#sync", as: "sync_ticketing_provider"
+
+    # Seating Configurations
+    get "ticketing/seating", to: "seating_configurations#index", as: "seating_configurations"
+    get "ticketing/seating/new", to: "seating_configurations#new", as: "new_seating_configuration"
+    post "ticketing/seating", to: "seating_configurations#create"
+    get "ticketing/seating/:id", to: "seating_configurations#show", as: "seating_configuration"
+    get "ticketing/seating/:id/edit", to: "seating_configurations#edit", as: "edit_seating_configuration"
+    patch "ticketing/seating/:id", to: "seating_configurations#update"
+    put "ticketing/seating/:id", to: "seating_configurations#update"
+    delete "ticketing/seating/:id", to: "seating_configurations#destroy"
+
+    # Show Ticketing - link shows to ticketing
+    get "ticketing/shows", to: "show_ticketings#index", as: "show_ticketings"
+    get "ticketing/shows/:production_id", to: "show_ticketings#production", as: "production_show_ticketings"
+    get "ticketing/shows/:production_id/:show_id", to: "show_ticketings#show", as: "show_ticketing"
+    get "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#setup", as: "setup_show_ticketing"
+    post "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#create_setup"
+    get "ticketing/shows/:production_id/:show_id/edit", to: "show_ticketings#edit", as: "edit_show_ticketing"
+    patch "ticketing/shows/:production_id/:show_id", to: "show_ticketings#update"
+    post "ticketing/shows/:production_id/:show_id/sync", to: "show_ticketings#sync", as: "sync_show_ticketing"
+
+    # Ticket Listings - per-provider listings for a show
+    scope "ticketing/shows/:production_id/:show_id" do
+      get "listings", to: "ticket_listings#index", as: "ticket_listings"
+      get "listings/new", to: "ticket_listings#new", as: "new_ticket_listing"
+      post "listings", to: "ticket_listings#create"
+      get "listings/:id", to: "ticket_listings#show", as: "ticket_listing"
+      get "listings/:id/edit", to: "ticket_listings#edit", as: "edit_ticket_listing"
+      patch "listings/:id", to: "ticket_listings#update"
+      delete "listings/:id", to: "ticket_listings#destroy"
+      post "listings/:id/publish", to: "ticket_listings#publish", as: "publish_ticket_listing"
+      post "listings/:id/sync", to: "ticket_listings#sync", as: "sync_ticket_listing"
+    end
+
+    # Ticket Sales overview
+    get "ticketing/sales", to: "ticket_sales#index", as: "ticket_sales"
+    get "ticketing/sales/:production_id", to: "ticket_sales#production", as: "production_ticket_sales"
+    get "ticketing/sales/:production_id/:show_id", to: "ticket_sales#show", as: "show_ticket_sales"
+
+    # Sync Rules
+    get "ticketing/sync_rules", to: "ticket_sync_rules#index", as: "ticket_sync_rules"
+    get "ticketing/sync_rules/new", to: "ticket_sync_rules#new", as: "new_ticket_sync_rule"
+    post "ticketing/sync_rules", to: "ticket_sync_rules#create"
+    get "ticketing/sync_rules/:id", to: "ticket_sync_rules#show", as: "ticket_sync_rule"
+    get "ticketing/sync_rules/:id/edit", to: "ticket_sync_rules#edit", as: "edit_ticket_sync_rule"
+    patch "ticketing/sync_rules/:id", to: "ticket_sync_rules#update"
+    delete "ticketing/sync_rules/:id", to: "ticket_sync_rules#destroy"
+    post "ticketing/sync_rules/:id/run", to: "ticket_sync_rules#run", as: "run_ticket_sync_rule"
+
     resources :cast_assignment_stages, only: %i[create update destroy]
     # resources :email_groups, only: %i[create update destroy] (moved to communications)
     # resources :audition_email_assignments, only: %i[create update destroy] (moved to communications)

@@ -1,0 +1,30 @@
+<% content_for :title, "#{@production.name} - Ticketing" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Shows", manage_show_ticketings_path]
+  ],
+  text: @production.name,
+  links: []
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <% if @shows.any? %>
+    <div class="space-y-2">
+      <% @shows.each do |show| %>
+        <%= render partial: "manage/show_ticketings/show_row", locals: {
+          show: show,
+          production: @production,
+          ticketing: @show_ticketings[show.id]
+        } %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">No upcoming shows for this production.</p>
+    </div>
+  <% end %>
+</div>

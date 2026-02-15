@@ -6,15 +6,28 @@ module Manage
       # Financial summary for selected period
       @selected_period = (params[:period].presence || "all_time").to_sym
 
+      # Production type filter
+      @production_filter = params[:production_filter].presence || "all"
+
       # Get productions the user has access to
-      @productions = Current.user.accessible_productions.order(:name)
+      all_productions = Current.user.accessible_productions.order(:name)
+
+      # Apply production type filter
+      @productions = case @production_filter
+      when "first_party"
+        all_productions.type_in_house
+      when "third_party"
+        all_productions.type_third_party
+      else
+        all_productions
+      end
 
       # Build summary data for each production
       @production_summaries = @productions.map do |production|
         build_production_summary(production)
       end
 
-      # Overall organization summary
+      # Overall organization summary (uses filtered productions)
       @org_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
     end
 

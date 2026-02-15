@@ -1,0 +1,93 @@
+<% content_for :title, @configuration.name %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Seating", manage_seating_configurations_path]
+  ],
+  text: @configuration.name,
+  links: [
+    { text: "Edit", path: manage_edit_seating_configuration_path(@configuration) }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Overview %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-medium text-gray-900"><%= @configuration.name %></h2>
+        <% if @configuration.description.present? %>
+          <p class="text-gray-500 mt-1"><%= @configuration.description %></p>
+        <% end %>
+      </div>
+      <div class="text-right">
+        <div class="text-2xl font-bold"><%= @configuration.total_capacity %></div>
+        <div class="text-sm text-gray-500">Total Capacity</div>
+      </div>
+    </div>
+
+    <% if @configuration.location.present? %>
+      <div class="flex items-center text-sm text-gray-500">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <%= @configuration.location.name %>
+        <% if @configuration.location_space.present? %>
+          <span class="mx-1">—</span>
+          <%= @configuration.location_space.name %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="mt-4 text-sm text-gray-500">
+      Used in <%= @usage_count %> <%= "show".pluralize(@usage_count) %>
+    </div>
+  </div>
+
+  <%# Ticket Tiers %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-medium text-gray-900">Ticket Tiers</h3>
+    </div>
+
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Default Price</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @ticket_tiers.each do |tier| %>
+          <tr>
+            <td class="px-6 py-4 font-medium text-gray-900"><%= tier.name %></td>
+            <td class="px-6 py-4 text-gray-500"><%= tier.description || "—" %></td>
+            <td class="px-6 py-4 text-right"><%= tier.capacity %></td>
+            <td class="px-6 py-4 text-right"><%= number_to_currency(tier.default_price) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50">
+        <tr>
+          <td class="px-6 py-3 font-medium text-gray-900" colspan="2">Total</td>
+          <td class="px-6 py-3 text-right font-medium"><%= @ticket_tiers.sum(&:capacity) %></td>
+          <td class="px-6 py-3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <% if @usage_count.zero? %>
+    <div class="mt-6 text-center">
+      <%= link_to manage_seating_configuration_path(@configuration), data: { turbo_method: :delete, turbo_confirm: "Delete this configuration?" }, class: "text-red-600 hover:text-red-800 text-sm" do %>
+        Delete Configuration
+      <% end %>
+    </div>
+  <% end %>
+</div>

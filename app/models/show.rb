@@ -58,6 +58,7 @@ class Show < ApplicationRecord
   # Payouts
   has_one :show_financials, dependent: :destroy
   has_one :show_payout, dependent: :destroy
+  has_one :show_ticketing, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 
   # Attendance tracking
@@ -131,6 +132,9 @@ class Show < ApplicationRecord
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
+
+  # Scope to find upcoming shows (today or future)
+  scope :upcoming, -> { where("date_and_time >= ?", Time.current.beginning_of_day) }
 
   # Check if this show is part of a recurring series
   def recurring?

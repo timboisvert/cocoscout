@@ -1,0 +1,32 @@
+<% production = summary[:production] %>
+
+<%= link_to manage_production_show_ticketings_path(production), class: "block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all" do %>
+  <div class="flex items-center justify-between">
+    <div class="flex-1">
+      <h4 class="font-medium text-gray-900"><%= production.name %></h4>
+      <div class="text-sm text-gray-500 mt-1">
+        <%= summary[:ticketed_shows_count] %> of <%= summary[:upcoming_shows_count] %> upcoming shows with ticketing
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6 text-right">
+      <%# Capacity / Sold %>
+      <div>
+        <div class="text-sm text-gray-500">Sold</div>
+        <div class="font-medium">
+          <%= number_with_delimiter(summary[:total_sold]) %> / <%= number_with_delimiter(summary[:total_capacity]) %>
+        </div>
+        <% if summary[:sell_through_percentage] > 0 %>
+          <div class="text-xs text-gray-400"><%= summary[:sell_through_percentage] %>% sell-through</div>
+        <% end %>
+      </div>
+
+      <%# Arrow %>
+      <div class="text-gray-400">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+<% end %>

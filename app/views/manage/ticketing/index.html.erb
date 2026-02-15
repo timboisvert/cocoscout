@@ -1,0 +1,144 @@
+<% content_for :title, "Ticketing" %>
+
+<%
+  ticketing_description = <<~HTML
+    <p>
+      Manage ticket sales across multiple platforms. Connect to Eventbrite or Ticket Tailor,
+      set up seating configurations, and track sales for all your shows in one place.
+    </p>
+  HTML
+
+  ticketing_actions = [
+    { icon: "cog", text: "Providers", description: "Connect ticketing platforms", path: manage_ticketing_providers_path },
+    { icon: "users", text: "Seating", description: "Venue seating configurations", path: manage_seating_configurations_path },
+    { icon: "calendar", text: "Shows", description: "Manage show ticketing", path: manage_show_ticketings_path },
+    { icon: "chart-bar", text: "Sales", description: "View ticket sales", path: manage_ticket_sales_path }
+  ]
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render "shared/module_header",
+    title: "Ticketing",
+    description: ticketing_description,
+    actions: ticketing_actions
+  %>
+
+  <%# Provider Connection Status %>
+  <div class="border-t border-gray-200 pt-4 mt-2 mb-6">
+    <% if @providers.any? %>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-medium text-gray-900">Provider Connections</h3>
+          <%= link_to "Manage", manage_ticketing_providers_path, class: "text-sm text-pink-600 hover:text-pink-800" %>
+        </div>
+        <div class="space-y-2">
+          <% @providers.each do |provider| %>
+            <div class="flex items-center justify-between py-2 <%= provider != @providers.last ? 'border-b border-gray-100' : '' %>">
+              <div class="flex items-center gap-3">
+                <% if provider.status_active? %>
+                  <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <% else %>
+                  <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                <% end %>
+                <div>
+                  <span class="font-medium text-gray-900"><%= provider.name %></span>
+                  <span class="text-sm text-gray-500 ml-2"><%= provider.provider_type.titleize %></span>
+                </div>
+              </div>
+              <div class="text-sm text-gray-500">
+                <% if provider.last_synced_at.present? %>
+                  <% if provider.last_synced_at > 15.minutes.ago %>
+                    <span class="text-green-600">Live</span> &middot; synced <%= time_ago_in_words(provider.last_synced_at) %> ago
+                  <% elsif provider.last_synced_at > 1.hour.ago %>
+                    <span class="text-yellow-600">Delayed</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
+                  <% else %>
+                    <span class="text-red-600">Stale</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
+                  <% end %>
+                <% else %>
+                  <span class="text-gray-400">Never synced</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
+        <p class="text-gray-600 mb-3">No ticketing providers connected yet.</p>
+        <%= link_to manage_new_ticketing_provider_path do %>
+          <%= render "shared/button", text: "Connect Provider", variant: "primary", size: "small" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Performance Metrics %>
+  <% if @show_ticketings.any? %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-sm text-gray-500">Shows</div>
+        <div class="text-2xl font-bold"><%= @metrics[:shows_count] %></div>
+        <div class="text-xs text-gray-400">with ticketing</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-sm text-gray-500">Tickets Sold</div>
+        <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@metrics[:total_sold]) %></div>
+        <div class="text-xs text-gray-400">of <%= number_with_delimiter(@metrics[:total_capacity]) %> capacity</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-sm text-gray-500">Total Revenue</div>
+        <div class="text-2xl font-bold"><%= number_to_currency(@metrics[:total_revenue_cents] / 100.0) %></div>
+        <div class="text-xs text-gray-400">from upcoming shows</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-sm text-gray-500">Sell-through</div>
+        <div class="text-2xl font-bold"><%= @metrics[:sell_through_percentage] %>%</div>
+        <div class="flex items-center gap-2 mt-1">
+          <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full bg-pink-500 rounded-full" style="width: <%= [@metrics[:sell_through_percentage], 100].min %>%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Recent activity callout %>
+    <% if @metrics[:recent_sales_count] > 0 %>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 flex items-center gap-3">
+        <span class="text-green-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+        </span>
+        <span class="text-sm text-green-800">
+          <strong><%= @metrics[:recent_sales_count] %></strong> tickets sold in the last 7 days
+          (<%= number_to_currency(@metrics[:recent_revenue_cents] / 100.0) %> revenue)
+        </span>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Shows with Ticketing %>
+  <div class="">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Upcoming Shows</h3>
+
+    <% if @show_ticketings.any? %>
+      <div class="space-y-2">
+        <% @show_ticketings.each do |ticketing| %>
+          <%= render "manage/ticketing/dashboard_show_row",
+            ticketing: ticketing,
+            performance: @show_performance[ticketing]
+          %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600 mb-3">No shows with ticketing set up yet.</p>
+        <%= link_to manage_show_ticketings_path do %>
+          <%= render "shared/button", text: "Set Up Ticketing", variant: "primary", size: "medium" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,57 @@
+<% content_for :title, "Seating Configurations" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path]
+  ],
+  text: "Seating Configurations",
+  links: [
+    { text: "Add Configuration", path: manage_new_seating_configuration_path }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <% if @configurations.any? %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% @configurations.each do |config| %>
+        <%= link_to manage_seating_configuration_path(config), class: "block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all" do %>
+          <div class="flex items-start justify-between mb-3">
+            <h3 class="font-medium text-gray-900"><%= config.name %></h3>
+            <span class="text-sm text-gray-500"><%= config.total_capacity %> seats</span>
+          </div>
+
+          <% if config.description.present? %>
+            <p class="text-sm text-gray-500 mb-3 line-clamp-2"><%= config.description %></p>
+          <% end %>
+
+          <div class="flex flex-wrap gap-1">
+            <% config.ticket_tiers.ordered.each do |tier| %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
+                <%= tier.name %> (<%= tier.capacity %>)
+              </span>
+            <% end %>
+          </div>
+
+          <% if config.location.present? %>
+            <div class="mt-3 text-xs text-gray-400">
+              <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <%= config.location.name %>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600 mb-4">No seating configurations yet. Create one to define your venue layout.</p>
+      <%= link_to manage_new_seating_configuration_path do %>
+        <%= render "shared/button", text: "Add Configuration", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

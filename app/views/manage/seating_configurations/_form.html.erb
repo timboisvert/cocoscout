@@ -1,0 +1,117 @@
+<%= form_with model: configuration, url: configuration.persisted? ? manage_seating_configuration_path(configuration) : manage_seating_configurations_path, class: "space-y-6" do |form| %>
+  <% if configuration.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <ul class="list-disc list-inside text-red-700 text-sm">
+        <% configuration.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+    <h3 class="font-medium text-gray-900 mb-4">Configuration Details</h3>
+
+    <div>
+      <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_field :name, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Main Theater - Standard Layout" %>
+    </div>
+
+    <div>
+      <%= form.label :description, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_area :description, rows: 2, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Optional description of this seating arrangement" %>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <%= form.label :location_id, "Location (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.collection_select :location_id, Current.organization.locations.order(:name), :id, :name, { include_blank: "Select location..." }, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+      <div>
+        <span class="block text-sm font-medium text-gray-700 mb-1">Total Capacity</span>
+        <p class="text-sm text-gray-500 py-2">Auto-calculated from tiers below</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h3 class="font-medium text-gray-900 mb-4">Ticket Tiers</h3>
+    <p class="text-sm text-gray-500 mb-4">Define the different seating areas or ticket types for this configuration.</p>
+
+    <div id="ticket-tiers" class="space-y-4">
+      <%= form.fields_for :ticket_tiers do |tier_form| %>
+        <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg tier-row">
+          <div class="flex-1 grid grid-cols-4 gap-3">
+            <div>
+              <%= tier_form.text_field :name, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Tier name" %>
+            </div>
+            <div>
+              <%= tier_form.text_field :description, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Description (optional)" %>
+            </div>
+            <div>
+              <%= tier_form.number_field :capacity, min: 1, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Capacity" %>
+            </div>
+            <div>
+              <%= tier_form.number_field :default_price_cents, min: 0, step: 100, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Price (cents)" %>
+            </div>
+          </div>
+          <%= tier_form.hidden_field :position %>
+          <% if tier_form.object.persisted? %>
+            <div class="flex items-center gap-2">
+              <%= tier_form.check_box :_destroy, class: "h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500 accent-red-500" %>
+              <span class="text-xs text-red-600">Delete</span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-4">
+      <%= render "shared/button", text: "+ Add another tier", variant: "ghost", type: :button, size: "small", onclick: "addTierRow()" %>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center">
+    <% if configuration.persisted? %>
+      <%= link_to manage_seating_configuration_path(configuration) do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button %>
+      <% end %>
+    <% else %>
+      <%= link_to manage_seating_configurations_path do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button %>
+      <% end %>
+    <% end %>
+
+    <%= render "shared/button", text: configuration.persisted? ? "Update Configuration" : "Create Configuration", variant: "primary", type: :submit %>
+  </div>
+<% end %>
+
+<script>
+  let tierIndex = <%= configuration.ticket_tiers.size %>;
+
+  function addTierRow() {
+    const container = document.getElementById('ticket-tiers');
+    const html = `
+      <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg tier-row">
+        <div class="flex-1 grid grid-cols-4 gap-3">
+          <div>
+            <input type="text" name="seating_configuration[ticket_tiers_attributes][${tierIndex}][name]" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="Tier name">
+          </div>
+          <div>
+            <input type="text" name="seating_configuration[ticket_tiers_attributes][${tierIndex}][description]" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="Description (optional)">
+          </div>
+          <div>
+            <input type="number" name="seating_configuration[ticket_tiers_attributes][${tierIndex}][capacity]" min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="Capacity">
+          </div>
+          <div>
+            <input type="number" name="seating_configuration[ticket_tiers_attributes][${tierIndex}][default_price_cents]" min="0" step="100" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="Price (cents)">
+          </div>
+        </div>
+        <input type="hidden" name="seating_configuration[ticket_tiers_attributes][${tierIndex}][position]" value="${tierIndex}">
+        <button type="button" onclick="this.closest('.tier-row').remove()" class="text-red-500 hover:text-red-700 text-sm">Remove</button>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    tierIndex++;
+  }
+</script>

@@ -30,9 +30,25 @@
       summary: @org_summary,
       selected_period: @selected_period,
       production: nil,
-      period_path: manage_money_index_path
+      period_path: manage_money_index_path(production_filter: @production_filter)
     } %>
   </div>
+
+  <%# Production Type Filter %>
+  <%= render "shared/filters/filter_bar",
+    toggle_label: "Production Type",
+    bare: true,
+    filter_groups: [
+      {
+        label: "Productions",
+        filters: [
+          { text: "All", path: manage_money_index_path(period: @selected_period, production_filter: "all"), active: @production_filter == "all" },
+          { text: "First-party", path: manage_money_index_path(period: @selected_period, production_filter: "first_party"), active: @production_filter == "first_party" },
+          { text: "Third-party", path: manage_money_index_path(period: @selected_period, production_filter: "third_party"), active: @production_filter == "third_party" }
+        ]
+      }
+    ]
+  %>
 
   <%# Productions List %>
   <div class="">
@@ -45,7 +61,13 @@
       </div>
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">No productions yet. Create a production to start tracking finances.</p>
+        <% if @production_filter == "first_party" %>
+          <p class="text-gray-600">No first-party productions found.</p>
+        <% elsif @production_filter == "third_party" %>
+          <p class="text-gray-600">No third-party productions found.</p>
+        <% else %>
+          <p class="text-gray-600">No productions yet. Create a production to start tracking finances.</p>
+        <% end %>
       </div>
     <% end %>
   </div>

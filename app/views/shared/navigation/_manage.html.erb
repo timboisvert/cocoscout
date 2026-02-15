@@ -47,6 +47,11 @@
               active: controller_name == "money" || controller_name == "money_financials" || controller_name == "money_payouts" || controller_name == "show_payouts" || controller_name == "show_financials"
             },
             {
+              label: "Ticketing",
+              path: manage_ticketing_index_path,
+              active: ["ticketing", "ticketing_providers", "seating_configurations", "show_ticketings", "ticket_listings", "ticket_sales", "ticket_sync_rules"].include?(controller_name)
+            },
+            {
               label: "Directory",
               path: manage_directory_path,
               active: ["directory", "people", "groups"].include?(controller_name)

@@ -1,0 +1,103 @@
+<% content_for :title, "Set Up Ticketing - #{@show.display_name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Shows", manage_show_ticketings_path],
+      [@production.name, manage_production_show_ticketings_path(@production)]
+    ],
+    text: "Set Up Ticketing",
+    links: []
+  } %>
+
+  <div class="max-w-3xl">
+    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <h3 class="font-medium text-gray-900 mb-2"><%= @show.display_name %></h3>
+      <p class="text-gray-500"><%= @show.date_and_time.strftime("%B %d, %Y at %I:%M %p") %></p>
+      <% if @show.location.present? %>
+        <p class="text-gray-500"><%= @show.location.name %></p>
+      <% end %>
+    </div>
+
+    <%= form_with model: @show_ticketing, url: manage_setup_show_ticketing_path(@production, @show), method: :post, class: "space-y-6" do |form| %>
+      <% if @show_ticketing.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <ul class="list-disc list-inside text-red-700 text-sm">
+            <% @show_ticketing.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h3 class="font-medium text-gray-900 mb-4">Seating Configuration</h3>
+      <p class="text-sm text-gray-500 mb-4">Choose an existing seating configuration or set up custom tiers for this show.</p>
+
+      <% if @seating_configurations.any? %>
+        <div class="space-y-3">
+          <% @seating_configurations.each do |config| %>
+            <label class="flex items-start gap-3 p-4 rounded-lg border border-gray-200 hover:border-pink-300 cursor-pointer">
+              <%= radio_button_tag "show_ticketing[seating_configuration_id]", config.id, false, class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= config.name %></div>
+                <div class="text-sm text-gray-500"><%= config.total_capacity %> seats</div>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <% config.ticket_tiers.ordered.each do |tier| %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
+                      <%= tier.name %> (<%= tier.capacity %>)
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            </label>
+          <% end %>
+
+          <label class="flex items-start gap-3 p-4 rounded-lg border border-gray-200 hover:border-pink-300 cursor-pointer">
+            <%= radio_button_tag "show_ticketing[seating_configuration_id]", "", false, class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+            <div>
+              <div class="font-medium text-gray-900">Custom Setup</div>
+              <div class="text-sm text-gray-500">Create custom tiers just for this show</div>
+            </div>
+          </label>
+        </div>
+      <% else %>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <p class="text-gray-600 mb-2">No seating configurations yet.</p>
+          <%= link_to "Create one", manage_new_seating_configuration_path, class: "text-pink-600 hover:text-pink-800" %>
+          <span class="text-gray-500">or continue with custom setup below.</span>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h3 class="font-medium text-gray-900 mb-4">Sales Window</h3>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <%= form.label :sales_open_at, "Sales Open At (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.datetime_local_field :sales_open_at, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+        <div>
+          <%= form.label :sales_close_at, "Sales Close At (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.datetime_local_field :sales_close_at, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h3 class="font-medium text-gray-900 mb-4">Notes</h3>
+      <%= form.text_area :notes, rows: 3, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Internal notes about ticketing for this show..." %>
+    </div>
+
+    <div class="flex justify-between items-center">
+      <%= link_to manage_production_show_ticketings_path(@production) do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button %>
+      <% end %>
+      <%= render "shared/button", text: "Set Up Ticketing", variant: "primary", type: :submit %>
+    </div>
+  <% end %>
+  </div>
+</div>

@@ -1,0 +1,112 @@
+<%#
+  Ticketing Dashboard Show Row - Sales Performance Display
+
+  Required:
+    - ticketing: ShowTicketing object
+    - performance: Hash with {capacity:, sold:, available:, sold_percentage:, revenue_cents:, sales_count:}
+
+  Panels:
+    1. Date/Time box + Show info (with production name)
+    2. Tickets panel (sold / capacity)
+    3. Revenue panel
+    4. Sell-through visual
+%>
+
+<%
+  show = ticketing.show
+  production = show.production
+  is_canceled = show.canceled?
+  
+  capacity = performance[:capacity] || 0
+  sold = performance[:sold] || 0
+  available = performance[:available] || 0
+  sold_percentage = performance[:sold_percentage] || 0
+  revenue_cents = performance[:revenue_cents] || 0
+  
+  # Color coding for sell-through
+  progress_color = if sold_percentage >= 80
+    "bg-green-500"
+  elsif sold_percentage >= 50
+    "bg-yellow-500"
+  elsif sold_percentage > 0
+    "bg-pink-500"
+  else
+    "bg-gray-300"
+  end
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= 'opacity-60' if is_canceled %>">
+
+  <%= link_to manage_show_ticketing_path(production, show), class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+
+      <%# Panel 1: Date + Show Info %>
+      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+        <%# Date Box %>
+        <div class="flex-shrink-0 w-14 text-center">
+          <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+          <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+          <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+        </div>
+
+        <%# Show Details %>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs text-gray-400 mb-0.5"><%= production.name %></div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-medium text-gray-900">
+              <%= show.display_name %>
+            </span>
+          </div>
+          <div class="text-sm text-gray-600">
+            <%= show.date_and_time.strftime("%l:%M %p").strip %>
+            <% if show.location.present? %>
+              &middot; <%= show.location.name %>
+            <% elsif show.is_online %>
+              &middot; Online
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Panel 2: Tickets %>
+      <div class="w-full lg:w-28 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Tickets</div>
+        <% if capacity > 0 %>
+          <div class="text-sm font-medium text-gray-900">
+            <span class="text-green-600"><%= sold %></span>
+            <span class="text-gray-400">/</span>
+            <%= capacity %>
+          </div>
+        <% else %>
+          <div class="text-sm text-gray-400">No capacity</div>
+        <% end %>
+      </div>
+
+      <%# Panel 3: Revenue %>
+      <div class="w-full lg:w-28 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Revenue</div>
+        <% if revenue_cents > 0 %>
+          <div class="text-sm font-medium text-green-600"><%= number_to_currency(revenue_cents / 100.0) %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">$0</div>
+        <% end %>
+      </div>
+
+      <%# Panel 4: Sell-through visual %>
+      <div class="w-full lg:w-36 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Sell-through</div>
+        <% if capacity > 0 %>
+          <div class="flex items-center gap-2">
+            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full <%= progress_color %> rounded-full transition-all" style="width: <%= [sold_percentage, 100].min %>%"></div>
+            </div>
+            <span class="text-sm font-medium text-gray-900 w-12 text-right"><%= sold_percentage %>%</span>
+          </div>
+        <% else %>
+          <div class="text-sm text-gray-400">—</div>
+        <% end %>
+      </div>
+
+    </div>
+  <% end %>
+</div>

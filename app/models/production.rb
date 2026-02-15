@@ -379,6 +379,18 @@ class Production < ApplicationRecord
     governed_by_contract?
   end
 
+  # Check if ticketing is available for this production
+  # In-house productions always have ticketing
+  # Third-party productions need Ticketing service enabled in their contract
+  def ticketing_enabled?
+    return true unless third_party?  # In-house productions always have ticketing
+
+    # Third-party needs contract with Ticketing service
+    return false unless contract.present?
+
+    contract.draft_services.any? { |s| s["name"]&.downcase&.include?("ticketing") }
+  end
+
   # Agreement methods
 
   # Returns true if this production requires performers to sign an agreement

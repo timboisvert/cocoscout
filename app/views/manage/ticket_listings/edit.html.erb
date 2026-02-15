@@ -1,0 +1,19 @@
+<% content_for :title, "Edit Listing" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      [@production.name, manage_production_show_ticketings_path(@production)],
+      [@show.display_name, manage_show_ticketing_path(@production, @show)],
+      [@listing.provider_name, manage_ticket_listing_path(@production, @show, @listing)]
+    ],
+    text: "Edit",
+    links: []
+  } %>
+
+  <div class="max-w-3xl">
+    <%= render "form", listing: @listing %>
+  </div>
+</div>

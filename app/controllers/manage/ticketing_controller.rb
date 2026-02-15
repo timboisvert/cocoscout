@@ -1,0 +1,104 @@
+# frozen_string_literal: true
+
+module Manage
+  class TicketingController < Manage::ManageController
+    def index
+      # Get ticketing providers with sync status
+      @providers = Current.organization.ticketing_providers.order(:name)
+
+      # Get shows with ticketing set up (active ticketing only)
+      production_ids = ticketing_enabled_productions.pluck(:id)
+      @show_ticketings = ShowTicketing
+        .joins(show: :production)
+        .includes(show: [:production, :location], show_ticket_tiers: [])
+        .where(shows: { production_id: production_ids })
+        .where(shows: { canceled: false })
+        .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
+        .order("shows.date_and_time ASC")
+
+      # Build performance data for each show
+      @show_performance = build_show_performance(@show_ticketings)
+
+      # Calculate aggregate metrics
+      @metrics = calculate_aggregate_metrics(@show_ticketings)
+    end
+
+    private
+
+    # Get productions that have ticketing enabled
+    def ticketing_enabled_productions
+      Current.user.accessible_productions
+        .includes(:contract)
+        .order(:name)
+        .select(&:ticketing_enabled?)
+    end
+
+    def build_show_performance(show_ticketings)
+      show_ticketing_ids = show_ticketings.pluck(:id)
+
+      # Get revenue per show_ticketing from confirmed sales
+      revenue_by_ticketing = TicketSale
+        .joins(ticket_offer: { ticket_listing: :show_ticketing })
+        .where(show_ticketings: { id: show_ticketing_ids })
+        .status_confirmed
+        .group("show_ticketings.id")
+        .sum(:total_cents)
+
+      # Get sales count per show_ticketing
+      sales_count_by_ticketing = TicketSale
+        .joins(ticket_offer: { ticket_listing: :show_ticketing })
+        .where(show_ticketings: { id: show_ticketing_ids })
+        .status_confirmed
+        .group("show_ticketings.id")
+        .count
+
+      show_ticketings.index_with do |ticketing|
+        {
+          capacity: ticketing.total_capacity,
+          sold: ticketing.total_sold,
+          available: ticketing.total_available,
+          sold_percentage: ticketing.sold_percentage,
+          revenue_cents: revenue_by_ticketing[ticketing.id] || 0,
+          sales_count: sales_count_by_ticketing[ticketing.id] || 0
+        }
+      end
+    end
+
+    def calculate_aggregate_metrics(show_ticketings)
+      show_ticketing_ids = show_ticketings.pluck(:id)
+
+      # Tier aggregates
+      tier_stats = ShowTicketTier.where(show_ticketing_id: show_ticketing_ids)
+      total_capacity = tier_stats.sum(:capacity)
+      total_sold = tier_stats.sum(:sold)
+
+      # Revenue from confirmed sales
+      total_revenue = TicketSale
+        .joins(ticket_offer: { ticket_listing: :show_ticketing })
+        .where(show_ticketings: { id: show_ticketing_ids })
+        .status_confirmed
+        .sum(:total_cents)
+
+      # Recent sales (last 7 days)
+      recent_sales = TicketSale
+        .joins(ticket_offer: { ticket_listing: :show_ticketing })
+        .where(show_ticketings: { id: show_ticketing_ids })
+        .where(purchased_at: 7.days.ago..)
+        .status_confirmed
+
+      recent_revenue = recent_sales.sum(:total_cents)
+      recent_count = recent_sales.count
+
+      {
+        total_capacity: total_capacity,
+        total_sold: total_sold,
+        total_available: total_capacity - total_sold,
+        sell_through_percentage: total_capacity.positive? ? (total_sold.to_f / total_capacity * 100).round(1) : 0,
+        total_revenue_cents: total_revenue,
+        shows_count: show_ticketings.count,
+        recent_sales_count: recent_count,
+        recent_revenue_cents: recent_revenue
+      }
+    end
+  end
+end

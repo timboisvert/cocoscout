@@ -1,0 +1,18 @@
+<% content_for :title, "Edit #{@provider.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Providers", manage_ticketing_providers_path],
+      [@provider.name, manage_ticketing_provider_path(@provider)]
+    ],
+    text: "Edit",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= render "form", provider: @provider %>
+  </div>
+</div>

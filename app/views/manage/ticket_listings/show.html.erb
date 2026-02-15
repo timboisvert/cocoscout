@@ -1,0 +1,178 @@
+<% content_for :title, "#{@listing.provider_name} Listing" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    [@production.name, manage_production_show_ticketings_path(@production)],
+    [@show.display_name, manage_show_ticketing_path(@production, @show)]
+  ],
+  text: @listing.provider_name,
+  links: [
+    (@listing.status_draft? ? { text: "Publish", path: manage_publish_ticket_listing_path(@production, @show, @listing), data: { turbo_method: :post } } : nil),
+    { text: "Sync", path: manage_sync_ticket_listing_path(@production, @show, @listing), data: { turbo_method: :post } },
+    { text: "Edit", path: manage_edit_ticket_listing_path(@production, @show, @listing) }
+  ].compact
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Status Card %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <span class="text-lg font-medium text-gray-900"><%= @listing.ticketing_provider.name %></span>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+          <%= case @listing.status
+              when 'published' then 'bg-green-100 text-green-800'
+              when 'draft' then 'bg-gray-100 text-gray-600'
+              when 'paused' then 'bg-yellow-100 text-yellow-800'
+              else 'bg-red-100 text-red-800'
+              end %>">
+          <%= @listing.status.titleize %>
+        </span>
+      </div>
+      <% if @listing.external_url.present? %>
+        <%= link_to "View on #{@listing.provider_name}", @listing.external_url, target: "_blank", class: "text-blue-600 hover:text-blue-800" %>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <div>
+        <div class="text-sm text-gray-500">Published At</div>
+        <div class="font-medium">
+          <% if @listing.published_at %>
+            <%= @listing.published_at.strftime("%b %d, %Y %I:%M %p") %>
+          <% else %>
+            Not published
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Last Synced</div>
+        <div class="font-medium">
+          <% if @listing.last_synced_at %>
+            <%= time_ago_in_words(@listing.last_synced_at) %> ago
+          <% else %>
+            Never
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">External Event ID</div>
+        <div class="font-medium font-mono text-sm"><%= @listing.external_event_id || "—" %></div>
+      </div>
+    </div>
+
+    <% if @listing.sync_errors.present? && @listing.sync_errors.any? %>
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <div class="text-sm font-medium text-red-600 mb-2">Recent Sync Errors</div>
+        <div class="space-y-1">
+          <% @listing.sync_errors.last(3).each do |error| %>
+            <div class="text-sm text-red-600">
+              <%= error["message"] %>
+              <span class="text-gray-400">(<%= Time.parse(error["at"]).strftime("%b %d %H:%M") %>)</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Ticket Offers %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-medium text-gray-900">Ticket Offers</h3>
+    </div>
+
+    <% if @offers.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sold</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @offers.each do |offer| %>
+            <tr>
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= offer.display_name %></div>
+              </td>
+              <td class="px-6 py-4 text-gray-500"><%= offer.show_ticket_tier.name %></td>
+              <td class="px-6 py-4 text-right font-medium"><%= number_to_currency(offer.price) %></td>
+              <td class="px-6 py-4 text-right"><%= offer.quantity %></td>
+              <td class="px-6 py-4 text-right text-green-600 font-medium"><%= offer.sold %></td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  <%= case offer.status
+                      when 'active' then 'bg-green-100 text-green-800'
+                      when 'sold_out' then 'bg-red-100 text-red-800'
+                      when 'paused' then 'bg-yellow-100 text-yellow-800'
+                      else 'bg-gray-100 text-gray-600'
+                      end %>">
+                  <%= offer.status.titleize %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        No offers configured. Edit this listing to add ticket offers.
+      </div>
+    <% end %>
+  </div>
+
+  <%# Recent Sales %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-medium text-gray-900">Recent Sales</h3>
+    </div>
+
+    <% if @recent_sales.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">When</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @recent_sales.each do |sale| %>
+            <tr>
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= sale.customer_name || "Anonymous" %></div>
+                <% if sale.customer_email.present? %>
+                  <div class="text-sm text-gray-500"><%= sale.customer_email %></div>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-gray-500"><%= sale.display_info %></td>
+              <td class="px-6 py-4 text-right font-medium"><%= number_to_currency(sale.total) %></td>
+              <td class="px-6 py-4 text-gray-500"><%= time_ago_in_words(sale.purchased_at) %> ago</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        No sales yet from this listing.
+      </div>
+    <% end %>
+  </div>
+
+  <% unless @listing.ticket_sales.exists? %>
+    <div class="mt-6 text-center">
+      <%= link_to manage_ticket_listing_path(@production, @show, @listing), data: { turbo_method: :delete, turbo_confirm: "Delete this listing?" }, class: "text-red-600 hover:text-red-800 text-sm" do %>
+        Delete Listing
+      <% end %>
+    </div>
+  <% end %>
+</div>

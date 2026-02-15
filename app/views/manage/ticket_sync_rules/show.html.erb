@@ -1,0 +1,76 @@
+<% content_for :title, @rule.name %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Sync Rules", manage_ticket_sync_rules_path]
+  ],
+  text: @rule.name,
+  links: [
+    { text: "Run Now", path: manage_run_ticket_sync_rule_path(@rule), data: { turbo_method: :post } },
+    { text: "Edit", path: manage_edit_ticket_sync_rule_path(@rule) }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Rule Details %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-medium text-gray-900"><%= @rule.name %></h2>
+        <div class="text-sm text-gray-500 mt-1">
+          Provider: <%= @rule.ticketing_provider.name %>
+        </div>
+      </div>
+      <div>
+        <% if @rule.active? %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            Active
+          </span>
+        <% else %>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+            Inactive
+          </span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <div>
+        <div class="text-sm text-gray-500">Rule Type</div>
+        <div class="font-medium"><%= @rule.rule_type.titleize %></div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Sync Interval</div>
+        <div class="font-medium">Every <%= @rule.sync_interval_minutes %> minutes</div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Listings Affected</div>
+        <div class="font-medium"><%= @listings_count %></div>
+      </div>
+    </div>
+
+    <% if @rule.next_sync_at && @rule.active? %>
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <div class="text-sm text-gray-500">Next Sync</div>
+        <div class="font-medium">
+          <% if @rule.next_sync_at <= Time.current %>
+            <span class="text-yellow-600">Due now</span>
+          <% else %>
+            <%= @rule.next_sync_at.strftime("%b %d, %Y %I:%M %p") %>
+            <span class="text-gray-400">(in <%= time_ago_in_words(@rule.next_sync_at) %>)</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Delete %>
+  <div class="text-center">
+    <%= link_to manage_ticket_sync_rule_path(@rule), data: { turbo_method: :delete, turbo_confirm: "Delete this sync rule?" }, class: "text-red-600 hover:text-red-800 text-sm" do %>
+      Delete Rule
+    <% end %>
+  </div>
+</div>

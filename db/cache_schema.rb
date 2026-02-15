@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_15_001843) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1238,6 +1238,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
     t.index ["show_id"], name: "index_roles_on_show_id"
   end
 
+  create_table "seating_configurations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "location_id"
+    t.bigint "location_space_id"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_seating_configurations_on_location_id"
+    t.index ["location_space_id"], name: "index_seating_configurations_on_location_space_id"
+    t.index ["organization_id", "status"], name: "index_seating_configurations_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_seating_configurations_on_organization_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "ip_address"
@@ -1421,6 +1436,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
     t.index ["show_id", "role_id", "assignable_type", "assignable_id"], name: "idx_unique_show_role_assignable", unique: true, where: "(assignable_id IS NOT NULL)"
     t.index ["show_id", "role_id", "position"], name: "idx_assignments_show_role_position"
     t.index ["show_id"], name: "index_show_person_role_assignments_on_show_id"
+  end
+
+  create_table "show_ticket_tiers", force: :cascade do |t|
+    t.integer "available", null: false
+    t.integer "capacity", null: false
+    t.datetime "created_at", null: false
+    t.integer "default_price_cents", default: 0
+    t.integer "held", default: 0, null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "show_ticketing_id", null: false
+    t.integer "sold", default: 0, null: false
+    t.bigint "ticket_tier_id"
+    t.datetime "updated_at", null: false
+    t.index ["show_ticketing_id", "position"], name: "index_show_ticket_tiers_on_show_ticketing_id_and_position"
+    t.index ["show_ticketing_id"], name: "index_show_ticket_tiers_on_show_ticketing_id"
+    t.index ["ticket_tier_id"], name: "index_show_ticket_tiers_on_ticket_tier_id"
+  end
+
+  create_table "show_ticketings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "doors_open_at"
+    t.jsonb "inventory_snapshot", default: {}
+    t.bigint "seating_configuration_id"
+    t.jsonb "settings", default: {}
+    t.bigint "show_id", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seating_configuration_id"], name: "index_show_ticketings_on_seating_configuration_id"
+    t.index ["show_id"], name: "idx_show_ticketings_show", unique: true
+    t.index ["status"], name: "idx_show_ticketings_status"
   end
 
   create_table "shows", force: :cascade do |t|
@@ -1826,6 +1872,138 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
+  create_table "ticket_bundle_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "quantity", default: 1, null: false
+    t.bigint "show_ticket_tier_id", null: false
+    t.bigint "ticket_bundle_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_ticket_tier_id"], name: "index_ticket_bundle_items_on_show_ticket_tier_id"
+    t.index ["ticket_bundle_id", "show_ticket_tier_id"], name: "idx_on_ticket_bundle_id_show_ticket_tier_id_fb829586b3", unique: true
+    t.index ["ticket_bundle_id"], name: "index_ticket_bundle_items_on_ticket_bundle_id"
+  end
+
+  create_table "ticket_bundles", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.integer "discount_cents", default: 0
+    t.integer "discount_percent", default: 0
+    t.boolean "enabled", default: true, null: false
+    t.string "name", null: false
+    t.bigint "show_ticketing_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_ticketing_id", "enabled"], name: "index_ticket_bundles_on_show_ticketing_id_and_enabled"
+    t.index ["show_ticketing_id"], name: "index_ticket_bundles_on_show_ticketing_id"
+  end
+
+  create_table "ticket_listings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "external_event_id"
+    t.string "external_url"
+    t.datetime "last_synced_at"
+    t.jsonb "listing_data", default: {}
+    t.datetime "published_at"
+    t.bigint "show_ticketing_id", null: false
+    t.string "status", default: "draft", null: false
+    t.jsonb "sync_errors", default: []
+    t.bigint "ticketing_provider_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_ticketing_id", "ticketing_provider_id"], name: "idx_on_show_ticketing_id_ticketing_provider_id_9e0e6bc55a", unique: true
+    t.index ["show_ticketing_id"], name: "index_ticket_listings_on_show_ticketing_id"
+    t.index ["status"], name: "index_ticket_listings_on_status"
+    t.index ["ticketing_provider_id", "external_event_id"], name: "idx_on_ticketing_provider_id_external_event_id_7df46c02aa"
+    t.index ["ticketing_provider_id"], name: "index_ticket_listings_on_ticketing_provider_id"
+  end
+
+  create_table "ticket_offers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "external_offer_id"
+    t.string "name", null: false
+    t.jsonb "offer_data", default: {}
+    t.integer "price_cents", null: false
+    t.integer "quantity", null: false
+    t.integer "seats_per_offer", default: 1, null: false
+    t.bigint "show_ticket_tier_id", null: false
+    t.integer "sold", default: 0, null: false
+    t.string "status", default: "active", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_ticket_tier_id"], name: "index_ticket_offers_on_show_ticket_tier_id"
+    t.index ["ticket_listing_id", "external_offer_id"], name: "index_ticket_offers_on_ticket_listing_id_and_external_offer_id"
+    t.index ["ticket_listing_id", "status"], name: "index_ticket_offers_on_ticket_listing_id_and_status"
+    t.index ["ticket_listing_id"], name: "index_ticket_offers_on_ticket_listing_id"
+  end
+
+  create_table "ticket_sales", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "customer_email"
+    t.string "customer_name"
+    t.string "customer_phone"
+    t.string "external_sale_id"
+    t.datetime "purchased_at", null: false
+    t.integer "quantity", default: 1, null: false
+    t.jsonb "sale_data", default: {}
+    t.bigint "show_ticket_tier_id", null: false
+    t.string "status", default: "confirmed", null: false
+    t.datetime "synced_at"
+    t.bigint "ticket_offer_id", null: false
+    t.integer "total_cents", null: false
+    t.integer "total_seats", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_email"], name: "index_ticket_sales_on_customer_email"
+    t.index ["purchased_at"], name: "index_ticket_sales_on_purchased_at"
+    t.index ["show_ticket_tier_id", "status"], name: "index_ticket_sales_on_show_ticket_tier_id_and_status"
+    t.index ["show_ticket_tier_id"], name: "index_ticket_sales_on_show_ticket_tier_id"
+    t.index ["ticket_offer_id", "external_sale_id"], name: "index_ticket_sales_on_ticket_offer_id_and_external_sale_id", unique: true
+    t.index ["ticket_offer_id"], name: "index_ticket_sales_on_ticket_offer_id"
+  end
+
+  create_table "ticket_sync_rules", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "next_sync_at"
+    t.bigint "organization_id", null: false
+    t.jsonb "rule_config", default: {}
+    t.string "rule_type", default: "sync_all", null: false
+    t.integer "sync_interval_minutes", default: 15, null: false
+    t.bigint "ticketing_provider_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["next_sync_at", "active"], name: "index_ticket_sync_rules_on_next_sync_at_and_active"
+    t.index ["organization_id", "active"], name: "index_ticket_sync_rules_on_organization_id_and_active"
+    t.index ["organization_id"], name: "index_ticket_sync_rules_on_organization_id"
+    t.index ["ticketing_provider_id", "active"], name: "index_ticket_sync_rules_on_ticketing_provider_id_and_active"
+    t.index ["ticketing_provider_id"], name: "index_ticket_sync_rules_on_ticketing_provider_id"
+  end
+
+  create_table "ticket_tiers", force: :cascade do |t|
+    t.integer "capacity", null: false
+    t.datetime "created_at", null: false
+    t.integer "default_price_cents", default: 0
+    t.text "description"
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "seating_configuration_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seating_configuration_id", "position"], name: "index_ticket_tiers_on_seating_configuration_id_and_position"
+    t.index ["seating_configuration_id"], name: "index_ticket_tiers_on_seating_configuration_id"
+  end
+
+  create_table "ticketing_providers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_credentials"
+    t.datetime "last_synced_at"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "provider_type", null: false
+    t.jsonb "settings", default: {}
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "provider_type"], name: "index_ticketing_providers_on_organization_id_and_provider_type"
+    t.index ["organization_id", "status"], name: "index_ticketing_providers_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_ticketing_providers_on_organization_id"
+  end
+
   create_table "training_credits", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "institution", limit: 200, null: false
@@ -1989,6 +2167,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
   add_foreign_key "role_vacancy_shows", "shows"
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
+  add_foreign_key "seating_configurations", "location_spaces"
+  add_foreign_key "seating_configurations", "locations"
+  add_foreign_key "seating_configurations", "organizations"
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"
@@ -2012,6 +2193,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "show_ticket_tiers", "show_ticketings"
+  add_foreign_key "show_ticket_tiers", "ticket_tiers"
+  add_foreign_key "show_ticketings", "seating_configurations"
+  add_foreign_key "show_ticketings", "shows"
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "location_spaces"
   add_foreign_key "shows", "locations"
@@ -2045,6 +2230,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_14_164118) do
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
+  add_foreign_key "ticket_bundle_items", "show_ticket_tiers"
+  add_foreign_key "ticket_bundle_items", "ticket_bundles"
+  add_foreign_key "ticket_bundles", "show_ticketings"
+  add_foreign_key "ticket_listings", "show_ticketings"
+  add_foreign_key "ticket_listings", "ticketing_providers"
+  add_foreign_key "ticket_offers", "show_ticket_tiers"
+  add_foreign_key "ticket_offers", "ticket_listings"
+  add_foreign_key "ticket_sales", "show_ticket_tiers"
+  add_foreign_key "ticket_sales", "ticket_offers"
+  add_foreign_key "ticket_sync_rules", "organizations"
+  add_foreign_key "ticket_sync_rules", "ticketing_providers"
+  add_foreign_key "ticket_tiers", "seating_configurations"
+  add_foreign_key "ticketing_providers", "organizations"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

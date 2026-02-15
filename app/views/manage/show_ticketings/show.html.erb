@@ -1,0 +1,172 @@
+<% content_for :title, "Ticketing - #{@show.display_name}" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Shows", manage_show_ticketings_path],
+    [@production.name, manage_production_show_ticketings_path(@production)]
+  ],
+  text: @show.display_name,
+  links: [
+    { text: "Sync All", path: manage_sync_show_ticketing_path(@production, @show), data: { turbo_method: :post } },
+    { text: "Edit", path: manage_edit_show_ticketing_path(@production, @show) },
+    { text: "Add Listing", path: manage_new_ticket_listing_path(@production, @show) }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Overview Stats %>
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Total Capacity</div>
+      <div class="text-2xl font-bold"><%= @show_ticketing.total_capacity %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Sold</div>
+      <div class="text-2xl font-bold text-green-600"><%= @show_ticketing.total_sold %></div>
+      <div class="text-xs text-gray-400"><%= @show_ticketing.sold_percentage %>%</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Held</div>
+      <div class="text-2xl font-bold text-yellow-600"><%= @show_ticketing.total_held %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Available</div>
+      <div class="text-2xl font-bold"><%= @show_ticketing.total_available %></div>
+    </div>
+  </div>
+
+  <%# Ticket Tiers %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-medium text-gray-900">Ticket Tiers</h3>
+    </div>
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sold</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Held</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Default Price</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @ticket_tiers.each do |tier| %>
+          <tr>
+            <td class="px-6 py-4 font-medium text-gray-900"><%= tier.name %></td>
+            <td class="px-6 py-4 text-right text-gray-500"><%= tier.capacity %></td>
+            <td class="px-6 py-4 text-right text-green-600 font-medium"><%= tier.sold %></td>
+            <td class="px-6 py-4 text-right text-yellow-600"><%= tier.held %></td>
+            <td class="px-6 py-4 text-right"><%= tier.available %></td>
+            <td class="px-6 py-4 text-right text-gray-500"><%= number_to_currency(tier.default_price) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# Provider Listings %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-medium text-gray-900">Provider Listings</h3>
+      <%= link_to "Add Listing", manage_new_ticket_listing_path(@production, @show), class: "text-sm text-pink-600 hover:text-pink-800" %>
+    </div>
+
+    <% if @listings.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">External URL</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sync</th>
+            <th class="px-6 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @listings.each do |listing| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 font-medium text-gray-900"><%= listing.ticketing_provider.name %></td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  <%= case listing.status
+                      when 'published' then 'bg-green-100 text-green-800'
+                      when 'draft' then 'bg-gray-100 text-gray-600'
+                      when 'paused' then 'bg-yellow-100 text-yellow-800'
+                      else 'bg-red-100 text-red-800'
+                      end %>">
+                  <%= listing.status.titleize %>
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <% if listing.external_url.present? %>
+                  <%= link_to "View on #{listing.provider_name}", listing.external_url, target: "_blank", class: "text-blue-600 hover:text-blue-800 text-sm" %>
+                <% else %>
+                  <span class="text-gray-400">—</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-gray-500">
+                <% if listing.last_synced_at %>
+                  <%= time_ago_in_words(listing.last_synced_at) %> ago
+                <% else %>
+                  Never
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <%= link_to "Manage", manage_ticket_listing_path(@production, @show, listing), class: "text-pink-600 hover:text-pink-800" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        No provider listings yet. Add a listing to start selling tickets.
+      </div>
+    <% end %>
+  </div>
+
+  <%# Recent Sales %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-medium text-gray-900">Recent Sales</h3>
+      <%= link_to "View All", manage_show_ticket_sales_path(@production, @show), class: "text-sm text-pink-600 hover:text-pink-800" %>
+    </div>
+
+    <% if @recent_sales.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">When</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @recent_sales.each do |sale| %>
+            <tr>
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= sale.customer_name || "Anonymous" %></div>
+                <% if sale.customer_email.present? %>
+                  <div class="text-sm text-gray-500"><%= sale.customer_email %></div>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-gray-500"><%= sale.display_info %></td>
+              <td class="px-6 py-4 text-right font-medium"><%= number_to_currency(sale.total) %></td>
+              <td class="px-6 py-4 text-gray-500"><%= time_ago_in_words(sale.purchased_at) %> ago</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        No sales yet.
+      </div>
+    <% end %>
+  </div>
+</div>

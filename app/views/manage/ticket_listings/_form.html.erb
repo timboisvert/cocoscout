@@ -1,0 +1,149 @@
+<%= form_with model: listing, url: listing.persisted? ? manage_ticket_listing_path(@production, @show, listing) : manage_ticket_listings_path(@production, @show), class: "space-y-6" do |form| %>
+  <% if listing.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <ul class="list-disc list-inside text-red-700 text-sm">
+        <% listing.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+    <h3 class="font-medium text-gray-900 mb-4">Listing Details</h3>
+
+    <div>
+      <%= form.label :ticketing_provider_id, "Provider", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <% if listing.persisted? %>
+        <div class="text-gray-900"><%= listing.ticketing_provider.name %></div>
+        <%= form.hidden_field :ticketing_provider_id %>
+      <% else %>
+        <%= form.collection_select :ticketing_provider_id, @providers, :id, :name, { prompt: "Select provider..." }, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+      <% end %>
+    </div>
+
+    <div>
+      <%= form.label :status, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.select :status, [["Draft", "draft"], ["Published", "published"], ["Paused", "paused"], ["Ended", "ended"]], {}, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h3 class="font-medium text-gray-900 mb-4">Ticket Offers</h3>
+    <p class="text-sm text-gray-500 mb-4">Define the ticket types available for purchase through this provider.</p>
+
+    <div id="ticket-offers" class="space-y-4">
+      <%= form.fields_for :ticket_offers do |offer_form| %>
+        <div class="p-4 bg-gray-50 rounded-lg offer-row">
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <%= offer_form.label :name, "Offer Name", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.text_field :name, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "e.g., Early Bird" %>
+            </div>
+            <div>
+              <%= offer_form.label :show_ticket_tier_id, "Tier", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.collection_select :show_ticket_tier_id, @ticket_tiers, :id, :name, { prompt: "Select tier..." }, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+            </div>
+          </div>
+          <div class="grid grid-cols-4 gap-3">
+            <div>
+              <%= offer_form.label :price_cents, "Price (cents)", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.number_field :price_cents, min: 0, step: 100, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "2500" %>
+            </div>
+            <div>
+              <%= offer_form.label :quantity, "Quantity", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.number_field :quantity, min: 0, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "100" %>
+            </div>
+            <div>
+              <%= offer_form.label :seats_per_offer, "Seats per offer", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.number_field :seats_per_offer, min: 1, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "1" %>
+            </div>
+            <div>
+              <%= offer_form.label :status, class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= offer_form.select :status, [["Active", "active"], ["Paused", "paused"], ["Hidden", "hidden"]], {}, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+            </div>
+          </div>
+          <%= offer_form.hidden_field :id if offer_form.object.persisted? %>
+          <% if offer_form.object.persisted? && offer_form.object.ticket_sales.none? %>
+            <div class="mt-3 flex items-center gap-2">
+              <%= offer_form.check_box :_destroy, class: "h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500 accent-red-500" %>
+              <span class="text-xs text-red-600">Delete this offer</span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-4">
+      <%= render "shared/button", text: "+ Add another offer", variant: "ghost", type: :button, size: "small", onclick: "addOfferRow()" %>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center">
+    <% if listing.persisted? %>
+      <%= link_to manage_ticket_listing_path(@production, @show, listing) do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button %>
+      <% end %>
+    <% else %>
+      <%= link_to manage_show_ticketing_path(@production, @show) do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button %>
+      <% end %>
+    <% end %>
+
+    <%= render "shared/button", text: listing.persisted? ? "Update Listing" : "Create Listing", variant: "primary", type: :submit %>
+  </div>
+<% end %>
+
+<script>
+  let offerIndex = <%= listing.ticket_offers.size %>;
+
+  function addOfferRow() {
+    const container = document.getElementById('ticket-offers');
+    const tiersOptions = `<% @ticket_tiers.each do |tier| %><option value="<%= tier.id %>"><%= tier.name %></option><% end %>`;
+    
+    const html = `
+      <div class="p-4 bg-gray-50 rounded-lg offer-row">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Offer Name</label>
+            <input type="text" name="ticket_listing[ticket_offers_attributes][${offerIndex}][name]" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="e.g., Early Bird">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Tier</label>
+            <select name="ticket_listing[ticket_offers_attributes][${offerIndex}][show_ticket_tier_id]" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
+              <option value="">Select tier...</option>
+              ${tiersOptions}
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Price (cents)</label>
+            <input type="number" name="ticket_listing[ticket_offers_attributes][${offerIndex}][price_cents]" min="0" step="100" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="2500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+            <input type="number" name="ticket_listing[ticket_offers_attributes][${offerIndex}][quantity]" min="0" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="100">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Seats per offer</label>
+            <input type="number" name="ticket_listing[ticket_offers_attributes][${offerIndex}][seats_per_offer]" min="1" value="1" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" placeholder="1">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select name="ticket_listing[ticket_offers_attributes][${offerIndex}][status]" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button type="button" onclick="this.closest('.offer-row').remove()" class="text-xs text-red-600 hover:text-red-800">Remove</button>
+        </div>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    offerIndex++;
+  }
+</script>

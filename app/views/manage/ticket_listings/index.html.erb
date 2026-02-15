@@ -1,0 +1,63 @@
+<% content_for :title, "Ticket Listings" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    [@production.name, manage_production_show_ticketings_path(@production)],
+    [@show.display_name, manage_show_ticketing_path(@production, @show)]
+  ],
+  text: "Listings",
+  links: [
+    { text: "Add Listing", path: manage_new_ticket_listing_path(@production, @show) }
+  ]
+} %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <% if @listings.any? %>
+    <div class="space-y-4">
+      <% @listings.each do |listing| %>
+        <div class="bg-white rounded-lg border border-gray-200 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <span class="font-medium text-gray-900"><%= listing.ticketing_provider.name %></span>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                <%= case listing.status
+                    when 'published' then 'bg-green-100 text-green-800'
+                    when 'draft' then 'bg-gray-100 text-gray-600'
+                    when 'paused' then 'bg-yellow-100 text-yellow-800'
+                    else 'bg-red-100 text-red-800'
+                    end %>">
+                <%= listing.status.titleize %>
+              </span>
+            </div>
+            <%= link_to "Manage", manage_ticket_listing_path(@production, @show, listing), class: "text-pink-600 hover:text-pink-800" %>
+          </div>
+
+          <% if listing.external_url.present? %>
+            <div class="text-sm text-gray-500 mb-2">
+              <%= link_to listing.external_url, listing.external_url, target: "_blank", class: "text-blue-600 hover:text-blue-800" %>
+            </div>
+          <% end %>
+
+          <div class="text-sm text-gray-500">
+            Last synced: 
+            <% if listing.last_synced_at %>
+              <%= time_ago_in_words(listing.last_synced_at) %> ago
+            <% else %>
+              Never
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600 mb-4">No listings yet. Add a listing to publish this show to a ticketing platform.</p>
+      <%= link_to manage_new_ticket_listing_path(@production, @show) do %>
+        <%= render "shared/button", text: "Add Listing", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

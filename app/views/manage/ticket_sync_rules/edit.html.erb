@@ -1,0 +1,18 @@
+<% content_for :title, "Edit #{@rule.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Sync Rules", manage_ticket_sync_rules_path],
+      [@rule.name, manage_ticket_sync_rule_path(@rule)]
+    ],
+    text: "Edit",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= render "form", rule: @rule %>
+  </div>
+</div>
