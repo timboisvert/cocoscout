@@ -2,6 +2,40 @@
   "ignored_warnings": [
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "274b81cf5c006422af567ed7540881dda673105c42657c0df6750b28fe785daf",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/show_ticketings/show.html.erb",
+      "line": 107,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(\"View on #{(Unresolved Model).new.provider_name}\", (Unresolved Model).new.external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800 text-sm\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowTicketingsController",
+          "method": "show",
+          "line": 27,
+          "file": "app/controllers/manage/show_ticketings_controller.rb",
+          "rendered": {
+            "name": "manage/show_ticketings/show",
+            "file": "app/views/manage/show_ticketings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/show_ticketings/show"
+      },
+      "user_input": "(Unresolved Model).new.external_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "35b439a99ab30b078366f6df51f4c7771f758fea4b56451a6442bd5a30fe97e1",
       "check_name": "RenderInline",
@@ -15,7 +49,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 732,
+          "line": 735,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -49,7 +83,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "index",
-          "line": 65,
+          "line": 70,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/index",
@@ -103,7 +137,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "index",
-          "line": 65,
+          "line": 70,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/index",
@@ -183,7 +217,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/show_payouts/show.html.erb",
-      "line": 1465,
+      "line": 1530,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Add #{(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size} #{if ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
       "render_path": [
@@ -251,7 +285,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/casting_tables/summary.html.erb",
-      "line": 134,
+      "line": 186,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Finalize Casting (#{Current.organization.casting_tables.find(params[:id]).casting_table_draft_assignments.includes(:show, :role).order(\"shows.date_and_time\").count} assignments)\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
       "render_path": [
@@ -259,7 +293,7 @@
           "type": "controller",
           "class": "Manage::CastingTablesController",
           "method": "summary",
-          "line": 182,
+          "line": 185,
           "file": "app/controllers/manage/casting_tables_controller.rb",
           "rendered": {
             "name": "manage/casting_tables/summary",
@@ -279,13 +313,36 @@
       "note": "False positive: .count returns an integer which cannot contain XSS payload"
     },
     {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "a682855e2462ae8f231809072260b75f160b2d2f1652fc9410807b75c6753734",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/ticketing_setup_wizard_controller.rb",
+      "line": 85,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params[:provider_settings][provider_id.to_s].permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::TicketingSetupWizardController",
+        "method": "save_providers"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "b49b1af1a999d74e9276a4871909f4040c02d17f9e1315a86564769d70a77594",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/shows/cancel.html.erb",
-      "line": 244,
+      "line": 239,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Delete All #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).recurrence_group.count} Occurrences\", { :variant => \"danger\", :size => \"medium\", :type => :submit })",
       "render_path": [
@@ -293,7 +350,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 732,
+          "line": 735,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -319,7 +376,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/shows/cancel.html.erb",
-      "line": 250,
+      "line": 245,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Delete This #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"danger\", :size => \"medium\", :type => :submit })",
       "render_path": [
@@ -327,7 +384,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 732,
+          "line": 735,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -348,12 +405,46 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "f4500bc344437734805838c9f62b6f392132535c4cc0feb7d6541ae8e3fbd49a",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/ticket_listings/show.html.erb",
+      "line": 36,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(\"View on #{Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).provider_name}\", Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::TicketListingsController",
+          "method": "show",
+          "line": 17,
+          "file": "app/controllers/manage/ticket_listings_controller.rb",
+          "rendered": {
+            "name": "manage/ticket_listings/show",
+            "file": "app/views/manage/ticket_listings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/ticket_listings/show"
+      },
+      "user_input": "Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).external_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "fc12c7b78d04c6eec87d26848b04f99477ebef302315c149b27e277964e746de",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/shows/cancel.html.erb",
-      "line": 213,
+      "line": 208,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Cancel #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"warning\", :size => \"medium\", :type => :submit, :data => ({ :\"cancel-show-target\" => \"submitButton\", :\"turbo-confirm\" => (\"Are you sure you want to cancel this #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.downcase}?\") }) })",
       "render_path": [
@@ -361,7 +452,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 732,
+          "line": 735,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",

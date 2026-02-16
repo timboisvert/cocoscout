@@ -15,9 +15,9 @@ class FixTicketSyncRulesTable < ActiveRecord::Migration[8.1]
       t.jsonb :rule_config, default: {} # Rule parameters (production_id, location_id, etc.)
       t.timestamps
 
-      t.index [:organization_id, :active]
-      t.index [:ticketing_provider_id, :active]
-      t.index [:next_sync_at, :active]
+      t.index [ :organization_id, :active ]
+      t.index [ :ticketing_provider_id, :active ]
+      t.index [ :next_sync_at, :active ]
     end
   end
 end

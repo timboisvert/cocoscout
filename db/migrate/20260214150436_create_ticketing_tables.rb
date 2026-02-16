@@ -13,8 +13,8 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.jsonb :settings, default: {} # Provider-specific settings
       t.timestamps
 
-      t.index [:organization_id, :provider_type]
-      t.index [:organization_id, :status]
+      t.index [ :organization_id, :provider_type ]
+      t.index [ :organization_id, :status ]
     end
 
     # Seating Configurations - define reusable room layouts with ticket tiers
@@ -26,7 +26,7 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.string :status, null: false, default: "active" # active, archived
       t.timestamps
 
-      t.index [:organization_id, :status]
+      t.index [ :organization_id, :status ]
     end
 
     # Ticket Tiers - seat categories within a configuration
@@ -39,7 +39,7 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.text :description
       t.timestamps
 
-      t.index [:seating_configuration_id, :position]
+      t.index [ :seating_configuration_id, :position ]
     end
 
     # Show Ticketing - links a show to the ticketing system
@@ -68,7 +68,7 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.integer :position, null: false, default: 0
       t.timestamps
 
-      t.index [:show_ticketing_id, :position]
+      t.index [ :show_ticketing_id, :position ]
     end
 
     # Ticket Listings - a listing on an external platform
@@ -84,8 +84,8 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.jsonb :sync_errors, default: [] # Recent sync errors
       t.timestamps
 
-      t.index [:show_ticketing_id, :ticketing_provider_id], unique: true
-      t.index [:ticketing_provider_id, :external_event_id]
+      t.index [ :show_ticketing_id, :ticketing_provider_id ], unique: true
+      t.index [ :ticketing_provider_id, :external_event_id ]
       t.index :status
     end
 
@@ -103,8 +103,8 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.jsonb :offer_data, default: {} # Platform-specific metadata
       t.timestamps
 
-      t.index [:ticket_listing_id, :status]
-      t.index [:ticket_listing_id, :external_offer_id]
+      t.index [ :ticket_listing_id, :status ]
+      t.index [ :ticket_listing_id, :external_offer_id ]
     end
 
     # Ticket Sales - record of each sale from any provider
@@ -124,8 +124,8 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.jsonb :sale_data, default: {} # Additional data from provider
       t.timestamps
 
-      t.index [:ticket_offer_id, :external_sale_id], unique: true
-      t.index [:show_ticket_tier_id, :status]
+      t.index [ :ticket_offer_id, :external_sale_id ], unique: true
+      t.index [ :show_ticket_tier_id, :status ]
       t.index :purchased_at
       t.index :customer_email
     end
@@ -139,8 +139,8 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.jsonb :config, default: {} # Rule parameters
       t.timestamps
 
-      t.index [:show_ticketing_id, :rule_type]
-      t.index [:show_ticketing_id, :enabled, :priority]
+      t.index [ :show_ticketing_id, :rule_type ]
+      t.index [ :show_ticketing_id, :enabled, :priority ]
     end
 
     # Ticket Bundles - bundle definitions for an offer
@@ -153,7 +153,7 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.boolean :enabled, null: false, default: true
       t.timestamps
 
-      t.index [:show_ticketing_id, :enabled]
+      t.index [ :show_ticketing_id, :enabled ]
     end
 
     # Ticket Bundle Items - tiers included in a bundle
@@ -163,7 +163,7 @@ class CreateTicketingTables < ActiveRecord::Migration[8.1]
       t.integer :quantity, null: false, default: 1 # How many of this tier in the bundle
       t.timestamps
 
-      t.index [:ticket_bundle_id, :show_ticket_tier_id], unique: true
+      t.index [ :ticket_bundle_id, :show_ticket_tier_id ], unique: true
     end
   end
 end
