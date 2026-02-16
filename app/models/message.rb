@@ -1,5 +1,5 @@
 class Message < ApplicationRecord
-  belongs_to :sender, polymorphic: true  # User or Person
+  belongs_to :sender, polymorphic: true, optional: true  # User, Person, or nil for system messages
   belongs_to :organization, optional: true
   belongs_to :production, optional: true  # Direct FK for visibility scoping
   belongs_to :show, optional: true        # Direct FK for visibility scoping
