@@ -92,7 +92,7 @@ class TicketingDashboardService
 
   # Remote events that failed to sync
   def sync_failed_issues
-    remote_events.error.includes(:show, :ticketing_provider).map do |event|
+    remote_events.sync_status_error.includes(:show, :ticketing_provider).map do |event|
       {
         type: :sync_failed,
         remote_event: event,
@@ -106,7 +106,7 @@ class TicketingDashboardService
 
   # Remote events pending sync
   def pending_sync_issues
-    remote_events.pending.includes(:show, :ticketing_provider).map do |event|
+    remote_events.where(sync_status: [:pending_update, :pending_delete]).includes(:show, :ticketing_provider).map do |event|
       {
         type: :pending_sync,
         remote_event: event,
@@ -130,7 +130,7 @@ class TicketingDashboardService
 
   # Remote events that exist on provider but show is excluded/deleted
   def orphaned_events_issues
-    remote_events.orphaned.includes(:show, :ticketing_provider).map do |event|
+    remote_events.sync_status_orphaned.includes(:show, :ticketing_provider).map do |event|
       {
         type: :orphaned_event,
         remote_event: event,
@@ -143,7 +143,7 @@ class TicketingDashboardService
 
   # Setups that aren't fully configured
   def setup_incomplete_issues
-    organization.production_ticketing_setups.draft.map do |setup|
+    organization.production_ticketing_setups.status_draft.map do |setup|
       {
         type: :setup_incomplete,
         setup: setup,
@@ -177,7 +177,7 @@ class TicketingDashboardService
             show: show,
             ticketing_provider: provider
           )
-          remote_event&.synced?
+          remote_event&.sync_status_synced?
         end
       end
     end
@@ -188,7 +188,7 @@ class TicketingDashboardService
     shows_needing_tickets.select do |show|
       active_setups.any? do |setup|
         remote_events = setup.remote_ticketing_events.where(show: show)
-        remote_events.empty? || remote_events.any? { |e| e.error? || e.pending? }
+        remote_events.empty? || remote_events.any? { |e| e.sync_status_error? || e.sync_status.to_s.start_with?('pending') }
       end
     end
   end
@@ -198,7 +198,7 @@ class TicketingDashboardService
   # ============================================
 
   def active_setups
-    @active_setups ||= organization.production_ticketing_setups.active.includes(:production, :provider_setups)
+    @active_setups ||= organization.production_ticketing_setups.active_setups.includes(:production, :provider_setups)
   end
 
   def production_setups_status
@@ -210,7 +210,7 @@ class TicketingDashboardService
         providers_count: setup.provider_setups.enabled.count,
         shows_to_list: setup.shows_to_list.count,
         remote_events_count: setup.remote_ticketing_events.where.not(sync_status: :deleted).count,
-        synced_count: setup.remote_ticketing_events.synced.count,
+        synced_count: setup.remote_ticketing_events.sync_status_synced.count,
         issues_count: setup.remote_ticketing_events.where(sync_status: [ :error, :orphaned ]).count
       }
     end
@@ -249,7 +249,7 @@ class TicketingDashboardService
         rate_limited: provider.rate_limited?,
         rate_limited_until: provider.rate_limited_until,
         last_synced_at: provider.last_synced_at,
-        events_count: remote_for_provider.synced.count,
+        events_count: remote_for_provider.sync_status_synced.count,
         issues_count: remote_for_provider.where(sync_status: [ :error, :orphaned ]).count
       }
     end
@@ -293,7 +293,7 @@ class TicketingDashboardService
 
   # Retry failed remote events
   def retry_failed!
-    remote_events.error.find_each do |event|
+    remote_events.sync_status_error.find_each do |event|
       event.update!(sync_status: :pending_update)
     end
 

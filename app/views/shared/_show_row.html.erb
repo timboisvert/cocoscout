@@ -411,15 +411,17 @@
             <% end %>
           <% end %>
         <% end %>
-        <% if roles.empty? %>
+        <% if roles.empty? && show.casting_enabled? %>
           <span class="text-sm text-gray-400 pl-2">No roles</span>
         <% end %>
 
-        <%# Sign-up Attendees - with separator %>
+        <%# Sign-up Attendees - with separator if casting is enabled %>
         <% sign_up_regs = cast_summary[:sign_up_registrations] || [] %>
         <% if sign_up_regs.any? %>
-          <%# Separator %>
-          <div class="w-px h-8 bg-gray-300 mx-1"></div>
+          <% if show.casting_enabled? %>
+            <%# Separator - only show if casting is enabled (roles were displayed) %>
+            <div class="w-px h-8 bg-gray-300 mx-1"></div>
+          <% end %>
           <% sign_up_regs.each do |registration| %>
             <%
               person = registration.person

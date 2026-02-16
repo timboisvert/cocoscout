@@ -1,0 +1,69 @@
+<% content_for :title, "Connect Ticketing Provider" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Providers", manage_ticketing_providers_path]
+    ],
+    text: "Connect Provider",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-8">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="p-6 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Choose a Ticketing Platform</h2>
+        <p class="text-sm text-gray-600 mt-1">We'll guide you through connecting your account.</p>
+      </div>
+
+      <div class="divide-y divide-gray-200">
+        <!-- Ticket Tailor -->
+        <%= link_to manage_ticketing_provider_wizard_ticket_tailor_path, class: "group block" do %>
+          <div class="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+            <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+              <img src="https://cdn.tickettailor.com/images/logos/tt-logo-icon.svg" alt="Ticket Tailor" class="w-10 h-10 object-contain" onerror="this.parentElement.innerHTML='<div class=\'w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg\'>TT</div>'">
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-base font-medium text-gray-900 group-hover:text-pink-600">Ticket Tailor</h3>
+              <p class="text-sm text-gray-500">Simple ticketing with low fees</p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400 group-hover:text-pink-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+
+        <!-- Eventbrite -->
+        <%= link_to manage_ticketing_provider_wizard_eventbrite_path, class: "group block" do %>
+          <div class="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+            <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+              <img src="https://www.eventbrite.com/blog/wp-content/uploads/2022/06/Eventbrite-symbol-orange-400.png" alt="Eventbrite" class="w-10 h-10 object-contain" onerror="this.parentElement.innerHTML='<div class=\'w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-lg\'>E</div>'">
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-base font-medium text-gray-900 group-hover:text-pink-600">Eventbrite</h3>
+              <p class="text-sm text-gray-500">The world's largest event platform</p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400 group-hover:text-pink-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="p-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
+        <p class="text-sm text-gray-500 text-center">
+          Don't see your platform? 
+          <a href="mailto:support@cocoscout.com" class="text-pink-600 hover:text-pink-700">Let us know</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 flex justify-start">
+      <%= link_to manage_ticketing_providers_path do %>
+        <%= render "shared/button", text: "← Back to Providers", variant: "ghost", size: "medium" %>
+      <% end %>
+    </div>
+  </div>
+</div>

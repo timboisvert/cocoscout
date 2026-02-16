@@ -10,60 +10,73 @@
     links: []
   } %>
 
-  <%= render "shared/filters/filter_bar",
-      toggle_label: "Filters",
-      filter_groups: [
-        {
-          label: "View",
-          filters: [
+  <%# ========================================= %>
+  <%# Section 1: Scheduled Auditions %>
+  <%# ========================================= %>
+  <%
+    auditions_view_filters = [
+      { text: "Upcoming", path: my_auditions_path(auditions_filter: 'upcoming'), active: @auditions_filter == 'upcoming' },
+      { text: "Past", path: my_auditions_path(auditions_filter: 'past'), active: @auditions_filter == 'past' }
+    ]
+  %>
+  <div class="mb-8">
+    <div class="mb-4">
+      <%= render "shared/filters/filter_bar",
+          toggle_label: "Filters",
+          filter_groups: [
             {
-              text: "Upcoming",
-              path: my_auditions_path(auditions_filter: "upcoming", entity: @entity_filter.join(",")),
-              active: @auditions_filter == "upcoming"
-            },
-            {
-              text: "Past",
-              path: my_auditions_path(auditions_filter: "past", entity: @entity_filter.join(",")),
-              active: @auditions_filter == "past"
+              label: "Show",
+              filters: auditions_view_filters
             }
           ]
-        },
-        { separator: true },
-        {
-          partial: "shared/filters/entity_filter",
-          locals: {
-            path_helper: method(:my_auditions_path),
-            people: @people,
-            groups: @groups,
-            entity_filter: @entity_filter,
-            label: "Include",
-            auditions_filter: @auditions_filter
-          }
-        }
-      ]
-  %>
+      %>
+    </div>
 
     <% if @auditions.any? %>
-
-        <div class="grid grid-cols-1 gap-1 mt-2">
-            <% @auditions.each do |audition| %>
-                <% if audition.audition_session.start_at < Time.current %>
-                    <%= render partial: "audition_past", locals: { audition: audition } %>
-                <% else %>
-                    <%= render partial: "audition_upcoming", locals: { audition: audition } %>
-                <% end %>
-            <% end %>
-        </div>
+      <div class="grid grid-cols-1 gap-1">
+        <% @auditions.each do |audition| %>
+          <% if audition.audition_session.start_at < Time.current %>
+            <%= render partial: "audition_past", locals: { audition: audition } %>
+          <% else %>
+            <%= render partial: "audition_upcoming", locals: { audition: audition } %>
+          <% end %>
+        <% end %>
+      </div>
     <% else %>
-        <p class="text-gray-500 text-sm">
-
-            <% if @auditions_filter == "all" %>
-                You don't have any auditions
-            <% elsif @auditions_filter == "upcoming" %>
-                You don't have any upcoming auditions.
-            <% elsif @auditions_filter == "past" %>
-                You haven't had any auditions.
+      <%# Empty auditions state with dashed border %>
+      <div class="border-2 border-dashed border-gray-200 rounded-lg">
+        <div class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No <%= @auditions_filter == 'past' ? 'past' : 'upcoming' %> auditions</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            <% if @auditions_filter == 'upcoming' %>
+              You don't have any auditions scheduled yet.
+            <% else %>
+              No past auditions found.
             <% end %>
-        </p>
+          </p>
+        </div>
+      </div>
     <% end %>
+  </div>
+
+  <%# ========================================= %>
+  <%# Section 2: Audition Requests & Video Auditions %>
+  <%# ========================================= %>
+  <% if @audition_requests.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Audition Requests" %>
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-4">These are open audition requests you've submitted. You'll be notified when audition times are scheduled.</p>
+
+        <div class="space-y-1">
+          <% @audition_requests.each do |audition_request| %>
+            <%= render partial: "audition_request", locals: { audition_request: audition_request } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>

@@ -41,7 +41,9 @@ module My
         auditionable_params << selected_group_ids
       end
 
-      # Batch query for all auditions
+      # ========================================
+      # SCHEDULED AUDITIONS (have audition session)
+      # ========================================
       @auditions = if auditionable_conditions.any?
                      Audition
                        .includes(:audition_session, :audition_request)
@@ -86,6 +88,71 @@ module My
         end
 
         @audition_entities[audition.id] = entities if entities.any?
+      end
+
+      # ========================================
+      # AUDITION REQUESTS (pending, not yet scheduled)
+      # ========================================
+      requestable_conditions = []
+      requestable_params = []
+
+      if selected_person_ids.any?
+        requestable_conditions << "(requestable_type = 'Person' AND requestable_id IN (?))"
+        requestable_params << selected_person_ids
+      end
+
+      if selected_group_ids.any?
+        requestable_conditions << "(requestable_type = 'Group' AND requestable_id IN (?))"
+        requestable_params << selected_group_ids
+      end
+
+      @audition_requests = if requestable_conditions.any?
+                             AuditionRequest
+                               .active
+                               .eager_load(audition_cycle: :production)
+                               .where(requestable_conditions.join(" OR "), *requestable_params)
+                               .to_a
+      else
+                             []
+      end
+
+      # Only show open audition requests (form reviewed, active)
+      # Also filter out requests where casting was finalized more than 30 days ago
+      thirty_days_ago = 30.days.ago
+      @audition_requests = @audition_requests.select do |req|
+        cycle = req.audition_cycle
+        next false unless cycle.active && cycle.form_reviewed
+        next false if cycle.closes_at.present? && cycle.closes_at <= Time.current
+
+        # If casting was finalized more than 30 days ago, don't show
+        if cycle.casting_finalized_at.present? && cycle.casting_finalized_at < thirty_days_ago
+          next false
+        end
+
+        true
+      end
+
+      # Sort by closes_at (soonest first)
+      @audition_requests = @audition_requests.sort_by do |req|
+        req.audition_cycle.closes_at || Time.new(9999)
+      end
+
+      # Build audition request entities mapping for headshot display
+      @audition_request_entities = {}
+      @audition_requests.each do |audition_request|
+        entities = []
+
+        if audition_request.requestable_type == "Person" && selected_person_ids.include?(audition_request.requestable_id)
+          person = people_by_id[audition_request.requestable_id]
+          entities << { type: "person", entity: person } if person
+        end
+
+        if audition_request.requestable_type == "Group" && selected_group_ids.include?(audition_request.requestable_id)
+          group = groups_by_id[audition_request.requestable_id]
+          entities << { type: "group", entity: group } if group
+        end
+
+        @audition_request_entities[audition_request.id] = entities if entities.any?
       end
     end
   end

@@ -1,0 +1,105 @@
+<%#
+  Audition Request Row - displays a pending audition request
+  Styled with left/right segmentation like show_row
+  
+  Required params:
+    - audition_request: AuditionRequest object
+%>
+
+<%
+  cycle = audition_request.audition_cycle
+  production = cycle.production
+  is_open = cycle.editable_by_talent?
+%>
+
+<div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200">
+  <%# Left Section: Production logo + details (1/3 width like show_row) %>
+  <div class="w-full md:w-1/3 flex items-center gap-4">
+    <%# Production Logo or Icon %>
+    <div class="flex-shrink-0 w-14 h-14 flex items-center justify-center">
+      <% logo_variant = production.safe_logo_variant(:small) %>
+      <% if logo_variant %>
+        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-14 h-14 object-contain rounded-lg" %>
+      <% else %>
+        <div class="w-14 h-14 rounded-lg <%= cycle.video_only? ? 'bg-purple-100' : 'bg-pink-100' %> flex items-center justify-center">
+          <% if cycle.video_only? %>
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          <% else %>
+            <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Details %>
+    <div class="flex-1 min-w-0">
+      <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
+      <div class="text-xs text-gray-400 flex items-center gap-1 mt-0.5 flex-wrap">
+        <span><%= cycle.video_only? ? "Video Audition" : "Audition Request" %></span>
+        <% if cycle.closes_at.present? %>
+          <span class="text-gray-300">&bull;</span>
+          <% if cycle.closes_at > Time.current %>
+            <span class="<%= cycle.closes_at < 2.days.from_now ? 'text-amber-600' : '' %>">
+              Closes <%= distance_of_time_in_words_to_now(cycle.closes_at) %>
+            </span>
+          <% else %>
+            <span class="text-gray-400">Closed</span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Right Section: Status & Actions (2/3 width with left border like show_row) %>
+  <div class="w-full md:w-2/3 md:border-l border-gray-200 md:pl-4 flex items-center gap-3 border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+    <%# Entity headshots if multiple profiles %>
+    <% if @groups&.any? && @audition_request_entities&.dig(audition_request.id).present? %>
+      <% @audition_request_entities[audition_request.id].each do |entity_info| %>
+        <% headshot = entity_info[:entity].safe_headshot_variant(:thumb) %>
+        <% if headshot %>
+          <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", alt: entity_info[:entity].try(:preferred_name) || entity_info[:entity].name %>
+        <% else %>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+            <%= entity_info[:entity].initials %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%# Status section - always use the helper which handles all cases %>
+    <div class="flex-shrink-0">
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Status</div>
+      <% if cycle.video_only? %>
+        <%= video_audition_status_name(audition_request) %>
+      <% else %>
+        <%= in_person_signup_status_name(audition_request) %>
+      <% end %>
+      <%
+        # Can edit if: cycle is open, no audition scheduled, and no casting decision made
+        has_audition = audition_request.auditions.exists?
+        has_casting_decision = cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
+        can_edit = is_open && !has_audition && !has_casting_decision
+      %>
+      <% if can_edit %>
+        <%
+          edit_url = if @groups&.any?
+            my_submit_audition_request_form_path(
+              cycle.token,
+              requestable_type: audition_request.requestable_type,
+              requestable_id: audition_request.requestable_id
+            )
+          else
+            my_submit_audition_request_form_path(cycle.token)
+          end
+        %>
+        <div class="mt-1">
+          <%= link_to "Edit", edit_url, class: "text-xs text-pink-600 hover:text-pink-700 hover:underline" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

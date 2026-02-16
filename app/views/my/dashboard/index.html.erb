@@ -137,7 +137,7 @@
 
   <!-- Open Sign-ups -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Open Sign-ups", links: [{ text: "My Sign-ups", path: my_sign_ups_path(requests_filter: :open) }] %>
+    <%= render "shared/card_header", title: "Open Sign-ups", links: [{ text: "My Open Requests", path: my_requests_path }] %>
     <div class="p-4">
       <% if @open_signups_combined.any? %>
         <div class="space-y-2">
@@ -337,7 +337,7 @@
 
   <!-- Open Questionnaires -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Open Questionnaires", links: [{ text: "My Questionnaires", path: my_questionnaires_path }] %>
+    <%= render "shared/card_header", title: "Open Questionnaires", links: [{ text: "My Open Requests", path: my_requests_path }] %>
     <div class="p-4">
       <% if @pending_questionnaire_entities.any? %>
         <div class="space-y-1">
@@ -346,7 +346,7 @@
             <% entity = item[:entity] %>
             <% production = questionnaire.production %>
             <div class="flex items-start p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">
-              <%= link_to my_questionnaires_path, class: "flex-1 min-w-0 no-underline" do %>
+              <%= link_to my_requests_path, class: "flex-1 min-w-0 no-underline" do %>
                 <p class="font-bold text-sm"><%= production.name %></p>
                 <div class="text-xs text-gray-600 mt-1">
                   <%= questionnaire.title %>

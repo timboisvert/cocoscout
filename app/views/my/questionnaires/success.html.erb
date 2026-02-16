@@ -31,14 +31,14 @@
 
     <!-- Back to Dashboard -->
     <div class="text-center mt-8">
-      <%= link_to "Back to My Questionnaires", my_questionnaires_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
+      <%= link_to "Back to Open Requests", my_requests_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
     </div>
 
   </div>
 
   <!-- Coco Link -->
   <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
-    <%= link_to my_questionnaires_path do %>
+    <%= link_to my_requests_path do %>
       <%= render "shared/cocoscout_logo", size: :small, class: "mr-5" %>
     <% end %>
   </div>

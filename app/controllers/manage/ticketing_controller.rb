@@ -27,12 +27,15 @@ module Manage
       @metrics = calculate_aggregate_metrics(@show_ticketings)
 
       # Issue counts for display
+      # Include shows with ShowTicketing but missing proper provider listings
+      shows_missing_listings = @show_ticketings.select { |st| st.ticket_listings.empty? }.count
+
       @issue_counts = {
-        total: @dashboard.total_issue_count,
-        missing_listings: @dashboard_data[:issues][:missing_listings].count,
+        total: @dashboard.total_issue_count + shows_missing_listings,
+        missing_listings: @dashboard_data[:issues][:missing_listings].count + shows_missing_listings,
         sync_failed: @dashboard_data[:issues][:sync_failed].count,
         auth_expired: @dashboard_data[:issues][:auth_expired].count,
-        manual_required: @dashboard_data[:issues][:manual_action_required].count
+        setup_incomplete: @dashboard_data[:issues][:setup_incomplete].count
       }
     end
 

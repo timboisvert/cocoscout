@@ -22,6 +22,26 @@ module MyHelper
 
   def in_person_signup_status_name(audition_request)
     cycle = audition_request.audition_cycle
+    requestable = audition_request.requestable
+
+    # If casting has been finalized, show the final casting decision
+    if cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
+      # Check if they were cast or rejected via CastAssignmentStage
+      cast_stage = CastAssignmentStage.find_by(
+        audition_cycle_id: cycle.id,
+        assignable_type: requestable.class.name,
+        assignable_id: requestable.id
+      )
+
+      if cast_stage&.decision_type == "cast"
+        return CAST_SPOT_OFFERED_BADGE.html_safe
+      elsif cast_stage&.decision_type == "rejected"
+        return NO_CAST_SPOT_OFFERED_BADGE.html_safe
+      end
+
+      # No cast stage record means not cast
+      return NO_CAST_SPOT_OFFERED_BADGE.html_safe
+    end
 
     # If cycle is archived (not active)
     unless cycle.active
@@ -37,8 +57,8 @@ module MyHelper
       return NO_AUDITION_OFFERED_BADGE.html_safe
     end
 
-    # If audition invitations haven't been finalized, show review status
-    if cycle.finalize_audition_invitations != true
+    # If audition invitations haven't been finalized, OR request was submitted after finalization, show review status
+    if cycle.finalize_audition_invitations != true || audition_request.created_at > cycle.updated_at
       # Check if anyone has voted on this request - if so, show "In Review"
       if audition_request.audition_request_votes.exists?
         return IN_REVIEW_BADGE.html_safe
@@ -57,6 +77,23 @@ module MyHelper
 
   def in_person_signup_status_text(audition_request)
     cycle = audition_request.audition_cycle
+    requestable = audition_request.requestable
+
+    # If casting has been finalized, show the final casting decision
+    if cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
+      # Check if they were cast or rejected via CastAssignmentStage
+      cast_stage = CastAssignmentStage.find_by(
+        audition_cycle_id: cycle.id,
+        assignable_type: requestable.class.name,
+        assignable_id: requestable.id
+      )
+
+      if cast_stage&.decision_type == "cast"
+        return CAST_SPOT_OFFERED_TEXT
+      else
+        return NO_CAST_SPOT_OFFERED_TEXT
+      end
+    end
 
     # If cycle is archived (not active)
     unless cycle.active
@@ -73,8 +110,8 @@ module MyHelper
       end
     end
 
-    # If audition invitations haven't been finalized, show review status
-    if cycle.finalize_audition_invitations != true
+    # If audition invitations haven't been finalized, OR request was submitted after finalization, show review status
+    if cycle.finalize_audition_invitations != true || audition_request.created_at > cycle.updated_at
       # Check if anyone has voted on this request
       if audition_request.audition_request_votes.exists?
         return AUDITION_IN_REVIEW_TEXT
@@ -117,8 +154,8 @@ module MyHelper
       return NO_CAST_SPOT_OFFERED_BADGE.html_safe
     end
 
-    # If casting hasn't been finalized, show review status
-    if cycle.casting_finalized_at.blank?
+    # If casting hasn't been finalized, OR if request was submitted after finalization, show review status
+    if cycle.casting_finalized_at.blank? || audition_request.created_at > cycle.casting_finalized_at
       # Check if anyone has voted on this request - if so, show "In Review"
       if audition_request.audition_request_votes.exists?
         return IN_REVIEW_BADGE.html_safe
@@ -156,8 +193,8 @@ module MyHelper
       return NO_CAST_SPOT_OFFERED_TEXT
     end
 
-    # If casting hasn't been finalized, show review status
-    if cycle.casting_finalized_at.blank?
+    # If casting hasn't been finalized, OR if request was submitted after finalization, show review status
+    if cycle.casting_finalized_at.blank? || audition_request.created_at > cycle.casting_finalized_at
       # Check if anyone has voted on this request
       if audition_request.audition_request_votes.exists?
         return CAST_IN_REVIEW_TEXT

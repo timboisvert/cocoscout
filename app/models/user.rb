@@ -37,6 +37,85 @@ class User < ApplicationRecord
     message_subscriptions.active.sum(:unread_count)
   end
 
+  # Count of open requests needing user's attention:
+  # - Unanswered availability requests (shows not tied to sign-up forms)
+  # - Unanswered sign-up opportunities (shows with sign-up forms, not yet registered or declined)
+  # - Open questionnaires (invited but not yet responded)
+  def open_requests_count
+    return 0 unless person
+
+    person_ids = people.active.pluck(:id)
+    return 0 if person_ids.empty?
+
+    count = 0
+
+    # Get all upcoming shows from talent pools
+    show_ids = Show.joins(production: { talent_pools: :people })
+                   .where(people: { id: person_ids })
+                   .where.not(canceled: true)
+                   .where("date_and_time > ?", Time.current)
+                   .pluck(:id)
+                   .uniq
+
+    if show_ids.any?
+      # Shows with open sign-up forms (exclude archived forms)
+      shows_with_signup = SignUpFormInstance.joins(:sign_up_form)
+                                            .where(show_id: show_ids)
+                                            .where(status: %w[scheduled open])
+                                            .where(sign_up_forms: { archived_at: nil })
+                                            .pluck(:show_id)
+                                            .to_set
+
+      # Get existing availabilities for these shows
+      availability_show_ids = ShowAvailability.where(show_id: show_ids)
+                                              .where(available_entity_type: "Person", available_entity_id: person_ids)
+                                              .pluck(:show_id)
+                                              .to_set
+
+      # Get existing registrations for shows with sign-up forms
+      # Join through slot -> instance -> show since some registrations have nil sign_up_form_instance_id
+      registration_show_ids = SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
+                                                .where(shows: { id: show_ids })
+                                                .where(person_id: person_ids)
+                                                .where.not(status: "cancelled")
+                                                .pluck("shows.id")
+                                                .to_set
+
+      # Count unanswered availability requests (shows without sign-up forms and no availability)
+      show_ids.each do |show_id|
+        if shows_with_signup.include?(show_id)
+          # Sign-up show: count if not registered and not declined
+          count += 1 unless registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id)
+        else
+          # Availability show: count if no availability response
+          count += 1 unless availability_show_ids.include?(show_id)
+        end
+      end
+    end
+
+    # Count open questionnaires
+    questionnaire_ids = QuestionnaireInvitation.where(invitee_type: "Person", invitee_id: person_ids)
+                                               .pluck(:questionnaire_id)
+                                               .uniq
+
+    if questionnaire_ids.any?
+      responded_questionnaire_ids = QuestionnaireResponse.where(respondent_type: "Person", respondent_id: person_ids)
+                                                         .where(questionnaire_id: questionnaire_ids)
+                                                         .pluck(:questionnaire_id)
+                                                         .to_set
+
+      open_questionnaires = Questionnaire.where(id: questionnaire_ids)
+                                         .where(archived_at: nil)
+                                         .where(accepting_responses: true)
+                                         .where.not(id: responded_questionnaire_ids)
+                                         .count
+
+      count += open_questionnaires
+    end
+
+    count
+  end
+
   # Get root messages for threads user is subscribed to
   def subscribed_message_threads
     Message.where(id: message_subscriptions.active.pluck(:message_id))

@@ -70,8 +70,8 @@
             # For third-party: show rental and services
             services = show.production.contract&.draft_services || []
             cast_summary = nil
-          else
-            # For in-house: show cast summary
+          elsif show.casting_enabled?
+            # For in-house with casting enabled: show cast summary with roles and sign-ups
             assignments = @assignments_by_show[show.id] || []
             roles = @roles_by_show[show.id] || []
             cant_make_it = @cant_make_it_by_show[show.id] || {}
@@ -84,6 +84,29 @@
               sign_up_registrations: sign_up_regs
             }
             services = nil
+          else
+            # Casting disabled: still show sign-ups but no roles
+            sign_up_regs = @sign_up_registrations_by_show[show.id] || []
+            if sign_up_regs.any?
+              cast_summary = {
+                roles: [],
+                assignments_by_role: {},
+                cant_make_it_by_assignment: {},
+                sign_up_registrations: sign_up_regs
+              }
+            else
+              cast_summary = nil
+            end
+            services = nil
+          end
+
+          # Determine right panel type
+          right_panel_type = if is_third_party
+            :rental_services
+          elsif show.casting_enabled? || cast_summary.present?
+            :cast_summary
+          else
+            nil
           end
         %>
         <%= render partial: "shared/show_row", locals: {
@@ -94,7 +117,7 @@
           show_linked: true,
           show_location: true,
           show_production: true,
-          right_panel: is_third_party ? :rental_services : :cast_summary,
+          right_panel: right_panel_type,
           cast_summary: cast_summary,
           services: services
         } %>

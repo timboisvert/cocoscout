@@ -1,0 +1,180 @@
+<% content_for :title, "Test Connection" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path],
+      ["Providers", manage_ticketing_providers_path],
+      ["Connect", manage_ticketing_provider_wizard_select_path]
+    ],
+    text: "Test Connection",
+    links: []
+  } %>
+
+  <div class="max-w-3xl mx-auto mt-8">
+    <!-- Progress indicator -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center gap-4">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <span class="text-sm text-gray-500">Select Platform</span>
+        </div>
+        <div class="w-8 h-px bg-gray-300"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <span class="text-sm text-gray-500">Enter Credentials</span>
+        </div>
+        <div class="w-8 h-px bg-gray-300"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <span class="text-sm text-gray-500">Configure Webhooks</span>
+        </div>
+        <div class="w-8 h-px bg-gray-300"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-pink-600 text-white flex items-center justify-center text-sm font-medium">4</div>
+          <span class="text-sm font-medium text-pink-600">Test & Complete</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+      <% if @test_result.nil? %>
+        <!-- Initial state - show test button -->
+        <div class="w-20 h-20 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular mb-2">Ready to Test</h2>
+        <p class="text-gray-600 mb-6 max-w-md mx-auto">
+          Let's verify that CocoScout can connect to your <%= @provider.provider_type == "ticket_tailor" ? "Ticket Tailor" : "Eventbrite" %> account using the credentials you provided.
+        </p>
+
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-6 max-w-md mx-auto text-left">
+          <h4 class="text-sm font-medium text-gray-700 mb-2">Connection Details</h4>
+          <dl class="text-sm space-y-1">
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Name:</dt>
+              <dd class="font-medium text-gray-900"><%= @provider.name %></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Platform:</dt>
+              <dd class="font-medium text-gray-900"><%= @provider.provider_type.titleize.gsub("_", " ") %></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">API Key:</dt>
+              <dd class="font-mono text-gray-900"><%= @provider.api_key&.first(8) %>•••</dd>
+            </div>
+            <% if @provider.webhook_secret.present? %>
+              <div class="flex justify-between">
+                <dt class="text-gray-500">Webhook Secret:</dt>
+                <dd class="text-green-600 font-medium">✓ Configured</dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+
+        <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, class: "inline" do %>
+          <%= render "shared/button", text: "Test Connection", variant: "primary", size: "large", type: :submit %>
+        <% end %>
+
+      <% elsif @test_result[:success] %>
+        <!-- Success state -->
+        <div class="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-green-900 coustard-regular mb-2">Connection Successful!</h2>
+        <p class="text-gray-600 mb-6 max-w-md mx-auto">
+          CocoScout is now connected to your <%= @provider.provider_type == "ticket_tailor" ? "Ticket Tailor" : "Eventbrite" %> account.
+          You can start listing events and syncing ticket sales.
+        </p>
+
+        <% if @test_result[:events_count] %>
+          <div class="bg-green-50 rounded-lg border border-green-200 p-4 mb-6 max-w-md mx-auto text-left">
+            <h4 class="text-sm font-medium text-green-800 mb-2">Account Info</h4>
+            <dl class="text-sm space-y-1">
+              <% if @test_result[:organization_name] %>
+                <div class="flex justify-between">
+                  <dt class="text-green-700">Organization:</dt>
+                  <dd class="font-medium text-green-900"><%= @test_result[:organization_name] %></dd>
+                </div>
+              <% end %>
+              <div class="flex justify-between">
+                <dt class="text-green-700">Events Found:</dt>
+                <dd class="font-medium text-green-900"><%= @test_result[:events_count] %></dd>
+              </div>
+            </dl>
+          </div>
+        <% end %>
+
+        <%= link_to manage_ticketing_provider_wizard_complete_path do %>
+          <%= render "shared/button", text: "Complete Setup →", variant: "primary", size: "large" %>
+        <% end %>
+
+      <% else %>
+        <!-- Error state -->
+        <div class="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-red-900 coustard-regular mb-2">Connection Failed</h2>
+        <p class="text-gray-600 mb-4 max-w-md mx-auto">
+          We couldn't connect to your account. Please check your credentials and try again.
+        </p>
+
+        <div class="bg-red-50 rounded-lg border border-red-200 p-4 mb-6 max-w-md mx-auto text-left">
+          <h4 class="text-sm font-medium text-red-800 mb-2">Error Details</h4>
+          <p class="text-sm text-red-700 font-mono"><%= @test_result[:error] %></p>
+        </div>
+
+        <div class="flex items-center justify-center gap-4">
+          <% if @provider.provider_type == "ticket_tailor" %>
+            <%= link_to manage_ticketing_provider_wizard_ticket_tailor_path do %>
+              <%= render "shared/button", text: "← Edit Credentials", variant: "outline", size: "medium" %>
+            <% end %>
+          <% else %>
+            <%= link_to manage_ticketing_provider_wizard_eventbrite_path do %>
+              <%= render "shared/button", text: "← Edit Credentials", variant: "outline", size: "medium" %>
+            <% end %>
+          <% end %>
+
+          <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, class: "inline" do %>
+            <%= render "shared/button", text: "Try Again", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-6 flex justify-between items-center">
+      <%= link_to manage_ticketing_provider_wizard_configure_webhooks_path do %>
+        <%= render "shared/button", text: "← Back", variant: "ghost", size: "medium" %>
+      <% end %>
+
+      <% if @test_result&.dig(:success) %>
+        <!-- Already have continue button above -->
+      <% else %>
+        <button type="button" 
+                onclick="window.location.href='<%= manage_ticketing_provider_wizard_complete_path %>'"
+                class="text-sm text-gray-500 hover:text-gray-700">
+          Skip test and complete →
+        </button>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -48,8 +48,8 @@
             <% if @issue_counts[:auth_expired] > 0 %>
               <span><%= @issue_counts[:auth_expired] %> auth expired</span>
             <% end %>
-            <% if @issue_counts[:manual_required] > 0 %>
-              <span><%= @issue_counts[:manual_required] %> need manual action</span>
+            <% if @issue_counts[:setup_incomplete] > 0 %>
+              <span><%= @issue_counts[:setup_incomplete] %> setups incomplete</span>
             <% end %>
           </div>
           <div class="mt-3 flex gap-2">
@@ -137,7 +137,7 @@
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
         <p class="text-gray-600 mb-3">No ticketing providers connected yet.</p>
         <%= link_to manage_new_ticketing_provider_path do %>
-          <%= render "shared/button", text: "Connect Provider", variant: "primary", size: "small" %>
+          <%= render "shared/button", text: "Connect Provider", variant: "primary", size: "medium" %>
         <% end %>
       </div>
     <% end %>

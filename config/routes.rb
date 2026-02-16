@@ -187,14 +187,21 @@ Rails.application.routes.draw do
     get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",               as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
-    get   "/availability",                  to: "availability#index",       as: "availability"
+    # Open Requests (consolidated: availability + sign-ups + questionnaires)
+    get   "/requests",                      to: "open_requests#index",      as: "requests"
+    patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
+    post  "/requests/signup/:show_id",      to: "open_requests#sign_up",    as: "request_sign_up"
+    post  "/requests/decline/:show_id",     to: "open_requests#decline_signup", as: "request_decline_signup"
+
+    # Legacy availability routes - redirect index to open requests, keep update for existing forms
+    get   "/availability",                  to: redirect("/my/requests"), as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     patch "/availability/:show_id/note",    to: "availability#update_note",  as: "update_availability_note"
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
-    get   "/signups",                       to: "sign_ups#index",           as: "sign_ups"
-    get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
+    get   "/signups",                       to: redirect("/my/requests"), as: "sign_ups"
+    get   "/questionnaires",                to: redirect("/my/requests"), as: "questionnaires"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -1046,9 +1053,21 @@ Rails.application.routes.draw do
     post   "ticketing/setup/create",          to: "ticketing_setup_wizard#create_setup",    as: "ticketing_setup_wizard_create"
     delete "ticketing/setup/cancel",          to: "ticketing_setup_wizard#cancel",          as: "ticketing_setup_wizard_cancel"
 
+    # Ticketing Provider Wizard (must be before :id routes)
+    get "ticketing/providers/wizard/select", to: "ticketing_provider_wizard#select_provider", as: "ticketing_provider_wizard_select"
+    get "ticketing/providers/wizard/ticket-tailor", to: "ticketing_provider_wizard#ticket_tailor_credentials", as: "ticketing_provider_wizard_ticket_tailor"
+    post "ticketing/providers/wizard/ticket-tailor", to: "ticketing_provider_wizard#save_ticket_tailor_credentials"
+    get "ticketing/providers/wizard/eventbrite", to: "ticketing_provider_wizard#eventbrite_credentials", as: "ticketing_provider_wizard_eventbrite"
+    post "ticketing/providers/wizard/eventbrite", to: "ticketing_provider_wizard#save_eventbrite_credentials"
+    get "ticketing/providers/wizard/webhooks", to: "ticketing_provider_wizard#configure_webhooks", as: "ticketing_provider_wizard_configure_webhooks"
+    post "ticketing/providers/wizard/webhooks", to: "ticketing_provider_wizard#save_webhooks"
+    get "ticketing/providers/wizard/test", to: "ticketing_provider_wizard#test_connection", as: "ticketing_provider_wizard_test_connection"
+    post "ticketing/providers/wizard/test", to: "ticketing_provider_wizard#run_test", as: "ticketing_provider_wizard_run_test"
+    get "ticketing/providers/wizard/complete", to: "ticketing_provider_wizard#complete", as: "ticketing_provider_wizard_complete"
+
     # Ticketing Providers (integration settings)
     get "ticketing/providers", to: "ticketing_providers#index", as: "ticketing_providers"
-    get "ticketing/providers/new", to: "ticketing_providers#new", as: "new_ticketing_provider"
+    get "ticketing/providers/new", to: "ticketing_provider_wizard#select_provider", as: "new_ticketing_provider"
     post "ticketing/providers", to: "ticketing_providers#create", as: "create_ticketing_provider"
     get "ticketing/providers/:id", to: "ticketing_providers#show", as: "ticketing_provider"
     get "ticketing/providers/:id/edit", to: "ticketing_providers#edit", as: "edit_ticketing_provider"

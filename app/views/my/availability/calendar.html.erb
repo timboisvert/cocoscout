@@ -4,13 +4,13 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-        ["My Availability", my_availability_path]
+        ["My Open Requests", my_requests_path]
     ],
     text: "Calendar",
     links: [
       {
         text: "List",
-        path: my_availability_path,
+        path: my_requests_path,
         icon: "list"
       }
     ]
