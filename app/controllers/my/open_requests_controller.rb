@@ -34,12 +34,19 @@ module My
       load_shows_data(selected_person_ids, selected_group_ids, people_by_id, groups_by_id)
 
       # ========================================
+      # Section 1b: Non-event Sign-ups (shared_pool forms)
+      # ========================================
+      load_non_event_signups(selected_person_ids, people_by_id)
+
+      # ========================================
       # Section 2: Questionnaires
       # ========================================
       load_questionnaires_data(selected_person_ids, people_by_id)
 
-      # Check if user has any productions (for showing filter bar)
-      @has_any_productions = @availability_items.any? || @signup_items.any? || @questionnaire_items.any?
+      # Check if user is part of any productions (for showing content even when filtered results are empty)
+      productions_exist = Production.joins(talent_pools: :people).where(people: { id: people_ids }).exists?
+      groups_in_productions = @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
+      @has_any_productions = productions_exist || groups_in_productions
 
       # Calculate badge counts for navigation
       @total_open_count = @availability_items.count { |i| i[:availability].nil? } +
@@ -104,10 +111,14 @@ module My
         return redirect_to my_requests_path, alert: "Sign-up is not currently open for this event."
       end
 
-      # Create or find registration
-      # For simple capacity forms, we register directly to the instance
-      # For slot-based forms, we need to find an available slot
-      slot = instance.sign_up_slots.where("current_registrations < capacity").order(:position).first
+      # Helper to check if slot has capacity
+      slot_has_capacity = ->(s) {
+        current = s.sign_up_registrations.where(status: %w[confirmed waitlisted]).count
+        current < (s.capacity || 1)
+      }
+
+      # Find first available slot
+      slot = instance.sign_up_slots.order(:position).find { |s| slot_has_capacity.call(s) }
 
       if slot.nil? && instance.sign_up_form.slot_generation_mode != "simple_capacity"
         return redirect_to my_requests_path, alert: "No spots available for this event."
@@ -120,11 +131,17 @@ module My
       )
 
       if registration.new_record?
-        registration.status = slot&.has_capacity? ? "confirmed" : "waitlisted"
+        registration.status = slot_has_capacity.call(slot) ? "confirmed" : "waitlisted"
+        registration.registered_at = Time.current
+        registration.position = slot.sign_up_registrations.maximum(:position).to_i + 1
         registration.save!
-
-        # Update slot count if applicable
-        slot&.increment!(:current_registrations)
+      elsif registration.status == "cancelled"
+        # Re-activate cancelled registration
+        registration.update!(
+          status: slot_has_capacity.call(slot) ? "confirmed" : "waitlisted",
+          registered_at: Time.current,
+          cancelled_at: nil
+        )
       end
 
       respond_to do |format|
@@ -135,6 +152,7 @@ module My
             locals: { item: build_signup_item(show, person, instance, registration) }
           )
         end
+        format.json { render json: { status: "signed_up" } }
         format.html { redirect_to my_requests_path, notice: "You've been signed up!" }
       end
     end
@@ -147,8 +165,8 @@ module My
         return render json: { error: "Not authorized" }, status: :forbidden
       end
 
-      # Find any existing registration for this show
-      registration = SignUpRegistration.joins(sign_up_form_instance: :show)
+      # Find any existing registration for this show (via slot -> instance -> show)
+      registration = SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
                                        .where(shows: { id: show.id })
                                        .where(person_id: person.id)
                                        .where.not(status: "cancelled")
@@ -156,8 +174,7 @@ module My
 
       if registration
         # Cancel existing registration
-        registration.update!(status: "cancelled")
-        registration.sign_up_slot&.decrement!(:current_registrations)
+        registration.update!(status: "cancelled", cancelled_at: Time.current)
       end
 
       # Create a declined availability record to track they said no
@@ -180,6 +197,7 @@ module My
             locals: { item: build_signup_item(show, person, instance, nil, declined: true) }
           )
         end
+        format.json { render json: { status: "declined" } }
         format.html { redirect_to my_requests_path, notice: "You've declined this sign-up." }
       end
     end
@@ -282,7 +300,7 @@ module My
                                               .where(person_id: selected_person_ids)
                                               .where.not(status: "cancelled")
                                               .includes(sign_up_slot: :sign_up_form_instance)
-                                              .index_by { |r| [r.sign_up_slot.sign_up_form_instance.show_id, r.person_id] }
+                                              .index_by { |r| [ r.sign_up_slot.sign_up_form_instance.show_id, r.person_id ] }
       else
                             {}
       end
@@ -302,12 +320,12 @@ module My
           next unless entity_type == "Person"
 
           instance = show.sign_up_form_instances.find { |i| %w[scheduled open].include?(i.status) }
-          registration = all_registrations[[show.id, entity.id]]
+          registration = all_registrations[[ show.id, entity.id ]]
 
           @signup_items << build_signup_item(show, entity, instance, registration)
         else
           # This is an availability show
-          availability = all_availabilities[[show.id, entity_type, entity.id]]
+          availability = all_availabilities[[ show.id, entity_type, entity.id ]]
           @availability_items << build_availability_item(show, entity, availability, entity_type:, entity_key:)
         end
       end
@@ -321,6 +339,45 @@ module My
       # Sort by date
       @availability_items.sort_by! { |i| i[:show].date_and_time }
       @signup_items.sort_by! { |i| i[:show].date_and_time }
+    end
+
+    def load_non_event_signups(selected_person_ids, people_by_id)
+      @non_event_signups = []
+
+      return unless selected_person_ids.any?
+
+      # We only show non-event sign-ups when filter is "all"
+      return if @filter == "awaiting"
+
+      # Get sign-up registrations from shared_pool forms (not tied to specific events)
+      registrations = SignUpRegistration
+        .eager_load(sign_up_slot: { sign_up_form_instance: :show, sign_up_form: :production })
+        .where(person_id: selected_person_ids)
+        .where.not(status: "cancelled")
+        .to_a
+        .select do |reg|
+          form = reg.sign_up_slot&.sign_up_form
+          next false unless form&.shared_pool? && !form.archived? && form.active?
+          # Only include if form is still accepting or has active registrations
+          form.status_service&.accepting_registrations? || reg.status == "confirmed"
+        end
+
+      # Group by form
+      registrations_by_form = registrations.group_by { |r| r.sign_up_slot&.sign_up_form }
+
+      registrations_by_form.each do |form, regs|
+        next unless form
+
+        @non_event_signups << {
+          form: form,
+          production: form.production,
+          registrations: regs,
+          people: regs.map { |r| people_by_id[r.person_id] }.compact.uniq
+        }
+      end
+
+      # Sort by form name
+      @non_event_signups.sort_by! { |item| item[:form].name.downcase }
     end
 
     def load_questionnaires_data(selected_person_ids, people_by_id)
@@ -378,7 +435,7 @@ module My
 
       ShowAvailability.where(show_id: show_ids)
                       .where(conditions.join(" OR "), *params)
-                      .index_by { |a| [a.show_id, a.available_entity_type, a.available_entity_id] }
+                      .index_by { |a| [ a.show_id, a.available_entity_type, a.available_entity_id ] }
     end
 
     def build_availability_item(show, entity, availability, entity_type: nil, entity_key: nil)
@@ -396,13 +453,19 @@ module My
     end
 
     def build_signup_item(show, person, instance, registration, declined: false)
-      # Check if they declined via availability
-      declined ||= ShowAvailability.exists?(
-        show_id: show.id,
-        available_entity_type: "Person",
-        available_entity_id: person.id,
-        status: "no"
-      )
+      # Check if they declined via availability OR cancelled signup registration
+      unless declined
+        declined = ShowAvailability.exists?(
+          show_id: show.id,
+          available_entity_type: "Person",
+          available_entity_id: person.id,
+          status: "no"
+        ) || SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
+                               .where(shows: { id: show.id })
+                               .where(person_id: person.id)
+                               .where(status: "cancelled")
+                               .exists?
+      end
 
       {
         type: :signup,

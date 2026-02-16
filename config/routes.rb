@@ -192,6 +192,8 @@ Rails.application.routes.draw do
     patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
     post  "/requests/signup/:show_id",      to: "open_requests#sign_up",    as: "request_sign_up"
     post  "/requests/decline/:show_id",     to: "open_requests#decline_signup", as: "request_decline_signup"
+    post  "/requests/pool_signup/:form_id", to: "open_requests#pool_signup", as: "request_pool_signup"
+    delete "/requests/pool_signup/:form_id", to: "open_requests#pool_unsignup", as: "request_pool_unsignup"
 
     # Legacy availability routes - redirect index to open requests, keep update for existing forms
     get   "/availability",                  to: redirect("/my/requests"), as: "availability"

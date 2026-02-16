@@ -7,13 +7,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "My Open Requests",
-    links: [
-      {
-        text: "Calendar",
-        path: my_availability_calendar_path,
-        icon: "calendar"
-      }
-    ]
+    links: []
   } %>
 
   <% if @has_any_productions %>
@@ -47,12 +41,19 @@
         %>
       </div>
 
-      <% if @signup_items.any? %>
+      <% has_any_signups = @signup_items.any? || @non_event_signups.any? %>
+      <% if has_any_signups %>
         <div class="space-y-1">
+          <%# Event-based sign-ups %>
           <% @signup_items.each do |item| %>
             <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
               <%= render partial: "my/open_requests/request_item", locals: { item: item } %>
             </div>
+          <% end %>
+
+          <%# Non-event sign-ups (waitlists, shared pools) %>
+          <% @non_event_signups.each do |item| %>
+            <%= render partial: "my/open_requests/non_event_signup", locals: { item: item } %>
           <% end %>
         </div>
       <% else %>
@@ -72,37 +73,37 @@
   <%# ========================================= %>
   <%# Section 2: Availability Requests %>
   <%# ========================================= %>
-  <% if @availability_items.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Availability" %>
-      <div class="p-4">
-        <p class="text-sm text-gray-600 mb-4">Let your production managers know if you can make these shows.</p>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <%= render "shared/card_header", title: "Availability", links: [{ text: "Availability Calendar", path: my_availability_calendar_path }] %>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-4">Let your production managers know if you can make these shows.</p>
 
-        <%# Filter bar inside card %>
-        <div class="mb-4">
-          <%= render "shared/filters/filter_bar",
-              toggle_label: "Filters",
-              filter_groups: [
-                {
-                  label: "Show",
-                  filters: view_filters
-                },
-                has_multiple_entities ? { separator: true } : nil,
-                has_multiple_entities ? {
-                  partial: "shared/filters/entity_filter",
-                  locals: {
-                    path_helper: method(:my_requests_path),
-                    people: @people,
-                    groups: @groups,
-                    entity_filter: @entity_filter,
-                    label: "Include",
-                    filter: @filter
-                  }
-                } : nil
-              ].compact
-          %>
-        </div>
+      <%# Filter bar inside card %>
+      <div class="mb-4">
+        <%= render "shared/filters/filter_bar",
+            toggle_label: "Filters",
+            filter_groups: [
+              {
+                label: "Show",
+                filters: view_filters
+              },
+              has_multiple_entities ? { separator: true } : nil,
+              has_multiple_entities ? {
+                partial: "shared/filters/entity_filter",
+                locals: {
+                  path_helper: method(:my_requests_path),
+                  people: @people,
+                  groups: @groups,
+                  entity_filter: @entity_filter,
+                  label: "Include",
+                  filter: @filter
+                }
+              } : nil
+            ].compact
+        %>
+      </div>
 
+      <% if @availability_items.any? %>
         <div class="space-y-1" data-controller="linked-highlight">
           <% @availability_items.each do |item| %>
             <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
@@ -110,9 +111,19 @@
             </div>
           <% end %>
         </div>
-      </div>
+      <% else %>
+        <div class="border-2 border-dashed border-gray-200 rounded-lg">
+          <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No availability requests</h3>
+            <p class="mt-1 text-sm text-gray-500">No availability requests are awaiting your response.</p>
+          </div>
+        </div>
+      <% end %>
     </div>
-  <% end %>
+  </div>
 
   <%# ========================================= %>
   <%# Section 3: Questionnaires %>
@@ -154,23 +165,6 @@
       <% end %>
     </div>
   </div>
-
-  <%# Empty state %>
-  <% if @availability_items.empty? && @signup_items.empty? && @questionnaire_items.empty? %>
-    <div class="text-center py-12">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">You're all caught up!</h3>
-      <p class="mt-1 text-sm text-gray-500">
-        <% if @filter == 'awaiting' %>
-          No pending requests. Switch to "All" to see past responses.
-        <% else %>
-          No open requests at this time.
-        <% end %>
-      </p>
-    </div>
-  <% end %>
 
   <% else %>
     <%# No productions %>

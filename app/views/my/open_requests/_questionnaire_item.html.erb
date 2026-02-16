@@ -1,6 +1,6 @@
 <%#
   Questionnaire Item - displays a pending questionnaire
-  
+
   Required params:
     - item: Hash with :questionnaire, :entity, :entity_key, :responded (boolean)
 %>
@@ -17,7 +17,7 @@
 
     <%# Details %>
     <div class="min-w-0">
-      <div class="font-medium text-gray-900 truncate"><%= item[:questionnaire].name %></div>
+      <div class="font-medium text-gray-900 truncate"><%= item[:questionnaire].title %></div>
       <div class="text-sm text-gray-500 flex items-center gap-2">
         <span><%= item[:questionnaire].production.name %></span>
         <% if item[:questionnaire].description.present? %>
@@ -38,7 +38,7 @@
         Completed
       </span>
     <% else %>
-      <% 
+      <%
         # Find the invitation to get the token
         invitation = item[:questionnaire].questionnaire_invitations.find { |i| i.invitee == item[:entity] }
       %>

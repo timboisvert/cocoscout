@@ -101,7 +101,7 @@
               Why Signing Secret?
             </h4>
             <p class="text-sm text-green-700">
-              The signing secret is used to verify that webhook requests actually come from Ticket Tailor, 
+              The signing secret is used to verify that webhook requests actually come from Ticket Tailor,
               protecting your account from unauthorized requests.
             </p>
           </div>
@@ -157,7 +157,7 @@
               Optional for Eventbrite
             </h4>
             <p class="text-sm text-amber-700">
-              Eventbrite webhook verification is optional. If you don't enter a secret, 
+              Eventbrite webhook verification is optional. If you don't enter a secret,
               we'll still accept webhooks but won't validate the signature.
             </p>
           </div>
@@ -174,7 +174,7 @@
               <div class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-mono text-sm text-gray-700 break-all">
                 <%= @webhook_url %>
               </div>
-              <button type="button" 
+              <button type="button"
                       onclick="navigator.clipboard.writeText('<%= @webhook_url %>'); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 2000);"
                       class="flex-shrink-0 px-4 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors">
                 Copy
@@ -201,8 +201,8 @@
                   <span class="font-normal text-gray-500">(optional)</span>
                 <% end %>
               </label>
-              <%= form.text_field :webhook_secret, 
-                class: "w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm", 
+              <%= form.text_field :webhook_secret,
+                class: "w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
                 placeholder: "Paste your signing secret here",
                 required: @provider.provider_type == "ticket_tailor",
                 autocomplete: "off" %>
@@ -216,7 +216,7 @@
             </div>
 
             <div class="pt-4 flex items-center justify-between border-t border-gray-200">
-              <button type="button" 
+              <button type="button"
                       onclick="window.location.href='<%= manage_ticketing_provider_wizard_test_connection_path %>'"
                       class="text-sm text-gray-500 hover:text-gray-700">
                 Skip for now →

@@ -106,7 +106,7 @@ class TicketingDashboardService
 
   # Remote events pending sync
   def pending_sync_issues
-    remote_events.where(sync_status: [:pending_update, :pending_delete]).includes(:show, :ticketing_provider).map do |event|
+    remote_events.where(sync_status: [ :pending_update, :pending_delete ]).includes(:show, :ticketing_provider).map do |event|
       {
         type: :pending_sync,
         remote_event: event,
@@ -188,7 +188,7 @@ class TicketingDashboardService
     shows_needing_tickets.select do |show|
       active_setups.any? do |setup|
         remote_events = setup.remote_ticketing_events.where(show: show)
-        remote_events.empty? || remote_events.any? { |e| e.sync_status_error? || e.sync_status.to_s.start_with?('pending') }
+        remote_events.empty? || remote_events.any? { |e| e.sync_status_error? || e.sync_status.to_s.start_with?("pending") }
       end
     end
   end

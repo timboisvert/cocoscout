@@ -2,8 +2,8 @@
 
 module Manage
   class TicketingProviderWizardController < Manage::ManageController
-    before_action :set_wizard_state, except: [:select_provider]
-    before_action :set_provider, only: [:configure_webhooks, :save_webhooks, :test_connection, :complete]
+    before_action :set_wizard_state, except: [ :select_provider ]
+    before_action :set_provider, only: [ :configure_webhooks, :save_webhooks, :test_connection, :complete ]
 
     # Step 1: Select provider type
     def select_provider

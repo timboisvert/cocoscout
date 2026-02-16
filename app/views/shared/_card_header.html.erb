@@ -31,9 +31,12 @@
   border_class = local_assigns[:border_class] || "border-gray-200"
   title_class = local_assigns[:title_class] || "text-gray-900"
   clickable = local_assigns[:clickable] || false
-  has_right_content = links.any? || block_given?
+  # Capture block content if present
+  block_content = block_given? ? capture { yield } : nil
+  has_block_content = block_content.present? && block_content.strip.present?
+  has_right_content = links.any? || has_block_content
 %>
-<div class="<%= bg_class %> px-4 py-3 border-b <%= border_class %><%= ' flex items-center justify-between cursor-pointer' if clickable %>"<%= ' data-action="click->show-toggle#toggle"'.html_safe if clickable %>>
+<div class="<%= bg_class %> px-4 py-3 border-b <%= border_class %><%= ' cursor-pointer' if clickable %>"<%= ' data-action="click->show-toggle#toggle"'.html_safe if clickable %>>
   <div class="flex items-center justify-between gap-2">
     <h3 class="text-md font-semibold <%= title_class %> coustard-regular flex items-center gap-2">
       <% if icon.present? %>
@@ -42,12 +45,14 @@
       <%= title %>
     </h3>
     <% if has_right_content %>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        <% if block_given? %>
-          <%= yield %>
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <% if has_block_content %>
+          <%= block_content %>
         <% else %>
           <% links.each do |link| %>
-            <%= link_to link[:text], link[:path], class: "text-pink-500 underline whitespace-nowrap" %>
+            <%= link_to link[:path] do %>
+              <%= render "shared/button", text: link[:text], variant: "secondary", size: "small" %>
+            <% end %>
           <% end %>
         <% end %>
       </div>
