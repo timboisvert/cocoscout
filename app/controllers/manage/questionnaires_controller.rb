@@ -306,7 +306,7 @@ module Manage
 
           rendered = ContentTemplateService.render("questionnaire_invitation", {
             person_name: person.first_name || "there",
-            questionnaire_title: @questionnaire.name,
+            questionnaire_title: @questionnaire.title,
             production_name: @production.name,
             questionnaire_url: questionnaire_url,
             custom_message: message_template
@@ -342,7 +342,7 @@ module Manage
 
             rendered = ContentTemplateService.render("questionnaire_invitation", {
               person_name: person.first_name || "there",
-              questionnaire_title: @questionnaire.name,
+              questionnaire_title: @questionnaire.title,
               production_name: @production.name,
               questionnaire_url: questionnaire_url,
               custom_message: message_template

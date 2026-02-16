@@ -20,10 +20,6 @@
       <div class="font-medium text-gray-900 truncate"><%= item[:questionnaire].title %></div>
       <div class="text-sm text-gray-500 flex items-center gap-2">
         <span><%= item[:questionnaire].production.name %></span>
-        <% if item[:questionnaire].description.present? %>
-          <span class="text-gray-300">&bull;</span>
-          <span class="truncate"><%= truncate(item[:questionnaire].description, length: 50) %></span>
-        <% end %>
       </div>
     </div>
   </div>

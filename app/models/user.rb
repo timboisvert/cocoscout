@@ -49,11 +49,12 @@ class User < ApplicationRecord
 
     count = 0
 
-    # Get all upcoming shows from talent pools
+    # Get all upcoming shows from talent pools (within 45 days for badge count)
     show_ids = Show.joins(production: { talent_pools: :people })
                    .where(people: { id: person_ids })
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
+                   .where("date_and_time <= ?", 45.days.from_now)
                    .pluck(:id)
                    .uniq
 

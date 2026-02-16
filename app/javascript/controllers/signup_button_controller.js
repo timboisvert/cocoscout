@@ -22,7 +22,7 @@ export default class extends Controller {
 
     submitForm(form, status) {
         const formData = new FormData(form)
-        
+
         fetch(form.action, {
             method: 'POST',
             headers: {

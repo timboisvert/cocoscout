@@ -198,7 +198,8 @@ class TicketingDashboardService
   # ============================================
 
   def active_setups
-    @active_setups ||= organization.production_ticketing_setups.active_setups.includes(:production, :provider_setups)
+    # Query the model directly to avoid delegation issues on the association proxy
+    @active_setups ||= ProductionTicketingSetup.where(organization_id: organization.id).active_setups.includes(:production, :provider_setups)
   end
 
   def production_setups_status

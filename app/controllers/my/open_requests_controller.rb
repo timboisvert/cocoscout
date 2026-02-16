@@ -209,12 +209,13 @@ module My
       all_shows_with_source = []
 
       if selected_person_ids.any?
-        # Person shows from direct talent pools
+        # Person shows from direct talent pools (within 90 days)
         person_shows = Show.joins(production: { talent_pools: :people })
                            .select("shows.*, people.id as source_person_id")
                            .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
+                           .where("date_and_time <= ?", 90.days.from_now)
                            .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                            .distinct
                            .to_a
@@ -224,12 +225,13 @@ module My
           all_shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person, entity_type: "Person" } if person
         end
 
-        # Person shows from shared talent pools
+        # Person shows from shared talent pools (within 90 days)
         shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
                                   .select("shows.*, people.id as source_person_id")
                                   .where(people: { id: selected_person_ids })
                                   .where.not(canceled: true)
                                   .where("date_and_time > ?", Time.current)
+                                  .where("date_and_time <= ?", 90.days.from_now)
                                   .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                   .distinct
                                   .to_a
@@ -243,12 +245,13 @@ module My
       end
 
       if selected_group_ids.any?
-        # Group shows from direct talent pools
+        # Group shows from direct talent pools (within 90 days)
         group_shows = Show.select("shows.*, groups.id as source_group_id")
                           .joins(production: { talent_pools: :groups })
                           .where(groups: { id: selected_group_ids })
                           .where.not(canceled: true)
                           .where("date_and_time > ?", Time.current)
+                          .where("date_and_time <= ?", 90.days.from_now)
                           .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                           .distinct
                           .to_a
@@ -259,12 +262,13 @@ module My
           all_shows_with_source << { show: show, entity_key: "group_#{group_id}", entity: group, entity_type: "Group" }
         end
 
-        # Group shows from shared talent pools
+        # Group shows from shared talent pools (within 90 days)
         shared_group_shows = Show.select("shows.*, groups.id as source_group_id")
                                  .joins(production: { talent_pool_shares: { talent_pool: :groups } })
                                  .where(groups: { id: selected_group_ids })
                                  .where.not(canceled: true)
                                  .where("date_and_time > ?", Time.current)
+                                 .where("date_and_time <= ?", 90.days.from_now)
                                  .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                  .distinct
                                  .to_a
