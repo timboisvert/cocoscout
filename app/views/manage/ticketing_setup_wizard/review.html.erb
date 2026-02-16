@@ -70,23 +70,23 @@
         <div class="flex items-center gap-2">
           <span class="text-xs font-medium text-gray-500 w-20">Mode:</span>
           <span class="text-sm text-gray-900">
-            <% case @wizard_state[:listing_mode] %>
-            <% when "all_shows" %>All shows
-            <% when "future_only" %>Future shows only
-            <% when "selected_shows" %>Selected shows only
-            <% else %>Not set
-            <% end %>
+            <%= case @wizard_state[:listing_mode]
+                when "all_shows" then "All shows"
+                when "future_only" then "Future shows only"
+                when "selected_shows" then "Selected shows only"
+                else "Not set"
+                end %>
           </span>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs font-medium text-gray-500 w-20">Grouping:</span>
           <span class="text-sm text-gray-900">
-            <% case @wizard_state[:grouping_strategy] %>
-            <% when "individual" %>Individual events
-            <% when "recurring_series" %>Recurring series
-            <% when "provider_default" %>Provider default
-            <% else %>Not set
-            <% end %>
+            <%= case @wizard_state[:grouping_strategy]
+                when "individual" then "Individual events"
+                when "recurring_series" then "Recurring series"
+                when "provider_default" then "Provider default"
+                else "Not set"
+                end %>
           </span>
         </div>
       </div>
