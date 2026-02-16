@@ -3,13 +3,18 @@
 <div class="w-full mb-10" data-controller="casting-table" data-casting-table-table-id-value="<%= @casting_table.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+  <% top_menu_links = [{ text: "Edit", path: manage_edit_casting_table_path(@casting_table) }] %>
+  <% if @casting_table.finalized? %>
+    <% top_menu_links << { text: "Notifications", path: manage_casting_table_summary_path(@casting_table) } %>
+  <% end %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Casting", manage_casting_path],
       ["Casting Tables", manage_casting_tables_path]
     ],
     text: @casting_table.name,
-    links: [{ text: "Edit", path: manage_edit_casting_table_path(@casting_table) }]
+    links: top_menu_links
   } %>
 
   <% unless @casting_table.draft? %>

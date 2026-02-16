@@ -557,6 +557,8 @@ Rails.application.routes.draw do
     delete "/casting/tables/:id/unassign", to: "casting_tables#unassign", as: "casting_table_unassign"
     get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"
     post  "/casting/tables/:id/finalize",  to: "casting_tables#finalize", as: "casting_table_finalize"
+    post  "/casting/tables/:id/unfinalize", to: "casting_tables#unfinalize", as: "casting_table_unfinalize"
+    post  "/casting/tables/:id/resend_notifications", to: "casting_tables#resend_notifications", as: "casting_table_resend_notifications"
 
     # Casting Table - Edit Members (separate tab)
     get   "/casting/tables/:id/edit/members", to: "casting_tables#edit_members", as: "casting_table_edit_members"

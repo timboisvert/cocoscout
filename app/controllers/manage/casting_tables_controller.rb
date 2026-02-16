@@ -4,7 +4,7 @@ module Manage
   class CastingTablesController < Manage::ManageController
     before_action :ensure_user_is_manager, except: [ :index, :show ]
     before_action :set_casting_table, only: [
-      :show, :update, :assign, :unassign, :summary, :finalize,
+      :show, :update, :assign, :unassign, :summary, :finalize, :unfinalize, :resend_notifications,
       :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member
     ]
 
@@ -179,6 +179,21 @@ module Manage
 
       @people_to_notify = Person.where(id: person_ids).includes(:user).order(:name)
       @groups_to_notify = Group.where(id: group_ids).order(:name)
+
+      # Load notification history for finalized casting tables
+      if @casting_table.finalized?
+        # Get all notifications for the shows in this casting table
+        show_ids = @casting_table.shows.pluck(:id)
+        @notifications = ShowCastNotification.where(show_id: show_ids)
+                                              .where(notification_type: :cast)
+                                              .includes(:assignable)
+                                              .order(notified_at: :desc)
+
+        # Group by person to show notification summary
+        @notified_people = @notifications.select { |n| n.assignable_type == "Person" }
+                                          .group_by(&:assignable)
+                                          .transform_values { |notifs| notifs.max_by(&:notified_at) }
+      end
     end
 
     def finalize
@@ -206,6 +221,32 @@ module Manage
       else
         redirect_to manage_casting_table_summary_path(@casting_table), alert: "Error finalizing casting table"
       end
+    end
+
+    def unfinalize
+      unless @casting_table.finalized?
+        redirect_to manage_casting_table_path(@casting_table), alert: "This casting table is not finalized"
+        return
+      end
+
+      if @casting_table.unfinalize!
+        redirect_to manage_casting_table_summary_path(@casting_table), notice: "Casting table reverted to draft. You can now re-finalize and send notifications."
+      else
+        redirect_to manage_casting_table_path(@casting_table), alert: "Error unfinalizing casting table"
+      end
+    end
+
+    def resend_notifications
+      unless @casting_table.finalized?
+        redirect_to manage_casting_table_path(@casting_table), alert: "This casting table is not finalized"
+        return
+      end
+
+      # Resend notifications to all people who were cast
+      send_casting_notifications
+      @casting_table.record_notifications!
+
+      redirect_to manage_casting_table_summary_path(@casting_table), notice: "Notifications resent to all cast members!"
     end
 
     # Edit events page

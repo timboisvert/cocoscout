@@ -1,4 +1,8 @@
-<% content_for :title, "Review & Finalize - #{@casting_table.name}" %>
+<% if @casting_table.finalized? %>
+  <% content_for :title, "Notifications - #{@casting_table.name}" %>
+<% else %>
+  <% content_for :title, "Review & Finalize - #{@casting_table.name}" %>
+<% end %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -9,7 +13,7 @@
       ["Casting Tables", manage_casting_tables_path],
       [@casting_table.name, manage_casting_table_path(@casting_table)]
     ],
-    text: "Review & Finalize",
+    text: @casting_table.finalized? ? "Notifications" : "Review & Finalize",
     links: []
   } %>
 
@@ -57,27 +61,56 @@
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Notifications</h3>
-          <p class="text-sm text-gray-600 mt-1">
-            <strong><%= @people_to_notify.count %></strong> people will be notified of their casting.
-          </p>
+          <% if @casting_table.finalized? %>
+            <p class="text-sm text-gray-600 mt-1">
+              <strong><%= @notified_people&.count || 0 %></strong> people were notified of their casting.
+            </p>
+          <% else %>
+            <p class="text-sm text-gray-600 mt-1">
+              <strong><%= @people_to_notify.count %></strong> people will be notified of their casting.
+            </p>
+          <% end %>
         </div>
 
         <div class="p-6">
-          <div class="flex flex-wrap gap-3">
-            <% @people_to_notify.each do |person| %>
-              <div class="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover" %>
-                <% else %>
-                  <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                    <span class="text-xs font-medium text-gray-500"><%= person.initials %></span>
+          <% if @casting_table.finalized? && @notified_people.present? %>
+            <!-- Finalized: Show who was notified and when -->
+            <div class="flex flex-wrap gap-3">
+              <% @notified_people.each do |person, last_notification| %>
+                <div class="inline-flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-lg bg-green-200 flex items-center justify-center">
+                      <span class="text-xs font-medium text-green-700"><%= person.initials %></span>
+                    </div>
+                  <% end %>
+                  <div>
+                    <span class="text-sm font-medium text-green-800"><%= person.name %></span>
+                    <p class="text-xs text-green-600">Notified <%= time_ago_in_words(last_notification.notified_at) %> ago</p>
                   </div>
-                <% end %>
-                <span class="text-sm font-medium text-gray-700"><%= person.name %></span>
-              </div>
-            <% end %>
-          </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <!-- Draft: Show who will be notified -->
+            <div class="flex flex-wrap gap-3">
+              <% @people_to_notify.each do |person| %>
+                <div class="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
+                      <span class="text-xs font-medium text-gray-500"><%= person.initials %></span>
+                    </div>
+                  <% end %>
+                  <span class="text-sm font-medium text-gray-700"><%= person.name %></span>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
 
           <% if @groups_to_notify.any? %>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -106,36 +139,56 @@
         </div>
       </div>
 
-      <!-- Finalize Form -->
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div class="bg-pink-50 px-6 py-4 border-b border-pink-100">
-          <h3 class="text-lg font-semibold text-pink-900 coustard-regular">Ready to Finalize?</h3>
-          <p class="text-sm text-pink-700 mt-1">
-            Once finalized, these assignments will be saved and cast members will be notified.
-            This action cannot be undone.
-          </p>
-        </div>
+      <!-- Finalize Form (draft) or Resend Form (finalized) -->
+      <% if @casting_table.finalized? %>
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div class="bg-green-50 px-6 py-4 border-b border-green-100">
+            <h3 class="text-lg font-semibold text-green-900 coustard-regular">Casting Finalized</h3>
+            <p class="text-sm text-green-700 mt-1">
+              This casting table has been finalized. You can resend notifications to all cast members if needed.
+            </p>
+          </div>
 
-        <div class="p-6">
-          <%= form_with url: manage_casting_table_finalize_path(@casting_table), method: :post, local: true do |form| %>
-            <div class="mb-6">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" name="notify" value="1" checked
-                       class="h-5 w-5 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
-                <div>
-                  <span class="font-medium text-gray-900">Send notifications</span>
-                  <p class="text-sm text-gray-500">Each person will receive a notification listing their assignments</p>
-                </div>
-              </label>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <%= render "shared/button", text: "← Back to Casting Table", variant: "ghost", size: "medium", path: manage_casting_table_path(@casting_table) %>
-              <%= render "shared/button", text: "Finalize Casting (#{@draft_assignments.count} assignments)", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
+          <div class="p-6">
+            <%= form_with url: manage_casting_table_resend_notifications_path(@casting_table), method: :post, local: true do |form| %>
+              <div class="flex items-center justify-between">
+                <%= render "shared/button", text: "← Back to Casting Table", variant: "ghost", size: "medium", path: manage_casting_table_path(@casting_table) %>
+                <%= render "shared/button", text: "Resend Notifications", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </div>
         </div>
-      </div>
+      <% else %>
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div class="bg-pink-50 px-6 py-4 border-b border-pink-100">
+            <h3 class="text-lg font-semibold text-pink-900 coustard-regular">Ready to Finalize?</h3>
+            <p class="text-sm text-pink-700 mt-1">
+              Once finalized, these assignments will be saved and cast members will be notified.
+              This action cannot be undone.
+            </p>
+          </div>
+
+          <div class="p-6">
+            <%= form_with url: manage_casting_table_finalize_path(@casting_table), method: :post, local: true do |form| %>
+              <div class="mb-6">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" name="notify" value="1" checked
+                         class="h-5 w-5 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+                  <div>
+                    <span class="font-medium text-gray-900">Send notifications</span>
+                    <p class="text-sm text-gray-500">Each person will receive a notification listing their assignments</p>
+                  </div>
+                </label>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <%= render "shared/button", text: "← Back to Casting Table", variant: "ghost", size: "medium", path: manage_casting_table_path(@casting_table) %>
+                <%= render "shared/button", text: "Finalize Casting (#{@draft_assignments.count} assignments)", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   </div>
 </div>

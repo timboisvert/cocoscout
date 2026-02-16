@@ -71,6 +71,36 @@ class CastingTable < ApplicationRecord
     true
   end
 
+  # Revert a finalized casting table back to draft status
+  # Removes the ShowPersonRoleAssignment records that were created
+  def unfinalize!
+    return false unless finalized?
+
+    transaction do
+      # Remove the ShowPersonRoleAssignment records that match our draft assignments
+      casting_table_draft_assignments.includes(:show, :role, :assignable).find_each do |draft|
+        ShowPersonRoleAssignment.where(
+          show: draft.show,
+          role: draft.role,
+          assignable: draft.assignable
+        ).destroy_all
+      end
+
+      # Unfinalize show casting status for affected shows
+      shows.each do |show|
+        show.update!(casting_finalized: false) if show.respond_to?(:casting_finalized)
+      end
+
+      update!(
+        status: "draft",
+        finalized_at: nil,
+        finalized_by_id: nil
+      )
+    end
+
+    true
+  end
+
   # Record that notifications were sent for all draft assignments
   # Called after sending emails
   def record_notifications!(email_body: nil)
