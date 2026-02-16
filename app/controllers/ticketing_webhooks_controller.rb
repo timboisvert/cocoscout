@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 class TicketingWebhooksController < ApplicationController
-  # Skip CSRF and authentication for webhooks
+  # Skip CSRF for webhooks (no authentication needed - uses token-based auth)
   skip_before_action :verify_authenticity_token
-  skip_before_action :authenticate_user!, if: -> { defined?(authenticate_user!) }
 
   # POST /webhooks/ticketing/:provider_type/:token
   def receive

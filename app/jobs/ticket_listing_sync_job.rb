@@ -3,9 +3,6 @@
 class TicketListingSyncJob < ApplicationJob
   queue_as :default
 
-  # Retry with exponential backoff on rate limits
-  retry_on TicketingAdapters::RateLimitError, wait: :polynomially_longer, attempts: 5
-
   def perform(listing_id, operation: :sync)
     listing = TicketListing.find_by(id: listing_id)
 
