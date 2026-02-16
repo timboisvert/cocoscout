@@ -1,0 +1,203 @@
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 8, step_name: "Review" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Review your setup</h2>
+    <p class="text-gray-600 mt-2">Confirm your ticketing configuration before activating</p>
+  </div>
+
+  <div class="space-y-4">
+    <!-- Production -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Production</h3>
+        <%= link_to manage_ticketing_setup_wizard_production_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3">
+        <p class="text-sm font-medium text-gray-900"><%= @production&.name || "Not selected" %></p>
+        <% if @production %>
+          <p class="text-xs text-gray-500 mt-0.5"><%= @production.shows.count %> shows</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Providers -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Ticketing Providers</h3>
+        <%= link_to manage_ticketing_setup_wizard_providers_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3">
+        <% selected_providers = @wizard_state[:selected_providers] || [] %>
+        <% if selected_providers.any? %>
+          <div class="flex flex-wrap gap-2">
+            <% selected_providers.each do |provider| %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                <% case provider %>
+                <% when 'eventbrite' %>bg-orange-100 text-orange-800
+                <% when 'ticket_tailor' %>bg-purple-100 text-purple-800
+                <% when 'manual' %>bg-gray-100 text-gray-800
+                <% end %>">
+                <%= provider.titleize.gsub("_", " ") %>
+              </span>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">No providers selected</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Strategy -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Listing Strategy</h3>
+        <%= link_to manage_ticketing_setup_wizard_strategy_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-gray-500 w-20">Mode:</span>
+          <span class="text-sm text-gray-900">
+            <% case @wizard_state[:listing_mode] %>
+            <% when "all_shows" %>All shows
+            <% when "future_only" %>Future shows only
+            <% when "selected_shows" %>Selected shows only
+            <% else %>Not set
+            <% end %>
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-gray-500 w-20">Grouping:</span>
+          <span class="text-sm text-gray-900">
+            <% case @wizard_state[:grouping_strategy] %>
+            <% when "individual" %>Individual events
+            <% when "recurring_series" %>Recurring series
+            <% when "provider_default" %>Provider default
+            <% else %>Not set
+            <% end %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Info -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Event Details</h3>
+        <%= link_to manage_ticketing_setup_wizard_eventinfo_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3 space-y-2">
+        <div>
+          <span class="text-xs font-medium text-gray-500">Title Template:</span>
+          <p class="text-sm text-gray-900 mt-0.5"><%= @wizard_state[:title_template].presence || "{production_name}" %></p>
+        </div>
+        <div>
+          <span class="text-xs font-medium text-gray-500">Description:</span>
+          <p class="text-sm text-gray-900 mt-0.5 line-clamp-2"><%= @wizard_state[:description].presence || "Not set" %></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Venue -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Venue</h3>
+        <%= link_to manage_ticketing_setup_wizard_venue_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3">
+        <% if @wizard_state[:is_online] %>
+          <span class="inline-flex items-center gap-1.5 text-sm text-gray-900">
+            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Online/Virtual Event
+          </span>
+        <% else %>
+          <p class="text-sm font-medium text-gray-900"><%= @wizard_state[:venue_name].presence || "Not set" %></p>
+          <p class="text-xs text-gray-500 mt-0.5"><%= @wizard_state[:venue_address] %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-700">Pricing Tiers</h3>
+        <%= link_to manage_ticketing_setup_wizard_pricing_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <div class="px-4 py-3">
+        <% tiers = @wizard_state[:pricing_tiers] || [] %>
+        <% if tiers.any? %>
+          <div class="space-y-1.5">
+            <% tiers.each do |tier| %>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-900"><%= tier[:name] || tier["name"] %></span>
+                <span class="text-sm font-medium text-gray-700">
+                  $<%= number_with_precision(tier[:price] || tier["price"], precision: 2) %>
+                  <% if (tier[:quantity] || tier["quantity"]).present? %>
+                    <span class="text-xs text-gray-400 font-normal">(× <%= tier[:quantity] || tier["quantity"] %>)</span>
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">No pricing tiers set</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shows Preview -->
+  <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-gray-700 mb-2">Shows to be listed</h3>
+    <% if @production %>
+      <% shows_count = case @wizard_state[:listing_mode]
+                       when "all_shows" then @production.shows.count
+                       when "future_only" then @production.shows.where("date_and_time >= ?", Time.current).count
+                       else 0
+                       end %>
+      <p class="text-sm text-gray-600">
+        <span class="font-medium text-gray-900"><%= shows_count %></span>
+        shows will be created on
+        <span class="font-medium text-gray-900"><%= (@wizard_state[:selected_providers] || []).count %></span>
+        ticketing <%= "provider".pluralize((@wizard_state[:selected_providers] || []).count) %>
+      </p>
+      <p class="text-xs text-gray-500 mt-1">
+        You can exclude specific shows or add overrides after setup is complete.
+      </p>
+    <% else %>
+      <p class="text-sm text-gray-500">No production selected</p>
+    <% end %>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="mt-8">
+    <%= form_with url: manage_ticketing_setup_wizard_create_setup_path, method: :post, local: true do |form| %>
+      <div class="flex justify-between items-center">
+        <%= link_to manage_ticketing_setup_wizard_pricing_path do %>
+          <%= render "shared/button", text: "Back", variant: "secondary", size: "medium" %>
+        <% end %>
+
+        <div class="flex gap-3">
+          <%= render "shared/button", text: "Activate Ticketing", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

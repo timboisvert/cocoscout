@@ -1,0 +1,122 @@
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 5, step_name: "Venue" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Venue information</h2>
+    <p class="text-gray-600 mt-2">Where do your shows take place?</p>
+  </div>
+
+  <%= form_with url: manage_ticketing_setup_wizard_save_venue_path, method: :post, local: true, data: { controller: "venue-toggle" } do |form| %>
+    <div class="space-y-5">
+      <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <input type="checkbox"
+               name="is_online"
+               id="is_online"
+               value="1"
+               <%= "checked" if @wizard_state[:is_online] %>
+               data-venue-toggle-target="checkbox"
+               data-action="change->venue-toggle#toggle"
+               class="h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <label for="is_online" class="text-sm font-medium text-gray-900 cursor-pointer flex-1">
+          This is an online/virtual event
+        </label>
+      </div>
+
+      <div data-venue-toggle-target="venueFields" class="<%= @wizard_state[:is_online] ? 'hidden' : '' %>">
+        <div class="space-y-4">
+          <div>
+            <label for="venue_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Venue Name
+              <span class="text-pink-500">*</span>
+            </label>
+            <input type="text"
+                   name="venue_name"
+                   id="venue_name"
+                   value="<%= @wizard_state[:venue_name] %>"
+                   placeholder="Lincoln Center Theater"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          </div>
+
+          <div>
+            <label for="venue_address" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Address
+              <span class="text-pink-500">*</span>
+            </label>
+            <input type="text"
+                   name="venue_address"
+                   id="venue_address"
+                   value="<%= @wizard_state[:venue_address] %>"
+                   placeholder="150 W 65th St, New York, NY 10023"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <p class="mt-1.5 text-xs text-gray-500">Full address including city, state, and zip.</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="venue_city" class="block text-sm font-medium text-gray-900 mb-1.5">
+                City
+              </label>
+              <input type="text"
+                     name="venue_city"
+                     id="venue_city"
+                     value="<%= @wizard_state[:venue_city] %>"
+                     placeholder="New York"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            </div>
+            <div>
+              <label for="venue_country" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Country
+              </label>
+              <select name="venue_country"
+                      id="venue_country"
+                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                <option value="US" <%= "selected" if @wizard_state[:venue_country] == "US" || @wizard_state[:venue_country].blank? %>>United States</option>
+                <option value="CA" <%= "selected" if @wizard_state[:venue_country] == "CA" %>>Canada</option>
+                <option value="GB" <%= "selected" if @wizard_state[:venue_country] == "GB" %>>United Kingdom</option>
+                <option value="AU" <%= "selected" if @wizard_state[:venue_country] == "AU" %>>Australia</option>
+                <option value="DE" <%= "selected" if @wizard_state[:venue_country] == "DE" %>>Germany</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-venue-toggle-target="onlineFields" class="<%= @wizard_state[:is_online] ? '' : 'hidden' %>">
+        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="text-sm text-blue-800">
+              <p class="font-medium">Online events</p>
+              <p class="mt-1">Event access details (streaming links, etc.) can be sent with confirmation emails after ticket purchase.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label for="online_instructions" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Access Instructions
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea name="online_instructions"
+                    id="online_instructions"
+                    rows="3"
+                    placeholder="How will attendees access the event?"
+                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @wizard_state[:online_instructions] %></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_ticketing_setup_wizard_eventinfo_path do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium" %>
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

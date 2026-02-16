@@ -1,0 +1,145 @@
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 7, step_name: "Pricing" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Ticket pricing</h2>
+    <p class="text-gray-600 mt-2">Set up your default ticket types and prices</p>
+  </div>
+
+  <%= form_with url: manage_ticketing_setup_wizard_save_pricing_path, method: :post, local: true, data: { controller: "pricing-tiers" } do |form| %>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-gray-600">Add ticket tiers that will be created for each event.</p>
+        <button type="button"
+                data-action="click->pricing-tiers#addTier"
+                class="inline-flex items-center gap-1.5 text-sm font-medium text-pink-600 hover:text-pink-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Tier
+        </button>
+      </div>
+
+      <div data-pricing-tiers-target="container" class="space-y-3">
+        <% tiers = @wizard_state[:pricing_tiers] || [{ name: "General Admission", price: "", quantity: "" }] %>
+        <% tiers.each_with_index do |tier, index| %>
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200" data-pricing-tiers-target="tier">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 grid grid-cols-12 gap-3">
+                <div class="col-span-5">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Tier Name</label>
+                  <input type="text"
+                         name="pricing_tiers[<%= index %>][name]"
+                         value="<%= tier[:name] || tier["name"] %>"
+                         placeholder="General Admission"
+                         required
+                         class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                </div>
+                <div class="col-span-3">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                    <input type="number"
+                           name="pricing_tiers[<%= index %>][price]"
+                           value="<%= tier[:price] || tier["price"] %>"
+                           placeholder="25.00"
+                           step="0.01"
+                           min="0"
+                           required
+                           class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  </div>
+                </div>
+                <div class="col-span-3">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                  <input type="number"
+                         name="pricing_tiers[<%= index %>][quantity]"
+                         value="<%= tier[:quantity] || tier["quantity"] %>"
+                         placeholder="100"
+                         min="1"
+                         class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  <p class="text-xs text-gray-400 mt-0.5">Leave blank for unlimited</p>
+                </div>
+              </div>
+              <button type="button"
+                      data-action="click->pricing-tiers#removeTier"
+                      class="p-2 text-gray-400 hover:text-red-500 transition <%= tiers.length <= 1 ? 'invisible' : '' %>">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <template data-pricing-tiers-target="template">
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200" data-pricing-tiers-target="tier">
+          <div class="flex items-start gap-3">
+            <div class="flex-1 grid grid-cols-12 gap-3">
+              <div class="col-span-5">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tier Name</label>
+                <input type="text"
+                       name="pricing_tiers[INDEX][name]"
+                       placeholder="VIP"
+                       required
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div class="col-span-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                  <input type="number"
+                         name="pricing_tiers[INDEX][price]"
+                         placeholder="50.00"
+                         step="0.01"
+                         min="0"
+                         required
+                         class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                </div>
+              </div>
+              <div class="col-span-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                <input type="number"
+                       name="pricing_tiers[INDEX][quantity]"
+                       placeholder="50"
+                       min="1"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                <p class="text-xs text-gray-400 mt-0.5">Leave blank for unlimited</p>
+              </div>
+            </div>
+            <button type="button"
+                    data-action="click->pricing-tiers#removeTier"
+                    class="p-2 text-gray-400 hover:text-red-500 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Free Ticket Info -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex gap-3">
+          <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="text-sm text-blue-800">
+            <p class="font-medium">About pricing</p>
+            <p class="mt-1">Set price to $0 for free events. You can customize pricing per-show later using overrides.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_ticketing_setup_wizard_images_path do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium" %>
+      <% end %>
+      <%= render "shared/button", text: "Review Setup", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

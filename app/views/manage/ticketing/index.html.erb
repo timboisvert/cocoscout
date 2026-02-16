@@ -3,8 +3,8 @@
 <%
   ticketing_description = <<~HTML
     <p>
-      Manage ticket sales across multiple platforms. Connect to Eventbrite or Ticket Tailor,
-      set up seating configurations, and track sales for all your shows in one place.
+      Manage ticket sales across multiple platforms. Shows are automatically listed on all connected providers
+      unless explicitly excluded. Review issues below and resolve them to ensure all shows are selling.
     </p>
   HTML
 
@@ -25,6 +25,56 @@
     actions: ticketing_actions
   %>
 
+  <%# Issues Alert Banner %>
+  <% if @issue_counts[:total] > 0 %>
+    <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+      <div class="flex items-start gap-3">
+        <span class="text-pink-600 mt-0.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </span>
+        <div class="flex-1">
+          <h3 class="font-medium text-pink-800">
+            <%= @issue_counts[:total] %> <%= @issue_counts[:total] == 1 ? "issue" : "issues" %> need attention
+          </h3>
+          <div class="text-sm text-pink-700 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            <% if @issue_counts[:missing_listings] > 0 %>
+              <span><%= @issue_counts[:missing_listings] %> shows missing listings</span>
+            <% end %>
+            <% if @issue_counts[:sync_failed] > 0 %>
+              <span><%= @issue_counts[:sync_failed] %> sync failures</span>
+            <% end %>
+            <% if @issue_counts[:auth_expired] > 0 %>
+              <span><%= @issue_counts[:auth_expired] %> auth expired</span>
+            <% end %>
+            <% if @issue_counts[:manual_required] > 0 %>
+              <span><%= @issue_counts[:manual_required] %> need manual action</span>
+            <% end %>
+          </div>
+          <div class="mt-3 flex gap-2">
+            <% if @issue_counts[:missing_listings] > 0 %>
+              <%= button_to manage_ticketing_create_missing_listings_path, method: :post do %>
+                <%= render "shared/button", text: "Create Missing Listings", variant: "primary", size: "small" %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% elsif @providers.any? %>
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+      <div class="flex items-center gap-3">
+        <span class="text-green-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+        <span class="text-green-800 font-medium">All shows are properly listed</span>
+      </div>
+    </div>
+  <% end %>
+
   <%# Provider Connection Status %>
   <div class="border-t border-gray-200 pt-4 mt-2 mb-6">
     <% if @providers.any? %>
@@ -37,24 +87,43 @@
           <% @providers.each do |provider| %>
             <div class="flex items-center justify-between py-2 <%= provider != @providers.last ? 'border-b border-gray-100' : '' %>">
               <div class="flex items-center gap-3">
-                <% if provider.status_active? %>
+                <% if provider.credentials_healthy? && !provider.rate_limited? %>
                   <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <% elsif provider.rate_limited? %>
+                  <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                <% elsif !provider.credentials_valid? %>
+                  <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
                 <% else %>
                   <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
                 <% end %>
                 <div>
                   <span class="font-medium text-gray-900"><%= provider.name %></span>
                   <span class="text-sm text-gray-500 ml-2"><%= provider.provider_type.titleize %></span>
+                  <% if provider.manual_only? %>
+                    <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded ml-1">Manual</span>
+                  <% end %>
                 </div>
               </div>
               <div class="text-sm text-gray-500">
-                <% if provider.last_synced_at.present? %>
+                <% if !provider.credentials_valid? %>
+                  <span class="text-pink-600 font-medium">Auth expired</span>
+                  <% if provider.credentials_error.present? %>
+                    <span class="text-gray-400">&middot; <%= truncate(provider.credentials_error, length: 30) %></span>
+                  <% end %>
+                <% elsif provider.rate_limited? %>
+                  <span class="text-yellow-600">Rate limited</span>
+                  <% if provider.rate_limited_until %>
+                    &middot; resets <%= time_ago_in_words(provider.rate_limited_until) %>
+                  <% end %>
+                <% elsif provider.manual_only? %>
+                  <span class="text-gray-500">Manual listings</span>
+                <% elsif provider.last_synced_at.present? %>
                   <% if provider.last_synced_at > 15.minutes.ago %>
                     <span class="text-green-600">Live</span> &middot; synced <%= time_ago_in_words(provider.last_synced_at) %> ago
                   <% elsif provider.last_synced_at > 1.hour.ago %>
                     <span class="text-yellow-600">Delayed</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
                   <% else %>
-                    <span class="text-red-600">Stale</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
+                    <span class="text-pink-600">Stale</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
                   <% end %>
                 <% else %>
                   <span class="text-gray-400">Never synced</span>
@@ -117,6 +186,109 @@
         </span>
       </div>
     <% end %>
+  <% end %>
+
+  <%# Issues Detail Section %>
+  <% if @issue_counts[:total] > 0 %>
+    <div class="mb-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Issues to Resolve</h3>
+
+      <div class="space-y-3">
+        <%# Missing Listings %>
+        <% @dashboard_data[:issues][:missing_listings].first(5).each do |issue| %>
+          <div class="bg-white rounded-lg border border-yellow-200 p-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-yellow-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                  </span>
+                  <span class="font-medium text-gray-900"><%= issue[:show].display_name %></span>
+                </div>
+                <p class="text-sm text-gray-600 mt-1"><%= issue[:message] %></p>
+              </div>
+              <span class="text-xs text-gray-500"><%= issue[:show].date_and_time.strftime("%b %d, %Y") %></span>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Sync Failures %>
+        <% @dashboard_data[:issues][:sync_failed].first(3).each do |issue| %>
+          <div class="bg-white rounded-lg border border-pink-200 p-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-pink-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </span>
+                  <span class="font-medium text-gray-900"><%= issue[:show].display_name %></span>
+                  <span class="text-xs bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded"><%= issue[:provider].name %></span>
+                </div>
+                <p class="text-sm text-pink-600 mt-1"><%= issue[:message] %></p>
+              </div>
+              <%= link_to "#" do %>
+                <%= render "shared/button", text: "Retry", variant: "tertiary", size: "small" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Auth Expired %>
+        <% @dashboard_data[:issues][:auth_expired].first(3).each do |issue| %>
+          <div class="bg-white rounded-lg border border-pink-200 p-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-pink-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                  </span>
+                  <span class="font-medium text-gray-900"><%= issue[:provider].name %></span>
+                </div>
+                <p class="text-sm text-pink-600 mt-1"><%= issue[:message] %></p>
+              </div>
+              <%= link_to manage_edit_ticketing_provider_path(issue[:provider]) do %>
+                <%= render "shared/button", text: "Re-authenticate", variant: "tertiary", size: "small" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Manual Action Required %>
+        <% @dashboard_data[:issues][:manual_action_required].first(3).each do |issue| %>
+          <div class="bg-white rounded-lg border border-pink-200 p-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-pink-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                    </svg>
+                  </span>
+                  <span class="font-medium text-gray-900"><%= issue[:show].display_name %></span>
+                  <span class="text-xs bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded"><%= issue[:provider].name %></span>
+                </div>
+                <p class="text-sm text-pink-600 mt-1"><%= issue[:message] %></p>
+              </div>
+              <%= link_to "#" do %>
+                <%= render "shared/button", text: "View Details", variant: "tertiary", size: "small" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @issue_counts[:total] > 10 %>
+        <div class="mt-3 text-center">
+          <span class="text-sm text-gray-500">Showing first 10 of <%= @issue_counts[:total] %> issues</span>
+        </div>
+      <% end %>
+    </div>
   <% end %>
 
   <%# Shows with Ticketing %>

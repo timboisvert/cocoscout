@@ -3,6 +3,10 @@
 module Manage
   class TicketingController < Manage::ManageController
     def index
+      # Use the new dashboard service for issue-focused data
+      @dashboard = TicketingDashboardService.new(Current.organization)
+      @dashboard_data = @dashboard.dashboard_data
+
       # Get ticketing providers with sync status
       @providers = Current.organization.ticketing_providers.order(:name)
 
@@ -10,7 +14,7 @@ module Manage
       production_ids = ticketing_enabled_productions.pluck(:id)
       @show_ticketings = ShowTicketing
         .joins(show: :production)
-        .includes(show: [:production, :location], show_ticket_tiers: [])
+        .includes(show: [:production, :location], show_ticket_tiers: [], ticket_listings: :ticketing_provider)
         .where(shows: { production_id: production_ids })
         .where(shows: { canceled: false })
         .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
@@ -21,6 +25,38 @@ module Manage
 
       # Calculate aggregate metrics
       @metrics = calculate_aggregate_metrics(@show_ticketings)
+
+      # Issue counts for display
+      @issue_counts = {
+        total: @dashboard.total_issue_count,
+        missing_listings: @dashboard_data[:issues][:missing_listings].count,
+        sync_failed: @dashboard_data[:issues][:sync_failed].count,
+        auth_expired: @dashboard_data[:issues][:auth_expired].count,
+        manual_required: @dashboard_data[:issues][:manual_action_required].count
+      }
+    end
+
+    # Create missing listings for all shows
+    def create_missing_listings
+      dashboard = TicketingDashboardService.new(Current.organization)
+      result = dashboard.create_missing_listings!
+
+      if result[:errors].any?
+        redirect_to manage_ticketing_index_path,
+          alert: "Created #{result[:created].count} listings with #{result[:errors].count} errors."
+      else
+        redirect_to manage_ticketing_index_path,
+          notice: "Created #{result[:created].count} listings."
+      end
+    end
+
+    # Sync all ready listings
+    def sync_all
+      dashboard = TicketingDashboardService.new(Current.organization)
+      dashboard.sync_all_ready!
+
+      redirect_to manage_ticketing_index_path,
+        notice: "Sync queued for all ready listings."
     end
 
     private

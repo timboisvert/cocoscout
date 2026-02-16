@@ -4,7 +4,76 @@ module TicketingAdapters
   class TicketTailorAdapter < BaseAdapter
     BASE_URL = "https://api.tickettailor.com/v1"
 
+    # Ticket Tailor capabilities
+    CAPABILITIES = {
+      "api_create_event" => true,
+      "api_update_event" => true,
+      "api_sync_inventory" => true,
+      "api_fetch_sales" => true,
+      "webhook_sales" => true,
+      "webhook_inventory" => false,
+      "webhook_event_updates" => false,
+      "requires_approval" => false,
+      "supports_draft" => true
+    }.freeze
+
+    # Required fields for Ticket Tailor listings
+    def required_fields
+      {
+        show_name: ->(listing) { listing.show_ticketing.show.display_name.present? },
+        show_date: ->(listing) { listing.show_ticketing.show.date_and_time.present? },
+        ticket_tiers: ->(listing) { listing.show_ticketing.show_ticket_tiers.any? }
+      }
+    end
+
+    # ============================================
+    # Webhook Handling
+    # ============================================
+
+    def verify_webhook_signature(request)
+      return { valid: false, error: "No webhook secret configured" } if provider.webhook_secret.blank?
+
+      signature = request.headers["Ticket-Tailor-Signature"]
+      return { valid: false, error: "Missing signature" } if signature.blank?
+
+      # Ticket Tailor signature format: t=timestamp,v1=signature
+      parts = signature.split(",").map { |p| p.split("=", 2) }.to_h
+      timestamp = parts["t"]
+      sig = parts["v1"]
+
+      return { valid: false, error: "Invalid signature format" } if timestamp.blank? || sig.blank?
+
+      # Verify timestamp is recent (within 5 minutes)
+      if (Time.now.to_i - timestamp.to_i).abs > 300
+        return { valid: false, error: "Timestamp too old" }
+      end
+
+      # Compute expected signature
+      payload = "#{timestamp}.#{request.raw_post}"
+      expected = OpenSSL::HMAC.hexdigest("SHA256", provider.webhook_secret, payload)
+
+      if ActiveSupport::SecurityUtils.secure_compare(sig, expected)
+        { valid: true }
+      else
+        { valid: false, error: "Invalid signature" }
+      end
+    end
+
+    def parse_webhook(payload)
+      {
+        event_type: payload["event"] || "unknown",
+        external_event_id: payload.dig("data", "event_id"),
+        external_order_id: payload.dig("data", "order_id") || payload.dig("data", "id"),
+        data: payload
+      }
+    end
+
+    # ============================================
+    # Core API Methods
+    # ============================================
+
     def test_connection
+      check_rate_limit!
       response = get("/events")
 
       if response[:success]
@@ -200,13 +269,7 @@ module TicketingAdapters
       request["Accept"] = "application/json"
 
       response = http.request(request)
-
-      if response.code.to_i >= 200 && response.code.to_i < 300
-        { success: true, data: JSON.parse(response.body) }
-      else
-        error = JSON.parse(response.body).dig("message") rescue response.body
-        { success: false, error: error }
-      end
+      handle_response(response)
     rescue StandardError => e
       handle_error(e)
     end
@@ -224,13 +287,7 @@ module TicketingAdapters
       request.body = URI.encode_www_form(flatten_hash(data))
 
       response = http.request(request)
-
-      if response.code.to_i >= 200 && response.code.to_i < 300
-        { success: true, data: JSON.parse(response.body) }
-      else
-        error = JSON.parse(response.body).dig("message") rescue response.body
-        { success: false, error: error }
-      end
+      handle_response(response)
     rescue StandardError => e
       handle_error(e)
     end
@@ -248,15 +305,33 @@ module TicketingAdapters
       request.body = URI.encode_www_form(flatten_hash(data))
 
       response = http.request(request)
+      handle_response(response)
+    rescue StandardError => e
+      handle_error(e)
+    end
 
-      if response.code.to_i >= 200 && response.code.to_i < 300
+    def handle_response(response)
+      # Update rate limit tracking if headers present
+      if response["X-RateLimit-Remaining"]
+        remaining = response["X-RateLimit-Remaining"].to_i
+        reset_time = response["X-RateLimit-Reset"]&.to_i
+        resets_at = reset_time ? Time.at(reset_time) : 1.minute.from_now
+        provider.update_rate_limit_from_headers(remaining: remaining, resets_at: resets_at)
+      end
+
+      case response.code.to_i
+      when 200..299
         { success: true, data: JSON.parse(response.body) }
+      when 401
+        raise AuthenticationError, "Invalid or expired API key"
+      when 429
+        reset_time = response["X-RateLimit-Reset"]&.to_i
+        resets_at = reset_time ? Time.at(reset_time) : 1.minute.from_now
+        raise RateLimitError.new("Rate limit exceeded", resets_at: resets_at)
       else
         error = JSON.parse(response.body).dig("message") rescue response.body
         { success: false, error: error }
       end
-    rescue StandardError => e
-      handle_error(e)
     end
 
     def flatten_hash(hash, prefix = nil)

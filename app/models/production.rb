@@ -22,6 +22,7 @@ class Production < ApplicationRecord
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy
+  has_many :production_ticketing_setups, dependent: :destroy
 
   # Payroll and advances
   has_one :payroll_schedule, dependent: :destroy

@@ -4,7 +4,65 @@ module TicketingAdapters
   class EventbriteAdapter < BaseAdapter
     BASE_URL = "https://www.eventbriteapi.com/v3"
 
+    # Eventbrite capabilities
+    CAPABILITIES = {
+      "api_create_event" => true,
+      "api_update_event" => true,
+      "api_sync_inventory" => true,
+      "api_fetch_sales" => true,
+      "webhook_sales" => true,
+      "webhook_inventory" => false,
+      "webhook_event_updates" => true,
+      "requires_approval" => false,
+      "supports_draft" => true
+    }.freeze
+
+    # Required fields for Eventbrite listings
+    def required_fields
+      {
+        show_name: ->(listing) { listing.show_ticketing.show.display_name.present? },
+        show_date: ->(listing) { listing.show_ticketing.show.date_and_time.present? },
+        ticket_tiers: ->(listing) { listing.show_ticketing.show_ticket_tiers.any? }
+        # Eventbrite doesn't require images or descriptions
+      }
+    end
+
+    # ============================================
+    # Webhook Handling
+    # ============================================
+
+    def verify_webhook_signature(request)
+      return { valid: false, error: "No webhook secret configured" } if provider.webhook_secret.blank?
+
+      # Eventbrite uses a simple signature header
+      signature = request.headers["X-Eventbrite-Signature"]
+      return { valid: false, error: "Missing signature" } if signature.blank?
+
+      expected = OpenSSL::HMAC.hexdigest("SHA256", provider.webhook_secret, request.raw_post)
+
+      if ActiveSupport::SecurityUtils.secure_compare(signature, expected)
+        { valid: true }
+      else
+        { valid: false, error: "Invalid signature" }
+      end
+    end
+
+    def parse_webhook(payload)
+      # Eventbrite webhook format
+      {
+        event_type: payload["config"]&.dig("action") || payload["api_url"]&.split("/")&.last || "unknown",
+        external_event_id: extract_event_id_from_webhook(payload),
+        external_order_id: extract_order_id_from_webhook(payload),
+        data: payload
+      }
+    end
+
+    # ============================================
+    # Core API Methods
+    # ============================================
+
     def test_connection
+      check_rate_limit!
       response = get("/users/me/")
 
       if response[:success]
@@ -201,13 +259,7 @@ module TicketingAdapters
       request["Content-Type"] = "application/json"
 
       response = http.request(request)
-
-      if response.code.to_i >= 200 && response.code.to_i < 300
-        { success: true, data: JSON.parse(response.body) }
-      else
-        error = JSON.parse(response.body).dig("error_description") rescue response.body
-        { success: false, error: error }
-      end
+      handle_response(response)
     rescue StandardError => e
       handle_error(e)
     end
@@ -224,15 +276,43 @@ module TicketingAdapters
       request.body = data.to_json
 
       response = http.request(request)
+      handle_response(response)
+    rescue StandardError => e
+      handle_error(e)
+    end
 
-      if response.code.to_i >= 200 && response.code.to_i < 300
+    def handle_response(response)
+      # Update rate limit tracking
+      if response["X-RateLimit-Remaining"]
+        remaining = response["X-RateLimit-Remaining"].to_i
+        reset_time = response["X-RateLimit-Reset"]&.to_i
+        resets_at = reset_time ? Time.at(reset_time) : 1.minute.from_now
+        provider.update_rate_limit_from_headers(remaining: remaining, resets_at: resets_at)
+      end
+
+      case response.code.to_i
+      when 200..299
         { success: true, data: JSON.parse(response.body) }
+      when 401
+        raise AuthenticationError, "Invalid or expired API key"
+      when 429
+        reset_time = response["X-RateLimit-Reset"]&.to_i
+        resets_at = reset_time ? Time.at(reset_time) : 1.minute.from_now
+        raise RateLimitError.new("Rate limit exceeded", resets_at: resets_at)
       else
         error = JSON.parse(response.body).dig("error_description") rescue response.body
         { success: false, error: error }
       end
-    rescue StandardError => e
-      handle_error(e)
+    end
+
+    def extract_event_id_from_webhook(payload)
+      # Try to extract event ID from various webhook formats
+      payload.dig("api_url")&.match(/events\/(\d+)/)&.captures&.first ||
+        payload.dig("config", "endpoint_url")&.match(/events\/(\d+)/)&.captures&.first
+    end
+
+    def extract_order_id_from_webhook(payload)
+      payload.dig("api_url")&.match(/orders\/(\d+)/)&.captures&.first
     end
   end
 end

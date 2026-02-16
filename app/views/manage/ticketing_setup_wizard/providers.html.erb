@@ -1,0 +1,84 @@
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 2, step_name: "Providers" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Where do you want to sell tickets?</h2>
+    <p class="text-gray-600 mt-2">Select the ticketing platforms to list your shows on.</p>
+  </div>
+
+  <%= form_with url: manage_ticketing_setup_wizard_save_providers_path, method: :post, local: true do |form| %>
+    <% if @available_providers.any? %>
+      <div class="space-y-3">
+        <% @available_providers.each do |provider| %>
+          <div class="p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition-colors">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" name="provider_ids[]" value="<%= provider.id %>"
+                     <%= "checked" if @wizard_state[:provider_ids]&.include?(provider.id) %>
+                     class="h-4 w-4 mt-1 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-900"><%= provider.name %></span>
+                  <span class="text-xs px-2 py-0.5 bg-gray-100 rounded"><%= provider.provider_type.titleize %></span>
+                  <% if provider.credentials_healthy? %>
+                    <span class="w-2 h-2 bg-green-500 rounded-full" title="Connected"></span>
+                  <% else %>
+                    <span class="w-2 h-2 bg-red-500 rounded-full" title="Auth issue"></span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-500 mt-1">
+                  <% case provider.provider_type %>
+                  <% when "eventbrite" %>
+                    Large event discovery, best for public events
+                  <% when "ticket_tailor" %>
+                    Flexible pricing, lower fees for smaller events
+                  <% when "manual" %>
+                    External ticketing - tracked manually
+                  <% else %>
+                    Ticketing platform
+                  <% end %>
+                </div>
+
+                <% if provider.manual_only? %>
+                  <div class="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
+                    Manual provider: You'll create listings externally and mark them as complete here
+                  </div>
+                <% end %>
+              </div>
+            </label>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+        <div class="flex items-start gap-2">
+          <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="text-sm text-gray-600">
+            <p class="font-medium text-gray-700">Multiple providers?</p>
+            <p>Your shows will be listed on all selected providers. Inventory is tracked separately on each platform.</p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="text-center py-8">
+        <p class="text-gray-500 mb-4">You haven't connected any ticketing providers yet.</p>
+        <%= link_to manage_new_ticketing_provider_path do %>
+          <%= render "shared/button", text: "Connect a Provider", variant: "primary", size: "medium" %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @available_providers.any? %>
+      <div class="mt-8 flex justify-between">
+        <%= link_to manage_ticketing_setup_wizard_production_path do %>
+          <%= render "shared/button", text: "Back", variant: "secondary", size: "medium" %>
+        <% end %>
+        <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

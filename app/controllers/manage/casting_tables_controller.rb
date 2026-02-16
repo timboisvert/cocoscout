@@ -518,12 +518,13 @@ module Manage
           })
 
           MessageService.send_direct(
-            sender: Current.user,
+            sender: nil,
             recipient_person: person,
             subject: rendered[:subject],
             body: rendered[:body],
             production: assignments_by_production.keys.first,
-            organization: @casting_table.organization
+            organization: @casting_table.organization,
+            system_generated: true
           )
         end
         # For groups, we could notify group members or skip

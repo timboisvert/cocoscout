@@ -1,0 +1,63 @@
+<% content_for :title, "Ticketing Setup - #{step_name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Ticketing", manage_ticketing_index_path]
+    ],
+    text: @wizard_state[:editing_setup_id] ? "Edit Ticketing Setup" : "New Ticketing Setup",
+    links: [
+      { text: "Cancel", path: manage_ticketing_setup_wizard_cancel_path, data: { turbo_method: :delete, turbo_confirm: "Cancel setup? Your progress will be lost." } }
+    ]
+  } %>
+
+  <div class="max-w-2xl mx-auto">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <%
+          steps = [
+            { num: 1, name: "Production", key: "production" },
+            { num: 2, name: "Providers", key: "providers" },
+            { num: 3, name: "Strategy", key: "strategy" },
+            { num: 4, name: "Event Info", key: "eventinfo" },
+            { num: 5, name: "Venue", key: "venue" },
+            { num: 6, name: "Images", key: "images" },
+            { num: 7, name: "Pricing", key: "pricing" },
+            { num: 8, name: "Review", key: "review" }
+          ]
+        %>
+        <% steps.each_with_index do |step, index| %>
+          <% is_current = step[:num] == current_step %>
+          <% is_completed = step[:num] < current_step %>
+
+          <div class="flex items-center">
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : (is_completed ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600') %>">
+                <% if is_completed %>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                <% else %>
+                  <%= step[:num] %>
+                <% end %>
+              </div>
+              <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : (is_completed ? 'text-pink-500' : 'text-gray-500') %> hidden lg:inline"><%= step[:name] %></span>
+            </div>
+
+            <% if index < steps.length - 1 %>
+              <div class="w-8 h-0.5 mx-2 <%= is_completed ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+      <%= yield %>
+    </div>
+  </div>
+</div>

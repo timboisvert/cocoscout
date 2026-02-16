@@ -65,7 +65,7 @@ module Manage
     end
 
     def set_show_financials
-      @show_financials = @show.show_financials || @show.build_show_financials
+      @show_financials = @show.show_financials&.tap { |sf| sf.expense_items.load } || @show.build_show_financials
       @show_financials.save! if @show_financials.new_record?
     end
 

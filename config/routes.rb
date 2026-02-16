@@ -6,6 +6,9 @@ Rails.application.routes.draw do
   # Utility
   get "/up", to: proc { [ 200, {}, [ "OK" ] ] }
 
+  # Webhooks (external services)
+  post "/webhooks/ticketing/:provider_type/:token", to: "ticketing_webhooks#receive", as: "ticketing_webhook"
+
   # Landing page
   get "home/index"
 
@@ -1018,6 +1021,28 @@ Rails.application.routes.draw do
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"
+    post "ticketing/create_missing_listings", to: "ticketing#create_missing_listings", as: "ticketing_create_missing_listings"
+    post "ticketing/sync_all", to: "ticketing#sync_all", as: "ticketing_sync_all"
+
+    # Ticketing Setup Wizard - create/edit production ticketing setups
+    get    "ticketing/setup/start",           to: "ticketing_setup_wizard#start",           as: "ticketing_setup_wizard_start"
+    get    "ticketing/setup/production",      to: "ticketing_setup_wizard#production",      as: "ticketing_setup_wizard_production"
+    post   "ticketing/setup/production",      to: "ticketing_setup_wizard#save_production", as: "ticketing_setup_wizard_save_production"
+    get    "ticketing/setup/providers",       to: "ticketing_setup_wizard#providers",       as: "ticketing_setup_wizard_providers"
+    post   "ticketing/setup/providers",       to: "ticketing_setup_wizard#save_providers",  as: "ticketing_setup_wizard_save_providers"
+    get    "ticketing/setup/strategy",        to: "ticketing_setup_wizard#strategy",        as: "ticketing_setup_wizard_strategy"
+    post   "ticketing/setup/strategy",        to: "ticketing_setup_wizard#save_strategy",   as: "ticketing_setup_wizard_save_strategy"
+    get    "ticketing/setup/eventinfo",       to: "ticketing_setup_wizard#eventinfo",       as: "ticketing_setup_wizard_eventinfo"
+    post   "ticketing/setup/eventinfo",       to: "ticketing_setup_wizard#save_eventinfo",  as: "ticketing_setup_wizard_save_eventinfo"
+    get    "ticketing/setup/venue",           to: "ticketing_setup_wizard#venue",           as: "ticketing_setup_wizard_venue"
+    post   "ticketing/setup/venue",           to: "ticketing_setup_wizard#save_venue",      as: "ticketing_setup_wizard_save_venue"
+    get    "ticketing/setup/images",          to: "ticketing_setup_wizard#images",          as: "ticketing_setup_wizard_images"
+    post   "ticketing/setup/images",          to: "ticketing_setup_wizard#save_images",     as: "ticketing_setup_wizard_save_images"
+    get    "ticketing/setup/pricing",         to: "ticketing_setup_wizard#pricing",         as: "ticketing_setup_wizard_pricing"
+    post   "ticketing/setup/pricing",         to: "ticketing_setup_wizard#save_pricing",    as: "ticketing_setup_wizard_save_pricing"
+    get    "ticketing/setup/review",          to: "ticketing_setup_wizard#review",          as: "ticketing_setup_wizard_review"
+    post   "ticketing/setup/create",          to: "ticketing_setup_wizard#create_setup",    as: "ticketing_setup_wizard_create"
+    delete "ticketing/setup/cancel",          to: "ticketing_setup_wizard#cancel",          as: "ticketing_setup_wizard_cancel"
 
     # Ticketing Providers (integration settings)
     get "ticketing/providers", to: "ticketing_providers#index", as: "ticketing_providers"
