@@ -25,7 +25,7 @@ class CreateWebhookLogs < ActiveRecord::Migration[8.0]
     add_index :webhook_logs, :status
     add_index :webhook_logs, :external_id
     add_index :webhook_logs, :created_at
-    add_index :webhook_logs, [:ticketing_provider_id, :external_id], unique: true, 
+    add_index :webhook_logs, [ :ticketing_provider_id, :external_id ], unique: true,
               name: "idx_webhook_logs_provider_external_id"
   end
 end

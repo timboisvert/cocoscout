@@ -38,7 +38,7 @@ class ShowTicketingRule < ApplicationRecord
   scope :inclusions, -> { where(rule_type: :include) }
   scope :overrides, -> { where(rule_type: :override) }
   scope :for_provider, ->(provider) {
-    where("applies_to_provider_ids IS NULL OR applies_to_provider_ids @> ?", [provider.id].to_json)
+    where("applies_to_provider_ids IS NULL OR applies_to_provider_ids @> ?", [ provider.id ].to_json)
   }
 
   # ============================================

@@ -279,4 +279,3 @@ class TicketingProvider < ApplicationRecord
     self.webhook_endpoint_token ||= SecureRandom.urlsafe_base64(32)
   end
 end
-

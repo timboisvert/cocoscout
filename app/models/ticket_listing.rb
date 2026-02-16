@@ -174,7 +174,7 @@ class TicketListing < ApplicationRecord
     end
 
     # Exponential backoff for retries (max 1 hour)
-    backoff = [2**sync_attempt_count * 30, 3600].min.seconds
+    backoff = [ 2**sync_attempt_count * 30, 3600 ].min.seconds
 
     update!(
       status: new_status,
@@ -198,7 +198,7 @@ class TicketListing < ApplicationRecord
     update!(
       status: :sync_failed,
       approval_status: "rejected",
-      sync_errors: sync_errors + [{ message: "Approval rejected: #{reason}", at: Time.current.iso8601 }]
+      sync_errors: sync_errors + [ { message: "Approval rejected: #{reason}", at: Time.current.iso8601 } ]
     )
   end
 

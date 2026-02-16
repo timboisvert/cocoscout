@@ -100,10 +100,10 @@ module TicketingWebhooks
       # Mark listing for review - external changes detected
       listing.update!(
         external_last_modified_at: Time.current,
-        sync_errors: listing.sync_errors + [{
+        sync_errors: listing.sync_errors + [ {
           message: "External event updated - review for sync",
           at: Time.current.iso8601
-        }]
+        } ]
       )
 
       { success: true, message: "Marked listing for review" }

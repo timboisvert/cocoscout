@@ -548,9 +548,10 @@ module Manage
       html = ""
       assignments_by_production.each do |production, prod_assignments|
         html += "<h3>#{production.name}</h3>\n<ul>\n"
-        prod_assignments.group_by(&:show).each do |show, show_assignments|
+        prod_assignments.group_by(&:show).sort_by { |show, _| show.date_and_time }.each do |show, show_assignments|
           roles = show_assignments.map { |a| a.role.name }.join(", ")
-          html += "<li>#{show.display_name}: #{roles}</li>\n"
+          date_str = show.date_and_time.strftime("%-m/%-d/%Y %-l %p")
+          html += "<li>#{date_str} (#{show.display_name}): #{roles}</li>\n"
         end
         html += "</ul>\n"
       end

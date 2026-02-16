@@ -3,9 +3,9 @@
 module Manage
   class TicketingSetupWizardController < Manage::ManageController
     before_action :ensure_user_is_global_manager
-    before_action :load_wizard_state, except: [:start]
-    before_action :load_available_providers, only: [:providers, :save_providers]
-    before_action :load_productions, only: [:production, :save_production]
+    before_action :load_wizard_state, except: [ :start ]
+    before_action :load_available_providers, only: [ :providers, :save_providers ]
+    before_action :load_productions, only: [ :production, :save_production ]
 
     WIZARD_STEPS = %w[production providers strategy eventinfo venue images pricing review].freeze
 

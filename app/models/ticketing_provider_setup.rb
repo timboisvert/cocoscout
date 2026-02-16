@@ -131,9 +131,9 @@ class TicketingProviderSetup < ApplicationRecord
   def resize_for_provider(image)
     case provider_type
     when "eventbrite"
-      image.variant(resize_to_fill: [2160, 1080])
+      image.variant(resize_to_fill: [ 2160, 1080 ])
     when "ticket_tailor"
-      image.variant(resize_to_fill: [1200, 630])
+      image.variant(resize_to_fill: [ 1200, 630 ])
     else
       image
     end

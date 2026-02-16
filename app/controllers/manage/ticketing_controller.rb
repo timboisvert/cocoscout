@@ -14,7 +14,7 @@ module Manage
       production_ids = ticketing_enabled_productions.pluck(:id)
       @show_ticketings = ShowTicketing
         .joins(show: :production)
-        .includes(show: [:production, :location], show_ticket_tiers: [], ticket_listings: :ticketing_provider)
+        .includes(show: [ :production, :location ], show_ticket_tiers: [], ticket_listings: :ticketing_provider)
         .where(shows: { production_id: production_ids })
         .where(shows: { canceled: false })
         .where("shows.date_and_time >= ?", Time.current.beginning_of_day)

@@ -243,10 +243,10 @@ class ProductionTicketingSetup < ApplicationRecord
     case ticketing_provider.provider_type
     when "eventbrite"
       # Eventbrite: 2160x1080 (2:1 ratio)
-      master_image.variant(resize_to_fill: [2160, 1080])
+      master_image.variant(resize_to_fill: [ 2160, 1080 ])
     when "ticket_tailor"
       # Ticket Tailor: 1200x630 (roughly 1.9:1)
-      master_image.variant(resize_to_fill: [1200, 630])
+      master_image.variant(resize_to_fill: [ 1200, 630 ])
     else
       master_image
     end

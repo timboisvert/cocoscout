@@ -84,7 +84,7 @@ class CreateProductionTicketingSetup < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :ticketing_provider_setups, [:production_ticketing_setup_id, :ticketing_provider_id],
+    add_index :ticketing_provider_setups, [ :production_ticketing_setup_id, :ticketing_provider_id ],
               unique: true, name: "idx_provider_setups_unique"
 
     # Per-show rules: exclusions, overrides, or explicit inclusions
@@ -112,7 +112,7 @@ class CreateProductionTicketingSetup < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :show_ticketing_rules, [:production_ticketing_setup_id, :show_id],
+    add_index :show_ticketing_rules, [ :production_ticketing_setup_id, :show_id ],
               unique: true, name: "idx_show_rules_unique"
 
     # Remote Ticketing Events - cache of what actually exists on provider sites
@@ -158,9 +158,9 @@ class CreateProductionTicketingSetup < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :remote_ticketing_events, [:ticketing_provider_id, :external_event_id],
+    add_index :remote_ticketing_events, [ :ticketing_provider_id, :external_event_id ],
               unique: true, name: "idx_remote_events_provider_external"
-    add_index :remote_ticketing_events, [:ticketing_provider_id, :show_id],
+    add_index :remote_ticketing_events, [ :ticketing_provider_id, :show_id ],
               name: "idx_remote_events_provider_show"
   end
 end
