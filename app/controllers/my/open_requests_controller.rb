@@ -193,7 +193,7 @@ module My
         available_entity_type: "Person",
         available_entity_id: person.id
       ) do |avail|
-        avail.status = "no"
+        avail.status = "unavailable"
       end
 
       respond_to do |format|
