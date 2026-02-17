@@ -1,0 +1,5 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please provide an answer to this question</div>
+<% end %>
+
+<%= text_area_tag "question[#{question.id}]", answer_value, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", rows: 6, required: required %>

@@ -8,8 +8,8 @@
           <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
         </div>
         <div class="flex items-center gap-2 sm:gap-4">
-          <%= link_to "For Performers", new_performers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
-          <%= link_to "For Producers", new_producers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
+          <%= link_to "For Performers", performers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
+          <%= link_to "For Producers", producers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
           <%= render "shared/button", text: "Sign In", path: signin_path, variant: "ghost", size: "small" %>
           <%= render "shared/button", text: "Sign Up", path: signup_path, variant: "primary", size: "small" %>
         </div>
@@ -37,7 +37,7 @@
           <!-- Audience Selector Cards -->
           <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             <!-- Performer Card -->
-            <%= link_to new_performers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
+            <%= link_to performers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
               <div class="flex items-center gap-4 mb-4">
                 <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
                   <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
@@ -56,7 +56,7 @@
             <% end %>
 
             <!-- Producer Card -->
-            <%= link_to new_producers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
+            <%= link_to producers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
               <div class="flex items-center gap-4 mb-4">
                 <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
                   <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">

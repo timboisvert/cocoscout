@@ -1,21 +1,30 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  root "home#index"
+  root "home#new_home"
 
   # Utility
   get "/up", to: proc { [ 200, {}, [ "OK" ] ] }
 
+  # Error pages
+  match "/404", to: "errors#not_found", via: :all
+  match "/422", to: "errors#unprocessable", via: :all
+  match "/500", to: "errors#internal_error", via: :all
+
   # Webhooks (external services)
   post "/webhooks/ticketing/:provider_type/:token", to: "ticketing_webhooks#receive", as: "ticketing_webhook"
 
-  # Landing page
-  get "home/index"
+  # Landing pages
+  get "/for-performers", to: "home#new_performers", as: "performers"
+  get "/for-producers", to: "home#new_producers", as: "producers"
 
-  # New homepage (preview)
-  get "/new", to: "home#new_home", as: "new_home"
-  get "/new/for-performers", to: "home#new_performers", as: "new_performers"
-  get "/new/for-producers", to: "home#new_producers", as: "new_producers"
+  # Redirects from old /new paths
+  get "/new", to: redirect("/")
+  get "/new/for-performers", to: redirect("/for-performers")
+  get "/new/for-producers", to: redirect("/for-producers")
+
+  # Legacy route (can be removed later)
+  get "home/index", to: redirect("/")
 
   # Legal pages
   get "/terms", to: "legal#terms", as: "terms"

@@ -4,14 +4,14 @@
     <div class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <%= link_to new_home_path, class: "flex items-center gap-3" do %>
+          <%= link_to root_path, class: "flex items-center gap-3" do %>
             <%= image_tag "/icon.png", alt: "CocoScout logomark", class: "h-10 w-10" %>
             <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
           <% end %>
         </div>
         <div class="flex items-center gap-2 sm:gap-4">
-          <%= link_to "For Performers", new_performers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
-          <%= link_to "For Producers", new_producers_path, class: "hidden sm:inline text-sm font-medium text-pink-500" %>
+          <%= link_to "For Performers", performers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
+          <%= link_to "For Producers", producers_path, class: "hidden sm:inline text-sm font-medium text-pink-500" %>
           <%= render "shared/button", text: "Sign In", path: signin_path, variant: "ghost", size: "small" %>
           <%= render "shared/button", text: "Sign Up Free", path: signup_path, variant: "primary", size: "small" %>
         </div>
@@ -535,7 +535,7 @@
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <%= render "shared/button", text: "Start Your Production", path: signup_path, variant: "primary", size: "large" %>
-          <%= render "shared/button", text: "Looking to perform instead? →", path: new_performers_path, variant: "ghost", size: "medium" %>
+          <%= render "shared/button", text: "Looking to perform instead? →", path: performers_path, variant: "ghost", size: "medium" %>
         </div>
       </div>
     </section>

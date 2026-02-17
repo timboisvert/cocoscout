@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= @title %> - CocoScout</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="utf-8">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Coustard:wght@400;900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+
+    <style>
+      .coustard-regular { font-family: "Coustard", serif; font-weight: 400; }
+      .inter-regular { font-family: "Inter", sans-serif; font-weight: 400; }
+    </style>
+  </head>
+
+  <body class="inter-regular text-slate-700 bg-white">
+    <div class="min-h-screen flex flex-col items-center justify-center px-4">
+      <%= yield %>
+    </div>
+  </body>
+</html>
