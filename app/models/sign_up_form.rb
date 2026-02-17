@@ -120,6 +120,45 @@ class SignUpForm < ApplicationRecord
     scope == "shared_pool"
   end
 
+  # Pre-registration mode enum
+  enum :pre_registration_mode, {
+    disabled: "disabled",
+    producers_only: "producers_only",
+    producers_and_talent: "producers_and_talent"
+  }, prefix: :pre_reg
+
+  # Check if pre-registration is available for a given show at current time
+  def pre_registration_open_for?(show)
+    return false if pre_reg_disabled?
+
+    window = pre_registration_window
+    show.date_and_time - window <= Time.current
+  end
+
+  # Get the pre-registration window as a duration
+  def pre_registration_window
+    case pre_registration_window_unit
+    when "hours"
+      pre_registration_window_value.hours
+    when "days"
+      pre_registration_window_value.days
+    when "months"
+      pre_registration_window_value.months
+    else
+      45.days
+    end
+  end
+
+  # Can producers pre-register talent pool members?
+  def allows_producer_pre_registration?
+    pre_reg_producers_only? || pre_reg_producers_and_talent?
+  end
+
+  # Can talent pre-register themselves?
+  def allows_talent_self_pre_registration?
+    pre_reg_producers_and_talent?
+  end
+
   # Slot selection mode helpers
   def admin_assigns?
     slot_selection_mode == "admin_assigns"

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_16_161112) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_17_033723) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1652,6 +1652,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_16_161112) do
     t.integer "opens_days_before", default: 7
     t.integer "opens_hours_before", default: 0
     t.integer "opens_minutes_before", default: 0
+    t.string "pre_registration_mode", default: "producers_only", null: false
+    t.string "pre_registration_window_unit", default: "days", null: false
+    t.integer "pre_registration_window_value", default: 45, null: false
     t.bigint "production_id", null: false
     t.boolean "queue_carryover", default: false, null: false
     t.integer "queue_limit"

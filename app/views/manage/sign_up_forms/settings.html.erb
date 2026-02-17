@@ -919,6 +919,66 @@
             </div>
           <% end %>
 
+          <%# Pre-registration Section - Allow producers/talent to sign up before form officially opens %>
+          <% unless is_waitlist %>
+            <%
+              pre_reg_mode = @sign_up_form.pre_registration_mode || 'producers_only'
+              pre_reg_window_value = @sign_up_form.pre_registration_window_value || 45
+              pre_reg_window_unit = @sign_up_form.pre_registration_window_unit || 'days'
+            %>
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200" data-controller="pre-registration">
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700">Pre-registration</label>
+                <p class="text-xs text-gray-500 mt-0.5">Allow sign-ups before the form officially opens to the public.</p>
+              </div>
+              <div class="space-y-2">
+                <%# Option 1: Disabled %>
+                <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= pre_reg_mode == 'disabled' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                       data-action="click->pre-registration#selectMode"
+                       data-pre-registration-mode="disabled">
+                  <%= form.radio_button :pre_registration_mode, "disabled", class: "sr-only", data: { "pre-registration-target": "modeInput" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Disabled</span>
+                    <p class="text-xs text-gray-500 mt-0.5">No pre-registration allowed</p>
+                  </div>
+                </label>
+
+                <%# Option 2: Producers only (default) %>
+                <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= pre_reg_mode == 'producers_only' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                       data-action="click->pre-registration#selectMode"
+                       data-pre-registration-mode="producers_only">
+                  <%= form.radio_button :pre_registration_mode, "producers_only", class: "sr-only", data: { "pre-registration-target": "modeInput" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Managers only</span>
+                    <p class="text-xs text-gray-500 mt-0.5">Only managers can pre-register talent pool members</p>
+                  </div>
+                </label>
+
+                <%# Option 3: Producers and talent pool members %>
+                <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= pre_reg_mode == 'producers_and_talent' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                       data-action="click->pre-registration#selectMode"
+                       data-pre-registration-mode="producers_and_talent">
+                  <%= form.radio_button :pre_registration_mode, "producers_and_talent", class: "sr-only", data: { "pre-registration-target": "modeInput" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Managers and talent pool members</span>
+                    <p class="text-xs text-gray-500 mt-0.5">Managers can pre-register talent pool members and talent pool members can pre-register themselves</p>
+                  </div>
+                </label>
+              </div>
+
+              <%# Pre-registration window (shown when not disabled) %>
+              <div data-pre-registration-target="windowFields" class="<%= pre_reg_mode == 'disabled' ? 'hidden' : '' %> mt-4 pt-4 border-t border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Pre-registration window</label>
+                <p class="text-xs text-gray-500 mb-3">How far in advance of each event can pre-registration happen?</p>
+                <div class="flex items-center gap-2">
+                  <%= form.number_field :pre_registration_window_value, value: pre_reg_window_value, min: 1, class: "w-20 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <%= form.select :pre_registration_window_unit, [["hours", "hours"], ["days", "days"], ["months", "months"]], { selected: pre_reg_window_unit }, class: "rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">before event</span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
           <%# Hide Registration Names Section - shown when show_registrations is enabled %>
           <% if @sign_up_form.show_registrations %>
             <% hide_mode = @sign_up_form.hide_registrations_mode || 'event_start' %>

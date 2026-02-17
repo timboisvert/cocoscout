@@ -261,6 +261,12 @@ module Manage
         @wizard_state[:opens_at] ||= 1.day.from_now.beginning_of_day
       end
       @wizard_state[:closes_at] ||= nil
+      # Pre-registration defaults (not for waitlists)
+      unless @wizard_state[:scope] == "shared_pool"
+        @wizard_state[:pre_registration_mode] ||= "producers_only"
+        @wizard_state[:pre_registration_window_value] ||= 45
+        @wizard_state[:pre_registration_window_unit] ||= "days"
+      end
     end
 
     def save_schedule
@@ -306,6 +312,13 @@ module Manage
         @wizard_state[:hide_registrations_mode] = params[:hide_registrations_mode] || "event_start"
         @wizard_state[:hide_registrations_offset_value] = params[:hide_registrations_offset_value].to_i
         @wizard_state[:hide_registrations_offset_unit] = params[:hide_registrations_offset_unit] || "hours"
+      end
+
+      # Handle pre-registration settings (not for waitlists)
+      unless @wizard_state[:scope] == "shared_pool"
+        @wizard_state[:pre_registration_mode] = params[:pre_registration_mode] || "producers_only"
+        @wizard_state[:pre_registration_window_value] = params[:pre_registration_window_value].to_i
+        @wizard_state[:pre_registration_window_unit] = params[:pre_registration_window_unit] || "days"
       end
 
       save_wizard_state
@@ -392,7 +405,11 @@ module Manage
           # Hide registrations fields
           hide_registrations_mode: @wizard_state[:hide_registrations_mode] || "event_start",
           hide_registrations_offset_value: @wizard_state[:hide_registrations_offset_value] || 2,
-          hide_registrations_offset_unit: @wizard_state[:hide_registrations_offset_unit] || "hours"
+          hide_registrations_offset_unit: @wizard_state[:hide_registrations_offset_unit] || "hours",
+          # Pre-registration fields
+          pre_registration_mode: @wizard_state[:pre_registration_mode] || "producers_only",
+          pre_registration_window_value: @wizard_state[:pre_registration_window_value] || 45,
+          pre_registration_window_unit: @wizard_state[:pre_registration_window_unit] || "days"
         )
 
         # Set fixed schedule dates for single_event or fixed mode

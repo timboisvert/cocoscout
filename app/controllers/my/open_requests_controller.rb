@@ -101,14 +101,24 @@ module My
         return render json: { error: "Not authorized" }, status: :forbidden
       end
 
-      # Find the sign-up form instance for this show
+      # Find the sign-up form instance for this show (open or scheduled for pre-registration)
       instance = SignUpFormInstance.joins(:sign_up_form)
                                    .where(show_id: show.id)
-                                   .where(status: "open")
+                                   .where(status: %w[open scheduled])
+                                   .where(sign_up_forms: { archived_at: nil })
                                    .first
 
       unless instance
         return redirect_to my_requests_path, alert: "Sign-up is not currently open for this event."
+      end
+
+      # Check if sign-up is allowed
+      form = instance.sign_up_form
+      if instance.status == "scheduled"
+        # Pre-registration - check if talent can self pre-register and we're within the window
+        unless form.allows_talent_self_pre_registration? && form.pre_registration_open_for?(show)
+          return redirect_to my_requests_path, alert: "Sign-up is not currently open for this event."
+        end
       end
 
       # Helper to check if slot has capacity
@@ -323,7 +333,19 @@ module My
           # This is a sign-up show (only for people, not groups)
           next unless entity_type == "Person"
 
-          instance = show.sign_up_form_instances.find { |i| %w[scheduled open].include?(i.status) }
+          instance = show.sign_up_form_instances.find { |i|
+            %w[scheduled open].include?(i.status) && i.sign_up_form&.archived_at.nil?
+          }
+          next unless instance
+
+          # Check if talent can see this signup form
+          form = instance.sign_up_form
+          if instance.status == "scheduled"
+            # Form not yet open - only show if talent self pre-registration is allowed
+            # and within the pre-registration window
+            next unless form.allows_talent_self_pre_registration? && form.pre_registration_open_for?(show)
+          end
+
           registration = all_registrations[[ show.id, entity.id ]]
 
           @signup_items << build_signup_item(show, entity, instance, registration)

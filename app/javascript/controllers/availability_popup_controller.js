@@ -264,6 +264,8 @@ export default class extends Controller {
             // Don't show registration options for past events that are closed
             if (signUpForm.show_in_past && !signUpForm.is_open) {
                 // Past event, closed - don't show registration option
+            } else if (!signUpForm.is_open && !signUpForm.can_pre_register) {
+                // Form not open and pre-registration not allowed - don't show
             } else {
                 html += '<div class="border-t border-gray-200 my-2"></div>'
                 html += '<div class="text-xs font-medium text-gray-500 uppercase mb-1">Sign Up</div>'

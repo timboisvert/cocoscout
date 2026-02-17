@@ -845,6 +845,7 @@ module Manage
         :queue_limit, :queue_carryover,
         :slot_hold_enabled, :slot_hold_seconds,
         :hide_registrations_mode, :hide_registrations_offset_value, :hide_registrations_offset_unit,
+        :pre_registration_mode, :pre_registration_window_value, :pre_registration_window_unit,
         event_type_filter: []
       )
     end

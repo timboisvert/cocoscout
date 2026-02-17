@@ -39,7 +39,7 @@ class User < ApplicationRecord
 
   # Count of open requests needing user's attention:
   # - Unanswered availability requests (shows not tied to sign-up forms)
-  # - Unanswered sign-up opportunities (shows with sign-up forms, not yet registered or declined)
+  # - Unanswered sign-up opportunities (shows with sign-up forms where talent can act)
   # - Open questionnaires (invited but not yet responded)
   def open_requests_count
     return 0 unless person
@@ -49,23 +49,26 @@ class User < ApplicationRecord
 
     count = 0
 
-    # Get all upcoming shows from talent pools (within 45 days for badge count)
+    # Get all upcoming shows from talent pools (no time limit for badge count)
     show_ids = Show.joins(production: { talent_pools: :people })
                    .where(people: { id: person_ids })
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
-                   .where("date_and_time <= ?", 45.days.from_now)
                    .pluck(:id)
                    .uniq
 
     if show_ids.any?
-      # Shows with open sign-up forms (exclude archived forms)
-      shows_with_signup = SignUpFormInstance.joins(:sign_up_form)
-                                            .where(show_id: show_ids)
-                                            .where(status: %w[scheduled open])
-                                            .where(sign_up_forms: { archived_at: nil })
-                                            .pluck(:show_id)
-                                            .to_set
+      # Shows with sign-up forms (exclude archived forms)
+      # We need the instance and form to check if talent can pre-register
+      signup_instances = SignUpFormInstance.joins(:sign_up_form, :show)
+                                           .where(show_id: show_ids)
+                                           .where(status: %w[scheduled open])
+                                           .where(sign_up_forms: { archived_at: nil })
+                                           .includes(:sign_up_form, :show)
+
+      shows_with_signup_by_id = signup_instances.each_with_object({}) do |instance, hash|
+        hash[instance.show_id] = instance
+      end
 
       # Get existing availabilities for these shows
       availability_show_ids = ShowAvailability.where(show_id: show_ids)
@@ -84,9 +87,17 @@ class User < ApplicationRecord
 
       # Count unanswered availability requests (shows without sign-up forms and no availability)
       show_ids.each do |show_id|
-        if shows_with_signup.include?(show_id)
-          # Sign-up show: count if not registered and not declined
-          count += 1 unless registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id)
+        instance = shows_with_signup_by_id[show_id]
+        if instance
+          # Sign-up show: count if not registered, not declined, and talent can act
+          next if registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id)
+
+          form = instance.sign_up_form
+          if instance.status == "open"
+            count += 1
+          elsif form.allows_talent_self_pre_registration? && form.pre_registration_open_for?(instance.show)
+            count += 1
+          end
         else
           # Availability show: count if no availability response
           count += 1 unless availability_show_ids.include?(show_id)

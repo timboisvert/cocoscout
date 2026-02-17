@@ -214,10 +214,14 @@
             }
           end
         end
+        is_open = @sign_up_form_open_by_show[show.id]
+        # Can producer pre-register? Only when form is not open, allows producer pre-reg, and within window
+        can_pre_register = !is_open && sign_up_form.allows_producer_pre_registration? && sign_up_form.pre_registration_open_for?(show)
         sign_up_form_data = {
           id: sign_up_form.id,
           name: sign_up_form.name,
-          is_open: @sign_up_form_open_by_show[show.id],
+          is_open: is_open,
+          can_pre_register: can_pre_register,
           slot_mode: sign_up_form.slot_generation_mode,
           show_in_past: show.date_and_time < Time.current,
           slots: slots_data

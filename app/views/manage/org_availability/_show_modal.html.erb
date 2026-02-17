@@ -75,9 +75,13 @@
         <%# Register/Pre-register All button - show if form exists, show is in future, and there are unregistered available people %>
         <%
           unregistered_available = available_members.select { |m| !m[:is_signed_up] && m[:member].is_a?(Person) }
+          # Show button if form is open, OR if pre-registration is allowed and we're within the pre-reg window
+          can_pre_register = !@sign_up_form_open && @sign_up_form&.allows_producer_pre_registration? && @sign_up_form&.pre_registration_open_for?(@show)
+          # Don't show at all if form is closed and pre-registration is disabled
           show_register_all = @sign_up_form.present? &&
                               @show.date_and_time > Time.current &&
-                              unregistered_available.any?
+                              unregistered_available.any? &&
+                              (@sign_up_form_open || can_pre_register)
           register_all_label = @sign_up_form_open ? "Register All" : "Pre-register All"
           register_all_description = @sign_up_form_open ?
             "Registering adds them to the sign-up list." :
@@ -160,10 +164,13 @@
           }
         end
       end
+      # Can producer pre-register? Only when form is not open, allows producer pre-reg, and within window
+      can_pre_register = !@sign_up_form_open && @sign_up_form.allows_producer_pre_registration? && @sign_up_form.pre_registration_open_for?(@show)
       sign_up_form_data = {
         id: @sign_up_form.id,
         name: @sign_up_form.name,
         is_open: @sign_up_form_open,
+        can_pre_register: can_pre_register,
         slot_mode: @sign_up_form.slot_generation_mode,
         show_in_past: @show.date_and_time < Time.current,
         slots: slots_data
