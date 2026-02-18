@@ -1,0 +1,136 @@
+# Ticketing Provider Configuration
+# Add new providers by adding a new section with the provider key
+#
+# Each provider should define:
+#   display_name: Human-readable name
+#   icon: Short icon text (2 chars)
+#   capabilities: What the provider supports
+#   credentials: What credentials are required
+#   webhooks: Webhook configuration
+#   health_checks: What to verify during health checks
+#   setup_instructions: URLs and guidance for setup
+
+ticket_tailor:
+  display_name: "Ticket Tailor"
+  icon: "TT"
+  website: "https://www.tickettailor.com"
+
+  capabilities:
+    api_fetch_events: true
+    api_create_event: true
+    api_update_event: true
+    api_fetch_sales: true
+    api_sync_inventory: true
+    webhook_sales: true
+    webhook_inventory: false
+    supports_recurring: false
+    supports_draft: true
+    requires_approval: false
+
+  credentials:
+    api_key:
+      required: true
+      label: "API Key"
+      help: "Found in Settings > API Access"
+      validation: "^sk_[0-9]+_[a-zA-Z0-9]+$"
+    webhook_secret:
+      required: true
+      label: "Webhook Signing Secret"
+      help: "Generated when creating a webhook"
+
+  required_permissions:
+    - "Event manager"    # Read/write events
+    - "Order manager"    # Read orders/sales
+
+  webhooks:
+    endpoint_format: "/webhooks/ticketing/ticket_tailor/:token"
+    supported_events:
+      - order.completed
+      - order.issued
+      - ticket.void
+    setup_notes: |
+      Create one webhook per event type, all pointing to the same URL.
+      In webhook settings, uncheck "Hide personal data from responses".
+
+  health_checks:
+    - type: api_connection
+      endpoint: "/v1/events"
+      expected_status: 200
+    - type: permissions
+      test: "can list events"
+    - type: webhook_configured
+      verify: "webhook_secret present"
+
+eventbrite:
+  display_name: "Eventbrite"
+  icon: "EB"
+  website: "https://www.eventbrite.com"
+
+  capabilities:
+    api_fetch_events: true
+    api_create_event: true
+    api_update_event: true
+    api_fetch_sales: true
+    api_sync_inventory: true
+    webhook_sales: true
+    webhook_inventory: true
+    supports_recurring: true
+    supports_draft: true
+    requires_approval: false
+
+  credentials:
+    api_key:
+      required: true
+      label: "Private Token"
+      help: "Found in Account Settings > Developer Links > API Keys"
+    organization_id:
+      required: false
+      label: "Organization ID"
+      help: "If you have multiple organizations"
+
+  required_permissions:
+    - "Read events"
+    - "Read orders"
+
+  webhooks:
+    endpoint_format: "/webhooks/ticketing/eventbrite/:token"
+    supported_events:
+      - order.placed
+      - order.updated
+      - event.published
+      - event.unpublished
+    setup_notes: |
+      Add the webhook URL in your Eventbrite app settings.
+      Select the events you want to receive notifications for.
+
+  health_checks:
+    - type: api_connection
+      endpoint: "/users/me/"
+      expected_status: 200
+    - type: permissions
+      test: "can list organizations"
+
+manual:
+  display_name: "Manual Entry"
+  icon: "ME"
+  website: null
+
+  capabilities:
+    api_fetch_events: false
+    api_create_event: false
+    api_update_event: false
+    api_fetch_sales: false
+    api_sync_inventory: false
+    webhook_sales: false
+    webhook_inventory: false
+    supports_recurring: false
+    supports_draft: false
+    requires_approval: false
+
+  credentials: {}
+  required_permissions: []
+  webhooks: null
+
+  health_checks:
+    - type: always_valid
+      message: "Manual entry requires no connection"

@@ -160,8 +160,8 @@ class MessageService
       # Default visibility if still not set
       visibility ||= :personal
 
-      # Create the message
-      message = Message.create!(
+      # Create the message (skip automatic notification - we'll call it after subscriptions exist)
+      message = Message.new(
         sender: sender,
         organization: organization,
         production: production,
@@ -173,6 +173,8 @@ class MessageService
         parent_message: parent_message,
         system_generated: system_generated
       )
+      message.skip_notify_subscribers = true
+      message.save!
 
       # Create recipient records
       recipients.each do |person|
@@ -197,6 +199,9 @@ class MessageService
       if visibility.to_sym.in?([ :production, :show ]) && production
         root_message.subscribe_production_team!
       end
+
+      # Now notify all subscribers (increment unread counts) since subscriptions exist
+      message.send(:notify_subscribers)
 
       # Note: Email notifications are now handled by UnreadDigestJob
       # which sends a digest after 1 hour if user hasn't checked their inbox

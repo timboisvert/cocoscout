@@ -156,6 +156,42 @@ The "new header" for major module landing pages. Uses a large title with `cousta
 - Buttons have `bg-gray-50 border border-gray-300` with pink icon circles
 - Grid is 2x2 for 4 actions, 2+1 (two top, one centered below) for 3 actions
 
+### Entity Header
+A header for specific entity detail pages (providers, productions, shows, etc.). Smaller than module_header, designed for detail pages with action buttons.
+
+```erb
+<%
+  badges = [
+    { text: "Ticket Tailor", color: "gray" },
+    { text: "Connected", color: "green", dot: true }
+  ]
+  actions = [
+    { text: "Test", icon: "check-circle", path: test_path, method: :post },
+    { text: "Edit", icon: "pencil", path: edit_path },
+    { text: "Delete", icon: "trash", path: delete_path, method: :delete, variant: "danger", confirm: "Are you sure?" }
+  ]
+%>
+
+<%= render "shared/entity_header",
+  icon: "TT",                    # Text for icon (or use icon_url for image)
+  title: "My Provider",
+  badges: badges,
+  meta: "Last synced 5 minutes ago",
+  actions: actions
+%>
+```
+
+**Parameters:**
+- `icon` - Text to display in the icon box (e.g., "TT", "EB")
+- `icon_url` - Optional image URL for icon (overrides `icon`)
+- `title` - Entity name
+- `badges` - Array of `{ text:, color:, dot: }` hashes
+- `meta` - Optional meta text below badges
+- `actions` - Array of action buttons with `{ text:, icon:, path:, method:, variant:, confirm: }`
+
+**Badge colors:** green, amber, red, gray, blue, purple, pink
+**Action variants:** secondary (default), danger
+
 ### Show Row
 The show_row partial displays a single show/event in a list. It's highly configurable for different contexts (performer view, cast view, manager view, availability tracking, etc.).
 

@@ -33,7 +33,7 @@
     <p class="text-sm text-gray-500 mb-4">Enter your API credentials from your ticketing platform. These are encrypted and stored securely.</p>
 
     <div>
-      <%= form.label :api_key, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.label :api_key, "API Key", class: "block text-sm font-medium text-gray-700 mb-1" %>
       <%= form.text_field :api_key, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm", placeholder: "Your API key" %>
     </div>
 
@@ -41,13 +41,41 @@
       <%= form.label :api_secret, "API Secret (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
       <%= form.text_field :api_secret, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm", placeholder: "Your API secret" %>
     </div>
-
-    <div>
-      <%= form.label :webhook_secret, "Webhook Secret (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= form.text_field :webhook_secret, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm", placeholder: "For receiving real-time updates" %>
-      <p class="text-xs text-gray-500 mt-1">Used to verify incoming webhook requests from the provider.</p>
-    </div>
   </div>
+
+  <% if provider.supports_webhooks? %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-4" data-controller="toggle" data-toggle-initial-state-value="<%= provider.webhook_enabled? ? 'open' : 'closed' %>">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-medium text-gray-900">Webhooks</h3>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <%= form.check_box :webhook_enabled, class: "sr-only peer", data: { action: "change->toggle#toggle" } %>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+      <p class="text-sm text-gray-500">Enable webhooks to receive real-time updates when tickets are sold or events change.</p>
+
+      <div data-toggle-target="content" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+          <div class="flex gap-2">
+            <code class="flex-1 text-xs text-gray-600 bg-gray-50 rounded-lg border border-gray-200 p-3 break-all font-mono"><%= provider.webhook_url || "Save to generate URL" %></code>
+            <% if provider.webhook_url.present? %>
+              <button type="button" onclick="navigator.clipboard.writeText('<%= provider.webhook_url %>')" class="px-3 py-2 text-sm font-medium text-pink-600 hover:text-pink-800 border border-gray-200 rounded-lg hover:bg-gray-50">
+                Copy
+              </button>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Add this URL in your <%= provider.provider_type.titleize.gsub("_", " ") %> webhook settings.</p>
+        </div>
+
+        <div>
+          <%= form.label :webhook_secret, "Webhook Signing Secret", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.text_field :webhook_secret, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-sm", placeholder: "From your provider's webhook settings" %>
+          <p class="text-xs text-gray-500 mt-1">Used to verify incoming webhook requests are authentic.</p>
+        </div>
+      </div>
+    </div>
+  <% end %>
 
   <div class="flex justify-between items-center">
     <% if provider.persisted? %>
@@ -60,6 +88,6 @@
       <% end %>
     <% end %>
 
-    <%= render "shared/button", text: provider.persisted? ? "Update Provider" : "Add Provider", variant: "primary", type: :submit %>
+    <%= render "shared/button", text: provider.persisted? ? "Save" : "Add Provider", variant: "primary", type: :submit %>
   </div>
 <% end %>

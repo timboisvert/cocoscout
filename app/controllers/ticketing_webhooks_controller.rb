@@ -9,6 +9,9 @@ class TicketingWebhooksController < ApplicationController
     provider = find_provider
     return render_not_found unless provider
 
+    # Track that we received a webhook
+    provider.touch(:webhook_last_received_at)
+
     # Log the webhook immediately
     webhook_log = create_webhook_log(provider)
 

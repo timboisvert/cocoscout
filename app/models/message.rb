@@ -1,4 +1,7 @@
 class Message < ApplicationRecord
+  # Flag to skip automatic subscriber notification (used when subscriptions are created after message)
+  attr_accessor :skip_notify_subscribers
+
   belongs_to :sender, polymorphic: true, optional: true  # User, Person, or nil for system messages
   belongs_to :organization, optional: true
   belongs_to :production, optional: true  # Direct FK for visibility scoping
@@ -51,7 +54,7 @@ class Message < ApplicationRecord
 
   # Callbacks for real-time updates
   after_create_commit :broadcast_to_thread
-  after_create_commit :notify_subscribers
+  after_create_commit :notify_subscribers, unless: :skip_notify_subscribers
 
   # Scopes
   scope :root_messages, -> { where(parent_message_id: nil) }

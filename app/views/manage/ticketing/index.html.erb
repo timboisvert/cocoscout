@@ -76,72 +76,37 @@
   <% end %>
 
   <%# Provider Connection Status %>
-  <div class="border-t border-gray-200 pt-4 mt-2 mb-6">
-    <% if @providers.any? %>
-      <div class="bg-white rounded-lg border border-gray-200 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-medium text-gray-900">Provider Connections</h3>
-          <%= link_to "Manage", manage_ticketing_providers_path, class: "text-sm text-pink-600 hover:text-pink-800" %>
-        </div>
-        <div class="space-y-2">
-          <% @providers.each do |provider| %>
-            <div class="flex items-center justify-between py-2 <%= provider != @providers.last ? 'border-b border-gray-100' : '' %>">
-              <div class="flex items-center gap-3">
-                <% if provider.credentials_healthy? && !provider.rate_limited? %>
-                  <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                <% elsif provider.rate_limited? %>
-                  <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-                <% elsif !provider.credentials_valid? %>
-                  <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
-                <% else %>
-                  <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
-                <% end %>
-                <div>
-                  <span class="font-medium text-gray-900"><%= provider.name %></span>
-                  <span class="text-sm text-gray-500 ml-2"><%= provider.provider_type.titleize %></span>
-                  <% if provider.manual_only? %>
-                    <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded ml-1">Manual</span>
-                  <% end %>
-                </div>
-              </div>
-              <div class="text-sm text-gray-500">
-                <% if !provider.credentials_valid? %>
-                  <span class="text-pink-600 font-medium">Auth expired</span>
-                  <% if provider.credentials_error.present? %>
-                    <span class="text-gray-400">&middot; <%= truncate(provider.credentials_error, length: 30) %></span>
-                  <% end %>
-                <% elsif provider.rate_limited? %>
-                  <span class="text-yellow-600">Rate limited</span>
-                  <% if provider.rate_limited_until %>
-                    &middot; resets <%= time_ago_in_words(provider.rate_limited_until) %>
-                  <% end %>
-                <% elsif provider.manual_only? %>
-                  <span class="text-gray-500">Manual listings</span>
-                <% elsif provider.last_synced_at.present? %>
-                  <% if provider.last_synced_at > 15.minutes.ago %>
-                    <span class="text-green-600">Live</span> &middot; synced <%= time_ago_in_words(provider.last_synced_at) %> ago
-                  <% elsif provider.last_synced_at > 1.hour.ago %>
-                    <span class="text-yellow-600">Delayed</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
-                  <% else %>
-                    <span class="text-pink-600">Stale</span> &middot; last sync <%= time_ago_in_words(provider.last_synced_at) %> ago
-                  <% end %>
-                <% else %>
-                  <span class="text-gray-400">Never synced</span>
-                <% end %>
-              </div>
-            </div>
+  <% if @providers.any? %>
+    <div class="flex flex-wrap gap-2 mb-6">
+      <% @providers.each do |provider| %>
+        <%
+          # Status based on connection health, not sync recency
+          is_connected = provider.credentials_healthy? && !provider.rate_limited?
+          has_warning = provider.rate_limited? || (!provider.credentials_valid? && provider.credentials_error.blank?)
+          has_error = !provider.credentials_valid? && provider.credentials_error.present?
+        %>
+        <%= link_to manage_ticketing_provider_path(provider), class: "inline-flex items-center gap-2 px-3 py-2 rounded-lg border #{is_connected ? 'bg-green-50 border-green-200' : has_error ? 'bg-red-50 border-red-200' : has_warning ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'} hover:shadow-sm transition-shadow" do %>
+          <% if is_connected %>
+            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+          <% elsif has_error %>
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+          <% elsif has_warning %>
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <% else %>
+            <span class="w-2 h-2 rounded-full bg-gray-400"></span>
           <% end %>
-        </div>
-      </div>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
-        <p class="text-gray-600 mb-3">No ticketing providers connected yet.</p>
-        <%= link_to manage_new_ticketing_provider_path do %>
-          <%= render "shared/button", text: "Connect Provider", variant: "primary", size: "medium" %>
+          <span class="text-sm font-medium text-gray-900"><%= provider.name %></span>
         <% end %>
-      </div>
-    <% end %>
-  </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center mb-6">
+      <p class="text-gray-600 mb-3">No ticketing providers connected yet.</p>
+      <%= link_to manage_new_ticketing_provider_path do %>
+        <%= render "shared/button", text: "Connect Provider", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
 
   <%# Performance Metrics %>
   <% if @show_ticketings.any? %>

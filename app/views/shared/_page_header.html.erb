@@ -1,0 +1,45 @@
+<%#
+  Page Header - Simple header for entity detail pages
+
+  Parameters:
+    title: String - The main page title (required)
+    actions: Array of hashes - Action buttons to display on the right (optional)
+      - text: Button text
+      - path: Link path
+      - method: HTTP method (default: :get)
+      - variant: Button variant (default: "secondary")
+      - data: Data attributes hash
+
+  Example:
+    render "shared/page_header",
+      title: @provider.name,
+      actions: [
+        { text: "Edit", path: edit_path },
+        { text: "Delete", path: delete_path, method: :delete, data: { turbo_confirm: "Are you sure?" } }
+      ]
+
+%>
+
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <h1 class="text-3xl coustard-regular text-gray-900"><%= title %></h1>
+
+  <% if local_assigns[:actions].present? %>
+    <div class="flex items-center gap-2">
+      <% actions.each do |action| %>
+        <% if action[:method].present? && action[:method] != :get %>
+          <%= render "shared/button",
+            text: action[:text],
+            variant: action[:variant] || "secondary",
+            size: "small",
+            path: action[:path],
+            method: action[:method],
+            data: action[:data] %>
+        <% else %>
+          <%= link_to action[:path] do %>
+            <%= render "shared/button", text: action[:text], variant: action[:variant] || "secondary", size: "small" %>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

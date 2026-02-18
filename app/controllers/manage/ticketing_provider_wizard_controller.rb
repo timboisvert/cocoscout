@@ -24,8 +24,10 @@ module Manage
       @provider.provider_type = "ticket_tailor"
 
       if @provider.save
-        session[:ticketing_wizard][:provider_id] = @provider.id
-        session[:ticketing_wizard][:step] = "webhooks"
+        session[:ticketing_wizard] = (session[:ticketing_wizard] || {}).merge(
+          provider_id: @provider.id,
+          step: "webhooks"
+        )
         redirect_to manage_ticketing_provider_wizard_configure_webhooks_path
       else
         render :ticket_tailor_credentials, status: :unprocessable_entity
@@ -45,8 +47,10 @@ module Manage
       @provider.provider_type = "eventbrite"
 
       if @provider.save
-        session[:ticketing_wizard][:provider_id] = @provider.id
-        session[:ticketing_wizard][:step] = "webhooks"
+        session[:ticketing_wizard] = (session[:ticketing_wizard] || {}).merge(
+          provider_id: @provider.id,
+          step: "webhooks"
+        )
         redirect_to manage_ticketing_provider_wizard_configure_webhooks_path
       else
         render :eventbrite_credentials, status: :unprocessable_entity
@@ -60,7 +64,7 @@ module Manage
 
     def save_webhooks
       if @provider.update(webhook_params)
-        session[:ticketing_wizard][:step] = "test"
+        session[:ticketing_wizard] = (session[:ticketing_wizard] || {}).merge(step: "test")
         redirect_to manage_ticketing_provider_wizard_test_connection_path
       else
         @webhook_url = ticketing_webhook_url(@provider)
@@ -74,14 +78,14 @@ module Manage
     end
 
     def run_test
-      @provider = Current.organization.ticketing_providers.find(session.dig(:ticketing_wizard, :provider_id))
+      @provider = Current.organization.ticketing_providers.find(@wizard_state[:provider_id])
       @test_result = @provider.test_connection
 
       if @test_result[:success]
-        @provider.update(credentials_valid: true, last_credentials_check: Time.current)
-        session[:ticketing_wizard][:step] = "complete"
+        @provider.update(credentials_valid: true, credentials_checked_at: Time.current)
+        session[:ticketing_wizard] = (session[:ticketing_wizard] || {}).merge(step: "complete")
       else
-        @provider.update(credentials_valid: false, last_credentials_check: Time.current)
+        @provider.update(credentials_valid: false, credentials_checked_at: Time.current, credentials_error: @test_result[:error])
       end
 
       @webhook_url = ticketing_webhook_url(@provider)
@@ -98,11 +102,11 @@ module Manage
     private
 
     def set_wizard_state
-      @wizard_state = session[:ticketing_wizard] || {}
+      @wizard_state = (session[:ticketing_wizard] || {}).with_indifferent_access
     end
 
     def set_provider
-      provider_id = session.dig(:ticketing_wizard, :provider_id)
+      provider_id = @wizard_state[:provider_id]
       unless provider_id
         redirect_to manage_ticketing_provider_wizard_select_path, alert: "Please start the setup process again."
         return
@@ -119,7 +123,12 @@ module Manage
     end
 
     def webhook_params
-      params.require(:ticketing_provider).permit(:webhook_secret)
+      permitted = params.require(:ticketing_provider).permit(:webhook_secret, :webhook_enabled)
+      # Auto-enable webhooks if they enter a secret
+      if permitted[:webhook_secret].present? && permitted[:webhook_enabled].nil?
+        permitted[:webhook_enabled] = true
+      end
+      permitted
     end
 
     def ticketing_webhook_url(provider)

@@ -53,8 +53,8 @@
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
       <% if @test_result.nil? %>
         <!-- Initial state - show test button -->
-        <div class="w-20 h-20 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-20 h-20 mx-auto mb-6 bg-pink-100 rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
           </svg>
         </div>
@@ -87,7 +87,7 @@
           </dl>
         </div>
 
-        <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, class: "inline" do %>
+        <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, data: { turbo: false }, class: "inline" do %>
           <%= render "shared/button", text: "Test Connection", variant: "primary", size: "large", type: :submit %>
         <% end %>
 
@@ -154,7 +154,7 @@
             <% end %>
           <% end %>
 
-          <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, class: "inline" do %>
+          <%= form_with url: manage_ticketing_provider_wizard_run_test_path, method: :post, data: { turbo: false }, class: "inline" do %>
             <%= render "shared/button", text: "Try Again", variant: "primary", size: "medium", type: :submit %>
           <% end %>
         </div>

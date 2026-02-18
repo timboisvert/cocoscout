@@ -503,8 +503,6 @@ module My
       @code = params[:code]
       @sign_up_form = SignUpForm.find_by!(short_code: @code)
       @production = @sign_up_form.production
-    rescue ActiveRecord::RecordNotFound
-      render file: Rails.public_path.join("404.html"), status: :not_found, layout: false
     end
 
     def find_current_instance

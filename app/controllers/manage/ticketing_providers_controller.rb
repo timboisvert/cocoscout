@@ -49,7 +49,7 @@ module Manage
     end
 
     def test_connection
-      result = @provider.test_connection
+      result = @provider.validate_credentials!
 
       if result[:success]
         redirect_to manage_ticketing_provider_path(@provider), notice: "Connection successful!"
@@ -78,7 +78,8 @@ module Manage
         :status,
         :api_key,
         :api_secret,
-        :webhook_secret
+        :webhook_secret,
+        :webhook_enabled
       )
     end
   end

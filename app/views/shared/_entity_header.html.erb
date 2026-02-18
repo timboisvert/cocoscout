@@ -1,0 +1,119 @@
+<%#
+  Entity Header Component
+  A header for specific entities like providers, shows, productions, etc.
+  Similar to module_header but smaller and designed for detail pages.
+
+  Usage:
+    render "shared/entity_header",
+      icon: "TT",                              # Text or can be :image with icon_url
+      icon_url: nil,                           # Optional image URL for icon
+      title: "My Provider",
+      subtitle: "Ticket Tailor",               # Optional subtitle text
+      badges: [
+        { text: "Connected", color: "green", dot: true },
+        { text: "Rate Limited", color: "amber" }
+      ],
+      meta: "Last synced 5 minutes ago",       # Optional meta text
+      actions: [
+        { text: "Test", icon: "check-circle", path: test_path },
+        { text: "Edit", icon: "pencil", path: edit_path },
+        { text: "Delete", icon: "trash", path: delete_path, method: :delete, variant: "danger", confirm: "Are you sure?" }
+      ]
+
+  Badge colors: green, amber, red, gray, blue, purple, pink
+  Action variants: primary (default), secondary, danger
+  Icons: check-circle, pencil, trash, refresh, cog, plus, eye, download, upload
+%>
+<%
+  icon = local_assigns[:icon]
+  icon_url = local_assigns[:icon_url]
+  title = local_assigns[:title] || "Entity"
+  subtitle = local_assigns[:subtitle]
+  badges = local_assigns[:badges] || []
+  meta = local_assigns[:meta]
+  actions = local_assigns[:actions] || []
+%>
+
+<div class="mb-6">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    <%# Left: Entity info %>
+    <div class="flex items-start gap-4">
+      <%# Icon %>
+      <% if icon_url.present? %>
+        <div class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden">
+          <%= image_tag icon_url, alt: title, class: "w-full h-full object-cover" %>
+        </div>
+      <% elsif icon.present? %>
+        <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center">
+          <span class="text-xl font-bold text-gray-600"><%= icon %></span>
+        </div>
+      <% end %>
+
+      <div>
+        <%# Title %>
+        <h1 class="text-2xl font-semibold text-gray-900"><%= title %></h1>
+
+        <%# Badges and subtitle row %>
+        <div class="flex flex-wrap items-center gap-2 mt-1">
+          <% if subtitle.present? %>
+            <span class="text-sm text-gray-500"><%= subtitle %></span>
+          <% end %>
+
+          <% badges.each do |badge| %>
+            <%
+              color_classes = case badge[:color]
+                when "green" then "bg-green-100 text-green-800"
+                when "amber" then "bg-amber-100 text-amber-800"
+                when "red" then "bg-red-100 text-red-800"
+                when "blue" then "bg-blue-100 text-blue-800"
+                when "purple" then "bg-purple-100 text-purple-800"
+                when "pink" then "bg-pink-100 text-pink-800"
+                else "bg-gray-100 text-gray-700"
+              end
+              dot_color = case badge[:color]
+                when "green" then "bg-green-500"
+                when "amber" then "bg-amber-500"
+                when "red" then "bg-red-500"
+                when "blue" then "bg-blue-500"
+                when "purple" then "bg-purple-500"
+                when "pink" then "bg-pink-500"
+                else "bg-gray-400"
+              end
+            %>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium <%= color_classes %>">
+              <% if badge[:dot] %>
+                <span class="w-1.5 h-1.5 rounded-full <%= dot_color %>"></span>
+              <% end %>
+              <%= badge[:text] %>
+            </span>
+          <% end %>
+        </div>
+
+        <%# Meta text %>
+        <% if meta.present? %>
+          <div class="text-sm text-gray-500 mt-1"><%= meta %></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Right: Actions %>
+    <% if actions.any? %>
+      <div class="flex flex-wrap gap-2">
+        <% actions.each do |action| %>
+          <%
+            variant = action[:variant] || "secondary"
+            data = action[:confirm] ? { turbo_confirm: action[:confirm] } : {}
+          %>
+          <%= render "shared/button",
+            text: action[:text],
+            icon: action[:icon],
+            variant: variant,
+            size: "small",
+            path: action[:path],
+            method: action[:method],
+            data: data %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

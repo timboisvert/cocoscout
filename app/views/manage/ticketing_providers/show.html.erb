@@ -6,130 +6,180 @@
     ["Providers", manage_ticketing_providers_path]
   ],
   text: @provider.name,
-  links: [
-    { text: "Test Connection", path: manage_test_ticketing_provider_path(@provider), data: { turbo_method: :post } },
-    { text: "Sync All", path: manage_sync_ticketing_provider_path(@provider), data: { turbo_method: :post } },
-    { text: "Edit", path: manage_edit_ticketing_provider_path(@provider) }
-  ]
+  links: []
 } %>
+
+<%
+  # Connection status for each aspect
+  api_connected = @provider.configured? && @provider.credentials_valid?
+  api_error = @provider.configured? && !@provider.credentials_valid?
+  api_missing = !@provider.configured?
+
+  # Webhooks: check support, enabled, and activity
+  webhooks_supported = @provider.supports_webhooks?
+  if webhooks_supported
+    if !@provider.webhook_enabled?
+      webhook_status = :not_enabled
+    elsif @provider.webhook_last_received_at.blank?
+      webhook_status = :awaiting
+    elsif @provider.webhook_last_received_at > 7.days.ago
+      webhook_status = :active
+    else
+      webhook_status = :stale
+    end
+  else
+    webhook_status = :not_supported
+  end
+
+  permissions_full = @provider.can?(:api_fetch_sales)
+  permissions_limited = @provider.configured? && !@provider.can?(:api_fetch_sales)
+  permissions_unknown = !@provider.configured?
+%>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%# Status Card %>
-  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          <%= @provider.provider_type.titleize %>
-        </span>
-        <% if @provider.status_active? %>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
-            Active
-          </span>
-        <% else %>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 ml-2">
-            Inactive
-          </span>
-        <% end %>
-      </div>
-      <div class="text-sm text-gray-500">
-        <% if @provider.last_synced_at %>
-          Last synced <%= time_ago_in_words(@provider.last_synced_at) %> ago
-        <% else %>
-          Never synced
-        <% end %>
-      </div>
-    </div>
+  <%= render "shared/page_header",
+    title: @provider.name,
+    actions: [
+      { text: "Manage", path: manage_edit_ticketing_provider_path(@provider) }
+    ]
+  %>
 
-    <div class="grid grid-cols-3 gap-4">
-      <div>
-        <div class="text-sm text-gray-500">Active Listings</div>
-        <div class="text-2xl font-bold"><%= @provider.ticket_listings.active.count %></div>
-      </div>
-      <div>
-        <div class="text-sm text-gray-500">Total Sales</div>
-        <div class="text-2xl font-bold"><%= @provider.ticket_listings.joins(ticket_offers: :ticket_sales).count %></div>
-      </div>
-      <div>
-        <div class="text-sm text-gray-500">API Configured</div>
-        <div class="text-2xl font-bold">
-          <% if @provider.configured? %>
-            <span class="text-green-600">Yes</span>
-          <% else %>
-            <span class="text-red-600">No</span>
-          <% end %>
+  <div class="border-t border-gray-200 pt-6">
+    <%
+      # Calculate next expected check and if it's overdue
+      check_interval = 15.minutes
+      buffer = 5.minutes  # Allow some buffer for job queue
+
+      if @provider.credentials_checked_at
+        next_check_at = @provider.credentials_checked_at + check_interval
+        overdue_at = next_check_at + buffer
+        is_overdue = Time.current > overdue_at
+      else
+        next_check_at = nil
+        is_overdue = false
+      end
+    %>
+
+    <% if is_overdue %>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+        <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-amber-800">Automated health checks may not be running</p>
+          <p class="text-xs text-amber-700 mt-0.5">Last check was <%= time_ago_in_words(@provider.credentials_checked_at) %> ago. Check that your background job workers are running.</p>
         </div>
       </div>
-    </div>
-  </div>
+    <% end %>
 
-  <%# Sync Rules %>
-  <% if @sync_rules.any? %>
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-      <h3 class="font-medium text-gray-900 mb-4">Active Sync Rules</h3>
-      <div class="space-y-2">
-        <% @sync_rules.each do |rule| %>
-          <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-            <div>
-              <span class="font-medium"><%= rule.name %></span>
-              <span class="text-sm text-gray-500 ml-2">Every <%= rule.sync_interval_minutes %> minutes</span>
-            </div>
-            <%= link_to "View", manage_ticket_sync_rule_path(rule), class: "text-pink-600 hover:text-pink-800 text-sm" %>
-          </div>
+    <%# Connection Section Header %>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Connection</h2>
+        <p class="text-sm text-gray-500 mt-1">
+          <%= @provider.provider_type.titleize.gsub("_", " ") %>
+          <% if @provider.credentials_checked_at %>
+            · Checked <%= time_ago_in_words(@provider.credentials_checked_at) %> ago
+            <% if next_check_at && next_check_at > Time.current %>
+              · Next check in <span data-controller="countdown" data-countdown-until-value="<%= next_check_at.iso8601 %>"><span data-countdown-target="clock"></span></span>
+            <% end %>
+          <% else %>
+            · Never checked
+          <% end %>
+        </p>
+      </div>
+      <%= render "shared/button",
+        text: "Check Connection",
+        variant: "secondary",
+        size: "small",
+        path: manage_test_ticketing_provider_path(@provider),
+        method: :post %>
+    </div>
+
+    <%# Connection Status Cards %>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <%# API Credentials Card %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <% if api_connected %>
+            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+          <% elsif api_error %>
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          <% else %>
+            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+          <% end %>
+          <div class="text-sm font-medium text-gray-900">API Credentials</div>
+        </div>
+        <% if api_connected %>
+          <p class="text-sm text-green-600 font-medium">Connected</p>
+          <p class="text-xs text-gray-500 mt-1">API key verified and working</p>
+        <% elsif api_error %>
+          <p class="text-sm text-red-600 font-medium">Error</p>
+          <p class="text-xs text-gray-500 mt-1"><%= @provider.credentials_error.presence || "API key failed verification" %></p>
+        <% else %>
+          <p class="text-sm text-gray-500 font-medium">Not configured</p>
+          <p class="text-xs text-gray-500 mt-1">Enter your API key to connect</p>
+        <% end %>
+      </div>
+
+      <%# Webhooks Card %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <% if webhook_status == :active %>
+            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+          <% elsif webhook_status == :awaiting %>
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+          <% elsif webhook_status == :stale %>
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          <% else %>
+            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+          <% end %>
+          <div class="text-sm font-medium text-gray-900">Webhooks</div>
+        </div>
+        <% case webhook_status %>
+        <% when :not_supported %>
+          <p class="text-sm text-gray-500 font-medium">Not supported</p>
+          <p class="text-xs text-gray-500 mt-1"><%= @provider.provider_type.titleize.gsub("_", " ") %> doesn't support webhooks</p>
+        <% when :not_enabled %>
+          <p class="text-sm text-gray-500 font-medium">Not enabled</p>
+          <p class="text-xs text-gray-500 mt-1">Enable in settings for real-time updates</p>
+        <% when :awaiting %>
+          <p class="text-sm text-amber-600 font-medium">Awaiting first event</p>
+          <p class="text-xs text-gray-500 mt-1">Waiting for first webhook from <%= @provider.provider_type.titleize.gsub("_", " ") %></p>
+        <% when :active %>
+          <p class="text-sm text-green-600 font-medium">Active</p>
+          <p class="text-xs text-gray-500 mt-1">Last received <%= time_ago_in_words(@provider.webhook_last_received_at) %> ago</p>
+        <% when :stale %>
+          <p class="text-sm text-red-600 font-medium">Stale</p>
+          <p class="text-xs text-gray-500 mt-1">No webhooks received in <%= time_ago_in_words(@provider.webhook_last_received_at) %></p>
+        <% end %>
+      </div>
+
+      <%# Permissions Card %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <% if permissions_full %>
+            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+          <% elsif permissions_limited %>
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+          <% else %>
+            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+          <% end %>
+          <div class="text-sm font-medium text-gray-900">Permissions</div>
+        </div>
+        <% if permissions_full %>
+          <p class="text-sm text-green-600 font-medium">Full access</p>
+          <p class="text-xs text-gray-500 mt-1">Can read events and sales data</p>
+        <% elsif permissions_limited %>
+          <p class="text-sm text-amber-600 font-medium">Limited</p>
+          <p class="text-xs text-gray-500 mt-1">Some permissions may be missing</p>
+        <% else %>
+          <p class="text-sm text-gray-500 font-medium">Unknown</p>
+          <p class="text-xs text-gray-500 mt-1">Connect to check permissions</p>
         <% end %>
       </div>
     </div>
-  <% end %>
-
-  <%# Recent Listings %>
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h3 class="font-medium text-gray-900">Recent Listings</h3>
-    </div>
-
-    <% if @recent_listings.any? %>
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sync</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <% @recent_listings.each do |listing| %>
-            <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4">
-                <div class="font-medium text-gray-900"><%= listing.show_ticketing.show.display_name %></div>
-                <div class="text-sm text-gray-500"><%= listing.show_ticketing.show.production.name %></div>
-              </td>
-              <td class="px-6 py-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                  <%= case listing.status
-                      when 'published' then 'bg-green-100 text-green-800'
-                      when 'draft' then 'bg-gray-100 text-gray-600'
-                      when 'paused' then 'bg-yellow-100 text-yellow-800'
-                      else 'bg-red-100 text-red-800'
-                      end %>">
-                  <%= listing.status.titleize %>
-                </span>
-              </td>
-              <td class="px-6 py-4 text-gray-500">
-                <% if listing.last_synced_at %>
-                  <%= time_ago_in_words(listing.last_synced_at) %> ago
-                <% else %>
-                  Never
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% else %>
-      <div class="p-8 text-center text-gray-500">
-        No listings yet for this provider.
-      </div>
-    <% end %>
   </div>
 </div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_17_033723) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2122,6 +2122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_17_033723) do
     t.datetime "updated_at", null: false
     t.boolean "webhook_enabled", default: false, null: false
     t.string "webhook_endpoint_token"
+    t.datetime "webhook_last_received_at"
     t.datetime "webhook_registered_at"
     t.index ["credentials_valid"], name: "index_ticketing_providers_on_credentials_valid"
     t.index ["organization_id", "provider_type"], name: "index_ticketing_providers_on_organization_id_and_provider_type"

@@ -1,4 +1,4 @@
-<% content_for :title, "Edit #{@provider.name}" %>
+<% content_for :title, "Manage #{@provider.name}" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -8,11 +8,30 @@
       ["Providers", manage_ticketing_providers_path],
       [@provider.name, manage_ticketing_provider_path(@provider)]
     ],
-    text: "Edit",
+    text: "Manage",
     links: []
   } %>
 
-  <div class="max-w-2xl">
-    <%= render "form", provider: @provider %>
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <%# Left side: Form (3 columns) %>
+    <div class="lg:col-span-3">
+      <%= render "form", provider: @provider %>
+    </div>
+
+    <%# Right side: Actions sidebar %>
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="text-sm font-medium text-gray-900 mb-4">Actions</h3>
+        <div class="space-y-3">
+          <%= render "shared/button",
+            text: "Delete Provider",
+            variant: "danger",
+            size: "small",
+            path: manage_ticketing_provider_path(@provider),
+            method: :delete,
+            data: { turbo_confirm: "Delete #{@provider.name}? This will remove all sync rules and disconnect all listings. This cannot be undone." } %>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
