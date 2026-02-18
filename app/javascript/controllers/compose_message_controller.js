@@ -204,7 +204,8 @@ export default class extends Controller {
         const sendSeparatelyCheckbox = modal.querySelector('[data-compose-message-target="sendSeparately"]')
         if (sendSeparatelySection) {
             const isBatchOrMultiple = this.recipientTypeValue === 'batch' ||
-                (this.recipientTypeValue === 'show_cast' && this.castMembersValue?.length > 1)
+                (this.recipientTypeValue === 'show_cast' && this.castMembersValue?.length > 1) ||
+                (this.recipientTypeValue === 'auditionees' && this.castMembersValue?.length > 1)
             if (isBatchOrMultiple) {
                 sendSeparatelySection.classList.remove('hidden')
             } else {

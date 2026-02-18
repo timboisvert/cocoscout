@@ -189,6 +189,55 @@ module Manage
         attach_poll!(message) if poll_params_present?
         redirect_to manage_messages_path, notice: "Message sent to #{show.display_name} cast"
 
+      when "auditionees"
+        audition_cycle = AuditionCycle.joins(:production).where(productions: { organization_id: Current.organization.id }).find(recipient_id)
+        # Get all active auditionees (people with active audition requests)
+        people = audition_cycle.audition_requests.active.map(&:person).compact.uniq
+        send_separately = params[:send_separately] == "1" || params[:send_separately] == "on"
+        # Determine visibility based on sender_identity param
+        visibility = params[:sender_identity] == "personal" ? :personal : :production
+
+        if people.empty?
+          redirect_back fallback_location: manage_messages_path, alert: "No auditionees found for this audition cycle"
+          return
+        end
+
+        if send_separately
+          # Send individual messages to each auditionee
+          messages_sent = 0
+          people.each do |person|
+            message = MessageService.send_to_people(
+              sender: Current.user,
+              people: [ person ],
+              subject: subject,
+              body: body,
+              message_type: :direct,
+              production: audition_cycle.production,
+              organization: Current.organization,
+              visibility: visibility
+            )
+            if message
+              message.images.attach(images) if images.present?
+              messages_sent += 1
+            end
+          end
+          redirect_to manage_messages_path, notice: "Sent #{messages_sent} individual #{'message'.pluralize(messages_sent)} to auditionees."
+        else
+          message = MessageService.send_to_people(
+            sender: Current.user,
+            people: people,
+            subject: subject,
+            body: body,
+            message_type: :direct,
+            production: audition_cycle.production,
+            organization: Current.organization,
+            visibility: visibility
+          )
+          message&.images&.attach(images) if images.present?
+          attach_poll!(message) if poll_params_present?
+          redirect_to manage_messages_path, notice: "Message sent to #{people.count} #{'auditionee'.pluralize(people.count)}"
+        end
+
       when "talent_pool"
         production_id = params[:production_id]
         production = production_id.present? ? Current.organization.productions.find(production_id) : nil
@@ -225,6 +274,8 @@ module Manage
         # Handle batch messaging from directory selection or agreement reminders
         person_ids = params[:person_ids]&.select(&:present?) || []
         send_separately = params[:send_separately] == "1" || params[:send_separately] == "on"
+        # Determine visibility based on sender_identity param
+        visibility = params[:sender_identity] == "personal" ? :personal : :production
 
         if person_ids.empty?
           redirect_back fallback_location: manage_directory_path, alert: "Please select at least one person or group."
@@ -249,12 +300,14 @@ module Manage
           # Send individual messages to each person
           messages_sent = 0
           people_to_message.each do |person|
-            message = MessageService.send_direct(
+            message = MessageService.send_to_people(
               sender: Current.user,
-              recipient_person: person,
+              people: [ person ],
               subject: subject,
               body: body,
-              organization: Current.organization
+              message_type: :direct,
+              organization: Current.organization,
+              visibility: visibility
             )
             if message
               message.images.attach(images) if images.present?
@@ -270,7 +323,8 @@ module Manage
             subject: subject,
             body: body,
             message_type: :direct,
-            organization: Current.organization
+            organization: Current.organization,
+            visibility: visibility
           )
           message&.images&.attach(images) if images.present?
           attach_poll!(message) if poll_params_present?

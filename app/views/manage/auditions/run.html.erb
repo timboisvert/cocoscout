@@ -36,7 +36,21 @@
             <% end %>
           </div>
 
-          <div class="flex items-center justify-end">
+          <div class="flex items-center justify-between">
+            <%# Contact Auditionees button %>
+            <% auditionees = @audition_cycle.audition_requests.active.includes(requestable: { headshot_attachment: :blob }).map(&:person).compact.uniq %>
+            <% if auditionees.any? %>
+              <% auditionees_json = auditionees.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil } }.to_json %>
+              <div data-controller="compose-message"
+                   data-compose-message-recipient-type-value="auditionees"
+                   data-compose-message-recipient-id-value="<%= @audition_cycle.id %>"
+                   data-compose-message-recipient-name-value="<%= @production.name %> Auditionees"
+                   data-compose-message-cast-members-value="<%= auditionees_json %>">
+                <%= render "shared/button", text: "Contact Auditionees", variant: "primary", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
+              </div>
+            <% else %>
+              <div></div>
+            <% end %>
             <% if current_user_has_role?(@production) %>
               <div class="flex items-center gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
                 <div class="flex items-center gap-2">
@@ -98,3 +112,6 @@
 
   <% end %>
 </div>
+
+<%# Compose message modal for contacting auditionees %>
+<%= render "shared/compose_message_modal" %>
