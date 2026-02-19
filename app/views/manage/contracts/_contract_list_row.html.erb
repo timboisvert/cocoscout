@@ -36,8 +36,8 @@
   <%= link_to contract_path, class: "block" do %>
     <div class="flex flex-col lg:flex-row lg:items-stretch">
 
-      <%# Panel 1 (50%): Contractor Info %>
-      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+      <%# Panel 1 (25%): Contractor Info %>
+      <div class="w-full lg:w-1/4 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
         <%# Contract Details %>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
@@ -53,10 +53,6 @@
                   Step <%= contract.wizard_step %>/8
                 </span>
               <% end %>
-            <% elsif is_active %>
-              <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                Active
-              </span>
             <% end %>
           </div>
           <div class="text-sm text-gray-600">
@@ -69,7 +65,22 @@
         </div>
       </div>
 
-      <%# Panel 2 (25%): Contract Type & Services %>
+      <%# Panel 2 (25%): Production Name %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Production</div>
+        <% if contract.production_name.present? %>
+          <div class="text-sm font-medium text-gray-900 truncate"><%= contract.production_name %></div>
+        <% elsif contract.productions.any? %>
+          <div class="text-sm font-medium text-gray-900 truncate"><%= contract.productions.first.name %></div>
+          <% if contract.productions.count > 1 %>
+            <div class="text-xs text-gray-500">+<%= contract.productions.count - 1 %> more</div>
+          <% end %>
+        <% else %>
+          <div class="text-sm text-gray-400">—</div>
+        <% end %>
+      </div>
+
+      <%# Panel 3 (25%): Contract Type & Services %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Type</div>
         <% if has_space_rental %>
@@ -92,7 +103,7 @@
         <% end %>
       </div>
 
-      <%# Panel 3 (25%): Value & Payment Status %>
+      <%# Panel 4 (25%): Value & Payment Status %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
         <% if is_revenue_share %>
