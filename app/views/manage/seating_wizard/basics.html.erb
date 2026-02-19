@@ -1,0 +1,42 @@
+<%= render layout: "manage/seating_wizard/wizard_layout", locals: { step_name: "Basics", current_step: 1 } do %>
+  <%= form_tag manage_seating_wizard_basics_path, method: :post, class: "space-y-6" do %>
+    <div class="text-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">What's this configuration called?</h2>
+      <p class="text-sm text-gray-500 mt-1">Give it a name that describes the room and setup</p>
+    </div>
+
+    <div>
+      <%= label_tag :name, "Configuration Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= text_field_tag :name, @wizard_state[:name], class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Main Stage - Standard Layout", autofocus: true %>
+      <p class="text-xs text-gray-500 mt-1">You might have multiple configurations for the same room (e.g., "Rouge Room - Tables" and "Rouge Room - Chairs Only")</p>
+    </div>
+
+    <div class="border-t border-gray-200 pt-6">
+      <h3 class="text-sm font-medium text-gray-700 mb-3">Location (optional)</h3>
+      <p class="text-xs text-gray-500 mb-4">Link this to a venue to make it easier to find later</p>
+
+      <div class="space-y-4">
+        <div>
+          <%= label_tag :location_id, "Venue", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= select_tag :location_id,
+              options_from_collection_for_select(@locations, :id, :name, @wizard_state[:location_id]),
+              include_blank: "Select a venue...",
+              class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
+              data: { controller: "location-space-loader", location_space_loader_url_value: "/manage/locations/:id/spaces.json" } %>
+        </div>
+
+        <div id="location-space-container" class="<%= @wizard_state[:location_id].blank? ? 'hidden' : '' %>">
+          <%= label_tag :location_space_id, "Room / Space", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= select_tag :location_space_id,
+              @wizard_state[:location_id].present? ? options_from_collection_for_select(Location.find(@wizard_state[:location_id]).location_spaces.ordered, :id, :display_name, @wizard_state[:location_space_id]) : "",
+              include_blank: "Select a room...",
+              class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end pt-4">
+      <%= render "shared/button", text: "Continue", variant: "primary", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

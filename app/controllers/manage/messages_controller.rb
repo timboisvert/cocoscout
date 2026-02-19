@@ -356,8 +356,12 @@ module Manage
       end
 
       # Determine visibility from sender_identity param
-      # "production_team" -> inherit from root, "personal" -> personal visibility
-      visibility = if params[:sender_identity] == "personal"
+      # "production_team" -> production visibility, "personal" -> personal visibility
+      # nil -> inherit from root message
+      visibility = case params[:sender_identity]
+      when "production_team"
+        "production"
+      when "personal"
         "personal"
       else
         nil # inherit from root message

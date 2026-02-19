@@ -1,0 +1,90 @@
+<%= render layout: "manage/seating_wizard/wizard_layout", locals: { step_name: "Review", current_step: 3 } do %>
+  <div class="space-y-6">
+    <div class="text-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">Review your configuration</h2>
+      <p class="text-sm text-gray-500 mt-1">Confirm everything looks right before creating</p>
+    </div>
+
+    <!-- Configuration Name -->
+    <div class="flex justify-between items-start p-4 bg-gray-50 rounded-lg">
+      <div>
+        <span class="text-sm text-gray-500">Configuration Name</span>
+        <p class="font-semibold text-gray-900"><%= @wizard_state[:name] %></p>
+      </div>
+      <%= link_to manage_seating_wizard_basics_path, class: "text-pink-600 hover:text-pink-700 text-sm" do %>
+        Edit
+      <% end %>
+    </div>
+
+    <!-- Location -->
+    <% if @location || @location_space %>
+      <div class="flex justify-between items-start p-4 bg-gray-50 rounded-lg">
+        <div>
+          <span class="text-sm text-gray-500">Location</span>
+          <p class="font-semibold text-gray-900">
+            <%= @location&.name %><% if @location_space %> - <%= @location_space.display_name %><% end %>
+          </p>
+        </div>
+        <%= link_to manage_seating_wizard_basics_path, class: "text-pink-600 hover:text-pink-700 text-sm" do %>
+          Edit
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Zones -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <span class="font-medium text-gray-900">Seating Zones</span>
+        <%= link_to manage_seating_wizard_zones_path, class: "text-pink-600 hover:text-pink-700 text-sm" do %>
+          Edit
+        <% end %>
+      </div>
+
+      <div class="divide-y divide-gray-100">
+        <% @wizard_state[:zones].each do |zone| %>
+          <div class="px-4 py-3 flex justify-between items-center">
+            <div>
+              <p class="font-medium text-gray-900"><%= zone[:name] || zone["name"] %></p>
+              <p class="text-sm text-gray-500">
+                <%
+                  zone_type = zone[:zone_type] || zone["zone_type"]
+                  unit_count = (zone[:unit_count] || zone["unit_count"]).to_i
+                  capacity_per_unit = (zone[:capacity_per_unit] || zone["capacity_per_unit"]).to_i
+                  total = unit_count * capacity_per_unit
+                %>
+                <% case zone_type %>
+                <% when "individual_seats" %>
+                  <%= pluralize(unit_count, "seat") %>
+                <% when "tables" %>
+                  <%= pluralize(unit_count, "table") %> × <%= pluralize(capacity_per_unit, "seat") %>
+                <% when "rows" %>
+                  <%= pluralize(unit_count, "row") %> × <%= pluralize(capacity_per_unit, "seat") %>
+                <% when "booths" %>
+                  <%= pluralize(unit_count, "booth") %> × <%= capacity_per_unit %> capacity
+                <% when "standing" %>
+                  Standing room
+                <% end %>
+              </p>
+            </div>
+            <span class="font-semibold text-gray-700"><%= total %></span>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="px-4 py-3 bg-pink-50 flex justify-between items-center">
+        <span class="font-medium text-gray-900">Total Capacity</span>
+        <span class="text-xl font-bold text-pink-600"><%= @total_capacity %></span>
+      </div>
+    </div>
+
+    <!-- Create Button -->
+    <%= form_tag manage_seating_wizard_create_path, method: :post do %>
+      <div class="flex justify-between items-center pt-4">
+        <%= link_to manage_seating_wizard_zones_path, class: "text-gray-500 hover:text-gray-700 text-sm" do %>
+          ← Back
+        <% end %>
+        <%= render "shared/button", text: "Create Configuration", variant: "primary", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

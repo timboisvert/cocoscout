@@ -78,6 +78,24 @@ class Message < ApplicationRecord
     end
   end
 
+  # Check if this message can be replied to
+  # - Non-system-generated messages can always be replied to
+  # - System-generated messages can be replied to if they have a production context
+  #   (replies go to the production team)
+  def repliable?
+    return true unless system_generated?
+
+    # System-generated messages are repliable if they have a production
+    # (either directly or via an associated show)
+    effective_production.present?
+  end
+
+  # Get the production associated with this message
+  # Either directly via production_id or via the show's production
+  def effective_production
+    production || show&.production
+  end
+
   # Check if user can delete this message
   def can_be_deleted_by?(user)
     return false unless user

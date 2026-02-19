@@ -165,18 +165,41 @@ class My::MessagesController < ApplicationController
       return
     end
 
-    # Replies from /my/messages are always personal (not "as production team")
-    # Only producers using /manage/messages can choose to reply as production team
-    message = MessageService.reply(
-      sender: Current.user,
-      parent_message: parent,
-      body: params[:body],
-      visibility: "personal"
-    )
+    # Check if message is repliable
+    unless root_message.repliable?
+      redirect_to my_message_path(root_message), alert: "Cannot reply to this message"
+      return
+    end
+
+    # For system-generated messages with a production, reply goes to the production team
+    # This creates a NEW conversation thread (not nested under the system message)
+    # so it shows up properly in /manage/messages for the production team
+    if root_message.system_generated? && root_message.effective_production.present?
+      message = MessageService.send_to_production_team(
+        production: root_message.effective_production,
+        sender: Current.user,
+        subject: "Re: #{root_message.subject}",
+        body: params[:body]
+        # Note: no parent_message - this creates a new root thread
+      )
+      # Link to the original message for context
+      message&.add_regards(root_message) if message
+      redirect_target = message # New thread, redirect to it
+    else
+      # Replies from /my/messages are always personal (not "as production team")
+      # Only producers using /manage/messages can choose to reply as production team
+      message = MessageService.reply(
+        sender: Current.user,
+        parent_message: parent,
+        body: params[:body],
+        visibility: "personal"
+      )
+      redirect_target = root_message # Same thread, redirect to root
+    end
     message&.images&.attach(images) if images.present?
 
     respond_to do |format|
-      format.html { redirect_to my_message_path(root_message), notice: "Reply sent" }
+      format.html { redirect_to my_message_path(redirect_target || root_message), notice: "Reply sent" }
     end
   end
 

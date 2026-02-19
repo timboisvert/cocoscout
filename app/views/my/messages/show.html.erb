@@ -88,7 +88,7 @@
     <%# Original Message %>
     <%= render "shared/messages/message_card", message: @root_message, context: :show %>
 
-    <% unless @root_message.system_generated? %>
+    <% if @root_message.repliable? %>
       <%# Thread Replies - Nested Tree View %>
       <% direct_replies = @root_message.child_messages.includes(:sender, :child_messages).order(:created_at) %>
       <div class="mt-6">
@@ -142,6 +142,18 @@
         </div>
       </div>
     </div>
+    <% end %>
+
+    <% if @root_message.system_generated? && @root_message.repliable? %>
+      <%# For system-generated messages, show context that replies go to production team %>
+      <div class="mt-4 text-center">
+        <p class="text-sm text-gray-500">
+          <svg class="inline-block w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Replies will be sent to the <strong><%= @root_message.effective_production.name %></strong> team
+        </p>
+      </div>
     <% end %>
   </div>
 </div>

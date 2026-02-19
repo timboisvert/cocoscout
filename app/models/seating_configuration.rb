@@ -5,6 +5,7 @@ class SeatingConfiguration < ApplicationRecord
   belongs_to :location, optional: true
   belongs_to :location_space, optional: true
 
+  has_many :seating_zones, -> { order(:position) }, dependent: :destroy
   has_many :ticket_tiers, -> { order(:position) }, dependent: :destroy
   has_many :show_ticketings, dependent: :nullify
 
@@ -19,9 +20,14 @@ class SeatingConfiguration < ApplicationRecord
   scope :ordered, -> { order(:name) }
 
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true
+  accepts_nested_attributes_for :seating_zones, allow_destroy: true
 
   def total_capacity
-    ticket_tiers.sum(:capacity)
+    if seating_zones.any?
+      seating_zones.sum(:total_capacity)
+    else
+      ticket_tiers.sum(:capacity)
+    end
   end
 
   def display_name

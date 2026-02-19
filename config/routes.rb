@@ -1098,6 +1098,15 @@ Rails.application.routes.draw do
     put "ticketing/seating/:id", to: "seating_configurations#update"
     delete "ticketing/seating/:id", to: "seating_configurations#destroy"
 
+    # Seating Configuration Wizard
+    get "ticketing/seating/wizard/basics", to: "seating_wizard#basics", as: "seating_wizard_basics"
+    post "ticketing/seating/wizard/basics", to: "seating_wizard#save_basics"
+    get "ticketing/seating/wizard/zones", to: "seating_wizard#zones", as: "seating_wizard_zones"
+    post "ticketing/seating/wizard/zones", to: "seating_wizard#save_zones"
+    get "ticketing/seating/wizard/review", to: "seating_wizard#review", as: "seating_wizard_review"
+    post "ticketing/seating/wizard/create", to: "seating_wizard#create", as: "seating_wizard_create"
+    delete "ticketing/seating/wizard/cancel", to: "seating_wizard#cancel", as: "seating_wizard_cancel"
+
     # Show Ticketing - link shows to ticketing
     get "ticketing/shows", to: "show_ticketings#index", as: "show_ticketings"
     get "ticketing/shows/:production_id", to: "show_ticketings#production", as: "production_show_ticketings"

@@ -94,12 +94,14 @@
     <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
     <%
       # Determine if sender identity selector should be shown
-      # Show it if the original message was sent as production team
+      # In /manage/messages, always show the selector since we're in a production context
+      # This allows managers to choose whether to reply personally or as the production team
       root_sent_as_team = @message.sent_as_production_team?
+      show_sender_selector = @message.production.present?
       default_sender_identity = root_sent_as_team ? "production_team" : "personal"
     %>
     <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4" data-controller="reply-sender">
-      <% if root_sent_as_team %>
+      <% if show_sender_selector %>
         <%# Sender Identity Selector - shown only for production team messages %>
         <div class="pb-4 mb-4 border-b border-gray-100">
           <div class="flex items-center gap-3">
@@ -197,7 +199,7 @@
       <div>
         <div>
           <%= form_with url: reply_manage_message_path(@root_message), method: :post, multipart: true, data: { turbo: false }, id: "reply-form-#{@message.id}" do |f| %>
-            <% if root_sent_as_team %>
+            <% if show_sender_selector %>
               <%# Hidden field for sender_identity - synced with the selector above via Stimulus %>
               <input type="hidden" name="sender_identity" value="<%= default_sender_identity %>" data-reply-sender-target="input">
             <% end %>

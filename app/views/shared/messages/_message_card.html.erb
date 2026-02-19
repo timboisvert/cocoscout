@@ -233,12 +233,16 @@
     <% end %>
   <% end %>
 
-  <%# Action Bar - hidden for system-generated messages %>
-  <% unless is_system_generated %>
+  <%# Action Bar - show for non-system-generated OR repliable system-generated messages %>
+  <% if !is_system_generated || message.root_message.repliable? %>
     <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50/80">
       <div class="flex items-center justify-between relative z-10">
-        <%# Left: Reactions %>
-        <%= render "shared/messages/reactions", message: message %>
+        <%# Left: Reactions (hide for system-generated) %>
+        <% unless is_system_generated %>
+          <%= render "shared/messages/reactions", message: message %>
+        <% else %>
+          <div></div>
+        <% end %>
 
         <%# Right: Comments/Reply info %>
         <div class="flex items-center gap-3">
@@ -247,7 +251,7 @@
             <% if reply_count > 0 %>
               <span class="text-sm text-pink-600 font-medium"><%= reply_count %> <%= reply_count == 1 ? 'reply' : 'replies' %></span>
             <% end %>
-            <% unless message.deleted? %>
+            <% if !message.deleted? && message.root_message.repliable? %>
               <span data-message-thread-target="typingIndicator" class="text-sm text-gray-500 italic hidden"></span>
               <button
                 type="button"
@@ -262,7 +266,7 @@
               <%= link_to comment_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer relative z-10" do %>
                 <%= reply_count %> <%= reply_count == 1 ? 'comment' : 'comments' %>
               <% end %>
-            <% elsif !message.deleted? %>
+            <% elsif !message.deleted? && message.root_message.repliable? %>
               <%= link_to comment_path, class: "text-sm text-gray-500 hover:text-pink-600 font-medium cursor-pointer relative z-10" do %>
                 Comment
               <% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_19_152010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1314,6 +1314,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
     t.index ["organization_id"], name: "index_seating_configurations_on_organization_id"
   end
 
+  create_table "seating_zones", force: :cascade do |t|
+    t.integer "capacity_per_unit", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "seating_configuration_id", null: false
+    t.integer "total_capacity", default: 1, null: false
+    t.integer "unit_count", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.string "zone_type", null: false
+    t.index ["seating_configuration_id", "position"], name: "index_seating_zones_on_seating_configuration_id_and_position"
+    t.index ["seating_configuration_id"], name: "index_seating_zones_on_seating_configuration_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "ip_address"
@@ -2080,9 +2094,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.bigint "seating_configuration_id", null: false
+    t.bigint "seating_zone_id"
     t.datetime "updated_at", null: false
     t.index ["seating_configuration_id", "position"], name: "index_ticket_tiers_on_seating_configuration_id_and_position"
     t.index ["seating_configuration_id"], name: "index_ticket_tiers_on_seating_configuration_id"
+    t.index ["seating_zone_id"], name: "index_ticket_tiers_on_seating_zone_id"
   end
 
   create_table "ticketing_provider_setups", force: :cascade do |t|
@@ -2327,6 +2343,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
   add_foreign_key "seating_configurations", "location_spaces"
   add_foreign_key "seating_configurations", "locations"
   add_foreign_key "seating_configurations", "organizations"
+  add_foreign_key "seating_zones", "seating_configurations"
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"
@@ -2401,6 +2418,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_18_152704) do
   add_foreign_key "ticket_sync_rules", "organizations"
   add_foreign_key "ticket_sync_rules", "ticketing_providers"
   add_foreign_key "ticket_tiers", "seating_configurations"
+  add_foreign_key "ticket_tiers", "seating_zones"
   add_foreign_key "ticketing_provider_setups", "production_ticketing_setups"
   add_foreign_key "ticketing_provider_setups", "ticketing_providers"
   add_foreign_key "ticketing_providers", "organizations"

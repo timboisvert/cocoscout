@@ -2,6 +2,7 @@
 
 class TicketTier < ApplicationRecord
   belongs_to :seating_configuration
+  belongs_to :seating_zone, optional: true
 
   has_many :show_ticket_tiers, dependent: :nullify
 

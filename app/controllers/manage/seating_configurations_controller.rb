@@ -13,12 +13,13 @@ module Manage
 
     def show
       @ticket_tiers = @configuration.ticket_tiers.ordered
+      @seating_zones = @configuration.seating_zones.ordered
       @usage_count = ShowTicketing.where(seating_configuration_id: @configuration.id).count
     end
 
     def new
-      @configuration = Current.organization.seating_configurations.build
-      @configuration.ticket_tiers.build(position: 0) # Start with one tier
+      # Redirect to the wizard for creating new configurations
+      redirect_to manage_seating_wizard_basics_path
     end
 
     def create

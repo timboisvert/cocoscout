@@ -1,0 +1,46 @@
+<%= render layout: "manage/seating_wizard/wizard_layout", locals: { step_name: "Zones", current_step: 2 } do %>
+  <%= form_tag manage_seating_wizard_zones_path, method: :post, class: "space-y-6", data: { controller: "nested-form seating-zones" } do %>
+    <div class="text-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-900">Define your seating zones</h2>
+      <p class="text-sm text-gray-500 mt-1">Add zones for "<%= @wizard_state[:name] %>"</p>
+    </div>
+
+    <div data-nested-form-target="children" data-seating-zones-target="container" class="space-y-4">
+      <% if @wizard_state[:zones].present? %>
+        <% @wizard_state[:zones].each_with_index do |zone, index| %>
+          <%= render "manage/seating_wizard/zone_fields", zone: zone, index: index %>
+        <% end %>
+      <% else %>
+        <%= render "manage/seating_wizard/zone_fields", zone: {}, index: 0 %>
+      <% end %>
+    </div>
+
+    <template data-nested-form-target="template">
+      <%= render "manage/seating_wizard/zone_fields", zone: {}, index: "NEW_CHILD_RECORD" %>
+    </template>
+
+    <div class="text-center">
+      <button type="button" data-action="nested-form#add" class="inline-flex items-center gap-2 text-pink-600 hover:text-pink-700 font-medium text-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Add another zone
+      </button>
+    </div>
+
+    <!-- Total Capacity Summary -->
+    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200" data-seating-zones-target="summary">
+      <div class="flex justify-between items-center">
+        <span class="font-medium text-gray-700">Total Capacity</span>
+        <span class="text-xl font-bold text-pink-600" data-seating-zones-target="totalCapacity">0</span>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center pt-4">
+      <%= link_to manage_seating_wizard_basics_path, class: "text-gray-500 hover:text-gray-700 text-sm" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Continue", variant: "primary", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

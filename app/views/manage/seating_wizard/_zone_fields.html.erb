@@ -1,0 +1,128 @@
+<div class="nested-fields bg-white border border-gray-200 rounded-lg p-4" data-controller="seating-zone">
+  <input type="hidden" name="zones[<%= index %>][_destroy]" value="0" data-seating-zone-target="destroy">
+
+  <div class="flex justify-between items-start mb-4">
+    <div class="flex-1">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Zone Name</label>
+      <input type="text" name="zones[<%= index %>][name]" value="<%= zone[:name] || zone['name'] %>"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+             placeholder="e.g., Front Row, Floor Tables, Back Section"
+             data-seating-zone-target="name"
+             data-action="input->seating-zones#updateTotal">
+    </div>
+    <button type="button" data-action="nested-form#remove seating-zones#updateTotal" class="ml-2 p-1 text-gray-400 hover:text-red-500" title="Remove zone">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="mb-4">
+    <label class="block text-sm font-medium text-gray-700 mb-2">What type of seating?</label>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <% SeatingZone::ZONE_TYPES.each do |type_key, type_value| %>
+        <label class="relative cursor-pointer">
+          <input type="radio" name="zones[<%= index %>][zone_type]" value="<%= type_value %>"
+                 class="peer sr-only"
+                 <%= 'checked' if (zone[:zone_type] || zone['zone_type']) == type_value || (zone.blank? && type_value == 'individual_seats') %>
+                 data-action="change->seating-zone#updateInputs change->seating-zones#updateTotal"
+                 data-seating-zone-target="zoneType">
+          <div class="p-3 border-2 rounded-lg text-center transition-all peer-checked:border-pink-500 peer-checked:bg-pink-50 border-gray-200 hover:border-gray-300">
+            <span class="text-sm font-medium text-gray-700">
+              <%= case type_key
+                  when :individual_seats then "Individual Seats"
+                  when :tables then "Tables"
+                  when :rows then "Rows of Seats"
+                  when :booths then "Booths"
+                  when :standing then "Standing Room"
+                  end %>
+            </span>
+          </div>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Dynamic inputs based on zone type -->
+  <div class="grid grid-cols-2 gap-4" data-seating-zone-target="inputs">
+    <!-- Individual Seats -->
+    <div data-seating-zone-target="individualSeatsInputs" class="col-span-2 <%= (zone[:zone_type] || zone['zone_type'] || 'individual_seats') != 'individual_seats' ? 'hidden' : '' %>">
+      <label class="block text-sm font-medium text-gray-700 mb-1">How many seats?</label>
+      <input type="number" name="zones[<%= index %>][unit_count]" value="<%= zone[:unit_count] || zone['unit_count'] || 1 %>"
+             min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+             data-seating-zone-target="unitCount"
+             data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      <input type="hidden" name="zones[<%= index %>][capacity_per_unit]" value="1" data-seating-zone-target="capacityPerUnit">
+    </div>
+
+    <!-- Tables -->
+    <div data-seating-zone-target="tablesInputs" class="col-span-2 grid grid-cols-2 gap-4 <%= (zone[:zone_type] || zone['zone_type']) != 'tables' ? 'hidden' : '' %>">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">How many tables?</label>
+        <input type="number" name="zones[<%= index %>][unit_count_tables]" value="<%= zone[:unit_count] || zone['unit_count'] || 1 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="unitCountTables"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Seats per table?</label>
+        <input type="number" name="zones[<%= index %>][capacity_per_unit_tables]" value="<%= zone[:capacity_per_unit] || zone['capacity_per_unit'] || 2 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="capacityPerUnitTables"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+    </div>
+
+    <!-- Rows -->
+    <div data-seating-zone-target="rowsInputs" class="col-span-2 grid grid-cols-2 gap-4 <%= (zone[:zone_type] || zone['zone_type']) != 'rows' ? 'hidden' : '' %>">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">How many rows?</label>
+        <input type="number" name="zones[<%= index %>][unit_count_rows]" value="<%= zone[:unit_count] || zone['unit_count'] || 1 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="unitCountRows"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Seats per row?</label>
+        <input type="number" name="zones[<%= index %>][capacity_per_unit_rows]" value="<%= zone[:capacity_per_unit] || zone['capacity_per_unit'] || 10 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="capacityPerUnitRows"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+    </div>
+
+    <!-- Booths -->
+    <div data-seating-zone-target="boothsInputs" class="col-span-2 grid grid-cols-2 gap-4 <%= (zone[:zone_type] || zone['zone_type']) != 'booths' ? 'hidden' : '' %>">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">How many booths?</label>
+        <input type="number" name="zones[<%= index %>][unit_count_booths]" value="<%= zone[:unit_count] || zone['unit_count'] || 1 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="unitCountBooths"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Max capacity per booth?</label>
+        <input type="number" name="zones[<%= index %>][capacity_per_unit_booths]" value="<%= zone[:capacity_per_unit] || zone['capacity_per_unit'] || 4 %>"
+               min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+               data-seating-zone-target="capacityPerUnitBooths"
+               data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      </div>
+    </div>
+
+    <!-- Standing -->
+    <div data-seating-zone-target="standingInputs" class="col-span-2 <%= (zone[:zone_type] || zone['zone_type']) != 'standing' ? 'hidden' : '' %>">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Total standing capacity?</label>
+      <input type="number" name="zones[<%= index %>][unit_count_standing]" value="<%= zone[:unit_count] || zone['unit_count'] || 50 %>"
+             min="1" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+             data-seating-zone-target="unitCountStanding"
+             data-action="input->seating-zone#calculateCapacity input->seating-zones#updateTotal">
+      <input type="hidden" name="zones[<%= index %>][capacity_per_unit_standing]" value="1" data-seating-zone-target="capacityPerUnitStanding">
+    </div>
+  </div>
+
+  <!-- Calculated capacity display -->
+  <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+    <span class="text-sm text-gray-500">Zone capacity:</span>
+    <span class="font-semibold text-gray-900" data-seating-zone-target="capacity"><%= (zone[:unit_count] || zone['unit_count'] || 1).to_i * (zone[:capacity_per_unit] || zone['capacity_per_unit'] || 1).to_i %></span>
+  </div>
+</div>

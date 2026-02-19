@@ -13,7 +13,9 @@
 <%
   production = summary[:production]
   active_forms_count = summary[:active_sign_up_forms_count] || 0
-  has_active_audition = summary[:active_audition_cycle].present?
+  audition_cycle = summary[:active_audition_cycle]
+  has_active_audition = audition_cycle.present?
+  audition_timeline_status = audition_cycle&.timeline_status
   audition_requests_count = summary[:audition_requests_count] || 0
   row_link_path = manage_signups_production_path(production)
 %>
@@ -54,9 +56,18 @@
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Auditions</div>
         <% if has_active_audition %>
-          <div class="text-sm font-medium text-green-600">Open</div>
-          <% if audition_requests_count > 0 %>
-            <div class="text-xs text-pink-600"><%= audition_requests_count %> pending</div>
+          <% case audition_timeline_status %>
+          <% when :open %>
+            <div class="text-sm font-medium text-green-600">Open</div>
+            <% if audition_requests_count > 0 %>
+              <div class="text-xs text-pink-600"><%= audition_requests_count %> pending</div>
+            <% end %>
+          <% when :upcoming %>
+            <div class="text-sm font-medium text-amber-600">Upcoming</div>
+            <div class="text-xs text-gray-500">Opens <%= audition_cycle.opens_at.strftime("%b %-d") %></div>
+          <% when :closed %>
+            <div class="text-sm font-medium text-gray-500">Closed</div>
+            <div class="text-xs text-gray-400">Closed <%= audition_cycle.closes_at.strftime("%b %-d") %></div>
           <% end %>
         <% else %>
           <div class="text-sm text-gray-400">None</div>
