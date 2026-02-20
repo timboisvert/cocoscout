@@ -228,14 +228,12 @@ module Manage
     end
 
     def default_vacancy_email_subject
-      template_key = linked_vacancy? ? "vacancy_invitation_linked" : "vacancy_invitation"
-      template = ContentTemplate.active.find_by(key: template_key)
+      template = ContentTemplate.active.find_by(key: "vacancy_invitation")
       template&.subject || "You're invited to fill a role"
     end
 
     def default_vacancy_email_body
-      template_key = linked_vacancy? ? "vacancy_invitation_linked" : "vacancy_invitation"
-      template = ContentTemplate.active.find_by(key: template_key)
+      template = ContentTemplate.active.find_by(key: "vacancy_invitation")
       template&.body || ""
     end
 
@@ -245,29 +243,21 @@ module Manage
 
     def vacancy_email_template_vars
       show = @vacancy.show
-      if linked_vacancy?
-        all_shows_list = show.event_linkage.shows.order(:date_and_time).to_a
-        shows_text = all_shows_list.map do |s|
-          event_name = s.display_name
-          "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{event_name}"
-        end.join("<br>")
-        {
-          production_name: @production.name,
-          role_name: @vacancy.role.name,
-          show_count: all_shows_list.size.to_s,
-          shows_list: shows_text
-        }
+      shows = if linked_vacancy?
+                show.event_linkage.shows.order(:date_and_time).to_a
       else
-        event_name = show.display_name
-        shows_text = "#{show.date_and_time.strftime("%A, %B %d at %l:%M %p")} - #{event_name}"
-        {
-          production_name: @production.name,
-          role_name: @vacancy.role.name,
-          event_name: event_name,
-          show_date: show.date_and_time.strftime("%b %-d"),
-          show_info: shows_text
-        }
+                [ show ]
       end
+
+      shows_text = shows.map do |s|
+        "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{s.display_name}"
+      end.join("<br>")
+
+      {
+        production_name: @production.name,
+        role_name: @vacancy.role.name,
+        shows_list: shows_text
+      }
     end
   end
 end

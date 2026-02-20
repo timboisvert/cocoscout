@@ -268,7 +268,7 @@ export default class extends Controller {
                 // Form not open and pre-registration not allowed - don't show
             } else {
                 html += '<div class="border-t border-gray-200 my-2"></div>'
-                html += '<div class="text-xs font-medium text-gray-500 uppercase mb-1">Sign Up</div>'
+                html += '<div class="text-xs font-medium text-gray-500 uppercase mb-1"/manage/ticketing/providers/12</div>'
 
                 if (this.isSignedUp) {
                     html += '<div class="px-3 py-2 text-sm text-gray-400">Already registered</div>'

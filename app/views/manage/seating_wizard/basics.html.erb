@@ -1,42 +1,59 @@
 <%= render layout: "manage/seating_wizard/wizard_layout", locals: { step_name: "Basics", current_step: 1 } do %>
-  <%= form_tag manage_seating_wizard_basics_path, method: :post, class: "space-y-6" do %>
-    <div class="text-center mb-6">
-      <h2 class="text-xl font-semibold text-gray-900">What's this configuration called?</h2>
-      <p class="text-sm text-gray-500 mt-1">Give it a name that describes the room and setup</p>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
     </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Name your configuration</h2>
+    <p class="text-gray-600 mt-2">Give it a name that describes the room and setup.</p>
+  </div>
 
-    <div>
-      <%= label_tag :name, "Configuration Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= text_field_tag :name, @wizard_state[:name], class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Main Stage - Standard Layout", autofocus: true %>
-      <p class="text-xs text-gray-500 mt-1">You might have multiple configurations for the same room (e.g., "Rouge Room - Tables" and "Rouge Room - Chairs Only")</p>
-    </div>
+  <%= form_tag manage_seating_wizard_basics_path, method: :post, data: { turbo: false, controller: "location-space-loader" } do %>
+    <div class="space-y-5">
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Configuration Name
+          <span class="text-pink-500">*</span>
+        </label>
+        <%= text_field_tag :name, @wizard_state[:name],
+            id: "name",
+            autofocus: true,
+            placeholder: "e.g., Main Stage - Standard Layout",
+            class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+        <p class="mt-1.5 text-xs text-gray-500">You might have multiple configurations for the same room (e.g., "Rouge Room - Tables" vs "Rouge Room - Chairs Only").</p>
+      </div>
 
-    <div class="border-t border-gray-200 pt-6">
-      <h3 class="text-sm font-medium text-gray-700 mb-3">Location (optional)</h3>
-      <p class="text-xs text-gray-500 mb-4">Link this to a venue to make it easier to find later</p>
+      <div class="border-t border-gray-200 pt-5">
+        <div class="space-y-4">
+          <div>
+            <label for="location_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Location
+              <span class="text-pink-500">*</span>
+            </label>
+            <%= select_tag :location_id,
+                options_from_collection_for_select(@locations, :id, :name, @wizard_state[:location_id]),
+                include_blank: "Select a location...",
+                id: "location_id",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition",
+                data: { action: "change->location-space-loader#loadSpaces", "location-space-loader-target": "locationSelect" } %>
+          </div>
 
-      <div class="space-y-4">
-        <div>
-          <%= label_tag :location_id, "Venue", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= select_tag :location_id,
-              options_from_collection_for_select(@locations, :id, :name, @wizard_state[:location_id]),
-              include_blank: "Select a venue...",
-              class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
-              data: { controller: "location-space-loader", location_space_loader_url_value: "/manage/locations/:id/spaces.json" } %>
-        </div>
-
-        <div id="location-space-container" class="<%= @wizard_state[:location_id].blank? ? 'hidden' : '' %>">
-          <%= label_tag :location_space_id, "Room / Space", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= select_tag :location_space_id,
-              @wizard_state[:location_id].present? ? options_from_collection_for_select(Location.find(@wizard_state[:location_id]).location_spaces.ordered, :id, :display_name, @wizard_state[:location_space_id]) : "",
-              include_blank: "Select a room...",
-              class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+          <div class="<%= @wizard_state[:location_id].blank? ? 'hidden' : '' %>" data-location-space-loader-target="spaceContainer">
+            <label for="location_space_id" class="block text-sm font-medium text-gray-900 mb-1.5">Room / Space <span class="text-gray-400 font-normal">(optional)</span></label>
+            <%= select_tag :location_space_id,
+                @wizard_state[:location_id].present? ? options_from_collection_for_select(Location.find(@wizard_state[:location_id]).location_spaces.by_name, :id, :display_name, @wizard_state[:location_space_id]) : "",
+                include_blank: "Select a room...",
+                id: "location_space_id",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition",
+                data: { "location-space-loader-target": "spaceSelect" } %>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="flex justify-end pt-4">
-      <%= render "shared/button", text: "Continue", variant: "primary", type: :submit %>
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
 <% end %>

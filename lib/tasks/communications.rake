@@ -303,19 +303,8 @@ namespace :communications do
       mailer: "VacancyInvitationMailer#invitation_email",
       service: "MessageService (in mailer)",
       template_key: "vacancy_invitation",
-      description: "Invite person to fill vacant role",
+      description: "Invite person to fill vacant role (supports both single and linked shows)",
       callers: [ "Manage::VacanciesController", "Manage::RoleVacanciesController" ]
-    },
-    vacancy_invitation_linked: {
-      name: "Vacancy Invitation (Linked Shows)",
-      category: :shows,
-      channel: :both,
-      mailer: "VacancyInvitationMailer#invitation_email",
-      service: "MessageService (in mailer)",
-      template_key: "vacancy_invitation_linked",
-      description: "Invite person to fill vacant role across multiple linked shows",
-      callers: [ "Manage::VacanciesController#send_linked_invitations" ],
-      notes: "Template rendered by caller, passed to mailer"
     },
     vacancy_created: {
       name: "Vacancy Created",

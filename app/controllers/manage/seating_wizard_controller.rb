@@ -3,15 +3,15 @@
 module Manage
   class SeatingWizardController < Manage::ManageController
     before_action :ensure_user_is_global_manager
-    before_action :load_wizard_state, except: [ :basics ]
-    before_action :load_wizard_state_or_initialize, only: [ :basics ]
+    before_action :load_wizard_state, except: [ :basics, :save_basics ]
+    before_action :load_wizard_state_or_initialize, only: [ :basics, :save_basics ]
 
     # Step 1: Basics - Name and location
     def basics
       @wizard_state[:name] ||= ""
       @wizard_state[:location_id] ||= nil
       @wizard_state[:location_space_id] ||= nil
-      @locations = Current.organization.locations.active.ordered
+      @locations = Current.organization.locations.order(:name)
     end
 
     def save_basics
@@ -19,9 +19,13 @@ module Manage
       @wizard_state[:location_id] = params[:location_id].presence
       @wizard_state[:location_space_id] = params[:location_space_id].presence
 
-      if @wizard_state[:name].blank?
-        @locations = Current.organization.locations.active.ordered
-        flash.now[:alert] = "Please enter a configuration name"
+      errors = []
+      errors << "Please enter a configuration name" if @wizard_state[:name].blank?
+      errors << "Please select a location" if @wizard_state[:location_id].blank?
+
+      if errors.any?
+        @locations = Current.organization.locations.order(:name)
+        flash.now[:alert] = errors.join(". ")
         render :basics, status: :unprocessable_entity and return
       end
 
@@ -31,7 +35,7 @@ module Manage
 
     # Step 2: Zones - Define seating areas
     def zones
-      redirect_to manage_seating_wizard_basics_path and return if @wizard_state[:name].blank?
+      redirect_to manage_seating_wizard_basics_path and return if @wizard_state[:name].blank? || @wizard_state[:location_id].blank?
 
       @wizard_state[:zones] ||= []
     end

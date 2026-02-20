@@ -11,13 +11,7 @@ class VacancyInvitationMailer < ApplicationMailer
     @claim_url = claim_vacancy_url(invitation.token)
     @email_batch_id = email_batch_id
 
-    rendered = ContentTemplateService.render("vacancy_invitation", {
-      role_name: @role.name,
-      production_name: @production.name,
-      event_name: @show.display_name,
-      show_date: @show.date_and_time.strftime("%b %-d"),
-      show_info: "#{@show.date_and_time.strftime("%A, %B %d at %l:%M %p")} - #{@show.display_name}"
-    })
+    rendered = ContentTemplateService.render("vacancy_invitation", build_template_vars)
 
     @subject = invitation.email_subject.presence || rendered[:subject]
     @body = rendered[:body]
@@ -33,6 +27,25 @@ class VacancyInvitationMailer < ApplicationMailer
   end
 
   private
+
+  def build_template_vars
+    shows = if @show.linked? && @show.event_linkage.shows.count > 1
+              @show.event_linkage.shows.order(:date_and_time).to_a
+    else
+              [ @show ]
+    end
+
+    shows_text = shows.map do |s|
+      "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{s.display_name}"
+    end.join("<br>")
+
+    {
+      role_name: @role.name,
+      production_name: @production.name,
+      claim_url: @claim_url,
+      shows_list: shows_text
+    }
+  end
 
   def send_in_app_message(rendered)
     return unless @person.present? && @person.user.present?

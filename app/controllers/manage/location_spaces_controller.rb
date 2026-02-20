@@ -7,6 +7,11 @@ module Manage
 
     def index
       @spaces = @location.location_spaces.by_name
+
+      respond_to do |format|
+        format.html
+        format.json { render json: @spaces.map { |s| { id: s.id, name: s.display_name } } }
+      end
     end
 
     def create

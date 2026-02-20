@@ -33,7 +33,6 @@ def seed_content_templates
     { key: "audition_added_to_cast", name: "Added to Cast", subject: "Cast!", body: "You're cast", category: "casting", channel: "message" },
     { key: "audition_not_cast", name: "Not Cast", subject: "Update", body: "Thanks", category: "casting", channel: "message" },
     { key: "vacancy_invitation", name: "Vacancy Invitation", subject: "Opening", body: "Vacancy", category: "vacancies", channel: "both" },
-    { key: "vacancy_invitation_linked", name: "Vacancy Linked", subject: "Opening", body: "Claim: {{ claim_url }}", category: "vacancies", channel: "both" },
     { key: "vacancy_created", name: "Vacancy Created", subject: "Vacancy", body: "New vacancy", category: "vacancies", channel: "both" },
     { key: "vacancy_filled", name: "Vacancy Filled", subject: "Filled", body: "Vacancy filled", category: "vacancies", channel: "both" },
     { key: "vacancy_reclaimed", name: "Vacancy Reclaimed", subject: "Reclaimed", body: "Reclaimed", category: "vacancies", channel: "both" },
