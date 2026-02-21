@@ -122,11 +122,13 @@
           <% @upcoming_audition_entities.each do |item| %>
             <% audition_session = item[:audition_session] %>
             <% entity = item[:entity] %>
+            <% audition = item[:audition] %>
             <%= render "shared/audition_session_row",
               audition_session: audition_session,
               link_path: my_auditions_path,
               show_entity_headshots: @groups.any?,
-              entity: entity %>
+              entity: entity,
+              audition: audition %>
           <% end %>
         </div>
       <% else %>

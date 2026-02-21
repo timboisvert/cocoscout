@@ -27,4 +27,35 @@ class Audition < ApplicationRecord
   def votes_with_comments
     audition_votes.includes(user: :default_person).where.not(comment: [ nil, "" ]).order(created_at: :desc)
   end
+
+  # Acceptance status helpers
+  def accepted?
+    accepted_at.present?
+  end
+
+  def declined?
+    declined_at.present?
+  end
+
+  def pending_response?
+    accepted_at.nil? && declined_at.nil?
+  end
+
+  def response_status
+    if accepted?
+      :accepted
+    elsif declined?
+      :declined
+    else
+      :pending
+    end
+  end
+
+  def accept!
+    update!(accepted_at: Time.current, declined_at: nil)
+  end
+
+  def decline!
+    update!(declined_at: Time.current, accepted_at: nil)
+  end
 end

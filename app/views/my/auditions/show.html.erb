@@ -1,0 +1,15 @@
+<% content_for :title, "Audition - #{@production.name}" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["My Auditions", my_auditions_path]
+  ],
+  text: "#{@production.name} Audition",
+  links: []
+} %>
+
+<%= render partial: "shared/notice", locals: { notice: notice } %>
+
+<div class="mt-6">
+  <%= render partial: "my/auditions/audition_upcoming", locals: { audition: @audition, show_change_buttons: true } %>
+</div>

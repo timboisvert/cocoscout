@@ -155,5 +155,52 @@ module My
         @audition_request_entities[audition_request.id] = entities if entities.any?
       end
     end
+
+    def show
+      @audition = find_audition
+      return redirect_to my_auditions_path, alert: "Audition not found" unless @audition
+
+      @session = @audition.audition_session
+      @cycle = @audition.audition_request.audition_cycle
+      @production = @cycle.production
+      @auditionable = @audition.auditionable
+    end
+
+    def accept
+      @audition = find_audition
+      return redirect_to my_auditions_path, alert: "Audition not found" unless @audition
+
+      @audition.accept!
+      redirect_to my_audition_path(@audition), notice: "You've confirmed your audition!"
+    end
+
+    def decline
+      @audition = find_audition
+      return redirect_to my_auditions_path, alert: "Audition not found" unless @audition
+
+      @audition.decline!
+      redirect_to my_audition_path(@audition), notice: "You've declined this audition."
+    end
+
+    private
+
+    def find_audition
+      # Find audition and verify user has access (owns the auditionable entity)
+      audition = Audition.find_by(id: params[:id])
+      return nil unless audition
+
+      # Check if auditionable is a Person owned by current user
+      if audition.auditionable_type == "Person"
+        return audition if Current.user.people.where(id: audition.auditionable_id).exists?
+      end
+
+      # Check if auditionable is a Group the user is a member of
+      if audition.auditionable_type == "Group"
+        person_ids = Current.user.people.active.pluck(:id)
+        return audition if GroupMembership.where(group_id: audition.auditionable_id, person_id: person_ids).exists?
+      end
+
+      nil
+    end
   end
 end

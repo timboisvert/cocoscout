@@ -99,6 +99,16 @@
                 <div class="font-medium text-gray-900 truncate">
                   <%= truncate(requestable.name, length: 50, omission: "...") %>
                 </div>
+                <%# Acceptance status badge %>
+                <div class="mt-0.5">
+                  <% if audition.accepted? %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Confirmed</span>
+                  <% elsif audition.declined? %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Declined</span>
+                  <% else %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Awaiting Response</span>
+                  <% end %>
+                </div>
               </div>
             <% else %>
               <div class="flex-shrink-0">

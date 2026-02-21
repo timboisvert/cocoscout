@@ -24,7 +24,7 @@ module MyHelper
     cycle = audition_request.audition_cycle
     requestable = audition_request.requestable
 
-    # If casting has been finalized, show the final casting decision
+    # If casting has been finalized, check for explicit casting decision
     if cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
       # Check if they were cast or rejected via CastAssignmentStage
       cast_stage = CastAssignmentStage.find_by(
@@ -39,8 +39,7 @@ module MyHelper
         return NO_CAST_SPOT_OFFERED_BADGE.html_safe
       end
 
-      # No cast stage record means not cast
-      return NO_CAST_SPOT_OFFERED_BADGE.html_safe
+      # No cast stage record - fall through to check audition invitation status
     end
 
     # If cycle is archived (not active)
@@ -79,7 +78,7 @@ module MyHelper
     cycle = audition_request.audition_cycle
     requestable = audition_request.requestable
 
-    # If casting has been finalized, show the final casting decision
+    # If casting has been finalized, check for explicit casting decision
     if cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
       # Check if they were cast or rejected via CastAssignmentStage
       cast_stage = CastAssignmentStage.find_by(
@@ -90,9 +89,11 @@ module MyHelper
 
       if cast_stage&.decision_type == "cast"
         return CAST_SPOT_OFFERED_TEXT
-      else
+      elsif cast_stage&.decision_type == "rejected"
         return NO_CAST_SPOT_OFFERED_TEXT
       end
+
+      # No cast stage record - fall through to check audition invitation status
     end
 
     # If cycle is archived (not active)

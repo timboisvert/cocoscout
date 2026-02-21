@@ -171,12 +171,12 @@ module My
         if audition.auditionable_type == "Person" && people_ids.include?(audition.auditionable_id)
           person = people_by_id[audition.auditionable_id]
           @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "person",
-                                           entity: person }
+                                           entity: person, audition: audition }
         elsif audition.auditionable_type == "Group"
           group = groups_by_id[audition.auditionable_id]
           if group
             @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "group",
-                                             entity: group }
+                                             entity: group, audition: audition }
           end
         end
       end

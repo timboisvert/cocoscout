@@ -650,6 +650,8 @@ module Manage
       # Build notification batches for AuditionNotificationService
       invitation_notifications = []
       not_invited_notifications = []
+      # Track which requests to mark as notified (only after successful send)
+      requests_to_mark = []
 
       requests_to_process.each do |request|
         requestable = request.requestable
@@ -661,8 +663,8 @@ module Manage
         is_scheduled = scheduled_auditionables.include?([ requestable.class.name, requestable.id ])
 
         if is_scheduled
-          # Requestable is scheduled for an audition - send invitation
-          email_body = generate_default_invitation_email(requestable, @production, audition_cycle)
+          # Requestable is scheduled for an audition - let the service render the template with audition details
+          email_body = nil
         else
           # Requestable is not scheduled - send rejection
           email_body = generate_default_not_invited_email(requestable, @production)
@@ -680,19 +682,20 @@ module Manage
 
         # Collect notifications for each recipient
         recipients.each do |recipient|
-          next unless email_body.present? && recipient.email.present?
+          next unless recipient.email.present?
           # Check if user has audition invitation notifications enabled
           next if recipient.user.present? && !recipient.user.notification_enabled?(:audition_invitations)
 
-          # Replace [Name] placeholder with actual name
-          personalized_body = email_body.gsub("[Name]", recipient.name)
+          # Replace [Name] placeholder with actual name (for rejections with custom body)
+          personalized_body = email_body&.gsub("[Name]", recipient.name)
 
           if is_scheduled
             invitation_notifications << {
               person: recipient,
-              body: personalized_body
+              body: nil # Let service render template with audition details
             }
           else
+            next unless personalized_body.present?
             not_invited_notifications << {
               person: recipient,
               body: personalized_body
@@ -700,11 +703,8 @@ module Manage
           end
         end
 
-        # Mark this request as notified with scheduling status
-        request.update(
-          invitation_notification_sent_at: Time.current,
-          notified_scheduled: is_scheduled
-        )
+        # Track this request to mark as notified after successful send
+        requests_to_mark << { request: request, is_scheduled: is_scheduled }
       end
 
       # Send notifications via service
@@ -716,6 +716,14 @@ module Manage
         not_invited: not_invited_notifications,
         email_batch: email_batch
       )
+
+      # Only mark requests as notified AFTER successful send
+      requests_to_mark.each do |item|
+        item[:request].update(
+          invitation_notification_sent_at: Time.current,
+          notified_scheduled: item[:is_scheduled]
+        )
+      end
 
       messages_sent = notification_results[:messages_sent]
       emails_sent = notification_results[:emails_sent]

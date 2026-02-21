@@ -1,6 +1,6 @@
 <% production = audition.audition_request.audition_cycle.production %>
 <% has_groups = @groups.present? && @groups.any? %>
-<% cache ["audition_past_v1", audition.id, audition.updated_at.to_i, production.updated_at.to_i, has_groups] do %>
+<% cache ["audition_past_v2", audition.id, audition.updated_at.to_i, production.updated_at.to_i, has_groups, audition.accepted_at, audition.declined_at] do %>
 <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-center gap-4">
     <% logo_variant = production.safe_logo_variant(:small) %>
     <% if logo_variant %>
@@ -12,6 +12,22 @@
         <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
         <div class="text-sm text-gray-500 mt-1">
             <%= audition.audition_session.start_at.strftime('%b %d, %Y') %> at <%= audition.audition_session.start_at.strftime('%l:%M %p') %>
+        </div>
+        <%# Acceptance status badge %>
+        <div class="mt-1">
+            <% if audition.accepted? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Attended
+                </span>
+            <% elsif audition.declined? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    Declined
+                </span>
+            <% else %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    No Response
+                </span>
+            <% end %>
         </div>
     </div>
 

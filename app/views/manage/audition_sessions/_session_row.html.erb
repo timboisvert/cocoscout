@@ -28,18 +28,17 @@
   <%# Right Section: People %>
   <div class="w-full sm:w-1/2 sm:border-l border-gray-200 sm:pl-4 flex items-center border-t border-gray-100 sm:border-t-0 mt-2 sm:mt-0 pt-2 sm:pt-0">
     <div class="flex-1">
-      <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Scheduled</div>
       <% if session.auditions.any? %>
         <div class="flex flex-wrap gap-1">
           <% session.auditions.limit(10).each do |audition| %>
             <% auditionable = audition.auditionable %>
             <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
             <span data-controller="tooltip" data-tooltip-text="<%= auditionable.name %>">
-              <%= render partial: "manage/audition_sessions/session_row_headshot", locals: { auditionable: auditionable, headshot_url: headshot_url } %>
+              <%= render partial: "manage/audition_sessions/session_row_headshot", locals: { auditionable: auditionable, headshot_url: headshot_url, audition: audition } %>
             </span>
           <% end %>
           <% if session.auditions.count > 10 %>
-            <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-medium">
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-medium">
               +<%= session.auditions.count - 10 %>
             </div>
           <% end %>

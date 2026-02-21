@@ -211,6 +211,9 @@ Rails.application.routes.draw do
     patch "/availability/:show_id/note",    to: "availability#update_note",  as: "update_availability_note"
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
+    get   "/auditions/:id",                 to: "auditions#show",           as: "audition"
+    post  "/auditions/:id/accept",          to: "auditions#accept",         as: "accept_audition"
+    post  "/auditions/:id/decline",         to: "auditions#decline",        as: "decline_audition"
     get   "/signups",                       to: redirect("/my/requests"), as: "sign_ups"
     get   "/questionnaires",                to: redirect("/my/requests"), as: "questionnaires"
 

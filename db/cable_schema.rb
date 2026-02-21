@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_20_163634) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_21_214301) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -226,11 +226,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_163634) do
   end
 
   create_table "auditions", force: :cascade do |t|
+    t.datetime "accepted_at"
     t.bigint "audition_request_id", null: false
     t.bigint "audition_session_id"
     t.integer "auditionable_id"
     t.string "auditionable_type"
     t.datetime "created_at", null: false
+    t.datetime "declined_at"
     t.datetime "updated_at", null: false
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
     t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"

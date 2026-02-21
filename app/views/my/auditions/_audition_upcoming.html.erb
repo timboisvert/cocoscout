@@ -1,96 +1,101 @@
-<div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-start">
+<div class="bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+  <% production = audition.audition_request.audition_cycle.production %>
 
-    <% production = audition.audition_request.audition_cycle.production %>
+  <div class="p-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="col-span-1">
+            <%# Acceptance status badge %>
+            <div class="mb-2">
+                <% if audition.accepted? %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Confirmed
+                    </span>
+                <% elsif audition.declined? %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Declined
+                    </span>
+                <% else %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Pending Confirmation
+                    </span>
+                <% end %>
+            </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-        <div class="col-span-1 items-center">
-            <div class="flex items-center">
-                <div>
-                    <div class="font-bold text-lg sm:text-2xl"><%= audition.audition_session.start_at.strftime('%b %d, %Y') %> <span class="font-medium">at</span> <%= audition.audition_session.start_at.strftime('%l:%M %p') %></div>
+            <div class="font-bold text-lg sm:text-2xl"><%= audition.audition_session.start_at.strftime('%b %d, %Y') %> <span class="font-medium">at</span> <%= audition.audition_session.start_at.strftime('%l:%M %p') %></div>
 
-                    <% if audition.audition_session.start_at > Time.current %>
-                        <% time_diff = audition.audition_session.start_at - Time.current %>
-                        <% if time_diff < 24.hours %>
-                            <div class="text-xs text-red-500" data-controller="countdown" data-countdown-until-value="<%= audition.audition_session.start_at.utc.iso8601 %>">
-                                Starts in <span data-countdown-target="clock"></span>
-                            </div>
-                        <% else %>
-                            <div class="text-xs text-gray-500">
-                                <%= distance_of_time_in_words(Time.current, audition.audition_session.start_at, include_seconds: false) %> from today
-                            </div>
-                        <% end %>
-                    <% end %>
+            <% if audition.audition_session.start_at > Time.current %>
+                <% time_diff = audition.audition_session.start_at - Time.current %>
+                <% if time_diff < 24.hours %>
+                    <div class="text-xs text-red-500" data-controller="countdown" data-countdown-until-value="<%= audition.audition_session.start_at.utc.iso8601 %>">
+                        Starts in <span data-countdown-target="clock"></span>
+                    </div>
+                <% else %>
+                    <div class="text-xs text-gray-500">
+                        <%= distance_of_time_in_words(Time.current, audition.audition_session.start_at, include_seconds: false) %> from today
+                    </div>
+                <% end %>
+            <% end %>
 
-                    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row mt-3 sm:items-center gap-4">
-                        <% logo_variant = production.safe_logo_variant(:small) %>
-                        <% if logo_variant %>
-                            <div class="w-full sm:w-auto sm:flex-shrink-0">
-                                <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
-                            </div>
-                        <% end %>
-                        <div class="w-full sm:w-auto text-left">
-                            <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
-                            <% if production.contact_email.present? %>
-                                <div class="text-xs sm:text-sm">
-                                    Contact: <a href="mailto:<%= production.contact_email %>" class="text-pink-500 underline break-all">
-                                        <%= production.contact_email %>
-                                    </a>
-                                </div>
-                            <% end %>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row mt-3 sm:items-center gap-4">
+                <% logo_variant = production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                    <div class="w-full sm:w-auto sm:flex-shrink-0">
+                        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
+                    </div>
+                <% end %>
+                <div class="w-full sm:w-auto text-left">
+                    <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
+                    <% if production.contact_email.present? %>
+                        <div class="text-xs sm:text-sm">
+                            Contact: <a href="mailto:<%= production.contact_email %>" class="text-pink-500 underline break-all">
+                                <%= production.contact_email %>
+                            </a>
                         </div>
-                    </div>
+                    <% end %>
+                </div>
+            </div>
 
-                    <div>
-                        <% if audition.audition_session.location.present? %>
-                            <p class="font-bold mt-5">Location:</p>
-                            <div class="text-xs sm:text-sm text-gray-500">
-                                <%= audition.audition_session.location.name %><br>
-                                <%= audition.audition_session.location.address1 %><br>
-                                <% if audition.audition_session.location.address2.present? %>
-                                    <%= audition.audition_session.location.address2 %><br>
-                                <% end %>
-                                <%= "#{audition.audition_session.location.city}, #{audition.audition_session.location.state} #{audition.audition_session.location.postal_code}" %>
-                            </div>
-
-                            <% if audition.audition_session.location.notes.present? %>
-                                <p class="font-bold mt-5">Notes/Instructions:</p>
-                                <div class="text-xs sm:text-sm text-gray-500">
-                                    <%= audition.audition_session.location.notes %>
-                                </div>
-                            <% end %>
-
-                        <% end %>
-                    </div>
-
+            <% if audition.audition_session.location.present? %>
+                <p class="font-bold mt-5">Location:</p>
+                <div class="text-xs sm:text-sm text-gray-500">
+                    <%= audition.audition_session.location.name %><br>
+                    <%= audition.audition_session.location.address1 %><br>
+                    <% if audition.audition_session.location.address2.present? %>
+                        <%= audition.audition_session.location.address2 %><br>
+                    <% end %>
+                    <%= "#{audition.audition_session.location.city}, #{audition.audition_session.location.state} #{audition.audition_session.location.postal_code}" %>
                 </div>
 
-            </div>
+                <% if audition.audition_session.location.notes.present? %>
+                    <p class="font-bold mt-5">Notes/Instructions:</p>
+                    <div class="text-xs sm:text-sm text-gray-500">
+                        <%= audition.audition_session.location.notes %>
+                    </div>
+                <% end %>
+            <% end %>
         </div>
 
-        <div class="col-span-1 items-center">
-
-                <div>
-                    <% loc = audition.audition_session.location %>
-                    <% if loc.present? %>
-                        <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
-                        <div class="w-full">
-                            <iframe
-                                width="100%"
-                                height="400"
-                                style="border:0"
-                                loading="lazy"
-                                allowfullscreen
-                                referrerpolicy="no-referrer-when-downgrade"
-                                src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
-                            </iframe>
-                        </div>
-                    <% end %>
+        <div class="col-span-1">
+            <% loc = audition.audition_session.location %>
+            <% if loc.present? %>
+                <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+                <div class="w-full">
+                    <iframe
+                        width="100%"
+                        height="400"
+                        style="border:0"
+                        loading="lazy"
+                        allowfullscreen
+                        referrerpolicy="no-referrer-when-downgrade"
+                        src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                    </iframe>
                 </div>
+            <% end %>
         </div>
     </div>
 
-    <% if @groups.any? && @audition_entities[audition.id].present? %>
-      <div class="flex flex-col gap-2 ml-2">
+    <% if @groups&.any? && @audition_entities&.dig(audition.id).present? %>
+      <div class="flex gap-2 mt-4">
         <% @audition_entities[audition.id].each do |entity_info| %>
           <% headshot = entity_info[:entity].safe_headshot_variant(:thumb) %>
           <% if headshot %>
@@ -99,4 +104,24 @@
         <% end %>
       </div>
     <% end %>
+  </div>
+
+  <%# Accept/Decline action buttons %>
+  <% show_change_buttons = local_assigns.fetch(:show_change_buttons, false) %>
+  <% if audition.pending_response? || show_change_buttons %>
+    <div class="px-4 pb-4 pt-4 border-t border-gray-100 flex flex-wrap gap-3">
+      <%= form_with url: my_accept_audition_path(audition), method: :post, local: true, class: "inline" do %>
+        <%= render "shared/button", text: "I'll Be There", variant: "primary", size: "small", type: :submit %>
+      <% end %>
+      <%= form_with url: my_decline_audition_path(audition), method: :post, local: true, class: "inline" do %>
+        <%= render "shared/button", text: "Can't Attend", variant: "secondary", size: "small", type: :submit %>
+      <% end %>
+    </div>
+  <% elsif !audition.pending_response? %>
+    <div class="px-4 pb-4 pt-4 border-t border-gray-100">
+      <%= link_to my_audition_path(audition) do %>
+        <%= render "shared/button", text: "Change Response", variant: "secondary", size: "small" %>
+      <% end %>
+    </div>
+  <% end %>
 </div>

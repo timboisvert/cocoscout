@@ -190,16 +190,41 @@ class AuditionNotificationService
                                      person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_invitation"
 
+      # Look up the audition for this person to get session details
+      audition = Audition.joins(:audition_request)
+                         .where(audition_requests: { audition_cycle_id: audition_cycle.id })
+                         .where(auditionable_type: "Person", auditionable_id: person.id)
+                         .includes(audition_session: :location)
+                         .first
+
+      # Also check if person is in a group that has an audition
+      audition ||= Audition.joins(:audition_request)
+                           .where(audition_requests: { audition_cycle_id: audition_cycle.id })
+                           .where(auditionable_type: "Group")
+                           .where(auditionable_id: GroupMembership.where(person_id: person.id).select(:group_id))
+                           .includes(audition_session: :location)
+                           .first
+
+      # Build template variables
+      session = audition&.audition_session
+      location = session&.location
+
+      template_vars = {
+        recipient_name: person.first_name || person.name,
+        production_name: production.name,
+        audition_cycle_name: nil, # AuditionCycle doesn't have a name attribute
+        audition_date: session&.start_at&.strftime("%A, %B %d, %Y"),
+        audition_time: session&.start_at&.strftime("%l:%M %p")&.strip,
+        audition_location: location&.name,
+        audition_url: audition ? Rails.application.routes.url_helpers.my_audition_url(audition, **default_url_options) : nil
+      }
+
       # Use custom content if provided, otherwise render from template
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name, audition_cycle_name: nil })
+        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, template_vars)
         body = custom_body.presence || render_template_body(template_key, person, production, nil, audition_cycle)
       else
-        rendered = ContentTemplateService.render(template_key, {
-          recipient_name: person.first_name || person.name,
-          production_name: production.name,
-          audition_cycle_name: nil
-        })
+        rendered = ContentTemplateService.render(template_key, template_vars)
         subject = rendered[:subject]
         body = rendered[:body]
       end
@@ -286,6 +311,11 @@ class AuditionNotificationService
         audition_cycle_name: nil
       })
       rendered[:body]
+    end
+
+    # URL helpers need host configuration
+    def default_url_options
+      Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
     end
   end
 end
