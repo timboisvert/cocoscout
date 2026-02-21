@@ -187,14 +187,14 @@ module My
         registration.update!(status: "cancelled", cancelled_at: Time.current)
       end
 
-      # Create a declined availability record to track they said no
-      ShowAvailability.find_or_create_by!(
+      # Create or update a declined availability record to track they said no
+      availability = ShowAvailability.find_or_initialize_by(
         show: show,
         available_entity_type: "Person",
         available_entity_id: person.id
-      ) do |avail|
-        avail.status = "unavailable"
-      end
+      )
+      availability.status = "unavailable"
+      availability.save!
 
       respond_to do |format|
         format.turbo_stream do
@@ -485,7 +485,7 @@ module My
           show_id: show.id,
           available_entity_type: "Person",
           available_entity_id: person.id,
-          status: "no"
+          status: "unavailable"
         ) || SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
                                .where(shows: { id: show.id })
                                .where(person_id: person.id)
