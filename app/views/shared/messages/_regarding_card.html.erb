@@ -7,7 +7,53 @@
   - Show: shown as a show_row card (only if user has access)
 %>
 
-<% if regardable.is_a?(Show) %>
+<% if regardable.is_a?(Message) %>
+  <%# Show the original message this is in reply to %>
+  <%
+    is_from_production = regardable.sent_as_production_team?
+    production = regardable.production
+
+    if is_from_production && production
+      display_name = production.name
+      logo_variant = production.safe_logo_variant(:small)
+      display_initials = production.initials
+    else
+      original_sender = regardable.sender.is_a?(Person) ? regardable.sender : regardable.sender&.person
+      display_name = original_sender&.name || "System"
+      logo_variant = original_sender&.safe_headshot_variant(:thumb)
+      display_initials = original_sender&.initials || "?"
+    end
+
+    is_manage_context = controller.class.name.start_with?("Manage::")
+    original_message_path = is_manage_context ? manage_message_path(regardable) : my_message_path(regardable)
+  %>
+  <div class="border border-gray-200 rounded-lg bg-gray-50 p-3">
+    <div class="flex items-center gap-2 mb-2">
+      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+      </svg>
+      <span class="text-xs text-gray-500">In reply to:</span>
+    </div>
+    <%= link_to original_message_path, class: "block hover:bg-gray-100 rounded transition-colors -m-1 p-1" do %>
+      <div class="flex items-start gap-3">
+        <% if logo_variant %>
+          <%= image_tag logo_variant, alt: display_name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
+            <%= display_initials %>
+          </div>
+        <% end %>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-900"><%= display_name %></span>
+            <span class="text-xs text-gray-400"><%= time_ago_in_words(regardable.created_at) %> ago</span>
+          </div>
+          <p class="text-sm text-gray-600 line-clamp-2"><%= regardable.body.to_plain_text.truncate(150) %></p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% elsif regardable.is_a?(Show) %>
   <%
     # Use the correct path based on controller context
     is_manage_context = controller.class.name.start_with?("Manage::")

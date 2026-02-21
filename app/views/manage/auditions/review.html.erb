@@ -92,7 +92,7 @@
                 <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
                   <input type="checkbox"
                          <%= 'checked' if @audition_cycle.voting_enabled %>
-                         data-action="change->toggle-voting#confirm"
+                         data-action="change->toggle-voting#change"
                          class="sr-only peer">
                   <div class="block w-10 h-6 rounded-full <%= @audition_cycle.voting_enabled ? 'bg-pink-500' : 'bg-gray-300' %> peer-focus:ring-2 peer-focus:ring-pink-300"></div>
                   <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform <%= @audition_cycle.voting_enabled ? 'translate-x-4' : 'translate-x-0' %>"></div>
@@ -247,7 +247,7 @@
                       </div>
                     <% end %>
                   </div>
-                  <%= fields_for :invitation_email_draft, EmailDraft.new(title: ContentTemplate.find_by(key: "audition_invitation")&.subject || "Auditions", body: ContentTemplateService.render_body("audition_invitation", { recipient_name: "[Name]", production_name: @production.name, audition_date: "[date]" })) do |email_form| %>
+                  <%= fields_for :invitation_email_draft, EmailDraft.new(title: ContentTemplateService.render_subject("audition_invitation", { recipient_name: "[Name]", production_name: @production.name, audition_date: "[date]" }), body: ContentTemplateService.render_body("audition_invitation", { recipient_name: "[Name]", production_name: @production.name, audition_date: "[date]" })) do |email_form| %>
                     <div class="space-y-3">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
@@ -266,7 +266,7 @@
                     <input type="checkbox"
                            data-tabs-target="reviewCheckbox"
                            data-action="change->tabs#checkAllReviewed"
-                           class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                           class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
                     <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
                   </label>
                 </div>
@@ -294,7 +294,7 @@
                       </div>
                     <% end %>
                   </div>
-                  <%= fields_for :not_invited_email_draft, EmailDraft.new(title: ContentTemplate.find_by(key: "audition_not_invited")&.subject || "Auditions", body: ContentTemplateService.render_body("audition_not_invited", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
+                  <%= fields_for :not_invited_email_draft, EmailDraft.new(title: ContentTemplateService.render_subject("audition_not_invited", { recipient_name: "[Name]", production_name: @production.name }), body: ContentTemplateService.render_body("audition_not_invited", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
                     <div class="space-y-3">
                       <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
@@ -313,7 +313,7 @@
                     <input type="checkbox"
                            data-tabs-target="reviewCheckbox"
                            data-action="change->tabs#checkAllReviewed"
-                           class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                           class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
                     <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
                   </label>
                 </div>

@@ -113,8 +113,8 @@
         <% end %>
 
         <div class="flex-1">
-          <%= form_with url: reply_my_message_path(@root_message), method: :post, multipart: true, data: { turbo: false } do |f| %>
-            <%= f.rich_text_area :body, class: "w-full min-h-[100px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
+          <%= form_with url: reply_my_message_path(@root_message), method: :post, multipart: true, data: { turbo: false } do %>
+            <%= rich_text_area_tag :body, nil, class: "w-full min-h-[100px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
 
             <div data-controller="image-dropzone">
               <input type="file" name="images[]" multiple accept="image/*" data-image-dropzone-target="input" data-action="change->image-dropzone#filesSelected" class="hidden">

@@ -62,8 +62,11 @@
     production_link = production_context ? production_my_messages_path(production_context) : nil
   end
 
-  # Show regardable (only Shows are shown as cards)
+  # Show regardable (Shows or Messages that this message "regards")
   show_regardable = message.show
+
+  # Also check for Message regards (e.g., replies to system-generated messages)
+  message_regardables = message.message_regards.includes(:regardable).select { |mr| mr.regardable.is_a?(Message) }.map(&:regardable)
 %>
 
 <div class="relative bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden <%= is_feed ? 'hover:bg-gray-50 transition-colors' : '' %> <%= is_unread ? 'ring-2 ring-pink-200' : '' %>" data-message-id="<%= message.id %>">
@@ -229,6 +232,13 @@
     <% if show_regardable.present? %>
       <div class="px-4 pb-3">
         <%= render "shared/messages/regarding_card", regardable: show_regardable %>
+      </div>
+    <% end %>
+
+    <%# Original Message Context (for replies to system-generated messages) %>
+    <% message_regardables.each do |original_message| %>
+      <div class="px-4 pb-3">
+        <%= render "shared/messages/regarding_card", regardable: original_message %>
       </div>
     <% end %>
   <% end %>

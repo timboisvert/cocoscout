@@ -8,24 +8,15 @@ export default class extends Controller {
         votingType: { type: String, default: "request" }
     }
 
-    confirm(event) {
+    change(event) {
         const checkbox = event.target
         const willEnable = checkbox.checked
 
-        // Revert the checkbox state immediately (we'll change it after confirmation)
+        // Revert the checkbox state immediately (we'll change it after the request)
         checkbox.checked = !willEnable
 
-        const action = willEnable ? 'enable' : 'disable'
-        const isAudition = this.votingTypeValue === "audition"
-        const message = willEnable
-            ? `Are you sure you want to enable voting? Reviewers will be able to vote on ${isAudition ? 'auditions' : 'audition sign-ups'}.`
-            : `Are you sure you want to disable voting? This will hide the voting interface from all reviewers.`
-
-        if (confirm(message)) {
-            // User confirmed, proceed with the toggle
-            this.toggle(willEnable)
-        }
-        // If user cancels, checkbox stays in reverted state (original state)
+        // Proceed with the toggle directly
+        this.toggle(willEnable)
     }
 
     async toggle(enable) {

@@ -3,8 +3,8 @@
   <%= render "shared/card_header", title: "Add or Reject" %>
   <div class="p-6">
     <% if has_sent_notifications %>
-      <%# After notifications sent - show finalized people and newly added (pending) people %>
-      <p class="text-sm text-gray-500 mb-4">Casting notifications have been sent. People with a <span class="text-green-600 font-semibold">green</span> indicator have been notified. People with a <span class="text-pink-600 font-semibold">pink</span> indicator are newly added and will be notified when you send the next batch of notifications.</p>
+      <%# After notifications sent - show finalized people and newly decided (pending notification) people %>
+      <p class="text-sm text-gray-500 mb-4">Casting notifications have been sent. People with a <span class="text-green-600 font-semibold">green</span> indicator have been notified. People with a <span class="text-pink-600 font-semibold">pink</span> indicator have pending decisions and will be notified when you send the next batch of notifications.</p>
 
       <div class="space-y-4 mb-6">
         <% if notified_stages.any? || pending_stages.any? %>
@@ -32,10 +32,10 @@
             </div>
           <% end %>
 
-          <%# Show pending (newly added) people %>
+          <%# Show pending (newly decided) people %>
           <% if pending_stages.any? %>
             <div class="border-l-4 border-pink-500 pl-4">
-              <h4 class="text-sm font-semibold text-gray-900 mb-2">Newly Added</h4>
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Pending Notification</h4>
               <div class="flex flex-wrap gap-2">
                 <% pending_stages.each do |stage| %>
                   <% assignable = stage.assignable %>

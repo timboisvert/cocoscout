@@ -53,7 +53,7 @@
           <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
             <input type="checkbox"
                    <%= 'checked' if @audition_cycle.audition_voting_enabled %>
-                   data-action="change->toggle-voting#confirm"
+                   data-action="change->toggle-voting#change"
                    class="sr-only peer">
             <div class="block w-10 h-6 rounded-full <%= @audition_cycle.audition_voting_enabled ? 'bg-pink-500' : 'bg-gray-300' %> peer-focus:ring-2 peer-focus:ring-pink-300"></div>
             <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform <%= @audition_cycle.audition_voting_enabled ? 'translate-x-4' : 'translate-x-0' %>"></div>

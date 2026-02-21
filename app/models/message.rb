@@ -191,7 +191,8 @@ class Message < ApplicationRecord
   end
 
   # Human-readable sender name
-  # For production/show-scoped messages, show "Production Team" or production name
+  # For production/show-scoped messages OR system-generated production messages,
+  # show "Production Team" or production name
   def sender_name
     if sent_as_production_team?
       production&.name || "Production Team"
@@ -205,9 +206,10 @@ class Message < ApplicationRecord
   end
 
   # Whether this message was sent "as the production team" (visible to team, not personal)
+  # Also true for system-generated messages with a production association
   # Shows production logo instead of sender's headshot when true
   def sent_as_production_team?
-    %w[production show].include?(visibility)
+    %w[production show].include?(visibility) || (system_generated? && production.present?)
   end
 
   # Get recipient count

@@ -23,8 +23,8 @@
   # Check if this is the last item in the collection
   is_last = local_assigns[:reply_counter] == (local_assigns[:reply_iteration] || 1) - 1 rescue false
 
-  # Check if sender identity selector should be shown (root was sent as production team)
-  root_sent_as_team = root_message.sent_as_production_team?
+  # Check if sender identity selector should be shown (in /manage with production context)
+  show_sender_selector = is_manage && root_message.production.present?
 %>
 
 <div class="relative" data-controller="reply-form" data-reply-form-parent-id-value="<%= reply.id %>" data-message-id="<%= reply.id %>">
@@ -124,10 +124,10 @@
       <%# Inline Reply Form (hidden by default, hide for deleted) %>
       <% unless reply.deleted? %>
       <div data-reply-form-target="form" class="hidden border-t border-gray-100 p-4 bg-gray-50" data-controller="reply-sender">
-        <%= form_with url: reply_path, method: :post, class: "space-y-3", data: { turbo: false, action: "turbo:submit-end->reply-form#submitted" }, id: "nested-reply-form-#{reply.id}" do |f| %>
-          <%= f.hidden_field :parent_message_id, value: reply.id %>
+        <%= form_with url: reply_path, method: :post, class: "space-y-3", data: { turbo: false, action: "turbo:submit-end->reply-form#submitted" }, id: "nested-reply-form-#{reply.id}" do %>
+          <%= hidden_field_tag :parent_message_id, reply.id %>
 
-          <% if root_sent_as_team %>
+          <% if show_sender_selector %>
             <%# Sender Identity Selector %>
             <div class="pb-3 mb-3 border-b border-gray-200">
               <div class="flex items-center gap-2">
@@ -225,7 +225,7 @@
 
           <div class="flex items-start gap-3">
             <% current_person = Current.user&.person %>
-            <% if current_person && !root_sent_as_team %>
+            <% if current_person && !show_sender_selector %>
               <%# Only show headshot when no sender identity selector (personal messages) %>
               <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
@@ -237,7 +237,7 @@
               <% end %>
             <% end %>
             <div class="flex-1">
-              <%= f.rich_text_area :body, class: "w-full min-h-[80px] text-sm", placeholder: "Write a reply to #{reply.sender_name}...", data: { reply_form_target: "body", action: "trix-change->reply-form#typing" } %>
+              <%= rich_text_area_tag :body, nil, class: "w-full min-h-[80px] text-sm", placeholder: "Write a reply to #{reply.sender_name}...", data: { reply_form_target: "body", action: "trix-change->reply-form#typing" } %>
             </div>
           </div>
           <div class="flex justify-end gap-2">

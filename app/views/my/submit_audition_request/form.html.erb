@@ -219,18 +219,11 @@
               <% end %>
             </p>
             <% if is_group %>
-              <%= link_to entity_profile_path, class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors" do %>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                <span>Complete Group Profile</span>
+              <%= link_to entity_profile_path do %>
+                <%= render "shared/button", text: "Complete Group Profile", variant: "primary", size: "small", icon: "pencil" %>
               <% end %>
             <% else %>
-              <button type="button"
-                      data-action="click->audition-request-form#openProfileSetup"
-                      class="inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                <span>Add Headshot & Resume</span>
-              </button>
+              <%= render "shared/button", text: "Add Headshot & Resume", variant: "primary", size: "small", type: :button, data: { action: "click->audition-request-form#openProfileSetup" } %>
             <% end %>
           </div>
         </div>
@@ -419,11 +412,7 @@
       end
     %>
   <% if entity_profile_incomplete %>
-    <button type="button"
-            disabled
-            class="w-full rounded-lg px-4 py-3 text-white bg-gray-400 font-semibold cursor-not-allowed">
-      <%= submit_text %> (Complete profile first)
-    </button>
+    <%= render "shared/button", text: "#{submit_text} (Complete profile first)", variant: "secondary", size: "jumbo", type: :button, disabled: true %>
   <% else %>
     <%= render "shared/button", text: submit_text, variant: "primary", size: "jumbo", type: :submit %>
   <% end %>
@@ -564,16 +553,8 @@
           </div>
 
         <div class="flex gap-3 pt-4">
-          <button type="button"
-                  data-action="click->audition-request-form#closeProfileSetup"
-                  class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium cursor-pointer">
-            Cancel
-          </button>
-          <button type="button"
-                  data-action="click->audition-request-form#submitProfileForm"
-                  class="flex-1 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-medium cursor-pointer">
-            Save & Continue
-          </button>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "flex-1", data: { action: "click->audition-request-form#closeProfileSetup" } %>
+          <%= render "shared/button", text: "Save & Continue", variant: "primary", size: "medium", type: :button, classes: "flex-1", data: { action: "click->audition-request-form#submitProfileForm" } %>
         </div>
       <% end %>
     </div>
@@ -640,11 +621,7 @@
       </div>
 
       <div class="border-t border-gray-200 px-6 py-4">
-        <button type="button"
-                data-action="click->audition-request-form#closeEntitySelector"
-                class="w-full px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
-          Cancel
-        </button>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full", data: { action: "click->audition-request-form#closeEntitySelector" } %>
       </div>
     </div>
   </div>
