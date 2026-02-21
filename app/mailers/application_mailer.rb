@@ -12,6 +12,10 @@ class ApplicationMailer < ActionMailer::Base
     attachments.inline["cocoscout.png"] = File.read(Rails.root.join("app", "assets", "images", "cocoscout.png"))
   end
 
+  def default_url_options
+    Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
+  end
+
   # Override mail method to add user tracking headers
   def mail(headers = {}, &block)
     user = find_user_from_params

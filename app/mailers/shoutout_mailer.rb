@@ -8,7 +8,7 @@ class ShoutoutMailer < ApplicationMailer
 
     profile_url = Rails.application.routes.url_helpers.profile_url(
       @recipient,
-      host: ENV.fetch("HOST", "localhost:3000")
+      **default_url_options
     )
 
     rendered = ContentTemplateService.render("shoutout_notification", {

@@ -10,7 +10,7 @@ class GroupInvitationMailer < ApplicationMailer
 
     accept_url = Rails.application.routes.url_helpers.accept_group_invitation_url(
       @token,
-      host: ENV.fetch("HOST", "localhost:3000")
+      **default_url_options
     )
 
     rendered = ContentTemplateService.render("group_invitation", {

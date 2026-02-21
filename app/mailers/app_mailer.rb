@@ -175,7 +175,7 @@ class AppMailer < ApplicationMailer
     private
 
     def default_url_host
-      ENV.fetch("HOST", "localhost:3000")
+      Rails.application.config.action_mailer.default_url_options[:host] || "localhost:3000"
     end
   end
 end

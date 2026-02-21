@@ -10,7 +10,7 @@ module Manage
 
       setup_url = Rails.application.routes.url_helpers.manage_accept_person_invitations_url(
         @token,
-        host: ENV.fetch("HOST", "localhost:3000")
+        **default_url_options
       )
       org_name = @organization&.name || "CocoScout"
 

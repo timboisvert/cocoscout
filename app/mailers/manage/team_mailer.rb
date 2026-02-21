@@ -8,7 +8,7 @@ module Manage
 
       accept_url = Rails.application.routes.url_helpers.accept_team_invitation_url(
         team_invitation.token,
-        host: ENV.fetch("HOST", "localhost:3000")
+        **default_url_options
       )
 
       rendered = ContentTemplateService.render("team_organization_invitation", {
@@ -34,7 +34,7 @@ module Manage
 
       accept_url = Rails.application.routes.url_helpers.accept_team_invitation_url(
         team_invitation.token,
-        host: ENV.fetch("HOST", "localhost:3000")
+        **default_url_options
       )
 
       rendered = ContentTemplateService.render("team_production_invitation", {
