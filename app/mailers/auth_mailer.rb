@@ -10,7 +10,7 @@ class AuthMailer < ApplicationMailer
     @body = rendered[:body]
 
     mail(to: @user.email_address, subject: @subject) do |format|
-      format.html { render html: @body.html_safe }
+      format.html { render html: @body.html_safe, layout: "mailer" }
     end
   end
 
@@ -19,13 +19,13 @@ class AuthMailer < ApplicationMailer
     @person = @user.person # For recipient entity tracking
     @token = token
 
-    reset_url = Rails.application.routes.url_helpers.password_path(token, host: ENV.fetch("HOST", "localhost:3000"))
+    reset_url = Rails.application.routes.url_helpers.reset_url(token, host: ENV.fetch("HOST", "localhost:3000"))
     rendered = ContentTemplateService.render("auth_password_reset", { reset_url: reset_url })
     @subject = rendered[:subject]
     @body = rendered[:body]
 
     mail(to: @user.email_address, subject: @subject) do |format|
-      format.html { render html: @body.html_safe }
+      format.html { render html: @body.html_safe, layout: "mailer" }
     end
   end
 end

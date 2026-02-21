@@ -22,7 +22,7 @@ class VacancyInvitationMailer < ApplicationMailer
     send_in_app_message(rendered)
 
     mail(to: @person.email, subject: @subject) do |format|
-      format.html { render html: @body.html_safe }
+      format.html { render html: @body.html_safe, layout: "mailer" }
     end
   end
 

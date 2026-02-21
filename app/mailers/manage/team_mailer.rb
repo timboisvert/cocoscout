@@ -22,7 +22,7 @@ module Manage
       @body = rendered[:body]
 
       mail(to: @team_invitation.email, subject: @subject) do |format|
-        format.html { render html: @body.html_safe }
+        format.html { render html: @body.html_safe, layout: "mailer" }
       end
     end
 
@@ -49,7 +49,7 @@ module Manage
       @body = rendered[:body]
 
       mail(to: @team_invitation.email, subject: @subject) do |format|
-        format.html { render html: @body.html_safe }
+        format.html { render html: @body.html_safe, layout: "mailer" }
       end
     end
   end

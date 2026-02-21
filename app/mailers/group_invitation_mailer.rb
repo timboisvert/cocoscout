@@ -24,7 +24,7 @@ class GroupInvitationMailer < ApplicationMailer
     @body = rendered[:body]
 
     mail(to: @invitation.email, subject: @subject) do |format|
-      format.html { render html: @body.html_safe }
+      format.html { render html: @body.html_safe, layout: "mailer" }
     end
   end
 end

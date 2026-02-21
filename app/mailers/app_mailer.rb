@@ -28,7 +28,7 @@ class AppMailer < ApplicationMailer
     headers["X-Email-Batch-ID"] = @email_batch_id.to_s if @email_batch_id.present?
 
     mail(to: @to, subject: @subject) do |format|
-      format.html { render html: @body.html_safe }
+      format.html { render html: @body.html_safe, layout: "mailer" }
     end
   end
 
@@ -44,7 +44,7 @@ class AppMailer < ApplicationMailer
     end
 
     def password_reset(user, token)
-      reset_url = Rails.application.routes.url_helpers.password_path(token, host: default_url_host)
+      reset_url = Rails.application.routes.url_helpers.reset_url(token, host: default_url_host)
       with(
         template_key: "auth_password_reset",
         to: user.email_address,
