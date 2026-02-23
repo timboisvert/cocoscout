@@ -54,7 +54,10 @@ class SlotManagementService
   # Analyze the impact of slot changes on existing registrations
   # Returns a hash with detailed analysis for the confirm page
   def analyze_slot_change_impact
-    new_slot_count = build_slot_template.size
+    # Get the show from the first instance if available (for time-based slots)
+    first_instance = sign_up_form.sign_up_form_instances.first
+    show = first_instance&.show
+    new_slot_count = build_slot_template(show: show).size
 
     # Get current slots based on scope
     current_slots = case sign_up_form.scope
@@ -97,7 +100,7 @@ class SlotManagementService
       has_affected_registrations: affected_registrations.any?,
       total_current_registrations: current_slots.sum { |s| s.sign_up_registrations.active.count },
       current_slots: current_slots,
-      preview_slots: build_slot_template
+      preview_slots: build_slot_template(show: show)
     }
   end
 
@@ -191,7 +194,7 @@ class SlotManagementService
   def generate_slots_for_instance!(instance)
     return if instance.sign_up_slots.any?
 
-    slots_data = build_slot_template
+    slots_data = build_slot_template(show: instance.show)
     return if slots_data.empty?
 
     ActiveRecord::Base.transaction do
@@ -220,7 +223,8 @@ class SlotManagementService
   end
 
   # Build the slot template based on form settings
-  def build_slot_template
+  # For time_based slots, pass the show to use its start time
+  def build_slot_template(show: nil)
     slots = []
 
     case sign_up_form.slot_generation_mode
@@ -234,16 +238,22 @@ class SlotManagementService
       end
 
     when "time_based"
-      # Use a default start time if not specified
-      start_time_str = sign_up_form.slot_start_time.presence || "7:00 PM"
+      # For event-based forms (single_event, repeated), use the show's start time
+      # For shared_pool forms (no show), fall back to slot_start_time or 7:00 PM
+      start_time = if show&.date_and_time.present?
+        show.date_and_time
+      elsif sign_up_form.slot_start_time.present?
+        begin
+          Time.parse(sign_up_form.slot_start_time)
+        rescue ArgumentError
+          Time.parse("7:00 PM")
+        end
+      else
+        Time.parse("7:00 PM")
+      end
+
       interval = sign_up_form.slot_interval_minutes.to_i
       interval = 5 if interval <= 0
-
-      begin
-        start_time = Time.parse(start_time_str)
-      rescue ArgumentError
-        start_time = Time.parse("7:00 PM")
-      end
 
       sign_up_form.slot_count.to_i.times do |i|
         slot_time = start_time + (i * interval.minutes)
@@ -391,10 +401,10 @@ class SlotManagementService
   end
 
   def preview_repeated_changes
-    template = build_slot_template
     changes = []
 
-    sign_up_form.sign_up_form_instances.includes(:sign_up_slots).find_each do |instance|
+    sign_up_form.sign_up_form_instances.includes(:sign_up_slots, :show).find_each do |instance|
+      template = build_slot_template(show: instance.show)
       current_slots = instance.sign_up_slots.order(:position).to_a
       changes << {
         instance: instance,
@@ -413,7 +423,7 @@ class SlotManagementService
     instance = sign_up_form.sign_up_form_instances.first
     return [] unless instance
 
-    template = build_slot_template
+    template = build_slot_template(show: instance.show)
     current_slots = instance.sign_up_slots.order(:position).to_a
 
     [ {
@@ -456,7 +466,7 @@ class SlotManagementService
   end
 
   def sync_instance_slots!(instance)
-    template = build_slot_template
+    template = build_slot_template(show: instance.show)
     current_slots = instance.sign_up_slots.order(:position).to_a
     new_count = template.size
     current_count = current_slots.size

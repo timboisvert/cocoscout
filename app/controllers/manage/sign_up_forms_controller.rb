@@ -217,11 +217,11 @@ module Manage
 
         if slot_settings_changed && has_existing_slots
           session[:pending_slot_changes] = {
-            form_id: @sign_up_form.id,
-            old_count: session[:old_slot_count],
-            new_count: @sign_up_form.slot_count,
-            old_capacity: session[:old_slot_capacity],
-            new_capacity: @sign_up_form.slot_capacity
+            "form_id" => @sign_up_form.id,
+            "old_count" => session[:old_slot_count],
+            "new_count" => @sign_up_form.slot_count,
+            "old_capacity" => session[:old_slot_capacity],
+            "new_capacity" => @sign_up_form.slot_capacity
           }
         end
 
@@ -240,7 +240,7 @@ module Manage
             else
               # Need confirmation for removals
               session[:pending_event_changes] = {
-                form_id: @sign_up_form.id
+                "form_id" => @sign_up_form.id
               }
               redirect_to manage_confirm_event_changes_signups_form_path(@production, @sign_up_form)
               return
