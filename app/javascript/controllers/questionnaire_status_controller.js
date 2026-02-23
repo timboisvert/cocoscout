@@ -9,7 +9,7 @@ export default class extends Controller {
         const productionId = this.element.dataset.productionId
         const accepting = checkbox.checked
 
-        fetch(`/manage/communications/${productionId}/questionnaires/${questionnaireId}`, {
+        fetch(`/manage/casting/${productionId}/questionnaires/${questionnaireId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
