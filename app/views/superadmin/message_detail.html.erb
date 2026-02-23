@@ -302,7 +302,7 @@
           <% if @message.show.present? %>
             <div class="pt-3 border-t border-gray-100">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Show</div>
-              <div class="font-medium text-gray-900"><%= @message.show.formatted_date_and_time %></div>
+              <div class="font-medium text-gray-900"><%= @message.show.name_with_date %></div>
               <div class="text-xs text-gray-500">ID: <%= @message.show.id %></div>
               <% if @message.show.location.present? %>
                 <div class="text-xs text-gray-500"><%= @message.show.location.name %></div>
