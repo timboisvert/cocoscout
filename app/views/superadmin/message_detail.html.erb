@@ -1,0 +1,394 @@
+<% content_for :title, "Message ##{@message.id} - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path],
+      ["Messages", messages_list_path]
+    ],
+    text: "Message ##{@message.id}",
+    links: []
+  } %>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Main Content (2/3) -->
+    <div class="lg:col-span-2 space-y-4">
+      <!-- Message Card -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden <%= @message.deleted? ? 'ring-2 ring-red-300' : '' %>">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+            <% if @message.deleted? %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">DELETED</span>
+            <% end %>
+            <%= @message.subject %>
+          </h2>
+          <div class="flex items-center gap-2">
+            <% if @message.deleted? %>
+              <%= button_to message_restore_path(@message), method: :post, class: "px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium" do %>
+                Restore Message
+              <% end %>
+            <% else %>
+              <%= button_to message_delete_path(@message), method: :delete, data: { confirm: "Are you sure you want to delete this message?" }, class: "px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium" do %>
+                Delete Message
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="p-4 space-y-4">
+          <!-- Message Body -->
+          <div class="prose prose-sm max-w-none">
+            <%= @message.body %>
+          </div>
+
+          <!-- Images -->
+          <% if @message.images.attached? %>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <% @message.images.each do |image| %>
+                <%= image_tag image.variant(resize_to_limit: [200, 200]), class: "rounded-lg" %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <!-- Poll -->
+          <% if @message.message_poll.present? %>
+            <div class="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <h4 class="font-semibold text-purple-800 mb-2">Poll: <%= @message.message_poll.question %></h4>
+              <% @message.message_poll.message_poll_options.each do |option| %>
+                <div class="flex items-center justify-between py-1">
+                  <span class="text-purple-700"><%= option.text %></span>
+                  <span class="text-sm text-purple-600 font-medium"><%= option.message_poll_votes.count %> votes</span>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Thread / Replies Section -->
+      <% if @thread_messages.size > 1 || @message.parent_message.present? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">
+              Thread (<%= @thread_messages.size %> messages)
+            </h3>
+          </div>
+
+          <div class="divide-y divide-gray-100">
+            <% @thread_messages.each do |msg| %>
+              <div class="p-4 <%= msg.id == @message.id ? 'bg-pink-50 ring-1 ring-pink-200' : '' %> <%= msg.deleted? ? 'bg-red-50' : '' %>">
+                <div class="flex items-start gap-3">
+                  <!-- Depth indicator -->
+                  <div class="flex-shrink-0" style="margin-left: <%= msg.thread_depth * 16 %>px;">
+                    <% if msg.thread_depth > 0 %>
+                      <span class="text-gray-300">↳</span>
+                    <% end %>
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-medium text-gray-900 text-sm"><%= msg.sender_name %></span>
+                      <span class="text-xs text-gray-500"><%= time_ago_in_words(msg.created_at) %> ago</span>
+                      <% if msg.deleted? %>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Deleted</span>
+                      <% end %>
+                      <% if msg.system_generated? %>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">System</span>
+                      <% end %>
+                    </div>
+                    <div class="text-sm text-gray-700">
+                      <% if msg.id == @message.id %>
+                        <span class="text-pink-600 font-medium">(Current message)</span>
+                      <% else %>
+                        <%= link_to "View Details →", message_detail_path(msg), class: "text-pink-600 hover:text-pink-800" %>
+                      <% end %>
+                    </div>
+                    <div class="prose prose-sm max-w-none mt-2 text-gray-600">
+                      <%= truncate(msg.body&.to_plain_text || "", length: 200) %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Direct Replies (Children) -->
+      <% if @message.child_messages.any? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">
+              Direct Replies (<%= @message.child_messages.size %>)
+            </h3>
+          </div>
+
+          <div class="divide-y divide-gray-100">
+            <% @message.child_messages.order(:created_at).each do |reply| %>
+              <div class="p-4 hover:bg-gray-50 <%= reply.deleted? ? 'bg-red-50' : '' %>">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900 text-sm"><%= reply.sender_name %></span>
+                    <span class="text-xs text-gray-500"><%= reply.created_at.strftime("%b %d, %Y %I:%M %p") %></span>
+                    <% if reply.deleted? %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Deleted</span>
+                    <% end %>
+                  </div>
+                  <%= link_to "View →", message_detail_path(reply), class: "text-sm text-pink-600 hover:text-pink-800" %>
+                </div>
+                <div class="prose prose-sm max-w-none text-gray-600">
+                  <%= truncate(reply.body&.to_plain_text || "", length: 300) %>
+                </div>
+                <% if reply.child_messages.any? %>
+                  <div class="mt-2 text-xs text-gray-500">
+                    + <%= reply.child_messages.size %> nested <%= "reply".pluralize(reply.child_messages.size) %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar (1/3) -->
+    <div class="space-y-4">
+      <!-- Message Metadata -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="font-semibold text-gray-900">Message Details</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500">ID</span>
+            <span class="font-mono text-gray-900"><%= @message.id %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Created</span>
+            <span class="text-gray-900"><%= @message.created_at.strftime("%b %d, %Y %I:%M %p") %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Type</span>
+            <%
+              type_colors = {
+                "cast_contact" => "bg-blue-100 text-blue-700",
+                "talent_pool" => "bg-purple-100 text-purple-700",
+                "direct" => "bg-green-100 text-green-700",
+                "production_contact" => "bg-pink-100 text-pink-700",
+                "system" => "bg-gray-100 text-gray-700"
+              }
+              type_color = type_colors[@message.message_type] || "bg-gray-100 text-gray-700"
+            %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= type_color %>">
+              <%= @message.message_type.titleize %>
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">Visibility</span>
+            <%
+              vis_colors = {
+                "personal" => "bg-gray-100 text-gray-600",
+                "production" => "bg-indigo-100 text-indigo-600",
+                "show" => "bg-emerald-100 text-emerald-600"
+              }
+              vis_color = vis_colors[@message.visibility] || "bg-gray-100 text-gray-600"
+            %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= vis_color %>">
+              <%= @message.visibility %>
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">System Generated</span>
+            <span class="text-gray-900"><%= @message.system_generated? ? "Yes" : "No" %></span>
+          </div>
+          <% if @message.deleted? %>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Deleted At</span>
+              <span class="text-red-600"><%= @message.deleted_at.strftime("%b %d, %Y %I:%M %p") %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Sender Info -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="font-semibold text-gray-900">Sender</h3>
+        </div>
+        <div class="p-4 text-sm">
+          <% if @message.sender.present? %>
+            <div class="flex items-center gap-3">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= @message.sender_name %></div>
+                <div class="text-xs text-gray-500">
+                  <%= @message.sender_type %> #<%= @message.sender_id %>
+                </div>
+                <% if @message.sender.is_a?(User) %>
+                  <div class="text-xs text-gray-500 mt-1"><%= @message.sender.email_address %></div>
+                <% elsif @message.sender.is_a?(Person) && @message.sender.email.present? %>
+                  <div class="text-xs text-gray-500 mt-1"><%= @message.sender.email %></div>
+                <% end %>
+              </div>
+            </div>
+            <% if @message.sent_as_production_team? %>
+              <div class="mt-2 px-2 py-1 bg-pink-50 rounded text-xs text-pink-700">
+                Sent as: <%= @message.production&.name || "Production Team" %>
+              </div>
+            <% end %>
+          <% else %>
+            <span class="text-gray-400">No sender (system message)</span>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recipients -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="font-semibold text-gray-900">Recipients (<%= @message.message_recipients.size %>)</h3>
+        </div>
+        <div class="max-h-64 overflow-y-auto">
+          <% if @message.message_recipients.any? %>
+            <% @message.message_recipients.each do |mr| %>
+              <div class="px-4 py-2 border-b border-gray-100 last:border-0 text-sm">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-medium text-gray-900"><%= mr.recipient&.name || "Unknown" %></div>
+                    <div class="text-xs text-gray-500"><%= mr.recipient_type %> #<%= mr.recipient_id %></div>
+                  </div>
+                  <div class="text-right">
+                    <% if mr.read_at.present? %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">Read</span>
+                      <div class="text-xs text-gray-400 mt-0.5"><%= mr.read_at.strftime("%b %d") %></div>
+                    <% else %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">Unread</span>
+                    <% end %>
+                  </div>
+                </div>
+                <% if mr.archived_at.present? %>
+                  <div class="mt-1 text-xs text-amber-600">Archived <%= mr.archived_at.strftime("%b %d") %></div>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="px-4 py-3 text-sm text-gray-500">No recipients</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Context/Associations -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="font-semibold text-gray-900">Context & Associations</h3>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <% if @message.organization.present? %>
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Organization</div>
+              <div class="font-medium text-gray-900"><%= @message.organization.name %></div>
+              <div class="text-xs text-gray-500">ID: <%= @message.organization.id %></div>
+            </div>
+          <% end %>
+
+          <% if @message.production.present? %>
+            <div class="<%= @message.organization.present? ? 'pt-3 border-t border-gray-100' : '' %>">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Production</div>
+              <div class="font-medium text-gray-900"><%= @message.production.name %></div>
+              <div class="text-xs text-gray-500">ID: <%= @message.production.id %></div>
+            </div>
+          <% end %>
+
+          <% if @message.show.present? %>
+            <div class="pt-3 border-t border-gray-100">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Show</div>
+              <div class="font-medium text-gray-900"><%= @message.show.formatted_date_and_time %></div>
+              <div class="text-xs text-gray-500">ID: <%= @message.show.id %></div>
+              <% if @message.show.location.present? %>
+                <div class="text-xs text-gray-500"><%= @message.show.location.name %></div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @message.parent_message.present? %>
+            <div class="pt-3 border-t border-gray-100">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Parent Message</div>
+              <%= link_to message_detail_path(@message.parent_message), class: "text-pink-600 hover:text-pink-800 font-medium" do %>
+                #<%= @message.parent_message.id %>: <%= truncate(@message.parent_message.subject, length: 30) %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @message.message_regards.any? %>
+            <div class="pt-3 border-t border-gray-100">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Regardables</div>
+              <% @message.message_regards.each do |regard| %>
+                <div class="text-gray-700">
+                  <%= regard.regardable_type %>: <%= regard.regardable_id %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @message.organization.blank? && @message.production.blank? && @message.show.blank? && @message.parent_message.blank? && @message.message_regards.empty? %>
+            <div class="text-gray-400">No associated context</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Reactions -->
+      <% if @message.message_reactions.any? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">Reactions (<%= @message.message_reactions.size %>)</h3>
+          </div>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2">
+              <% @message.reaction_counts.each do |emoji, count| %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
+                  <span class="text-lg"><%= emoji %></span>
+                  <span class="text-xs text-gray-600"><%= count %></span>
+                </span>
+              <% end %>
+            </div>
+            <div class="mt-3 space-y-1">
+              <% @message.message_reactions.includes(:user).each do |reaction| %>
+                <div class="text-xs text-gray-500">
+                  <%= reaction.emoji %> <%= reaction.user&.email_address || "Unknown" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Subscriptions -->
+      <% if @message.message_subscriptions.any? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">Subscriptions (<%= @message.message_subscriptions.size %>)</h3>
+          </div>
+          <div class="max-h-48 overflow-y-auto">
+            <% @message.message_subscriptions.each do |sub| %>
+              <div class="px-4 py-2 border-b border-gray-100 last:border-0 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-900"><%= sub.user&.email_address || "Unknown" %></span>
+                  <div class="flex items-center gap-2">
+                    <% if sub.muted? %>
+                      <span class="text-xs text-gray-400">Muted</span>
+                    <% end %>
+                    <% if sub.unread_count > 0 %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-pink-100 text-pink-700"><%= sub.unread_count %> unread</span>
+                    <% else %>
+                      <%= button_to "Mark Unread", subscription_mark_unread_path(@message, sub), method: :post, class: "text-xs text-pink-600 hover:text-pink-800 cursor-pointer" %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

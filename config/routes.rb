@@ -119,6 +119,13 @@ Rails.application.routes.draw do
     post   "/demo_users",       to: "superadmin#demo_user_create",    as: "demo_user_create"
     delete "/demo_users/:id",   to: "superadmin#demo_user_destroy",   as: "demo_user_destroy"
 
+    # Messages Monitor
+    get    "/messages",         to: "superadmin#messages_list",       as: "messages_list"
+    get    "/messages/:id",     to: "superadmin#message_detail",      as: "message_detail"
+    delete "/messages/:id",     to: "superadmin#message_delete",      as: "message_delete"
+    post   "/messages/:id/restore", to: "superadmin#message_restore", as: "message_restore"
+    post   "/messages/:message_id/subscriptions/:id/mark_unread", to: "superadmin#subscription_mark_unread", as: "subscription_mark_unread"
+
     # Rake Tasks
     get    "/tasks",            to: "superadmin#tasks",               as: "tasks_monitor"
   end

@@ -1,0 +1,262 @@
+<% content_for :title, "Messages Monitor - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path]
+    ],
+    text: "Messages Monitor",
+    links: []
+  } %>
+
+  <!-- Stats Overview -->
+  <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@total_messages) %></div>
+      <div class="text-xs text-gray-500 mt-1">Total Messages</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-blue-600"><%= number_with_delimiter(@root_messages_count) %></div>
+      <div class="text-xs text-gray-500 mt-1">Root Threads</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-purple-600"><%= number_with_delimiter(@replies_count) %></div>
+      <div class="text-xs text-gray-500 mt-1">Replies</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-amber-600"><%= number_with_delimiter(@system_generated_count) %></div>
+      <div class="text-xs text-gray-500 mt-1">System Generated</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-red-600"><%= number_with_delimiter(@deleted_count) %></div>
+      <div class="text-xs text-gray-500 mt-1">Deleted</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-pink-600"><%= @messages_today %></div>
+      <div class="text-xs text-gray-500 mt-1">Today</div>
+    </div>
+    <div class="text-center p-3 bg-white border border-gray-200 rounded-lg">
+      <div class="text-2xl font-bold text-green-600"><%= @messages_week %></div>
+      <div class="text-xs text-gray-500 mt-1">Past 7 Days</div>
+    </div>
+  </div>
+
+  <!-- Filter form -->
+  <div class="mt-4 bg-white border border-gray-200 rounded-lg p-4 mb-4">
+    <%= form_with url: messages_list_path, method: :get, class: "space-y-4" do |f| %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <%= f.label :search, "Search Subject", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :search, value: params[:search], placeholder: "Enter search term", class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div>
+          <%= f.label :message_type, "Message Type", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :message_type, options_for_select([
+            ["All Types", ""],
+            ["Cast Contact", "cast_contact"],
+            ["Talent Pool", "talent_pool"],
+            ["Direct", "direct"],
+            ["Production Contact", "production_contact"],
+            ["System", "system"]
+          ], params[:message_type]), {}, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div>
+          <%= f.label :visibility, "Visibility", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :visibility, options_for_select([
+            ["All", ""],
+            ["Personal/Private", "private"],
+            ["Production", "production"],
+            ["Show", "show"]
+          ], params[:visibility]), {}, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div>
+          <%= f.label :system_generated, "System Generated", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :system_generated, options_for_select([
+            ["All", ""],
+            ["Yes", "true"],
+            ["No", "false"]
+          ], params[:system_generated]), {}, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <%= f.label :deleted, "Deleted Status", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :deleted, options_for_select([
+            ["All", ""],
+            ["Deleted Only", "true"],
+            ["Active Only", "false"]
+          ], params[:deleted]), {}, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div class="flex items-end gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <%= f.check_box :include_replies, { checked: params[:include_replies] == "true", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" } %>
+            <span class="text-sm text-gray-700">Include Replies</span>
+          </label>
+        </div>
+
+        <div class="flex items-end gap-2 sm:col-span-2">
+          <%= f.submit "Filter", class: "px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-medium cursor-pointer" %>
+          <%= link_to "Clear", messages_list_path, class: "px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Messages table -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Messages" do %>
+      <span class="text-sm font-normal text-gray-600">(<%= @pagy.count %> total)</span>
+    <% end %>
+
+    <% if @messages.empty? %>
+      <div class="text-center py-12 text-gray-500">
+        No messages found.
+      </div>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Context</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stats</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @messages.each do |message| %>
+              <tr class="hover:bg-gray-50 cursor-pointer <%= message.deleted? ? 'bg-red-50' : '' %>" onclick="window.location='<%= message_detail_path(message) %>'">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  <%= message.created_at.strftime("%b %d, %Y") %>
+                  <div class="text-xs text-gray-500"><%= message.created_at.strftime("%I:%M %p") %></div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900">
+                  <div class="max-w-md truncate font-medium" title="<%= message.subject %>">
+                    <% if message.deleted? %>
+                      <span class="text-red-600">[DELETED]</span>
+                    <% end %>
+                    <% if message.parent_message_id.present? %>
+                      <span class="text-gray-400">↳</span>
+                    <% end %>
+                    <%= message.subject || "(no subject)" %>
+                  </div>
+                  <% if message.system_generated? %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                      System
+                    </span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  <% if message.sender.present? %>
+                    <div class="font-medium"><%= message.sender_name %></div>
+                    <div class="text-xs text-gray-500"><%= message.sender_type %></div>
+                  <% else %>
+                    <span class="text-gray-400">No sender</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  <% recipient_count = message.message_recipients.size %>
+                  <% if recipient_count > 0 %>
+                    <div class="flex items-center gap-1">
+                      <span class="font-medium"><%= recipient_count %></span>
+                      <span class="text-gray-500"><%= "recipient".pluralize(recipient_count) %></span>
+                    </div>
+                    <% first_recipient = message.message_recipients.first&.recipient %>
+                    <% if first_recipient %>
+                      <div class="text-xs text-gray-500 truncate max-w-32" title="<%= first_recipient.name %>">
+                        <%= first_recipient.name %><%= recipient_count > 1 ? " +" : "" %>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <span class="text-gray-400">-</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <%
+                    type_colors = {
+                      "cast_contact" => "bg-blue-100 text-blue-700",
+                      "talent_pool" => "bg-purple-100 text-purple-700",
+                      "direct" => "bg-green-100 text-green-700",
+                      "production_contact" => "bg-pink-100 text-pink-700",
+                      "system" => "bg-gray-100 text-gray-700"
+                    }
+                    type_color = type_colors[message.message_type] || "bg-gray-100 text-gray-700"
+                  %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= type_color %>">
+                    <%= message.message_type.titleize %>
+                  </span>
+                  <div class="mt-1">
+                    <%
+                      vis_colors = {
+                        "personal" => "bg-gray-50 text-gray-600",
+                        "production" => "bg-indigo-50 text-indigo-600",
+                        "show" => "bg-emerald-50 text-emerald-600"
+                      }
+                      vis_color = vis_colors[message.visibility] || "bg-gray-50 text-gray-600"
+                    %>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs <%= vis_color %>">
+                      <%= message.visibility %>
+                    </span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                  <% if message.organization.present? %>
+                    <div>Org: <%= truncate(message.organization.name, length: 20) %></div>
+                  <% end %>
+                  <% if message.production.present? %>
+                    <div>Prod: <%= truncate(message.production.name, length: 20) %></div>
+                  <% end %>
+                  <% if message.show.present? %>
+                    <div>Show: <%= message.show.date_and_time.strftime("%b %d") %></div>
+                  <% end %>
+                  <% if message.organization.blank? && message.production.blank? && message.show.blank? %>
+                    <span class="text-gray-400">-</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                  <% replies_count = message.child_messages.size %>
+                  <% if replies_count > 0 %>
+                    <div><%= replies_count %> <%= "reply".pluralize(replies_count) %></div>
+                  <% end %>
+                  <% if message.message_poll.present? %>
+                    <div class="text-purple-600">Has Poll</div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <% if @pagy.pages > 1 %>
+        <div class="px-4 py-3 border-t border-gray-200">
+          <nav class="flex items-center justify-between">
+            <div class="flex gap-2">
+              <% if @pagy.previous %>
+                <%= link_to "Previous", messages_list_path(page: @pagy.previous, search: params[:search], message_type: params[:message_type], visibility: params[:visibility], system_generated: params[:system_generated], deleted: params[:deleted], include_replies: params[:include_replies]), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              <% end %>
+              <% if @pagy.next %>
+                <%= link_to "Next", messages_list_path(page: @pagy.next, search: params[:search], message_type: params[:message_type], visibility: params[:visibility], system_generated: params[:system_generated], deleted: params[:deleted], include_replies: params[:include_replies]), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              <% end %>
+            </div>
+            <div class="text-sm text-gray-700">
+              Page <span class="font-medium"><%= @pagy.page %></span>
+              of <span class="font-medium"><%= @pagy.pages %></span>
+            </div>
+          </nav>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

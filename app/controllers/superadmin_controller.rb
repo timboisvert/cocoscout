@@ -10,7 +10,7 @@ class SuperadminController < ApplicationController
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
-                         agreements update_default_agreement tasks]
+                         agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -2071,5 +2071,109 @@ class SuperadminController < ApplicationController
     # Sort namespaces and tasks within each namespace
     tasks_by_namespace.transform_values! { |tasks| tasks.sort_by { |t| t[:name] } }
     tasks_by_namespace.sort.to_h
+  end
+
+  public
+
+  # ========== Messages Monitor ==========
+
+  def messages_list
+    @messages = Message.includes(
+      :sender,
+      :organization,
+      :production,
+      :show,
+      :message_recipients,
+      :child_messages,
+      :message_poll,
+      :parent_message
+    ).order(created_at: :desc)
+
+    # Filter by message type
+    @messages = @messages.where(message_type: params[:message_type]) if params[:message_type].present?
+
+    # Filter by visibility
+    @messages = @messages.where(visibility: params[:visibility]) if params[:visibility].present?
+
+    # Filter by organization
+    @messages = @messages.where(organization_id: params[:organization_id]) if params[:organization_id].present?
+
+    # Filter by production
+    @messages = @messages.where(production_id: params[:production_id]) if params[:production_id].present?
+
+    # Filter system-generated
+    if params[:system_generated].present?
+      @messages = @messages.where(system_generated: params[:system_generated] == "true")
+    end
+
+    # Filter deleted
+    if params[:deleted].present?
+      if params[:deleted] == "true"
+        @messages = @messages.where.not(deleted_at: nil)
+      elsif params[:deleted] == "false"
+        @messages = @messages.where(deleted_at: nil)
+      end
+    end
+
+    # Search by subject or content
+    if params[:search].present?
+      search_term = "%#{params[:search]}%"
+      @messages = @messages.where("subject ILIKE ?", search_term)
+    end
+
+    # Root messages only (exclude replies by default)
+    @messages = @messages.root_messages unless params[:include_replies] == "true"
+
+    @pagy, @messages = pagy(@messages, items: 25)
+
+    # Stats for overview
+    @total_messages = Message.count
+    @root_messages_count = Message.root_messages.count
+    @replies_count = Message.where.not(parent_message_id: nil).count
+    @system_generated_count = Message.where(system_generated: true).count
+    @deleted_count = Message.where.not(deleted_at: nil).count
+    @messages_today = Message.where("created_at > ?", Time.current.beginning_of_day).count
+    @messages_week = Message.where("created_at > ?", 7.days.ago).count
+  end
+
+  def message_detail
+    @message = Message.includes(
+      :sender,
+      :organization,
+      :production,
+      :show,
+      :parent_message,
+      :message_poll,
+      :message_regards,
+      message_recipients: :recipient,
+      child_messages: [
+        :sender,
+        :message_recipients,
+        :message_reactions,
+        child_messages: [ :sender, :message_recipients, :message_reactions ]
+      ],
+      message_reactions: :user,
+      message_subscriptions: :user
+    ).find(params[:id])
+
+    @thread_messages = @message.thread_messages.includes(:sender, :message_recipients).order(:created_at)
+  end
+
+  def message_delete
+    @message = Message.find(params[:id])
+    @message.soft_delete!
+    redirect_to messages_list_path, notice: "Message soft-deleted successfully"
+  end
+
+  def message_restore
+    @message = Message.find(params[:id])
+    @message.update!(deleted_at: nil)
+    redirect_to message_detail_path(@message), notice: "Message restored successfully"
+  end
+
+  def subscription_mark_unread
+    @subscription = MessageSubscription.find(params[:id])
+    @subscription.update!(unread_count: 1, last_read_at: nil)
+    redirect_to message_detail_path(params[:message_id]), notice: "Subscription marked as unread for #{@subscription.user&.email_address}"
   end
 end

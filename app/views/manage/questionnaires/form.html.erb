@@ -32,7 +32,7 @@
       <div data-show-toggle-target="icon"></div>
     <% end %>
     <div data-show-toggle-target="content" class="hidden">
-      <%= form_with model: [:manage, @production, @questionnaire], class: "contents" do |form| %>
+      <%= form_with url: manage_update_casting_questionnaire_path(@production, @questionnaire), method: :patch, class: "contents" do |form| %>
         <div class="p-4">
           <div class="space-y-6">
             <div>
@@ -66,7 +66,7 @@
       <div data-show-toggle-target="icon"></div>
     <% end %>
     <div data-show-toggle-target="content" class="hidden">
-      <%= form_with model: [:manage, @production, @questionnaire], class: "contents" do |form| %>
+      <%= form_with url: manage_update_casting_questionnaire_path(@production, @questionnaire), method: :patch, class: "contents" do |form| %>
         <div class="p-4">
           <p class="text-sm text-gray-500 mb-4">Include a section on the questionnaire where respondents can indicate their availability for scheduled events.</p>
 
