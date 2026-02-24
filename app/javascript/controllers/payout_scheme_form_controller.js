@@ -27,12 +27,20 @@ export default class extends Controller {
         "newPerTicketRate",
         "newMinimum",
         "newShares",
-        "newFlatAmount"
+        "newFlatAmount",
+        // Individual allocations targets
+        "individualAllocationsSection",
+        "individualAllocationsList",
+        "individualAllocationRow",
+        "individualAllocationPersonSelect",
+        "newAllocationPercentage",
+        "newAllocationLabel"
     ]
 
     connect() {
         this.updateVisibility()
         this.updatePercentages()
+        this.individualAllocationIndex = this.individualAllocationRowTargets.length
     }
 
     // Called when distribution method changes
@@ -69,6 +77,15 @@ export default class extends Controller {
                 this.allocationSectionTarget.classList.add("hidden")
             } else {
                 this.allocationSectionTarget.classList.remove("hidden")
+            }
+        }
+        
+        // Show/hide individual allocations section for all methods except flat_fee
+        if (this.hasIndividualAllocationsSectionTarget) {
+            if (method === "flat_fee") {
+                this.individualAllocationsSectionTarget.classList.add("hidden")
+            } else {
+                this.individualAllocationsSectionTarget.classList.remove("hidden")
             }
         }
 
@@ -321,6 +338,89 @@ export default class extends Controller {
             value: housePercent,
             to: "house"
         })
+    }
+
+    // Add a new individual allocation (percentage to a specific person)
+    addIndividualAllocation() {
+        if (!this.hasIndividualAllocationPersonSelectTarget) return
+
+        const select = this.individualAllocationPersonSelectTarget
+        const personId = select.value
+        const personName = select.options[select.selectedIndex]?.dataset?.name
+
+        if (!personId) {
+            alert("Please select a person")
+            return
+        }
+
+        const percentage = this.hasNewAllocationPercentageTarget ? this.newAllocationPercentageTarget.value : "10"
+        const label = this.hasNewAllocationLabelTarget ? this.newAllocationLabelTarget.value : ""
+
+        // Build the new row HTML
+        const row = document.createElement("div")
+        row.className = "flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+        row.dataset.payoutSchemeFormTarget = "individualAllocationRow"
+
+        const index = this.individualAllocationIndex++
+
+        row.innerHTML = `
+            <div class="flex-1">
+                <div class="font-medium text-gray-900">${this.escapeHtml(personName)}</div>
+                <input type="hidden" name="rules[individual_allocations][${index}][person_id]" value="${personId}">
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="number" name="rules[individual_allocations][${index}][percentage]" value="${this.escapeHtml(percentage)}" min="0" max="100" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm">
+                <span class="text-sm text-gray-500">%</span>
+            </div>
+            <div class="flex-1">
+                <input type="text" name="rules[individual_allocations][${index}][label]" value="${this.escapeHtml(label)}" placeholder="Label (optional)" class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
+            </div>
+            <button type="button" data-action="click->payout-scheme-form#removeIndividualAllocation" class="text-gray-400 hover:text-red-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        `
+
+        // Add to the list
+        if (this.hasIndividualAllocationsListTarget) {
+            this.individualAllocationsListTarget.appendChild(row)
+        }
+
+        // Remove the person from the select
+        select.querySelector(`option[value="${personId}"]`)?.remove()
+
+        // Clear the input fields
+        if (this.hasNewAllocationPercentageTarget) this.newAllocationPercentageTarget.value = "10"
+        if (this.hasNewAllocationLabelTarget) this.newAllocationLabelTarget.value = ""
+
+        // Reset select
+        select.value = ""
+    }
+
+    // Remove an individual allocation
+    removeIndividualAllocation(event) {
+        const row = event.target.closest('[data-payout-scheme-form-target="individualAllocationRow"]')
+        if (!row) return
+
+        // Get the person info to add back to select
+        const hiddenInput = row.querySelector('input[type="hidden"]')
+        const nameEl = row.querySelector('.font-medium')
+
+        if (hiddenInput && nameEl && this.hasIndividualAllocationPersonSelectTarget) {
+            const personId = hiddenInput.value
+            const personName = nameEl.textContent
+
+            // Add back to select
+            const option = document.createElement("option")
+            option.value = personId
+            option.textContent = personName
+            option.dataset.name = personName
+            this.individualAllocationPersonSelectTarget.appendChild(option)
+        }
+
+        // Remove the row
+        row.remove()
     }
 
     // Escape HTML to prevent XSS

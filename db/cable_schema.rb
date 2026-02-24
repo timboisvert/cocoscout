@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_21_214301) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_24_212555) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1452,6 +1452,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_21_214301) do
     t.string "guest_venmo"
     t.string "guest_zelle"
     t.boolean "is_guest", default: false, null: false
+    t.boolean "is_individual_allocation", default: false, null: false
     t.boolean "manually_paid", default: false, null: false
     t.datetime "manually_paid_at"
     t.bigint "manually_paid_by_id"
@@ -1475,7 +1476,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_21_214301) do
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
     t.index ["payroll_line_item_id"], name: "index_show_payout_line_items_on_payroll_line_item_id"
-    t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
+    t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
 

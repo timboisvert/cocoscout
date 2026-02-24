@@ -93,14 +93,15 @@ export default class extends Controller {
     event.preventDefault()
     const itemId = event.currentTarget.dataset.itemId
     const itemName = event.currentTarget.dataset.itemName
-    this.currentItemIdValue = parseInt(itemId)
+    // Store the item ID(s) - may be comma-separated for grouped payees
+    this.currentItemIdValue = itemId.includes(',') ? itemId : parseInt(itemId)
 
     // Update the name in the modal
     if (this.hasMarkPaidNameTarget) {
       this.markPaidNameTarget.textContent = itemName
     }
 
-    // Update form actions with the correct item ID
+    // Update form actions with the correct item ID(s)
     this.markPaidFormTargets.forEach(form => {
       const method = form.dataset.method
       const baseUrl = window.location.pathname

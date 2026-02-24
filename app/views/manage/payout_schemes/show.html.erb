@@ -43,7 +43,13 @@
                       <% when "flat" %>
                         House gets <span class="font-medium text-gray-900"><%= number_to_currency(step["amount"]) %></span> flat
                       <% when "percentage" %>
-                        House gets <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue
+                        <% if step["person_id"].present? %>
+                          <% person = Person.find_by(id: step["person_id"]) %>
+                          <% label = step["label"].presence || person&.name || "Person ##{step['person_id']}" %>
+                          <span class="font-medium text-gray-900"><%= label %></span> gets <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue
+                        <% else %>
+                          House gets <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue
+                        <% end %>
                       <% when "expenses_first" %>
                         Expenses are covered first
                       <% when "remainder" %>

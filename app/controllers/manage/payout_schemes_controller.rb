@@ -149,6 +149,20 @@ module Manage
       if params[:house_percentage].present? && params[:house_percentage].to_f > 0
         allocation << { "type" => "percentage", "value" => params[:house_percentage].to_f, "label" => "House take" }
       end
+      
+      # Add individual allocations (percentage to specific people)
+      individual_allocations_params = rules_params[:individual_allocations] || {}
+      individual_allocations_params.each do |_index, alloc_data|
+        next if alloc_data[:person_id].blank? || alloc_data[:percentage].blank?
+        
+        allocation << {
+          "type" => "percentage",
+          "value" => alloc_data[:percentage].to_f,
+          "person_id" => alloc_data[:person_id].to_i,
+          "label" => alloc_data[:label].presence || nil
+        }
+      end
+      
       allocation << { "type" => "remainder", "label" => "Performer pool" }
 
       # Build distribution

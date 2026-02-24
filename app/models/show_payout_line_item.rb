@@ -19,7 +19,8 @@ class ShowPayoutLineItem < ApplicationRecord
   PAYOUT_STATUSES = %w[pending success failed].freeze
 
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }, if: -> { payee_id.present? }
+  # Allow same person to have multiple line items if one is an individual allocation
+  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type, :is_individual_allocation ] }, if: -> { payee_id.present? }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
   validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
   # Guests must have a name
@@ -37,6 +38,9 @@ class ShowPayoutLineItem < ApplicationRecord
   scope :paid_offline, -> { where(manually_paid: true) }
   scope :payout_pending, -> { where(payout_status: "pending") }
   scope :payout_failed, -> { where(payout_status: "failed") }
+  scope :individual_allocations, -> { where(is_individual_allocation: true) }
+  scope :performer_payouts, -> { where(is_individual_allocation: false, is_guest: false) }
+  scope :guests, -> { where(is_guest: true) }
 
   def mark_as_already_paid!(by_user, method: nil, notes: nil)
     update!(
@@ -177,6 +181,7 @@ class ShowPayoutLineItem < ApplicationRecord
   # Payee type label
   def payee_type_label
     return "Guest" if is_guest?
+    return "Allocation" if is_individual_allocation?
     case payee_type
     when "Person" then "Individual"
     when "Group" then "Group"

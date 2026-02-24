@@ -238,15 +238,23 @@ module Manage
     end
 
     def mark_line_item_paid
-      line_item = @show_payout.line_items.find(params[:line_item_id])
+      # Support comma-separated IDs for grouped payees
+      line_item_ids = params[:line_item_id].to_s.split(",").map(&:to_i)
+      line_items = @show_payout.line_items.where(id: line_item_ids)
+      
       method = params[:payment_method].presence
       notes = params[:payment_notes].presence
-      line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
+      
+      line_items.each do |line_item|
+        line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
+      end
+      
+      first_item = line_items.first
 
       respond_to do |format|
         format.html do
           redirect_to manage_money_show_payout_path(@show),
-                      notice: "#{line_item.payee_name} marked as paid#{method ? " via #{line_item.payment_method_label}" : ""}."
+                      notice: "#{first_item&.payee_name} marked as paid#{method ? " via #{first_item&.payment_method_label}" : ""}."
         end
         format.any { head :ok }
       end

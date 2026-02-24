@@ -71,6 +71,9 @@ class PayoutCalculator
 
     return { success: false, error: result[:error] } if result[:error]
 
+    # Extract individual allocation items (e.g., producer percentages)
+    individual_allocation_items = result[:individual_allocation_items] || []
+
     # Determine per-person amount and whether to adjust line items
     # For pool-based methods (equal, shares, per_ticket, per_ticket_guaranteed), divide pool by total performers
     # For flat_fee, use the flat_amount directly
@@ -189,14 +192,25 @@ class PayoutCalculator
         )
       end
 
-      total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] }
+      # Create line items for individual allocations (e.g., producer percentages)
+      individual_allocation_items.each do |item|
+        payout.line_items.create!(
+          payee: item[:payee],
+          amount: item[:amount],
+          shares: item[:shares],
+          calculation_details: item[:calculation_details],
+          is_individual_allocation: true
+        )
+      end
+
+      total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] } + individual_allocation_items.sum { |i| i[:amount] }
       payout.update!(
         calculated_at: Time.current,
         total_payout: total
       )
     end
 
-    total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] }
+    total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] } + individual_allocation_items.sum { |i| i[:amount] }
     { success: true, total: total, line_items: payout.line_items.reload }
   rescue => e
     Rails.logger.error "PayoutCalculator error: #{e.message}"
@@ -240,12 +254,19 @@ class PayoutCalculator
     method = distribution["method"] || "equal"
     overrides = @rules["performer_overrides"] || {}
 
-    # Step 1: Calculate performer pool via allocation rules
-    performer_pool = calculate_performer_pool(inputs, allocation)
+    # Step 1: Calculate performer pool and individual allocations via allocation rules
+    allocation_result = calculate_performer_pool_and_individual_allocations(inputs, allocation)
+    performer_pool = allocation_result[:performer_pool]
+    individual_allocation_items = allocation_result[:individual_allocation_items]
     breakdown = [ "Starting revenue: #{format_currency(inputs[:total_revenue])}" ]
 
     if inputs[:expenses] > 0
       breakdown << "Expenses: -#{format_currency(inputs[:expenses])}"
+    end
+
+    # Add individual allocation breakdowns
+    individual_allocation_items.each do |item|
+      breakdown << "#{item[:label]}: #{format_currency(item[:amount])}"
     end
 
     # Step 2: Distribute to performers based on method
@@ -266,16 +287,58 @@ class PayoutCalculator
       return { error: "Unknown distribution method: #{method}" }
     end
 
-    total = line_items.sum { |li| li[:amount] }
-    per_person = performers.any? ? (total / performers.count) : 0
+    total = line_items.sum { |li| li[:amount] } + individual_allocation_items.sum { |li| li[:amount] }
+    per_person = performers.any? ? (line_items.sum { |li| li[:amount] } / performers.count) : 0
 
     {
       total: total.round(2),
       per_person: per_person.round(2),
       performer_pool: performer_pool.round(2),
       line_items: line_items,
+      individual_allocation_items: individual_allocation_items,
       breakdown: breakdown
     }
+  end
+
+  def calculate_performer_pool_and_individual_allocations(inputs, allocation)
+    remaining = inputs[:net_revenue]
+    individual_allocation_items = []
+
+    allocation.each do |step|
+      case step["type"]
+      when "flat"
+        remaining -= step["amount"].to_f
+      when "percentage"
+        amount = inputs[:total_revenue] * (step["value"].to_f / 100)
+        # Check if this goes to a specific person (individual allocation)
+        if step["person_id"].present?
+          person = Person.find_by(id: step["person_id"])
+          if person
+            individual_allocation_items << {
+              payee: person,
+              amount: amount.round(2),
+              shares: nil,
+              label: step["label"] || "#{person.name} (#{step['value']}%)",
+              calculation_details: {
+                formula: "#{step['value']}% of revenue",
+                inputs: { total_revenue: inputs[:total_revenue], percentage: step["value"] },
+                breakdown: [ "#{step['value']}% × #{format_currency(inputs[:total_revenue])} = #{format_currency(amount)}" ]
+              }
+            }
+          end
+          remaining -= amount
+        else
+          # House take - deduct from remaining
+          remaining = inputs[:total_revenue] - amount - inputs[:expenses]
+        end
+      when "expenses_first"
+        # Already handled in net_revenue
+      when "remainder"
+        # Pool is the remainder - already calculated
+      end
+    end
+
+    { performer_pool: [ remaining, 0 ].max, individual_allocation_items: individual_allocation_items }
   end
 
   def calculate_performer_pool(inputs, allocation)

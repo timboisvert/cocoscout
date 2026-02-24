@@ -193,7 +193,15 @@ class PayoutScheme < ApplicationRecord
       when "flat"
         parts << "House gets $#{step['amount']} flat"
       when "percentage"
-        parts << "House gets #{step['value']}%"
+        if step["person_id"].present?
+          # Individual allocation to a specific person
+          person = Person.find_by(id: step["person_id"])
+          name = person&.name || "Person ##{step['person_id']}"
+          label = step["label"].presence || name
+          parts << "#{label} gets #{step['value']}%"
+        else
+          parts << "House gets #{step['value']}%"
+        end
       when "expenses_first"
         parts << "Expenses covered first"
       when "remainder"

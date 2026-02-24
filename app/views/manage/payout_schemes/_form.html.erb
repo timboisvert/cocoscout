@@ -6,9 +6,13 @@
   dist_method = distribution["method"] || "equal"
   performer_overrides = rules["performer_overrides"] || {}
 
-  # Find allocation values
-  house_percentage = allocation.find { |s| s["type"] == "percentage" }&.dig("value") || 50
+  # Find allocation values - get house percentage from allocation without person_id
+  house_allocation = allocation.find { |s| s["type"] == "percentage" && s["person_id"].blank? }
+  house_percentage = house_allocation&.dig("value") || 50
   has_expenses_first = allocation.any? { |s| s["type"] == "expenses_first" }
+  
+  # Extract individual allocations (percentage allocations to specific people)
+  individual_allocations = allocation.select { |s| s["type"] == "percentage" && s["person_id"].present? }
 
   # Distribution values
   per_ticket_rate = distribution["per_ticket_rate"] || 1.0
@@ -21,6 +25,10 @@
   production = payout_scheme.production
   talent_pool = production&.effective_talent_pool
   available_people = talent_pool&.people&.order(:name) || []
+  
+  # Get organization members for individual allocations (producers, staff, etc.)
+  # Use people associated with the organization
+  org_members = Current.organization.people.order(:name)
 %>
 
 <%= form_with model: payout_scheme, url: payout_scheme.persisted? ? manage_money_payout_scheme_path(payout_scheme) : manage_money_payout_schemes_path, method: payout_scheme.persisted? ? :patch : :post, local: true, data: { controller: "payout-scheme-form" } do |form| %>
@@ -171,7 +179,7 @@
         </div>
 
         <label class="flex items-center gap-2">
-          <input type="checkbox" name="expenses_first" value="1" <%= "checked" if has_expenses_first %> class="rounded border-gray-300 text-pink-500 focus:ring-pink-500">
+          <input type="checkbox" name="expenses_first" value="1" <%= "checked" if has_expenses_first %> class="rounded border-gray-300 text-pink-500 focus:ring-pink-500 accent-pink-500">
           <span class="text-sm text-gray-700">Deduct expenses before splitting</span>
         </label>
       </div>
@@ -179,6 +187,70 @@
       <!-- Hidden fields to build allocation array -->
       <input type="hidden" name="rules[allocation][]" value='{"type":"percentage","value":50,"to":"house"}' data-payout-scheme-form-target="allocationJson">
     </div>
+
+    <!-- Individual Allocations (percentage to specific people like producers) -->
+    <% if org_members.any? %>
+      <div data-payout-scheme-form-target="individualAllocationsSection" class="<%= dist_method == 'flat_fee' ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-semibold text-gray-900">Individual Allocations</h3>
+            <p class="text-sm text-gray-500">Give a percentage of revenue to specific people (e.g., producer gets 10%)</p>
+          </div>
+        </div>
+
+        <div data-payout-scheme-form-target="individualAllocationsList" class="space-y-3">
+          <% individual_allocations.each_with_index do |alloc, index| %>
+            <% person = Person.find_by(id: alloc["person_id"]) %>
+            <% next unless person %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" data-payout-scheme-form-target="individualAllocationRow">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= person.name %></div>
+                <input type="hidden" name="rules[individual_allocations][<%= index %>][person_id]" value="<%= person.id %>">
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="number" name="rules[individual_allocations][<%= index %>][percentage]" value="<%= alloc['value'] %>" min="0" max="100" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm">
+                <span class="text-sm text-gray-500">%</span>
+              </div>
+              <div class="flex-1">
+                <input type="text" name="rules[individual_allocations][<%= index %>][label]" value="<%= alloc['label'] %>" placeholder="Label (optional)" class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
+              </div>
+              <button type="button" data-action="click->payout-scheme-form#removeIndividualAllocation" class="text-gray-400 hover:text-red-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Add new individual allocation -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="flex items-end gap-3">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Add allocation for</label>
+              <select data-payout-scheme-form-target="individualAllocationPersonSelect" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Select a person...</option>
+                <% org_members.each do |person| %>
+                  <% next if individual_allocations.any? { |a| a["person_id"].to_s == person.id.to_s } %>
+                  <option value="<%= person.id %>" data-name="<%= person.name %>"><%= person.name %></option>
+                <% end %>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="number" data-payout-scheme-form-target="newAllocationPercentage" value="10" min="0" max="100" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm">
+              <span class="text-sm text-gray-500">%</span>
+            </div>
+            <div class="flex-1">
+              <input type="text" data-payout-scheme-form-target="newAllocationLabel" placeholder="Label (optional)" class="w-full rounded border border-gray-300 px-2 py-1 text-sm">
+            </div>
+            <button type="button" data-action="click->payout-scheme-form#addIndividualAllocation" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
+              Add
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">These percentages are taken from revenue before the performer pool is calculated.</p>
+        </div>
+      </div>
+    <% end %>
 
     <!-- Per-Performer Overrides -->
     <% if available_people.any? %>
