@@ -23,6 +23,20 @@ class PayoutScheme < ApplicationRecord
   scope :for_organization, ->(org) { where(organization: org) }
   scope :defaults, -> { where(is_default: true) }
   scope :effective_on, ->(date) { where("effective_from IS NULL OR effective_from <= ?", date) }
+  scope :archived, -> { where.not(archived_at: nil) }
+  scope :active, -> { where(archived_at: nil) }
+
+  def archived?
+    archived_at.present?
+  end
+
+  def archive!
+    update!(archived_at: Time.current)
+  end
+
+  def unarchive!
+    update!(archived_at: nil)
+  end
 
   # Find the default scheme for a given show using the payout_scheme_defaults join table
   # Priority:

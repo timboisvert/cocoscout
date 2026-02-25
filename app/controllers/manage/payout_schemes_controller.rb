@@ -2,13 +2,16 @@
 
 module Manage
   class PayoutSchemesController < Manage::ManageController
-    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :preview ]
+    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :preview, :archive, :unarchive ]
 
     def index
       # Show all payout schemes for the organization (both org-level and production-level)
+      @show_archived = params[:archived] == "1"
       @payout_schemes = Current.organization.payout_schemes
+                                            .then { |schemes| @show_archived ? schemes.archived : schemes.active }
                                             .default_first
                                             .includes(:production, payout_scheme_defaults: :production)
+      @archived_count = Current.organization.payout_schemes.archived.count
     end
 
     def show
@@ -148,6 +151,18 @@ module Manage
         redirect_to manage_money_payout_schemes_path,
                     alert: "Could not create payout scheme from preset."
       end
+    end
+
+    def archive
+      @payout_scheme.archive!
+      redirect_to manage_money_payout_schemes_path,
+                  notice: "#{@payout_scheme.name} has been archived."
+    end
+
+    def unarchive
+      @payout_scheme.unarchive!
+      redirect_to manage_money_payout_scheme_path(@payout_scheme),
+                  notice: "#{@payout_scheme.name} has been restored."
     end
 
     private

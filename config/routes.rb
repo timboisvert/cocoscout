@@ -953,6 +953,8 @@ Rails.application.routes.draw do
     post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
     post "money/schemes/:id/update_defaults", to: "payout_schemes#update_defaults", as: "update_defaults_money_payout_scheme"
     get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
+    post "money/schemes/:id/archive", to: "payout_schemes#archive", as: "archive_money_payout_scheme"
+    post "money/schemes/:id/unarchive", to: "payout_schemes#unarchive", as: "unarchive_money_payout_scheme"
 
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses
