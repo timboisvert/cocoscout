@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_24_212555) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_24_224350) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -757,17 +757,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_24_212555) do
     t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
   end
 
+  create_table "payout_scheme_defaults", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "effective_from"
+    t.bigint "payout_scheme_id", null: false
+    t.bigint "production_id"
+    t.datetime "updated_at", null: false
+    t.index ["payout_scheme_id", "production_id"], name: "idx_payout_defaults_scheme_prod"
+    t.index ["payout_scheme_id"], name: "index_payout_scheme_defaults_on_payout_scheme_id"
+    t.index ["production_id", "effective_from"], name: "idx_payout_defaults_prod_date", unique: true, where: "(production_id IS NOT NULL)"
+    t.index ["production_id"], name: "index_payout_scheme_defaults_on_production_id"
+  end
+
   create_table "payout_schemes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
+    t.date "effective_from"
     t.boolean "is_default", default: false
     t.string "name", null: false
     t.bigint "organization_id"
     t.bigint "production_id"
     t.jsonb "rules", default: {}, null: false
     t.datetime "updated_at", null: false
+    t.index ["organization_id", "effective_from"], name: "index_payout_schemes_on_organization_id_and_effective_from"
     t.index ["organization_id", "is_default"], name: "index_payout_schemes_on_organization_id_and_is_default"
     t.index ["organization_id"], name: "index_payout_schemes_on_organization_id"
+    t.index ["production_id", "effective_from"], name: "index_payout_schemes_on_production_id_and_effective_from"
     t.index ["production_id", "is_default"], name: "index_payout_schemes_on_production_id_and_is_default"
     t.index ["production_id"], name: "index_payout_schemes_on_production_id"
   end
@@ -2291,6 +2306,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_24_212555) do
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "payout_scheme_defaults", "payout_schemes"
+  add_foreign_key "payout_scheme_defaults", "productions"
   add_foreign_key "payout_schemes", "organizations"
   add_foreign_key "payout_schemes", "productions"
   add_foreign_key "payroll_line_items", "payroll_runs"

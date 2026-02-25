@@ -5,10 +5,11 @@ class ProfileHeadshot < ApplicationRecord
 
   belongs_to :profileable, polymorphic: true
   has_one_attached :image do |attachable|
-    attachable.variant :tiny, resize_to_limit: [ 64, 64 ], preprocessed: true
-    attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
-    attachable.variant :small, resize_to_limit: [ 128, 128 ], preprocessed: true
-    attachable.variant :tile, resize_to_limit: [ 300, 300 ], preprocessed: true
+    # Force JPEG output to handle unusual formats like .jfif that libvips can read but not write
+    attachable.variant :tiny, resize_to_limit: [ 64, 64 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    attachable.variant :thumb, resize_to_limit: [ 100, 100 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    attachable.variant :small, resize_to_limit: [ 128, 128 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    attachable.variant :tile, resize_to_limit: [ 300, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
   # Categories for headshot types

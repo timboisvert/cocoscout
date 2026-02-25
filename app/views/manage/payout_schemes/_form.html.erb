@@ -10,7 +10,7 @@
   house_allocation = allocation.find { |s| s["type"] == "percentage" && s["person_id"].blank? }
   house_percentage = house_allocation&.dig("value") || 50
   has_expenses_first = allocation.any? { |s| s["type"] == "expenses_first" }
-  
+
   # Extract individual allocations (percentage allocations to specific people)
   individual_allocations = allocation.select { |s| s["type"] == "percentage" && s["person_id"].present? }
 
@@ -25,7 +25,7 @@
   production = payout_scheme.production
   talent_pool = production&.effective_talent_pool
   available_people = talent_pool&.people&.order(:name) || []
-  
+
   # Get organization members for individual allocations (producers, staff, etc.)
   # Use people associated with the organization
   org_members = Current.organization.people.order(:name)

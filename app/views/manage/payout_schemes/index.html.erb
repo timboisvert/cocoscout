@@ -16,13 +16,27 @@
   <% if @payout_schemes.any? %>
     <div class="space-y-2">
       <% @payout_schemes.each do |scheme| %>
+        <% defaults = scheme.payout_scheme_defaults %>
         <%= link_to manage_money_payout_scheme_path(scheme), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
           <div class="flex items-center justify-between">
             <div class="flex-1">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="font-semibold text-gray-900"><%= scheme.name %></h3>
-                <% if scheme.is_default? %>
-                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Default</span>
+                <% if defaults.any? %>
+                  <% defaults.each do |d| %>
+                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">
+                      <% if d.production.present? %>
+                        <%= d.production.name %><%= " from #{d.effective_from.strftime('%-d %b')}" if d.effective_from.present? %>
+                      <% else %>
+                        Fallback<%= " from #{d.effective_from.strftime('%-d %b')}" if d.effective_from.present? %>
+                      <% end %>
+                    </span>
+                  <% end %>
+                <% elsif scheme.is_default? %>
+                  <!-- Legacy: show old is_default badge -->
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+                    Default (legacy)<%= " from #{scheme.effective_from.strftime('%-d %b %Y')}" if scheme.effective_from.present? %>
+                  </span>
                 <% end %>
                 <% if scheme.organization_level? %>
                   <span class="text-xs text-gray-500">Organization-wide</span>

@@ -37,7 +37,8 @@ class Production < ApplicationRecord
   belongs_to :contract, optional: true
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
-    attachable.variant :small, resize_to_limit: [ 300, 200 ], preprocessed: true
+    # Force JPEG output to handle unusual formats like .jfif
+    attachable.variant :small, resize_to_limit: [ 300, 200 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
   # Rich text for production-wide notes

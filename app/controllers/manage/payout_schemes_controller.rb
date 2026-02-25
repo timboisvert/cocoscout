@@ -2,13 +2,13 @@
 
 module Manage
   class PayoutSchemesController < Manage::ManageController
-    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :preview ]
+    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :preview ]
 
     def index
       # Show all payout schemes for the organization (both org-level and production-level)
       @payout_schemes = Current.organization.payout_schemes
                                             .default_first
-                                            .includes(:production)
+                                            .includes(:production, payout_scheme_defaults: :production)
     end
 
     def show
@@ -72,9 +72,39 @@ module Manage
     end
 
     def make_default
+      # Legacy support: uses old is_default flag
+      effective_from = params[:effective_from].presence
+      @payout_scheme.update!(effective_from: effective_from) if effective_from.present? || @payout_scheme.effective_from.present?
       @payout_scheme.make_default!
-      redirect_to manage_money_payout_schemes_path,
-                  notice: "#{@payout_scheme.name} is now the default payout scheme."
+
+      notice = "#{@payout_scheme.name} is now the default payout scheme"
+      notice += " for shows on or after #{@payout_scheme.effective_from.strftime('%-d %B %Y')}" if @payout_scheme.effective_from.present?
+      notice += "."
+
+      redirect_to manage_money_payout_schemes_path, notice: notice
+    end
+
+    def update_defaults
+      production_ids = Array(params[:production_ids]).map(&:to_i).reject(&:zero?)
+      effective_from = params[:effective_from].presence&.to_date
+      org_level_fallback = params[:org_level_fallback] == "1"
+
+      if org_level_fallback
+        # Set as org-level fallback (no specific productions)
+        @payout_scheme.set_as_default_for!(production_ids: [], effective_from: effective_from)
+        notice = "#{@payout_scheme.name} is now the organization-level default"
+      elsif production_ids.any?
+        @payout_scheme.set_as_default_for!(production_ids: production_ids, effective_from: effective_from)
+        production_names = Production.where(id: production_ids).pluck(:name).join(", ")
+        notice = "#{@payout_scheme.name} is now the default for: #{production_names}"
+      else
+        # Clear all defaults for this scheme
+        @payout_scheme.payout_scheme_defaults.destroy_all
+        notice = "#{@payout_scheme.name} is no longer a default for any production"
+      end
+
+      notice += " (effective #{effective_from.strftime('%-d %B %Y')})" if effective_from.present?
+      redirect_to manage_money_payout_scheme_path(@payout_scheme), notice: notice
     end
 
     def preview
@@ -128,7 +158,7 @@ module Manage
     end
 
     def payout_scheme_params
-      base_params = params.require(:payout_scheme).permit(:name, :description, :is_default)
+      base_params = params.require(:payout_scheme).permit(:name, :description, :is_default, :effective_from)
 
       # Build rules from form inputs
       rules = build_rules_from_params
@@ -149,12 +179,12 @@ module Manage
       if params[:house_percentage].present? && params[:house_percentage].to_f > 0
         allocation << { "type" => "percentage", "value" => params[:house_percentage].to_f, "label" => "House take" }
       end
-      
+
       # Add individual allocations (percentage to specific people)
       individual_allocations_params = rules_params[:individual_allocations] || {}
       individual_allocations_params.each do |_index, alloc_data|
         next if alloc_data[:person_id].blank? || alloc_data[:percentage].blank?
-        
+
         allocation << {
           "type" => "percentage",
           "value" => alloc_data[:percentage].to_f,
@@ -162,7 +192,7 @@ module Manage
           "label" => alloc_data[:label].presence || nil
         }
       end
-      
+
       allocation << { "type" => "remainder", "label" => "Performer pool" }
 
       # Build distribution

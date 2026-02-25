@@ -90,7 +90,7 @@
     # Prepare payee data for the walkthrough (available to both main content and sidebar)
     line_items = @line_items || []
     unpaid_line_items = line_items.reject(&:paid?)
-    
+
     # Group unpaid line items by payee for the walkthrough
     grouped_unpaid_payees = unpaid_line_items.group_by do |item|
       if item.is_guest?
@@ -99,7 +99,7 @@
         [item.payee_type, item.payee_id]
       end
     end.values
-    
+
     payees_for_js = grouped_unpaid_payees.map.with_index do |items, idx|
       item = items.first
       total_net = items.sum(&:net_amount)

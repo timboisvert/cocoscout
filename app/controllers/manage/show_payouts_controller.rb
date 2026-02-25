@@ -76,9 +76,7 @@ module Manage
 
       # Get the scheme to use (with any overrides)
       # Look for production-level scheme first, then organization-level
-      scheme = @show_payout.payout_scheme ||
-               @production.payout_schemes.find_by(is_default: true) ||
-               Current.organization.payout_schemes.organization_level.find_by(is_default: true)
+      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
       rules = @show_payout.override_rules.presence || scheme&.rules
 
       unless rules.present?
@@ -171,8 +169,7 @@ module Manage
     end
 
     def override
-      @default_scheme = @production.payout_schemes.find_by(is_default: true) ||
-                        Current.organization.payout_schemes.organization_level.find_by(is_default: true)
+      @default_scheme = PayoutScheme.default_for_show(@show)
       @current_rules = @show_payout.override_rules.presence || @default_scheme&.rules || {}
 
       if turbo_frame_request?
@@ -241,14 +238,14 @@ module Manage
       # Support comma-separated IDs for grouped payees
       line_item_ids = params[:line_item_id].to_s.split(",").map(&:to_i)
       line_items = @show_payout.line_items.where(id: line_item_ids)
-      
+
       method = params[:payment_method].presence
       notes = params[:payment_notes].presence
-      
+
       line_items.each do |line_item|
         line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
       end
-      
+
       first_item = line_items.first
 
       respond_to do |format|
@@ -418,9 +415,7 @@ module Manage
       end
 
       # Determine amount to pay - use the rules if available, otherwise $0
-      scheme = @show_payout.payout_scheme ||
-               @production.payout_schemes.find_by(is_default: true) ||
-               Current.organization.payout_schemes.organization_level.find_by(is_default: true)
+      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
       rules = @show_payout.override_rules.presence || scheme&.rules
       amount = params[:amount]&.to_f || 0
 
@@ -568,9 +563,8 @@ module Manage
                   .find(params[:id])
       @production = @show.production
 
-      # Find default scheme: production-level first, then organization-level
-      default_scheme = @production.payout_schemes.find_by(is_default: true) ||
-                       Current.organization.payout_schemes.organization_level.find_by(is_default: true)
+      # Find default scheme for this show's date
+      default_scheme = PayoutScheme.default_for_show(@show)
 
       @show_payout = @show.show_payout || @show.create_show_payout!(
         payout_scheme: default_scheme,

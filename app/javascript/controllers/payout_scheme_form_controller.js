@@ -79,7 +79,7 @@ export default class extends Controller {
                 this.allocationSectionTarget.classList.remove("hidden")
             }
         }
-        
+
         // Show/hide individual allocations section for all methods except flat_fee
         if (this.hasIndividualAllocationsSectionTarget) {
             if (method === "flat_fee") {

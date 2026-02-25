@@ -8,6 +8,8 @@ class PayoutScheme < ApplicationRecord
   belongs_to :production, optional: true
 
   has_many :show_payouts, dependent: :nullify
+  has_many :payout_scheme_defaults, dependent: :destroy
+  has_many :default_for_productions, through: :payout_scheme_defaults, source: :production
 
   validates :name, presence: true
   validates :rules, presence: true
@@ -19,6 +21,56 @@ class PayoutScheme < ApplicationRecord
   scope :organization_level, -> { where(production_id: nil) }
   scope :production_level, -> { where.not(production_id: nil) }
   scope :for_organization, ->(org) { where(organization: org) }
+  scope :defaults, -> { where(is_default: true) }
+  scope :effective_on, ->(date) { where("effective_from IS NULL OR effective_from <= ?", date) }
+
+  # Find the default scheme for a given show using the payout_scheme_defaults join table
+  # Priority:
+  # 1. Production-specific default with effective_from <= show date (most recent effective_from)
+  # 2. Organization-level default (production_id nil) with effective_from <= show date
+  def self.default_for_show(show)
+    show_date = show.date_and_time&.to_date || Date.current
+    production = show.production
+    organization = production.organization
+
+    # Try production-specific defaults first (via join table)
+    production_default = PayoutSchemeDefault
+      .for_production(production)
+      .effective_on(show_date)
+      .by_effective_date_desc
+      .first
+      &.payout_scheme
+
+    return production_default if production_default
+
+    # Fall back to organization-level defaults (production_id nil in join table)
+    org_default = PayoutSchemeDefault
+      .org_level
+      .joins(:payout_scheme)
+      .where(payout_schemes: { organization_id: organization.id })
+      .effective_on(show_date)
+      .by_effective_date_desc
+      .first
+      &.payout_scheme
+
+    return org_default if org_default
+
+    # Legacy fallback: check is_default flag on schemes (for migration period)
+    legacy_production_default = production.payout_schemes
+      .defaults
+      .effective_on(show_date)
+      .order(Arel.sql("CASE WHEN effective_from IS NULL THEN 0 ELSE 1 END DESC, effective_from DESC"))
+      .first
+
+    return legacy_production_default if legacy_production_default
+
+    organization.payout_schemes
+      .organization_level
+      .defaults
+      .effective_on(show_date)
+      .order(Arel.sql("CASE WHEN effective_from IS NULL THEN 0 ELSE 1 END DESC, effective_from DESC"))
+      .first
+  end
 
   # Check if this is an organization-level scheme (not tied to a specific production)
   def organization_level?
@@ -45,15 +97,6 @@ class PayoutScheme < ApplicationRecord
     no_pay: {
       name: "No Pay",
       description: "Non-revenue events with no performer payouts (rehearsals, workshops, etc.)",
-      rules: {
-        allocation: [],
-        distribution: { method: "no_pay" },
-        performer_overrides: {}
-      }
-    },
-    no_pay: {
-      name: "No Pay",
-      description: "For shows that don't pay performers (non-revenue events, rehearsals, etc.).",
       rules: {
         allocation: [],
         distribution: { method: "no_pay" },
@@ -145,20 +188,87 @@ class PayoutScheme < ApplicationRecord
     PRESETS.map { |key, preset| [ preset[:name], key ] }
   end
 
-  # Mark this scheme as the default (unmark others in the same scope)
+  # Make this scheme the default for specific productions
+  # @param production_ids [Array<Integer>] - production IDs to set as default for (empty = org-level fallback)
+  # @param effective_from [Date, nil] - optional date when this default takes effect
+  def set_as_default_for!(production_ids: [], effective_from: nil)
+    transaction do
+      # Remove existing defaults for this scheme
+      payout_scheme_defaults.destroy_all
+
+      if production_ids.empty?
+        # Org-level fallback - clear conflicting org-level defaults
+        PayoutSchemeDefault
+          .org_level
+          .joins(:payout_scheme)
+          .where(payout_schemes: { organization_id: organization_id })
+          .where(effective_from: effective_from)
+          .destroy_all
+
+        # Create org-level default
+        payout_scheme_defaults.create!(production_id: nil, effective_from: effective_from)
+      else
+        # Production-specific defaults
+        production_ids.each do |prod_id|
+          # Clear conflicting defaults for this production/date combo
+          PayoutSchemeDefault
+            .where(production_id: prod_id, effective_from: effective_from)
+            .destroy_all
+
+          # Create the new default
+          payout_scheme_defaults.create!(production_id: prod_id, effective_from: effective_from)
+        end
+      end
+    end
+  end
+
+  # Add a production to this scheme's defaults (keeps existing)
+  def add_default_for_production!(production, effective_from: nil)
+    # Clear any conflicting default for this production/date
+    PayoutSchemeDefault
+      .where(production_id: production.id, effective_from: effective_from)
+      .destroy_all
+
+    payout_scheme_defaults.find_or_create_by!(
+      production_id: production.id,
+      effective_from: effective_from
+    )
+  end
+
+  # Remove a production from this scheme's defaults
+  def remove_default_for_production!(production)
+    payout_scheme_defaults.where(production_id: production.id).destroy_all
+  end
+
+  # Check if this scheme is default for a given production (at any date)
+  def default_for_production?(production)
+    payout_scheme_defaults.where(production_id: production.id).exists?
+  end
+
+  # Check if this is the org-level fallback default
+  def org_level_default?
+    payout_scheme_defaults.org_level.exists?
+  end
+
+  # Legacy compatibility: mark this scheme as the default (uses old is_default flag)
+  # Deprecated: Use set_as_default_for! instead
   def make_default!
     transaction do
-      if organization_level?
-        # Organization-level: unmark other org-level defaults in same org
-        PayoutScheme.where(organization_id: organization_id, production_id: nil)
-                    .where.not(id: id)
-                    .update_all(is_default: false)
+      scope = if organization_level?
+                PayoutScheme.where(organization_id: organization_id, production_id: nil)
       else
-        # Production-level: unmark other production defaults
-        PayoutScheme.where(production_id: production_id)
-                    .where.not(id: id)
-                    .update_all(is_default: false)
+                PayoutScheme.where(production_id: production_id)
       end
+
+      # Only unmark conflicting defaults (same effective_from)
+      conflicting = scope.where.not(id: id).where(is_default: true)
+      if effective_from.present?
+        conflicting = conflicting.where(effective_from: effective_from)
+      else
+        conflicting = conflicting.where(effective_from: nil)
+      end
+
+      conflicting.update_all(is_default: false)
       update!(is_default: true)
     end
   end
