@@ -6,9 +6,13 @@ module Manage
     before_action :set_locations, only: %i[new create edit update]
 
     def index
-      @configurations = Current.organization.seating_configurations
+      configurations = Current.organization.seating_configurations
         .includes(:location, :location_space, :ticket_tiers)
         .order(:name)
+
+      # Group by location_space, with nil spaces grouped under "Other"
+      @configurations_by_space = configurations.group_by(&:location_space)
+      @configurations = configurations
     end
 
     def show
@@ -72,7 +76,7 @@ module Manage
         :description,
         :location_id,
         :location_space_id,
-        ticket_tiers_attributes: %i[id name description capacity default_price_cents position _destroy]
+        seating_zones_attributes: %i[id name zone_type unit_count capacity_per_unit position _destroy]
       )
     end
   end

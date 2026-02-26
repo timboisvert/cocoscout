@@ -34,151 +34,174 @@
   permissions_full = @provider.can?(:api_fetch_sales)
   permissions_limited = @provider.configured? && !@provider.can?(:api_fetch_sales)
   permissions_unknown = !@provider.configured?
+
+  # Calculate next expected check and if it's overdue
+  check_interval = 15.minutes
+  buffer = 5.minutes  # Allow some buffer for job queue
+
+  if @provider.credentials_checked_at
+    next_check_at = @provider.credentials_checked_at + check_interval
+    overdue_at = next_check_at + buffer
+    is_overdue = Time.current > overdue_at
+  else
+    next_check_at = nil
+    is_overdue = false
+  end
 %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render "shared/page_header",
-    title: @provider.name,
-    actions: [
-      { text: "Manage", path: manage_edit_ticketing_provider_path(@provider) }
-    ]
-  %>
+  <%# Header %>
+  <div class="mb-6">
+    <h1 class="text-3xl coustard-regular text-gray-900"><%= @provider.name %></h1>
+    <p class="text-sm text-gray-500 mt-2">
+      <%= @provider.provider_type.titleize.gsub("_", " ") %>
+      <% if @provider.credentials_checked_at %>
+        · Checked <%= time_ago_in_words(@provider.credentials_checked_at) %> ago
+        <% if next_check_at && next_check_at > Time.current %>
+          · Next check in <span data-controller="countdown" data-countdown-until-value="<%= next_check_at.iso8601 %>"><span data-countdown-target="clock"></span></span>
+        <% end %>
+      <% else %>
+        · Never checked
+      <% end %>
+    </p>
+  </div>
 
-  <div class="border-t border-gray-200 pt-6">
-    <%
-      # Calculate next expected check and if it's overdue
-      check_interval = 15.minutes
-      buffer = 5.minutes  # Allow some buffer for job queue
+  <% if is_overdue %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+      <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-medium text-amber-800">Automated health checks may not be running</p>
+        <p class="text-xs text-amber-700 mt-0.5">Last check was <%= time_ago_in_words(@provider.credentials_checked_at) %> ago. Check that your background job workers are running.</p>
+      </div>
+    </div>
+  <% end %>
 
-      if @provider.credentials_checked_at
-        next_check_at = @provider.credentials_checked_at + check_interval
-        overdue_at = next_check_at + buffer
-        is_overdue = Time.current > overdue_at
-      else
-        next_check_at = nil
-        is_overdue = false
-      end
-    %>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2">
+      <%# Connection Status Cards %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <%# API Credentials Card %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <% if api_connected %>
+              <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+            <% elsif api_error %>
+              <span class="w-3 h-3 rounded-full bg-red-500"></span>
+            <% else %>
+              <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+            <% end %>
+            <div class="text-sm font-medium text-gray-900">API Credentials</div>
+          </div>
+          <% if api_connected %>
+            <p class="text-sm text-green-600 font-medium">Connected</p>
+            <p class="text-xs text-gray-500 mt-1">API key verified and working</p>
+          <% elsif api_error %>
+            <p class="text-sm text-red-600 font-medium">Error</p>
+            <p class="text-xs text-gray-500 mt-1"><%= @provider.credentials_error.presence || "API key failed verification" %></p>
+          <% else %>
+            <p class="text-sm text-gray-500 font-medium">Not configured</p>
+            <p class="text-xs text-gray-500 mt-1">Enter your API key to connect</p>
+          <% end %>
+        </div>
 
-    <% if is_overdue %>
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center gap-3">
-        <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
-        <div>
-          <p class="text-sm font-medium text-amber-800">Automated health checks may not be running</p>
-          <p class="text-xs text-amber-700 mt-0.5">Last check was <%= time_ago_in_words(@provider.credentials_checked_at) %> ago. Check that your background job workers are running.</p>
+        <%# Webhooks Card %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <% if webhook_status == :active %>
+              <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+            <% elsif webhook_status == :awaiting %>
+              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            <% elsif webhook_status == :stale %>
+              <span class="w-3 h-3 rounded-full bg-red-500"></span>
+            <% else %>
+              <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+            <% end %>
+            <div class="text-sm font-medium text-gray-900">Webhooks</div>
+          </div>
+          <% case webhook_status %>
+          <% when :not_supported %>
+            <p class="text-sm text-gray-500 font-medium">Not supported</p>
+            <p class="text-xs text-gray-500 mt-1"><%= @provider.provider_type.titleize.gsub("_", " ") %> doesn't support webhooks</p>
+          <% when :not_enabled %>
+            <p class="text-sm text-gray-500 font-medium">Not enabled</p>
+            <p class="text-xs text-gray-500 mt-1">Enable in settings for real-time updates</p>
+          <% when :awaiting %>
+            <p class="text-sm text-amber-600 font-medium">Awaiting first event</p>
+            <p class="text-xs text-gray-500 mt-1">Waiting for first webhook from <%= @provider.provider_type.titleize.gsub("_", " ") %></p>
+          <% when :active %>
+            <p class="text-sm text-green-600 font-medium">Active</p>
+            <p class="text-xs text-gray-500 mt-1">Last received <%= time_ago_in_words(@provider.webhook_last_received_at) %> ago</p>
+          <% when :stale %>
+            <p class="text-sm text-red-600 font-medium">Stale</p>
+            <p class="text-xs text-gray-500 mt-1">No webhooks received in <%= time_ago_in_words(@provider.webhook_last_received_at) %></p>
+          <% end %>
+        </div>
+
+        <%# Permissions Card %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <% if permissions_full %>
+              <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+            <% elsif permissions_limited %>
+              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            <% else %>
+              <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+            <% end %>
+            <div class="text-sm font-medium text-gray-900">Permissions</div>
+          </div>
+          <% if permissions_full %>
+            <p class="text-sm text-green-600 font-medium">Full access</p>
+            <p class="text-xs text-gray-500 mt-1">Can read events and sales data</p>
+          <% elsif permissions_limited %>
+            <p class="text-sm text-amber-600 font-medium">Limited</p>
+            <p class="text-xs text-gray-500 mt-1">Some permissions may be missing</p>
+          <% else %>
+            <p class="text-sm text-gray-500 font-medium">Unknown</p>
+            <p class="text-xs text-gray-500 mt-1">Connect to check permissions</p>
+          <% end %>
         </div>
       </div>
-    <% end %>
-
-    <%# Connection Section Header %>
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900">Connection</h2>
-        <p class="text-sm text-gray-500 mt-1">
-          <%= @provider.provider_type.titleize.gsub("_", " ") %>
-          <% if @provider.credentials_checked_at %>
-            · Checked <%= time_ago_in_words(@provider.credentials_checked_at) %> ago
-            <% if next_check_at && next_check_at > Time.current %>
-              · Next check in <span data-controller="countdown" data-countdown-until-value="<%= next_check_at.iso8601 %>"><span data-countdown-target="clock"></span></span>
-            <% end %>
-          <% else %>
-            · Never checked
-          <% end %>
-        </p>
-      </div>
-      <%= render "shared/button",
-        text: "Check Connection",
-        variant: "secondary",
-        size: "small",
-        path: manage_test_ticketing_provider_path(@provider),
-        method: :post %>
     </div>
 
-    <%# Connection Status Cards %>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <%# API Credentials Card %>
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Actions -->
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <% if api_connected %>
-            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
-          <% elsif api_error %>
-            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-          <% else %>
-            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+        <h3 class="font-semibold text-gray-900 mb-4">Actions</h3>
+        <div class="space-y-3">
+          <%= link_to manage_edit_ticketing_provider_path(@provider), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">Manage Provider</div>
+              <div class="text-xs text-gray-500">Edit settings and credentials</div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
           <% end %>
-          <div class="text-sm font-medium text-gray-900">API Credentials</div>
-        </div>
-        <% if api_connected %>
-          <p class="text-sm text-green-600 font-medium">Connected</p>
-          <p class="text-xs text-gray-500 mt-1">API key verified and working</p>
-        <% elsif api_error %>
-          <p class="text-sm text-red-600 font-medium">Error</p>
-          <p class="text-xs text-gray-500 mt-1"><%= @provider.credentials_error.presence || "API key failed verification" %></p>
-        <% else %>
-          <p class="text-sm text-gray-500 font-medium">Not configured</p>
-          <p class="text-xs text-gray-500 mt-1">Enter your API key to connect</p>
-        <% end %>
-      </div>
 
-      <%# Webhooks Card %>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <% if webhook_status == :active %>
-            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
-          <% elsif webhook_status == :awaiting %>
-            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-          <% elsif webhook_status == :stale %>
-            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-          <% else %>
-            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+          <%= button_to manage_test_ticketing_provider_path(@provider), method: :post, class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left" do %>
+            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">Check Connection</div>
+              <div class="text-xs text-gray-500">Test API credentials now</div>
+            </div>
           <% end %>
-          <div class="text-sm font-medium text-gray-900">Webhooks</div>
         </div>
-        <% case webhook_status %>
-        <% when :not_supported %>
-          <p class="text-sm text-gray-500 font-medium">Not supported</p>
-          <p class="text-xs text-gray-500 mt-1"><%= @provider.provider_type.titleize.gsub("_", " ") %> doesn't support webhooks</p>
-        <% when :not_enabled %>
-          <p class="text-sm text-gray-500 font-medium">Not enabled</p>
-          <p class="text-xs text-gray-500 mt-1">Enable in settings for real-time updates</p>
-        <% when :awaiting %>
-          <p class="text-sm text-amber-600 font-medium">Awaiting first event</p>
-          <p class="text-xs text-gray-500 mt-1">Waiting for first webhook from <%= @provider.provider_type.titleize.gsub("_", " ") %></p>
-        <% when :active %>
-          <p class="text-sm text-green-600 font-medium">Active</p>
-          <p class="text-xs text-gray-500 mt-1">Last received <%= time_ago_in_words(@provider.webhook_last_received_at) %> ago</p>
-        <% when :stale %>
-          <p class="text-sm text-red-600 font-medium">Stale</p>
-          <p class="text-xs text-gray-500 mt-1">No webhooks received in <%= time_ago_in_words(@provider.webhook_last_received_at) %></p>
-        <% end %>
-      </div>
-
-      <%# Permissions Card %>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-3">
-          <% if permissions_full %>
-            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
-          <% elsif permissions_limited %>
-            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-          <% else %>
-            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
-          <% end %>
-          <div class="text-sm font-medium text-gray-900">Permissions</div>
-        </div>
-        <% if permissions_full %>
-          <p class="text-sm text-green-600 font-medium">Full access</p>
-          <p class="text-xs text-gray-500 mt-1">Can read events and sales data</p>
-        <% elsif permissions_limited %>
-          <p class="text-sm text-amber-600 font-medium">Limited</p>
-          <p class="text-xs text-gray-500 mt-1">Some permissions may be missing</p>
-        <% else %>
-          <p class="text-sm text-gray-500 font-medium">Unknown</p>
-          <p class="text-xs text-gray-500 mt-1">Connect to check permissions</p>
-        <% end %>
       </div>
     </div>
   </div>

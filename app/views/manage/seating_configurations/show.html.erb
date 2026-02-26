@@ -3,121 +3,126 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
     ["Ticketing", manage_ticketing_index_path],
-    ["Seating", manage_seating_configurations_path]
+    ["Seating Configurations", manage_seating_configurations_path]
   ],
   text: @configuration.name,
-  links: [
-    { text: "Edit", path: manage_edit_seating_configuration_path(@configuration) }
-  ]
+  links: []
 } %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%# Overview %>
-  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-lg font-medium text-gray-900"><%= @configuration.name %></h2>
-        <% if @configuration.description.present? %>
-          <p class="text-gray-500 mt-1"><%= @configuration.description %></p>
-        <% end %>
-      </div>
-      <div class="text-right">
-        <div class="text-2xl font-bold"><%= @configuration.total_capacity %></div>
-        <div class="text-sm text-gray-500">Total Capacity</div>
-      </div>
-    </div>
-
-    <% if @configuration.location.present? %>
-      <div class="flex items-center text-sm text-gray-500">
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <%= @configuration.location.name %>
-        <% if @configuration.location_space.present? %>
-          <span class="mx-1">—</span>
-          <%= @configuration.location_space.name %>
-        <% end %>
-      </div>
+  <%# Header %>
+  <div class="mb-6">
+    <h1 class="text-3xl coustard-regular text-gray-900"><%= @configuration.name %></h1>
+    <% if @configuration.description.present? %>
+      <p class="text-gray-600 mt-2"><%= @configuration.description %></p>
     <% end %>
-
-    <div class="mt-4 text-sm text-gray-500">
-      Used in <%= @usage_count %> <%= "show".pluralize(@usage_count) %>
-    </div>
-  </div>
-
-  <% if @seating_zones.any? %>
-    <%# Seating Zones %>
-    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="font-medium text-gray-900">Seating Zones</h3>
-      </div>
-
-      <div class="divide-y divide-gray-200">
-        <% @seating_zones.each do |zone| %>
-          <div class="px-6 py-4 flex justify-between items-center">
-            <div>
-              <p class="font-medium text-gray-900"><%= zone.name %></p>
-              <p class="text-sm text-gray-500"><%= zone.formatted_summary %></p>
-            </div>
-            <div class="text-right">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                <%= zone.zone_type_label %>
-              </span>
-            </div>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="px-6 py-3 bg-gray-50 flex justify-between items-center border-t border-gray-200">
-        <span class="font-medium text-gray-900">Total Capacity</span>
-        <span class="font-bold text-gray-900"><%= @seating_zones.sum(&:total_capacity) %></span>
-      </div>
-    </div>
-  <% end %>
-
-  <%# Ticket Tiers %>
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h3 class="font-medium text-gray-900">Ticket Tiers</h3>
-    </div>
-
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Default Price</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        <% @ticket_tiers.each do |tier| %>
-          <tr>
-            <td class="px-6 py-4 font-medium text-gray-900"><%= tier.name %></td>
-            <td class="px-6 py-4 text-gray-500"><%= tier.description || "—" %></td>
-            <td class="px-6 py-4 text-right"><%= tier.capacity %></td>
-            <td class="px-6 py-4 text-right"><%= number_to_currency(tier.default_price) %></td>
-          </tr>
-        <% end %>
-      </tbody>
-      <tfoot class="bg-gray-50">
-        <tr>
-          <td class="px-6 py-3 font-medium text-gray-900" colspan="2">Total</td>
-          <td class="px-6 py-3 text-right font-medium"><%= @ticket_tiers.sum(&:capacity) %></td>
-          <td class="px-6 py-3"></td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-
-  <% if @usage_count.zero? %>
-    <div class="mt-6 text-center">
-      <%= link_to manage_seating_configuration_path(@configuration), data: { turbo_method: :delete, turbo_confirm: "Delete this configuration?" }, class: "text-red-600 hover:text-red-800 text-sm" do %>
-        Delete Configuration
+    <div class="flex items-center gap-4 mt-3 text-sm text-gray-500">
+      <% if @configuration.location.present? %>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+          <span><%= @configuration.location.name %></span>
+        </div>
+      <% end %>
+      <% if @configuration.location_space.present? %>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+          </svg>
+          <span><%= @configuration.location_space.name %></span>
+        </div>
       <% end %>
     </div>
-  <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2">
+      <% if @seating_zones.any? %>
+        <%# Seating Zones %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="font-medium text-gray-900">Seating Zones</h3>
+          </div>
+
+          <div class="divide-y divide-gray-200">
+            <% @seating_zones.each do |zone| %>
+              <div class="grid grid-cols-3 divide-x divide-gray-200">
+                <div class="px-4 py-3">
+                  <p class="text-xs text-gray-500 mb-0.5">Name</p>
+                  <p class="font-medium text-gray-900"><%= zone.name %></p>
+                </div>
+                <div class="px-4 py-3">
+                  <p class="text-xs text-gray-500 mb-0.5">Type</p>
+                  <p class="text-gray-900"><%= zone.zone_type_label %></p>
+                </div>
+                <div class="px-4 py-3">
+                  <p class="text-xs text-gray-500 mb-0.5">Capacity</p>
+                  <p class="text-gray-900"><%= zone.formatted_summary %></p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="px-6 py-3 bg-gray-50 flex justify-between items-center border-t border-gray-200">
+            <span class="font-medium text-gray-900">Total Capacity</span>
+            <span class="font-bold text-gray-900"><%= @seating_zones.sum(&:total_capacity) %></span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Actions -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Actions</h3>
+        <div class="space-y-3">
+          <%= link_to manage_edit_seating_configuration_path(@configuration), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">Edit Configuration</div>
+              <div class="text-xs text-gray-500">Modify zones and settings</div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          <% end %>
+
+          <% if @usage_count.zero? %>
+            <%= link_to manage_seating_configuration_path(@configuration), data: { turbo_method: :delete, turbo_confirm: "Delete this seating configuration? This cannot be undone." }, class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors" do %>
+              <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-red-600">Delete Configuration</div>
+                <div class="text-xs text-gray-500">Remove this seating layout</div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg opacity-50">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-400">Delete Configuration</div>
+                <div class="text-xs text-gray-400">In use by <%= @usage_count %> <%= "show".pluralize(@usage_count) %></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

@@ -10,7 +10,7 @@
 
   ticketing_actions = [
     { icon: "cog", text: "Providers", description: "Connect ticketing platforms", path: manage_ticketing_providers_path },
-    { icon: "users", text: "Seating", description: "Venue seating configurations", path: manage_seating_configurations_path },
+    { icon: "users", text: "Seating Configurations", description: "Venue seating configurations", path: manage_seating_configurations_path },
     { icon: "calendar", text: "Shows", description: "Manage show ticketing", path: manage_show_ticketings_path },
     { icon: "chart-bar", text: "Sales", description: "View ticket sales", path: manage_ticket_sales_path }
   ]
@@ -60,17 +60,6 @@
             <% end %>
           </div>
         </div>
-      </div>
-    </div>
-  <% elsif @providers.any? %>
-    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-      <div class="flex items-center gap-3">
-        <span class="text-green-600">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </span>
-        <span class="text-green-800 font-medium">All shows are properly listed</span>
       </div>
     </div>
   <% end %>

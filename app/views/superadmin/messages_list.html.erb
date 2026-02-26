@@ -102,8 +102,10 @@
         </div>
 
         <div class="flex items-end gap-2 sm:col-span-2">
-          <%= f.submit "Filter", class: "px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-medium cursor-pointer" %>
-          <%= link_to "Clear", messages_list_path, class: "px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium" %>
+          <%= render "shared/button", text: "Filter", variant: "primary", size: "medium", type: :submit %>
+          <%= link_to messages_list_path do %>
+            <%= render "shared/button", text: "Clear", variant: "secondary", size: "medium" %>
+          <% end %>
         </div>
       </div>
     <% end %>
