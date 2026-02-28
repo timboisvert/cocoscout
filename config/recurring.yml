@@ -23,6 +23,22 @@ development:
     class: TicketingProviderHealthCheckJob
     schedule: every 15 minutes
 
+  production_ticketing_sync:
+    class: ProductionTicketingSyncJob
+    schedule: every 5 minutes
+
+  ticketing_sales_sync:
+    class: TicketingSalesSyncJob
+    schedule: every 10 minutes
+
+  ticketing_event_matcher:
+    class: TicketingEventMatcherJob
+    schedule: every 15 minutes
+
+  provider_event_sync:
+    class: ProviderEventSyncJob
+    schedule: every hour
+
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -51,3 +67,19 @@ production:
   ticketing_provider_health_check:
     class: TicketingProviderHealthCheckJob
     schedule: every 15 minutes
+
+  production_ticketing_sync:
+    class: ProductionTicketingSyncJob
+    schedule: every 5 minutes
+
+  ticketing_sales_sync:
+    class: TicketingSalesSyncJob
+    schedule: every 10 minutes
+
+  ticketing_event_matcher:
+    class: TicketingEventMatcherJob
+    schedule: every 15 minutes
+
+  provider_event_sync:
+    class: ProviderEventSyncJob
+    schedule: every hour

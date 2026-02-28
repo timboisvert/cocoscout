@@ -72,6 +72,57 @@ module TicketingAdapters
       end
     end
 
+    # List all events from Eventbrite for linking
+    def list_events
+      check_rate_limit!
+      events = []
+      continuation = nil
+
+      loop do
+        url = "/organizations/#{organization_id}/events/?expand=venue"
+        url += "&continuation=#{continuation}" if continuation
+
+        response = get(url)
+
+        unless response[:success]
+          return { success: false, error: response[:error] }
+        end
+
+        api_events = response[:data]["events"] || []
+
+        api_events.each do |event|
+          events << normalize_event(event)
+        end
+
+        continuation = response[:data].dig("pagination", "continuation")
+        break unless continuation
+      end
+
+      { success: true, events: events }
+    end
+
+    # Fetch sales data for a single event
+    def fetch_event_sales(external_event_id)
+      check_rate_limit!
+
+      response = get("/events/#{external_event_id}/?expand=ticket_availability")
+      unless response[:success]
+        return { success: false, error: response[:error] }
+      end
+
+      event = response[:data]
+      ticket_avail = event["ticket_availability"] || {}
+
+      {
+        success: true,
+        tickets_sold: ticket_avail["sold_out"] ? (ticket_avail["maximum_ticket_quantity"] || 0) : (ticket_avail["total_quantity"].to_i - ticket_avail["available_quantity"].to_i),
+        tickets_available: ticket_avail["available_quantity"].to_i,
+        capacity: ticket_avail["total_quantity"].to_i,
+        revenue_cents: 0, # Eventbrite requires separate orders call
+        currency: event["currency"] || "USD"
+      }
+    end
+
     def create_event(listing)
       show = listing.show_ticketing.show
 
@@ -313,6 +364,30 @@ module TicketingAdapters
 
     def extract_order_id_from_webhook(payload)
       payload.dig("api_url")&.match(/orders\/(\d+)/)&.captures&.first
+    end
+
+    # Normalize event data from Eventbrite API to common format
+    def normalize_event(event)
+      venue = event["venue"] || {}
+      start_time = Time.parse(event.dig("start", "utc")) rescue nil
+      capacity = event["capacity"].to_i
+      tickets_sold = capacity - (event["tickets_available"].to_i || 0)
+
+      {
+        id: event["id"],
+        name: event.dig("name", "text") || event["name"],
+        title: event.dig("name", "text") || event["name"],
+        start_date: start_time,
+        start: start_time,
+        venue: { name: venue["name"] },
+        venue_name: venue["name"] || venue.dig("address", "city"),
+        status: event["status"],
+        tickets_sold: tickets_sold,
+        tickets_available: event["tickets_available"].to_i,
+        capacity: capacity,
+        url: event["url"],
+        external_url: event["url"]
+      }
     end
   end
 end

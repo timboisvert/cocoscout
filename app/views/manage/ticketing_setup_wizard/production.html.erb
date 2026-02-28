@@ -35,8 +35,9 @@
                 <span class="font-medium text-gray-900"><%= production.name %></span>
                 <div class="text-sm text-gray-500">
                   <%= pluralize(production.shows.count, "show") %>
-                  <% if production.shows.future.any? %>
-                    • Next: <%= production.shows.future.order(:date_and_time).first.date_and_time.strftime("%b %d") %>
+                  <% next_show = production.shows.select { |s| s.date_and_time >= Time.current }.min_by(&:date_and_time) %>
+                  <% if next_show %>
+                    • Next: <%= next_show.date_and_time.strftime("%b %d") %>
                   <% end %>
                 </div>
               </div>

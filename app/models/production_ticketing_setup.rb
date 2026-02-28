@@ -12,6 +12,8 @@ class ProductionTicketingSetup < ApplicationRecord
   belongs_to :production
   belongs_to :organization
   belongs_to :created_by, class_name: "Person", optional: true
+  belongs_to :seating_configuration, optional: true
+  belongs_to :default_location, class_name: "Location", optional: true
 
   has_many :provider_setups, class_name: "TicketingProviderSetup", dependent: :destroy
   has_many :ticketing_providers, through: :provider_setups
@@ -36,6 +38,17 @@ class ProductionTicketingSetup < ApplicationRecord
   enum :grouping_strategy, {
     individual_events: "individual_events",
     recurring_event: "recurring_event"
+  }, prefix: true
+
+  enum :inventory_mode, {
+    unified: "unified",       # Same inventory pool across all providers - sales on one reduce availability on others
+    split: "split"            # Separate inventory per provider - allocate different amounts to each
+  }, prefix: true
+
+  enum :venue_mode, {
+    show_location: "show_location",   # Use each show's assigned location
+    org_location: "org_location",     # Use default_location for all shows
+    online: "online"                  # Virtual/online event
   }, prefix: true
 
   enum :status, {

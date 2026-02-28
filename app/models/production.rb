@@ -382,15 +382,15 @@ class Production < ApplicationRecord
   end
 
   # Check if ticketing is available for this production
-  # In-house productions always have ticketing
-  # Third-party productions need Ticketing service enabled in their contract
+  # Uses the ticketing_enabled column to opt productions in to ticketing management
   def ticketing_enabled?
-    return true unless third_party?  # In-house productions always have ticketing
+    ticketing_enabled == true
+  end
 
-    # Third-party needs contract with Ticketing service
-    return false unless contract.present?
-
-    contract.draft_services.any? { |s| s["name"]&.downcase&.include?("ticketing") }
+  # Returns the ticketing setup for this production (convenience method)
+  # Each production should have at most one setup
+  def ticketing_setup
+    production_ticketing_setups.first
   end
 
   # Agreement methods

@@ -1,0 +1,57 @@
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 3, step_name: "Link Events" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Sync your providers first</h2>
+    <p class="text-gray-600 mt-2">Before linking events, you need to sync your ticketing providers to import their events.</p>
+  </div>
+
+  <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p class="text-sm text-amber-800 font-medium">Provider sync needed</p>
+        <p class="text-sm text-amber-700 mt-1">
+          Visit each provider's page and click "Sync Events" to import your events from the ticketing platform.
+          This builds a map of your provider's events that can be linked to your CocoScout shows.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-3 mb-8">
+    <% @providers_needing_sync.each do |provider| %>
+      <div class="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+            <span class="text-sm font-bold text-gray-600"><%= provider.provider_type.first(2).upcase %></span>
+          </div>
+          <div>
+            <div class="font-medium text-gray-900"><%= provider.name %></div>
+            <div class="text-sm text-gray-500"><%= provider.provider_type.titleize.gsub("_", " ") %></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+            Not synced
+          </span>
+          <%= link_to manage_ticketing_provider_path(provider) do %>
+            <%= render "shared/button", text: "Sync Provider", variant: "primary", size: "small" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="text-center">
+    <p class="text-sm text-gray-500 mb-4">After syncing your providers, return here to link events.</p>
+    <%= link_to manage_ticketing_setup_wizard_link_events_path do %>
+      <%= render "shared/button", text: "Check Again", variant: "secondary", size: "medium", icon: "refresh" %>
+    <% end %>
+  </div>
+<% end %>

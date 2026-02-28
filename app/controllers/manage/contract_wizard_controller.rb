@@ -201,6 +201,8 @@ module Manage
     end
 
     def activate
+      @contract.allow_overlap = params[:allow_overlap] == "1"
+
       if @contract.activate!
         redirect_to manage_contract_path(@contract), notice: "Contract activated successfully!"
       else

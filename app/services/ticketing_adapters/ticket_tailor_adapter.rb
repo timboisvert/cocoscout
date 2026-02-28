@@ -83,6 +83,60 @@ module TicketingAdapters
       end
     end
 
+    # Fetch all events from the provider
+    def list_events
+      check_rate_limit!
+      events = []
+      continuation = nil
+
+      loop do
+        url = "/events?limit=100"
+        url += "&continuation=#{continuation}" if continuation
+
+        response = get(url)
+        unless response[:success]
+          return { success: false, error: response[:error] }
+        end
+
+        data = response[:data]["data"] || []
+        data.each do |event|
+          # Ticket Tailor returns each occurrence as a separate event
+          events << normalize_event(event, nil)
+        end
+
+        # Check for pagination
+        continuation = response[:data].dig("links", "next")
+        break if continuation.blank?
+      end
+
+      { success: true, events: events }
+    end
+
+    # Fetch sales data for a single event
+    def fetch_event_sales(external_event_id)
+      check_rate_limit!
+
+      # Handle occurrence-based events (event_id:occurrence_id)
+      event_id, occurrence_id = external_event_id.split(":")
+      url = "/events/#{event_id}"
+      url += "?occurrence_id=#{occurrence_id}" if occurrence_id
+
+      response = get(url)
+      unless response[:success]
+        return { success: false, error: response[:error] }
+      end
+
+      event = response[:data]
+      {
+        success: true,
+        tickets_sold: event["tickets_sold"].to_i,
+        tickets_available: event["tickets_available"].to_i,
+        capacity: (event["tickets_available"].to_i + event["tickets_sold"].to_i),
+        revenue_cents: event["total_revenue_cents"].to_i,
+        currency: event["currency"] || "USD"
+      }
+    end
+
     def create_event(listing)
       show = listing.show_ticketing.show
 
@@ -343,6 +397,57 @@ module TicketingAdapters
         else
           result[new_key] = value
         end
+      end
+    end
+
+    # Normalize event data from Ticket Tailor API to common format
+    def normalize_event(event, occurrence)
+      event_id = event["id"]
+      occurrence_id = occurrence&.dig("id")
+      full_id = occurrence_id ? "#{event_id}:#{occurrence_id}" : event_id
+
+      # Parse start time from the nested object structure
+      start_time = if occurrence && occurrence["start"]
+        parse_tt_datetime(occurrence["start"])
+      elsif event["start"]
+        parse_tt_datetime(event["start"])
+      end
+
+      venue = event["venue"] || {}
+      capacity = event["tickets_available"].to_i + event["tickets_sold"].to_i
+
+      {
+        id: full_id,
+        name: event["name"],
+        title: event["name"],
+        start_date: start_time,
+        start: start_time,
+        venue: { name: venue["name"] },
+        venue_name: venue["name"],
+        status: event["status"],
+        tickets_sold: event["tickets_sold"].to_i,
+        tickets_available: event["tickets_available"].to_i,
+        capacity: capacity,
+        revenue_cents: (event["revenue"].to_i * 100), # TT returns revenue in dollars
+        url: event["url"],
+        external_url: event["url"]
+      }
+    end
+
+    # Parse Ticket Tailor datetime object to Ruby Time
+    def parse_tt_datetime(dt)
+      return nil unless dt
+
+      if dt.is_a?(Hash)
+        # Ticket Tailor returns { "iso": "2026-02-14T22:00:00-06:00", "unix": 1771128000, ... }
+        if dt["iso"]
+          Time.parse(dt["iso"]) rescue nil
+        elsif dt["unix"]
+          Time.at(dt["unix"]) rescue nil
+        end
+      else
+        # Simple string
+        Time.parse(dt.to_s) rescue nil
       end
     end
   end

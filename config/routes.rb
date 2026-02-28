@@ -1057,23 +1057,15 @@ Rails.application.routes.draw do
     post "ticketing/create_missing_listings", to: "ticketing#create_missing_listings", as: "ticketing_create_missing_listings"
     post "ticketing/sync_all", to: "ticketing#sync_all", as: "ticketing_sync_all"
 
-    # Ticketing Setup Wizard - create/edit production ticketing setups
+    # Ticketing Setup Wizard - link provider events to shows
     get    "ticketing/setup/start",           to: "ticketing_setup_wizard#start",           as: "ticketing_setup_wizard_start"
     get    "ticketing/setup/production",      to: "ticketing_setup_wizard#production",      as: "ticketing_setup_wizard_production"
     post   "ticketing/setup/production",      to: "ticketing_setup_wizard#save_production", as: "ticketing_setup_wizard_save_production"
     get    "ticketing/setup/providers",       to: "ticketing_setup_wizard#providers",       as: "ticketing_setup_wizard_providers"
     post   "ticketing/setup/providers",       to: "ticketing_setup_wizard#save_providers",  as: "ticketing_setup_wizard_save_providers"
-    get    "ticketing/setup/strategy",        to: "ticketing_setup_wizard#strategy",        as: "ticketing_setup_wizard_strategy"
-    post   "ticketing/setup/strategy",        to: "ticketing_setup_wizard#save_strategy",   as: "ticketing_setup_wizard_save_strategy"
-    get    "ticketing/setup/eventinfo",       to: "ticketing_setup_wizard#eventinfo",       as: "ticketing_setup_wizard_eventinfo"
-    post   "ticketing/setup/eventinfo",       to: "ticketing_setup_wizard#save_eventinfo",  as: "ticketing_setup_wizard_save_eventinfo"
-    get    "ticketing/setup/venue",           to: "ticketing_setup_wizard#venue",           as: "ticketing_setup_wizard_venue"
-    post   "ticketing/setup/venue",           to: "ticketing_setup_wizard#save_venue",      as: "ticketing_setup_wizard_save_venue"
-    get    "ticketing/setup/images",          to: "ticketing_setup_wizard#images",          as: "ticketing_setup_wizard_images"
-    post   "ticketing/setup/images",          to: "ticketing_setup_wizard#save_images",     as: "ticketing_setup_wizard_save_images"
-    get    "ticketing/setup/pricing",         to: "ticketing_setup_wizard#pricing",         as: "ticketing_setup_wizard_pricing"
-    post   "ticketing/setup/pricing",         to: "ticketing_setup_wizard#save_pricing",    as: "ticketing_setup_wizard_save_pricing"
-    get    "ticketing/setup/review",          to: "ticketing_setup_wizard#review",          as: "ticketing_setup_wizard_review"
+    get    "ticketing/setup/link",            to: "ticketing_setup_wizard#link_events",     as: "ticketing_setup_wizard_link_events"
+    post   "ticketing/setup/fetch",           to: "ticketing_setup_wizard#fetch_events",    as: "ticketing_setup_wizard_fetch_events"
+    post   "ticketing/setup/link",            to: "ticketing_setup_wizard#save_links",      as: "ticketing_setup_wizard_save_links"
     post   "ticketing/setup/create",          to: "ticketing_setup_wizard#create_setup",    as: "ticketing_setup_wizard_create"
     delete "ticketing/setup/cancel",          to: "ticketing_setup_wizard#cancel",          as: "ticketing_setup_wizard_cancel"
 
@@ -1100,6 +1092,9 @@ Rails.application.routes.draw do
     delete "ticketing/providers/:id", to: "ticketing_providers#destroy"
     post "ticketing/providers/:id/test_connection", to: "ticketing_providers#test_connection", as: "test_ticketing_provider"
     post "ticketing/providers/:id/sync", to: "ticketing_providers#sync", as: "sync_ticketing_provider"
+    post "ticketing/providers/:id/sync_events", to: "ticketing_providers#sync_events", as: "sync_events_ticketing_provider"
+    post "ticketing/providers/:id/confirm_match/:event_id", to: "ticketing_providers#confirm_match", as: "confirm_match_ticketing_provider"
+    post "ticketing/providers/:id/reject_match/:event_id", to: "ticketing_providers#reject_match", as: "reject_match_ticketing_provider"
 
     # Seating Configurations
     get "ticketing/seating", to: "seating_configurations#index", as: "seating_configurations"
@@ -1122,7 +1117,19 @@ Rails.application.routes.draw do
 
     # Show Ticketing - link shows to ticketing
     get "ticketing/shows", to: "show_ticketings#index", as: "show_ticketings"
+    post "ticketing/shows/:production_id/enable", to: "show_ticketings#enable_production", as: "enable_production_ticketing"
+    delete "ticketing/shows/:production_id/disable", to: "show_ticketings#disable_production", as: "disable_production_ticketing"
+    post "ticketing/shows/:production_id/sync", to: "show_ticketings#sync_production", as: "sync_production_ticketing"
+    post "ticketing/shows/:production_id/activate", to: "show_ticketings#activate_engine", as: "activate_production_ticketing"
+    post "ticketing/shows/:production_id/pause", to: "show_ticketings#pause_engine", as: "pause_production_ticketing"
     get "ticketing/shows/:production_id", to: "show_ticketings#production", as: "production_show_ticketings"
+
+    # Show-level override routes (for engine-based ticketing)
+    post "ticketing/shows/:production_id/:show_id/exclude", to: "show_ticketings#toggle_exclude", as: "toggle_exclude_show_ticketing"
+    post "ticketing/shows/:production_id/:show_id/sync_show", to: "show_ticketings#sync_show", as: "sync_single_show_ticketing"
+    get "ticketing/shows/:production_id/:show_id/override", to: "show_ticketings#edit_override", as: "edit_override_show_ticketing"
+    patch "ticketing/shows/:production_id/:show_id/override", to: "show_ticketings#update_override"
+
     get "ticketing/shows/:production_id/:show_id", to: "show_ticketings#show", as: "show_ticketing"
     get "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#setup", as: "setup_show_ticketing"
     post "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#create_setup"

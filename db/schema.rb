@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1033,6 +1033,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
     t.string "currency", default: "USD"
+    t.bigint "default_location_id"
     t.jsonb "default_pricing_tiers", default: []
     t.text "default_venue_address"
     t.string "default_venue_city"
@@ -1041,20 +1042,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
     t.string "default_venue_postal_code"
     t.text "description"
     t.string "grouping_strategy", default: "individual_events", null: false
+    t.string "inventory_mode", default: "unified", null: false
+    t.datetime "last_synced_at"
     t.string "listing_mode", default: "all_shows", null: false
     t.boolean "online_event", default: false
     t.bigint "organization_id", null: false
     t.datetime "paused_at"
     t.bigint "production_id", null: false
+    t.bigint "seating_configuration_id"
     t.text "short_description"
     t.string "status", default: "draft", null: false
     t.string "timezone", default: "America/New_York"
     t.string "title_template"
     t.datetime "updated_at", null: false
+    t.string "venue_mode", default: "show_location", null: false
     t.datetime "wizard_completed_at"
     t.index ["created_by_id"], name: "index_production_ticketing_setups_on_created_by_id"
+    t.index ["default_location_id"], name: "index_production_ticketing_setups_on_default_location_id"
     t.index ["organization_id"], name: "index_production_ticketing_setups_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketing_setups_on_production_id"
+    t.index ["seating_configuration_id"], name: "index_production_ticketing_setups_on_seating_configuration_id"
   end
 
   create_table "productions", force: :cascade do |t|
@@ -1083,7 +1090,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
     t.text "show_upcoming_event_types"
     t.boolean "show_upcoming_events", default: true, null: false
     t.string "show_upcoming_events_mode", default: "all"
-    t.boolean "ticketing_enabled", default: true, null: false
+    t.boolean "ticketing_enabled", default: false, null: false
     t.string "ticketing_exclusion_reason"
     t.datetime "updated_at", null: false
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
@@ -1140,6 +1147,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
     t.integer "video_type", default: 2, null: false
     t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_7b4c262cd5"
     t.index ["profileable_type", "profileable_id"], name: "index_profile_videos_on_profileable"
+  end
+
+  create_table "provider_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "external_event_id", null: false
+    t.string "external_series_id"
+    t.datetime "last_synced_at"
+    t.decimal "match_confidence", precision: 5, scale: 3
+    t.string "match_status", default: "unmatched"
+    t.string "name"
+    t.bigint "organization_id", null: false
+    t.bigint "production_id"
+    t.jsonb "raw_data", default: {}
+    t.string "status", default: "active"
+    t.bigint "ticketing_provider_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "venue_name"
+    t.index ["organization_id"], name: "index_provider_events_on_organization_id"
+    t.index ["production_id"], name: "index_provider_events_on_production_id"
+    t.index ["ticketing_provider_id", "external_event_id"], name: "idx_provider_events_unique", unique: true
+    t.index ["ticketing_provider_id"], name: "index_provider_events_on_ticketing_provider_id"
   end
 
   create_table "question_options", force: :cascade do |t|
@@ -1215,27 +1244,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
   create_table "remote_ticketing_events", force: :cascade do |t|
     t.integer "capacity", default: 0
     t.datetime "created_at", null: false
+    t.datetime "event_date"
+    t.string "event_name"
     t.string "external_event_id", null: false
     t.string "external_occurrence_id"
     t.string "external_url"
     t.datetime "last_sales_synced_at"
     t.text "last_sync_error"
     t.datetime "last_synced_at"
+    t.decimal "match_confidence", precision: 5, scale: 3
+    t.jsonb "match_reasons", default: []
     t.bigint "organization_id", null: false
     t.bigint "production_ticketing_setup_id"
+    t.bigint "provider_event_id", null: false
     t.jsonb "raw_data", default: {}
     t.string "remote_status"
     t.integer "revenue_cents", default: 0
     t.string "revenue_currency", default: "USD"
     t.bigint "show_id"
+    t.bigint "suggested_show_id"
     t.string "sync_status", default: "synced"
     t.bigint "ticketing_provider_id", null: false
     t.integer "tickets_available", default: 0
     t.integer "tickets_sold", default: 0
     t.datetime "updated_at", null: false
+    t.string "venue_name"
     t.index ["organization_id"], name: "index_remote_ticketing_events_on_organization_id"
     t.index ["production_ticketing_setup_id"], name: "idx_remote_events_on_setup"
+    t.index ["provider_event_id"], name: "index_remote_ticketing_events_on_provider_event_id"
     t.index ["show_id"], name: "index_remote_ticketing_events_on_show_id"
+    t.index ["suggested_show_id"], name: "index_remote_ticketing_events_on_suggested_show_id"
     t.index ["ticketing_provider_id", "external_event_id"], name: "idx_remote_events_provider_external", unique: true
     t.index ["ticketing_provider_id", "show_id"], name: "idx_remote_events_provider_show"
     t.index ["ticketing_provider_id"], name: "index_remote_ticketing_events_on_ticketing_provider_id"
@@ -2120,6 +2158,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
     t.index ["seating_zone_id"], name: "index_ticket_tiers_on_seating_zone_id"
   end
 
+  create_table "ticketing_activities", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}
+    t.string "event_type", null: false
+    t.text "message", null: false
+    t.bigint "production_id", null: false
+    t.bigint "show_id"
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "created_at"], name: "index_ticketing_activities_on_production_id_and_created_at", order: { created_at: :desc }
+    t.index ["production_id"], name: "index_ticketing_activities_on_production_id"
+    t.index ["show_id"], name: "index_ticketing_activities_on_show_id"
+  end
+
   create_table "ticketing_provider_setups", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "custom_description"
@@ -2336,12 +2387,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
   add_foreign_key "production_expenses", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "production_ticketing_setups", "locations", column: "default_location_id"
   add_foreign_key "production_ticketing_setups", "organizations"
   add_foreign_key "production_ticketing_setups", "people", column: "created_by_id"
   add_foreign_key "production_ticketing_setups", "productions"
+  add_foreign_key "production_ticketing_setups", "seating_configurations"
   add_foreign_key "productions", "agreement_templates"
   add_foreign_key "productions", "contracts"
   add_foreign_key "productions", "organizations"
+  add_foreign_key "provider_events", "organizations"
+  add_foreign_key "provider_events", "productions"
+  add_foreign_key "provider_events", "ticketing_providers"
   add_foreign_key "question_options", "questions"
   add_foreign_key "questionnaire_answers", "questionnaire_responses"
   add_foreign_key "questionnaire_answers", "questions"
@@ -2350,7 +2406,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
   add_foreign_key "questionnaires", "productions"
   add_foreign_key "remote_ticketing_events", "organizations"
   add_foreign_key "remote_ticketing_events", "production_ticketing_setups"
+  add_foreign_key "remote_ticketing_events", "provider_events"
   add_foreign_key "remote_ticketing_events", "shows"
+  add_foreign_key "remote_ticketing_events", "shows", column: "suggested_show_id"
   add_foreign_key "remote_ticketing_events", "ticketing_providers"
   add_foreign_key "role_eligibilities", "roles"
   add_foreign_key "role_vacancies", "roles"
@@ -2440,6 +2498,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_031632) do
   add_foreign_key "ticket_sync_rules", "ticketing_providers"
   add_foreign_key "ticket_tiers", "seating_configurations"
   add_foreign_key "ticket_tiers", "seating_zones"
+  add_foreign_key "ticketing_activities", "productions"
+  add_foreign_key "ticketing_activities", "shows"
   add_foreign_key "ticketing_provider_setups", "production_ticketing_setups"
   add_foreign_key "ticketing_provider_setups", "ticketing_providers"
   add_foreign_key "ticketing_providers", "organizations"

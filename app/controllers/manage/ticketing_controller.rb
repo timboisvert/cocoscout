@@ -20,11 +20,21 @@ module Manage
         .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
         .order("shows.date_and_time ASC")
 
+      # Get linked events from providers (monitor-only mode)
+      @linked_events = RemoteTicketingEvent
+        .includes(:ticketing_provider, :show)
+        .where(organization: Current.organization)
+        .where.not(show_id: nil)
+        .where(remote_status: %w[live published])
+        .joins(:show)
+        .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
+        .order("shows.date_and_time ASC")
+
       # Build performance data for each show
       @show_performance = build_show_performance(@show_ticketings)
 
-      # Calculate aggregate metrics
-      @metrics = calculate_aggregate_metrics(@show_ticketings)
+      # Calculate aggregate metrics (includes ShowTicketing AND linked events)
+      @metrics = calculate_aggregate_metrics(@show_ticketings, @linked_events)
 
       # Issue counts for display
       # Include shows with ShowTicketing but missing proper provider listings
@@ -103,22 +113,32 @@ module Manage
       end
     end
 
-    def calculate_aggregate_metrics(show_ticketings)
+    def calculate_aggregate_metrics(show_ticketings, linked_events)
       show_ticketing_ids = show_ticketings.pluck(:id)
 
-      # Tier aggregates
+      # Tier aggregates from ShowTicketing
       tier_stats = ShowTicketTier.where(show_ticketing_id: show_ticketing_ids)
-      total_capacity = tier_stats.sum(:capacity)
-      total_sold = tier_stats.sum(:sold)
+      ticketing_capacity = tier_stats.sum(:capacity)
+      ticketing_sold = tier_stats.sum(:sold)
 
-      # Revenue from confirmed sales
-      total_revenue = TicketSale
+      # Revenue from confirmed sales (ShowTicketing flow)
+      ticketing_revenue = TicketSale
         .joins(ticket_offer: { ticket_listing: :show_ticketing })
         .where(show_ticketings: { id: show_ticketing_ids })
         .status_confirmed
         .sum(:total_cents)
 
-      # Recent sales (last 7 days)
+      # Add data from linked events (monitor-only mode)
+      linked_capacity = linked_events.sum(:capacity)
+      linked_sold = linked_events.sum(:tickets_sold)
+      linked_revenue = linked_events.sum(:revenue_cents)
+
+      # Combine totals
+      total_capacity = ticketing_capacity + linked_capacity
+      total_sold = ticketing_sold + linked_sold
+      total_revenue = ticketing_revenue + linked_revenue
+
+      # Recent sales (last 7 days) - from ShowTicketing flow
       recent_sales = TicketSale
         .joins(ticket_offer: { ticket_listing: :show_ticketing })
         .where(show_ticketings: { id: show_ticketing_ids })
@@ -134,7 +154,8 @@ module Manage
         total_available: total_capacity - total_sold,
         sell_through_percentage: total_capacity.positive? ? (total_sold.to_f / total_capacity * 100).round(1) : 0,
         total_revenue_cents: total_revenue,
-        shows_count: show_ticketings.count,
+        shows_count: show_ticketings.count + linked_events.count,
+        linked_events_count: linked_events.count,
         recent_sales_count: recent_count,
         recent_revenue_cents: recent_revenue
       }

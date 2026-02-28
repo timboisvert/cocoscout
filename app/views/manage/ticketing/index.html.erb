@@ -258,7 +258,7 @@
           %>
         <% end %>
       </div>
-    <% else %>
+    <% elsif @linked_events.blank? %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
         <p class="text-gray-600 mb-3">No shows with ticketing set up yet.</p>
         <%= link_to manage_show_ticketings_path do %>
@@ -267,4 +267,64 @@
       </div>
     <% end %>
   </div>
+
+  <%# Linked Events (Monitor-only) %>
+  <% if @linked_events.any? %>
+    <div class="mt-8">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Linked Events</h3>
+        <span class="text-sm text-gray-500">Sales pulled from ticketing providers</span>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sold</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Last Synced</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @linked_events.each do |event| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <div>
+                      <div class="font-medium text-gray-900"><%= event.show.display_name %></div>
+                      <div class="text-sm text-gray-500"><%= event.show.date_and_time.strftime("%b %d, %Y at %I:%M %p") %></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    <%= event.ticketing_provider.name %>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <span class="font-medium text-green-600"><%= event.tickets_sold %></span>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600">
+                  <%= event.tickets_available %>
+                </td>
+                <td class="px-4 py-3 text-right font-medium">
+                  <%= number_to_currency(event.revenue) %>
+                </td>
+                <td class="px-4 py-3 text-right text-sm text-gray-500">
+                  <% if event.last_sales_synced_at %>
+                    <%= time_ago_in_words(event.last_sales_synced_at) %> ago
+                  <% else %>
+                    <span class="text-gray-400">Never</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
 </div>

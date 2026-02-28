@@ -7,10 +7,13 @@ class SpaceRental < ApplicationRecord
 
   has_many :shows, dependent: :nullify
 
+  # Allow overlap flag - when true, skip overlap validation
+  attr_accessor :allow_overlap
+
   validates :starts_at, presence: true
   validates :ends_at, presence: true
   validate :ends_after_starts
-  validate :no_overlapping_rentals, on: :create
+  validate :no_overlapping_rentals, on: :create, unless: :allow_overlap
   validate :event_times_within_rental
 
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }

@@ -6,25 +6,177 @@
     ["Shows", manage_show_ticketings_path]
   ],
   text: @production.name,
-  links: []
+  links: [
+    { text: "Disable Ticketing", path: manage_disable_production_ticketing_path(@production), data: { turbo_method: :delete, turbo_confirm: "Disable ticketing for #{@production.name}? You can re-enable it later." }, color: "danger" }
+  ]
 } %>
 
-<div class="w-full">
+<div class="w-full"
+     data-controller="ticketing-dashboard"
+     data-ticketing-dashboard-production-id-value="<%= @production.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <% if @shows.any? %>
-    <div class="space-y-2">
-      <% @shows.each do |show| %>
-        <%= render partial: "manage/show_ticketings/show_row", locals: {
-          show: show,
-          production: @production,
-          ticketing: @show_ticketings[show.id]
-        } %>
+  <% if @setup.present? %>
+    <%# ============================================ %>
+    <%# Engine Panel %>
+    <%# ============================================ %>
+    <div class="bg-white border border-gray-200 rounded-lg mb-6">
+      <div class="p-4 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-medium text-gray-900">Ticketing Engine</h2>
+            <span data-ticketing-dashboard-target="engineStatus"
+                  class="<%= engine_status_badge_classes(@setup.status) %>">
+              <%= @setup.status.titleize %>
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <% if @setup.status_active? %>
+              <%= link_to manage_sync_production_ticketing_path(@production), data: { turbo_method: :post } do %>
+                <button type="button"
+                        data-ticketing-dashboard-target="syncButton"
+                        data-action="click->ticketing-dashboard#syncNow"
+                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                  <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Sync Now
+                </button>
+              <% end %>
+              <%= link_to manage_pause_production_ticketing_path(@production), data: { turbo_method: :post } do %>
+                <%= render "shared/button", text: "Pause", variant: "secondary", size: "small" %>
+              <% end %>
+            <% elsif @setup.status_paused? %>
+              <%= link_to manage_activate_production_ticketing_path(@production), data: { turbo_method: :post } do %>
+                <%= render "shared/button", text: "Resume", variant: "primary", size: "small" %>
+              <% end %>
+            <% elsif @setup.status_draft? %>
+              <%= link_to manage_activate_production_ticketing_path(@production), data: { turbo_method: :post } do %>
+                <%= render "shared/button", text: "Activate Engine", variant: "primary", size: "small" %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Rules Summary %>
+      <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <dt class="text-gray-500">Providers</dt>
+          <dd class="font-medium text-gray-900">
+            <%= @setup.provider_setups.enabled.map { |ps| ps.ticketing_provider.name }.join(", ").presence || "None selected" %>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-gray-500">Listing Mode</dt>
+          <dd class="font-medium text-gray-900"><%= @setup.listing_mode.titleize %></dd>
+        </div>
+        <div>
+          <dt class="text-gray-500">Seating</dt>
+          <dd class="font-medium text-gray-900"><%= @setup.seating_configuration&.name || "Manual pricing" %></dd>
+        </div>
+        <div>
+          <dt class="text-gray-500">Last Sync</dt>
+          <dd class="font-medium text-gray-900" data-ticketing-dashboard-target="syncStatus">
+            <%= @setup.last_synced_at ? time_ago_in_words(@setup.last_synced_at) + " ago" : "Never" %>
+          </dd>
+        </div>
+      </div>
+
+      <%# Pricing Tiers Row %>
+      <% if @setup.default_pricing_tiers.present? && @setup.default_pricing_tiers.any? %>
+        <div class="px-4 pb-4">
+          <dt class="text-gray-500 text-sm mb-2">Pricing Tiers</dt>
+          <div class="flex flex-wrap gap-2">
+            <% @setup.default_pricing_tiers.each do |tier| %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
+                <%= tier["name"] || tier[:name] %>
+                <span class="ml-1.5 text-gray-500"><%= number_to_currency((tier["price_cents"] || tier[:price_cents] || 0) / 100.0) %></span>
+              </span>
+            <% end %>
+          </div>
+        </div>
       <% end %>
+
+      <%# Edit Rules Link %>
+      <div class="px-4 pb-4">
+        <%= link_to manage_ticketing_setup_wizard_start_path(edit: @setup.id), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          Edit rules →
+        <% end %>
+      </div>
     </div>
+
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-      <p class="text-gray-600">No upcoming shows for this production.</p>
+    <%# No Engine Setup Yet %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <svg class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="font-medium text-amber-800">Ticketing not configured</h3>
+          <p class="text-sm text-amber-700 mt-1">Set up your ticketing engine to automatically list shows on your connected providers.</p>
+          <div class="mt-4">
+            <%= link_to manage_ticketing_setup_wizard_start_path(production_id: @production.id) do %>
+              <%= render "shared/button", text: "Set Up Ticketing Engine", variant: "primary", size: "small" %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ============================================ %>
+  <%# Shows List %>
+  <%# ============================================ %>
+  <div class="bg-white border border-gray-200 rounded-lg">
+    <% if @shows.any? %>
+      <div data-ticketing-dashboard-target="showsList" class="divide-y divide-gray-100">
+        <% @shows.each do |show| %>
+          <%= render "shared/show_row",
+            show: show,
+            show_location: true,
+            right_panel: :ticketing_status,
+            remote_events: @remote_events[show.id] || [],
+            ticketing_rule: @ticketing_rules[show.id],
+            setup: @setup %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-8 text-center">
+        <p class="text-gray-600">No upcoming shows for this production.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ============================================ %>
+  <%# Activity Feed %>
+  <%# ============================================ %>
+  <% if @recent_activities.any? || @setup&.status_active? %>
+    <div class="mt-6 bg-white border border-gray-200 rounded-lg" data-ticketing-dashboard-target="activityFeed">
+      <div class="p-4 border-b border-gray-100">
+        <h2 class="text-lg font-medium text-gray-900">Recent Activity</h2>
+      </div>
+      <div data-ticketing-dashboard-target="activityList" class="max-h-64 overflow-y-auto">
+        <% @recent_activities.each do |activity| %>
+          <div class="activity-item flex items-start gap-3 p-3 border-b border-gray-100 last:border-0">
+            <div class="flex-shrink-0">
+              <%= activity_icon(activity.event_type) %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900"><%= activity.message %></p>
+              <p class="text-xs text-gray-500"><%= time_ago_in_words(activity.created_at) %> ago</p>
+            </div>
+          </div>
+        <% end %>
+        <% if @recent_activities.empty? %>
+          <div class="p-6 text-center text-gray-500 text-sm">
+            No activity yet. Activity will appear here as syncs run.
+          </div>
+        <% end %>
+      </div>
     </div>
   <% end %>
 </div>

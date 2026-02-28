@@ -12,9 +12,11 @@
 # 5. Detect events that need updates
 class RemoteTicketingEvent < ApplicationRecord
   belongs_to :ticketing_provider
+  belongs_to :provider_event
   belongs_to :production_ticketing_setup, optional: true
   belongs_to :show, optional: true # Null for grouped "parent" events
   belongs_to :organization
+  belongs_to :suggested_show, class_name: "Show", optional: true
 
   # ============================================
   # Enums

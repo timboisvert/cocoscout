@@ -77,6 +77,39 @@
         </div>
       </div>
 
+      <% if @multiple_providers %>
+        <!-- Inventory Mode (only shown when multiple providers selected) -->
+        <div class="border-t border-gray-200 pt-6">
+          <label class="block text-sm font-medium text-gray-900 mb-2">How should inventory be managed across providers?</label>
+          <p class="text-sm text-gray-500 mb-4">You've selected multiple ticketing providers. Choose how ticket inventory should work.</p>
+          <div class="space-y-3">
+            <label class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 transition-colors">
+              <input type="radio" name="inventory_mode" value="unified"
+                     <%= "checked" if @wizard_state[:inventory_mode] == "unified" %>
+                     class="h-4 w-4 mt-1 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div>
+                <span class="font-medium text-gray-900">Unified inventory</span>
+                <p class="text-sm text-gray-500 mt-0.5">Same pool of tickets across all providers. If you have 50 tickets and sell 1 on Eventbrite, availability drops to 49 on all sites.</p>
+                <p class="text-xs text-green-600 mt-1">Recommended for most cases</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 transition-colors">
+              <input type="radio" name="inventory_mode" value="split"
+                     <%= "checked" if @wizard_state[:inventory_mode] == "split" %>
+                     class="h-4 w-4 mt-1 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div>
+                <span class="font-medium text-gray-900">Split inventory</span>
+                <p class="text-sm text-gray-500 mt-0.5">Separate allocations per provider. Put 30 tickets on Eventbrite, 20 on Ticket Tailor. They sell independently.</p>
+                <p class="text-xs text-amber-600 mt-1">You'll configure allocations per-provider in the pricing step</p>
+              </div>
+            </label>
+          </div>
+        </div>
+      <% else %>
+        <input type="hidden" name="inventory_mode" value="unified">
+      <% end %>
+
       <div class="p-4 bg-pink-50 rounded-lg">
         <div class="flex items-start gap-2">
           <svg class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -166,6 +166,87 @@
           <% end %>
         </div>
       </div>
+
+      <%# Provider Events Section %>
+      <div class="mt-6 bg-white rounded-lg border border-gray-200">
+        <div class="p-5 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Provider Events</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            Events on <%= @provider.name %> mapped to your productions
+            <% if @unmapped_count > 0 %>
+              · <span class="text-amber-600 font-medium"><%= @unmapped_count %> not in CocoScout</span>
+            <% end %>
+            <% if @needs_attention_count > 0 %>
+              · <span class="text-amber-600 font-medium"><%= @needs_attention_count %> need review</span>
+            <% end %>
+          </p>
+        </div>
+
+        <% if @provider_events.any? %>
+          <div class="divide-y divide-gray-200">
+            <% @provider_events.each do |event| %>
+              <div class="p-4 flex items-center gap-4 hover:bg-gray-50">
+                <%# Event info %>
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 truncate"><%= event.name %></div>
+                  <div class="text-sm text-gray-500">
+                    <%= event.occurrence_count %> occurrence<%= event.occurrence_count == 1 ? "" : "s" %>
+                    <% if event.date_range %>
+                      <% start_date, end_date = event.date_range %>
+                      · <%= start_date.strftime("%b %-d") %><%= start_date != end_date ? " - #{end_date.strftime("%b %-d, %Y")}" : ", #{start_date.strftime("%Y")}" %>
+                    <% end %>
+                  </div>
+                </div>
+
+                <%# Match status %>
+                <% if event.match_status_confirmed? && event.production %>
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Linked
+                    </span>
+                    <span class="text-sm text-gray-600"><%= event.production.name %></span>
+                  </div>
+                <% elsif event.match_status_suggested? && event.production %>
+                  <div class="flex flex-col items-end gap-1">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Suggested
+                      </span>
+                      <span class="text-sm text-gray-600"><%= event.production.name %></span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <%= form_with url: manage_confirm_match_ticketing_provider_path(@provider, event_id: event.id), method: :post, local: true, class: "inline" do %>
+                        <%= render "shared/button", text: "Accept", variant: "primary", size: "small", type: :submit %>
+                      <% end %>
+                      <%= form_with url: manage_reject_match_ticketing_provider_path(@provider, event_id: event.id), method: :post, local: true, class: "inline" do %>
+                        <%= render "shared/button", text: "Reject", variant: "ghost", size: "small", type: :submit %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% elsif event.match_status_ignored? %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    Ignored
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                    Not in CocoScout
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="p-8 text-center">
+            <div class="w-12 h-12 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <p class="text-gray-500 mb-4">No events synced yet</p>
+            <p class="text-sm text-gray-400">Click "Sync Events" to fetch events from <%= @provider.name %></p>
+          </div>
+        <% end %>
+      </div>
     </div>
 
     <!-- Sidebar -->
@@ -199,6 +280,18 @@
             <div class="flex-1">
               <div class="font-medium text-gray-900">Check Connection</div>
               <div class="text-xs text-gray-500">Test API credentials now</div>
+            </div>
+          <% end %>
+
+          <%= button_to manage_sync_events_ticketing_provider_path(@provider), method: :post, class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left" do %>
+            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">Sync Events</div>
+              <div class="text-xs text-gray-500">Fetch latest from <%= @provider.provider_type.titleize.gsub("_", " ") %></div>
             </div>
           <% end %>
         </div>

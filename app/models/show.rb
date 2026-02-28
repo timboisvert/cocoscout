@@ -115,6 +115,9 @@ class Show < ApplicationRecord
   after_commit :trigger_calendar_sync, on: [ :create, :update ]
   after_destroy :trigger_calendar_sync_for_destruction
 
+  # Ticketing sync - trigger sync when show is created/updated for productions with active ticketing
+  after_commit :trigger_ticketing_sync, on: [ :create, :update ]
+
   # Sign-up form instance management
   after_commit :create_sign_up_form_instances, on: :create
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
@@ -889,6 +892,15 @@ class Show < ApplicationRecord
     end
 
     person_ids.to_a
+  end
+
+  def trigger_ticketing_sync
+    # Only sync if there's an active ticketing setup for this production
+    setup = production&.ticketing_setup
+    return unless setup&.status_active?
+
+    # Queue the sync job to ensure this show is properly synced to ticketing providers
+    TicketingSetupSyncJob.perform_later(setup.id)
   end
 
   def calendar_service_for(subscription)

@@ -6,6 +6,8 @@ class TicketingProvider < ApplicationRecord
   has_many :ticket_listings, dependent: :restrict_with_error
   has_many :ticket_sync_rules, dependent: :destroy
   has_many :webhook_logs, dependent: :destroy
+  has_many :provider_events, dependent: :destroy
+  has_many :remote_ticketing_events, dependent: :destroy
 
   # Provider types - add more as we integrate new platforms
   PROVIDER_TYPES = %w[eventbrite ticket_tailor manual].freeze

@@ -13,18 +13,33 @@ class TicketingSetupSyncJob < ApplicationJob
       return
     end
 
-    unless setup.active?
+    unless setup.status_active?
       Rails.logger.info "[TicketingSetupSyncJob] Setup #{setup_id} is not active, skipping"
       return
     end
 
-    Rails.logger.info "[TicketingSetupSyncJob] Starting sync for #{setup.production.name}"
+    @production = setup.production
+    @stats = { created: 0, updated: 0, deleted: 0, errors: 0 }
+
+    Rails.logger.info "[TicketingSetupSyncJob] Starting sync for #{@production.name}"
+
+    # Broadcast sync started
+    TicketingChannel.broadcast_engine_status(@production, "syncing", "Starting sync...")
+    TicketingActivity.log!(@production, "sync_started", "Sync started")
 
     setup.provider_setups.enabled.each do |provider_setup|
       sync_provider(setup, provider_setup)
     end
 
-    Rails.logger.info "[TicketingSetupSyncJob] Completed sync for #{setup.production.name}"
+    # Broadcast sync complete
+    message = "Sync complete: #{@stats[:created]} created, #{@stats[:updated]} updated"
+    message += ", #{@stats[:errors]} errors" if @stats[:errors] > 0
+    TicketingChannel.broadcast_engine_status(@production, "active", message)
+    TicketingActivity.log!(@production, "sync_complete", message, data: @stats)
+
+    setup.update!(last_synced_at: Time.current)
+
+    Rails.logger.info "[TicketingSetupSyncJob] Completed sync for #{@production.name}"
   end
 
   private
@@ -93,6 +108,9 @@ class TicketingSetupSyncJob < ApplicationJob
 
     Rails.logger.info "[TicketingSetupSyncJob] Creating event for show #{show.id} on #{provider.name}"
 
+    # Broadcast syncing status
+    TicketingChannel.broadcast_show_sync(@production, show.id, "syncing", "Creating on #{provider.name}...", provider: provider.name)
+
     # Create local tracking record first
     remote_event = setup.remote_ticketing_events.create!(
       ticketing_provider: provider,
@@ -120,14 +138,26 @@ class TicketingSetupSyncJob < ApplicationJob
         remote_status: :draft
       )
       Rails.logger.info "[TicketingSetupSyncJob] Created event #{result[:event_id]} for show #{show.id}"
+
+      # Broadcast success
+      @stats[:created] += 1
+      TicketingChannel.broadcast_show_sync(@production, show.id, "listed", "Listed on #{provider.name}", provider: provider.name)
+      TicketingActivity.log!(@production, "listing_created", "Created listing on #{provider.name}", show: show, data: { provider: provider.name, event_id: result[:event_id] })
     else
       remote_event.update!(
         sync_status: :error,
         last_sync_error: result[:error]
       )
       Rails.logger.error "[TicketingSetupSyncJob] Failed to create event: #{result[:error]}"
+
+      # Broadcast error
+      @stats[:errors] += 1
+      TicketingChannel.broadcast_show_sync(@production, show.id, "error", result[:error], provider: provider.name)
+      TicketingActivity.log!(@production, "error", "Failed to create on #{provider.name}: #{result[:error]}", show: show, data: { provider: provider.name, error: result[:error] })
     end
   rescue StandardError => e
+    @stats[:errors] += 1
+    TicketingChannel.broadcast_show_sync(@production, show.id, "error", e.message, provider: provider_setup.ticketing_provider.name)
     Rails.logger.error "[TicketingSetupSyncJob] Error creating event for show #{show.id}: #{e.message}"
   end
 
@@ -198,12 +228,33 @@ class TicketingSetupSyncJob < ApplicationJob
     result = adapter.get_sales(remote_event.external_event_id)
 
     if result[:success]
+      old_sold = remote_event.tickets_sold || 0
+      new_sold = result[:tickets_sold] || 0
+
       remote_event.update!(
-        tickets_sold: result[:tickets_sold],
+        tickets_sold: new_sold,
         tickets_available: result[:tickets_available],
         revenue_cents: result[:revenue_cents],
         last_synced_at: Time.current
       )
+
+      # Broadcast sales update if changed
+      if new_sold != old_sold && remote_event.show.present?
+        TicketingChannel.broadcast_sales_update(
+          @production,
+          remote_event.show_id,
+          sold: new_sold,
+          available: result[:tickets_available],
+          provider: remote_event.ticketing_provider.name
+        )
+
+        # Log significant sales changes
+        if new_sold > old_sold
+          tickets_sold = new_sold - old_sold
+          message = "#{tickets_sold} #{'ticket'.pluralize(tickets_sold)} sold on #{remote_event.ticketing_provider.name}"
+          TicketingActivity.log!(@production, "sales_received", message, show: remote_event.show, data: { sold: tickets_sold, total: new_sold, provider: remote_event.ticketing_provider.name })
+        end
+      end
     end
   rescue StandardError => e
     Rails.logger.error "[TicketingSetupSyncJob] Error pulling sales for #{remote_event.id}: #{e.message}"

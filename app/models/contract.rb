@@ -23,6 +23,9 @@ class Contract < ApplicationRecord
   scope :upcoming, -> { status_active.where("contract_end_date >= ?", Date.current).order(:contract_start_date) }
   scope :past, -> { where("contract_end_date < ?", Date.current).order(contract_end_date: :desc) }
 
+  # Allow overlap flag - when true, skip overlap validation on space rentals
+  attr_accessor :allow_overlap
+
   # Lifecycle methods
   def activate!
     return false unless status_draft?
@@ -192,7 +195,7 @@ class Contract < ApplicationRecord
       event_starts_at = booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil
       event_ends_at = booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil
 
-      space_rentals.create!(
+      space_rentals.create!({
         location_id: location_id,
         location_space_id: space_id,
         starts_at: starts_at,
@@ -200,8 +203,9 @@ class Contract < ApplicationRecord
         event_starts_at: event_starts_at,
         event_ends_at: event_ends_at,
         notes: booking["notes"],
-        confirmed: true
-      )
+        confirmed: true,
+        allow_overlap: allow_overlap
+      })
     end
 
     # Create payments from draft payments

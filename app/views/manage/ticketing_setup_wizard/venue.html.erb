@@ -10,104 +10,123 @@
     <p class="text-gray-600 mt-2">Where do your shows take place?</p>
   </div>
 
-  <%= form_with url: manage_ticketing_setup_wizard_save_venue_path, method: :post, local: true, data: { controller: "venue-toggle" } do |form| %>
-    <div class="space-y-5">
-      <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <input type="checkbox"
-               name="is_online"
-               id="is_online"
-               value="1"
-               <%= "checked" if @wizard_state[:is_online] %>
-               data-venue-toggle-target="checkbox"
-               data-action="change->venue-toggle#toggle"
-               class="h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-        <label for="is_online" class="text-sm font-medium text-gray-900 cursor-pointer flex-1">
-          This is an online/virtual event
-        </label>
-      </div>
-
-      <div data-venue-toggle-target="venueFields" class="<%= @wizard_state[:is_online] ? 'hidden' : '' %>">
-        <div class="space-y-4">
-          <div>
-            <label for="venue_name" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Venue Name
-              <span class="text-pink-500">*</span>
-            </label>
-            <input type="text"
-                   name="venue_name"
-                   id="venue_name"
-                   value="<%= @wizard_state[:venue_name] %>"
-                   placeholder="Lincoln Center Theater"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-          </div>
-
-          <div>
-            <label for="venue_address" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Address
-              <span class="text-pink-500">*</span>
-            </label>
-            <input type="text"
-                   name="venue_address"
-                   id="venue_address"
-                   value="<%= @wizard_state[:venue_address] %>"
-                   placeholder="150 W 65th St, New York, NY 10023"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <p class="mt-1.5 text-xs text-gray-500">Full address including city, state, and zip.</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="venue_city" class="block text-sm font-medium text-gray-900 mb-1.5">
-                City
-              </label>
-              <input type="text"
-                     name="venue_city"
-                     id="venue_city"
-                     value="<%= @wizard_state[:venue_city] %>"
-                     placeholder="New York"
-                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            </div>
-            <div>
-              <label for="venue_country" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Country
-              </label>
-              <select name="venue_country"
-                      id="venue_country"
-                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                <option value="US" <%= "selected" if @wizard_state[:venue_country] == "US" || @wizard_state[:venue_country].blank? %>>United States</option>
-                <option value="CA" <%= "selected" if @wizard_state[:venue_country] == "CA" %>>Canada</option>
-                <option value="GB" <%= "selected" if @wizard_state[:venue_country] == "GB" %>>United Kingdom</option>
-                <option value="AU" <%= "selected" if @wizard_state[:venue_country] == "AU" %>>Australia</option>
-                <option value="DE" <%= "selected" if @wizard_state[:venue_country] == "DE" %>>Germany</option>
-              </select>
-            </div>
+  <%= form_with url: manage_ticketing_setup_wizard_save_venue_path, method: :post, local: true, data: { controller: "venue-mode" } do |form| %>
+    <div class="space-y-4">
+      <%# Option 1: Use show's location %>
+      <label class="block p-4 bg-white border-2 rounded-lg cursor-pointer transition
+                    <%= @wizard_state[:venue_mode] == 'show_location' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+             data-venue-mode-target="option"
+             data-venue-mode-value="show_location">
+        <div class="flex items-start gap-3">
+          <input type="radio"
+                 name="venue_mode"
+                 value="show_location"
+                 <%= "checked" if @wizard_state[:venue_mode] == "show_location" %>
+                 data-action="change->venue-mode#select"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="flex-1">
+            <span class="block font-medium text-gray-900">Use each show's location</span>
+            <span class="block text-sm text-gray-500 mt-1">
+              Venue info will be pulled from each show's assigned location. Best when shows are at different venues.
+            </span>
+            <% shows_with_locations = @production&.shows&.select { |s| s.location.present? }&.count || 0 %>
+            <% total_shows = @production&.shows&.count || 0 %>
+            <% if total_shows > 0 %>
+              <span class="inline-flex items-center mt-2 text-xs <%= shows_with_locations == total_shows ? 'text-green-600' : 'text-amber-600' %>">
+                <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <%= shows_with_locations %>/<%= total_shows %> shows have a location assigned
+              </span>
+            <% end %>
           </div>
         </div>
-      </div>
+      </label>
 
-      <div data-venue-toggle-target="onlineFields" class="<%= @wizard_state[:is_online] ? '' : 'hidden' %>">
-        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div class="flex gap-3">
-            <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="text-sm text-blue-800">
-              <p class="font-medium">Online events</p>
-              <p class="mt-1">Event access details (streaming links, etc.) can be sent with confirmation emails after ticket purchase.</p>
-            </div>
+      <%# Option 2: Use organization location %>
+      <label class="block p-4 bg-white border-2 rounded-lg cursor-pointer transition
+                    <%= @wizard_state[:venue_mode] == 'org_location' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+             data-venue-mode-target="option"
+             data-venue-mode-value="org_location">
+        <div class="flex items-start gap-3">
+          <input type="radio"
+                 name="venue_mode"
+                 value="org_location"
+                 <%= "checked" if @wizard_state[:venue_mode] == "org_location" %>
+                 data-action="change->venue-mode#select"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="flex-1">
+            <span class="block font-medium text-gray-900">Use a specific location</span>
+            <span class="block text-sm text-gray-500 mt-1">
+              All shows will use the same venue. Best when your production is at one location.
+            </span>
           </div>
         </div>
+      </label>
 
-        <div class="mt-4">
-          <label for="online_instructions" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Access Instructions
-            <span class="text-gray-400 font-normal">(optional)</span>
+      <%# Location dropdown (shown when org_location selected) %>
+      <div data-venue-mode-target="locationPicker"
+           class="<%= @wizard_state[:venue_mode] == 'org_location' ? '' : 'hidden' %> ml-7 pl-4 border-l-2 border-pink-200">
+        <% if @locations.any? %>
+          <label for="default_location_id" class="block text-sm font-medium text-gray-700 mb-2">
+            Select location
           </label>
-          <textarea name="online_instructions"
-                    id="online_instructions"
-                    rows="3"
-                    placeholder="How will attendees access the event?"
-                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @wizard_state[:online_instructions] %></textarea>
+          <select name="default_location_id"
+                  id="default_location_id"
+                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <option value="">Choose a location...</option>
+            <% @locations.each do |location| %>
+              <option value="<%= location.id %>"
+                      <%= "selected" if @wizard_state[:default_location_id].to_i == location.id %>>
+                <%= location.name %>
+                <% if location.city.present? %>
+                  (<%= location.city %><%= ", #{location.state}" if location.state.present? %>)
+                <% end %>
+              </option>
+            <% end %>
+          </select>
+        <% else %>
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <p class="font-medium">No locations found</p>
+            <p class="mt-1">You haven't added any locations to your organization yet.</p>
+            <%= link_to "Add a location", manage_locations_path, class: "inline-flex items-center mt-2 text-amber-700 hover:text-amber-900 font-medium" %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Option 3: Online event %>
+      <label class="block p-4 bg-white border-2 rounded-lg cursor-pointer transition
+                    <%= @wizard_state[:venue_mode] == 'online' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+             data-venue-mode-target="option"
+             data-venue-mode-value="online">
+        <div class="flex items-start gap-3">
+          <input type="radio"
+                 name="venue_mode"
+                 value="online"
+                 <%= "checked" if @wizard_state[:venue_mode] == "online" %>
+                 data-action="change->venue-mode#select"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="flex-1">
+            <span class="block font-medium text-gray-900">Online/virtual event</span>
+            <span class="block text-sm text-gray-500 mt-1">
+              No physical venue. Access details can be sent with ticket confirmation.
+            </span>
+          </div>
+        </div>
+      </label>
+
+      <%# Online info (shown when online selected) %>
+      <div data-venue-mode-target="onlineInfo"
+           class="<%= @wizard_state[:venue_mode] == 'online' ? '' : 'hidden' %> ml-7 pl-4 border-l-2 border-pink-200">
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <p class="text-sm text-blue-800">
+              Streaming links and access instructions can be configured after setup.
+            </p>
+          </div>
         </div>
       </div>
     </div>

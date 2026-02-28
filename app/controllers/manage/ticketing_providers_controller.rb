@@ -2,7 +2,7 @@
 
 module Manage
   class TicketingProvidersController < Manage::ManageController
-    before_action :set_provider, only: %i[show edit update destroy test_connection sync]
+    before_action :set_provider, only: %i[show edit update destroy test_connection sync sync_events confirm_match reject_match]
 
     def index
       @providers = Current.organization.ticketing_providers.order(:name)
@@ -12,6 +12,11 @@ module Manage
       @recent_listings = @provider.ticket_listings.includes(show_ticketing: :show).order(created_at: :desc).limit(10)
       @recent_sync_errors = @provider.ticket_listings.where.not(sync_errors: nil).limit(5)
       @sync_rules = @provider.ticket_sync_rules.active
+
+      # Provider events (the provider's view of productions/shows)
+      @provider_events = @provider.provider_events.includes(:production).order(:name)
+      @unmapped_count = @provider.provider_events.unmapped.count
+      @needs_attention_count = @provider.provider_events.needs_attention.count
     end
 
     def new
@@ -63,6 +68,32 @@ module Manage
       @provider.ticket_listings.active.find_each(&:sync!)
 
       redirect_to manage_ticketing_provider_path(@provider), notice: "Sync initiated for all active listings."
+    end
+
+    def sync_events
+      # Fetch events from provider and build provider-side map
+      service = ProviderSyncService.new(@provider)
+      stats = service.sync!
+
+      if stats[:errors].any?
+        redirect_to manage_ticketing_provider_path(@provider),
+          alert: "Sync completed with errors: #{stats[:errors].first}"
+      else
+        redirect_to manage_ticketing_provider_path(@provider),
+          notice: "Sync complete: #{stats[:events_created]} events created, #{stats[:occurrences_created]} occurrences synced."
+      end
+    end
+
+    def confirm_match
+      event = @provider.provider_events.find(params[:event_id])
+      event.update!(match_status: :confirmed)
+      redirect_to manage_ticketing_provider_path(@provider), notice: "Match confirmed: #{event.name} → #{event.production.name}"
+    end
+
+    def reject_match
+      event = @provider.provider_events.find(params[:event_id])
+      event.clear_match!
+      redirect_to manage_ticketing_provider_path(@provider), notice: "Match rejected for #{event.name}"
     end
 
     private

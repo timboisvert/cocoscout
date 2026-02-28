@@ -1,4 +1,4 @@
-<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 8, step_name: "Review" } do %>
+<%= render layout: "manage/ticketing_setup_wizard/wizard_layout", locals: { current_step: 9, step_name: "Review" } do %>
   <div class="text-center mb-6">
     <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,6 +89,18 @@
                 end %>
           </span>
         </div>
+        <% if (@wizard_state[:provider_ids] || []).length > 1 %>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500 w-20">Inventory:</span>
+            <span class="text-sm text-gray-900">
+              <%= case @wizard_state[:inventory_mode]
+                  when "unified" then "Unified (shared pool across providers)"
+                  when "split" then "Split (separate allocations per provider)"
+                  else "Unified (default)"
+                  end %>
+            </span>
+          </div>
+        <% end %>
       </div>
     </div>
 
@@ -121,16 +133,36 @@
         <% end %>
       </div>
       <div class="px-4 py-3">
-        <% if @wizard_state[:is_online] %>
+        <% case @wizard_state[:venue_mode] %>
+        <% when "online" %>
           <span class="inline-flex items-center gap-1.5 text-sm text-gray-900">
             <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
             Online/Virtual Event
           </span>
+        <% when "org_location" %>
+          <% location = Location.find_by(id: @wizard_state[:default_location_id]) %>
+          <% if location %>
+            <span class="inline-flex items-center gap-1.5 text-sm text-gray-900">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              </svg>
+              <%= location.name %>
+            </span>
+            <% if location.city.present? %>
+              <p class="text-xs text-gray-500 mt-0.5"><%= [location.city, location.state].compact_blank.join(", ") %></p>
+            <% end %>
+          <% else %>
+            <span class="text-sm text-gray-500">Location not found</span>
+          <% end %>
         <% else %>
-          <p class="text-sm font-medium text-gray-900"><%= @wizard_state[:venue_name].presence || "Not set" %></p>
-          <p class="text-xs text-gray-500 mt-0.5"><%= @wizard_state[:venue_address] %></p>
+          <span class="inline-flex items-center gap-1.5 text-sm text-gray-900">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Using each show's location
+          </span>
         <% end %>
       </div>
     </div>

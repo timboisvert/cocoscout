@@ -11,20 +11,37 @@
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <p class="text-gray-600 mb-6">Select a production to manage ticketing for its shows.</p>
-
-  <% if @productions.any? %>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <% @productions.each do |production| %>
+  <%# Enabled Productions %>
+  <% if @enabled_productions.any? %>
+    <h2 class="text-lg font-medium text-gray-900 mb-4">Productions with Ticketing</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <% @enabled_productions.each do |production| %>
         <%= link_to manage_production_show_ticketings_path(production), class: "block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all" do %>
           <h3 class="font-medium text-gray-900 mb-1"><%= production.name %></h3>
           <p class="text-sm text-gray-500"><%= production.shows.upcoming.count %> upcoming shows</p>
         <% end %>
       <% end %>
     </div>
-  <% else %>
+  <% end %>
+
+  <%# Available Productions to Enable %>
+  <% if @available_productions.any? %>
+    <h2 class="text-lg font-medium text-gray-900 mb-2">Enable Ticketing for a Production</h2>
+    <p class="text-gray-600 mb-4">Select a production to enable ticketing management.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% @available_productions.each do |production| %>
+        <div class="bg-white rounded-lg border border-dashed border-gray-300 p-4">
+          <h3 class="font-medium text-gray-900 mb-1"><%= production.name %></h3>
+          <p class="text-sm text-gray-500 mb-3"><%= production.shows.upcoming.count %> upcoming shows</p>
+          <%= link_to manage_enable_production_ticketing_path(production), data: { turbo_method: :post } do %>
+            <%= render "shared/button", text: "Enable Ticketing", variant: "primary", size: "small" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% elsif @enabled_productions.empty? %>
     <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-      <p class="text-gray-600">No productions yet.</p>
+      <p class="text-gray-600">No productions with upcoming shows available.</p>
     </div>
   <% end %>
 </div>
