@@ -11,6 +11,8 @@
 # 4. Identify missing events (should exist but don't)
 # 5. Detect events that need updates
 class RemoteTicketingEvent < ApplicationRecord
+  include SafeExternalUrl
+
   belongs_to :ticketing_provider
   belongs_to :provider_event
   belongs_to :production_ticketing_setup, optional: true

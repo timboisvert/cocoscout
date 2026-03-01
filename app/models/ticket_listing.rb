@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class TicketListing < ApplicationRecord
+  include SafeExternalUrl
+
   belongs_to :show_ticketing
   belongs_to :ticketing_provider
 

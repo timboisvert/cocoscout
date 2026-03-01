@@ -32,8 +32,8 @@
           <%= @listing.status.titleize %>
         </span>
       </div>
-      <% if @listing.external_url.present? %>
-        <%= link_to "View on #{@listing.provider_name}", @listing.external_url, target: "_blank", class: "text-blue-600 hover:text-blue-800" %>
+      <% if @listing.safe_external_url.present? %>
+        <%= link_to "View on #{@listing.provider_name}", @listing.safe_external_url, target: "_blank", class: "text-blue-600 hover:text-blue-800" %>
       <% end %>
     </div>
 
