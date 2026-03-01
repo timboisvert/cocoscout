@@ -347,7 +347,8 @@ module Manage
         event_end_time = rule["event_end_time"] # Optional different time for actual event end
 
         while current_date <= end_date && count < max_events
-          starts_at = DateTime.parse("#{current_date} #{time}")
+          # Use Time.zone.parse to ensure correct timezone (not UTC)
+          starts_at = Time.zone.parse("#{current_date} #{time}")
 
           booking = {
             "location_id" => location_id,
@@ -359,13 +360,13 @@ module Manage
 
           # Add event_starts_at if event_time is specified
           if event_time.present?
-            event_starts_at = DateTime.parse("#{current_date} #{event_time}")
+            event_starts_at = Time.zone.parse("#{current_date} #{event_time}")
             booking["event_starts_at"] = event_starts_at.iso8601
           end
 
           # Add event_ends_at if event_end_time is specified
           if event_end_time.present?
-            event_ends_at = DateTime.parse("#{current_date} #{event_end_time}")
+            event_ends_at = Time.zone.parse("#{current_date} #{event_end_time}")
             booking["event_ends_at"] = event_ends_at.iso8601
           end
 
