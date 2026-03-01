@@ -53,11 +53,6 @@ class UnreadDigestJob < ApplicationJob
     oldest_unread_at = find_oldest_unread_at(user, unread_threads)
     return if oldest_unread_at.nil? || oldest_unread_at > INITIAL_DELAY.ago
 
-    # Check if user visited inbox after the oldest unread - if so, skip
-    if user.last_inbox_visit_at.present? && user.last_inbox_visit_at > oldest_unread_at
-      return
-    end
-
     # Adjust throttle based on whether user checked inbox after last digest
     adjust_throttle(user)
 
