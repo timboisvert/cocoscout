@@ -15,7 +15,7 @@
           "type": "controller",
           "class": "Manage::ShowTicketingsController",
           "method": "show",
-          "line": 27,
+          "line": 107,
           "file": "app/controllers/manage/show_ticketings_controller.rb",
           "rendered": {
             "name": "manage/show_ticketings/show",
@@ -103,7 +103,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 241,
+          "line": 252,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -157,7 +157,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 241,
+          "line": 252,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -209,40 +209,6 @@
         79
       ],
       "note": ""
-    },
-    {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 84,
-      "fingerprint": "4ce2d2156e5562c6a5831dd1f1fe679db7da50c8af391171e805dad8e8c04973",
-      "check_name": "RenderInline",
-      "message": "Unescaped model attribute rendered inline",
-      "file": "app/views/manage/show_payouts/show.html.erb",
-      "line": 1530,
-      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
-      "code": "render(text => \"Add #{(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size} #{if ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::ShowPayoutsController",
-          "method": "show",
-          "line": 35,
-          "file": "app/controllers/manage/show_payouts_controller.rb",
-          "rendered": {
-            "name": "manage/show_payouts/show",
-            "file": "app/views/manage/show_payouts/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/show_payouts/show"
-      },
-      "user_input": "(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).production.payout_schemes.find_by(:is_default => true) or Current.organization.payout_schemes.organization_level.find_by(:is_default => true))), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size",
-      "confidence": "Medium",
-      "cwe_id": [
-        79
-      ],
-      "note": "False positive: .size returns an integer which cannot contain XSS payload"
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -311,29 +277,6 @@
         79
       ],
       "note": "False positive: .count returns an integer which cannot contain XSS payload"
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 70,
-      "fingerprint": "a682855e2462ae8f231809072260b75f160b2d2f1652fc9410807b75c6753734",
-      "check_name": "MassAssignment",
-      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
-      "file": "app/controllers/manage/ticketing_setup_wizard_controller.rb",
-      "line": 85,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params[:provider_settings][provider_id.to_s].permit!",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "Manage::TicketingSetupWizardController",
-        "method": "save_providers"
-      },
-      "user_input": null,
-      "confidence": "Medium",
-      "cwe_id": [
-        915
-      ],
-      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -432,6 +375,40 @@
       },
       "user_input": "Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).external_url",
       "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "f7d166856dff2ff9f0a150cb4304b2f7e11b875870bcf55e89aa72c9f05c3947",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/show_payouts/show.html.erb",
+      "line": 1591,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Add #{(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => PayoutScheme.default_for_show(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id])), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size} #{if ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => PayoutScheme.default_for_show(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id])), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowPayoutsController",
+          "method": "show",
+          "line": 35,
+          "file": "app/controllers/manage/show_payouts_controller.rb",
+          "rendered": {
+            "name": "manage/show_payouts/show",
+            "file": "app/views/manage/show_payouts/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/show_payouts/show"
+      },
+      "user_input": "(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => PayoutScheme.default_for_show(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id])), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size",
+      "confidence": "Medium",
       "cwe_id": [
         79
       ],
