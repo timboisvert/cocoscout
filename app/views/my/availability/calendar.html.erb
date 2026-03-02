@@ -44,8 +44,9 @@
   %>
   <% if @show_entity_pairs.any? %>
     <% # Desktop: Show selected month only; Mobile: Show all months %>
-    <% current_month_param = params[:month] ? Date.parse(params[:month]).to_time.beginning_of_month : nil %>
-    <% desktop_month = current_month_param || Time.current.beginning_of_month %>
+    <% # Use Date for month keys to avoid DST timezone comparison issues %>
+    <% current_month_param = params[:month] ? Date.parse(params[:month]).beginning_of_month : nil %>
+    <% desktop_month = current_month_param || Date.current.beginning_of_month %>
     <% desktop_pairs = @pairs_by_month[desktop_month] || [] %>
 
     <% # Calculate valid month range %>
@@ -53,7 +54,7 @@
     <% last_month = @pairs_by_month.keys.sort.last %>
     <% prev_month = desktop_month - 1.month %>
     <% next_month = desktop_month + 1.month %>
-    <% can_go_prev = prev_month >= Time.current.beginning_of_month %>
+    <% can_go_prev = prev_month >= Date.current.beginning_of_month %>
     <% can_go_next = next_month <= last_month %>
 
     <!-- Separator -->
@@ -81,7 +82,7 @@
 
       <div class="flex items-center gap-3">
         <h2 class="text-2xl font-bold text-gray-900"><%= desktop_month.strftime("%B %Y") %></h2>
-        <% if desktop_month != Time.current.beginning_of_month %>
+        <% if desktop_month != Date.current.beginning_of_month %>
           <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
                   data: { turbo_prefetch: false },
                   class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors" do %>
@@ -223,7 +224,7 @@
     <!-- Mobile: All Months List View -->
     <div class="md:hidden space-y-8">
       <% @pairs_by_month.sort.each do |month_start, pairs| %>
-        <% next if month_start < Time.current.beginning_of_month %>
+        <% next if month_start < Date.current.beginning_of_month %>
         <div class="border border-gray-200 rounded-lg p-4">
           <h2 class="text-xl font-bold mb-4"><%= month_start.strftime("%B %Y") %></h2>
 

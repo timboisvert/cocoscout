@@ -419,8 +419,9 @@ module My
       # Sort by show date
       @show_entity_pairs.sort_by! { |pair| pair[:show].date_and_time }
 
-      # Group by month using TimeWithZone (important for hash key matching)
-      @pairs_by_month = @show_entity_pairs.group_by { |pair| pair[:show].date_and_time.beginning_of_month }
+      # Group by month using Date (not TimeWithZone) to avoid DST issues
+      # TimeWithZone keys don't match across DST boundaries (e.g., -0600 vs -0500)
+      @pairs_by_month = @show_entity_pairs.group_by { |pair| pair[:show].date_and_time.to_date.beginning_of_month }
 
       # Get availabilities for all entities in batch - indexed by [show_id, entity_key]
       all_show_ids = @show_entity_pairs.map { |p| p[:show].id }.uniq
