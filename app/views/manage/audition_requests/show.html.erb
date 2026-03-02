@@ -200,7 +200,7 @@
                        data-controller="availability"
                        data-availability-show-id-value="<%= session.id %>"
                        data-availability-status-value="<%= current_status || 'unset' %>"
-                       data-availability-entity-key="audition_session"
+                       data-availability-entity-key-value="audition_session"
                        data-availability-entity-id="<%= @requestable.id %>"
                        data-availability-entity-type="<%= @requestable.class.name %>"
                        data-availability-update-url-value="<%= manage_update_session_availability_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
