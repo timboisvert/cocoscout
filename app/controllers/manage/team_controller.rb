@@ -129,7 +129,7 @@ module Manage
         return
       end
 
-      @productions = Current.organization.productions.order(:name)
+      @productions = Current.organization.productions.active.order(:name)
       @organization_role = @user.organization_roles.find_by(organization: Current.organization)
 
       # Render partial for AJAX/modal requests

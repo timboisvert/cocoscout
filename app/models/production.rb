@@ -60,6 +60,10 @@ class Production < ApplicationRecord
     third_party: "third_party"
   }, default: :in_house, prefix: :type
 
+  # Scopes for archiving
+  scope :active, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
+
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :public_key, uniqueness: true, allow_nil: true
@@ -145,6 +149,19 @@ class Production < ApplicationRecord
   # Sibling productions in the same organization (for sharing UI)
   def sibling_productions
     organization.productions.where.not(id: id).order(:name)
+  end
+
+  # Archive methods
+  def archived?
+    archived_at.present?
+  end
+
+  def archive!
+    update!(archived_at: Time.current) unless archived?
+  end
+
+  def unarchive!
+    update!(archived_at: nil) if archived?
   end
 
   def active_audition_cycle

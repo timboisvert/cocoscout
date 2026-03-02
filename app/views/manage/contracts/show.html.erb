@@ -1,4 +1,4 @@
-<% content_for :title, @contract.contractor_name %>
+<% content_for :title, @contract.production_name.presence || @contract.contractor_name %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -15,14 +15,20 @@
     else
       { bg: "bg-gray-100", text: "text-gray-700", icon: "file-text", label: "Contract" }
     end
+
+    # Build breadcrumbs with optional contractor link
+    breadcrumb_items = [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path]
+    ]
+    if @contract.contractor.present?
+      breadcrumb_items << [@contract.contractor_name, manage_contractor_path(@contract.contractor)]
+    end
   %>
 
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Money", manage_money_index_path],
-      ["Contracts", manage_contracts_path]
-    ],
-    text: @contract.contractor_name,
+    breadcrumbs: breadcrumb_items,
+    text: @contract.production_name.presence || @contract.contractor_name,
     links: []
   } %>
 

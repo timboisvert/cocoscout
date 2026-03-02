@@ -18,19 +18,33 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Money", manage_money_index_path]
-    ],
-    text: "Contracts",
-    links: []
-  } %>
-
   <%= render "shared/module_header",
     title: "Contracts",
     description: contracts_description,
     actions: contracts_actions
   %>
+
+  <div class="border-t border-gray-200 pt-4 mt-2">
+  <%# Contract Stats %>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Received This Year</div>
+      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@money_received) %></div>
+      <div class="text-xs text-gray-500">paid incoming payments</div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Remaining to Receive</div>
+      <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@money_remaining) %></div>
+      <div class="text-xs text-gray-500">pending incoming payments</div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1"><%= Date.current.year %> Contract Value</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@total_contract_value) %></div>
+      <div class="text-xs text-gray-500">contracts starting this year</div>
+    </div>
+  </div>
 
   <%# Payments Card - only show if there are late or upcoming payments %>
   <% if @has_payments %>
@@ -50,14 +64,32 @@
     </div>
   <% end %>
 
-  <%# Contracts List %>
+  <%# Contracts with Tabs %>
   <% if @sorted_contracts.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Active Contracts" %>
-      <div class="p-4 space-y-2">
-        <% @sorted_contracts.each do |contract| %>
-          <%= render "contract_list_row", contract: contract %>
-        <% end %>
+    <div data-controller="tabs">
+      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">
+          <%= icon("list", class: "w-4 h-4 inline mr-1") %>
+          Active Contracts
+        </button>
+        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">
+          <%= icon("calendar", class: "w-4 h-4 inline mr-1") %>
+          Timeline
+        </button>
+      </nav>
+
+      <%# Active Contracts Tab %>
+      <div data-tabs-target="panel">
+        <div class="space-y-2">
+          <% @sorted_contracts.each do |contract| %>
+            <%= render "contract_list_row", contract: contract %>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Timeline Tab %>
+      <div data-tabs-target="panel" class="hidden">
+        <%= render "timeline", contracts: @sorted_contracts %>
       </div>
     </div>
   <% end %>
@@ -73,4 +105,5 @@
       <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus", path: manage_new_contract_wizard_path %>
     </div>
   <% end %>
+  </div>
 </div>

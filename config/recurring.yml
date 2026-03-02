@@ -39,6 +39,10 @@ development:
     class: ProviderEventSyncJob
     schedule: every hour
 
+  contract_completion:
+    class: ContractCompletionJob
+    schedule: every hour
+
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -83,3 +87,7 @@ production:
   provider_event_sync:
     class: ProviderEventSyncJob
     schedule: every hour
+
+  contract_completion:
+    class: ContractCompletionJob
+    schedule: at 2am every day

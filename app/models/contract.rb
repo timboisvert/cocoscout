@@ -53,10 +53,17 @@ class Contract < ApplicationRecord
   def complete!
     return false unless status_active?
 
-    update!(
-      status: :completed,
-      completed_at: Time.current
-    )
+    transaction do
+      update!(
+        status: :completed,
+        completed_at: Time.current
+      )
+
+      # Archive associated productions
+      productions.where(archived_at: nil).update_all(archived_at: Time.current)
+    end
+
+    true
   end
 
   def cancel!(delete_events: false)

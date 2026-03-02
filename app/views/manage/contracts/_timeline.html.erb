@@ -1,0 +1,136 @@
+<%#
+  Contract Timeline (Gantt Chart)
+
+  Displays contracts as horizontal bars on a timeline.
+
+  Required:
+    - contracts: Array of Contract objects
+%>
+<%
+  # Get contracts with dates for the timeline (exclude cancelled)
+  visible_contracts = contracts.select { |c| c.contract_start_date.present? && c.status != "cancelled" }
+
+  # Find the date range
+  if visible_contracts.any?
+    min_date = visible_contracts.map(&:contract_start_date).min
+    max_date = visible_contracts.map { |c| c.contract_end_date || c.contract_start_date + 30.days }.max
+
+    # Expand range for padding
+    min_date = min_date.beginning_of_month
+    max_date = (max_date + 1.month).end_of_month
+
+    total_days = (max_date - min_date).to_i
+    total_days = 30 if total_days < 30 # Minimum 30 days
+
+    # Generate month labels
+    months = []
+    current = min_date.beginning_of_month
+    while current <= max_date
+      months << current
+      current = current.next_month
+    end
+  else
+    total_days = 90
+    min_date = Date.current.beginning_of_month
+    max_date = min_date + 90.days
+    months = [min_date, min_date.next_month, min_date + 2.months]
+  end
+%>
+
+<% if visible_contracts.any? %>
+  <div data-controller="contract-timeline">
+      <%# Month header %>
+      <div class="relative h-8 mb-2 border-b border-gray-200">
+        <% months.each do |month| %>
+          <%
+            month_start_offset = ((month - min_date).to_f / total_days * 100).round(2)
+          %>
+          <div class="absolute text-xs font-medium text-gray-500" style="left: <%= month_start_offset %>%;">
+            <%= month.strftime("%b %Y") %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Today marker %>
+      <% if Date.current >= min_date && Date.current <= max_date %>
+        <%
+          today_offset = ((Date.current - min_date).to_f / total_days * 100).round(2)
+        %>
+        <div class="absolute h-full border-l-2 border-pink-400 z-10" style="left: calc(<%= today_offset %>% + 1rem);"></div>
+      <% end %>
+
+      <%# Contract bars %>
+      <div class="space-y-3 relative">
+        <% visible_contracts.each do |contract| %>
+          <%
+            start_date = contract.contract_start_date
+            end_date = contract.contract_end_date || (start_date + 30.days)
+
+            # Calculate position and width as percentages
+            left_offset = ((start_date - min_date).to_f / total_days * 100).round(2)
+            bar_width = ((end_date - start_date).to_f / total_days * 100).round(2)
+            bar_width = [bar_width, 1].max # Minimum 1% width
+
+            # Status-based colors
+            bar_color = case contract.status
+              when "active" then "bg-green-500"
+              when "completed" then "bg-blue-400"
+              when "cancelled" then "bg-gray-400"
+              else "bg-pink-400"
+            end
+          %>
+          <div class="flex items-center gap-2">
+            <%# Contract name %>
+            <div class="w-40 flex-shrink-0 truncate">
+              <%= link_to manage_contract_path(contract), class: "text-sm font-medium text-gray-700 hover:text-pink-600" do %>
+                <%= contract.production_name.presence || contract.contractor_name %>
+              <% end %>
+            </div>
+
+            <%# Timeline bar container %>
+            <div class="flex-1 relative h-8 bg-gray-50 rounded">
+              <%# The bar %>
+              <%= link_to manage_contract_path(contract), class: "absolute top-1 h-6 rounded #{bar_color} hover:opacity-80 transition-opacity cursor-pointer group", style: "left: #{left_offset}%; width: #{bar_width}%; min-width: 20px;", title: "#{contract.contractor_name}: #{start_date.strftime('%b %-d')} - #{end_date.strftime('%b %-d, %Y')}" do %>
+                <%# Label inside bar if wide enough %>
+                <% if bar_width > 8 %>
+                  <span class="absolute inset-0 flex items-center justify-center text-white text-xs font-medium truncate px-1">
+                    <%= contract.contractor_name.truncate(20) %>
+                  </span>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    <%# Legend %>
+    <div class="flex items-center gap-4 mt-6 pt-4 border-t border-gray-200">
+      <div class="flex items-center gap-1.5">
+        <div class="w-3 h-3 rounded bg-green-500"></div>
+        <span class="text-xs text-gray-600">Active</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <div class="w-3 h-3 rounded bg-pink-400"></div>
+        <span class="text-xs text-gray-600">Draft</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <div class="w-3 h-3 rounded bg-blue-400"></div>
+        <span class="text-xs text-gray-600">Completed</span>
+      </div>
+      <% if Date.current >= min_date && Date.current <= max_date %>
+        <div class="flex items-center gap-1.5 ml-auto">
+          <div class="w-0.5 h-4 bg-pink-400"></div>
+          <span class="text-xs text-gray-600">Today</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <%= icon("calendar", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">No timeline data</h3>
+    <p class="text-gray-600">
+      Contracts need start dates to appear on the timeline.
+    </p>
+  </div>
+<% end %>

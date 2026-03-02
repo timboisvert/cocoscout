@@ -38,10 +38,13 @@
             </span>
           <% end %>
           <span class="font-medium text-gray-900">
-            <%= link_to contract.contractor_name, manage_contract_path(contract), class: "hover:text-pink-600" %>
+            <%= link_to (contract.production_name.presence || contract.contractor_name), manage_contract_path(contract), class: "hover:text-pink-600" %>
           </span>
         </div>
         <div class="text-sm text-gray-600">
+          <% if contract.production_name.present? %>
+            <%= contract.contractor_name %> &middot;
+          <% end %>
           <%= payment.description.presence || "Payment" %>
           <% unless is_incoming %>
             <span class="text-red-600">(outgoing)</span>

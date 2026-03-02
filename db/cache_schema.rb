@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_01_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_135637) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1082,6 +1082,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_000003) do
   create_table "productions", force: :cascade do |t|
     t.boolean "agreement_required", default: false, null: false
     t.bigint "agreement_template_id"
+    t.datetime "archived_at"
     t.boolean "auto_create_event_pages", default: true
     t.string "auto_create_event_pages_mode", default: "all"
     t.text "cast_talent_pool_ids"
@@ -1109,6 +1110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_000003) do
     t.string "ticketing_exclusion_reason"
     t.datetime "updated_at", null: false
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
+    t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
     t.index ["contract_id"], name: "index_productions_on_contract_id"
     t.index ["organization_id"], name: "index_productions_on_organization_id"

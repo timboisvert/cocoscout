@@ -240,23 +240,27 @@ class User < ApplicationRecord
 
   # Returns all productions the user has access to in the current organization
   # Eager loads logo attachments for efficient rendering in navigation
+  # Excludes archived productions by default
   def accessible_productions
     return Production.none unless Current.organization
+
+    # Start with active (non-archived) productions
+    base_scope = Current.organization.productions.active
 
     # If user has manager or viewer as default role, they have access to all productions
     role = default_role
     if %w[manager viewer].include?(role)
-      Current.organization.productions.includes(logo_attachment: :blob)
+      base_scope.includes(logo_attachment: :blob)
     else
       # Combine production permissions and reviewer access
       permission_production_ids = production_permissions.where(
-        production_id: Current.organization.productions.pluck(:id)
+        production_id: base_scope.pluck(:id)
       ).pluck(:production_id)
 
       reviewer_production_ids = productions_with_reviewer_access.pluck(:id)
 
       all_production_ids = (permission_production_ids + reviewer_production_ids).uniq
-      Current.organization.productions.where(id: all_production_ids).includes(logo_attachment: :blob)
+      base_scope.where(id: all_production_ids).includes(logo_attachment: :blob)
     end
   end
 

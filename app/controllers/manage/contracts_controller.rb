@@ -40,6 +40,40 @@ module Manage
         .order(:due_date)
 
       @has_payments = @late_payments.any? || @upcoming_payments.any?
+
+      # Contract stats for this year
+      year_start = Date.current.beginning_of_year
+      year_end = Date.current.end_of_year
+
+      # All payments for active/completed contracts this year (incoming only)
+      year_payments = ContractPayment
+        .joins(:contract)
+        .where(contracts: { organization_id: Current.organization.id })
+        .where.not(contracts: { status: %w[draft cancelled] })
+        .where(direction: "incoming")
+
+      # Money received (paid incoming payments this year)
+      @money_received = year_payments
+        .where(status: "paid")
+        .where("contract_payments.updated_at >= ? AND contract_payments.updated_at <= ?", year_start, year_end)
+        .where.not(amount: nil)
+        .sum(:amount)
+
+      # Money remaining (pending incoming payments)
+      @money_remaining = year_payments
+        .where(status: "pending")
+        .where.not(amount: nil)
+        .sum(:amount)
+
+      # Total contract value (all incoming payments from contracts starting this year)
+      @total_contract_value = ContractPayment
+        .joins(:contract)
+        .where(contracts: { organization_id: Current.organization.id })
+        .where.not(contracts: { status: %w[draft cancelled] })
+        .where("contracts.contract_start_date >= ? AND contracts.contract_start_date <= ?", year_start, year_end)
+        .where(direction: "incoming")
+        .where.not(amount: nil)
+        .sum(:amount)
     end
 
     def completed
@@ -275,13 +309,15 @@ module Manage
       new_payments = params[:new_payments].present? ? JSON.parse(params[:new_payments]) : []
       payment_structure = params[:payment_structure].presence || "custom"
       payment_config = params[:payment_config].present? ? JSON.parse(params[:payment_config]) : {}
+      removed_payment_ids = params[:removed_payment_ids].present? ? params[:removed_payment_ids].map(&:to_i) : []
 
       # Update contract's amend_data
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(
         "new_payments" => new_payments,
         "payment_structure" => payment_structure,
-        "payment_config" => payment_config
+        "payment_config" => payment_config,
+        "removed_payment_ids" => removed_payment_ids
       ))
 
       redirect_to amend_review_manage_contract_path(@contract)
