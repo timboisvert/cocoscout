@@ -81,8 +81,8 @@
             display_name = contract.production_name.presence || contract.contractor_name
           %>
           <div class="relative h-10">
-            <%= link_to manage_contract_path(contract), 
-                class: "absolute flex items-center h-8 rounded-sm #{bar_color} hover:opacity-80 transition-opacity cursor-pointer shadow-sm #{starts_early ? 'rounded-l-none' : ''} #{ends_late ? 'rounded-r-none' : ''}", 
+            <%= link_to manage_contract_path(contract),
+                class: "absolute flex items-center h-8 rounded-sm #{bar_color} hover:opacity-80 transition-opacity cursor-pointer shadow-sm #{starts_early ? 'rounded-l-none' : ''} #{ends_late ? 'rounded-r-none' : ''}",
                 style: "left: #{left_offset}%; width: #{bar_width}%; min-width: 60px;",
                 title: "#{display_name}: #{start_date.strftime('%b %-d, %Y')} - #{end_date.strftime('%b %-d, %Y')}" do %>
               <span class="text-white text-xs font-medium truncate px-2 w-full">

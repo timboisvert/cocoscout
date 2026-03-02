@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_135637) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_145454) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -433,6 +433,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_135637) do
     t.text "notes"
     t.bigint "organization_id", null: false
     t.string "production_name"
+    t.jsonb "revenue_projections", default: {}
     t.jsonb "services", default: []
     t.string "status", default: "draft", null: false
     t.text "terms"

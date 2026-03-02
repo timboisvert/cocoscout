@@ -986,6 +986,7 @@ Rails.application.routes.draw do
         post :activate
         get :cancel
         post :process_cancel
+        patch :update_projection
         # Amend contract flow with nested paths
         get "amend/bookings", action: :amend_bookings, as: :amend_bookings
         post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings

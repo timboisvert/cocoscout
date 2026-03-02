@@ -1,0 +1,180 @@
+<%#
+  Revenue Projection Card
+
+  Shows projected revenue for revenue-share contracts.
+  Allows editing projections via modal.
+
+  Required:
+    - contract: Contract object (must be revenue_share?)
+%>
+<%
+  has_projection = contract.has_revenue_projection?
+  scenario = contract.revenue_projection_scenario
+  our_share = contract.revenue_share_percentage
+
+  if has_projection
+    gross_range = contract.projected_gross_revenue_range
+    our_range = contract.projected_our_revenue_range
+  end
+
+  received = contract.total_received_payments
+  pending = contract.total_pending_payments
+%>
+
+<div class="border border-gray-200 rounded-lg overflow-hidden" data-controller="revenue-projection" data-revenue-projection-share-value="<%= our_share %>">
+  <%= render "shared/card_header", title: "Revenue Projection" %>
+  <div class="p-4">
+    <%# Payment Summary %>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <div class="text-sm text-gray-500">Received</div>
+        <div class="text-lg font-semibold text-green-600"><%= number_to_currency(received) %></div>
+      </div>
+      <div>
+        <div class="text-sm text-gray-500">Pending</div>
+        <div class="text-lg font-semibold text-gray-900"><%= number_to_currency(pending) %></div>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-200 pt-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-sm font-medium text-gray-700">Projected Revenue (<%= our_share.to_i %>% share)</div>
+        <button type="button"
+                data-action="revenue-projection#openModal"
+                class="text-sm text-pink-600 hover:text-pink-700 font-medium">
+          <%= has_projection ? "Edit" : "Add Projection" %>
+        </button>
+      </div>
+
+      <% if has_projection %>
+        <div class="bg-pink-50 rounded-lg p-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-pink-500 uppercase tracking-wide mb-1">Projected Revenue</div>
+              <div class="text-xl font-bold text-pink-600">
+                <%= number_to_currency(our_range[:low]) %> - <%= number_to_currency(our_range[:high]) %>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500 mt-2">
+            Based on <%= scenario["tickets_sold_low"] %>-<%= scenario["tickets_sold_high"] %> tickets
+            @ <%= number_to_currency(scenario["ticket_price_low"]) %>-<%= number_to_currency(scenario["ticket_price_high"]) %>
+          </div>
+          <% if scenario["notes"].present? %>
+            <div class="text-xs text-gray-600 mt-1 italic"><%= scenario["notes"] %></div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-500">No projection set yet</p>
+          <p class="text-xs text-gray-400 mt-1">Add ticket estimates to see projected revenue</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Projection Modal %>
+  <div data-revenue-projection-target="modal" class="hidden fixed inset-0 z-50">
+    <div class="fixed inset-0 bg-black/50" data-action="click->revenue-projection#closeModal"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-900">Revenue Projection</h3>
+          <button type="button" data-action="click->revenue-projection#closeModal" class="text-gray-400 hover:text-gray-600">
+            <%= icon("x-mark", class: "w-5 h-5") %>
+          </button>
+        </div>
+
+        <%= form_with url: update_projection_manage_contract_path(contract), method: :patch, data: { action: "submit->revenue-projection#submitForm" } do |form| %>
+          <div class="space-y-4">
+            <%# Ticket Price Range %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Price Range</label>
+              <div class="flex items-center gap-2">
+                <div class="flex-1">
+                  <div class="relative">
+                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                    <%= form.number_field :ticket_price_low,
+                        value: scenario&.dig("ticket_price_low"),
+                        min: 0, step: 0.01,
+                        class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500",
+                        placeholder: "Low",
+                        data: { revenue_projection_target: "priceLow", action: "input->revenue-projection#calculate" } %>
+                  </div>
+                </div>
+                <span class="text-gray-400">to</span>
+                <div class="flex-1">
+                  <div class="relative">
+                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                    <%= form.number_field :ticket_price_high,
+                        value: scenario&.dig("ticket_price_high"),
+                        min: 0, step: 0.01,
+                        class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500",
+                        placeholder: "High",
+                        data: { revenue_projection_target: "priceHigh", action: "input->revenue-projection#calculate" } %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <%# Tickets Sold Range %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Expected Tickets Sold</label>
+              <div class="flex items-center gap-2">
+                <div class="flex-1">
+                  <%= form.number_field :tickets_sold_low,
+                      value: scenario&.dig("tickets_sold_low"),
+                      min: 0, step: 1,
+                      class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500",
+                      placeholder: "Low",
+                      data: { revenue_projection_target: "ticketsLow", action: "input->revenue-projection#calculate" } %>
+                </div>
+                <span class="text-gray-400">to</span>
+                <div class="flex-1">
+                  <%= form.number_field :tickets_sold_high,
+                      value: scenario&.dig("tickets_sold_high"),
+                      min: 0, step: 1,
+                      class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500",
+                      placeholder: "High",
+                      data: { revenue_projection_target: "ticketsHigh", action: "input->revenue-projection#calculate" } %>
+                </div>
+              </div>
+            </div>
+
+            <%# Preview %>
+            <div class="bg-pink-50 rounded-lg p-3">
+              <div class="text-sm text-pink-600 mb-1">Projected Revenue</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <div class="text-xs text-gray-500">Gross Revenue</div>
+                  <div class="font-medium text-gray-900" data-revenue-projection-target="grossPreview">$0 - $0</div>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500">Your Share (<%= our_share.to_i %>%)</div>
+                  <div class="font-bold text-pink-600" data-revenue-projection-target="sharePreview">$0 - $0</div>
+                </div>
+              </div>
+            </div>
+
+            <%# Notes %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+              <%= form.text_area :notes,
+                  value: scenario&.dig("notes"),
+                  rows: 2,
+                  class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500",
+                  placeholder: "e.g., Based on similar shows, weekend performance" %>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-6">
+            <button type="button" data-action="click->revenue-projection#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <%= render "shared/button", text: "Save Projection", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

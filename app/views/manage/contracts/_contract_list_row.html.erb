@@ -105,11 +105,19 @@
 
       <%# Panel 4 (25%): Value & Payment Status %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
-        <% if is_revenue_share %>
+        <% if is_revenue_share && contract.has_revenue_projection? %>
+          <div class="text-[10px] text-pink-400 uppercase tracking-wide mb-1">Projection</div>
+          <% our_range = contract.projected_our_revenue_range %>
+          <div class="text-sm font-medium text-pink-600">
+            <%= number_to_currency(our_range[:low], precision: 0) %> - <%= number_to_currency(our_range[:high], precision: 0) %>
+          </div>
+          <div class="text-[10px] text-pink-500"><%= our_share %>% of estimated sales</div>
+        <% elsif is_revenue_share %>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Revenue Share</div>
           <div class="text-[10px] text-gray-500">We receive <%= our_share %>% of ticket sales</div>
         <% elsif total_value > 0 %>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_value) %></div>
           <div class="flex items-center gap-1">
             <% if is_paid %>
@@ -124,8 +132,10 @@
             <% end %>
           </div>
         <% elsif is_draft %>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm text-gray-400">Not configured</div>
         <% else %>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm text-gray-400">$0.00</div>
         <% end %>
       </div>

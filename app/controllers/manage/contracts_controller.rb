@@ -74,6 +74,16 @@ module Manage
         .where(direction: "incoming")
         .where.not(amount: nil)
         .sum(:amount)
+
+      # Projected revenue from rev-share contracts (midpoint of projections)
+      rev_share_contracts = Current.organization.contracts
+        .where.not(status: %w[draft cancelled])
+        .where("contracts.contract_start_date >= ? AND contracts.contract_start_date <= ?", year_start, year_end)
+        .select { |c| c.revenue_share? && c.has_revenue_projection? }
+
+      @projected_revenue_low = rev_share_contracts.sum { |c| c.projected_our_revenue_range&.dig(:low) || 0 }
+      @projected_revenue_high = rev_share_contracts.sum { |c| c.projected_our_revenue_range&.dig(:high) || 0 }
+      @has_projections = rev_share_contracts.any?
     end
 
     def completed
@@ -204,6 +214,23 @@ module Manage
       else
         redirect_to manage_contract_path(@contract), alert: "Could not cancel contract."
       end
+    end
+
+    def update_projection
+      unless @contract.revenue_share?
+        redirect_to manage_contract_path(@contract), alert: "Revenue projections are only available for revenue share contracts."
+        return
+      end
+
+      @contract.set_revenue_projection(
+        ticket_price_low: params[:ticket_price_low],
+        ticket_price_high: params[:ticket_price_high],
+        tickets_sold_low: params[:tickets_sold_low],
+        tickets_sold_high: params[:tickets_sold_high],
+        notes: params[:notes]
+      )
+
+      redirect_to manage_contract_path(@contract), notice: "Revenue projection updated."
     end
 
     # ==================== AMEND CONTRACT FLOW ====================

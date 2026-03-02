@@ -176,6 +176,11 @@
         </div>
       </div>
 
+      <%# Revenue Projection - only for revenue share contracts %>
+      <% if @contract.revenue_share? %>
+        <%= render "revenue_projection_card", contract: @contract %>
+      <% end %>
+
       <%# Associated Productions %>
       <% if @productions.any? %>
         <div class="border border-gray-200 rounded-lg overflow-hidden">
