@@ -405,6 +405,17 @@ module My
         end
       end
 
+      # Filter out shows that have active sign-up forms (those go to Sign-Ups section, not availability)
+      # This matches the logic in open_requests_controller
+      all_collected_show_ids = @show_entity_pairs.map { |p| p[:show].id }.uniq
+      shows_with_signup = SignUpFormInstance.joins(:sign_up_form)
+                                            .where(show_id: all_collected_show_ids)
+                                            .where(status: %w[scheduled open])
+                                            .where(sign_up_forms: { archived_at: nil })
+                                            .pluck(:show_id)
+                                            .to_set
+      @show_entity_pairs.reject! { |pair| shows_with_signup.include?(pair[:show].id) }
+
       # Sort by show date
       @show_entity_pairs.sort_by! { |pair| pair[:show].date_and_time }
 
