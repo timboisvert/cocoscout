@@ -303,6 +303,7 @@ module My
 
       # Add person shows if selected
       if selected_person_ids.any?
+        # Person shows from direct talent pools
         person_shows = Show.joins(production: { talent_pools: :people })
                            .select("shows.*, people.id as source_person_id")
                            .where(people: { id: selected_person_ids })
@@ -324,10 +325,37 @@ module My
             entity: person
           } if person
         end
+
+        # Person shows from shared talent pools
+        shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
+                                  .select("shows.*, people.id as source_person_id")
+                                  .where(people: { id: selected_person_ids })
+                                  .where.not(canceled: true)
+                                  .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                                  .includes(:production, :location)
+                                  .order(:date_and_time)
+                                  .distinct
+                                  .to_a
+
+        shared_person_shows.each do |show|
+          next unless @event_type_filter.include?(show.event_type)
+
+          person_id = show.read_attribute(:source_person_id)
+          person = people_by_id[person_id]
+          # Only add if not already present
+          unless @show_entity_pairs.any? { |item| item[:show].id == show.id && item[:entity_key] == "person_#{person_id}" }
+            @show_entity_pairs << {
+              show: show,
+              entity_key: "person_#{person_id}",
+              entity: person
+            } if person
+          end
+        end
       end
 
       # Add group shows in batch if selected
       if selected_group_ids.any?
+        # Group shows from direct talent pools
         group_shows = Show
                       .select("shows.*, groups.id as source_group_id")
                       .joins(production: { talent_pools: :groups })
@@ -348,6 +376,32 @@ module My
             entity_key: "group_#{group_id}",
             entity: groups_by_id[group_id]
           }
+        end
+
+        # Group shows from shared talent pools
+        shared_group_shows = Show
+                             .select("shows.*, groups.id as source_group_id")
+                             .joins(production: { talent_pool_shares: { talent_pool: :groups } })
+                             .where(groups: { id: selected_group_ids })
+                             .where.not(canceled: true)
+                             .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                             .includes(:production, :location)
+                             .order(:date_and_time)
+                             .distinct
+                             .to_a
+
+        shared_group_shows.each do |show|
+          next unless @event_type_filter.include?(show.event_type)
+
+          group_id = show.read_attribute(:source_group_id)
+          # Only add if not already present
+          unless @show_entity_pairs.any? { |item| item[:show].id == show.id && item[:entity_key] == "group_#{group_id}" }
+            @show_entity_pairs << {
+              show: show,
+              entity_key: "group_#{group_id}",
+              entity: groups_by_id[group_id]
+            }
+          end
         end
       end
 

@@ -19,7 +19,7 @@ export default class extends Controller {
         const showRow = event.target.closest('[data-availability-show-id-value]');
         if (showRow) {
             const showId = showRow.dataset.availabilityShowIdValue;
-            const entityKey = showRow.dataset.availabilityEntityKey;
+            const entityKey = showRow.dataset.availabilityEntityKeyValue;
             this.updateStatusForShow(showId, status, showRow, entityKey);
         }
     }
@@ -173,7 +173,7 @@ export default class extends Controller {
         if (!input) return;
 
         const showId = showRow.dataset.availabilityShowIdValue;
-        const entityKey = showRow.dataset.availabilityEntityKey;
+        const entityKey = showRow.dataset.availabilityEntityKeyValue;
         const entityType = showRow.dataset.availabilityEntityTypeValue;
         const note = input.value.trim();
 
