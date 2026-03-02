@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_145454) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -435,6 +435,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_145454) do
     t.string "production_name"
     t.jsonb "revenue_projections", default: {}
     t.jsonb "services", default: []
+    t.boolean "skip_event_creation", default: false, null: false
     t.string "status", default: "draft", null: false
     t.text "terms"
     t.datetime "updated_at", null: false
@@ -443,6 +444,57 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_145454) do
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["status"], name: "index_contracts_on_status"
+  end
+
+  create_table "course_offerings", force: :cascade do |t|
+    t.integer "capacity"
+    t.datetime "closes_at"
+    t.bigint "contract_id"
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.datetime "early_bird_deadline"
+    t.integer "early_bird_price_cents"
+    t.text "instruction_text"
+    t.string "instructor_name"
+    t.datetime "opens_at"
+    t.integer "price_cents", null: false
+    t.bigint "production_id", null: false
+    t.string "short_code", null: false
+    t.string "status", default: "draft", null: false
+    t.string "stripe_early_bird_price_id"
+    t.string "stripe_price_id"
+    t.string "stripe_product_id"
+    t.string "subtitle"
+    t.text "success_text"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
+    t.index ["production_id"], name: "index_course_offerings_on_production_id"
+    t.index ["short_code"], name: "index_course_offerings_on_short_code", unique: true
+    t.index ["status"], name: "index_course_offerings_on_status"
+  end
+
+  create_table "course_registrations", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.datetime "cancelled_at"
+    t.bigint "course_offering_id", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.datetime "paid_at"
+    t.bigint "person_id", null: false
+    t.datetime "refunded_at"
+    t.datetime "registered_at", null: false
+    t.string "status", default: "pending", null: false
+    t.string "stripe_checkout_session_id"
+    t.string "stripe_payment_intent_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
+    t.index ["person_id"], name: "index_course_registrations_on_person_id"
+    t.index ["status"], name: "index_course_registrations_on_status"
+    t.index ["stripe_checkout_session_id"], name: "index_course_registrations_on_stripe_checkout_session_id", unique: true
+    t.index ["user_id"], name: "index_course_registrations_on_user_id"
   end
 
   create_table "demo_users", force: :cascade do |t|
@@ -2347,6 +2399,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_145454) do
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
+  add_foreign_key "course_offerings", "contracts"
+  add_foreign_key "course_offerings", "productions"
+  add_foreign_key "course_registrations", "course_offerings"
+  add_foreign_key "course_registrations", "people"
+  add_foreign_key "course_registrations", "users"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"

@@ -1,0 +1,76 @@
+<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Details" } do %>
+  <h2 class="text-lg font-bold text-gray-900 mb-1">Details</h2>
+  <p class="text-sm text-gray-600 mb-6">Set capacity limits, registration windows, and page content.</p>
+
+  <%= form_with url: manage_course_wizard_details_path, method: :post, local: true do |form| %>
+    <div class="space-y-5">
+      <div>
+        <label for="capacity" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Max Registrations
+        </label>
+        <p class="text-xs text-gray-500 mb-2">Leave blank for unlimited spots.</p>
+        <input type="number" name="capacity" id="capacity"
+               min="1"
+               value="<%= @wizard_state[:capacity] %>"
+               placeholder="20"
+               class="block w-48 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      </div>
+
+      <div class="border-t border-gray-200 pt-5">
+        <p class="text-sm font-medium text-gray-900 mb-3">Registration Window <span class="text-gray-400 font-normal">(optional)</span></p>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="opens_at" class="block text-sm font-medium text-gray-700 mb-1.5">
+              Opens At
+            </label>
+            <p class="text-xs text-gray-500 mb-2">When registration becomes available.</p>
+            <input type="datetime-local" name="opens_at" id="opens_at"
+                   value="<%= @wizard_state[:opens_at] %>"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          </div>
+          <div>
+            <label for="closes_at" class="block text-sm font-medium text-gray-700 mb-1.5">
+              Closes At
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Auto-close registration date.</p>
+            <input type="datetime-local" name="closes_at" id="closes_at"
+                   value="<%= @wizard_state[:closes_at] %>"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-200 pt-5">
+        <p class="text-sm font-medium text-gray-900 mb-3">Page Content <span class="text-gray-400 font-normal">(optional)</span></p>
+        <div class="space-y-4">
+          <div>
+            <label for="instruction_text" class="block text-sm font-medium text-gray-700 mb-1.5">
+              Additional Instructions
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Extra details shown on the registration page (e.g., what to bring, parking info).</p>
+            <textarea name="instruction_text" id="instruction_text" rows="3"
+                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @wizard_state[:instruction_text] %></textarea>
+          </div>
+          <div>
+            <label for="success_text" class="block text-sm font-medium text-gray-700 mb-1.5">
+              Success Message
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Shown after payment is complete. Leave blank for a default message.</p>
+            <textarea name="success_text" id="success_text" rows="3"
+                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @wizard_state[:success_text] %></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex items-center justify-between">
+      <%= link_to manage_course_wizard_pricing_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next: Review", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

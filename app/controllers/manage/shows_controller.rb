@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -303,6 +303,39 @@ module Manage
       end
     end
 
+    # POST /manage/productions/:production_id/shows/preview_extend_series
+    # Returns JSON with the dates that would be added
+    def preview_extend_series
+      @recurrence_group_id = params[:recurrence_group_id]
+      return head :not_found unless @recurrence_group_id.present?
+
+      @shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
+      return head :not_found if @shows_in_series.empty?
+
+      @last_show = @shows_in_series.last
+      @pattern = @last_show.recurrence_pattern || infer_recurrence_pattern(@shows_in_series)
+
+      extend_through = compute_extend_through_date
+      if extend_through.nil?
+        render json: { error: params[:extend_duration] == "custom" ? "Please select a valid custom end date." : "Invalid duration." }, status: :unprocessable_entity
+        return
+      end
+
+      new_dates = generate_recurring_dates(@last_show.date_and_time, @pattern, extend_through)
+      new_dates = new_dates.drop(1)
+
+      if new_dates.empty?
+        render json: { error: "No new dates to add. The series may already extend past the selected date." }, status: :unprocessable_entity
+        return
+      end
+
+      render json: {
+        dates: new_dates.map { |d| { display: d.strftime("%A, %B %-d, %Y"), time: d.strftime("%-I:%M %p") } },
+        extend_through: extend_through.strftime("%B %-d, %Y"),
+        count: new_dates.length
+      }
+    end
+
     # POST /manage/productions/:production_id/shows/extend_series
     # Extend a recurring series with more shows
     def extend_series
@@ -315,22 +348,17 @@ module Manage
       @last_show = @shows_in_series.last
       @pattern = @last_show.recurrence_pattern || infer_recurrence_pattern(@shows_in_series)
 
-      # Calculate new end date
-      extend_through = case params[:extend_duration]
-      when "3_months"
-        @last_show.date_and_time.to_date + 3.months
-      when "6_months"
-        @last_show.date_and_time.to_date + 6.months
-      when "12_months"
-        @last_show.date_and_time.to_date + 12.months
-      when "end_of_year"
-        end_of_year = Date.new(@last_show.date_and_time.year, 12, 31)
-        # If we're already past end of year or at end of year, extend to next year
-        end_of_year <= @last_show.date_and_time.to_date ? Date.new(@last_show.date_and_time.year + 1, 12, 31) : end_of_year
-      when "custom"
-        Date.parse(params[:custom_end_date])
-      else
-        @last_show.date_and_time.to_date + 3.months
+      # Backfill pattern on existing series shows if not stored
+      if @pattern.present?
+        @production.shows.in_recurrence_group(@recurrence_group_id)
+                         .where(recurrence_pattern: [ nil, "" ])
+                         .update_all(recurrence_pattern: @pattern)
+      end
+
+      extend_through = compute_extend_through_date
+      if extend_through.nil?
+        redirect_to manage_production_shows_path(@production), alert: "Please select a valid date."
+        return
       end
 
       # Generate new dates starting from the last show
@@ -576,11 +604,8 @@ module Manage
                                            :recurrence_start_datetime, :recurrence_end_type,
                                            :recurrence_custom_end_date)
 
-        # If date/time is being changed on a recurring event, unlink it from the group
-        if @show.recurring? && update_params[:date_and_time].present? &&
-           update_params[:date_and_time] != @show.date_and_time.to_s
-          update_params[:recurrence_group_id] = nil
-        end
+        # Keep the show in its recurrence group even if date/time changes.
+        # Users can remove a show from the series explicitly if needed.
 
         # Handle poster removal
         @show.poster.purge if update_params[:remove_poster] == "1" && @show.poster.attached?
@@ -1055,6 +1080,31 @@ module Manage
       end
     end
 
+    # Add a show to an existing recurring series
+    def add_to_series
+      recurrence_group_id = params[:recurrence_group_id]
+
+      unless recurrence_group_id.present?
+        redirect_to manage_show_path(@production, @show), alert: "Please select a recurring series."
+        return
+      end
+
+      # Verify the series exists in this production
+      series_show = @production.shows.where(recurrence_group_id: recurrence_group_id).first
+      unless series_show
+        redirect_to manage_show_path(@production, @show), alert: "Recurring series not found."
+        return
+      end
+
+      @show.update!(
+        recurrence_group_id: recurrence_group_id,
+        recurrence_pattern: series_show.recurrence_pattern
+      )
+      redirect_to manage_show_path(@production, @show),
+                  notice: "#{@show.event_type.titleize} added to recurring series.",
+                  status: :see_other
+    end
+
     def toggle_attendance
       enabled = params[:enabled] == "true" || params[:enabled] == true
       @show.update!(attendance_enabled: enabled)
@@ -1471,6 +1521,31 @@ module Manage
       Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
     end
 
+    # Compute the extend-through date from params, used by both preview and extend actions
+    def compute_extend_through_date
+      last_show = @last_show
+      case params[:extend_duration]
+      when "3_months"
+        last_show.date_and_time.to_date + 3.months
+      when "6_months"
+        last_show.date_and_time.to_date + 6.months
+      when "12_months"
+        last_show.date_and_time.to_date + 12.months
+      when "end_of_year"
+        end_of_year = Date.new(last_show.date_and_time.year, 12, 31)
+        end_of_year <= last_show.date_and_time.to_date ? Date.new(last_show.date_and_time.year + 1, 12, 31) : end_of_year
+      when "custom"
+        return nil if params[:custom_end_date].blank?
+        begin
+          Date.parse(params[:custom_end_date])
+        rescue Date::Error
+          nil
+        end
+      else
+        last_show.date_and_time.to_date + 3.months
+      end
+    end
+
     # Infer recurrence pattern from a series of shows
     def infer_recurrence_pattern(shows)
       return nil if shows.length < 2
@@ -1493,8 +1568,23 @@ module Manage
         "biweekly"
       when 25..35
         # Check if it's same date of month (monthly_date) or same week/day (monthly_week)
-        # For now, default to monthly_date
-        "monthly_date"
+        # If all shows fall on the same day of week, it's likely monthly_week (e.g. "3rd Friday")
+        days_of_week = shows.map { |s| s.date_and_time.wday }.uniq
+        if days_of_week.length == 1
+          # All on the same day of week — check if week-of-month is consistent
+          weeks_of_month = shows.map { |s| (s.date_and_time.day - 1) / 7 + 1 }.uniq
+          if weeks_of_month.length == 1
+            "monthly_week"
+          else
+            # Same day of week but varying week number — still likely monthly_week
+            # (slight drift is normal), use most common week
+            "monthly_week"
+          end
+        else
+          # Different days of week — check if same date of month
+          dates_of_month = shows.map { |s| s.date_and_time.day }.uniq
+          dates_of_month.length == 1 ? "monthly_date" : "monthly_week"
+        end
       else
         "weekly" # Default fallback
       end

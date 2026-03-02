@@ -61,7 +61,7 @@
               <select name="roles[<%= index %>][category]"
                       class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
                 <option value="performing" <%= "selected" if (role[:category] || role['category'] || 'performing') == "performing" %>>Performing</option>
-                <option value="crew" <%= "selected" if (role[:category] || role['category']) == "crew" %>>Crew</option>
+                <option value="technical" <%= "selected" if (role[:category] || role['category']) == "technical" %>>Crew / Technical</option>
               </select>
               <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,7 +124,7 @@
         <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-pink-500 focus:border-pink-500" title="Number of slots">
         <select name="roles[${roleIndex}][category]" class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
           <option value="performing">Performing</option>
-          <option value="crew">Crew</option>
+          <option value="technical">Crew / Technical</option>
         </select>
         <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,0 +1,50 @@
+<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Basics" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">Create a New Course</h2>
+    <p class="text-gray-600 mt-2">
+      Set up a course that people can register and pay for online.
+    </p>
+  </div>
+
+  <%= form_with url: manage_course_wizard_basics_path, method: :post, local: true do |form| %>
+    <div class="space-y-5">
+      <div>
+        <label for="title" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Course Title
+          <span class="text-pink-500">*</span>
+        </label>
+        <input type="text" name="title" id="title" required
+               value="<%= @wizard_state[:title] %>"
+               placeholder="e.g., Intro to Improv - Spring 2025"
+               class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      </div>
+
+      <div>
+        <label for="subtitle" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Subtitle
+        </label>
+        <input type="text" name="subtitle" id="subtitle"
+               value="<%= @wizard_state[:subtitle] %>"
+               placeholder="e.g., A 6-week course for beginners"
+               class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      </div>
+
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Description
+        </label>
+        <p class="text-xs text-gray-500 mb-2">Describe what students will learn — this is shown on the public registration page.</p>
+        <%= rich_text_area_tag :description, @wizard_state[:description], class: "w-full min-h-[150px]" %>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next: Schedule", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

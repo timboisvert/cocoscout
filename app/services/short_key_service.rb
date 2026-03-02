@@ -5,6 +5,7 @@
 # These keys are used for:
 # - /a/<key> - Audition cycle response URLs (AuditionCycle.token)
 # - /s/<key> - Sign-up form short URLs (SignUpForm.short_code)
+# - /c/<key> - Course offering registration URLs (CourseOffering.short_code)
 #
 # Keys are "sacred" - once assigned, they should last forever.
 # This service ensures uniqueness across both key namespaces and provides
@@ -27,6 +28,11 @@ class ShortKeyService
       model: "SignUpForm",
       column: :short_code,
       path_prefix: "/s/"
+    },
+    course: {
+      model: "CourseOffering",
+      column: :short_code,
+      path_prefix: "/c/"
     }
   }.freeze
 

@@ -2,6 +2,8 @@
 <%= turbo_frame_tag "recurring_series_modal" do %>
   <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
        data-controller="recurring-series-modal"
+       data-recurring-series-modal-preview-url-value="<%= preview_extend_series_manage_production_shows_path(@production) %>"
+       data-recurring-series-modal-extend-url-value="<%= extend_series_manage_production_shows_path(@production) %>"
        data-action="click->recurring-series-modal#closeOnBackdrop keydown.esc@window->recurring-series-modal#close">
     <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg max-h-[85vh] flex flex-col" data-action="click->recurring-series-modal#stopPropagation">
       <%# Header %>
@@ -104,36 +106,65 @@
             </svg>
             Extend this series
           </h4>
-          <%= form_with url: extend_series_manage_production_shows_path(@production), method: :post, local: true, class: "space-y-4" do |f| %>
-            <input type="hidden" name="recurrence_group_id" value="<%= @recurrence_group_id %>">
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Add more events through:</label>
-              <select name="extend_duration" required
-                      data-action="change->recurring-series-modal#toggleCustomDate"
-                      data-recurring-series-modal-target="durationSelect"
-                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-                <option value="3_months">3 more months (until <%= (@last_show.date_and_time.to_date + 3.months).strftime("%B %Y") %>)</option>
-                <option value="6_months">6 more months (until <%= (@last_show.date_and_time.to_date + 6.months).strftime("%B %Y") %>)</option>
-                <option value="12_months">12 more months (until <%= (@last_show.date_and_time.to_date + 12.months).strftime("%B %Y") %>)</option>
-                <option value="end_of_year">End of <%= @last_show.date_and_time.year %></option>
-                <option value="custom">Custom end date...</option>
-              </select>
+          <%# Step 1: Choose duration (shown initially) %>
+          <form id="extend-preview-form" data-recurring-series-modal-target="extendForm" data-action="submit->recurring-series-modal#previewExtend">
+            <div class="space-y-4">
+              <input type="hidden" name="recurrence_group_id" value="<%= @recurrence_group_id %>">
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Add more events through:</label>
+                <select name="extend_duration" required
+                        data-action="change->recurring-series-modal#toggleCustomDate"
+                        data-recurring-series-modal-target="durationSelect"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                  <option value="3_months">3 more months (until <%= (@last_show.date_and_time.to_date + 3.months).strftime("%B %Y") %>)</option>
+                  <option value="6_months">6 more months (until <%= (@last_show.date_and_time.to_date + 6.months).strftime("%B %Y") %>)</option>
+                  <option value="12_months">12 more months (until <%= (@last_show.date_and_time.to_date + 12.months).strftime("%B %Y") %>)</option>
+                  <option value="end_of_year">End of <%= @last_show.date_and_time.year %></option>
+                  <option value="custom">Custom end date...</option>
+                </select>
+              </div>
+
+              <div data-recurring-series-modal-target="customDateField" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Custom end date:</label>
+                <input type="date"
+                       name="custom_end_date"
+                       min="<%= (@last_show.date_and_time.to_date + 1.day).to_s %>"
+                       value="<%= (@last_show.date_and_time.to_date + 3.months).to_s %>"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <%= render "shared/button", text: "Preview Dates", variant: "primary", type: :submit, data: { "recurring-series-modal-target": "previewButton" } %>
+              </div>
+            </div>
+          </form>
+
+          <%# Error message %>
+          <p data-recurring-series-modal-target="previewError" class="hidden text-sm text-red-600 mt-2"></p>
+
+          <%# Step 2: Preview dates (shown after preview) %>
+          <div data-recurring-series-modal-target="previewContainer" class="hidden">
+            <div class="mb-3">
+              <p class="text-sm text-gray-700">
+                The following <strong data-recurring-series-modal-target="previewCount"></strong> will be added through <strong data-recurring-series-modal-target="previewThrough"></strong>:
+              </p>
             </div>
 
-            <div data-recurring-series-modal-target="customDateField" class="hidden">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Custom end date:</label>
-              <input type="date"
-                     name="custom_end_date"
-                     min="<%= (@last_show.date_and_time.to_date + 1.day).to_s %>"
-                     value="<%= (@last_show.date_and_time.to_date + 3.months).to_s %>"
-                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            <div class="max-h-64 overflow-y-auto border border-pink-200 rounded-lg bg-white divide-y divide-gray-100">
+              <ul data-recurring-series-modal-target="previewList" class="divide-y divide-gray-100"></ul>
             </div>
 
-            <div class="flex justify-end pt-2">
-              <%= render "shared/button", text: "Extend Series", variant: "primary", type: :submit %>
+            <div class="flex items-center justify-between pt-4">
+              <button type="button" class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer" data-action="click->recurring-series-modal#backToOptions">
+                ← Change options
+              </button>
+              <%= form_with url: extend_series_manage_production_shows_path(@production), method: :post, local: true, data: { "recurring-series-modal-target": "confirmForm" } do %>
+                <%= render "shared/button", text: "Confirm & Extend", variant: "primary", type: :submit %>
+              <% end %>
             </div>
-          <% end %>
+          </div>
         </div>
       </div>
 

@@ -50,7 +50,7 @@
             Current.user.superadmin? ? {
               label: "Ticketing",
               path: manage_ticketing_index_path,
-              active: ["ticketing", "ticketing_providers", "seating_configurations", "show_ticketings", "ticket_listings", "ticket_sales", "ticket_sync_rules"].include?(controller_name)
+              active: ["ticketing", "ticketing_providers", "seating_configurations", "show_ticketings", "ticket_listings", "ticket_sales", "ticket_sync_rules", "course_offerings"].include?(controller_name)
             } : nil,
             {
               label: "Directory",

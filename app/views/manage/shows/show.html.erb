@@ -39,7 +39,80 @@
     links: []
   } %>
 
-  <%= render "manage/shows/show_info_card", show: @show, compact: false %>
+  <%
+    # Determine recurring series panel data for the hero card
+    if @show.recurring?
+      series_shows = @show.recurrence_group.order(:date_and_time)
+      first_show = series_shows.first
+      pattern_label = case @show.recurrence_pattern
+        when "weekly"
+          "Every #{first_show.date_and_time.strftime('%A')}"
+        when "biweekly"
+          "Every other #{first_show.date_and_time.strftime('%A')}"
+        when "monthly_week"
+          week_num = ((first_show.date_and_time.day - 1) / 7) + 1
+          ordinal = %w[1st 2nd 3rd 4th 5th][week_num - 1]
+          "#{ordinal} #{first_show.date_and_time.strftime('%A')} of each month"
+        when "monthly_date"
+          day = first_show.date_and_time.day
+          suffix = if (11..13).include?(day % 100) then "th"
+                   elsif day % 10 == 1 then "st"
+                   elsif day % 10 == 2 then "nd"
+                   elsif day % 10 == 3 then "rd"
+                   else "th"
+                   end
+          "#{day}#{suffix} of each month"
+        else
+          @show.recurrence_pattern&.titleize || "Custom"
+        end
+      series_panel = {
+        type: :series_info,
+        count: series_shows.count,
+        pattern: pattern_label,
+        recurrence_group_id: @show.recurrence_group_id,
+        production: @production
+      }
+    else
+      recurring_groups = @production.shows.where.not(recurrence_group_id: nil).select(:recurrence_group_id).distinct.pluck(:recurrence_group_id)
+      if recurring_groups.any?
+        available_series = recurring_groups.map do |group_id|
+          series_shows = @production.shows.where(recurrence_group_id: group_id).order(:date_and_time)
+          sample = series_shows.first
+          next unless sample
+          pattern_desc = case sample.recurrence_pattern
+            when "weekly"
+              "Every #{sample.date_and_time.strftime('%A')}"
+            when "biweekly"
+              "Every other #{sample.date_and_time.strftime('%A')}"
+            when "monthly_week"
+              week_num = ((sample.date_and_time.day - 1) / 7) + 1
+              ordinal = %w[1st 2nd 3rd 4th 5th][week_num - 1]
+              "#{ordinal} #{sample.date_and_time.strftime('%A')} of each month"
+            when "monthly_date"
+              day = sample.date_and_time.day
+              suffix = if (11..13).include?(day % 100) then "th"
+                       elsif day % 10 == 1 then "st"
+                       elsif day % 10 == 2 then "nd"
+                       elsif day % 10 == 3 then "rd"
+                       else "th"
+                       end
+              "#{day}#{suffix} of each month"
+            else
+              sample.date_and_time.strftime("%A at %l:%M %p").strip
+            end
+          {
+            group_id: group_id,
+            event_type: sample.event_type&.titleize,
+            pattern: pattern_desc,
+            time: sample.date_and_time.strftime("%l:%M %p").strip,
+            count: series_shows.count
+          }
+        end.compact
+        series_panel = { type: :add_to_series, available_series: available_series, show: @show, production: @production } if available_series.any?
+      end
+    end
+  %>
+  <%= render "manage/shows/show_info_card", show: @show, compact: false, series_panel: series_panel %>
 
   <div class="space-y-4">
 

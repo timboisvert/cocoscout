@@ -1,0 +1,253 @@
+<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Schedule" } do %>
+  <h2 class="text-lg font-bold text-gray-900 mb-1">Class Schedule</h2>
+  <p class="text-sm text-gray-600 mb-6">When does this course meet? Add your session dates now, or you can adjust them later.</p>
+
+  <%= form_with url: manage_course_wizard_schedule_path, method: :post, local: true do |form| %>
+    <%# Contract toggle %>
+    <% if @contracts.any? %>
+      <div class="mb-6">
+        <div class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg">
+          <label class="relative inline-flex items-center cursor-pointer mt-0.5">
+            <input type="checkbox" id="contract-toggle"
+                   class="sr-only peer"
+                   <%= 'checked' if @wizard_state[:schedule_mode] == 'contract' %>>
+            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+          <div>
+            <p class="text-sm font-medium text-gray-900">Part of an existing contract</p>
+            <p class="text-xs text-gray-500 mt-0.5">Link this course to a contract's booked time slots.</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <input type="hidden" name="schedule_mode" id="schedule-mode" value="<%= @wizard_state[:schedule_mode] || 'independent' %>">
+
+    <%# Contract mode - select contract + pick rental dates %>
+    <div id="contract-section" class="<%= 'hidden' unless @wizard_state[:schedule_mode] == 'contract' %> space-y-5">
+      <div>
+        <label for="contract_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Select Contract
+        </label>
+        <select name="contract_id" id="contract-select"
+                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          <option value="">Choose a contract...</option>
+          <% @contracts.each do |c| %>
+            <option value="<%= c.id %>"
+                    <%= 'selected' if @wizard_state[:contract_id].to_s == c.id.to_s %>
+                    data-rentals="<%= c.space_rentals.order(:starts_at).map { |r|
+                      {
+                        id: r.id,
+                        starts_at: r.starts_at.strftime('%Y-%m-%dT%H:%M'),
+                        ends_at: r.ends_at.strftime('%Y-%m-%dT%H:%M'),
+                        label: "#{r.starts_at.strftime('%a, %b %-d, %Y at %-I:%M %p')} — #{((r.ends_at - r.starts_at) / 3600).round(1)} hrs",
+                        location: r.location&.name || 'No location',
+                        space: r.location_space&.name
+                      }
+                    }.to_json %>">
+              <%= c.contractor_name %><% if c.production_name.present? %> — <%= c.production_name %><% end %>
+              <% if c.contract_start_date.present? && c.contract_end_date.present? %>
+                (<%= c.contract_start_date.strftime('%b %Y') %> – <%= c.contract_end_date.strftime('%b %Y') %>)
+              <% end %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+
+      <div id="rental-checkboxes" class="<%= 'hidden' unless @wizard_state[:contract_id].present? %>">
+        <p class="text-sm font-medium text-gray-900 mb-2">Select the sessions for this course:</p>
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs text-gray-500">Check the bookings that will be class sessions.</p>
+          <button type="button" id="select-all-rentals" class="text-xs text-pink-600 hover:text-pink-700 font-medium">Select All</button>
+        </div>
+        <div id="rental-list" class="space-y-2 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
+          <%# Populated dynamically by JavaScript when a contract is selected %>
+          <p class="text-sm text-gray-400 italic">Select a contract above to see available time slots.</p>
+        </div>
+      </div>
+    </div>
+
+    <%# Independent mode - manual session entry %>
+    <div id="independent-section" class="<%= 'hidden' if @wizard_state[:schedule_mode] == 'contract' %> space-y-5">
+      <p class="text-sm font-medium text-gray-900 mb-2">Session dates & times</p>
+      <p class="text-xs text-gray-500 mb-3">Add each class meeting. You can skip this and add sessions later from the course management page.</p>
+
+      <div id="sessions-list" class="space-y-3">
+        <%
+          existing_sessions = @wizard_state[:sessions] || []
+          existing_sessions = [{}] if existing_sessions.empty?
+        %>
+        <% existing_sessions.each_with_index do |session, i| %>
+          <div class="session-row flex items-start gap-3 p-3 border border-gray-200 rounded-lg">
+            <div class="flex-1 grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
+                <input type="datetime-local" name="session_datetimes[]"
+                       value="<%= session[:datetime] || session['datetime'] %>"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Duration (min)</label>
+                <input type="number" name="session_durations[]" min="15" step="15"
+                       value="<%= session[:duration] || session['duration'] || 60 %>"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+            </div>
+            <div class="flex-shrink-0 pt-5">
+              <button type="button" class="remove-session text-gray-400 hover:text-red-500 transition" title="Remove session">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <button type="button" id="add-session-btn"
+              class="w-full flex items-center justify-center gap-2 py-2.5 px-4 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Session
+      </button>
+    </div>
+
+    <div class="mt-8 flex items-center justify-between">
+      <%= link_to manage_course_wizard_basics_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next: Instructor", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+
+  <script>
+    (function() {
+      const contractToggle = document.getElementById('contract-toggle');
+      const contractSection = document.getElementById('contract-section');
+      const independentSection = document.getElementById('independent-section');
+      const scheduleModeInput = document.getElementById('schedule-mode');
+      const contractSelect = document.getElementById('contract-select');
+      const rentalCheckboxes = document.getElementById('rental-checkboxes');
+      const rentalList = document.getElementById('rental-list');
+      const sessionsList = document.getElementById('sessions-list');
+      const addSessionBtn = document.getElementById('add-session-btn');
+      const selectAllBtn = document.getElementById('select-all-rentals');
+
+      // Previously selected rental IDs for pre-checking
+      const preSelectedIds = <%= raw (@wizard_state[:selected_rental_ids] || []).to_json %>;
+
+      // Toggle between contract and independent modes
+      if (contractToggle) {
+        contractToggle.addEventListener('change', function() {
+          if (this.checked) {
+            scheduleModeInput.value = 'contract';
+            contractSection.classList.remove('hidden');
+            independentSection.classList.add('hidden');
+          } else {
+            scheduleModeInput.value = 'independent';
+            contractSection.classList.add('hidden');
+            independentSection.classList.remove('hidden');
+          }
+        });
+      }
+
+      // Load rentals when contract is selected
+      if (contractSelect) {
+        contractSelect.addEventListener('change', function() {
+          const option = this.options[this.selectedIndex];
+          if (!option.value) {
+            rentalCheckboxes.classList.add('hidden');
+            return;
+          }
+
+          rentalCheckboxes.classList.remove('hidden');
+          const rentals = JSON.parse(option.dataset.rentals || '[]');
+
+          if (rentals.length === 0) {
+            rentalList.innerHTML = '<p class="text-sm text-gray-400 italic">This contract has no bookings.</p>';
+            return;
+          }
+
+          rentalList.innerHTML = rentals.map(r => {
+            const checked = preSelectedIds.includes(r.id) ? 'checked' : '';
+            const venue = r.space ? `${r.location} (${r.space})` : r.location;
+            return `
+              <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <input type="checkbox" name="rental_ids[]" value="${r.id}" ${checked}
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">${r.label}</p>
+                  <p class="text-xs text-gray-500">${venue}</p>
+                </div>
+              </label>
+            `;
+          }).join('');
+        });
+
+        // Trigger change to load rentals if a contract was previously selected
+        if (contractSelect.value) {
+          contractSelect.dispatchEvent(new Event('change'));
+        }
+      }
+
+      // Select all / deselect all rentals
+      if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+          const boxes = rentalList.querySelectorAll('input[type="checkbox"]');
+          const allChecked = Array.from(boxes).every(b => b.checked);
+          boxes.forEach(b => b.checked = !allChecked);
+          this.textContent = allChecked ? 'Select All' : 'Deselect All';
+        });
+      }
+
+      // Add session row
+      if (addSessionBtn) {
+        addSessionBtn.addEventListener('click', function() {
+          const row = document.createElement('div');
+          row.className = 'session-row flex items-start gap-3 p-3 border border-gray-200 rounded-lg';
+          row.innerHTML = `
+            <div class="flex-1 grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
+                <input type="datetime-local" name="session_datetimes[]"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Duration (min)</label>
+                <input type="number" name="session_durations[]" min="15" step="15" value="60"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+            </div>
+            <div class="flex-shrink-0 pt-5">
+              <button type="button" class="remove-session text-gray-400 hover:text-red-500 transition" title="Remove session">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          `;
+          sessionsList.appendChild(row);
+        });
+      }
+
+      // Remove session row
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.remove-session');
+        if (btn) {
+          const row = btn.closest('.session-row');
+          const rows = sessionsList.querySelectorAll('.session-row');
+          if (rows.length > 1) {
+            row.remove();
+          } else {
+            // Clear the last row instead of removing it
+            row.querySelectorAll('input').forEach(input => input.value = '');
+          }
+        }
+      });
+    })();
+  </script>
+<% end %>

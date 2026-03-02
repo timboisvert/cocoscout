@@ -24,7 +24,7 @@ namespace :communications do
   # Structure:
   #   key: The ContentTemplate key (or unique identifier)
   #   name: Human-readable name
-  #   category: Topic area (auth, profiles, signups, casting, shows, payments, messages)
+  #   category: Topic area (auth, profiles, signups, casting, shows, payments, courses, messages)
   #   channel: Expected channel (email, message, both)
   #   mailer: Mailer class#method (if sends email)
   #   service: Service class (if uses a notification service)
@@ -351,6 +351,31 @@ namespace :communications do
       template_key: "payment_setup_reminder",
       description: "Remind talent to set up payment info",
       callers: [ "Manage::MoneyPayoutsController#send_reminders" ]
+    },
+
+    # ============================================
+    # COURSES
+    # ============================================
+    course_registration_confirmed: {
+      name: "Course Registration Confirmed",
+      category: :courses,
+      channel: :both,
+      mailer: "AppMailer#send_template",
+      service: "CourseRegistrationNotificationService",
+      template_key: "course_registration_confirmed",
+      description: "Confirmation email + in-app message sent to registrant after course purchase",
+      callers: [ "CourseRegistrationConfirmationJob" ],
+      variables: %w[recipient_name course_title amount_paid instructor_name class_schedule dashboard_url]
+    },
+    course_registration_producer_notification: {
+      name: "Course Registration Producer Notification",
+      category: :courses,
+      channel: :message,
+      service: "CourseRegistrationNotificationService",
+      template_key: "course_registration_producer_notification",
+      description: "In-app notification to production team when someone registers for a course",
+      callers: [ "CourseRegistrationConfirmationJob" ],
+      variables: %w[registrant_name course_title amount_paid total_registrations spots_remaining course_offering_url]
     },
 
     # ============================================

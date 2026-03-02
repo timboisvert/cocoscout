@@ -13,6 +13,7 @@ Rails.application.routes.draw do
 
   # Webhooks (external services)
   post "/webhooks/ticketing/:provider_type/:token", to: "ticketing_webhooks#receive", as: "ticketing_webhook"
+  post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
 
   # Landing pages
   get "/for-performers", to: "home#new_performers", as: "performers"
@@ -153,6 +154,9 @@ Rails.application.routes.draw do
   # Short URL for sign-up forms
   get "/s/:code", to: "sign_up_shortlink#show", as: "sign_up_shortlink"
 
+  # Short URL for course registrations
+  get "/c/:code", to: "course_shortlink#show", as: "course_shortlink"
+
   # Selection interface (under manage namespace)
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
@@ -237,6 +241,15 @@ Rails.application.routes.draw do
       post "/form", to: "questionnaires#submitform", as: "submit_questionnaire_form"
       get "/success", to: "questionnaires#success", as: "questionnaire_success"
       get "/inactive", to: "questionnaires#inactive", as: "questionnaire_inactive"
+    end
+
+    # Course registration (public-facing)
+    scope "/courses/:code" do
+      get "/",         to: "course_registrations#entry",    as: "course_entry"
+      get "/details",  to: "course_registrations#show",     as: "course_show"
+      post "/checkout", to: "course_registrations#checkout", as: "course_checkout"
+      get "/success",  to: "course_registrations#success",  as: "course_success"
+      get "/inactive", to: "course_registrations#inactive", as: "course_inactive"
     end
 
     # Sign-up forms (public-facing)
@@ -356,6 +369,7 @@ Rails.application.routes.draw do
     delete "/shows/:production_id/:id/unlink_show", to: "shows#unlink_show", as: "unlink_show"
     delete "/shows/:production_id/:id/delete_linkage", to: "shows#delete_linkage", as: "delete_linkage_show"
     post "/shows/:production_id/:id/toggle_signup_based_casting", to: "shows#toggle_signup_based_casting", as: "toggle_signup_based_casting_show"
+    patch "/shows/:production_id/:id/add_to_series", to: "shows#add_to_series", as: "add_to_series_show"
     post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
     get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
     patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"
@@ -849,6 +863,7 @@ Rails.application.routes.draw do
         collection do
           get :calendar
           get :recurring_series, to: "shows#recurring_series"
+          post :preview_extend_series, to: "shows#preview_extend_series"
           post :extend_series, to: "shows#extend_series"
         end
         member do
@@ -1062,6 +1077,30 @@ Rails.application.routes.draw do
     post "money/shows/:id/payouts/issue_advances", to: "show_payouts#issue_advances", as: "issue_advances_money_show_payout"
     # Reset calculation - clear calculated state and line items
     delete "money/shows/:id/payouts/reset_calculation", to: "show_payouts#reset_calculation", as: "reset_calculation_money_show_payout"
+
+    # Course Offerings (under ticketing section)
+    get "ticketing/courses",              to: "course_offerings#index",   as: "course_offerings"
+    get "ticketing/courses/:id",          to: "course_offerings#show",    as: "course_offering"
+    get "ticketing/courses/:id/edit",     to: "course_offerings#edit",    as: "edit_course_offering"
+    patch "ticketing/courses/:id",        to: "course_offerings#update"
+    put "ticketing/courses/:id",          to: "course_offerings#update"
+    post "ticketing/courses/:id/open",    to: "course_offerings#open_registration",  as: "open_course_offering"
+    post "ticketing/courses/:id/close",   to: "course_offerings#close_registration", as: "close_course_offering"
+
+    # Course Offering Wizard
+    get  "ticketing/courses/wizard/new",        to: "course_offering_wizard#basics",          as: "course_wizard_basics"
+    post "ticketing/courses/wizard/new",        to: "course_offering_wizard#save_basics",     as: "course_wizard_save_basics"
+    get  "ticketing/courses/wizard/schedule",   to: "course_offering_wizard#schedule",        as: "course_wizard_schedule"
+    post "ticketing/courses/wizard/schedule",   to: "course_offering_wizard#save_schedule"
+    get  "ticketing/courses/wizard/instructor",  to: "course_offering_wizard#instructor",     as: "course_wizard_instructor"
+    post "ticketing/courses/wizard/instructor",  to: "course_offering_wizard#save_instructor"
+    get  "ticketing/courses/wizard/pricing",    to: "course_offering_wizard#pricing",         as: "course_wizard_pricing"
+    post "ticketing/courses/wizard/pricing",    to: "course_offering_wizard#save_pricing"
+    get  "ticketing/courses/wizard/details",    to: "course_offering_wizard#details",         as: "course_wizard_details"
+    post "ticketing/courses/wizard/details",    to: "course_offering_wizard#save_details"
+    get  "ticketing/courses/wizard/review",     to: "course_offering_wizard#review",          as: "course_wizard_review"
+    post "ticketing/courses/wizard/create",     to: "course_offering_wizard#create_offering", as: "course_wizard_create"
+    delete "ticketing/courses/wizard/cancel",   to: "course_offering_wizard#cancel",          as: "course_wizard_cancel"
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"

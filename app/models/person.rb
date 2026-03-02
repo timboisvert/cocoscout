@@ -37,6 +37,9 @@ class Person < ApplicationRecord
   # Sign-up registrations
   has_many :sign_up_registrations, dependent: :destroy
 
+  # Course registrations
+  has_many :course_registrations, dependent: :destroy
+
   has_many :group_memberships, dependent: :destroy
   has_many :groups, through: :group_memberships
 

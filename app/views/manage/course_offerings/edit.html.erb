@@ -1,0 +1,17 @@
+<% content_for :title, "Edit #{@course_offering.title}" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path],
+    ["Courses", manage_course_offerings_path],
+    [@course_offering.title, manage_course_offering_path(@course_offering)]
+  ],
+  text: "Edit",
+  links: []
+} %>
+
+<%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+<div class="mt-6">
+  <%= render "form", course_offering: @course_offering, productions: @productions %>
+</div>

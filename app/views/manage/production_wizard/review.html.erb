@@ -30,9 +30,9 @@
     <div class="flex items-start justify-between py-3 border-b border-gray-200">
       <div>
         <p class="text-sm font-medium text-gray-500">Logo</p>
-        <% if @wizard_state[:logo_temp_path].present? && File.exist?(@wizard_state[:logo_temp_path]) %>
+        <% if @wizard_state[:logo_data].present? %>
           <div class="mt-2">
-            <img src="<%= "data:#{@wizard_state[:logo_content_type]};base64,#{Base64.strict_encode64(File.read(@wizard_state[:logo_temp_path]))}" %>"
+            <img src="data:<%= @wizard_state[:logo_content_type] %>;base64,<%= @wizard_state[:logo_data] %>"
                  alt="Logo preview"
                  class="max-h-20 rounded-lg border border-gray-200">
           </div>

@@ -37,6 +37,7 @@ class ContentTemplate < ApplicationRecord
     signups
     shows
     payments
+    courses
     messages
   ].freeze
 

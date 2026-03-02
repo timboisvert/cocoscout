@@ -219,6 +219,7 @@ module Manage
 
     def activate
       @contract.allow_overlap = params[:allow_overlap] == "1"
+      @contract.skip_event_creation = params[:skip_event_creation] == "1"
 
       if @contract.activate!
         redirect_to manage_contract_path(@contract), notice: "Contract activated successfully!"

@@ -1,0 +1,203 @@
+<% content_for :title, @course_offering.title %>
+
+<div class="min-h-screen bg-white">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <p class="text-sm font-medium text-pink-600 mb-1"><%= @organization.name %></p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @course_offering.title %></h1>
+      <% if @course_offering.instructor_name.present? %>
+        <p class="text-lg text-slate-600">Instructor: <strong><%= @course_offering.instructor_name %></strong></p>
+      <% end %>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-8">
+
+      <!-- Left Column: Course Details (2/3 width) -->
+      <div class="lg:col-span-2 space-y-8">
+
+        <!-- Description -->
+        <% if @course_offering.description.present? %>
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900 mb-3">About This Course</h2>
+            <div class="prose prose-slate max-w-none text-slate-700">
+              <%= @course_offering.description %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Instructor Bio -->
+        <% if @course_offering.instructor_bio.present? %>
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900 mb-3">About the Instructor</h2>
+            <div class="prose prose-slate max-w-none text-slate-700">
+              <%= @course_offering.instructor_bio %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Schedule -->
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900 mb-4">Course Schedule</h2>
+          <% if @sessions.any? %>
+            <div class="space-y-3">
+              <% @sessions.each do |show| %>
+                <div class="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-4">
+                  <!-- Date box -->
+                  <div class="flex-shrink-0 w-14 h-14 bg-pink-50 border border-pink-200 rounded-lg flex flex-col items-center justify-center">
+                    <span class="text-xs font-medium text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></span>
+                    <span class="text-xl font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-medium text-slate-900">
+                      <%= show.date_and_time.strftime("%A, %B %-d, %Y") %>
+                    </p>
+                    <p class="text-sm text-slate-600">
+                      <%= show.date_and_time.strftime("%-I:%M %p") %>
+                      <% if show.location.present? %>
+                        &middot; <%= show.location.name %>
+                      <% end %>
+                    </p>
+                    <% if show.name.present? %>
+                      <p class="text-sm text-slate-500 mt-0.5"><%= show.name %></p>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-slate-500 text-sm">Schedule coming soon.</p>
+          <% end %>
+        </div>
+
+        <!-- Instruction Text -->
+        <% if @course_offering.instruction_text.present? %>
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-6">
+            <div class="prose prose-slate max-w-none text-slate-700 text-sm">
+              <%= @course_offering.instruction_text %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Right Column: Pricing & Register (1/3 width, sticky) -->
+      <div>
+        <div class="lg:sticky lg:top-8">
+          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+
+            <% if @existing_registration %>
+              <!-- Already Registered -->
+              <div class="text-center">
+                <div class="flex items-center justify-center mb-3">
+                  <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </div>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 mb-1">You're Registered!</h3>
+                <p class="text-sm text-slate-600 mb-4">
+                  <% if @existing_registration.confirmed? %>
+                    Payment confirmed. You're all set!
+                  <% else %>
+                    Payment pending. We'll confirm your registration once payment is received.
+                  <% end %>
+                </p>
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <p class="text-sm text-green-800">
+                    <strong><%= @existing_registration.formatted_amount %></strong> paid on
+                    <%= @existing_registration.paid_at&.strftime("%B %-d, %Y") || "pending" %>
+                  </p>
+                </div>
+                <%= link_to my_dashboard_path do %>
+                  <%= render "shared/button", text: "Go to Dashboard", variant: "secondary", size: "medium" %>
+                <% end %>
+              </div>
+
+            <% else %>
+              <!-- Pricing -->
+              <div class="text-center mb-6">
+                <% if @course_offering.early_bird_active? %>
+                  <div class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Early Bird Pricing
+                  </div>
+                  <div class="flex items-baseline justify-center gap-3">
+                    <span class="text-3xl font-bold text-slate-900"><%= @course_offering.formatted_early_bird_price %></span>
+                    <span class="text-lg text-slate-400 line-through"><%= @course_offering.formatted_price %></span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Early bird ends <%= @course_offering.early_bird_deadline.strftime("%B %-d, %Y") %>
+                  </p>
+                <% else %>
+                  <div class="text-3xl font-bold text-slate-900"><%= @course_offering.formatted_price %></div>
+                  <% if @course_offering.early_bird_price_cents.present? && !@course_offering.early_bird_active? %>
+                    <p class="text-xs text-slate-500 mt-1">Early bird pricing has ended</p>
+                  <% end %>
+                <% end %>
+              </div>
+
+              <!-- Capacity -->
+              <% if @course_offering.capacity.present? %>
+                <div class="mb-6">
+                  <% spots = @course_offering.spots_remaining %>
+                  <div class="flex items-center justify-between text-sm mb-1">
+                    <span class="text-slate-600">Spots remaining</span>
+                    <span class="font-semibold text-slate-900"><%= spots %> of <%= @course_offering.capacity %></span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-pink-500 h-2 rounded-full" style="width: <%= (((@course_offering.capacity - spots).to_f / @course_offering.capacity) * 100).round %>%"></div>
+                  </div>
+                </div>
+              <% end %>
+
+              <!-- Register Button -->
+              <% if @course_offering.accepting_registrations? %>
+                <%= form_with url: my_course_checkout_path(code: @course_offering.short_code), method: :post do %>
+                  <%= render "shared/button",
+                      text: "Register & Pay #{@course_offering.formatted_current_price}",
+                      variant: "primary",
+                      size: "jumbo",
+                      type: :submit,
+                      classes: "w-full" %>
+                <% end %>
+                <p class="text-xs text-slate-500 text-center mt-3 flex items-center justify-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Secure payment via Stripe
+                </p>
+              <% else %>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                  <p class="text-sm text-slate-600"><%= @course_offering.registration_closed_reason %></p>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <!-- Session count summary -->
+          <div class="mt-4 text-center text-sm text-slate-500">
+            <% total = @course_offering.sessions.count %>
+            <% upcoming = @sessions.count %>
+            <%= total %> session<%= total == 1 ? "" : "s" %> total
+            <% if upcoming < total %>
+              &middot; <%= upcoming %> upcoming
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-12 pt-6 border-t border-slate-200">
+      <div class="flex items-center justify-center gap-2">
+        <%= render "shared/cocoscout_logo", size: :tiny %>
+        <span class="text-base font-semibold coustard-regular text-pink-500">CocoScout</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,80 @@
+<% content_for :title, "Course Offerings" %>
+
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Ticketing", manage_ticketing_index_path]
+  ],
+  text: "Course Offerings",
+  links: [
+    { text: "New Course", path: manage_course_wizard_basics_path }
+  ]
+} %>
+
+<%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+<div class="max-w-5xl mx-auto">
+  <% if @course_offerings.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
+      <% @course_offerings.each do |offering| %>
+        <%= link_to manage_course_offering_path(offering), class: "block p-4 hover:bg-gray-50 transition-colors" do %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3">
+                <h3 class="text-base font-semibold text-gray-900 truncate"><%= offering.title %></h3>
+                <% case offering.status %>
+                <% when "draft" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">Draft</span>
+                <% when "open" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Open</span>
+                <% when "closed" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Closed</span>
+                <% when "archived" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Archived</span>
+                <% end %>
+              </div>
+              <p class="text-sm text-gray-600 mt-1">
+                <%= offering.production.name %>
+                &middot; <%= offering.formatted_price %>
+                <% if offering.early_bird_price_cents.present? %>
+                  (Early bird: <%= offering.formatted_early_bird_price %>)
+                <% end %>
+              </p>
+            </div>
+            <div class="flex items-center gap-6 ml-4">
+              <div class="text-right">
+                <p class="text-sm font-semibold text-gray-900"><%= offering.confirmed_registrations_count %></p>
+                <p class="text-xs text-gray-500">registrations</p>
+              </div>
+              <% if offering.capacity.present? %>
+                <div class="text-right">
+                  <p class="text-sm font-semibold text-gray-900"><%= offering.spots_remaining %></p>
+                  <p class="text-xs text-gray-500">spots left</p>
+                </div>
+              <% end %>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-lg p-12 text-center">
+      <div class="flex items-center justify-center mb-4">
+        <div class="h-12 w-12 rounded-full bg-pink-100 flex items-center justify-center">
+          <svg class="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">No Course Offerings Yet</h3>
+      <p class="text-gray-600 text-sm mb-6">
+        Create a course to start selling registrations online.
+      </p>
+      <%= link_to manage_course_wizard_basics_path do %>
+        <%= render "shared/button", text: "Create Course Offering", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

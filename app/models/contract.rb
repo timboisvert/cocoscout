@@ -8,6 +8,7 @@ class Contract < ApplicationRecord
   has_many :contract_payments, dependent: :destroy
   has_many :space_rentals, dependent: :destroy
   has_many :productions, dependent: :nullify
+  has_many :course_offerings, dependent: :nullify
 
   # Status enum
   enum :status, {
@@ -39,7 +40,8 @@ class Contract < ApplicationRecord
       create_records_from_draft!
       update!(
         status: :active,
-        activated_at: Time.current
+        activated_at: Time.current,
+        skip_event_creation: skip_event_creation
         # Keep draft_data - it contains the full contract config (services, payment_config, etc.)
       )
     end
@@ -307,27 +309,30 @@ class Contract < ApplicationRecord
       )
     end
 
-    # Always create a production for the contract
-    # This makes the events visible in Shows & Events
-    prod_data = draft_data["production"] || {}
-    production = productions.create!(
-      organization: organization,
-      name: production_name.presence || prod_data["name"].presence || contractor_name,
-      production_type: "third_party",
-      contact_email: contractor_email
-    )
-
-    # Create shows for each space rental (booking)
-    space_rentals.reload.each do |rental|
-      duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
-      production.shows.create!(
-        date_and_time: rental.starts_at,
-        duration_minutes: duration_minutes,
-        location: rental.location,
-        location_space: rental.location_space,
-        space_rental: rental,
-        event_type: prod_data["event_type"].presence || "show"
+    # Create a production and shows for the contract unless event creation is skipped.
+    # skip_event_creation is used for space-rental-only contracts where events
+    # will be created separately (e.g. as individual course offerings).
+    unless skip_event_creation?
+      prod_data = draft_data["production"] || {}
+      production = productions.create!(
+        organization: organization,
+        name: production_name.presence || prod_data["name"].presence || contractor_name,
+        production_type: "third_party",
+        contact_email: contractor_email
       )
+
+      # Create shows for each space rental (booking)
+      space_rentals.reload.each do |rental|
+        duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
+        production.shows.create!(
+          date_and_time: rental.starts_at,
+          duration_minutes: duration_minutes,
+          location: rental.location,
+          location_space: rental.location_space,
+          space_rental: rental,
+          event_type: prod_data["event_type"].presence || "show"
+        )
+      end
     end
   end
 end

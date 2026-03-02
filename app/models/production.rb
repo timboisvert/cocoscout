@@ -19,6 +19,7 @@ class Production < ApplicationRecord
   has_many :team_invitations, dependent: :destroy
   has_many :questionnaires, dependent: :destroy
   has_many :sign_up_forms, dependent: :destroy
+  has_many :course_offerings, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy
@@ -54,15 +55,17 @@ class Production < ApplicationRecord
     manual: "manual"              # Admin manually adds names/emails
   }, default: :talent_pool, prefix: :casting
 
-  # Production type: in-house (our production) or third-party (renter/contractor)
+  # Production type: in-house (our production), third-party (renter/contractor), or course (education program)
   enum :production_type, {
     in_house: "in_house",
-    third_party: "third_party"
+    third_party: "third_party",
+    course: "course"
   }, default: :in_house, prefix: :type
 
   # Scopes for archiving
   scope :active, -> { where(archived_at: nil) }
   scope :archived, -> { where.not(archived_at: nil) }
+  scope :courses, -> { where(production_type: "course") }
 
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
@@ -545,8 +548,8 @@ class Production < ApplicationRecord
   end
 
   def logo_content_type
-    return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png])
+    return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png image/gif])
 
-    errors.add(:logo, "Logo must be a JPEG, JPG, or PNG file")
+    errors.add(:logo, "Logo must be a JPEG, JPG, PNG, or GIF file")
   end
 end

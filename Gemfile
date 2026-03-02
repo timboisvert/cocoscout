@@ -23,6 +23,7 @@ gem "solid_queue"
 gem "solid_cable"
 gem "sqlite3"
 gem "stackprof"
+gem "stripe"
 gem "stimulus-rails"
 gem "tailwindcss-rails"
 gem "thruster", require: false

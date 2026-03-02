@@ -1,0 +1,42 @@
+<% content_for :title, "Registration Not Available" %>
+
+<div class="min-h-screen bg-white">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-slate-900 coustard-regular"><%= @course_offering.title %></h1>
+      <p class="text-slate-600 mt-1"><%= @production.organization.name %></p>
+    </div>
+
+    <!-- Status Card -->
+    <div class="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+      <div class="flex items-center justify-center mb-4">
+        <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+          <svg class="h-6 w-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+      <h2 class="text-xl font-semibold text-slate-900 mb-2">Registration Not Currently Open</h2>
+      <p class="text-slate-600 text-sm">
+        <% if @course_offering.draft? %>
+          This course has not yet opened for registration. Check back later!
+        <% elsif @course_offering.closed? %>
+          Registration for this course has closed.
+        <% elsif @course_offering.archived? %>
+          This course is no longer available.
+        <% else %>
+          Registration is not currently available. Please check back later.
+        <% end %>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center">
+      <div class="flex items-center justify-center gap-2">
+        <%= render "shared/cocoscout_logo", size: :tiny %>
+        <span class="text-base font-semibold coustard-regular text-pink-500">CocoScout</span>
+      </div>
+    </div>
+  </div>
+</div>

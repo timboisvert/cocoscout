@@ -33,14 +33,16 @@ module Manage
       # Handle skip
       if params[:skip] == "true"
         @wizard_state[:skip_logo] = true
+        @wizard_state.delete(:logo_data)
+        @wizard_state.delete(:logo_filename)
+        @wizard_state.delete(:logo_content_type)
         save_wizard_state
         redirect_to manage_productions_wizard_casting_path and return
       end
 
-      # Store logo in temporary location if uploaded
+      # Store logo data directly in cache (shared across web servers)
       if params[:logo].present?
-        # Store the uploaded file temporarily
-        @wizard_state[:logo_temp_path] = store_temp_file(params[:logo])
+        @wizard_state[:logo_data] = Base64.strict_encode64(params[:logo].read)
         @wizard_state[:logo_filename] = params[:logo].original_filename
         @wizard_state[:logo_content_type] = params[:logo].content_type
       end
@@ -160,10 +162,10 @@ module Manage
           casting_setup_completed: true
         )
 
-        # Attach logo if provided
-        if @wizard_state[:logo_temp_path].present? && File.exist?(@wizard_state[:logo_temp_path])
+        # Attach logo if provided (stored as base64 in cache)
+        if @wizard_state[:logo_data].present?
           @production.logo.attach(
-            io: File.open(@wizard_state[:logo_temp_path]),
+            io: StringIO.new(Base64.strict_decode64(@wizard_state[:logo_data])),
             filename: @wizard_state[:logo_filename],
             content_type: @wizard_state[:logo_content_type]
           )
@@ -204,9 +206,6 @@ module Manage
         end
       end
 
-      # Clean up temp files
-      cleanup_temp_files
-
       # Clear wizard state
       clear_wizard_state
 
@@ -224,7 +223,6 @@ module Manage
     end
 
     def cancel
-      cleanup_temp_files
       clear_wizard_state
       redirect_to manage_productions_path, notice: "Production creation cancelled"
     end
@@ -246,23 +244,6 @@ module Manage
 
     def wizard_cache_key
       "production_wizard:#{Current.user.id}:#{Current.organization.id}"
-    end
-
-    def store_temp_file(uploaded_file)
-      temp_dir = Rails.root.join("tmp", "production_wizard_uploads")
-      FileUtils.mkdir_p(temp_dir)
-
-      temp_path = temp_dir.join("#{SecureRandom.uuid}_#{uploaded_file.original_filename}")
-      File.open(temp_path, "wb") { |f| f.write(uploaded_file.read) }
-      temp_path.to_s
-    end
-
-    def cleanup_temp_files
-      if @wizard_state[:logo_temp_path].present? && File.exist?(@wizard_state[:logo_temp_path])
-        File.delete(@wizard_state[:logo_temp_path])
-      end
-    rescue StandardError => e
-      Rails.logger.error("Failed to cleanup temp file: #{e.message}")
     end
 
     def parse_custom_roles(roles_params)
