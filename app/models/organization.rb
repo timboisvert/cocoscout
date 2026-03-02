@@ -5,6 +5,7 @@ class Organization < ApplicationRecord
   belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
+  has_many :contractors, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
   has_many :organization_roles, dependent: :destroy

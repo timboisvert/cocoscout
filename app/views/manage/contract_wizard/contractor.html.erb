@@ -1,18 +1,52 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Contractor" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who is the contractor?</h2>
-  <p class="text-gray-600 mb-6">Enter the contact details for the person or group you're contracting with.</p>
+  <p class="text-gray-600 mb-6">Select an existing contractor or enter new contact details.</p>
 
-  <%= form_with model: @contract, url: manage_contractor_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+  <%= form_with model: @contract, url: manage_contractor_contract_wizard_path(@contract), method: :post, local: true,
+                data: { controller: "contractor-select" } do |form| %>
     <div class="space-y-5">
-      <div>
-        <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Company / Contractor Name
-          <span class="text-pink-500">*</span>
-        </label>
-        <%= form.text_field :contractor_name,
-          placeholder: "e.g., Nuns4Fun Entertainment",
-          required: true,
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+      <%# Existing contractor selector %>
+      <% if @contractors.any? %>
+        <div>
+          <label for="contractor_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Select Existing Contractor
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <%= form.select :contractor_id,
+            options_for_select(
+              [["-- Create new contractor --", ""]] + @contractors.map { |c| [c.name, c.id] },
+              @contract.contractor_id
+            ),
+            {},
+            {
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition",
+              data: { contractor_select_target: "select", action: "change->contractor-select#selectContractor" }
+            } %>
+          <p class="mt-1 text-xs text-gray-500">Select an existing contractor to auto-fill their details, or leave blank to create a new one.</p>
+        </div>
+
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-200"></div>
+          </div>
+          <div class="relative flex justify-center text-xs uppercase">
+            <span class="bg-gray-50 px-2 text-gray-500">or enter details</span>
+          </div>
+        </div>
+      <% end %>
+
+      <div data-contractor-select-target="fields">
+        <div>
+          <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Company / Contractor Name
+            <span class="text-pink-500">*</span>
+          </label>
+          <%= form.text_field :contractor_name,
+            placeholder: "e.g., Nuns4Fun Entertainment",
+            required: true,
+            data: { contractor_select_target: "name" },
+            class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+        </div>
       </div>
 
       <div>
@@ -26,37 +60,49 @@
         <p class="mt-1 text-xs text-gray-500">If different from the contractor name, enter the name of the show or production.</p>
       </div>
 
-      <div>
-        <label for="contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Email
-          <span class="text-gray-400 font-normal">(optional)</span>
-        </label>
-        <%= form.email_field :contractor_email,
-          placeholder: "contact@example.com",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-      </div>
+      <div data-contractor-select-target="contactFields">
+        <div class="space-y-5">
+          <div>
+            <label for="contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Email
+              <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <%= form.email_field :contractor_email,
+              placeholder: "contact@example.com",
+              data: { contractor_select_target: "email" },
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
 
-      <div>
-        <label for="contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Phone
-          <span class="text-gray-400 font-normal">(optional)</span>
-        </label>
-        <%= form.telephone_field :contractor_phone,
-          placeholder: "(555) 123-4567",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-      </div>
+          <div>
+            <label for="contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Phone
+              <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <%= form.telephone_field :contractor_phone,
+              placeholder: "(555) 123-4567",
+              data: { contractor_select_target: "phone" },
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
 
-      <div>
-        <label for="contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Address
-          <span class="text-gray-400 font-normal">(optional)</span>
-        </label>
-        <%= form.text_area :contractor_address,
-          rows: 3,
-          placeholder: "123 Main Street\nCity, State 12345",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          <div>
+            <label for="contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Address
+              <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <%= form.text_area :contractor_address,
+              rows: 3,
+              placeholder: "123 Main Street\nCity, State 12345",
+              data: { contractor_select_target: "address" },
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
+        </div>
       </div>
     </div>
+
+    <%# Hidden data for JS %>
+    <template id="contractors-data">
+      <%= @contractors.map { |c| { id: c.id, name: c.name, email: c.email, phone: c.phone, address: c.address } }.to_json %>
+    </template>
 
     <div class="mt-8 flex justify-end">
       <%= render "shared/button", text: "Next: Bookings", variant: "primary", size: "medium", type: :submit %>

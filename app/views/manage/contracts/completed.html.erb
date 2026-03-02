@@ -1,0 +1,33 @@
+<% content_for :title, "Past Contracts" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contracts", manage_contracts_path]
+    ],
+    text: "Past Contracts",
+    links: []
+  } %>
+
+  <% if @completed_contracts.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Past Contracts" %>
+      <div class="p-4 space-y-2">
+        <% @completed_contracts.each do |contract| %>
+          <%= render "contract_list_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
+      <%= icon("archive", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No past contracts</h3>
+      <p class="text-gray-600 mb-4">
+        Completed and cancelled contracts will appear here.
+      </p>
+    </div>
+  <% end %>
+</div>

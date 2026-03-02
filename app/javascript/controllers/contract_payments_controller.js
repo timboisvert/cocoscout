@@ -165,7 +165,7 @@ export default class extends Controller {
             per_event_amount: this.hasPerEventAmountTarget ? this.perEventAmountTarget.value : "",
             per_event_direction: this.hasPerEventDirectionTarget ? this.perEventDirectionTarget.value : "incoming",
             per_event_timing: this.hasPerEventTimingTarget ? this.perEventTimingTarget.value : "per_event",
-            per_event_terms: this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "due",
+            per_event_terms: this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "same_day",
             per_event_terms_days: this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : "7",
             per_event_upfront_due: this.hasPerEventUpfrontDueTarget ? this.perEventUpfrontDueTarget.value : "",
             per_event_has_discount: this.hasPerEventDiscountTarget ? this.perEventDiscountTarget.checked : false,

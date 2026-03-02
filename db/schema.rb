@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_01_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -404,6 +404,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
     t.index ["status"], name: "index_contract_payments_on_status"
   end
 
+  create_table "contractors", force: :cascade do |t|
+    t.text "address"
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.string "name", null: false
+    t.text "notes"
+    t.bigint "organization_id", null: false
+    t.string "phone"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "name"], name: "index_contractors_on_organization_id_and_name"
+    t.index ["organization_id"], name: "index_contractors_on_organization_id"
+  end
+
   create_table "contracts", force: :cascade do |t|
     t.datetime "activated_at"
     t.datetime "cancelled_at"
@@ -412,6 +425,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
     t.date "contract_start_date"
     t.text "contractor_address"
     t.string "contractor_email"
+    t.bigint "contractor_id"
     t.string "contractor_name", null: false
     t.string "contractor_phone"
     t.datetime "created_at", null: false
@@ -424,6 +438,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
     t.text "terms"
     t.datetime "updated_at", null: false
     t.integer "wizard_step", default: 1, null: false
+    t.index ["contractor_id"], name: "index_contracts_on_contractor_id"
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["status"], name: "index_contracts_on_status"
@@ -2326,6 +2341,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_224746) do
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
+  add_foreign_key "contractors", "organizations"
+  add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "email_batches", "users"

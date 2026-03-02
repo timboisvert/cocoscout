@@ -83,7 +83,13 @@
           <dl class="grid grid-cols-2 gap-4">
             <div>
               <dt class="text-sm font-medium text-gray-500">Company</dt>
-              <dd class="mt-1 text-sm text-gray-900"><%= @contract.contractor_name %></dd>
+              <dd class="mt-1 text-sm text-gray-900">
+                <% if @contract.contractor.present? %>
+                  <%= link_to @contract.contractor_name, manage_contractor_path(@contract.contractor), class: "text-pink-600 hover:text-pink-700" %>
+                <% else %>
+                  <%= @contract.contractor_name %>
+                <% end %>
+              </dd>
             </div>
             <% if @contract.production_name.present? %>
               <div>

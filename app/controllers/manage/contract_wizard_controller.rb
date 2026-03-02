@@ -7,40 +7,57 @@ module Manage
     # Step 0: Start new contract
     def new
       @contract = Current.organization.contracts.build
+      @contractors = Current.organization.contractors.alphabetical
     end
 
     def create_draft
+      contractor_id = params[:contract][:contractor_id].presence
+      contractor = Current.organization.contractors.find_by(id: contractor_id) if contractor_id
+
+      # Require a contractor to be selected
+      unless contractor
+        @contract = Current.organization.contracts.build
+        @contractors = Current.organization.contractors.alphabetical
+        flash.now[:alert] = "Please select a contractor or create a new one."
+        render :new, status: :unprocessable_entity
+        return
+      end
+
       @contract = Current.organization.contracts.build(
-        contractor_name: params[:contract][:contractor_name].presence || "New Contract",
+        contractor_id: contractor.id,
+        contractor_name: contractor.name,
+        contractor_email: contractor.email,
+        contractor_phone: contractor.phone,
+        contractor_address: contractor.address,
         status: :draft,
-        wizard_step: 1
+        wizard_step: 2
       )
 
       if @contract.save
-        redirect_to manage_contractor_contract_wizard_path(@contract)
+        redirect_to manage_bookings_contract_wizard_path(@contract)
       else
+        @contractors = Current.organization.contractors.alphabetical
         render :new, status: :unprocessable_entity
       end
     end
 
     # Resume a draft contract at its last step
     def resume
-      step = @contract.wizard_step || 1
+      step = @contract.wizard_step || 2
+      # Minimum step is now 2 (bookings) since contractor is selected at creation
+      step = 2 if step < 2
       redirect_to wizard_step_path(step)
     end
 
-    # Step 1: Contractor info
+    # Step 1: Contractor info (deprecated - redirect to bookings)
     def contractor
-      @step = 1
+      # Contractor is now selected at contract creation, skip to bookings
+      redirect_to manage_bookings_contract_wizard_path(@contract)
     end
 
     def save_contractor
-      if @contract.update(contractor_params.merge(wizard_step: [ 2, @contract.wizard_step ].max))
-        redirect_to manage_bookings_contract_wizard_path(@contract)
-      else
-        @step = 1
-        render :contractor, status: :unprocessable_entity
-      end
+      # Redirect to bookings since this step is deprecated
+      redirect_to manage_bookings_contract_wizard_path(@contract)
     end
 
     # Step 2: Bookings (space/time reservations)
@@ -225,21 +242,33 @@ module Manage
     end
 
     def contractor_params
-      params.require(:contract).permit(
-        :contractor_name, :production_name, :contractor_email, :contractor_phone, :contractor_address
+      permitted = params.require(:contract).permit(
+        :contractor_id, :contractor_name, :production_name, :contractor_email, :contractor_phone, :contractor_address
       )
+
+      # If contractor_id is provided, sync the contractor info
+      if permitted[:contractor_id].present?
+        contractor = Current.organization.contractors.find_by(id: permitted[:contractor_id])
+        if contractor
+          permitted[:contractor_name] = contractor.name if permitted[:contractor_name].blank?
+          permitted[:contractor_email] ||= contractor.email
+          permitted[:contractor_phone] ||= contractor.phone
+          permitted[:contractor_address] ||= contractor.address
+        end
+      end
+
+      permitted
     end
 
     def wizard_step_path(step)
       case step
-      when 1 then manage_contractor_contract_wizard_path(@contract)
-      when 2 then manage_bookings_contract_wizard_path(@contract)
+      when 1, 2 then manage_bookings_contract_wizard_path(@contract)
       when 3 then manage_schedule_preview_contract_wizard_path(@contract)
       when 4 then manage_services_contract_wizard_path(@contract)
       when 5 then manage_payments_contract_wizard_path(@contract)
       when 6 then manage_documents_contract_wizard_path(@contract)
       when 7 then manage_review_contract_wizard_path(@contract)
-      else manage_contractor_contract_wizard_path(@contract)
+      else manage_bookings_contract_wizard_path(@contract)
       end
     end
 

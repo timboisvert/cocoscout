@@ -3,12 +3,19 @@
 FactoryBot.define do
   factory :contract do
     association :organization
+    contractor { nil }
     contractor_name { "Venue Corp" }
     contractor_email { "venue@example.com" }
     status { :draft }
     contract_start_date { 1.month.from_now }
     contract_end_date { 3.months.from_now }
     draft_data { {} }
+
+    trait :with_contractor do
+      contractor { association :contractor, organization: organization }
+      contractor_name { contractor.name }
+      contractor_email { contractor.email }
+    end
 
     trait :active do
       status { :active }

@@ -2,6 +2,7 @@
 
 class Contract < ApplicationRecord
   belongs_to :organization
+  belongs_to :contractor, optional: true
 
   has_many :contract_documents, dependent: :destroy
   has_many :contract_payments, dependent: :destroy
@@ -17,6 +18,9 @@ class Contract < ApplicationRecord
   }, default: :draft, prefix: :status
 
   validates :contractor_name, presence: true
+
+  # Callbacks to sync contractor data
+  before_save :sync_contractor_info
 
   # Scopes
   scope :recent, -> { order(created_at: :desc) }
@@ -172,6 +176,24 @@ class Contract < ApplicationRecord
   end
 
   private
+
+  def sync_contractor_info
+    return unless contractor_id.present?
+
+    # If contractor is set, ensure contractor_name comes from the contractor
+    self.contractor_name = contractor.name if contractor_name.blank? || contractor_id_changed?
+
+    # Optionally sync contact info from contractor if not set on contract
+    if contractor_email.blank? && contractor.email.present?
+      self.contractor_email = contractor.email
+    end
+    if contractor_phone.blank? && contractor.phone.present?
+      self.contractor_phone = contractor.phone
+    end
+    if contractor_address.blank? && contractor.address.present?
+      self.contractor_address = contractor.address
+    end
+  end
 
   def create_records_from_draft!
     # Create space rentals from draft bookings

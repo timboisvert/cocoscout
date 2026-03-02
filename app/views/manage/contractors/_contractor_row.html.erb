@@ -1,0 +1,43 @@
+<%
+  active_count = contractor.active_contracts.count
+  total_count = contractor.total_contracts_count
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+  <%= link_to manage_contractor_path(contractor), class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-center">
+      <%# Contractor Info %>
+      <div class="flex-1 flex items-center gap-4 px-4 py-3">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
+          <%= contractor.name.to_s.split.map { |w| w[0] }.first(2).join.upcase %>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-medium text-gray-900">
+              <%= contractor.name %>
+            </span>
+            <% if active_count > 0 %>
+              <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                <%= pluralize(active_count, "active contract") %>
+              </span>
+            <% end %>
+          </div>
+          <div class="text-sm text-gray-500 truncate">
+            <% if contractor.email.present? %>
+              <%= contractor.email %>
+            <% elsif total_count > 0 %>
+              <%= pluralize(total_count, "total contract") %>
+            <% else %>
+              No contracts yet
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Actions %>
+      <div class="px-4 py-3 flex items-center gap-2">
+        <%= icon("chevron-right", class: "w-5 h-5 text-gray-400") %>
+      </div>
+    </div>
+  <% end %>
+</div>

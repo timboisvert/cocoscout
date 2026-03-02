@@ -1,0 +1,77 @@
+<%= form_with model: contractor, url: contractor.persisted? ? manage_contractor_path(contractor) : manage_contractors_path, method: contractor.persisted? ? :patch : :post, local: true, class: "space-y-6" do |form| %>
+  <% if contractor.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div class="flex items-start gap-3">
+        <%= icon("exclamation-circle", class: "w-5 h-5 text-red-500 flex-shrink-0") %>
+        <div>
+          <h3 class="text-sm font-medium text-red-800">
+            <%= pluralize(contractor.errors.count, "error") %> prevented this contractor from being saved:
+          </h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% contractor.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-6 space-y-5">
+    <div>
+      <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+        Name
+        <span class="text-pink-500">*</span>
+      </label>
+      <%= form.text_field :name,
+        placeholder: "e.g., Nuns4Fun Entertainment",
+        required: true,
+        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    </div>
+
+    <div>
+      <label for="contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
+        Email
+      </label>
+      <%= form.email_field :email,
+        placeholder: "contact@example.com",
+        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    </div>
+
+    <div>
+      <label for="contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
+        Phone
+      </label>
+      <%= form.telephone_field :phone,
+        placeholder: "(555) 123-4567",
+        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    </div>
+
+    <div>
+      <label for="contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
+        Address
+      </label>
+      <%= form.text_area :address,
+        rows: 3,
+        placeholder: "123 Main Street\nCity, State 12345",
+        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    </div>
+
+    <div>
+      <label for="contractor_notes" class="block text-sm font-medium text-gray-900 mb-1.5">
+        Notes
+      </label>
+      <%= form.text_area :notes,
+        rows: 3,
+        placeholder: "Internal notes about this contractor...",
+        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-3">
+    <%= link_to contractor.persisted? ? manage_contractor_path(contractor) : manage_contractors_path, class: "px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition" do %>
+      Cancel
+    <% end %>
+    <%= render "shared/button", text: contractor.persisted? ? "Update Contractor" : "Create Contractor", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

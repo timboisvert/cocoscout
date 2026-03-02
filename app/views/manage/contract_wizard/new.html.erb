@@ -1,6 +1,7 @@
 <% content_for :title, "New Contract" %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="new-contract-contractor"
+     data-new-contract-contractor-create-url-value="<%= manage_contractors_path %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -24,21 +25,41 @@
         </p>
       </div>
 
-      <%= form_with url: manage_create_draft_contract_wizard_path, method: :post, local: true do |form| %>
+      <%= form_with url: manage_create_draft_contract_wizard_path, method: :post, local: true,
+                    data: { new_contract_contractor_target: "form" } do |form| %>
         <div class="space-y-5">
           <div>
-            <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Contractor / Group Name
+            <label for="contractor_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Select Contractor
               <span class="text-pink-500">*</span>
             </label>
-            <input type="text"
-                   name="contract[contractor_name]"
-                   id="contractor_name"
-                   placeholder="e.g., Local Comedy Troupe, Dance Academy, Private Event"
-                   autofocus
-                   required
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <p class="mt-1.5 text-xs text-gray-500">The name of the person or group you're contracting with</p>
+
+            <% if @contractors.any? %>
+              <select name="contract[contractor_id]"
+                      id="contractor_id"
+                      required
+                      data-new-contract-contractor-target="select"
+                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                <option value="">-- Choose a contractor --</option>
+                <% @contractors.each do |contractor| %>
+                  <option value="<%= contractor.id %>"><%= contractor.name %></option>
+                <% end %>
+              </select>
+            <% else %>
+              <div class="text-sm text-gray-500 py-2">
+                No contractors yet. Create your first contractor to get started.
+              </div>
+              <input type="hidden" name="contract[contractor_id]" value="" data-new-contract-contractor-target="select">
+            <% end %>
+
+            <div class="mt-2">
+              <button type="button"
+                      data-action="click->new-contract-contractor#openModal"
+                      class="inline-flex items-center gap-1.5 text-sm text-pink-600 hover:text-pink-700 font-medium">
+                <%= icon("plus", class: "w-4 h-4") %>
+                Create new contractor
+              </button>
+            </div>
           </div>
         </div>
 
@@ -50,6 +71,98 @@
 
     <div class="mt-4 text-center">
       <%= link_to "Cancel", manage_contracts_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+
+  <%# New Contractor Modal %>
+  <div id="new-contractor-modal"
+       class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-new-contract-contractor-target="modal"
+       data-action="click->new-contract-contractor#closeOnBackdrop keydown.esc@window->new-contract-contractor#closeModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+         data-action="click->new-contract-contractor#stopPropagation">
+
+      <%# Header %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">New Contractor</h3>
+          <button type="button" data-action="click->new-contract-contractor#closeModal"
+                  class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <%# Form %>
+      <div class="px-6 py-5 space-y-4">
+        <div>
+          <label for="new_contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Name
+            <span class="text-pink-500">*</span>
+          </label>
+          <input type="text"
+                 id="new_contractor_name"
+                 data-new-contract-contractor-target="name"
+                 placeholder="e.g., Local Comedy Troupe"
+                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        </div>
+
+        <div>
+          <label for="new_contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Email
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input type="email"
+                 id="new_contractor_email"
+                 data-new-contract-contractor-target="email"
+                 placeholder="contact@example.com"
+                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        </div>
+
+        <div>
+          <label for="new_contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Phone
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input type="tel"
+                 id="new_contractor_phone"
+                 data-new-contract-contractor-target="phone"
+                 placeholder="(555) 123-4567"
+                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        </div>
+
+        <div>
+          <label for="new_contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Address
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea id="new_contractor_address"
+                    data-new-contract-contractor-target="address"
+                    rows="2"
+                    placeholder="123 Main Street&#10;City, State 12345"
+                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"></textarea>
+        </div>
+
+        <%# Error message %>
+        <div data-new-contract-contractor-target="error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg"></div>
+      </div>
+
+      <%# Footer %>
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <button type="button"
+                data-action="click->new-contract-contractor#closeModal"
+                class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          Cancel
+        </button>
+        <button type="button"
+                data-action="click->new-contract-contractor#createContractor"
+                data-new-contract-contractor-target="submitBtn"
+                class="px-4 py-2.5 text-sm font-medium text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition">
+          Create Contractor
+        </button>
+      </div>
     </div>
   </div>
 </div>

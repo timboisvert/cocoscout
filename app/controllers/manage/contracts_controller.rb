@@ -2,7 +2,7 @@
 
 module Manage
   class ContractsController < ManageController
-    before_action :set_contract, except: %i[index new create]
+    before_action :set_contract, except: %i[index new create completed]
 
     def index
       @contracts = Current.organization.contracts.includes(:contract_payments, :space_rentals)
@@ -40,6 +40,14 @@ module Manage
         .order(:due_date)
 
       @has_payments = @late_payments.any? || @upcoming_payments.any?
+    end
+
+    def completed
+      @completed_contracts = Current.organization.contracts
+        .includes(:contract_payments, :space_rentals)
+        .status_completed
+        .or(Current.organization.contracts.status_cancelled)
+        .order(contract_end_date: :desc)
     end
 
     def show

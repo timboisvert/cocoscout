@@ -970,8 +970,18 @@ Rails.application.routes.draw do
       patch "expenses/:id/allocations/:allocation_id/override", to: "production_expenses#override_allocation", as: "override_money_financials_production_expense_allocation"
     end
 
+    # Contractors - manage contractor records
+    resources :contractors, path: "money/contractors" do
+      collection do
+        get :search
+      end
+    end
+
     # Contracts - third-party productions and venue rentals
     resources :contracts, path: "money/contracts" do
+      collection do
+        get :completed
+      end
       member do
         post :activate
         get :cancel

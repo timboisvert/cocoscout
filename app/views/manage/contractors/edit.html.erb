@@ -1,0 +1,19 @@
+<% content_for :title, "Edit #{@contractor.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contractors", manage_contractors_path],
+      [@contractor.name, manage_contractor_path(@contractor)]
+    ],
+    text: "Edit Contractor",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%= render "form", contractor: @contractor %>
+  </div>
+</div>

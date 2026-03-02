@@ -1,0 +1,111 @@
+<% content_for :title, @contractor.name %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Contractors", manage_contractors_path]
+    ],
+    text: @contractor.name,
+    links: [
+      { icon: "pencil", text: "Edit", path: edit_manage_contractor_path(@contractor) },
+      { icon: "plus", text: "New Contract", path: manage_new_contract_wizard_path(contractor_id: @contractor.id) }
+    ]
+  } %>
+
+  <%# Contractor Details Card %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+    <%= render "shared/card_header", title: "Contact Information" %>
+    <div class="p-4">
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <% if @contractor.email.present? %>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Email</dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= mail_to @contractor.email, @contractor.email, class: "text-pink-600 hover:text-pink-700" %>
+            </dd>
+          </div>
+        <% end %>
+
+        <% if @contractor.phone.present? %>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Phone</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @contractor.phone %></dd>
+          </div>
+        <% end %>
+
+        <% if @contractor.address.present? %>
+          <div class="sm:col-span-2">
+            <dt class="text-sm font-medium text-gray-500">Address</dt>
+            <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line"><%= @contractor.address %></dd>
+          </div>
+        <% end %>
+
+        <% if @contractor.notes.present? %>
+          <div class="sm:col-span-2">
+            <dt class="text-sm font-medium text-gray-500">Notes</dt>
+            <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line"><%= @contractor.notes %></dd>
+          </div>
+        <% end %>
+      </dl>
+
+      <% if @contractor.email.blank? && @contractor.phone.blank? && @contractor.address.blank? %>
+        <p class="text-sm text-gray-500">No contact information on file.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Active Contracts %>
+  <% if @active_contracts.any? || @draft_contracts.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Active Contracts" %>
+      <div class="p-4 space-y-2">
+        <% @active_contracts.each do |contract| %>
+          <%= render "manage/contracts/contract_list_row", contract: contract %>
+        <% end %>
+        <% @draft_contracts.each do |contract| %>
+          <%= render "manage/contracts/contract_list_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Past Contracts %>
+  <% if @completed_contracts.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Past Contracts" %>
+      <div class="p-4 space-y-2">
+        <% @completed_contracts.each do |contract| %>
+          <%= render "manage/contracts/contract_list_row", contract: contract %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Empty state %>
+  <% if @active_contracts.empty? && @draft_contracts.empty? && @completed_contracts.empty? %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
+      <%= icon("file-text", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts yet</h3>
+      <p class="text-gray-600 mb-4">
+        Create a contract for this contractor.
+      </p>
+      <%= link_to manage_new_contract_wizard_path(contractor_id: @contractor.id) do %>
+        <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Delete contractor %>
+  <% if @contractor.contracts.empty? %>
+    <div class="mt-8 pt-8 border-t border-gray-200">
+      <h3 class="text-sm font-medium text-gray-900 mb-2">Danger Zone</h3>
+      <%= button_to manage_contractor_path(@contractor), method: :delete, class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition", data: { turbo_confirm: "Are you sure you want to delete this contractor?" } do %>
+        <%= icon("trash", class: "w-4 h-4") %>
+        Delete Contractor
+      <% end %>
+    </div>
+  <% end %>
+</div>

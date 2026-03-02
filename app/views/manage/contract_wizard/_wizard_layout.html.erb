@@ -17,14 +17,15 @@
     <div class="mb-8">
       <div class="flex items-center justify-center">
         <%
+          # Steps now start at 2 since contractor is selected at creation
+          # Display numbers are 1-6 but internal step numbers are 2-7
           steps = [
-            { num: 1, name: "Contractor", path: defined?(@contract) && @contract.persisted? ? manage_contractor_contract_wizard_path(@contract) : nil },
-            { num: 2, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 3, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
-            { num: 4, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
-            { num: 5, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 6, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 7, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 2, display: 1, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
+            { num: 3, display: 2, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
+            { num: 4, display: 3, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
+            { num: 5, display: 4, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 6, display: 5, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
+            { num: 7, display: 6, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
           ]
         %>
         <% steps.each_with_index do |step, index| %>
@@ -44,7 +45,7 @@
             <% else %>
               <div class="flex items-center">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
-                  <%= step[:num] %>
+                  <%= step[:display] %>
                 </div>
                 <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
               </div>

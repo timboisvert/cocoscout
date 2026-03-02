@@ -1,5 +1,20 @@
 <% content_for :title, "Contracts" %>
 
+<%
+  contracts_description = <<~HTML
+    <p>
+      Manage contracts for third-party productions, venue rentals, and external bookings.
+      Track payments, services, and space reservations all in one place.
+    </p>
+  HTML
+
+  contracts_actions = [
+    { icon: "plus", text: "New Contract", description: "Create a new contract", path: manage_new_contract_wizard_path },
+    { icon: "users", text: "Contractors", description: "Manage contractor relationships", path: manage_contractors_path },
+    { icon: "archive", text: "Past Contracts", description: "View completed contracts", path: completed_manage_contracts_path }
+  ]
+%>
+
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
@@ -8,10 +23,14 @@
       ["Money", manage_money_index_path]
     ],
     text: "Contracts",
-    links: [
-      { icon: "plus", text: "New Contract", path: manage_new_contract_wizard_path }
-    ]
+    links: []
   } %>
+
+  <%= render "shared/module_header",
+    title: "Contracts",
+    description: contracts_description,
+    actions: contracts_actions
+  %>
 
   <%# Payments Card - only show if there are late or upcoming payments %>
   <% if @has_payments %>
@@ -37,18 +56,6 @@
       <%= render "shared/card_header", title: "Active Contracts" %>
       <div class="p-4 space-y-2">
         <% @sorted_contracts.each do |contract| %>
-          <%= render "contract_list_row", contract: contract %>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-
-  <%# Past Contracts %>
-  <% if @completed_contracts.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Past Contracts" %>
-      <div class="p-4 space-y-2">
-        <% @completed_contracts.each do |contract| %>
           <%= render "contract_list_row", contract: contract %>
         <% end %>
       </div>

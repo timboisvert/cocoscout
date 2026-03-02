@@ -1,0 +1,52 @@
+<% content_for :title, "Contractors" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path]
+    ],
+    text: "Contractors",
+    links: [
+      { icon: "plus", text: "New Contractor", path: new_manage_contractor_path }
+    ]
+  } %>
+
+  <% if @contractors.any? %>
+    <%# Active Contractors %>
+    <% if @contractors_with_active.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+        <%= render "shared/card_header", title: "Contractors with Active Contracts" %>
+        <div class="p-4 space-y-2">
+          <% @contractors_with_active.each do |contractor| %>
+            <%= render "contractor_row", contractor: contractor %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Other Contractors %>
+    <% if @contractors_without_active.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+        <%= render "shared/card_header", title: "Other Contractors" %>
+        <div class="p-4 space-y-2">
+          <% @contractors_without_active.each do |contractor| %>
+            <%= render "contractor_row", contractor: contractor %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
+      <%= icon("users", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No contractors yet</h3>
+      <p class="text-gray-600 mb-4">
+        Contractors are created automatically when you create a contract, or you can add them manually.
+      </p>
+      <%= link_to new_manage_contractor_path do %>
+        <%= render "shared/button", text: "New Contractor", variant: "primary", icon: "plus" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
