@@ -203,9 +203,13 @@ Rails.application.routes.draw do
     get    "/productions/:production_id/emails/:id", to: "productions#email", as: "production_email"
     delete "/productions/:id/leave",        to: "productions#leave",        as: "leave_production"
 
+    post   "/direct_messages",              to: "direct_messages#create",   as: "direct_messages"
+
+    get   "/courses",                       to: "courses#index",            as: "courses"
+    get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
-    get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
-    get   "/shows/:id",                     to: "shows#show",               as: "show"
+    get   "/shows/calendar",                to: redirect("/my"),            as: "shows_calendar"
+    get   "/shows/:id",                     to: "shows#show",              as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
     # Open Requests (consolidated: availability + sign-ups + questionnaires)
     get   "/requests",                      to: "open_requests#index",      as: "requests"
@@ -245,7 +249,7 @@ Rails.application.routes.draw do
 
     # Course registration (public-facing)
     scope "/courses/:code" do
-      get "/",         to: "course_registrations#entry",    as: "course_entry"
+      get "/register", to: "course_registrations#entry",    as: "course_entry"
       get "/details",  to: "course_registrations#show",     as: "course_show"
       post "/checkout", to: "course_registrations#checkout", as: "course_checkout"
       get "/success",  to: "course_registrations#success",  as: "course_success"
@@ -1080,17 +1084,8 @@ Rails.application.routes.draw do
 
     # Course Offerings (top-level)
     get "courses",              to: "course_offerings#index",   as: "course_offerings"
-    get "courses/:id",          to: "course_offerings#show",    as: "course_offering"
-    get "courses/:id/edit",     to: "course_offerings#edit",    as: "edit_course_offering"
-    patch "courses/:id",        to: "course_offerings#update"
-    put "courses/:id",          to: "course_offerings#update"
-    post "courses/:id/open",    to: "course_offerings#open_registration",  as: "open_course_offering"
-    post "courses/:id/close",   to: "course_offerings#close_registration", as: "close_course_offering"
-    get  "courses/:id/search_instructor",  to: "course_offerings#search_instructor",  as: "course_offering_search_instructor"
-    post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"
-    post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"
 
-    # Course Offering Wizard
+    # Course Offering Wizard (must be before :id routes so "wizard" isn't captured as :id)
     get  "courses/wizard/new",        to: "course_offering_wizard#basics",          as: "course_wizard_basics"
     post "courses/wizard/new",        to: "course_offering_wizard#save_basics",     as: "course_wizard_save_basics"
     get  "courses/wizard/schedule",   to: "course_offering_wizard#schedule",        as: "course_wizard_schedule"
@@ -1106,6 +1101,19 @@ Rails.application.routes.draw do
     get  "courses/wizard/review",     to: "course_offering_wizard#review",          as: "course_wizard_review"
     post "courses/wizard/create",     to: "course_offering_wizard#create_offering", as: "course_wizard_create"
     delete "courses/wizard/cancel",   to: "course_offering_wizard#cancel",          as: "course_wizard_cancel"
+
+    # Course Offering CRUD (after wizard so :id doesn't match "wizard")
+    get "courses/:id",          to: "course_offerings#show",    as: "course_offering"
+    get "courses/:id/edit",     to: "course_offerings#edit",    as: "edit_course_offering"
+    patch "courses/:id",        to: "course_offerings#update"
+    put "courses/:id",          to: "course_offerings#update"
+    post "courses/:id/open",    to: "course_offerings#open_registration",  as: "open_course_offering"
+    post "courses/:id/close",   to: "course_offerings#close_registration", as: "close_course_offering"
+    get  "courses/:id/search_instructor",  to: "course_offerings#search_instructor",  as: "course_offering_search_instructor"
+    post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"
+    post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"
+    post "courses/:id/registrations/:registration_id/cancel", to: "course_offerings#cancel_registration", as: "course_offering_cancel_registration"
+    post "courses/:id/registrations/:registration_id/refund", to: "course_offerings#refund_registration", as: "course_offering_refund_registration"
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"

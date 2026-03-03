@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["modal", "canvas"]
-    static values = { url: String, logoUrl: String }
+    static values = { url: String }
 
     connect() {
         // Load QRCode library dynamically if not already loaded
@@ -63,8 +63,8 @@ export default class extends Controller {
 
         try {
             // Generate QR code using qrcode-generator
-            // Type 0 = auto-detect, Error correction H = high (30%)
-            const qr = qrcode(0, 'H')
+            // Type 0 = auto-detect, Error correction M = medium (15%)
+            const qr = qrcode(0, 'M')
             qr.addData(url)
             qr.make()
 
@@ -80,8 +80,8 @@ export default class extends Controller {
             ctx.fillStyle = '#ffffff'
             ctx.fillRect(0, 0, size, size)
 
-            // Draw QR code modules in pink
-            ctx.fillStyle = '#ec4899'
+            // Draw QR code modules
+            ctx.fillStyle = '#000000'
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
                     if (qr.isDark(row, col)) {
@@ -90,33 +90,8 @@ export default class extends Controller {
                 }
             }
 
-            // Draw logo in center
-            this.drawLogo(canvas)
         } catch (error) {
             console.error('QR Code generation failed:', error)
-        }
-    }
-
-    drawLogo(canvas) {
-        const ctx = canvas.getContext('2d')
-        const logo = new Image()
-        logo.crossOrigin = 'anonymous'
-        logo.src = this.logoUrlValue
-
-        logo.onload = () => {
-            // Calculate center position for logo
-            const logoSize = canvas.width * 0.22  // Logo is 22% of QR code size
-            const logoX = (canvas.width - logoSize) / 2
-            const logoY = (canvas.height - logoSize) / 2
-
-            // Draw white circle background for logo
-            ctx.beginPath()
-            ctx.arc(canvas.width / 2, canvas.height / 2, logoSize / 2 + 4, 0, Math.PI * 2)
-            ctx.fillStyle = '#ffffff'
-            ctx.fill()
-
-            // Draw logo
-            ctx.drawImage(logo, logoX, logoY, logoSize, logoSize)
         }
     }
 

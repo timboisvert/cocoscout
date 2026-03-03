@@ -18,20 +18,33 @@ class CourseOfferingStripeService
 
   def create_or_update_product!
     if @offering.stripe_product_id.present?
-      # Update existing product
-      Stripe::Product.update(@offering.stripe_product_id, product_params)
+      begin
+        # Update existing product
+        Stripe::Product.update(@offering.stripe_product_id, product_params)
+      rescue Stripe::InvalidRequestError => e
+        if e.message.include?("No such product")
+          # Product was deleted (e.g., sandbox data purge) — recreate
+          @offering.update!(stripe_product_id: nil, stripe_price_id: nil, stripe_early_bird_price_id: nil)
+          create_new_product!
+        else
+          raise
+        end
+      end
     else
-      # Create new product
-      product = Stripe::Product.create(product_params.merge(
-        metadata: {
-          course_offering_id: @offering.id,
-          production_id: @offering.production_id
-        }
-      ))
-      @offering.update!(stripe_product_id: product.id)
+      create_new_product!
     end
   rescue Stripe::StripeError => e
     raise StripeError, "Failed to create/update Stripe product: #{e.message}"
+  end
+
+  def create_new_product!
+    product = Stripe::Product.create(product_params.merge(
+      metadata: {
+        course_offering_id: @offering.id,
+        production_id: @offering.production_id
+      }
+    ))
+    @offering.update!(stripe_product_id: product.id)
   end
 
   def create_or_update_prices!

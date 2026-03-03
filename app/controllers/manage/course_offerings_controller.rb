@@ -5,6 +5,7 @@ module Manage
     before_action :load_course_offering, only: %i[
       show edit update open_registration close_registration
       search_instructor update_instructor invite_instructor
+      cancel_registration refund_registration
     ]
 
     def index
@@ -160,6 +161,43 @@ module Manage
     def close_registration
       @course_offering.update!(status: :closed)
       redirect_to manage_course_offering_path(@course_offering), notice: "Registration has been closed."
+    end
+
+    def cancel_registration
+      registration = @course_offering.course_registrations.find(params[:registration_id])
+
+      if registration.confirmed? || registration.pending?
+        registration.cancel!
+        redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been removed from the course."
+      else
+        redirect_to manage_course_offering_path(@course_offering), alert: "This registration cannot be cancelled."
+      end
+    end
+
+    def refund_registration
+      registration = @course_offering.course_registrations.find(params[:registration_id])
+
+      unless registration.confirmed?
+        redirect_to manage_course_offering_path(@course_offering), alert: "Only confirmed registrations can be refunded."
+        return
+      end
+
+      # Process Stripe refund
+      if registration.stripe_payment_intent_id.present?
+        begin
+          Stripe::Refund.create(payment_intent: registration.stripe_payment_intent_id)
+          # The webhook will call registration.refund! when the charge.refunded event fires.
+          # But we also mark it here for immediate UI feedback.
+          registration.refund!
+          redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been refunded and removed."
+        rescue Stripe::StripeError => e
+          redirect_to manage_course_offering_path(@course_offering), alert: "Refund failed: #{e.message}"
+        end
+      else
+        # No payment intent — just mark as refunded
+        registration.refund!
+        redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been marked as refunded."
+      end
     end
 
     private

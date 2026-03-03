@@ -53,7 +53,7 @@ class CourseRegistrationNotificationService
     private
 
     def build_registrant_variables(registration, offering, production, person)
-      sessions = offering.upcoming_sessions.limit(5)
+      sessions = offering.sessions
       session_lines = sessions.map do |show|
         show.date_and_time.strftime("%A, %B %-d, %Y at %-I:%M %p")
       end
@@ -64,7 +64,7 @@ class CourseRegistrationNotificationService
         amount_paid: registration.formatted_amount,
         instructor_name: offering.instructor_name.presence,
         class_schedule: session_lines.any? ? session_lines.join("\n") : nil,
-        dashboard_url: Rails.application.routes.url_helpers.root_url(host: default_host)
+        dashboard_url: Rails.application.routes.url_helpers.root_url(**default_url_options)
       }
     end
 
@@ -79,7 +79,7 @@ class CourseRegistrationNotificationService
         spots_remaining: offering.spots_remaining&.to_s,
         course_offering_url: Rails.application.routes.url_helpers.manage_course_offering_url(
           offering,
-          host: default_host
+          **default_url_options
         )
       }
     end
@@ -89,8 +89,8 @@ class CourseRegistrationNotificationService
         production.production_permissions.includes(:user).find_by(role: "manager")&.user
     end
 
-    def default_host
-      Rails.application.config.action_mailer.default_url_options&.dig(:host) || "localhost:3000"
+    def default_url_options
+      Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
     end
   end
 end

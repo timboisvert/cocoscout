@@ -1,6 +1,6 @@
 <% content_for :title, @course_offering.title %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="registrant-modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%
@@ -106,9 +106,25 @@
         <% if @registrations.any? %>
           <div class="divide-y divide-gray-200">
             <% @registrations.each do |registration| %>
-              <div class="px-4 py-3 flex items-center justify-between">
+              <%
+                headshot_variant = registration.person.safe_headshot_variant(:thumb)
+                headshot_url = headshot_variant ? url_for(headshot_variant) : nil
+                can_refund = registration.confirmed? && registration.stripe_payment_intent_id.present?
+              %>
+              <button type="button"
+                      class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                      data-action="click->registrant-modal#open"
+                      data-registrant-name="<%= registration.person.name %>"
+                      data-registrant-email="<%= registration.person.email %>"
+                      data-registrant-headshot="<%= headshot_url %>"
+                      data-registrant-initials="<%= registration.person.initials %>"
+                      data-registrant-status="<%= registration.status %>"
+                      data-registrant-amount="<%= registration.formatted_amount %>"
+                      data-registrant-date="<%= registration.registered_at.strftime("%b %-d, %Y at %-I:%M %p") %>"
+                      data-registrant-cancel-url="<%= manage_course_offering_cancel_registration_path(@course_offering, registration) %>"
+                      data-registrant-refund-url="<%= manage_course_offering_refund_registration_path(@course_offering, registration) %>"
+                      data-registrant-can-refund="<%= can_refund %>">
                 <div class="flex items-center gap-3">
-                  <% headshot_variant = registration.person.safe_headshot_variant(:thumb) %>
                   <% if headshot_variant %>
                     <%= image_tag headshot_variant, alt: registration.person.name, class: "w-8 h-8 rounded-lg object-cover" %>
                   <% else %>
@@ -134,8 +150,11 @@
                   <% when "cancelled" %>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Cancelled</span>
                   <% end %>
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
-              </div>
+              </button>
             <% end %>
           </div>
         <% else %>
@@ -254,6 +273,109 @@
         </div>
       <% end %>
 
+    </div>
+  </div>
+
+  <%# Registrant Modal %>
+  <div data-registrant-modal-target="backdrop"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+       data-action="click->registrant-modal#backdropClick"></div>
+
+  <div data-registrant-modal-target="modal"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+      <%# Header with pink gradient %>
+      <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-white">Registrant Details</h3>
+        <button type="button" data-action="click->registrant-modal#close" class="text-white/80 hover:text-white cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <%# Person info %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center gap-4">
+          <div data-registrant-modal-target="headshot"></div>
+          <div>
+            <div class="text-lg font-semibold text-gray-900" data-registrant-modal-target="name"></div>
+            <div class="text-sm text-gray-500" data-registrant-modal-target="email"></div>
+          </div>
+        </div>
+      </div>
+
+      <%# Registration details %>
+      <div class="px-6 py-4 border-b border-gray-200 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">Status</span>
+          <span data-registrant-modal-target="status"></span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">Amount</span>
+          <span class="text-sm font-medium text-gray-900" data-registrant-modal-target="amount"></span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">Registered</span>
+          <span class="text-sm text-gray-900" data-registrant-modal-target="date"></span>
+        </div>
+      </div>
+
+      <%# Action panel %>
+      <div data-registrant-modal-target="actionPanel" class="px-6 py-4 space-y-2">
+        <div data-cancel-section>
+          <button type="button"
+                  class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                  data-action="click->registrant-modal#showConfirmCancel">
+            <div class="flex-shrink-0 w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-sm font-medium text-gray-900">Remove without refund</div>
+              <div class="text-xs text-gray-500">Remove from course, no refund issued</div>
+            </div>
+          </button>
+        </div>
+
+        <div data-refund-section>
+          <button type="button"
+                  class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                  data-action="click->registrant-modal#showConfirmRefund">
+            <div class="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-sm font-medium text-gray-900">Refund & remove</div>
+              <div class="text-xs text-gray-500">Issue full refund via Stripe and remove</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <%# Confirmation panel (hidden by default) %>
+      <div data-registrant-modal-target="confirmPanel" class="hidden px-6 py-4">
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <h4 class="text-sm font-semibold text-amber-800" data-confirm-title></h4>
+          <p class="text-sm text-amber-700 mt-1" data-confirm-message></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button type="button"
+                  class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  data-action="click->registrant-modal#showActionPanel">
+            Back
+          </button>
+          <%= form_with url: "#", method: :post, data: { registrant_modal_target: "cancelForm" }, class: "hidden flex-1" do %>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "medium", type: :submit, full_width: true %>
+          <% end %>
+          <%= form_with url: "#", method: :post, data: { registrant_modal_target: "refundForm" }, class: "hidden flex-1" do %>
+            <%= render "shared/button", text: "Refund & Remove", variant: "primary", size: "medium", type: :submit, full_width: true %>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
 </div>

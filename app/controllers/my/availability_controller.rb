@@ -23,7 +23,7 @@ module My
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
-      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: people_ids }).distinct
+      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: people_ids }).where.not(production_type: "course").distinct
 
       # Check if user is a cast member of any productions (for showing filter bar even when filtered results are empty)
       @has_any_productions = @productions.any? || @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
@@ -58,6 +58,7 @@ module My
                            .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
+                           .where.not(productions: { production_type: "course" })
                            .includes(:production, :location, :event_linkage)
                            .distinct
                            .to_a
@@ -73,6 +74,7 @@ module My
                                   .where(people: { id: selected_person_ids })
                                   .where.not(canceled: true)
                                   .where("date_and_time > ?", Time.current)
+                                  .where.not(productions: { production_type: "course" })
                                   .includes(:production, :location, :event_linkage)
                                   .distinct
                                   .to_a
@@ -94,6 +96,7 @@ module My
                                  .where(groups: { id: selected_group_ids })
                                  .where.not(canceled: true)
                                  .where("date_and_time > ?", Time.current)
+                                 .where.not(productions: { production_type: "course" })
                                  .includes(:production, :location, :event_linkage)
                                  .distinct
                                  .to_a
@@ -111,6 +114,7 @@ module My
                              .where(groups: { id: selected_group_ids })
                              .where.not(canceled: true)
                              .where("date_and_time > ?", Time.current)
+                             .where.not(productions: { production_type: "course" })
                              .includes(:production, :location, :event_linkage)
                              .distinct
                              .to_a
@@ -309,6 +313,7 @@ module My
                            .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                           .where.not(productions: { production_type: "course" })
                            .includes(:production, :location)
                            .order(:date_and_time)
                            .distinct
@@ -332,6 +337,7 @@ module My
                                   .where(people: { id: selected_person_ids })
                                   .where.not(canceled: true)
                                   .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                                  .where.not(productions: { production_type: "course" })
                                   .includes(:production, :location)
                                   .order(:date_and_time)
                                   .distinct
@@ -362,6 +368,7 @@ module My
                       .where(groups: { id: selected_group_ids })
                       .where.not(canceled: true)
                       .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                      .where.not(productions: { production_type: "course" })
                       .includes(:production, :location)
                       .order(:date_and_time)
                       .distinct
@@ -385,6 +392,7 @@ module My
                              .where(groups: { id: selected_group_ids })
                              .where.not(canceled: true)
                              .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                             .where.not(productions: { production_type: "course" })
                              .includes(:production, :location)
                              .order(:date_and_time)
                              .distinct

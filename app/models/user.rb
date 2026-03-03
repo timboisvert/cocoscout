@@ -61,6 +61,7 @@ class User < ApplicationRecord
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
                    .where("date_and_time <= ?", 90.days.from_now)
+                   .where.not(productions: { production_type: "course" })
                    .pluck(:id)
 
     # Also include shows from shared talent pools
@@ -69,6 +70,7 @@ class User < ApplicationRecord
                           .where.not(canceled: true)
                           .where("date_and_time > ?", Time.current)
                           .where("date_and_time <= ?", 90.days.from_now)
+                          .where.not(productions: { production_type: "course" })
                           .pluck(:id)
 
     # Include group-based shows (direct + shared talent pools)
@@ -82,6 +84,7 @@ class User < ApplicationRecord
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
                    .where("date_and_time <= ?", 90.days.from_now)
+                   .where.not(productions: { production_type: "course" })
                    .pluck(:id)
 
       shared = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
@@ -89,6 +92,7 @@ class User < ApplicationRecord
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
                    .where("date_and_time <= ?", 90.days.from_now)
+                   .where.not(productions: { production_type: "course" })
                    .pluck(:id)
 
       (direct + shared)

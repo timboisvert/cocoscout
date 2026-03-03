@@ -1,4 +1,14 @@
+<% content_for :title, "My Calendar" %>
+
 <div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Calendar",
+    links: []
+  } %>
 
   <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
   <% if (primary = @people.first) %>
@@ -93,48 +103,194 @@
     </div>
   <% end %>
 
-  <!-- Upcoming Shows & Events -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Upcoming Shows (next 45 days)", links: [{ text: "My Shows & Events", path: my_shows_path }] %>
-    <div class="p-4">
-      <% if @upcoming_show_rows.any? %>
-        <%= render "shared/shows_list",
-                   show_rows: @upcoming_show_rows,
-                   show_production: true,
-                   show_location: true,
-                   has_groups: @groups.any?,
-                   show_cant_make_it: true,
-                   cant_make_it_person: @person,
-                   my_vacancies_by_show: @my_vacancies_by_show,
-                   link_path_helper: ->(show) { my_show_path(show) } %>
-      <% else %>
-        <p class="text-gray-500 text-sm">No upcoming shows & events scheduled.</p>
+  <!-- Unified Calendar -->
+  <%
+    desktop_month = @current_month
+    month_start_date = desktop_month.to_date.beginning_of_month
+    month_end_date = month_start_date.end_of_month
+  %>
+
+  <!-- Filters -->
+  <%
+    calendar_types = {
+      "show" => { label: "Shows", color_class: "bg-pink-200 border-pink-300" },
+      "rehearsal" => { label: "Rehearsals", color_class: "bg-blue-200 border-blue-300" },
+      "meeting" => { label: "Meetings", color_class: "bg-green-200 border-green-300" },
+      "course" => { label: "Courses", color_class: "bg-purple-200 border-purple-300" },
+      "audition" => { label: "Auditions", color_class: "bg-amber-200 border-amber-300" }
+    }
+    all_calendar_types = calendar_types.keys
+  %>
+  <%= render "shared/filters/filter_bar",
+      toggle_label: "Filters",
+      filter_groups: [
+        {
+          label: "Show",
+          filters: calendar_types.map { |type, config|
+            current_types = @event_type_filter.dup
+            toggled = current_types.include?(type) ? current_types - [type] : current_types + [type]
+            toggled = [type] if toggled.empty?
+            {
+              text: config[:label],
+              path: my_dashboard_path(month: params[:month], event_type: toggled.join(","), entity: @entity_filter.join(",")),
+              active: @event_type_filter.include?(type)
+            }
+          }
+        },
+        (@people.count > 1 || @groups.any?) ? { separator: true } : nil,
+        (@people.count > 1 || @groups.any?) ? {
+          partial: "shared/filters/entity_filter",
+          locals: {
+            path_helper: method(:my_dashboard_path),
+            people: @people,
+            groups: @groups,
+            entity_filter: @entity_filter,
+            label: "Include",
+            event_type: @event_type_filter.join(","),
+            month: params[:month]
+          }
+        } : nil
+      ].compact
+  %>
+
+  <!-- Month Navigation -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <% if @can_go_prev %>
+        <%= render "shared/button",
+            text: @prev_month.strftime("%B"),
+            path: my_dashboard_path(month: @prev_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            variant: "secondary",
+            size: "small",
+            icon: "chevron-left",
+            data: { turbo_prefetch: false } %>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <h2 class="text-2xl font-bold text-gray-900"><%= desktop_month.strftime("%B %Y") %></h2>
+      <% if desktop_month != Time.current.beginning_of_month %>
+        <%= render "shared/button",
+            text: "Today",
+            path: my_dashboard_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            variant: "outline-pink",
+            size: "small",
+            data: { turbo_prefetch: false } %>
+      <% end %>
+    </div>
+
+    <div>
+      <% if @can_go_next %>
+        <%= render "shared/button",
+            text: @next_month.strftime("%B"),
+            path: my_dashboard_path(month: @next_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            variant: "secondary",
+            size: "small",
+            icon: "chevron-right",
+            data: { turbo_prefetch: false } %>
       <% end %>
     </div>
   </div>
 
-  <!-- Upcoming Auditions -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Upcoming Auditions", links: [{ text: "My Auditions", path: my_auditions_path }] %>
-    <div class="p-4">
-      <% if @upcoming_audition_entities.any? %>
-        <div class="space-y-1">
-          <% @upcoming_audition_entities.each do |item| %>
-            <% audition_session = item[:audition_session] %>
-            <% entity = item[:entity] %>
-            <% audition = item[:audition] %>
-            <%= render "shared/audition_session_row",
-              audition_session: audition_session,
-              link_path: my_auditions_path,
-              show_entity_headshots: @groups.any?,
-              entity: entity,
-              audition: audition %>
+  <!-- Desktop: Calendar Grid -->
+  <div class="hidden md:block border border-gray-200 rounded-lg p-4 mb-8">
+    <div class="grid grid-cols-7 gap-1">
+      <!-- Day headers -->
+      <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day| %>
+        <div class="text-center text-xs font-semibold text-gray-600 p-2"><%= day %></div>
+      <% end %>
+
+      <!-- Empty cells before month starts -->
+      <% (month_start_date.wday).times do %>
+        <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
+      <% end %>
+
+      <!-- Calendar days -->
+      <% current_date = month_start_date %>
+      <% while current_date <= month_end_date %>
+        <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
+        <% is_past = current_date < Date.current %>
+        <% is_today = current_date == Date.current %>
+        <div class="border border-gray-200 min-h-[80px] p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+          <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
+            <%= current_date.day %>
+          </div>
+
+          <% day_events.first(4).each do |event| %>
+            <%
+              color_classes = case event[:color]
+                when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+                when "blue" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+                when "green" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                when "purple" then "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
+                when "amber" then "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+                else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+              end
+              color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
+            %>
+            <%= link_to event[:path], class: "block mb-1" do %>
+              <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
+                <div class="font-semibold truncate"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
+                <div class="truncate text-[10px]"><%= event[:title] %></div>
+                <div class="truncate text-[10px] font-semibold <%= is_past ? 'text-gray-500' : '' %>"><%= event[:subtitle] %></div>
+              </div>
+            <% end %>
+          <% end %>
+          <% if day_events.size > 4 %>
+            <div class="text-[10px] text-gray-500 text-center mt-0.5">+<%= day_events.size - 4 %> more</div>
           <% end %>
         </div>
-      <% else %>
-        <p class="text-gray-500 text-sm">You don't have any upcoming auditions.</p>
+        <% current_date = current_date + 1.day %>
+      <% end %>
+
+      <!-- Empty cells to complete the week -->
+      <% remaining_cells = (7 - (month_end_date + 1.day).wday) % 7 %>
+      <% remaining_cells.times do %>
+        <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
       <% end %>
     </div>
+  </div>
+
+  <!-- Mobile: List View -->
+  <div class="md:hidden space-y-1 mb-8">
+    <% current_date = month_start_date %>
+    <% while current_date <= month_end_date %>
+      <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
+      <% if day_events.any? %>
+        <% is_past = current_date < Date.current %>
+        <% is_today = current_date == Date.current %>
+        <div class="<%= 'opacity-50' if is_past %>">
+          <div class="text-xs font-semibold px-1 py-1 <%= is_today ? 'text-pink-600' : (is_past ? 'text-gray-400' : 'text-gray-500') %>">
+            <%= current_date.strftime("%a, %b %-d") %>
+          </div>
+          <% day_events.each do |event| %>
+            <%
+              dot_color = case event[:color]
+                when "pink" then "bg-pink-400"
+                when "blue" then "bg-blue-400"
+                when "green" then "bg-green-400"
+                when "purple" then "bg-purple-400"
+                when "amber" then "bg-amber-400"
+                else "bg-gray-400"
+              end
+              dot_color = "bg-gray-300" if is_past
+            %>
+            <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors" do %>
+              <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></div>
+              <span class="text-xs text-gray-500 w-14 flex-shrink-0"><%= event[:time].strftime("%-I:%M%p").downcase %></span>
+              <span class="text-sm truncate flex-1 <%= is_past ? 'text-gray-400' : 'text-gray-900' %>"><%= event[:title] %></span>
+              <span class="text-xs text-gray-400 truncate max-w-[100px]"><%= event[:subtitle] %></span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+      <% current_date = current_date + 1.day %>
+    <% end %>
+    <% if @month_events.empty? %>
+      <div class="text-center text-sm text-gray-500 py-8">
+        No events this month.
+      </div>
+    <% end %>
   </div>
 
 </div>

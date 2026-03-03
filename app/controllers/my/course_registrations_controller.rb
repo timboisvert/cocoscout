@@ -11,7 +11,7 @@ module My
     before_action :ensure_course_is_open, except: %i[entry inactive success]
 
     def entry
-      # If the user is already signed in, redirect them to the course details
+      # If the user is already signed in, skip the sign-up page and go to details/checkout
       if authenticated?
         redirect_to my_course_show_path(code: @course_offering.short_code), status: :see_other
         return

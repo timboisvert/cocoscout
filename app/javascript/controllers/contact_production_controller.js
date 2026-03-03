@@ -7,7 +7,9 @@ export default class extends Controller {
     static values = {
         productionId: Number,
         productionName: String,
-        showId: Number
+        showId: Number,
+        actionUrl: String,
+        personId: String
     }
 
     connect() {
@@ -53,6 +55,12 @@ export default class extends Controller {
         if (trigger.dataset.showId) {
             this.showIdValue = parseInt(trigger.dataset.showId)
         }
+        if (trigger.dataset.actionUrl) {
+            this.actionUrlValue = trigger.dataset.actionUrl
+        }
+        if (trigger.dataset.personId) {
+            this.personIdValue = trigger.dataset.personId
+        }
 
         this.openModal()
     }
@@ -63,9 +71,29 @@ export default class extends Controller {
             this.productionNameTarget.textContent = this.productionNameValue
         }
 
-        // Update form action
-        if (this.hasFormTarget && this.productionIdValue) {
-            this.formTarget.action = `/my/productions/${this.productionIdValue}/production_messages`
+        // Update form action - use custom actionUrl if provided, otherwise default production messages
+        if (this.hasFormTarget) {
+            if (this.actionUrlValue) {
+                this.formTarget.action = this.actionUrlValue
+
+                // Add hidden person_id field for direct messages
+                if (this.personIdValue) {
+                    let hiddenField = this.formTarget.querySelector('input[name="person_id"]')
+                    if (!hiddenField) {
+                        hiddenField = document.createElement('input')
+                        hiddenField.type = 'hidden'
+                        hiddenField.name = 'person_id'
+                        this.formTarget.appendChild(hiddenField)
+                    }
+                    hiddenField.value = this.personIdValue
+                }
+            } else if (this.productionIdValue) {
+                this.formTarget.action = `/my/productions/${this.productionIdValue}/production_messages`
+
+                // Remove person_id field if it exists (switching back to production mode)
+                const hiddenField = this.formTarget.querySelector('input[name="person_id"]')
+                if (hiddenField) hiddenField.remove()
+            }
         }
 
         // Show modal

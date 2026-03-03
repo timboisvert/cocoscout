@@ -38,6 +38,7 @@ module My
         tp_person_shows = Show.joins(production: { talent_pools: :people })
                               .where(people: { id: selected_person_ids })
                               .where("date_and_time >= ?", Time.current)
+                              .where.not(productions: { production_type: "course" })
                               .pluck(:id)
         all_talent_pool_show_ids.merge(tp_person_shows)
 
@@ -45,6 +46,7 @@ module My
         shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
                                   .where(people: { id: selected_person_ids })
                                   .where("date_and_time >= ?", Time.current)
+                                  .where.not(productions: { production_type: "course" })
                                   .pluck(:id)
         all_talent_pool_show_ids.merge(shared_person_shows)
       end
@@ -54,6 +56,7 @@ module My
         tp_group_shows = Show.joins(production: { talent_pools: :groups })
                              .where(groups: { id: selected_group_ids })
                              .where("date_and_time >= ?", Time.current)
+                             .where.not(productions: { production_type: "course" })
                              .pluck(:id)
         all_talent_pool_show_ids.merge(tp_group_shows)
 
@@ -61,6 +64,7 @@ module My
         shared_group_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
                                  .where(groups: { id: selected_group_ids })
                                  .where("date_and_time >= ?", Time.current)
+                                 .where.not(productions: { production_type: "course" })
                                  .pluck(:id)
         all_talent_pool_show_ids.merge(shared_group_shows)
       end
@@ -366,6 +370,7 @@ module My
                            .where(people: { id: @person.id })
                            .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                            .where(canceled: false)
+                           .where.not(productions: { production_type: "course" })
                            .includes(:production, :location)
                            .select("shows.*")
                            .distinct
@@ -380,6 +385,7 @@ module My
                                   .where(people: { id: @person.id })
                                   .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                                   .where(canceled: false)
+                                  .where.not(productions: { production_type: "course" })
                                   .includes(:production, :location)
                                   .select("shows.*")
                                   .distinct
@@ -398,6 +404,7 @@ module My
                           .where(groups: { id: selected_group_ids })
                           .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                           .where(canceled: false)
+                          .where.not(productions: { production_type: "course" })
                           .includes(:production, :location)
                           .distinct
                           .to_a
@@ -413,6 +420,7 @@ module My
                                  .where(groups: { id: selected_group_ids })
                                  .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                                  .where(canceled: false)
+                                 .where.not(productions: { production_type: "course" })
                                  .includes(:production, :location)
                                  .distinct
                                  .to_a

@@ -226,6 +226,7 @@ module My
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
                            .where("date_and_time <= ?", 90.days.from_now)
+                           .where.not(productions: { production_type: "course" })
                            .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                            .distinct
                            .to_a
@@ -242,6 +243,7 @@ module My
                                   .where.not(canceled: true)
                                   .where("date_and_time > ?", Time.current)
                                   .where("date_and_time <= ?", 90.days.from_now)
+                                  .where.not(productions: { production_type: "course" })
                                   .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                   .distinct
                                   .to_a
@@ -262,6 +264,7 @@ module My
                           .where.not(canceled: true)
                           .where("date_and_time > ?", Time.current)
                           .where("date_and_time <= ?", 90.days.from_now)
+                          .where.not(productions: { production_type: "course" })
                           .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                           .distinct
                           .to_a
@@ -279,6 +282,7 @@ module My
                                  .where.not(canceled: true)
                                  .where("date_and_time > ?", Time.current)
                                  .where("date_and_time <= ?", 90.days.from_now)
+                                 .where.not(productions: { production_type: "course" })
                                  .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                  .distinct
                                  .to_a

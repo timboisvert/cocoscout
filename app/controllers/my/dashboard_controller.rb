@@ -16,184 +16,222 @@ module My
       groups_by_id = @groups.index_by(&:id)
 
       # Get productions where user is in the talent pool (own or shared)
-      # Productions via own talent pool
       own_pool_production_ids = Production.joins(talent_pools: :people).where(people: { id: people_ids }).pluck(:id)
-      # Productions via shared talent pool
       shared_pool_production_ids = Production.joins(talent_pool_shares: { talent_pool: :people }).where(people: { id: people_ids }).pluck(:id)
       @productions = Production.where(id: (own_pool_production_ids + shared_pool_production_ids).uniq)
 
-      # Get upcoming shows where any profile or their groups have a role assignment (next 45 days)
-      # Consolidate by show - one row per show with all entity assignments
-      end_date = 45.days.from_now
+      # === Calendar data ===
+      # Determine month to display
+      @current_month = params[:month] ? Date.parse(params[:month]).in_time_zone.beginning_of_month : Time.current.beginning_of_month
+      cal_start = 6.months.ago.beginning_of_month
+      cal_end = 12.months.from_now.end_of_month
+      prev_month = @current_month - 1.month
+      next_month = @current_month + 1.month
+      @can_go_prev = prev_month >= Time.current.beginning_of_month
+      @can_go_next = next_month <= cal_end
+      @prev_month = prev_month
+      @next_month = next_month
+
+      # === Filter parameters ===
+      all_calendar_types = %w[show rehearsal meeting course audition]
+      @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : all_calendar_types
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
+
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
+      selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
+
+      # Unified calendar events: array of hashes with { date:, time:, title:, subtitle:, path:, type:, color: }
+      @calendar_events = []
+
+      # Map show event_types to calendar categories
+      show_event_types = []
+      show_event_types += %w[show class workshop open_mic] if @event_type_filter.include?("show")
+      show_event_types += %w[rehearsal] if @event_type_filter.include?("rehearsal")
+      show_event_types += %w[meeting] if @event_type_filter.include?("meeting")
+
+      # --- Shows (from talent pools, both own and shared) ---
       show_data_by_id = {}
-      added_assignments = Set.new
 
-      # Person shows (all profiles)
-      person_shows = Show
-                     .joins(:show_person_role_assignments)
-                     .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: people_ids })
-                     .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
-                     .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
-                     .order(:date_and_time)
-                     .distinct
+      if show_event_types.any? && selected_person_ids.any?
+        person_shows = Show
+          .joins(production: { talent_pools: :people })
+          .where(people: { id: selected_person_ids })
+          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
+          .where(canceled: false)
+          .where.not(productions: { production_type: "course" })
+          .where(event_type: show_event_types)
+          .includes(:production, :location, show_person_role_assignments: :role)
+          .distinct.to_a
 
-      person_shows.each do |show|
-        show.show_person_role_assignments.each do |assignment|
-          next unless assignment.assignable_type == "Person" && people_ids.include?(assignment.assignable_id)
-          # Avoid duplicates by tracking assignment IDs
-          next if added_assignments.include?(assignment.id)
-          added_assignments.add(assignment.id)
-          person = people_by_id[assignment.assignable_id]
-          show_data_by_id[show.id] ||= { show: show, assignments: [] }
-          show_data_by_id[show.id][:assignments] << { type: "person", entity: person, assignment: assignment }
+        shared_person_shows = Show
+          .joins(production: { talent_pool_shares: { talent_pool: :people } })
+          .where(people: { id: selected_person_ids })
+          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
+          .where(canceled: false)
+          .where.not(productions: { production_type: "course" })
+          .where(event_type: show_event_types)
+          .includes(:production, :location, show_person_role_assignments: :role)
+          .distinct.to_a
+
+        (person_shows + shared_person_shows).uniq(&:id).each do |show|
+          show_data_by_id[show.id] = show
+          role_name = show.show_person_role_assignments
+            .detect { |a| a.assignable_type == "Person" && selected_person_ids.include?(a.assignable_id) }
+            &.role&.name
+
+          color = case show.event_type
+                  when "rehearsal" then "blue"
+                  when "meeting" then "green"
+                  else "pink"
+          end
+
+          @calendar_events << {
+            date: show.date_and_time.to_date,
+            time: show.date_and_time,
+            title: show.production.name,
+            subtitle: role_name || show.event_type.titleize,
+            path: my_show_path(show),
+            type: :show,
+            color: color,
+            event_type: show.event_type
+          }
         end
       end
 
       # Group shows
-      if group_ids.any?
+      if show_event_types.any? && selected_group_ids.any?
         group_shows = Show
-                      .joins(:show_person_role_assignments)
-                      .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: group_ids })
-                      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
-                      .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
-                      .order(:date_and_time)
-                      .distinct
+          .joins(production: { talent_pools: :groups })
+          .where(groups: { id: selected_group_ids })
+          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
+          .where(canceled: false)
+          .where.not(productions: { production_type: "course" })
+          .where(event_type: show_event_types)
+          .includes(:production, :location, show_person_role_assignments: :role)
+          .distinct.to_a
 
-        group_shows.each do |show|
-          show.show_person_role_assignments.each do |assignment|
-            next unless assignment.assignable_type == "Group" && group_ids.include?(assignment.assignable_id)
-            # Avoid duplicates by tracking assignment IDs
-            next if added_assignments.include?(assignment.id)
-            added_assignments.add(assignment.id)
-            group = groups_by_id[assignment.assignable_id]
-            show_data_by_id[show.id] ||= { show: show, assignments: [] }
-            show_data_by_id[show.id][:assignments] << { type: "group", entity: group, assignment: assignment }
+        shared_group_shows = Show
+          .joins(production: { talent_pool_shares: { talent_pool: :groups } })
+          .where(groups: { id: selected_group_ids })
+          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
+          .where(canceled: false)
+          .where.not(productions: { production_type: "course" })
+          .where(event_type: show_event_types)
+          .includes(:production, :location, show_person_role_assignments: :role)
+          .distinct.to_a
+
+        (group_shows + shared_group_shows).uniq(&:id).each do |show|
+          next if show_data_by_id[show.id] # Already added from person shows
+
+          role_name = show.show_person_role_assignments
+            .detect { |a| a.assignable_type == "Group" && selected_group_ids.include?(a.assignable_id) }
+            &.role&.name
+
+          color = case show.event_type
+                  when "rehearsal" then "blue"
+                  when "meeting" then "green"
+                  else "pink"
           end
+
+          @calendar_events << {
+            date: show.date_and_time.to_date,
+            time: show.date_and_time,
+            title: show.production.name,
+            subtitle: role_name || show.event_type.titleize,
+            path: my_show_path(show),
+            type: :show,
+            color: color,
+            event_type: show.event_type
+          }
         end
       end
 
-      # Sign-up registrations for all profiles (exclude archived forms)
-      @sign_up_registrations_by_show = Hash.new { |h, k| h[k] = [] }
-      registrations = SignUpRegistration
-        .where(person_id: people_ids)
-        .where.not(status: "cancelled")
-        .includes(
-          :person,
-          sign_up_slot: { sign_up_form_instance: :show, sign_up_form: {} },
-          sign_up_form_instance: :show
-        )
-        .to_a
-
-      registrations.each do |reg|
-        # Skip if the sign-up form is archived
-        form = reg.sign_up_slot&.sign_up_form
-        next if form&.archived_at.present?
-
-        show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
-        next unless show && show.date_and_time >= Time.current && show.date_and_time <= end_date
-
-        @sign_up_registrations_by_show[show.id] << reg
-        show_data_by_id[show.id] ||= { show: show, assignments: [], sign_up_registrations: [] }
-        show_data_by_id[show.id][:sign_up_registrations] ||= []
-        show_data_by_id[show.id][:sign_up_registrations] << reg
-      end
-
-      @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
-
-      # Load vacancies created by the user (they said they can't make it)
-      # Used to show "You've indicated you can't make it" indicator
-      # For non-linked shows, the person was removed from cast but we still want to show them
-      upcoming_show_ids = @upcoming_show_rows.map { |row| row[:show].id }
-
-      @my_vacancies_by_show = {}
-      open_vacancies = RoleVacancy
-        .where(vacated_by_type: "Person", vacated_by_id: people_ids)
-        .where.not(status: [ :filled, :cancelled ])
-        .includes(:show, :affected_shows, :role, :invitations)
-        .to_a
-
-      open_vacancies.each do |vacancy|
-        # For non-linked shows, use the primary show_id
-        # For linked shows, use affected_shows if present, otherwise fall back to show_id
-        if vacancy.show.linked? && vacancy.affected_shows.any?
-          vacancy.affected_shows.each do |affected_show|
-            next unless upcoming_show_ids.include?(affected_show.id)
-            @my_vacancies_by_show[affected_show.id] ||= []
-            @my_vacancies_by_show[affected_show.id] << vacancy
-          end
-        else
-          # Non-linked show, or linked show without affected_shows set
-          @my_vacancies_by_show[vacancy.show_id] ||= []
-          @my_vacancies_by_show[vacancy.show_id] << vacancy
-        end
-      end
-
-      # Also include shows where user has an open vacancy but no assignment
-      # (for non-linked events where they were removed from cast)
-      vacancy_only_show_ids = @my_vacancies_by_show.keys - upcoming_show_ids
-      if vacancy_only_show_ids.any?
-        vacancy_shows = Show
-          .where(id: vacancy_only_show_ids)
-          .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
-          .includes(:production, :location, :event_linkage)
+      # --- Course sessions ---
+      if @event_type_filter.include?("course") && selected_person_ids.any?
+        course_registrations = CourseRegistration
+          .confirmed
+          .where(person_id: selected_person_ids)
+          .includes(course_offering: { production: :shows })
           .to_a
 
-        vacancy_shows.each do |show|
-          show_data_by_id[show.id] ||= { show: show, assignments: [], vacancy_only: true }
-        end
-
-        # Re-sort to include vacancy-only shows
-        @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
-      end
-
-      # Upcoming audition sessions for person and groups - batch query
-      @upcoming_audition_entities = []
-
-      # Build list of auditionable entities for batch query (all profiles + all groups)
-      auditionable_conditions = @people.map { |p| [ p.class.name, p.id ] }
-      @groups.each { |g| auditionable_conditions << [ g.class.name, g.id ] }
-
-      all_auditions = Audition
-                      .joins(:audition_session)
-                      .joins(audition_request: :audition_cycle)
-                      .where(audition_cycles: { finalize_audition_invitations: true })
-                      .where("audition_sessions.start_at >= ?", Time.current)
-                      .where(
-                        auditionable_conditions.map { "(auditionable_type = ? AND auditionable_id = ?)" }.join(" OR "),
-                        *auditionable_conditions.flatten
-                      )
-                      .includes(audition_session: :production)
-                      .order(Arel.sql("audition_sessions.start_at"))
-                      .limit(20)
-                      .to_a
-
-      all_auditions.each do |audition|
-        if audition.auditionable_type == "Person" && people_ids.include?(audition.auditionable_id)
-          person = people_by_id[audition.auditionable_id]
-          @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "person",
-                                           entity: person, audition: audition }
-        elsif audition.auditionable_type == "Group"
-          group = groups_by_id[audition.auditionable_id]
-          if group
-            @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "group",
-                                             entity: group, audition: audition }
+        course_registrations.each do |reg|
+          offering = reg.course_offering
+          offering.sessions.each do |session|
+            next unless session.date_and_time >= cal_start && session.date_and_time <= cal_end
+            @calendar_events << {
+              date: session.date_and_time.to_date,
+              time: session.date_and_time,
+              title: offering.title,
+              subtitle: "Course Session",
+              path: my_course_path(offering),
+              type: :course,
+              color: "purple"
+            }
           end
         end
       end
 
-      @upcoming_audition_entities = @upcoming_audition_entities.sort_by do |item|
-        item[:audition_session].start_at
-      end.first(5)
+      # --- Audition sessions ---
+      if @event_type_filter.include?("audition")
+        selected_people = @people.select { |p| selected_person_ids.include?(p.id) }
+        selected_groups = @groups.select { |g| selected_group_ids.include?(g.id) }
+        auditionable_conditions = selected_people.map { |p| [ p.class.name, p.id ] }
+        selected_groups.each { |g| auditionable_conditions << [ g.class.name, g.id ] }
+      else
+        auditionable_conditions = []
+      end
 
-      # Unresolved vacancy invitations for all profiles (not claimed, vacancy still open)
+      if auditionable_conditions.any?
+        all_auditions = Audition
+          .joins(:audition_session)
+          .joins(audition_request: :audition_cycle)
+          .where(audition_cycles: { finalize_audition_invitations: true })
+          .where("audition_sessions.start_at >= ? AND audition_sessions.start_at <= ?", cal_start, cal_end)
+          .where(
+            auditionable_conditions.map { "(auditionable_type = ? AND auditionable_id = ?)" }.join(" OR "),
+            *auditionable_conditions.flatten
+          )
+          .includes(audition_session: :production)
+          .to_a
+
+        all_auditions.each do |audition|
+          session = audition.audition_session
+          @calendar_events << {
+            date: session.start_at.to_date,
+            time: session.start_at,
+            title: session.production.name,
+            subtitle: "Audition",
+            path: my_auditions_path,
+            type: :audition,
+            color: "amber"
+          }
+        end
+      end
+
+      # Group events by date for the calendar grid
+      @events_by_date = @calendar_events.group_by { |e| e[:date] }
+
+      # Group events by month for month navigation
+      @events_by_month = @calendar_events.group_by { |e| e[:date].beginning_of_month }
+
+      # Get events for current month
+      month_start_date = @current_month.to_date
+      month_end_date = month_start_date.end_of_month
+      @month_events = @calendar_events
+        .select { |e| e[:date] >= month_start_date && e[:date] <= month_end_date }
+        .sort_by { |e| e[:time] }
+
+      # === Alert sections (kept from original dashboard) ===
+
+      # Unresolved vacancy invitations
       @pending_vacancy_invitations = RoleVacancyInvitation
-                                      .unresolved
-                                      .where(person_id: people_ids)
-                                      .includes(role_vacancy: [ :role, { show: :production } ])
-                                      .order("shows.date_and_time ASC")
+        .unresolved
+        .where(person_id: people_ids)
+        .includes(role_vacancy: [ :role, { show: :production } ])
+        .order("shows.date_and_time ASC")
 
-      # Pending agreement signatures for productions where user is in talent pool
-      # Find productions that require agreements but user hasn't signed
+      # Pending agreement signatures
       @pending_agreements = @productions
         .select(&:agreement_required?)
         .reject { |production| production.agreement_signed_by?(@person) }
