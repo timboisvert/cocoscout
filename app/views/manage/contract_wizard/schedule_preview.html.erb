@@ -41,6 +41,8 @@
           event_starts_at = booking["event_starts_at"].present? ? DateTime.parse(booking["event_starts_at"]) : nil
           event_ends_at = booking["event_ends_at"].present? ? DateTime.parse(booking["event_ends_at"]) : nil
           has_separate_event_time = event_starts_at.present? || event_ends_at.present?
+          event_type = booking["event_type"] || "show"
+          event_type_label = YAML.load_file(Rails.root.join("config/event_types.yml")).dig("event_types", event_type, "label") || event_type.titleize
         %>
         <div class="flex items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
           <%# Left section - Date/Time info %>
@@ -102,6 +104,14 @@
               </div>
             </div>
           <% end %>
+
+          <%# Event type badge %>
+          <div class="flex-shrink-0 bg-gray-50 border-l border-gray-200 p-3 flex items-center">
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-700">
+              <%= icon("calendar", class: "w-3 h-3") %>
+              <%= event_type_label %>
+            </span>
+          </div>
         </div>
       <% end %>
     </div>

@@ -117,30 +117,71 @@
   <div class="space-y-4">
 
       <% if current_user_can_manage?(@show.production) %>
-        <% if @production.type_third_party? && @production.contract.present? %>
-          <%# Contract info box for third-party productions %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Contract" %>
-            <div class="p-4">
-              <div class="mb-3">
-                <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
-                <% if @production.contract.draft_services.any? %>
-                  <div class="flex flex-wrap gap-1 mt-2">
-                    <% @production.contract.draft_services.each do |service| %>
-                      <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        <%= service.is_a?(Hash) ? (service["name"] || service[:name]) : service %>
+        <% has_course = @production.course_offerings.any? %>
+        <% has_contract = @production.contract.present? %>
+
+        <% if has_course || has_contract %>
+          <div class="grid grid-cols-1 <%= 'sm:grid-cols-2' if has_course && has_contract %> gap-4">
+            <% if has_course %>
+              <%# Course info box %>
+              <% course = @production.course_offerings.first %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <%= render "shared/card_header", title: "Course" %>
+                <div class="p-4">
+                  <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-900"><%= course.title %></div>
+                    <div class="flex items-center gap-3 mt-1">
+                      <span class="text-xs text-gray-500">
+                        <%= course.confirmed_registrations_count %><%= course.capacity.present? ? " / #{course.capacity}" : "" %> registered
                       </span>
+                      <% case course.status %>
+                      <% when "open" %>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                          Open
+                        </span>
+                      <% when "closed" %>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Closed</span>
+                      <% when "draft" %>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Draft</span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2 items-center">
+                    <%= render "shared/button", text: "View Course", path: manage_course_offering_path(course), variant: "primary", size: "small" %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <% if has_contract %>
+              <%# Contract info box %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <%= render "shared/card_header", title: "Contract" %>
+                <div class="p-4">
+                  <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
+                    <% if @production.contract.draft_services.any? %>
+                      <div class="flex flex-wrap gap-1 mt-2">
+                        <% @production.contract.draft_services.each do |service| %>
+                          <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            <%= service.is_a?(Hash) ? (service["name"] || service[:name]) : service %>
+                          </span>
+                        <% end %>
+                      </div>
                     <% end %>
                   </div>
-                <% end %>
+                  <div class="flex flex-wrap gap-2 items-center">
+                    <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small" %>
+                  </div>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-2 items-center">
-                <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small" %>
-              </div>
-            </div>
+            <% end %>
           </div>
-        <% else %>
-          <%# Standard manage show box for in-house productions %>
+        <% end %>
+
+        <% unless has_contract %>
+          <%# Standard manage show box — only for productions NOT governed by a contract %>
           <div class="border border-gray-200 rounded-lg overflow-hidden">
             <%= render "shared/card_header", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
             <div class="p-4">

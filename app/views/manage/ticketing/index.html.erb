@@ -1,4 +1,4 @@
-<% content_for :title, "Ticketing" %>
+<% content_for :title, "Tickets" %>
 
 <%
   ticketing_description = <<~HTML
@@ -12,8 +12,7 @@
     { icon: "cog", text: "Providers", description: "Connect ticketing platforms", path: manage_ticketing_providers_path },
     { icon: "users", text: "Seating Configurations", description: "Venue seating configurations", path: manage_seating_configurations_path },
     { icon: "calendar", text: "Shows", description: "Manage show ticketing", path: manage_show_ticketings_path },
-    { icon: "chart-bar", text: "Sales", description: "View ticket sales", path: manage_ticket_sales_path },
-    { icon: "clipboard-list", text: "Courses", description: "Sell course registrations", path: manage_course_offerings_path }
+    { icon: "chart-bar", text: "Sales", description: "View ticket sales", path: manage_ticket_sales_path }
   ]
 %>
 
@@ -21,7 +20,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render "shared/module_header",
-    title: "Ticketing",
+    title: "Tickets",
     description: ticketing_description,
     actions: ticketing_actions
   %>

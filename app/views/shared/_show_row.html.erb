@@ -24,10 +24,12 @@
     - entity_assignments: Array of {entity:, role_assignments:} for multiple stacked cast assignment panels
     - cast_summary: Hash with {assignments_count:, roles_count:, vacancies:} for cast summary panel
     - closes_at: DateTime for countdown right panel (when right_panel: :countdown)
+    - compact: Reduced height/padding mode for tighter lists (default: false)
 %>
 
 <%
   # Set defaults for optional params
+  compact = local_assigns.fetch(:compact, false)
   show_canceled = local_assigns.fetch(:show_canceled, false)
   show_recurring = local_assigns.fetch(:show_recurring, false)
   show_linked = local_assigns.fetch(:show_linked, false)
@@ -98,7 +100,7 @@
 
 <%# Row wrapper - either link or div %>
 <%
-  base_row_classes = "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group"
+  base_row_classes = compact ? "flex items-stretch px-3 py-1.5 border rounded-lg hover:border-gray-400 transition-all group" : "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group"
   default_classes = "bg-white border-gray-200"
   row_classes = "#{base_row_classes} #{wrapper_classes.present? ? wrapper_classes : default_classes}"
 %>
@@ -110,11 +112,19 @@
   <%# Left Section: Date & Show Details %>
   <div class="<%= has_right_panel ? 'w-full md:w-1/2' : 'flex-1' %> flex items-center gap-4">
     <%# Date Box %>
+    <% if compact %>
+    <div class="flex-shrink-0 w-10 text-center">
+      <div class="text-[10px] font-semibold text-pink-600 uppercase leading-tight"><%= show.date_and_time.strftime("%b") %></div>
+      <div class="text-lg font-bold text-gray-900 leading-tight <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></div>
+      <div class="text-[10px] text-gray-500 leading-tight"><%= show.date_and_time.strftime("%a") %></div>
+    </div>
+    <% else %>
     <div class="flex-shrink-0 w-14 text-center">
       <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
       <div class="text-2xl font-bold text-gray-900 <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></div>
       <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
     </div>
+    <% end %>
 
     <%# Show Details %>
     <div class="flex-1 min-w-0">
@@ -129,7 +139,7 @@
         <% if is_canceled %>
           <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
         <% end %>
-        <span class="font-medium text-gray-900">
+        <span class="<%= compact ? 'text-sm' : '' %> font-medium text-gray-900">
           <%= show.display_name %>
         </span>
         <% if show_recurring && show.recurring? %>
@@ -156,7 +166,7 @@
           </span>
         <% end %>
       </div>
-      <div class="text-sm text-gray-600">
+      <div class="<%= compact ? 'text-xs' : 'text-sm' %> text-gray-600">
         <%# Show time range if duration is set, otherwise just start time %>
         <% if show.space_rental&.has_separate_event_time? %>
           <%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p").strip %><% if show.duration_minutes.present? %> – <%= show.ends_at.strftime("%l:%M %p").strip %><% end %>

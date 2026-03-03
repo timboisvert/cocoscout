@@ -37,6 +37,12 @@ class User < ApplicationRecord
     message_subscriptions.active.sum(:unread_count)
   end
 
+  def unread_message_count_for_org(organization)
+    return 0 unless organization
+    org_message_ids = Message.where(organization: organization).select(:id)
+    message_subscriptions.active.where(message_id: org_message_ids).sum(:unread_count)
+  end
+
   # Count of open requests needing user's attention:
   # - Unanswered availability requests (shows not tied to sign-up forms)
   # - Unanswered sign-up opportunities (shows with sign-up forms where talent can act)
@@ -49,13 +55,48 @@ class User < ApplicationRecord
 
     count = 0
 
-    # Get all upcoming shows from talent pools (no time limit for badge count)
+    # Get all upcoming shows within 90 days from talent pools (direct + shared)
     show_ids = Show.joins(production: { talent_pools: :people })
                    .where(people: { id: person_ids })
                    .where.not(canceled: true)
                    .where("date_and_time > ?", Time.current)
+                   .where("date_and_time <= ?", 90.days.from_now)
                    .pluck(:id)
-                   .uniq
+
+    # Also include shows from shared talent pools
+    shared_show_ids = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
+                          .where(people: { id: person_ids })
+                          .where.not(canceled: true)
+                          .where("date_and_time > ?", Time.current)
+                          .where("date_and_time <= ?", 90.days.from_now)
+                          .pluck(:id)
+
+    # Include group-based shows (direct + shared talent pools)
+    group_ids = Group.joins(:group_memberships)
+                     .where(group_memberships: { person_id: person_ids })
+                     .pluck(:id)
+
+    group_show_ids = if group_ids.any?
+      direct = Show.joins(production: { talent_pools: :groups })
+                   .where(groups: { id: group_ids })
+                   .where.not(canceled: true)
+                   .where("date_and_time > ?", Time.current)
+                   .where("date_and_time <= ?", 90.days.from_now)
+                   .pluck(:id)
+
+      shared = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
+                   .where(groups: { id: group_ids })
+                   .where.not(canceled: true)
+                   .where("date_and_time > ?", Time.current)
+                   .where("date_and_time <= ?", 90.days.from_now)
+                   .pluck(:id)
+
+      (direct + shared)
+    else
+      []
+    end
+
+    show_ids = (show_ids + shared_show_ids + group_show_ids).uniq
 
     if show_ids.any?
       # Shows with sign-up forms (exclude archived forms)
@@ -70,9 +111,13 @@ class User < ApplicationRecord
         hash[instance.show_id] = instance
       end
 
-      # Get existing availabilities for these shows
+      # Get existing availabilities for these shows (person + group entities)
       availability_show_ids = ShowAvailability.where(show_id: show_ids)
-                                              .where(available_entity_type: "Person", available_entity_id: person_ids)
+                                              .where(
+                                                "(available_entity_type = 'Person' AND available_entity_id IN (?)) OR " \
+                                                "(available_entity_type = 'Group' AND available_entity_id IN (?))",
+                                                person_ids, group_ids
+                                              )
                                               .pluck(:show_id)
                                               .to_set
 

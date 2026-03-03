@@ -10,7 +10,7 @@ class Production < ApplicationRecord
   has_many :event_linkages, dependent: :destroy
   has_many :audition_cycles, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles
-  has_many :talent_pools, dependent: :delete_all
+  has_many :talent_pools, dependent: :destroy
   has_many :talent_pool_shares, dependent: :destroy
   has_many :roles, -> { where(show_id: nil) }, dependent: :delete_all  # Production-level roles only
   has_many :all_roles, class_name: "Role", dependent: false  # All roles including show-specific
@@ -20,6 +20,7 @@ class Production < ApplicationRecord
   has_many :questionnaires, dependent: :destroy
   has_many :sign_up_forms, dependent: :destroy
   has_many :course_offerings, dependent: :destroy
+  has_many :messages, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy

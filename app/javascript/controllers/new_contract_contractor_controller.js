@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
  * Handles selecting existing contractors and creating new ones via modal.
  */
 export default class extends Controller {
-    static targets = ["select", "modal", "name", "email", "phone", "address", "error", "submitBtn", "form"]
+    static targets = ["select", "modal", "name", "email", "phone", "address", "error", "submitBtn", "form", "contractorSection"]
     static values = { createUrl: String }
 
     connect() {
@@ -121,10 +121,9 @@ export default class extends Controller {
 
         const select = this.selectTarget
 
-        // If the select is hidden (no contractors), we need to handle it differently
+        // If the select is a hidden input (no contractors existed), build a real select
         if (select.tagName === 'INPUT') {
-            // Replace with a real select - reload the page to show updated list
-            window.location.reload()
+            this.replaceEmptyStateWithSelect(id, name)
             return
         }
 
@@ -148,6 +147,43 @@ export default class extends Controller {
 
         // Select the new contractor
         select.value = id
+    }
+
+    replaceEmptyStateWithSelect(id, name) {
+        if (!this.hasContractorSectionTarget) {
+            window.location.reload()
+            return
+        }
+
+        const section = this.contractorSectionTarget
+        section.innerHTML = `
+            <label for="contractor_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Contractor
+                <span class="text-pink-500">*</span>
+            </label>
+            <select name="contract[contractor_id]"
+                    id="contractor_id"
+                    required
+                    data-new-contract-contractor-target="select"
+                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                <option value="">-- Choose a contractor --</option>
+                <option value="${id}" selected>${this.escapeHtml(name)}</option>
+            </select>
+            <div class="mt-2">
+                <button type="button"
+                        data-action="click->new-contract-contractor#openModal"
+                        class="inline-flex items-center gap-1.5 text-sm text-pink-600 hover:text-pink-700 font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Create new contractor
+                </button>
+            </div>
+        `
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div')
+        div.textContent = text
+        return div.innerHTML
     }
 
     showError(message) {

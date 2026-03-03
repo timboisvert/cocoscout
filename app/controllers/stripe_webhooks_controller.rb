@@ -32,14 +32,44 @@ class StripeWebhooksController < ApplicationController
   private
 
   def handle_checkout_completed(session)
-    registration = CourseRegistration.find_by(stripe_checkout_session_id: session.id)
-    return unless registration
-    return if registration.confirmed? # Idempotent
+    metadata = session.metadata
+    course_offering_id = metadata["course_offering_id"]
+    person_id = metadata["person_id"]
 
-    registration.confirm!(payment_intent_id: session.payment_intent)
+    # Only handle course registration checkout sessions
+    return unless course_offering_id.present? && person_id.present?
 
-    # Add registrant to the course production's talent pool
+    offering = CourseOffering.find_by(id: course_offering_id)
+    return unless offering
+
+    person = Person.find_by(id: person_id)
+    return unless person
+
+    # Idempotent: skip if already confirmed for this checkout session
+    existing = CourseRegistration.find_by(stripe_checkout_session_id: session.id)
+    return if existing&.confirmed?
+
+    # Create the confirmed registration
+    registration = offering.course_registrations.create!(
+      person: person,
+      user: User.find_by(id: metadata["user_id"]),
+      status: :confirmed,
+      amount_cents: metadata["amount_cents"].to_i,
+      currency: metadata["currency"] || "usd",
+      registered_at: Time.current,
+      paid_at: Time.current,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id: session.payment_intent
+    )
+
+    # Release Redis spot hold
+    CourseSpotHoldService.release(offering.id, person.id)
+
+    # Add registrant to talent pool, send emails, etc.
     CourseRegistrationConfirmationJob.perform_later(registration.id)
+  rescue ActiveRecord::RecordNotUnique
+    # Success page beat us to it — that's fine, it's already confirmed
+    Rails.logger.info "Course registration already created for session #{session.id}"
   end
 
   def handle_charge_refunded(charge)

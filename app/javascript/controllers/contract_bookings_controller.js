@@ -7,6 +7,7 @@ export default class extends Controller {
         "bookingMode", "rulesJson",
         // Single mode fields
         "singleLocation", "singleSpace", "singleDateTime", "singleDuration", "singleNotes",
+        "singleEventType",
         "singleEventTimeToggle", "singleEventTimeRow", "singleEventTime", "singleEventEndTime",
         // Multiple mode
         "bookingsList", "formError",
@@ -272,19 +273,23 @@ export default class extends Controller {
     }
 
     toggleItemEventTime(event) {
-        const item = event.currentTarget.closest(".booking-item")
-        const eventTimeRow = item.querySelector('[data-event-time-row]')
+        const item = event.currentTarget.closest(".booking-item") || event.currentTarget.closest("[data-create-event-options]")
+            ? event.currentTarget.closest(".booking-item") : null
+        // For single mode, just use the parent container
+        const container = event.currentTarget.closest("[data-create-event-options]") || event.currentTarget.closest(".booking-item")
+        const eventTimeRow = container?.querySelector('[data-event-time-row]')
         const isChecked = event.currentTarget.checked
 
         if (eventTimeRow) {
             if (isChecked) {
                 eventTimeRow.classList.remove("hidden")
-                // For single events, default to same times as rental
-                if (item.dataset.bookingType === "single") {
-                    const eventStartsAtInput = item.querySelector('[data-field="event_starts_at"]')
-                    const eventEndsAtInput = item.querySelector('[data-field="event_ends_at"]')
-                    const startsAtInput = item.querySelector('[data-field="starts_at"]')
-                    const durationSelect = item.querySelector('[data-field="duration"]')
+                // For single events in multiple mode, default to same times as rental
+                const bookingItem = event.currentTarget.closest(".booking-item")
+                if (bookingItem && bookingItem.dataset.bookingType === "single") {
+                    const eventStartsAtInput = bookingItem.querySelector('[data-field="event_starts_at"]')
+                    const eventEndsAtInput = bookingItem.querySelector('[data-field="event_ends_at"]')
+                    const startsAtInput = bookingItem.querySelector('[data-field="starts_at"]')
+                    const durationSelect = bookingItem.querySelector('[data-field="duration"]')
 
                     if (startsAtInput?.value) {
                         const startDate = new Date(startsAtInput.value)
@@ -304,12 +309,12 @@ export default class extends Controller {
                             if (!eventEndsAtInput.value) eventEndsAtInput.value = rentalEnd
                         }
                     }
-                } else {
+                } else if (bookingItem && bookingItem.dataset.bookingType === "recurring") {
                     // For recurring events, default to same time as rental time
-                    const eventTimeInput = item.querySelector('[data-field="event_time"]')
-                    const eventEndTimeInput = item.querySelector('[data-field="event_end_time"]')
-                    const timeInput = item.querySelector('[data-field="time"]')
-                    const durationSelect = item.querySelector('[data-field="duration"]')
+                    const eventTimeInput = bookingItem.querySelector('[data-field="event_time"]')
+                    const eventEndTimeInput = bookingItem.querySelector('[data-field="event_end_time"]')
+                    const timeInput = bookingItem.querySelector('[data-field="time"]')
+                    const durationSelect = bookingItem.querySelector('[data-field="duration"]')
 
                     if (timeInput?.value) {
                         const [hours, minutes] = timeInput.value.split(':').map(Number)
@@ -378,18 +383,25 @@ export default class extends Controller {
             }
         }
 
-        // Restore event time toggle state
-        if (data.event_starts_at || data.event_ends_at) {
-            const addedItem = this.bookingsListTarget.lastElementChild
-            const eventTimeToggle = addedItem.querySelector('[data-field="event_time_toggle"]')
-            const eventTimeRow = addedItem.querySelector('[data-event-time-row]')
-            const eventStartsAtInput = addedItem.querySelector('[data-field="event_starts_at"]')
-            const eventEndsAtInput = addedItem.querySelector('[data-field="event_ends_at"]')
+        // Restore event type and event time toggle state
+        const addedItem = this.bookingsListTarget.lastElementChild
+        if (addedItem) {
+            // Restore event type
+            const eventTypeSelect = addedItem.querySelector('[data-field="event_type"]')
+            if (eventTypeSelect && data.event_type) eventTypeSelect.value = data.event_type
 
-            if (eventTimeToggle) eventTimeToggle.checked = true
-            if (eventTimeRow) eventTimeRow.classList.remove("hidden")
-            if (eventStartsAtInput && data.event_starts_at) eventStartsAtInput.value = data.event_starts_at
-            if (eventEndsAtInput && data.event_ends_at) eventEndsAtInput.value = data.event_ends_at
+            // Restore event time toggle state
+            if (data.event_starts_at || data.event_ends_at) {
+                const eventTimeToggle = addedItem.querySelector('[data-field="event_time_toggle"]')
+                const eventTimeRow = addedItem.querySelector('[data-event-time-row]')
+                const eventStartsAtInput = addedItem.querySelector('[data-field="event_starts_at"]')
+                const eventEndsAtInput = addedItem.querySelector('[data-field="event_ends_at"]')
+
+                if (eventTimeToggle) eventTimeToggle.checked = true
+                if (eventTimeRow) eventTimeRow.classList.remove("hidden")
+                if (eventStartsAtInput && data.event_starts_at) eventStartsAtInput.value = data.event_starts_at
+                if (eventEndsAtInput && data.event_ends_at) eventEndsAtInput.value = data.event_ends_at
+            }
         }
     }
 
@@ -440,6 +452,10 @@ export default class extends Controller {
             setTimeout(() => {
                 this.updateFrequencyFields(addedItem)
             }, 0)
+
+            // Restore event type
+            const eventTypeSelect = addedItem.querySelector('[data-field="event_type"]')
+            if (eventTypeSelect && data.event_type) eventTypeSelect.value = data.event_type
 
             // Restore event time toggle state
             if (data.event_time || data.event_end_time) {
@@ -510,6 +526,11 @@ export default class extends Controller {
             notes: this.singleNotesTarget.value
         }
 
+        // Include event_type
+        if (this.hasSingleEventTypeTarget) {
+            rule.event_type = this.singleEventTypeTarget.value
+        }
+
         // Include event_starts_at if toggle is checked and value exists
         if (this.hasSingleEventTimeToggleTarget && this.singleEventTimeToggleTarget.checked) {
             const eventStartsAt = this.singleEventTimeTarget.value
@@ -557,6 +578,10 @@ export default class extends Controller {
                     notes: item.querySelector('[data-field="notes"]')?.value || ""
                 }
 
+                // Include event_type
+                const eventTypeSelect = item.querySelector('[data-field="event_type"]')
+                if (eventTypeSelect) singleRule.event_type = eventTypeSelect.value
+
                 // Include event_starts_at if toggle is checked
                 const eventTimeToggle = item.querySelector('[data-field="event_time_toggle"]')
                 if (eventTimeToggle?.checked) {
@@ -593,6 +618,10 @@ export default class extends Controller {
                     duration: item.querySelector('[data-field="duration"]')?.value || "2",
                     notes: item.querySelector('[data-field="notes"]')?.value || ""
                 }
+
+                // Include event_type
+                const eventTypeSelect = item.querySelector('[data-field="event_type"]')
+                if (eventTypeSelect) recurringRule.event_type = eventTypeSelect.value
 
                 // Include event_time if toggle is checked
                 const eventTimeToggle = item.querySelector('[data-field="event_time_toggle"]')

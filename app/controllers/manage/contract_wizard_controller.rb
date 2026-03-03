@@ -29,6 +29,7 @@ module Manage
         contractor_email: contractor.email,
         contractor_phone: contractor.phone,
         contractor_address: contractor.address,
+        production_name: params[:contract][:production_name].presence,
         status: :draft,
         wizard_step: 2
       )
@@ -219,7 +220,6 @@ module Manage
 
     def activate
       @contract.allow_overlap = params[:allow_overlap] == "1"
-      @contract.skip_event_creation = params[:skip_event_creation] == "1"
 
       if @contract.activate!
         redirect_to manage_contract_path(@contract), notice: "Contract activated successfully!"
@@ -314,7 +314,8 @@ module Manage
           "space_id" => rule["space_id"],
           "starts_at" => parsed_starts_at.iso8601,
           "duration" => rule["duration"] || "2",
-          "notes" => rule["notes"]
+          "notes" => rule["notes"],
+          "event_type" => rule["event_type"] || "show"
         }
 
         # Include event_starts_at if different from rental start
@@ -385,7 +386,8 @@ module Manage
             "space_id" => space_id,
             "starts_at" => starts_at.iso8601,
             "duration" => duration,
-            "notes" => notes
+            "notes" => notes,
+            "event_type" => rule["event_type"] || "show"
           }
 
           # Add event_starts_at if event_time is specified

@@ -33,16 +33,20 @@
                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
           <option value="">Choose a contract...</option>
           <% @contracts.each do |c| %>
+            <%
+              contract_shows = Show.joins(:production).where(productions: { contract_id: c.id }).order(:date_and_time)
+              event_type_configs = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"]
+            %>
             <option value="<%= c.id %>"
                     <%= 'selected' if @wizard_state[:contract_id].to_s == c.id.to_s %>
-                    data-rentals="<%= c.space_rentals.order(:starts_at).map { |r|
+                    data-shows="<%= contract_shows.map { |s|
                       {
-                        id: r.id,
-                        starts_at: r.starts_at.strftime('%Y-%m-%dT%H:%M'),
-                        ends_at: r.ends_at.strftime('%Y-%m-%dT%H:%M'),
-                        label: "#{r.starts_at.strftime('%a, %b %-d, %Y at %-I:%M %p')} — #{((r.ends_at - r.starts_at) / 3600).round(1)} hrs",
-                        location: r.location&.name || 'No location',
-                        space: r.location_space&.name
+                        id: s.id,
+                        date_and_time: s.date_and_time.strftime('%Y-%m-%dT%H:%M'),
+                        label: "#{s.date_and_time.strftime('%a, %b %-d, %Y at %-I:%M %p')} — #{s.duration_minutes} min",
+                        location: s.location&.name || 'No location',
+                        space: s.location_space&.name,
+                        event_type: event_type_configs.dig(s.event_type, 'label') || s.event_type&.titleize || 'Event'
                       }
                     }.to_json %>">
               <%= c.contractor_name %><% if c.production_name.present? %> — <%= c.production_name %><% end %>
@@ -55,9 +59,9 @@
       </div>
 
       <div id="rental-checkboxes" class="<%= 'hidden' unless @wizard_state[:contract_id].present? %>">
-        <p class="text-sm font-medium text-gray-900 mb-2">Select the sessions for this course:</p>
+        <p class="text-sm font-medium text-gray-900 mb-2">Select the events for this course:</p>
         <div class="flex items-center justify-between mb-3">
-          <p class="text-xs text-gray-500">Check the bookings that will be class sessions.</p>
+          <p class="text-xs text-gray-500">Check the events that will become class sessions.</p>
           <button type="button" id="select-all-rentals" class="text-xs text-pink-600 hover:text-pink-700 font-medium">Select All</button>
         </div>
         <div id="rental-list" class="space-y-2 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
@@ -137,8 +141,8 @@
       const addSessionBtn = document.getElementById('add-session-btn');
       const selectAllBtn = document.getElementById('select-all-rentals');
 
-      // Previously selected rental IDs for pre-checking
-      const preSelectedIds = <%= raw (@wizard_state[:selected_rental_ids] || []).to_json %>;
+      // Previously selected show IDs for pre-checking
+      const preSelectedIds = <%= raw (@wizard_state[:selected_show_ids] || []).to_json %>;
 
       // Toggle between contract and independent modes
       if (contractToggle) {
@@ -165,23 +169,23 @@
           }
 
           rentalCheckboxes.classList.remove('hidden');
-          const rentals = JSON.parse(option.dataset.rentals || '[]');
+          const shows = JSON.parse(option.dataset.shows || '[]');
 
-          if (rentals.length === 0) {
-            rentalList.innerHTML = '<p class="text-sm text-gray-400 italic">This contract has no bookings.</p>';
+          if (shows.length === 0) {
+            rentalList.innerHTML = '<p class="text-sm text-gray-400 italic">This contract has no events yet.</p>';
             return;
           }
 
-          rentalList.innerHTML = rentals.map(r => {
-            const checked = preSelectedIds.includes(r.id) ? 'checked' : '';
-            const venue = r.space ? `${r.location} (${r.space})` : r.location;
+          rentalList.innerHTML = shows.map(s => {
+            const checked = preSelectedIds.includes(s.id) ? 'checked' : '';
+            const venue = s.space ? `${s.location} (${s.space})` : s.location;
             return `
               <label class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input type="checkbox" name="rental_ids[]" value="${r.id}" ${checked}
+                <input type="checkbox" name="show_ids[]" value="${s.id}" ${checked}
                        class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-900">${r.label}</p>
-                  <p class="text-xs text-gray-500">${venue}</p>
+                  <p class="text-sm font-medium text-gray-900">${s.label}</p>
+                  <p class="text-xs text-gray-500">${venue} · ${s.event_type}</p>
                 </div>
               </label>
             `;

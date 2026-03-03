@@ -187,13 +187,11 @@
     <div class="flex items-center gap-4">
       <% if @valid_for_activation %>
         <%= form_with url: manage_activate_contract_wizard_path(@contract), method: :post, local: true, class: "inline activate-form" do %>
-          <input type="hidden" name="skip_event_creation" value="<%= @contract.skip_event_creation? ? '1' : '0' %>" class="skip-event-field">
           <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :submit %>
         <% end %>
       <% elsif can_override %>
         <%= form_with url: manage_activate_contract_wizard_path(@contract), method: :post, local: true, class: "inline activate-form", id: "activate-with-override-form" do |f| %>
           <%= hidden_field_tag :allow_overlap, "1" %>
-          <input type="hidden" name="skip_event_creation" value="<%= @contract.skip_event_creation? ? '1' : '0' %>" class="skip-event-field">
           <div id="activate-override-btn" style="display: none;">
             <%= render "shared/button", text: "Activate Anyway", variant: "danger", size: "large", icon: "alert-triangle", type: :submit %>
           </div>
@@ -213,21 +211,11 @@
     </div>
   </div>
 
-  <%# Event creation toggle %>
-  <div class="mt-6 border border-gray-200 rounded-lg p-4">
-    <div class="flex items-start gap-3">
-      <label class="relative inline-flex items-center cursor-pointer mt-0.5">
-        <input type="checkbox" id="skip-event-creation-checkbox"
-               class="sr-only peer"
-               <%= @contract.skip_event_creation? ? 'checked' : '' %>>
-        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
-      </label>
-      <div>
-        <p class="text-sm font-medium text-gray-900">Space rental only</p>
-        <p class="text-xs text-gray-500 mt-0.5">Don't create events for these bookings. Use this when events will be created separately (e.g. as individual course offerings).</p>
-      </div>
-    </div>
-  </div>
+  <%
+    bookings = @contract.draft_bookings || []
+    event_types_used = bookings.map { |b| b["event_type"] || "show" }.uniq
+    event_type_configs = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"]
+  %>
 
   <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
     <div class="flex items-start">
@@ -237,25 +225,14 @@
         <ul class="mt-2 list-disc list-inside space-y-1">
           <li>Space rentals will be created and appear on your calendar</li>
           <li>Payment schedule will be set up with reminders</li>
-          <li id="production-info-item">A third-party production will be created (if configured)</li>
+          <% if bookings.any? %>
+            <li>A third-party production will be created with <%= pluralize(bookings.count, "event") %>
+              (<%= event_types_used.map { |t| event_type_configs.dig(t, "label") || t.titleize }.join(", ") %>)
+            </li>
+          <% end %>
           <li>You can still edit details after activation</li>
         </ul>
       </div>
     </div>
   </div>
-
-  <script>
-    document.getElementById('skip-event-creation-checkbox').addEventListener('change', function() {
-      const item = document.getElementById('production-info-item');
-      const fields = document.querySelectorAll('.skip-event-field');
-      if (this.checked) {
-        item.textContent = 'Events will NOT be created — add them later as courses';
-        item.classList.add('line-through', 'text-blue-400');
-      } else {
-        item.textContent = 'A third-party production will be created (if configured)';
-        item.classList.remove('line-through', 'text-blue-400');
-      }
-      fields.forEach(f => f.value = this.checked ? '1' : '0');
-    });
-  </script>
 <% end %>

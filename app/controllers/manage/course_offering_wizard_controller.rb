@@ -37,13 +37,13 @@ module Manage
       @wizard_state[:schedule_mode] = params[:schedule_mode].presence || "independent"
 
       if @wizard_state[:schedule_mode] == "contract" && @wizard_state[:contract_id].present?
-        # Store selected space rental IDs from the contract
-        selected_rental_ids = Array(params[:rental_ids]).map(&:to_i).reject(&:zero?)
-        @wizard_state[:selected_rental_ids] = selected_rental_ids
+        # Store selected show IDs from the contract's events
+        selected_show_ids = Array(params[:show_ids]).map(&:to_i).reject(&:zero?)
+        @wizard_state[:selected_show_ids] = selected_show_ids
         @wizard_state[:sessions] = nil # Clear manual sessions
       else
         @wizard_state[:contract_id] = nil
-        @wizard_state[:selected_rental_ids] = nil
+        @wizard_state[:selected_show_ids] = nil
         # Store manually entered sessions
         sessions = []
         if params[:session_datetimes].present?
@@ -67,14 +67,112 @@ module Manage
     def instructor
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
       @step = 3
+      if @wizard_state[:instructor_person_id].present?
+        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
+      end
     end
 
     def save_instructor
-      @wizard_state[:instructor_name] = params[:instructor_name].presence
+      @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
       @wizard_state[:instructor_bio] = params[:instructor_bio].presence
+
+      # Keep instructor_name in sync with the selected person
+      if @wizard_state[:instructor_person_id].present?
+        person = Person.find_by(id: @wizard_state[:instructor_person_id])
+        @wizard_state[:instructor_name] = person&.name
+      else
+        @wizard_state[:instructor_name] = nil
+      end
 
       save_wizard_state
       redirect_to manage_course_wizard_pricing_path
+    end
+
+    def search_instructor
+      q = params[:q].to_s.strip
+
+      if q.blank? || q.length < 2
+        render partial: "manage/course_offering_wizard/instructor_search_results",
+               locals: { org_people: [], global_people: [], query: q, show_invite: false }
+        return
+      end
+
+      # Search within organization people
+      org_people = Current.organization.people.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).limit(10).to_a
+
+      # Search globally (people not in this org)
+      org_person_ids = Current.organization.people.pluck(:id)
+      global_people = Person.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).where.not(id: org_person_ids).limit(10).to_a
+
+      # Show invite if query looks like an email with no exact match
+      show_invite = q.include?("@") &&
+        org_people.none? { |p| p.email&.downcase == q.downcase } &&
+        global_people.none? { |p| p.email&.downcase == q.downcase }
+
+      render partial: "manage/course_offering_wizard/instructor_search_results",
+             locals: { org_people: org_people, global_people: global_people, query: q, show_invite: show_invite }
+    end
+
+    # Invite a new person as instructor (creates Person + User + sends invitation)
+    def invite_instructor
+      email = params[:email]&.strip&.downcase
+      name = params[:name]&.strip
+
+      if email.blank? || name.blank?
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
+        return
+      end
+
+      # Check if person with this email already exists
+      existing_person = Person.find_by(email: email)
+
+      if existing_person
+        # Add to org if needed
+        unless existing_person.organizations.include?(Current.organization)
+          existing_person.organizations << Current.organization
+        end
+
+        @wizard_state[:instructor_person_id] = existing_person.id
+        @wizard_state[:instructor_name] = existing_person.name
+        save_wizard_state
+
+        render json: { success: true, person_id: existing_person.id, message: "#{existing_person.name} selected as instructor" }
+      else
+        # Create new person and user account
+        person = Person.create!(name: name, email: email)
+        person.organizations << Current.organization
+
+        user = User.create!(
+          email_address: email,
+          password: User.generate_secure_password
+        )
+        person.update!(user: user)
+
+        # Send invitation email
+        invitation = PersonInvitation.create!(
+          email: email,
+          organization: Current.organization
+        )
+        Manage::PersonMailer.person_invitation(invitation).deliver_later
+
+        @wizard_state[:instructor_person_id] = person.id
+        @wizard_state[:instructor_name] = person.name
+        save_wizard_state
+
+        render json: {
+          success: true,
+          person_id: person.id,
+          message: "Invitation sent to #{name}. They've been selected as instructor."
+        }
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
     end
 
     # Step 4: Pricing
@@ -127,17 +225,23 @@ module Manage
 
     # Step 6: Review
     def review
-      redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
-      redirect_to manage_course_wizard_pricing_path unless @wizard_state[:price_cents].present?
+      redirect_to(manage_course_wizard_basics_path) and return unless @wizard_state[:title].present?
+      redirect_to(manage_course_wizard_pricing_path) and return unless @wizard_state[:price_cents].present?
       @step = 6
+
+      # Load instructor person for display
+      if @wizard_state[:instructor_person_id].present?
+        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
+      end
 
       # Load contract for display if linked
       if @wizard_state[:contract_id].present?
         @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
-        if @contract && @wizard_state[:selected_rental_ids].present?
-          @selected_rentals = @contract.space_rentals
-            .where(id: @wizard_state[:selected_rental_ids])
-            .order(:starts_at)
+        if @contract && @wizard_state[:selected_show_ids].present?
+          @selected_shows = Show.joins(:production)
+            .where(productions: { contract_id: @contract.id })
+            .where(id: @wizard_state[:selected_show_ids])
+            .order(:date_and_time)
         end
       end
     end
@@ -159,12 +263,31 @@ module Manage
           contract: contract
         )
 
+        # Set up instructor person if selected
+        instructor_person = nil
+        if @wizard_state[:instructor_person_id].present?
+          instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
+          if instructor_person
+            # Ensure instructor is in the organization
+            unless instructor_person.organizations.include?(Current.organization)
+              instructor_person.organizations << Current.organization
+            end
+
+            # Add instructor to the production's talent pool
+            talent_pool = @production.talent_pool || @production.create_talent_pool!
+            unless talent_pool.people.exists?(instructor_person.id)
+              talent_pool.people << instructor_person
+            end
+          end
+        end
+
         # Create the course offering
         @offering = @production.course_offerings.create!(
           title: @wizard_state[:title],
           subtitle: @wizard_state[:subtitle],
           description: @wizard_state[:description],
           instructor_name: @wizard_state[:instructor_name],
+          instructor_person: instructor_person,
           instructor_bio: @wizard_state[:instructor_bio],
           price_cents: @wizard_state[:price_cents],
           currency: @wizard_state[:currency] || "usd",
@@ -180,6 +303,20 @@ module Manage
 
         # Create shows (sessions) for the course
         create_course_sessions!(contract)
+
+        # Assign instructor to the Instructor role for all sessions
+        if instructor_person
+          instructor_role = @production.roles.find_by(name: "Instructor")
+          if instructor_role
+            @production.shows.each do |show|
+              ShowPersonRoleAssignment.find_or_create_by!(
+                show: show,
+                role: instructor_role,
+                assignable: instructor_person
+              )
+            end
+          end
+        end
       end
 
       clear_wizard_state
@@ -199,19 +336,13 @@ module Manage
     private
 
     def create_course_sessions!(contract)
-      if @wizard_state[:schedule_mode] == "contract" && contract.present? && @wizard_state[:selected_rental_ids].present?
-        # Create sessions from selected contract space rentals
-        rentals = contract.space_rentals.where(id: @wizard_state[:selected_rental_ids]).order(:starts_at)
-        rentals.each do |rental|
-          duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
-          @production.shows.create!(
-            date_and_time: rental.event_starts_at || rental.starts_at,
-            duration_minutes: duration_minutes,
-            location: rental.location,
-            location_space: rental.location_space,
-            space_rental: rental,
-            event_type: "class"
-          )
+      if @wizard_state[:schedule_mode] == "contract" && contract.present? && @wizard_state[:selected_show_ids].present?
+        # Move selected shows from the contract's production to the course production
+        shows = Show.joins(:production)
+          .where(productions: { contract_id: contract.id })
+          .where(id: @wizard_state[:selected_show_ids])
+        shows.each do |show|
+          show.update!(production: @production, event_type: "class")
         end
       elsif @wizard_state[:sessions].present?
         # Create sessions from manually entered dates

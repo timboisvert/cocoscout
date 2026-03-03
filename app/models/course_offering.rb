@@ -3,6 +3,7 @@
 class CourseOffering < ApplicationRecord
   belongs_to :production
   belongs_to :contract, optional: true
+  belongs_to :instructor_person, class_name: "Person", optional: true
   has_many :course_registrations, dependent: :restrict_with_error
 
   has_one :organization, through: :production
@@ -25,6 +26,7 @@ class CourseOffering < ApplicationRecord
   validates :currency, presence: true
 
   before_validation :generate_short_code, on: :create
+  after_create :ensure_instructor_role
 
   scope :active, -> { where(status: %w[open closed]) }
   scope :accepting, -> { open }
@@ -57,16 +59,22 @@ class CourseOffering < ApplicationRecord
   # --- Capacity ---
 
   def confirmed_registrations_count
-    course_registrations.where(status: %w[confirmed pending]).count
+    course_registrations.where(status: :confirmed).count
+  end
+
+  # Effective count includes confirmed registrations PLUS
+  # temporary Redis spot holds (people currently on Stripe checkout).
+  def effective_registrations_count
+    confirmed_registrations_count + CourseSpotHoldService.active_holds_count(id)
   end
 
   def spots_remaining
     return nil unless capacity.present?
-    [ capacity - confirmed_registrations_count, 0 ].max
+    [ capacity - effective_registrations_count, 0 ].max
   end
 
   def full?
-    capacity.present? && confirmed_registrations_count >= capacity
+    capacity.present? && effective_registrations_count >= capacity
   end
 
   # --- Registration status ---
@@ -108,6 +116,13 @@ class CourseOffering < ApplicationRecord
   def generate_short_code
     return if short_code.present?
     self.short_code = ShortKeyService.generate(type: :course)
+  end
+
+  def ensure_instructor_role
+    production.roles.find_or_create_by!(name: "Instructor") do |role|
+      role.category = "technical"
+      role.quantity = 1
+    end
   end
 
   def format_cents(cents)

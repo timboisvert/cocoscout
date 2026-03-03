@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_161827) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -456,6 +456,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_200000) do
     t.integer "early_bird_price_cents"
     t.text "instruction_text"
     t.string "instructor_name"
+    t.bigint "instructor_person_id"
     t.datetime "opens_at"
     t.integer "price_cents", null: false
     t.bigint "production_id", null: false
@@ -469,6 +470,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_200000) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
+    t.index ["instructor_person_id"], name: "index_course_offerings_on_instructor_person_id"
     t.index ["production_id"], name: "index_course_offerings_on_production_id"
     t.index ["short_code"], name: "index_course_offerings_on_short_code", unique: true
     t.index ["status"], name: "index_course_offerings_on_status"
@@ -2400,6 +2402,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_200000) do
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
   add_foreign_key "course_offerings", "contracts"
+  add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify
   add_foreign_key "course_offerings", "productions"
   add_foreign_key "course_registrations", "course_offerings"
   add_foreign_key "course_registrations", "people"

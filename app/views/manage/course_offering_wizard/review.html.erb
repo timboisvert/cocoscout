@@ -48,14 +48,14 @@
           <div>
             <dt class="text-gray-500">Sessions</dt>
             <dd class="text-gray-700">
-              <% if @selected_rentals&.any? %>
-                <span class="font-medium"><%= @selected_rentals.count %> session<%= @selected_rentals.count == 1 ? '' : 's' %></span>
+              <% if @selected_shows&.any? %>
+                <span class="font-medium"><%= @selected_shows.count %> session<%= @selected_shows.count == 1 ? '' : 's' %></span>
                 <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
-                  <% @selected_rentals.first(5).each do |rental| %>
-                    <li><%= rental.starts_at.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= ((rental.ends_at - rental.starts_at) / 3600).round(1) %> hrs)</li>
+                  <% @selected_shows.first(5).each do |show| %>
+                    <li><%= show.date_and_time.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= show.duration_minutes %> min)</li>
                   <% end %>
-                  <% if @selected_rentals.count > 5 %>
-                    <li>...and <%= @selected_rentals.count - 5 %> more</li>
+                  <% if @selected_shows.count > 5 %>
+                    <li>...and <%= @selected_shows.count - 5 %> more</li>
                   <% end %>
                 </ul>
               <% else %>
@@ -95,7 +95,30 @@
           Edit
         <% end %>
       </div>
-      <% if @wizard_state[:instructor_name].present? %>
+      <% if @instructor_person %>
+        <div class="flex items-center gap-3 mb-2">
+          <% headshot_variant = @instructor_person.safe_headshot_variant(:tile) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: @instructor_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
+              <%= @instructor_person.initials %>
+            </div>
+          <% end %>
+          <div>
+            <div class="font-medium text-sm text-gray-900"><%= @instructor_person.name %></div>
+            <% if @instructor_person.email.present? %>
+              <div class="text-xs text-gray-500"><%= @instructor_person.email %></div>
+            <% end %>
+          </div>
+        </div>
+        <% if @wizard_state[:instructor_bio].present? %>
+          <div class="text-sm mt-2">
+            <dt class="text-gray-500">Bio</dt>
+            <dd class="text-gray-700"><%= truncate(@wizard_state[:instructor_bio], length: 200) %></dd>
+          </div>
+        <% end %>
+      <% elsif @wizard_state[:instructor_name].present? %>
         <dl class="space-y-2 text-sm">
           <div>
             <dt class="text-gray-500">Name</dt>
@@ -170,12 +193,7 @@
             </dd>
           </div>
         <% end %>
-        <% if @wizard_state[:instruction_text].present? %>
-          <div>
-            <dt class="text-gray-500">Instructions</dt>
-            <dd class="text-gray-700"><%= truncate(@wizard_state[:instruction_text], length: 150) %></dd>
-          </div>
-        <% end %>
+
       </dl>
     </div>
   </div>

@@ -28,13 +28,13 @@
       <%= form_with url: manage_create_draft_contract_wizard_path, method: :post, local: true,
                     data: { new_contract_contractor_target: "form" } do |form| %>
         <div class="space-y-5">
-          <div>
-            <label for="contractor_id" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Select Contractor
-              <span class="text-pink-500">*</span>
-            </label>
-
+          <div data-new-contract-contractor-target="contractorSection">
             <% if @contractors.any? %>
+              <label for="contractor_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Contractor
+                <span class="text-pink-500">*</span>
+              </label>
+
               <select name="contract[contractor_id]"
                       id="contractor_id"
                       required
@@ -45,21 +45,33 @@
                   <option value="<%= contractor.id %>"><%= contractor.name %></option>
                 <% end %>
               </select>
+
+              <div class="mt-2">
+                <%= render "shared/button", text: "Create new contractor", variant: "ghost", size: "small", icon: "plus", type: :button, data: { action: "click->new-contract-contractor#openModal" } %>
+              </div>
             <% else %>
-              <div class="text-sm text-gray-500 py-2">
-                No contractors yet. Create your first contractor to get started.
+              <div class="border border-dashed border-gray-300 rounded-lg p-5 text-center">
+                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <%= icon("users", class: "w-5 h-5 text-gray-400") %>
+                </div>
+                <p class="text-sm font-medium text-gray-900 mb-1">No contractors yet</p>
+                <p class="text-xs text-gray-500 mb-4">Create a contractor first, then you can set up their contract.</p>
+                <%= render "shared/button", text: "Create Contractor", variant: "primary", size: "medium", icon: "plus", type: :button, data: { action: "click->new-contract-contractor#openModal" } %>
               </div>
               <input type="hidden" name="contract[contractor_id]" value="" data-new-contract-contractor-target="select">
             <% end %>
+          </div>
 
-            <div class="mt-2">
-              <button type="button"
-                      data-action="click->new-contract-contractor#openModal"
-                      class="inline-flex items-center gap-1.5 text-sm text-pink-600 hover:text-pink-700 font-medium">
-                <%= icon("plus", class: "w-4 h-4") %>
-                Create new contractor
-              </button>
-            </div>
+          <div>
+            <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Production / Show Name
+            </label>
+            <input type="text"
+                   name="contract[production_name]"
+                   id="production_name"
+                   placeholder="e.g. Spring Recital 2026"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <p class="text-xs text-gray-500 mt-1">Optional. Used as the production name when the contract is activated.</p>
           </div>
         </div>
 
@@ -151,17 +163,8 @@
 
       <%# Footer %>
       <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-        <button type="button"
-                data-action="click->new-contract-contractor#closeModal"
-                class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-          Cancel
-        </button>
-        <button type="button"
-                data-action="click->new-contract-contractor#createContractor"
-                data-new-contract-contractor-target="submitBtn"
-                class="px-4 py-2.5 text-sm font-medium text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition">
-          Create Contractor
-        </button>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->new-contract-contractor#closeModal" } %>
+        <%= render "shared/button", text: "Create Contractor", variant: "primary", size: "medium", type: :button, data: { action: "click->new-contract-contractor#createContractor", "new-contract-contractor-target": "submitBtn" } %>
       </div>
     </div>
   </div>

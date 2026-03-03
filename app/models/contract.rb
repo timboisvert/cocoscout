@@ -38,10 +38,11 @@ class Contract < ApplicationRecord
 
     transaction do
       create_records_from_draft!
+
       update!(
         status: :active,
         activated_at: Time.current,
-        skip_event_creation: skip_event_creation
+        skip_event_creation: false
         # Keep draft_data - it contains the full contract config (services, payment_config, etc.)
       )
     end
@@ -263,7 +264,8 @@ class Contract < ApplicationRecord
   end
 
   def create_records_from_draft!
-    # Create space rentals from draft bookings
+    rentals = []
+
     draft_bookings.each do |booking|
       starts_at = Time.zone.parse(booking["starts_at"])
 
@@ -284,7 +286,7 @@ class Contract < ApplicationRecord
       event_starts_at = booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil
       event_ends_at = booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil
 
-      space_rentals.create!({
+      rental = space_rentals.create!({
         location_id: location_id,
         location_space_id: space_id,
         starts_at: starts_at,
@@ -295,6 +297,9 @@ class Contract < ApplicationRecord
         confirmed: true,
         allow_overlap: allow_overlap
       })
+
+      event_type = booking["event_type"] || "show"
+      rentals << { rental: rental, event_type: event_type }
     end
 
     # Create payments from draft payments
@@ -309,10 +314,8 @@ class Contract < ApplicationRecord
       )
     end
 
-    # Create a production and shows for the contract unless event creation is skipped.
-    # skip_event_creation is used for space-rental-only contracts where events
-    # will be created separately (e.g. as individual course offerings).
-    unless skip_event_creation?
+    # Always create a production and shows for all bookings
+    if rentals.any?
       prod_data = draft_data["production"] || {}
       production = productions.create!(
         organization: organization,
@@ -321,8 +324,8 @@ class Contract < ApplicationRecord
         contact_email: contractor_email
       )
 
-      # Create shows for each space rental (booking)
-      space_rentals.reload.each do |rental|
+      rentals.each do |info|
+        rental = info[:rental]
         duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
         production.shows.create!(
           date_and_time: rental.starts_at,
@@ -330,7 +333,7 @@ class Contract < ApplicationRecord
           location: rental.location,
           location_space: rental.location_space,
           space_rental: rental,
-          event_type: prod_data["event_type"].presence || "show"
+          event_type: info[:event_type]
         )
       end
     end

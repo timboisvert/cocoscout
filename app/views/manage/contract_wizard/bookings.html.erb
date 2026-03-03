@@ -79,6 +79,10 @@
             </select>
           </div>
         </div>
+        <p class="text-xs text-gray-500">
+          Need to add spaces?
+          <%= link_to "Manage locations", manage_locations_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
+        </p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -97,28 +101,42 @@
           </div>
         </div>
 
-        <%# Event time toggle %>
-        <div class="border-t border-gray-200 pt-4">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" data-contract-bookings-target="singleEventTimeToggle"
-                   data-action="change->contract-bookings#toggleSingleEventTime"
-                   <%= 'checked' if single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %>
-                   class="sr-only peer">
-            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
-          </label>
-          <div data-contract-bookings-target="singleEventTimeRow" class="<%= 'hidden' unless single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %> mt-3">
-            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
-                <input type="datetime-local" data-contract-bookings-target="singleEventTime" value="<%= single_rule['event_starts_at'] %>"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
-                <input type="datetime-local" data-contract-bookings-target="singleEventEndTime" value="<%= single_rule['event_ends_at'] %>"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        <%# Event settings %>
+        <div class="border-t border-gray-200 pt-4 space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
+            <select data-contract-bookings-target="singleEventType"
+                    class="w-full max-w-xs px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% event_types = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"] %>
+              <% event_types.each do |key, config| %>
+                <option value="<%= key %>" <%= 'selected' if (single_rule['event_type'] || 'show') == key %>><%= config["label"] %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <%# Event time toggle %>
+          <div>
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" data-contract-bookings-target="singleEventTimeToggle"
+                     data-action="change->contract-bookings#toggleSingleEventTime"
+                     <%= 'checked' if single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %>
+                     class="sr-only peer">
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+            </label>
+            <div data-contract-bookings-target="singleEventTimeRow" class="<%= 'hidden' unless single_rule['event_starts_at'].present? || single_rule['event_ends_at'].present? %> mt-3">
+              <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                  <input type="datetime-local" data-contract-bookings-target="singleEventTime" value="<%= single_rule['event_starts_at'] %>"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                  <input type="datetime-local" data-contract-bookings-target="singleEventEndTime" value="<%= single_rule['event_ends_at'] %>"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
               </div>
             </div>
           </div>
@@ -164,14 +182,8 @@
       </p>
     </div>
 
-    <%# Manage Spaces Link %>
-    <p class="text-xs text-gray-500 text-center mt-6 mb-6">
-      Need to add spaces?
-      <%= link_to "Manage locations", manage_locations_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
-    </p>
-
     <%# Navigation %>
-    <div class="flex justify-between">
+    <div class="flex justify-between mt-6">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_contractor_contract_wizard_path(@contract) %>
       <%= render "shared/button", text: "Next: Preview Schedule", variant: "primary", size: "medium", type: :submit, data: { action: "click->contract-bookings#validateAndSubmit" } %>
     </div>
@@ -231,26 +243,40 @@
           </div>
         </div>
 
-        <%# Event time toggle %>
-        <div class="border-t border-gray-200 pt-4">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
-                   class="sr-only peer">
-            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
-          </label>
-          <div data-event-time-row class="hidden mt-3">
-            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
-                <input type="datetime-local" data-field="event_starts_at"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
-                <input type="datetime-local" data-field="event_ends_at"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        <%# Event settings %>
+        <div class="border-t border-gray-200 pt-4 space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
+            <select data-field="event_type"
+                    class="w-full max-w-xs px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% event_types = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"] %>
+              <% event_types.each do |key, config| %>
+                <option value="<%= key %>"><%= config["label"] %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <%# Event time toggle %>
+          <div>
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                     class="sr-only peer">
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+            </label>
+            <div data-event-time-row class="hidden mt-3">
+              <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                  <input type="datetime-local" data-field="event_starts_at"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                  <input type="datetime-local" data-field="event_ends_at"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
               </div>
             </div>
           </div>
@@ -389,26 +415,40 @@
           </div>
         </div>
 
-        <%# Event time toggle %>
-        <div class="border-t border-gray-200 pt-4">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
-                   class="sr-only peer">
-            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            <span class="ms-3 text-sm font-medium text-gray-700">Event runs at different times than rental</span>
-          </label>
-          <div data-event-time-row class="hidden mt-3">
-            <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
-                <input type="time" data-field="event_time"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
-                <input type="time" data-field="event_end_time"
-                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        <%# Event settings %>
+        <div class="border-t border-gray-200 pt-4 space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
+            <select data-field="event_type"
+                    class="w-full max-w-xs px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% event_types = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"] %>
+              <% event_types.each do |key, config| %>
+                <option value="<%= key %>"><%= config["label"] %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <%# Event time toggle %>
+          <div>
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                     class="sr-only peer">
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+            </label>
+            <div data-event-time-row class="hidden mt-3">
+              <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                  <input type="time" data-field="event_time"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                  <input type="time" data-field="event_end_time"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
               </div>
             </div>
           </div>
