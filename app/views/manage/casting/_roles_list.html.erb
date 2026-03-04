@@ -244,16 +244,32 @@
                         <% end %>
                       </div>
                       <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                        <button type="button"
-                          class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
-                          data-action="click->drop-role#removeAssignment"
-                          data-assignment-id="<%= assignment.id %>"
-                          data-assignable-type="<%= is_guest ? '' : assignable.class.name %>"
-                          data-assignable-id="<%= is_guest ? '' : assignable.id %>"
-                          title="Remove assignment"
-                        >
-                          Remove
-                        </button>
+                        <% if show.casting_finalized? && !is_guest %>
+                          <button type="button"
+                            class="text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-md px-2 py-1 cursor-pointer"
+                            data-action="click->drop-role#openVacancyModal"
+                            data-assignment-id="<%= assignment.id %>"
+                            data-role-id="<%= role.id %>"
+                            data-role-name="<%= role.name %>"
+                            data-assignable-type="<%= assignable.class.name %>"
+                            data-assignable-id="<%= assignable.id %>"
+                            data-assignable-name="<%= assignable.name %>"
+                            title="Create vacancy or remove"
+                          >
+                            Can't Make It
+                          </button>
+                        <% else %>
+                          <button type="button"
+                            class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
+                            data-action="click->drop-role#removeAssignment"
+                            data-assignment-id="<%= assignment.id %>"
+                            data-assignable-type="<%= is_guest ? '' : assignable.class.name %>"
+                            data-assignable-id="<%= is_guest ? '' : assignable.id %>"
+                            title="Remove assignment"
+                          >
+                            Remove
+                          </button>
+                        <% end %>
                       </div>
                     </div>
                   <% else %>
@@ -353,6 +369,7 @@
 
               <div class="space-y-2">
                 <%# Show all slots (filled and empty) for multi-person roles %>
+                <% remaining_vacancies = open_vacancies.dup %>
                 <% (1..total_slots).each do |slot_position| %>
                   <% assignment = assignments_by_slot[slot_position] %>
                   <% if assignment %>
@@ -420,23 +437,39 @@
                         <% end %>
                       </div>
                       <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                        <button type="button"
-                          class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
-                          data-action="click->drop-role#removeAssignment"
-                          data-assignment-id="<%= assignment.id %>"
-                          data-assignable-type="<%= is_guest ? '' : assignable.class.name %>"
-                          data-assignable-id="<%= is_guest ? '' : assignable.id %>"
-                          title="Remove assignment"
-                        >
-                          Remove
-                        </button>
+                        <% if show.casting_finalized? && !is_guest %>
+                          <button type="button"
+                            class="text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-md px-2 py-1 cursor-pointer"
+                            data-action="click->drop-role#openVacancyModal"
+                            data-assignment-id="<%= assignment.id %>"
+                            data-role-id="<%= role.id %>"
+                            data-role-name="<%= role.name %>"
+                            data-assignable-type="<%= assignable.class.name %>"
+                            data-assignable-id="<%= assignable.id %>"
+                            data-assignable-name="<%= assignable.name %>"
+                            title="Create vacancy or remove"
+                          >
+                            Can't Make It
+                          </button>
+                        <% else %>
+                          <button type="button"
+                            class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
+                            data-action="click->drop-role#removeAssignment"
+                            data-assignment-id="<%= assignment.id %>"
+                            data-assignable-type="<%= is_guest ? '' : assignable.class.name %>"
+                            data-assignable-id="<%= is_guest ? '' : assignable.id %>"
+                            title="Remove assignment"
+                          >
+                            Remove
+                          </button>
+                        <% end %>
                       </div>
                     </div>
                   <% else %>
                     <%# Empty slot - check for vacancy or show drop zone %>
                     <%
-                      # Find if there's an open vacancy for this role (vacancies are per-role, not per-slot)
-                      slot_vacancy = open_vacancies.first if open_vacancies.any?
+                      # Each vacancy should only be shown once, so shift from the remaining list
+                      slot_vacancy = remaining_vacancies.shift if remaining_vacancies.any?
                     %>
                     <% if slot_vacancy && !is_linked %>
                       <%# Non-linked show with open vacancy - show who can't make it %>

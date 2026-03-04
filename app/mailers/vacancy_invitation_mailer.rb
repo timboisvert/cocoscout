@@ -43,7 +43,12 @@ class VacancyInvitationMailer < ApplicationMailer
       role_name: @role.name,
       production_name: @production.name,
       claim_url: @claim_url,
-      shows_list: shows_text
+      shows_list: shows_text,
+      show_date: @show.date_and_time.strftime("%B %-d at %-I:%M %p"),
+      event_name: @show.display_name,
+      show_name: @show.display_name,
+      show_info: "#{@show.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{@show.display_name}",
+      recipient_name: @person.name&.split&.first || "there"
     }
   end
 

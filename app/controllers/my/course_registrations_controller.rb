@@ -131,6 +131,12 @@ module My
     end
 
     def inactive
+      # If the course is actually open, redirect to register
+      if @course_offering.open?
+        redirect_to my_course_entry_path(code: @course_offering.short_code), status: :see_other
+        return
+      end
+
       @production = @course_offering.production
     end
 

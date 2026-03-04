@@ -149,11 +149,14 @@ module My
 
       # --- Course sessions ---
       if @event_type_filter.include?("course") && selected_person_ids.any?
+        # Courses where user is a registered student
         course_registrations = CourseRegistration
           .confirmed
           .where(person_id: selected_person_ids)
           .includes(course_offering: { production: :shows })
           .to_a
+
+        registered_offering_ids = course_registrations.map(&:course_offering_id).to_set
 
         course_registrations.each do |reg|
           offering = reg.course_offering
@@ -164,6 +167,28 @@ module My
               time: session.date_and_time,
               title: offering.title,
               subtitle: "Course Session",
+              path: my_course_path(offering),
+              type: :course,
+              color: "purple"
+            }
+          end
+        end
+
+        # Courses where user is the instructor (not already included via registration)
+        instructor_offerings = CourseOffering
+          .where(instructor_person_id: selected_person_ids)
+          .where.not(id: registered_offering_ids.to_a)
+          .includes(production: :shows)
+          .to_a
+
+        instructor_offerings.each do |offering|
+          offering.sessions.each do |session|
+            next unless session.date_and_time >= cal_start && session.date_and_time <= cal_end
+            @calendar_events << {
+              date: session.date_and_time.to_date,
+              time: session.date_and_time,
+              title: offering.title,
+              subtitle: "Instructor",
               path: my_course_path(offering),
               type: :course,
               color: "purple"

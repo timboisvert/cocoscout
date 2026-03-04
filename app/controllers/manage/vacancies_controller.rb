@@ -4,7 +4,7 @@ module Manage
   class VacanciesController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_vacancy, only: %i[show send_invitations cancel fill]
+    before_action :set_vacancy, only: %i[show send_invitations cancel reclaim fill]
 
     def show
       @invitations = @vacancy.invitations.includes(:person).order(created_at: :desc)
@@ -198,6 +198,16 @@ module Manage
                   notice: "Vacancy closed without filling."
     end
 
+    def reclaim
+      if @vacancy.reclaim!(by: Current.user)
+        redirect_to manage_casting_show_cast_path(@production, @vacancy.show),
+                    notice: "#{@vacancy.vacated_by&.name || 'Cast member'} has been put back as #{@vacancy.role.name}."
+      else
+        redirect_to manage_casting_vacancy_path(@production, @vacancy),
+                    alert: "Unable to reclaim this vacancy. It may already be filled or cancelled."
+      end
+    end
+
     def fill
       person_id = params[:person_id]
       person = Person.find(person_id)
@@ -256,7 +266,11 @@ module Manage
       {
         production_name: @production.name,
         role_name: @vacancy.role.name,
-        shows_list: shows_text
+        shows_list: shows_text,
+        show_date: show.date_and_time.strftime("%B %-d at %-I:%M %p"),
+        event_name: show.display_name,
+        show_name: show.display_name,
+        show_info: "#{show.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{show.display_name}"
       }
     end
   end

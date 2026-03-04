@@ -16,7 +16,9 @@ export default class extends Controller {
         // Replace assignment modal targets
         "replaceModal", "replaceModalTitle", "replaceNewPersonHeadshot", "replaceNewPersonName",
         "replaceNewPersonNameWarning", "replaceRoleName", "replaceEligibilityWarning", "replaceOptionsList",
-        "replaceRoleId", "replaceAssignableType", "replaceAssignableId", "replaceSourceRoleId", "replaceIsEligible"
+        "replaceRoleId", "replaceAssignableType", "replaceAssignableId", "replaceSourceRoleId", "replaceIsEligible",
+        // Vacancy modal targets
+        "vacancyModal", "vacancyPersonName", "vacancyPersonName2", "vacancyRoleName"
     ];
     static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean };
 
@@ -28,6 +30,7 @@ export default class extends Controller {
                 this.closeAddPersonModal();
                 this.closeRestrictedWarningModal();
                 this.closeReplaceModal();
+                this.closeVacancyModal();
             }
         };
         document.addEventListener('keydown', this.handleEscape);
@@ -1345,6 +1348,93 @@ export default class extends Controller {
                 }
 
                 // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            });
+    }
+
+    // --- Vacancy Modal (Can't Make It on finalized shows) ---
+
+    openVacancyModal(event) {
+        event.preventDefault();
+        const btn = event.currentTarget;
+        this._vacancyAssignmentId = btn.dataset.assignmentId;
+        this._vacancyRoleId = btn.dataset.roleId;
+        this._vacancyAssignableType = btn.dataset.assignableType;
+        this._vacancyAssignableId = btn.dataset.assignableId;
+
+        const personName = btn.dataset.assignableName;
+        const roleName = btn.dataset.roleName;
+
+        if (this.hasVacancyPersonNameTarget) this.vacancyPersonNameTarget.textContent = personName;
+        if (this.hasVacancyPersonName2Target) this.vacancyPersonName2Target.textContent = personName;
+        if (this.hasVacancyRoleNameTarget) this.vacancyRoleNameTarget.textContent = roleName;
+
+        if (this.hasVacancyModalTarget) {
+            this.vacancyModalTarget.classList.remove("hidden");
+        }
+    }
+
+    closeVacancyModal() {
+        if (this.hasVacancyModalTarget) {
+            this.vacancyModalTarget.classList.add("hidden");
+        }
+    }
+
+    createVacancyFromModal(event) {
+        event.preventDefault();
+        this.closeVacancyModal();
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        fetch(`/manage/casting/${productionId}/${showId}/create_vacancy`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({
+                role_id: this._vacancyRoleId,
+                assignable_type: this._vacancyAssignableType,
+                assignable_id: this._vacancyAssignableId
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                }
+            });
+    }
+
+    removeFromVacancyModal(event) {
+        event.preventDefault();
+        this.closeVacancyModal();
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        fetch(`/manage/casting/${productionId}/${showId}/remove_person_from_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({ assignment_id: this._vacancyAssignmentId })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+                if (data.cast_members_html) {
+                    this.updateCastMembersList(data.cast_members_html);
+                }
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
                 this.updateProgressBar(data.progress);
                 this.updateFinalizeSection(data.finalize_section_html);
             });

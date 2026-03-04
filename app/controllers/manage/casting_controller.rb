@@ -728,27 +728,37 @@ module Manage
     # This removes the assignment and creates an open vacancy
     def create_vacancy
       role = @production.roles.find(params[:role_id])
-      assignment = @show.show_person_role_assignments.find_by(role: role)
+
+      # Find the specific assignment by role AND assignable (not just role)
+      assignment = if params[:assignable_type].present? && params[:assignable_id].present?
+        @show.show_person_role_assignments.find_by(
+          role: role,
+          assignable_type: params[:assignable_type],
+          assignable_id: params[:assignable_id]
+        )
+      else
+        @show.show_person_role_assignments.find_by(role: role)
+      end
 
       unless assignment
-        render json: { error: "No assignment found for this role" }, status: :unprocessable_entity
+        respond_to do |format|
+          format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: "No assignment found for this role." }
+          format.json { render json: { error: "No assignment found for this role" }, status: :unprocessable_entity }
+        end
         return
       end
 
       # Only Person assignables can be tracked as vacated_by
       vacated_by = assignment.assignable_type == "Person" ? assignment.assignable : nil
-      reason = params[:reason]
 
       ActiveRecord::Base.transaction do
-        # Create the vacancy
+        # Create the vacancy (matching vacancy_controller pattern)
         @vacancy = RoleVacancy.create!(
           show: @show,
           role: role,
           vacated_by: vacated_by,
           vacated_at: Time.current,
-          reason: reason,
-          status: :open,
-          created_by_id: Current.person&.id
+          status: :open
         )
 
         # Remove the assignment
@@ -758,67 +768,16 @@ module Manage
         @show.reopen_casting! if @show.casting_finalized?
       end
 
-      # Re-render the UI
-      @availability = build_availability_hash(@show)
-
-      # Build linkage sync info for linked shows
-      sync_info = nil
-      linked_shows = []
-      is_linked = @show.linked?
-      if is_linked
-        linked_shows = @show.linked_shows.to_a
-        sync_info = build_linkage_sync_info(@show, linked_shows)
+      # Redirect to the vacancy management page
+      respond_to do |format|
+        format.html { redirect_to manage_casting_vacancy_path(@production, @vacancy) }
+        format.json { render json: { success: true, vacancy_id: @vacancy.id, redirect_url: manage_casting_vacancy_path(@production, @vacancy) } }
       end
-
-      cast_members_locals = build_cast_members_list_locals(@show, @availability)
-      cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: cast_members_locals)
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
-
-      # Calculate progress - count roles with at least one assignment
-      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
-      role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
-      fully_cast = percentage == 100
-
-      # Render linkage sync section if this is a linked show
-      linkage_sync_html = ""
-      if is_linked && sync_info.present?
-        linkage_sync_html = render_to_string(
-          partial: "manage/casting/linkage_sync_bar_content",
-          locals: {
-            show: @show,
-            linked_shows: linked_shows,
-            sync_info: sync_info,
-            production: @production
-          }
-        )
-      end
-
-      # Render finalize section if fully cast AND (not linked OR in sync)
-      finalize_section_html = nil
-      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
-      can_finalize = fully_cast && (!is_linked || all_in_sync)
-
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
-
-      render json: {
-        success: true,
-        vacancy_id: @vacancy.id,
-        cast_members_html: cast_members_html,
-        roles_html: roles_html,
-        linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
-        progress: {
-          assignment_count: roles_with_assignments,
-          role_count: role_count,
-          percentage: percentage
-        }
-      }
     rescue ActiveRecord::RecordInvalid => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: e.message }
+        format.json { render json: { error: e.message }, status: :unprocessable_entity }
+      end
     end
 
     def finalize_casting

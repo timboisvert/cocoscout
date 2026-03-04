@@ -68,7 +68,14 @@
                           <% end %>
                         </div>
                       </div>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0 ml-2">Registered</span>
+                      <% badge = case course_data[:role]
+                                 when :instructor then { text: "Instructor", bg: "bg-purple-100", text_color: "text-purple-800" }
+                                 when :student then { text: "Registered", bg: "bg-green-100", text_color: "text-green-800" }
+                                 when :cancelled then { text: "Cancelled", bg: "bg-gray-200", text_color: "text-gray-600" }
+                                 when :refunded then { text: "Refunded", bg: "bg-red-100", text_color: "text-red-700" }
+                                 else { text: "Registered", bg: "bg-green-100", text_color: "text-green-800" }
+                                 end %>
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <%= badge[:bg] %> <%= badge[:text_color] %> flex-shrink-0 ml-2"><%= badge[:text] %></span>
                     </div>
                   </div>
                 </div>
@@ -116,7 +123,11 @@
                         <div class="text-[10px] text-gray-400 uppercase tracking-wide">Completed</div>
                         <div class="text-sm text-gray-700"><%= last_session.date_and_time.strftime("%B %-d, %Y") %></div>
                       </div>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600 flex-shrink-0 ml-2">Completed</span>
+                      <% badge = case course_data[:role]
+                                 when :instructor then { text: "Instructor", bg: "bg-purple-100", text_color: "text-purple-800" }
+                                 else { text: "Completed", bg: "bg-gray-200", text_color: "text-gray-600" }
+                                 end %>
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <%= badge[:bg] %> <%= badge[:text_color] %> flex-shrink-0 ml-2"><%= badge[:text] %></span>
                     </div>
                   </div>
                 </div>

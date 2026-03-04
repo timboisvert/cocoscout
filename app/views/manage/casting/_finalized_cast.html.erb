@@ -46,7 +46,7 @@
               end
               cant_make_it_vacancy = is_guest ? nil : cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
             %>
-            <div class="flex items-center gap-3 p-2 <%= cant_make_it_vacancy ? 'border border-amber-300 bg-amber-50' : 'bg-gray-50' %> rounded-lg">
+            <div class="flex items-center gap-3 p-2 <%= cant_make_it_vacancy ? 'border border-amber-300 bg-amber-50' : 'bg-gray-50' %> rounded-lg group">
               <% if is_guest %>
                 <div class="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
                   <%= assignment.display_initials %>
@@ -90,6 +90,16 @@
                   </div>
                 <% end %>
               </div>
+              <% if !is_guest && !cant_make_it_vacancy %>
+                <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <%= form_with url: manage_casting_show_create_vacancy_path(production, show), method: :post do |f| %>
+                    <%= f.hidden_field :role_id, value: role.id %>
+                    <%= f.hidden_field :assignable_type, value: assignable.class.name %>
+                    <%= f.hidden_field :assignable_id, value: assignable.id %>
+                    <%= render "shared/button", text: "Can't Make It", variant: "secondary", size: "small", type: :submit %>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           <% end %>
         <% else %>

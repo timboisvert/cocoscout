@@ -24,9 +24,14 @@
             <% if @course_offering.subtitle.present? %>
               <p class="text-gray-600"><%= @course_offering.subtitle %></p>
             <% end %>
-            <% if @registration.status == "refunded" %>
+            <% if @registration&.status == "refunded" %>
               <div class="mt-2">
                 <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/10">Refunded</span>
+              </div>
+            <% end %>
+            <% if @is_instructor %>
+              <div class="mt-2">
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/10">Instructor</span>
               </div>
             <% end %>
           </div>
@@ -76,6 +81,7 @@
       </div>
 
       <!-- Right: Registration Details -->
+      <% if @registration %>
       <div class="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center px-5 py-4 bg-gray-50/50">
         <div class="space-y-3">
           <div class="flex items-center gap-2 mb-1">
@@ -115,11 +121,12 @@
           </div>
         </div>
       </div>
+      <% end %>
     </div>
   </div>
 
-<%# Contact Instructor Card %>
-  <% if @instructor %>
+<%# Contact Instructor Card — only for students, not when viewing as instructor %>
+  <% if @instructor && !@is_instructor %>
     <div class="mb-6">
       <div class="bg-gradient-to-br from-pink-50 to-pink-100/50 rounded-xl border border-pink-200 p-5 shadow-sm">
         <div class="flex items-start gap-4">
@@ -153,6 +160,58 @@
                   } %>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Instructor Panel: Registered Course Members %>
+  <% if @is_instructor && @registered_students.present? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
+      <%= render "shared/card_header", title: "Course Members (#{@registered_students.size})" do %>
+        <%= render "shared/button",
+            text: "Contact All Members",
+            variant: "secondary",
+            size: "small",
+            type: :button,
+            data: {
+              action: "click->contact-production#open",
+              "production-name": "All Course Members",
+              "action-url": my_direct_messages_path,
+              "person-id": @registered_students.map(&:id).join(",")
+            } %>
+      <% end %>
+      <div class="p-4">
+        <%# Student list %>
+        <div class="space-y-1">
+          <% @registered_students.each do |student| %>
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 group">
+              <div class="flex items-center gap-3 min-w-0">
+                <% headshot_variant = student.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: student.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                    <%= student.initials %>
+                  </div>
+                <% end %>
+                <span class="text-sm font-medium text-gray-900 truncate"><%= student.name %></span>
+              </div>
+              <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <%= render "shared/button",
+                    text: "Message",
+                    variant: "secondary",
+                    size: "small",
+                    type: :button,
+                    data: {
+                      action: "click->contact-production#open",
+                      "production-name": student.name,
+                      "action-url": my_direct_messages_path,
+                      "person-id": student.id
+                    } %>
+              </div>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>
