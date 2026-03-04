@@ -81,9 +81,9 @@ module My
             &.role&.name
 
           color = case show.event_type
-                  when "rehearsal" then "blue"
-                  when "meeting" then "green"
-                  else "pink"
+          when "rehearsal" then "blue"
+          when "meeting" then "green"
+          else "pink"
           end
 
           @calendar_events << {
@@ -129,9 +129,9 @@ module My
             &.role&.name
 
           color = case show.event_type
-                  when "rehearsal" then "blue"
-                  when "meeting" then "green"
-                  else "pink"
+          when "rehearsal" then "blue"
+          when "meeting" then "green"
+          else "pink"
           end
 
           @calendar_events << {
