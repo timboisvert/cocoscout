@@ -305,6 +305,24 @@ module Manage
                       .limit(20)
                       .includes(profile_headshots: { image_attachment: :blob })
 
+      # Determine talent pool membership for sorting
+      production = @production
+      talent_pool = production&.effective_talent_pool
+      pool_member_ids = talent_pool ? talent_pool.talent_pool_memberships.where(member_type: "Person").pluck(:member_id).to_set : Set.new
+
+      # Load availability if show_id provided
+      availability_by_person = {}
+      if params[:show_id].present?
+        show = production.shows.find_by(id: params[:show_id])
+        if show
+          ShowAvailability.where(show: show, available_entity_type: "Person", available_entity_id: people.map(&:id))
+                         .each { |sa| availability_by_person[sa.available_entity_id] = sa.status }
+        end
+      end
+
+      # Sort: talent pool members first, then alphabetical
+      sorted_people = people.sort_by { |p| [ pool_member_ids.include?(p.id) ? 0 : 1, p.name.downcase ] }
+
       # Also search groups if include_groups param is present
       groups = []
       if params[:include_groups] == "true"
@@ -316,7 +334,12 @@ module Manage
       end
 
       render json: {
-        people: people.map { |p| person_search_result(p) },
+        people: sorted_people.map { |p|
+          result = person_search_result(p)
+          result[:is_talent_pool] = pool_member_ids.include?(p.id)
+          result[:availability_status] = availability_by_person[p.id]
+          result
+        },
         groups: groups.map { |g| group_search_result(g) }
       }
     end

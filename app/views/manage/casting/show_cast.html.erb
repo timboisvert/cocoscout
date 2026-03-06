@@ -262,12 +262,12 @@
           <div class="px-4 pt-4 <%= @restricted_roles.any? ? 'pb-4 border-b border-gray-200' : 'pb-0' %>" data-controller="cast-filter" data-cast-filter-is-linked-value="<%= is_linked %>" data-cast-filter-linked-count-value="<%= linked_count %>">
             <!-- Availability Filter -->
             <% if is_linked && linked_count > 0 %>
-              <%# Linked shows: Show Fully Available / Partially Available / All filters %>
+              <%# Linked shows: Show Fully Available / Unavailable / All filters %>
               <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
                 {
                   filters: [
                     {
-                      text: "Fully Available",
+                      text: "Available",
                       path: "#",
                       active: true,
                       data: {
@@ -276,16 +276,16 @@
                       }
                     },
                     {
-                      text: "Partially Available",
+                      text: "Unavailable",
                       path: "#",
                       active: false,
                       data: {
                         action: "cast-filter#filterByAvailability",
-                        value: "partially-available"
+                        value: "unavailable"
                       }
                     },
                     {
-                      text: "All Talent Pool Members",
+                      text: "Everyone",
                       path: "#",
                       active: false,
                       data: {
@@ -297,7 +297,7 @@
                 }
               ] %>
             <% else %>
-              <%# Non-linked shows: Show Available / All filters %>
+              <%# Non-linked shows: Show Available / Unavailable / Everyone filters %>
               <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
                 {
                   filters: [
@@ -311,7 +311,16 @@
                       }
                     },
                     {
-                      text: "All Talent Pool Members",
+                      text: "Unavailable",
+                      path: "#",
+                      active: false,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "unavailable"
+                      }
+                    },
+                    {
+                      text: "Everyone",
                       path: "#",
                       active: false,
                       data: {
@@ -358,7 +367,7 @@
 
     <%# Mobile Assign Modal %>
     <div data-drop-role-target="assignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drop-role#closeAssignModal">
-      <div class="bg-white w-full rounded-t-2xl max-h-[60vh] flex flex-col" data-action="click->drop-role#stopPropagation" data-controller="mobile-cast-filter">
+      <div class="bg-white w-full rounded-t-2xl max-h-[75vh] flex flex-col" data-action="click->drop-role#stopPropagation" data-controller="mobile-cast-filter">
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <h2 data-modal-title class="text-lg font-semibold text-gray-900">Assign Role</h2>
           <button type="button" data-action="click->drop-role#closeAssignModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
@@ -368,22 +377,29 @@
           </button>
         </div>
         <div class="p-4 flex-1 overflow-hidden flex flex-col">
+          <%# Mobile search %>
+          <div class="mb-3 flex-shrink-0">
+            <div class="relative">
+              <input type="text"
+                     data-mobile-cast-filter-target="searchInput"
+                     data-action="input->mobile-cast-filter#search"
+                     placeholder="Search by name or add a guest..."
+                     class="w-full px-3 py-2 pl-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+            </div>
+          </div>
+
           <%# Mobile filter buttons %>
-          <div class="flex gap-2 mb-3 flex-shrink-0">
+          <div class="flex gap-2 mb-3 flex-shrink-0" data-mobile-cast-filter-target="filterBar">
             <% if @show.linked? && (@linked_shows || []).any? %>
               <button type="button"
                       class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-pink-500 text-white border-pink-500"
                       data-action="click->mobile-cast-filter#filter"
                       data-mobile-cast-filter-target="filterButton"
                       data-filter="fully-available">
-                Fully Available
-              </button>
-              <button type="button"
-                      class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-white text-gray-700 border-gray-200"
-                      data-action="click->mobile-cast-filter#filter"
-                      data-mobile-cast-filter-target="filterButton"
-                      data-filter="partially-available">
-                Partial
+                Available
               </button>
             <% else %>
               <button type="button"
@@ -398,10 +414,48 @@
                     class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-white text-gray-700 border-gray-200"
                     data-action="click->mobile-cast-filter#filter"
                     data-mobile-cast-filter-target="filterButton"
+                    data-filter="unavailable">
+              Unavailable
+            </button>
+            <button type="button"
+                    class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-white text-gray-700 border-gray-200"
+                    data-action="click->mobile-cast-filter#filter"
+                    data-mobile-cast-filter-target="filterButton"
                     data-filter="all">
-              All
+              Everyone
             </button>
           </div>
+
+          <%# Search results (hidden by default, shown when searching) %>
+          <div data-mobile-cast-filter-target="searchResults" class="hidden space-y-1 overflow-y-auto flex-1">
+            <%# Populated by JavaScript %>
+          </div>
+
+          <%# Add Guest section (hidden by default, shown when no search results found) %>
+          <div data-mobile-cast-filter-target="addGuestSection" class="hidden flex-shrink-0 mb-3">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <p class="text-sm text-gray-600 mb-3">Can't find who you're looking for? Add them as a guest:</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Name <span class="text-pink-500">*</span></label>
+                  <input type="text" data-mobile-cast-filter-target="guestName" placeholder="Enter name"
+                         class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Email <span class="text-gray-400 text-xs">(optional)</span></label>
+                  <input type="email" data-mobile-cast-filter-target="guestEmail" placeholder="email@example.com"
+                         class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <button type="button"
+                        data-action="click->mobile-cast-filter#addGuest"
+                        class="w-full px-4 py-2 bg-pink-500 text-white text-sm font-medium rounded-lg hover:bg-pink-600 transition-colors">
+                  Add Guest
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <%# Talent pool member list %>
           <div class="space-y-1 overflow-y-auto flex-1" data-mobile-cast-filter-target="list">
             <%
               # Sort pool members: fully available first, then partially, then unavailable
@@ -428,6 +482,7 @@
                 member_key = "#{member.class.name}_#{member.id}"
                 member_availability = @availability[member_key] || @availability[member.id]
                 is_available = member_availability&.available?
+                is_unavailable = member_availability&.unavailable?
                 linked_data = (@linked_availability || {})[member_key] || { available: 0 }
                 linked_available_count = linked_data[:available]
                 is_fully_available = is_available && linked_available_count == total_linked_shows
@@ -444,6 +499,8 @@
                 data-is-available="<%= is_available ? 'true' : 'false' %>"
                 data-is-fully-available="<%= is_fully_available ? 'true' : 'false' %>"
                 data-is-partially-available="<%= is_partially_available ? 'true' : 'false' %>"
+                data-availability-status="<%= member_availability&.status || 'unset' %>"
+                data-member-name="<%= member.name %>"
                 <%= 'disabled' if is_assigned %>>
                 <% headshot_variant = member.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>
@@ -462,7 +519,6 @@
                       <span class="text-green-600">Available for all events</span>
                     <% elsif is_partially_available %>
                       <%
-                        # Get the dates they're available for (current show + linked shows)
                         available_dates = []
                         available_dates << @show.date_and_time if is_available
                         linked_data[:shows]&.each do |show_data|
@@ -473,8 +529,8 @@
                       <span class="text-yellow-600">Available <%= available_dates.map { |d| d.strftime("%-m/%-d") }.join(", ") %></span>
                     <% elsif is_available %>
                       <span class="text-green-600">Available</span>
-                    <% else %>
-                      Not available
+                    <% elsif is_unavailable %>
+                      <span class="text-red-600">Unavailable</span>
                     <% end %>
                   </div>
                 </div>

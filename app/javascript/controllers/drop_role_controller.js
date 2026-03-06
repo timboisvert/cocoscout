@@ -102,6 +102,16 @@ export default class extends Controller {
         // Show the modal
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
+
+        // Reset mobile search if present
+        const mobileFilterEl = modal.querySelector('[data-controller*="mobile-cast-filter"]')
+        if (mobileFilterEl) {
+            const mobileFilter = this.application.getControllerForElementAndIdentifier(mobileFilterEl, 'mobile-cast-filter')
+            if (mobileFilter) {
+                if (mobileFilter.hasSearchInputTarget) mobileFilter.searchInputTarget.value = ''
+                mobileFilter.exitSearch()
+            }
+        }
     }
 
     closeAssignModal() {
@@ -431,9 +441,10 @@ export default class extends Controller {
 
     async performSearch(query) {
         const productionId = this.productionId;
+        const showId = this.showId;
 
         try {
-            const response = await fetch(`/manage/casting/${productionId}/search_people?q=${encodeURIComponent(query)}`, {
+            const response = await fetch(`/manage/casting/${productionId}/search_people?q=${encodeURIComponent(query)}&show_id=${showId}`, {
                 headers: {
                     "Accept": "application/json",
                     "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
@@ -471,9 +482,19 @@ export default class extends Controller {
 
         let html = '';
 
-        people.forEach(person => {
-            html += this.renderPersonResult(person);
-        });
+        // Talent pool members first
+        const poolPeople = people.filter(p => p.is_talent_pool);
+        const otherPeople = people.filter(p => !p.is_talent_pool);
+
+        if (poolPeople.length > 0) {
+            html += '<p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1 px-1">Talent Pool</p>';
+            poolPeople.forEach(person => { html += this.renderPersonResult(person); });
+        }
+
+        if (otherPeople.length > 0) {
+            if (poolPeople.length > 0) html += '<div class="border-t border-gray-200 my-2 pt-1"><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1 px-1">Others</p></div>';
+            otherPeople.forEach(person => { html += this.renderPersonResult(person); });
+        }
 
         groups.forEach(group => {
             html += this.renderGroupResult(group);
@@ -487,6 +508,13 @@ export default class extends Controller {
             ? `<img src="${person.headshot_url}" alt="${person.name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
             : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">${person.initials || ''}</div>`;
 
+        let subtitle = '';
+        if (person.availability_status === 'available') {
+            subtitle = '<span class="text-green-600">Available</span>';
+        } else if (person.availability_status === 'unavailable') {
+            subtitle = '<span class="text-red-600">Unavailable</span>';
+        }
+
         return `
             <button type="button"
                 class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-pink-50 transition-all cursor-pointer text-left"
@@ -496,7 +524,7 @@ export default class extends Controller {
                 ${headshot}
                 <div class="flex-1 min-w-0">
                     <div class="font-medium text-sm text-gray-900 truncate">${person.name}</div>
-                    <div class="text-xs text-gray-500 truncate">${person.email || ''}</div>
+                    ${subtitle ? `<div class="text-xs">${subtitle}</div>` : ''}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -689,6 +717,56 @@ export default class extends Controller {
                 }
 
                 // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            })
+            .catch(error => {
+                console.error('Error assigning guest:', error);
+                alert('Failed to add guest. Please try again.');
+            });
+    }
+
+    // Add a guest directly (called from mobile modal)
+    addGuestDirect(guestName, guestEmail) {
+        const roleId = this.currentAssignRoleId;
+        if (!roleId) {
+            alert('No role selected');
+            return;
+        }
+
+        // Close the mobile assign modal
+        this.closeAssignModal();
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({
+                role_id: roleId,
+                guest_name: guestName,
+                guest_email: guestEmail
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    this.handleServerError(data.error);
+                    return;
+                }
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+                if (data.cast_members_html) {
+                    this.updateCastMembersList(data.cast_members_html);
+                }
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
                 this.updateProgressBar(data.progress);
                 this.updateFinalizeSection(data.finalize_section_html);
             })

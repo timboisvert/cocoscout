@@ -88,6 +88,10 @@ export default class extends Controller {
                 // Only show if available for this show AND all linked shows
                 const isFullyAvailable = member.dataset.isFullyAvailable === 'true'
                 shouldShow = isFullyAvailable
+            } else if (this.availabilityFilter === "unavailable") {
+                // Only show if entity actively declared unavailable
+                const status = member.dataset.availabilityStatus
+                shouldShow = status === 'unavailable'
             } else if (this.availabilityFilter === "partially-available") {
                 // Show if available for this show OR any linked shows
                 const isPartiallyAvailable = member.dataset.isPartiallyAvailable === 'true'
@@ -152,6 +156,8 @@ export default class extends Controller {
                     message = `No one in the talent pool is approved for ${roleName}.`
                 } else if (this.availabilityFilter === "fully-available") {
                     message = "No one in the talent pool is available for all linked events."
+                } else if (this.availabilityFilter === "unavailable") {
+                    message = "No one has declared themselves unavailable for this show."
                 } else if (this.availabilityFilter === "partially-available") {
                     message = "No one in the talent pool is available for any linked events."
                 } else {
