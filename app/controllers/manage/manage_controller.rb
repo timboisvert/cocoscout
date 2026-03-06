@@ -162,9 +162,9 @@ module Manage
         # Or if demo org is their only org, auto-select it
         auto_select_org = if non_demo_orgs.count == 1
                             non_demo_orgs.first
-                          elsif non_demo_orgs.count == 0 && orgs.count == 1
+        elsif non_demo_orgs.count == 0 && orgs.count == 1
                             orgs.first
-                          end
+        end
 
         if auto_select_org
           session[:current_organization_id] ||= {}

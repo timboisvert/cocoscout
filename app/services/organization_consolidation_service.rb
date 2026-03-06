@@ -353,7 +353,7 @@ class OrganizationConsolidationService
     source_user_ids = source_org.organization_roles.pluck(:user_id)
     target_user_ids = target_org.organization_roles.pluck(:user_id)
 
-    new_members = source_user_ids - target_user_ids - [target_org.owner_id]
+    new_members = source_user_ids - target_user_ids - [ target_org.owner_id ]
     already_members = source_user_ids & target_user_ids
 
     if new_members.any?
@@ -618,7 +618,7 @@ class OrganizationConsolidationService
   end
 
   def migrate_team_members
-    target_user_ids = target_org.organization_roles.pluck(:user_id) + [target_org.owner_id]
+    target_user_ids = target_org.organization_roles.pluck(:user_id) + [ target_org.owner_id ]
 
     source_org.organization_roles.find_each do |role|
       if target_user_ids.include?(role.user_id)

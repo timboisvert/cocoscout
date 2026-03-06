@@ -19,11 +19,11 @@ module Manage
       # Skip auto-select when user explicitly clicked "Switch Organization"
       auto_select_org = if params[:switch].present?
                           nil
-                        elsif non_demo.count == 1
+      elsif non_demo.count == 1
                           non_demo.first
-                        elsif non_demo.count == 0 && all_orgs.count == 1
+      elsif non_demo.count == 0 && all_orgs.count == 1
                           all_orgs.first
-                        end
+      end
 
       if auto_select_org
         user_id = Current.user&.id
