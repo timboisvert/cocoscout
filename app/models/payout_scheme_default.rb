@@ -22,9 +22,9 @@ class PayoutSchemeDefault < ApplicationRecord
 
   scope :for_production, ->(production) { where(production: production) }
   scope :org_level, -> { where(production_id: nil) }
-  scope :effective_on, ->(date) { where("effective_from IS NULL OR effective_from <= ?", date) }
+  scope :effective_on, ->(date) { where("payout_scheme_defaults.effective_from IS NULL OR payout_scheme_defaults.effective_from <= ?", date) }
   scope :by_effective_date_desc, -> {
-    order(Arel.sql("CASE WHEN effective_from IS NULL THEN 0 ELSE 1 END DESC, effective_from DESC"))
+    order(Arel.sql("CASE WHEN payout_scheme_defaults.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_scheme_defaults.effective_from DESC"))
   }
 
   private

@@ -22,7 +22,7 @@ class PayoutScheme < ApplicationRecord
   scope :production_level, -> { where.not(production_id: nil) }
   scope :for_organization, ->(org) { where(organization: org) }
   scope :defaults, -> { where(is_default: true) }
-  scope :effective_on, ->(date) { where("effective_from IS NULL OR effective_from <= ?", date) }
+  scope :effective_on, ->(date) { where("payout_schemes.effective_from IS NULL OR payout_schemes.effective_from <= ?", date) }
   scope :archived, -> { where.not(archived_at: nil) }
   scope :active, -> { where(archived_at: nil) }
 
@@ -73,7 +73,7 @@ class PayoutScheme < ApplicationRecord
     legacy_production_default = production.payout_schemes
       .defaults
       .effective_on(show_date)
-      .order(Arel.sql("CASE WHEN effective_from IS NULL THEN 0 ELSE 1 END DESC, effective_from DESC"))
+      .order(Arel.sql("CASE WHEN payout_schemes.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_schemes.effective_from DESC"))
       .first
 
     return legacy_production_default if legacy_production_default
@@ -82,7 +82,7 @@ class PayoutScheme < ApplicationRecord
       .organization_level
       .defaults
       .effective_on(show_date)
-      .order(Arel.sql("CASE WHEN effective_from IS NULL THEN 0 ELSE 1 END DESC, effective_from DESC"))
+      .order(Arel.sql("CASE WHEN payout_schemes.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_schemes.effective_from DESC"))
       .first
   end
 
