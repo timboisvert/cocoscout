@@ -5,8 +5,9 @@ export default class extends Controller {
         "description", "amount", "direction", "dueDate", "list", "paymentsJson", "structureJson", "configJson",
         "summary", "summaryDetails", "totalIncoming", "totalOutgoing", "netAmount",
         // Flat fee targets
-        "flatFeeConfig", "flatFeeAmount", "flatFeeDirection", "flatFeeDeposit",
+        "flatFeeConfig", "flatFeeAmount", "flatFeeAmountLabel", "flatFeeDirection", "flatFeeDeposit",
         "flatFeeDepositConfig", "flatFeeDepositAmount", "flatFeeDepositPercent", "flatFeeDepositDue", "flatFeeFinalDue",
+        "flatFeeTicketRevenueHint",
         // Per event targets
         "perEventConfig", "perEventAmount", "perEventCount", "perEventDirection", "perEventTiming",
         "perEventUpfrontConfig", "perEventUpfrontDue", "perEventTotal", "perEventCountDisplay", "perEventAmountDisplay",
@@ -37,6 +38,11 @@ export default class extends Controller {
         // Restore saved config first
         this.restoreConfig(this.existingConfigValue || {})
 
+        // Default flat fee final due date to first event if not already set
+        if (this.hasFlatFeeFinalDueTarget && !this.flatFeeFinalDueTarget.value && this.bookingDates.length > 0) {
+            this.flatFeeFinalDueTarget.value = this.bookingDates[0].split("T")[0]
+        }
+
         // Initialize UI with saved structure
         this.updateStructureButtons()
         this.showConfigPanel(this.currentStructure)
@@ -54,6 +60,14 @@ export default class extends Controller {
         }
         if (this.hasFlatFeeDirectionTarget && config.flat_fee_direction) {
             this.flatFeeDirectionTarget.value = config.flat_fee_direction
+            // Restore ticket revenue hint and label
+            const isTicketRevenue = config.flat_fee_direction === "ticket_revenue_minus_fee"
+            if (this.hasFlatFeeTicketRevenueHintTarget) {
+                this.flatFeeTicketRevenueHintTarget.classList.toggle("hidden", !isTicketRevenue)
+            }
+            if (this.hasFlatFeeAmountLabelTarget) {
+                this.flatFeeAmountLabelTarget.textContent = isTicketRevenue ? "Our Fee (Deduction from Ticket Revenue)" : "Total Contract Amount"
+            }
         }
         if (this.hasFlatFeeDepositTarget && config.flat_fee_has_deposit) {
             this.flatFeeDepositTarget.checked = config.flat_fee_has_deposit
@@ -275,6 +289,23 @@ export default class extends Controller {
         this.updateSummaryFromConfig()
     }
 
+    onFlatFeeDirectionChange() {
+        const direction = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
+        const isTicketRevenue = direction === "ticket_revenue_minus_fee"
+
+        // Toggle hint
+        if (this.hasFlatFeeTicketRevenueHintTarget) {
+            this.flatFeeTicketRevenueHintTarget.classList.toggle("hidden", !isTicketRevenue)
+        }
+
+        // Update amount label
+        if (this.hasFlatFeeAmountLabelTarget) {
+            this.flatFeeAmountLabelTarget.textContent = isTicketRevenue ? "Our Fee (Deduction from Ticket Revenue)" : "Total Contract Amount"
+        }
+
+        this.updateSummaryFromConfig()
+    }
+
     toggleVolumeDiscount(event) {
         if (this.hasPerEventDiscountConfigTarget) {
             this.perEventDiscountConfigTarget.classList.toggle("hidden", !event.target.checked)
@@ -360,6 +391,16 @@ export default class extends Controller {
                 const flatAmount = parseFloat(this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : 0) || 0
                 const flatDirection = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
 
+                if (flatDirection === "ticket_revenue_minus_fee") {
+                    // Ticket revenue minus our fee: we keep $X, they get the rest
+                    if (flatAmount > 0) {
+                        incoming = flatAmount
+                        details.push({ label: "Our fee (from ticket revenue)", amount: flatAmount })
+                        details.push({ label: "They receive", amount: "TBD (ticket revenue − fee)" })
+                    }
+                    break
+                }
+
                 // Check for deposit
                 const hasDeposit = this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.checked
                 let depositAmount = 0
@@ -440,12 +481,18 @@ export default class extends Controller {
         // Render detail lines
         if (this.hasSummaryDetailsTarget) {
             if (details.length > 0) {
-                this.summaryDetailsTarget.innerHTML = details.map(d => `
-                    <div class="flex justify-between">
+                this.summaryDetailsTarget.innerHTML = details.map(d => {
+                    if (typeof d.amount === "string") {
+                        return `<div class="flex justify-between">
+                            <span>${d.label}</span>
+                            <span class="text-gray-500 italic">${d.amount}</span>
+                        </div>`
+                    }
+                    return `<div class="flex justify-between">
                         <span>${d.label}</span>
                         <span class="${d.amount < 0 ? 'text-green-600' : ''}">${d.amount < 0 ? '-' : ''}$${Math.abs(d.amount).toFixed(2)}</span>
-                    </div>
-                `).join("")
+                    </div>`
+                }).join("")
                 this.summaryDetailsTarget.classList.remove("hidden")
             } else {
                 this.summaryDetailsTarget.innerHTML = ""
@@ -603,6 +650,19 @@ export default class extends Controller {
                 const flatDirection = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
                 const flatFinalDue = this.hasFlatFeeFinalDueTarget ? this.flatFeeFinalDueTarget.value : ""
                 const hasDeposit = this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.checked
+
+                if (flatDirection === "ticket_revenue_minus_fee") {
+                    // Ticket revenue minus our fee: generate outgoing payment (TBD amount)
+                    payments.push({
+                        description: `Ticket revenue minus $${flatAmount.toFixed(2)} fee`,
+                        amount: 0,
+                        amount_tbd: true,
+                        direction: "outgoing",
+                        due_date: flatFinalDue || this.getDateDaysFromNow(30),
+                        notes: `They receive all ticket revenue minus our $${flatAmount.toFixed(2)} deduction.`
+                    })
+                    break
+                }
 
                 if (flatAmount > 0) {
                     if (hasDeposit) {
