@@ -2,71 +2,37 @@
   "ignored_warnings": [
     {
       "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "5b4aff5240a0346ddb22ff797dd8d7348403502554e5910bc61b7b0134aaf4be",
-      "check_name": "LinkToHref",
-      "message": "Potentially unsafe model attribute in `link_to` href",
-      "file": "app/views/manage/show_ticketings/show.html.erb",
-      "line": 107,
-      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to(\"View on #{(Unresolved Model).new.provider_name}\", (Unresolved Model).new.safe_external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800 text-sm\")",
+      "warning_code": 84,
+      "fingerprint": "128fc784c8077a2907a20c7d7be5d359416dcdab9d17d82f64a2b65d8fb8fa08",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/vacancies/show.html.erb",
+      "line": 661,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Put #{RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name} Back\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
       "render_path": [
         {
           "type": "controller",
-          "class": "Manage::ShowTicketingsController",
+          "class": "Manage::VacanciesController",
           "method": "show",
-          "line": 107,
-          "file": "app/controllers/manage/show_ticketings_controller.rb",
+          "line": 81,
+          "file": "app/controllers/manage/vacancies_controller.rb",
           "rendered": {
-            "name": "manage/show_ticketings/show",
-            "file": "app/views/manage/show_ticketings/show.html.erb"
+            "name": "manage/vacancies/show",
+            "file": "app/views/manage/vacancies/show.html.erb"
           }
         }
       ],
       "location": {
         "type": "template",
-        "template": "manage/show_ticketings/show"
+        "template": "manage/vacancies/show"
       },
-      "user_input": "(Unresolved Model).new.safe_external_url",
-      "confidence": "Weak",
+      "user_input": "RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name",
+      "confidence": "Medium",
       "cwe_id": [
         79
       ],
-      "note": "False positive: safe_external_url validates URL is http/https only (see SafeExternalUrl concern)"
-    },
-    {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "f2ad173e23283b0009093f9ac74daf89d519e1c716bf2fb54418592cdbd95b2d",
-      "check_name": "LinkToHref",
-      "message": "Potentially unsafe model attribute in `link_to` href",
-      "file": "app/views/manage/ticket_listings/show.html.erb",
-      "line": 36,
-      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to(\"View on #{Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).provider_name}\", Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).safe_external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800\")",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::TicketListingsController",
-          "method": "show",
-          "line": 17,
-          "file": "app/controllers/manage/ticket_listings_controller.rb",
-          "rendered": {
-            "name": "manage/ticket_listings/show",
-            "file": "app/views/manage/ticket_listings/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/ticket_listings/show"
-      },
-      "user_input": "Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).safe_external_url",
-      "confidence": "Weak",
-      "cwe_id": [
-        79
-      ],
-      "note": "False positive: safe_external_url validates URL is http/https only (see SafeExternalUrl concern)"
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -83,7 +49,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 735,
+          "line": 760,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -158,6 +124,60 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 2,
+      "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/shared/messages/_reactions.html.erb",
+      "line": 51,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "MessageReaction.icon_for(reaction_type)",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::MessagesController",
+          "method": "index",
+          "line": 70,
+          "file": "app/controllers/manage/messages_controller.rb",
+          "rendered": {
+            "name": "manage/messages/index",
+            "file": "app/views/manage/messages/index.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "manage/messages/index",
+          "line": 119,
+          "file": "app/views/manage/messages/index.html.erb",
+          "rendered": {
+            "name": "shared/messages/_message_card",
+            "file": "app/views/shared/messages/_message_card.html.erb"
+          }
+        },
+        {
+          "type": "template",
+          "name": "shared/messages/_message_card",
+          "line": 252,
+          "file": "app/views/shared/messages/_message_card.html.erb",
+          "rendered": {
+            "name": "shared/messages/_reactions",
+            "file": "app/views/shared/messages/_reactions.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "shared/messages/_reactions"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": "False positive: icon_for returns static SVG from REACTION_ICONS frozen hash - no user input"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "4ce01672189ac01678ec7ba21ff6f81cea96f29d519d824a7c0ea416956cbf3c",
       "check_name": "RenderInline",
@@ -171,7 +191,7 @@
           "type": "controller",
           "class": "Manage::ProductionsController",
           "method": "agreement_status",
-          "line": 229,
+          "line": 289,
           "file": "app/controllers/manage/productions_controller.rb",
           "rendered": {
             "name": "manage/productions/agreement_status",
@@ -189,6 +209,40 @@
         79
       ],
       "note": "False positive: .count returns an integer which cannot contain XSS payload"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "5b4aff5240a0346ddb22ff797dd8d7348403502554e5910bc61b7b0134aaf4be",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/show_ticketings/show.html.erb",
+      "line": 107,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(\"View on #{(Unresolved Model).new.provider_name}\", (Unresolved Model).new.safe_external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800 text-sm\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowTicketingsController",
+          "method": "show",
+          "line": 107,
+          "file": "app/controllers/manage/show_ticketings_controller.rb",
+          "rendered": {
+            "name": "manage/show_ticketings/show",
+            "file": "app/views/manage/show_ticketings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/show_ticketings/show"
+      },
+      "user_input": "(Unresolved Model).new.safe_external_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": "False positive: safe_external_url validates URL is http/https only (see SafeExternalUrl concern)"
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -273,7 +327,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 735,
+          "line": 760,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -307,7 +361,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 735,
+          "line": 760,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -325,6 +379,40 @@
         79
       ],
       "note": "False positive: event_type is an enum with fixed values (performance, rehearsal, callback, etc.) - cannot contain XSS"
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "f2ad173e23283b0009093f9ac74daf89d519e1c716bf2fb54418592cdbd95b2d",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/ticket_listings/show.html.erb",
+      "line": 36,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(\"View on #{Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).provider_name}\", Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).safe_external_url, :target => \"_blank\", :class => \"text-blue-600 hover:text-blue-800\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::TicketListingsController",
+          "method": "show",
+          "line": 17,
+          "file": "app/controllers/manage/ticket_listings_controller.rb",
+          "rendered": {
+            "name": "manage/ticket_listings/show",
+            "file": "app/views/manage/ticket_listings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/ticket_listings/show"
+      },
+      "user_input": "Current.user.accessible_productions.find(params[:production_id]).shows.find(params[:show_id]).show_ticketing.ticket_listings.find(params[:id]).safe_external_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": "False positive: safe_external_url validates URL is http/https only (see SafeExternalUrl concern)"
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -375,7 +463,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 735,
+          "line": 760,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -395,5 +483,5 @@
       "note": "False positive: event_type is an enum with fixed values (performance, rehearsal, callback, etc.) - cannot contain XSS"
     }
   ],
-  "brakeman_version": "8.0.2"
+  "brakeman_version": "8.0.4"
 }
