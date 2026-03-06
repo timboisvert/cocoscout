@@ -7,6 +7,7 @@ class SuperadminController < ApplicationController
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
+                         destroy_organization organization_consolidation organization_consolidation_execute
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
@@ -209,6 +210,156 @@ class SuperadminController < ApplicationController
 
   def organization_detail
     @organization = Organization.find(params[:id])
+  end
+
+  def destroy_organization
+    organization = Organization.find(params[:id])
+    name = organization.name
+
+    ActiveRecord::Base.transaction do
+      org_id = organization.id
+      production_ids = organization.productions.pluck(:id)
+      location_ids = organization.locations.pluck(:id)
+      location_space_ids = location_ids.any? ? LocationSpace.where(location_id: location_ids).pluck(:id) : []
+      show_ids = production_ids.any? ? Show.where(production_id: production_ids).pluck(:id) : []
+      ticketing_provider_ids = organization.ticketing_providers.pluck(:id)
+      seating_config_ids = organization.seating_configurations.pluck(:id)
+
+      # --- Ticketing chain (deepest first) ---
+      if show_ids.any?
+        show_ticketing_ids = ShowTicketing.where(show_id: show_ids).pluck(:id)
+        if show_ticketing_ids.any?
+          show_ticket_tier_ids = ShowTicketTier.where(show_ticketing_id: show_ticketing_ids).pluck(:id)
+          if show_ticket_tier_ids.any?
+            TicketSale.where(show_ticket_tier_id: show_ticket_tier_ids).delete_all
+            TicketOffer.where(show_ticket_tier_id: show_ticket_tier_ids).delete_all
+          end
+        end
+      end
+      if ticketing_provider_ids.any?
+        ticket_listing_ids = TicketListing.where(ticketing_provider_id: ticketing_provider_ids).pluck(:id)
+        if ticket_listing_ids.any?
+          TicketSale.where(ticket_offer_id: TicketOffer.where(ticket_listing_id: ticket_listing_ids).select(:id)).delete_all
+          TicketOffer.where(ticket_listing_id: ticket_listing_ids).delete_all
+          WebhookLog.where(ticket_listing_id: ticket_listing_ids).delete_all
+          TicketListing.where(id: ticket_listing_ids).delete_all
+        end
+        TicketingProviderSetup.where(ticketing_provider_id: ticketing_provider_ids).delete_all
+      end
+
+      # --- Remote ticketing / provider events (remote refs provider) ---
+      RemoteTicketingEvent.where(organization_id: org_id).delete_all
+      if production_ids.any?
+        RemoteTicketingEvent.where(production_ticketing_setup_id: ProductionTicketingSetup.where(production_id: production_ids).select(:id)).delete_all
+      end
+      if ticketing_provider_ids.any?
+        RemoteTicketingEvent.where(ticketing_provider_id: ticketing_provider_ids).delete_all
+      end
+      ProviderEvent.where(organization_id: org_id).delete_all
+      if ticketing_provider_ids.any?
+        ProviderEvent.where(ticketing_provider_id: ticketing_provider_ids).delete_all
+      end
+
+      # --- Show-level references not handled by dependent: ---
+      if show_ids.any?
+        CalendarEvent.where(show_id: show_ids).delete_all if defined?(CalendarEvent)
+        ShowTicketingRule.where(show_id: show_ids).delete_all if defined?(ShowTicketingRule)
+        TicketingActivity.where(show_id: show_ids).delete_all
+        Message.where(show_id: show_ids).update_all(show_id: nil)
+        RemoteTicketingEvent.where(show_id: show_ids).update_all(show_id: nil)
+        RemoteTicketingEvent.where(suggested_show_id: show_ids).update_all(suggested_show_id: nil)
+      end
+
+      # --- Course registrations (restrict_with_error on course_offerings) ---
+      if production_ids.any?
+        course_offering_ids = CourseOffering.where(production_id: production_ids).pluck(:id)
+        CourseRegistration.where(course_offering_id: course_offering_ids).delete_all if course_offering_ids.any?
+      end
+
+      # --- Seating config references ---
+      if seating_config_ids.any?
+        ProductionTicketingSetup.where(seating_configuration_id: seating_config_ids).update_all(seating_configuration_id: nil)
+      end
+
+      # --- Location space references ---
+      if location_space_ids.any?
+        SeatingConfiguration.where(location_space_id: location_space_ids).update_all(location_space_id: nil)
+        Show.where(location_space_id: location_space_ids).update_all(location_space_id: nil)
+        space_rental_ids = SpaceRental.where(location_space_id: location_space_ids).pluck(:id)
+        Show.where(space_rental_id: space_rental_ids).update_all(space_rental_id: nil) if space_rental_ids.any?
+        SpaceRental.where(location_space_id: location_space_ids).delete_all
+      end
+
+      # --- Location references (restrict_with_error) ---
+      if location_ids.any?
+        remaining_rental_ids = SpaceRental.where(location_id: location_ids).pluck(:id)
+        Show.where(space_rental_id: remaining_rental_ids).update_all(space_rental_id: nil) if remaining_rental_ids.any?
+        SpaceRental.where(location_id: location_ids).delete_all
+        AuditionSession.where(location_id: location_ids).update_all(location_id: nil)
+        Show.where(location_id: location_ids).update_all(location_id: nil)
+        SeatingConfiguration.where(location_id: location_ids).update_all(location_id: nil)
+        ProductionTicketingSetup.where(default_location_id: location_ids).update_all(default_location_id: nil)
+      end
+
+      # --- Production references not handled by dependent: ---
+      if production_ids.any?
+        TicketingActivity.where(production_id: production_ids).delete_all
+        PayoutSchemeDefault.where(production_id: production_ids).delete_all
+        CastingTableProduction.where(production_id: production_ids).delete_all
+        CastAssignmentStage.where(production_id: production_ids).delete_all
+      end
+
+      # --- Org references not declared as dependent: on Organization ---
+      PersonInvitation.where(organization_id: org_id).delete_all
+      EmailLog.where(organization_id: org_id).delete_all
+      Message.where(organization_id: org_id).destroy_all
+      ProductionTicketingSetup.where(organization_id: org_id).delete_all
+
+      # --- Talent pool self-reference ---
+      Organization.where(id: org_id).update_all(organization_talent_pool_id: nil)
+
+      # --- HABTM join tables ---
+      organization.reload
+      organization.people.clear
+      organization.groups.clear
+
+      organization.destroy!
+    end
+
+    redirect_to organizations_list_path, notice: "Organization '#{name}' has been deleted."
+  end
+
+  def organization_consolidation
+    @source_org = Organization.find(params[:id])
+    @organizations = Organization.where.not(id: @source_org.id).order(:name)
+
+    if params[:target_org_id].present?
+      @target_org = Organization.find(params[:target_org_id])
+      @analysis = OrganizationConsolidationService.analyze(@source_org, @target_org)
+    end
+  end
+
+  def organization_consolidation_execute
+    @source_org = Organization.find(params[:id])
+    @target_org = Organization.find(params[:target_org_id])
+
+    location_mappings = {}
+    params.each do |key, value|
+      if key.to_s.start_with?("location_mapping_") && value.present?
+        source_id = key.to_s.sub("location_mapping_", "").to_i
+        location_mappings[source_id] = value == "copy" ? "copy" : value.to_i
+      end
+    end
+
+    result = OrganizationConsolidationService.execute(@source_org, @target_org, location_mappings: location_mappings)
+
+    if result[:success]
+      redirect_to organization_detail_path(@target_org),
+                  notice: "Organization '#{@source_org.name}' consolidated into '#{@target_org.name}'. Changes: #{result[:changes].join(', ')}"
+    else
+      redirect_to organization_consolidation_path(@source_org),
+                  alert: "Consolidation failed: #{result[:error]}"
+    end
   end
 
   def production_transfer
@@ -1534,9 +1685,10 @@ class SuperadminController < ApplicationController
 
   # Find the demo organization (handles name changes)
   def find_demo_organization
-    # Try to find by the expected name pattern
-    org = Organization.where("name LIKE ?", "Starlight Community Theater%").first
-    # Fallback: look for any org with "Demo" in the name
+    # Prefer the is_demo flag
+    org = Organization.find_by(is_demo: true)
+    # Fallback: try to find by the expected name pattern
+    org ||= Organization.where("name LIKE ?", "Starlight Community Theater%").first
     org ||= Organization.where("name LIKE ?", "%Demo%").first
     org
   end

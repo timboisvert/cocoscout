@@ -130,23 +130,52 @@
 
   <!-- Add Team Member Modal -->
   <div data-production-team-modals-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->production-team-modals#closeAddModal">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-team-modals#stopPropagation">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[85vh] flex flex-col" data-action="click->production-team-modals#stopPropagation" data-controller="production-team-search" data-production-team-search-url-value="<%= search_team_member_manage_production_path(@production) %>">
+      <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add Production Team Member</h2>
       </div>
-      <div class="p-6">
+      <div class="p-6 overflow-y-auto">
         <%= form_with url: add_team_member_manage_production_path(@production), method: :post, data: { turbo: false } do |f| %>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-              <%= email_field_tag :email, nil,
-                  placeholder: "email@example.com",
-                  autocapitalize: "none",
-                  class: "w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
-                  required: true
-              %>
-              <p class="text-xs text-gray-500 mt-1">If this person isn't a CocoScout user yet, they'll receive an invitation email.</p>
+          <input type="hidden" name="user_id" value="" data-production-team-search-target="userIdInput">
+          <input type="hidden" name="email" value="" data-production-team-search-target="emailInput">
+
+          <%# Search section %>
+          <div data-production-team-search-target="searchSection">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Search by name or email</label>
+            <input type="text"
+                   data-production-team-search-target="input"
+                   data-action="input->production-team-search#search"
+                   placeholder="Search for a person..."
+                   autocomplete="off"
+                   autocapitalize="none"
+                   class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 mb-3">
+            <div data-production-team-search-target="results" class="max-h-64 overflow-y-auto"></div>
+          </div>
+
+          <%# Selected user display (hidden initially) %>
+          <div data-production-team-search-target="selectedUser" class="hidden">
+            <div class="flex items-center gap-3 p-3 border border-green-300 bg-green-50 rounded-lg mb-4">
+              <div class="flex-grow min-w-0">
+                <span class="font-medium text-sm block truncate" data-production-team-search-target="selectedUserName"></span>
+                <span class="text-xs text-gray-500 block truncate" data-production-team-search-target="selectedUserEmail"></span>
+              </div>
+              <button type="button" class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer flex-shrink-0" data-action="production-team-search#backToSearch">Change</button>
             </div>
+          </div>
+
+          <%# Invite section (hidden initially) %>
+          <div data-production-team-search-target="inviteSection" class="hidden">
+            <div class="p-3 border border-yellow-300 bg-yellow-50 rounded-lg mb-4">
+              <p class="text-sm font-medium text-gray-900 mb-1">Invite by email</p>
+              <p class="text-xs text-gray-500 mb-2">This person isn't on CocoScout yet. They'll receive an invitation email.</p>
+              <div class="mt-2">
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer" data-action="production-team-search#backToSearch">Back to search</button>
+              </div>
+            </div>
+          </div>
+
+          <%# Role and notifications (hidden until user selected) %>
+          <div data-production-team-search-target="roleSection" class="hidden space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
               <%= select_tag :role,
@@ -161,10 +190,10 @@
               </label>
               <p class="text-xs text-gray-500 mt-1">Receive emails about audition requests, show updates, and other production activity.</p>
             </div>
-          </div>
-          <div class="mt-6 flex justify-end gap-3">
-            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeAddModal" } %>
-            <%= render "shared/button", text: "Add Production Team Member", variant: "primary", size: "medium", type: :submit %>
+            <div class="mt-6 flex justify-end gap-3">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeAddModal" } %>
+              <%= render "shared/button", text: "Add to Production", variant: "primary", size: "medium", type: :submit %>
+            </div>
           </div>
         <% end %>
       </div>

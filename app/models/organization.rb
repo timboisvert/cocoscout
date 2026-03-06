@@ -32,6 +32,9 @@ class Organization < ApplicationRecord
     single: "single"
   }, default: :per_production, prefix: :talent_pool
 
+  scope :demo, -> { where(is_demo: true) }
+  scope :non_demo, -> { where(is_demo: false) }
+
   validates :name, presence: true
 
   before_create :generate_invite_token

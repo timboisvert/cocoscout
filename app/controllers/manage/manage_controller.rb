@@ -154,11 +154,25 @@ module Manage
       if user_id && session[:current_organization_id].is_a?(Hash)
         company_id = session[:current_organization_id][user_id.to_s]
         Current.organization = Organization.find_by(id: company_id)
-      elsif Current.user && Current.user.organizations.count == 1
-        company = Current.user.organizations.first
-        session[:current_organization_id] ||= {}
-        session[:current_organization_id][Current.user.id.to_s] = company.id
-        Current.organization = company
+      elsif Current.user
+        orgs = Current.user.organizations
+        non_demo_orgs = orgs.non_demo
+
+        # Auto-select if user has exactly one non-demo org (ignore demo org)
+        # Or if demo org is their only org, auto-select it
+        auto_select_org = if non_demo_orgs.count == 1
+                            non_demo_orgs.first
+                          elsif non_demo_orgs.count == 0 && orgs.count == 1
+                            orgs.first
+                          end
+
+        if auto_select_org
+          session[:current_organization_id] ||= {}
+          session[:current_organization_id][Current.user.id.to_s] = auto_select_org.id
+          Current.organization = auto_select_org
+        else
+          Current.organization = nil
+        end
       else
         Current.organization = nil
       end

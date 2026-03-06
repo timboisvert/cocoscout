@@ -17,6 +17,12 @@ export default class extends Controller {
 
     openAddModal() {
         this.addModalTarget.classList.remove("hidden")
+        // Reset the search controller inside the modal
+        const searchController = this.application.getControllerForElementAndIdentifier(
+            this.addModalTarget.querySelector('[data-controller="production-team-search"]'),
+            "production-team-search"
+        )
+        if (searchController) searchController.reset()
     }
 
     closeAddModal() {

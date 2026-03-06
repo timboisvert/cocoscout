@@ -339,6 +339,7 @@ class DemoSeeder
         @org_existed = true
         # Update name if it changed
         @org.update!(name: DEMO_ORG_NAME) if @org.name != DEMO_ORG_NAME
+        @org.update!(is_demo: true) unless @org.is_demo?
         puts "  Found existing organization: #{@org.name}"
       else
         @org_existed = false
@@ -346,7 +347,8 @@ class DemoSeeder
           name: DEMO_ORG_NAME,
           owner: @admin_user,
           talent_pool_mode: "per_production",
-          forum_mode: "per_production"
+          forum_mode: "per_production",
+          is_demo: true
         )
 
         # Attach organization logo

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_04_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -809,6 +809,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_120000) do
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "invite_token"
+    t.boolean "is_demo", default: false, null: false
     t.string "name"
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false

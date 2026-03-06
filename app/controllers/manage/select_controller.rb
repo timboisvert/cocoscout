@@ -9,15 +9,27 @@ module Manage
 
     def organization
       # Organization selection screen
-      @organizations = Current.user.organizations.includes(:owner, :productions, :users).order(:name)
+      @organizations = Current.user.organizations.non_demo.includes(:owner, :productions, :users).order(:name)
+      @demo_organizations = Current.user.organizations.demo.includes(:owner, :productions, :users).order(:name)
 
-      # If user has only one organization, auto-select it and redirect to manage
-      if @organizations.size == 1
-        organization = @organizations.first
+      all_orgs = Current.user.organizations
+      non_demo = all_orgs.non_demo
+
+      # Auto-select: if 1 non-demo org, pick it. If only demo org, pick it.
+      # Skip auto-select when user explicitly clicked "Switch Organization"
+      auto_select_org = if params[:switch].present?
+                          nil
+                        elsif non_demo.count == 1
+                          non_demo.first
+                        elsif non_demo.count == 0 && all_orgs.count == 1
+                          all_orgs.first
+                        end
+
+      if auto_select_org
         user_id = Current.user&.id
         if user_id
           session[:current_organization_id] ||= {}
-          session[:current_organization_id][user_id.to_s] = organization.id
+          session[:current_organization_id][user_id.to_s] = auto_select_org.id
         end
         redirect_to manage_path
         return
@@ -25,7 +37,7 @@ module Manage
 
       # Add role information for each organization
       @organization_roles = {}
-      @organizations.each do |org|
+      (@organizations + @demo_organizations).each do |org|
         @organization_roles[org.id] = org.role_for(Current.user)
       end
 

@@ -89,6 +89,9 @@ Rails.application.routes.draw do
     post "/people/:id/merge", to: "superadmin#merge_person", as: "merge_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
+    delete "/organizations/:id", to: "superadmin#destroy_organization", as: "destroy_organization"
+    get  "/organizations/:id/consolidate", to: "superadmin#organization_consolidation", as: "organization_consolidation"
+    post "/organizations/:id/consolidate", to: "superadmin#organization_consolidation_execute", as: "organization_consolidation_execute"
     get  "/productions/:id/transfer", to: "superadmin#production_transfer", as: "production_transfer"
     post "/productions/:id/transfer", to: "superadmin#production_transfer_execute", as: "production_transfer_execute"
     get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"
@@ -839,6 +842,7 @@ Rails.application.routes.draw do
         patch :update_public_key
         # Production team management
         post :add_team_member
+        get :search_team_member
         patch :update_team_permission
         delete :remove_team_member
         delete :revoke_production_invite

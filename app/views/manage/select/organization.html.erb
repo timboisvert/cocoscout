@@ -2,42 +2,83 @@
 
 <div class="max-w-md mx-auto py-8">
 
-  <% if @organizations.any? %>
+  <% if @organizations.any? || @demo_organizations.any? %>
     <!-- Organization Selection -->
     <div class="mb-6">
       <h2 class="text-xl font-bold text-gray-900 mb-1">Select an organization</h2>
       <p class="text-sm text-gray-600">Choose which organization you'd like to work with</p>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <% @organizations.each_with_index do |org, index| %>
-        <%= form_with url: set_organization_path(id: org.id), method: :post do |form| %>
-          <button type="submit" class="w-full flex items-center gap-3 hover:bg-slate-50 px-4 py-3 transition cursor-pointer text-left <%= index > 0 ? 'border-t border-gray-200' : '' %>">
-            <% if org.logo.attached? %>
-              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
-                <%= image_tag org.logo, alt: "#{org.name} logo", class: "w-16 h-8 object-cover rounded" %>
-              </div>
-            <% else %>
-              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
-                <%= org.name[0..1].upcase %>
-              </div>
-            <% end %>
-            <span class="text-sm font-medium text-slate-700 truncate flex-1"><%= org.name %></span>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+    <% if @organizations.any? %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
+        <% @organizations.each_with_index do |org, index| %>
+          <%= form_with url: set_organization_path(id: org.id), method: :post do |form| %>
+            <button type="submit" class="w-full flex items-center gap-3 hover:bg-slate-50 px-4 py-3 transition cursor-pointer text-left <%= index > 0 ? 'border-t border-gray-200' : '' %>">
+              <% if org.logo.attached? %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
+                  <%= image_tag org.logo, alt: "#{org.name} logo", class: "w-16 h-8 object-cover rounded" %>
+                </div>
+              <% else %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                  <%= org.name[0..1].upcase %>
+                </div>
+              <% end %>
+              <span class="text-sm font-medium text-slate-700 truncate flex-1"><%= org.name %></span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          <% end %>
         <% end %>
-      <% end %>
 
-      <!-- Create New Organization Button -->
-      <%= link_to new_manage_organization_path, data: { turbo: false }, class: "flex items-center gap-3 px-4 py-3 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium border-t border-gray-200" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Create an Organization
-      <% end %>
-    </div>
+        <!-- Create New Organization Button -->
+        <%= link_to new_manage_organization_path, data: { turbo: false }, class: "flex items-center gap-3 px-4 py-3 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium border-t border-gray-200" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create an Organization
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @demo_organizations.any? %>
+      <div class="mb-2 mt-6">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Demo</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden border-dashed">
+        <% @demo_organizations.each_with_index do |org, index| %>
+          <%= form_with url: set_organization_path(id: org.id), method: :post do |form| %>
+            <button type="submit" class="w-full flex items-center gap-3 hover:bg-slate-50 px-4 py-3 transition cursor-pointer text-left <%= index > 0 ? 'border-t border-gray-200' : '' %>">
+              <% if org.logo.attached? %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
+                  <%= image_tag org.logo, alt: "#{org.name} logo", class: "w-16 h-8 object-cover rounded" %>
+                </div>
+              <% else %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                  <%= org.name[0..1].upcase %>
+                </div>
+              <% end %>
+              <span class="text-sm font-medium text-slate-500 truncate flex-1"><%= org.name %></span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @organizations.empty? %>
+      <!-- Only has demo orgs, show create button -->
+      <div class="mt-4">
+        <%= link_to new_manage_organization_path, data: { turbo: false }, class: "flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg text-sm transition-colors" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create an Organization
+        <% end %>
+      </div>
+    <% end %>
 
   <% else %>
     <!-- Empty State - No Organizations -->

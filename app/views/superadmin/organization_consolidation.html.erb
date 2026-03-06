@@ -1,0 +1,234 @@
+<% content_for :title, "Consolidate Organization - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path],
+        ["Organizations", organizations_list_path],
+        [@source_org.name, organization_detail_path(@source_org)]
+    ],
+    text: "Consolidate Organization",
+    links: []
+  } %>
+
+  <!-- Source org info -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6 mt-4">
+    <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-4">
+      Consolidate: <%= @source_org.name %>
+    </h1>
+    <p class="text-sm text-gray-600 mb-4">
+      This will move <strong>everything</strong> from this organization into another organization:
+      all productions, locations, payout schemes, casting tables, contracts, team members, directory entries, and more.
+      Since everything moves together, cross-production connections (talent pool shares, casting tables spanning multiple productions) remain intact.
+    </p>
+    <div class="text-sm text-gray-600 space-y-1">
+      <div><span class="font-medium">Productions:</span> <%= @source_org.productions.count %></div>
+      <div><span class="font-medium">Locations:</span> <%= @source_org.locations.count %></div>
+      <div><span class="font-medium">Team Members:</span> <%= @source_org.users.count %></div>
+      <div><span class="font-medium">People in Directory:</span> <%= @source_org.people.count %></div>
+      <div><span class="font-medium">Contracts:</span> <%= @source_org.contracts.count %></div>
+      <div><span class="font-medium">Casting Tables:</span> <%= @source_org.casting_tables.count %></div>
+    </div>
+  </div>
+
+  <!-- Step 1: Select target organization -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-bold text-gray-900 mb-4">Step 1: Select Target Organization</h2>
+
+    <%= form_with url: organization_consolidation_path(@source_org), method: :get, class: "flex items-end gap-4" do |f| %>
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Consolidate into:</label>
+        <%= f.select :target_org_id,
+            @organizations.map { |o| ["#{o.name} (#{o.productions.count} productions)", o.id] },
+            { include_blank: "-- Select target organization --", selected: @target_org&.id },
+            class: "block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" %>
+      </div>
+      <%= f.submit "Analyze Consolidation", class: "px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 cursor-pointer" %>
+    <% end %>
+  </div>
+
+  <% if @analysis.present? %>
+    <!-- Analysis Results -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-4">Step 2: Review Consolidation Analysis</h2>
+
+      <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="text-blue-800">
+          <span class="font-bold">Consolidate:</span>
+          <span class="font-medium"><%= @analysis[:source_org][:name] %></span>
+          → into →
+          <span class="font-medium"><%= @analysis[:target_org][:name] %></span>
+        </div>
+      </div>
+
+      <% if @analysis[:warnings].any? %>
+        <div class="mb-6">
+          <h3 class="text-md font-semibold text-orange-700 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            Warnings (<%= @analysis[:warnings].count %>)
+          </h3>
+          <div class="space-y-3">
+            <% @analysis[:warnings].each do |warning| %>
+              <div class="p-3 bg-orange-50 border border-orange-200 rounded">
+                <div class="font-medium text-orange-800"><%= warning[:category] %></div>
+                <div class="text-sm text-orange-700"><%= warning[:message] %></div>
+                <% if warning[:details].present? && warning[:details].any? %>
+                  <ul class="mt-2 text-xs text-orange-600 list-disc list-inside">
+                    <% warning[:details].first(10).each do |detail| %>
+                      <li><%= detail %></li>
+                    <% end %>
+                    <% if warning[:details].count > 10 %>
+                      <li class="text-gray-500">... and <%= warning[:details].count - 10 %> more</li>
+                    <% end %>
+                  </ul>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if @analysis[:data_loss].any? %>
+        <div class="mb-6">
+          <h3 class="text-md font-semibold text-red-700 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            Data That Will Be Lost
+          </h3>
+          <ul class="list-disc list-inside text-sm text-red-700 bg-red-50 p-3 rounded border border-red-200">
+            <% @analysis[:data_loss].each do |loss| %>
+              <li><%= loss %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <% if @analysis[:migrations].any? %>
+        <div class="mb-6">
+          <h3 class="text-md font-semibold text-green-700 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Data That Will Be Migrated (<%= @analysis[:migrations].count %> categories)
+          </h3>
+          <div class="space-y-2">
+            <% @analysis[:migrations].each do |migration| %>
+              <div class="p-2 bg-green-50 border border-green-200 rounded flex justify-between items-center">
+                <div>
+                  <span class="font-medium text-green-800"><%= migration[:category] %></span>
+                  <span class="text-green-700">(<%= migration[:count] %>)</span>
+                </div>
+                <div class="text-sm text-green-600"><%= migration[:action] %></div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= form_with url: organization_consolidation_execute_path(@source_org), method: :post,
+        data: { turbo_confirm: "Are you absolutely sure you want to consolidate '#{@source_org.name}' into '#{@target_org.name}'? This will move EVERYTHING and cannot be undone." } do |f| %>
+      <%= f.hidden_field :target_org_id, value: @target_org.id %>
+
+      <% location_analysis = @analysis[:location_analysis] %>
+      <% if location_analysis.present? && (location_analysis[:auto_matched].any? || location_analysis[:needs_mapping].any?) %>
+        <!-- Location Mapping -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h2 class="text-lg font-bold text-gray-900 mb-4">Step 2b: Location Mapping</h2>
+
+          <p class="text-sm text-gray-600 mb-4">
+            <%= location_analysis[:total_source_locations] %> locations in source organization.
+            Map them to target organization locations below.
+          </p>
+
+          <% if location_analysis[:auto_matched].any? %>
+            <div class="mb-6">
+              <h3 class="text-md font-semibold text-green-700 mb-3">Auto-Matched Locations</h3>
+              <div class="space-y-2">
+                <% location_analysis[:auto_matched].each do |match| %>
+                  <div class="p-3 bg-green-50 border border-green-200 rounded flex justify-between items-center">
+                    <div>
+                      <span class="font-medium text-green-800"><%= match[:source_name] %></span>
+                      <span class="text-green-600 text-sm">(<%= match[:show_count] %> shows)</span>
+                    </div>
+                    <div class="text-sm text-green-700">
+                      → <span class="font-medium"><%= match[:target_name] %></span>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if location_analysis[:needs_mapping].any? %>
+            <div class="mb-4">
+              <h3 class="text-md font-semibold text-orange-700 mb-3">Locations Needing Mapping</h3>
+              <p class="text-sm text-gray-600 mb-3">
+                These locations don't have an exact name match in the target organization.
+              </p>
+              <div class="space-y-3">
+                <% location_analysis[:needs_mapping].each do |loc| %>
+                  <div class="p-3 bg-orange-50 border border-orange-200 rounded">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="flex-1">
+                        <div>
+                          <span class="font-medium text-orange-800"><%= loc[:source_name] %></span>
+                          <span class="text-orange-600 text-sm">(<%= loc[:show_count] %> shows)</span>
+                        </div>
+                        <% if loc[:source_address].present? %>
+                          <div class="text-xs text-gray-500 mt-1"><%= loc[:source_address] %></div>
+                        <% end %>
+                        <% if loc[:space_count] && loc[:space_count] > 0 %>
+                          <div class="text-xs text-gray-500 mt-1">
+                            <%= loc[:space_count] %> space<%= loc[:space_count] != 1 ? 's' : '' %>
+                          </div>
+                        <% end %>
+                      </div>
+                      <div class="text-gray-500">→</div>
+                      <div class="flex-1">
+                        <select name="location_mapping_<%= loc[:source_id] %>"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
+                          <option value="copy">Copy location to target org</option>
+                          <option value="">Clear location (no mapping)</option>
+                          <% if location_analysis[:target_locations].any? %>
+                            <optgroup label="Map to existing location">
+                              <% location_analysis[:target_locations].each do |target| %>
+                                <option value="<%= target[:id] %>"><%= target[:name] %></option>
+                              <% end %>
+                            </optgroup>
+                          <% end %>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Step 3: Execute -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Step 3: Execute Consolidation</h2>
+
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div class="text-red-800 font-medium mb-2">This action cannot be undone!</div>
+          <div class="text-sm text-red-700">
+            Everything from <strong><%= @source_org.name %></strong> will be moved into
+            <strong><%= @target_org.name %></strong>. The source organization will be left empty.
+            Please review all warnings above before proceeding.
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <%= f.submit "Consolidate Organization", class: "px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 cursor-pointer" %>
+          <%= link_to "Cancel", organization_detail_path(@source_org), class: "px-6 py-3 text-gray-600 hover:text-gray-800" %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
