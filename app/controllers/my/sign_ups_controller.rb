@@ -449,8 +449,7 @@ module My
 
     # Lock a slot while user completes registration
     def lock_slot
-      @instance = find_current_instance
-      slot = @instance.sign_up_slots.find(params[:slot_id])
+      slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
       # Check if slot is actually available
       if slot.is_held || slot.full?
@@ -471,8 +470,7 @@ module My
 
     # Release a slot lock (user cancelled or navigated away)
     def unlock_slot
-      @instance = find_current_instance
-      slot = @instance.sign_up_slots.find(params[:slot_id])
+      slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
       SlotLockService.release(slot.id, session_identifier)
       render json: { success: true }
@@ -480,7 +478,11 @@ module My
 
     # Get lock status for all slots in an instance (for UI updates)
     def slot_locks
-      @instance = find_current_instance
+      @instance = if params[:instance_id].present?
+        @sign_up_form.sign_up_form_instances.find_by(id: params[:instance_id])
+      else
+        find_current_instance
+      end
 
       unless @instance
         render json: { locks: {} }

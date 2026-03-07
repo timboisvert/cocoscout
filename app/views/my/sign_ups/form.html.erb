@@ -16,7 +16,7 @@
        data-slot-lock-lock-url-value="<%= my_lock_sign_up_slot_path(@code, slot_id: ':slot_id') %>"
        data-slot-lock-unlock-url-value="<%= my_unlock_sign_up_slot_path(@code, slot_id: ':slot_id') %>"
        data-slot-lock-beacon-unlock-url-value="<%= my_beacon_unlock_sign_up_slot_path(@code, slot_id: ':slot_id') %>"
-       data-slot-lock-locks-url-value="<%= my_sign_up_slot_locks_path(@code) %>"
+       data-slot-lock-locks-url-value="<%= my_sign_up_slot_locks_path(@code, instance_id: @instance&.id) %>"
      <% end %>>
   <div class="max-w-6xl mx-auto px-4">
 
