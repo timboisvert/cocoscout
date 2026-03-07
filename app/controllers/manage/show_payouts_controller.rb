@@ -246,6 +246,12 @@ module Manage
         line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
       end
 
+      # Explicit check in case the callback didn't fire (e.g., manually_paid was already true)
+      @show_payout.reload
+      if !@show_payout.paid? && @show_payout.line_items.all?(&:paid?)
+        @show_payout.mark_paid!
+      end
+
       first_item = line_items.first
 
       respond_to do |format|

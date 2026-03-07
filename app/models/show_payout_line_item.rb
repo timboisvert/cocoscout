@@ -28,7 +28,7 @@ class ShowPayoutLineItem < ApplicationRecord
   # Non-guests must have a payee
   validates :payee, presence: true, unless: :is_guest?
 
-  after_save :check_all_paid, if: :saved_change_to_manually_paid?
+  after_save :check_all_paid, if: -> { saved_change_to_manually_paid? || saved_change_to_payout_status? }
 
   scope :by_amount, -> { order(amount: :desc) }
   scope :by_name, -> { includes(:payee).sort_by { |li| li.payee.name } }
@@ -255,7 +255,7 @@ class ShowPayoutLineItem < ApplicationRecord
 
   # Check if all line items are paid and auto-mark the show payout as paid
   def check_all_paid
-    return unless manually_paid? # Only check when marking as paid, not when unmarking
+    return unless paid? # Only check when marking as paid, not when unmarking
 
     # Reload show_payout to get fresh line_items count
     payout = show_payout.reload
