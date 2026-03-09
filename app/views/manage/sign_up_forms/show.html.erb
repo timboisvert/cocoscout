@@ -36,7 +36,13 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%
     # Collect unique registered people for contact functionality
-    signup_people = @registrations.map(&:person).uniq(&:id)
+    # For repeated forms, only include people from the current instance (not all instances)
+    contact_registrations = if @sign_up_form.repeated? && @current_instance
+      @current_instance.sign_up_registrations.includes(:person).active
+    else
+      @registrations
+    end
+    signup_people = contact_registrations.map(&:person).uniq(&:id)
     signup_people_data = signup_people.map do |person|
       headshot_variant = person.safe_headshot_variant(:thumb)
       {
