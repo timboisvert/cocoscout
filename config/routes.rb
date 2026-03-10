@@ -874,6 +874,8 @@ Rails.application.routes.draw do
           get :recurring_series, to: "shows#recurring_series"
           post :preview_extend_series, to: "shows#preview_extend_series"
           post :extend_series, to: "shows#extend_series"
+          post :preview_reschedule, to: "shows#preview_reschedule"
+          post :reschedule_future, to: "shows#reschedule_future"
         end
         member do
           get   :cancel, action: :cancel

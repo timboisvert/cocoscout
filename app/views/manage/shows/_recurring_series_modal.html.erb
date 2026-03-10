@@ -3,8 +3,8 @@
   <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
        data-controller="recurring-series-modal"
        data-recurring-series-modal-preview-url-value="<%= preview_extend_series_manage_production_shows_path(@production) %>"
-       data-recurring-series-modal-extend-url-value="<%= extend_series_manage_production_shows_path(@production) %>"
-       data-action="click->recurring-series-modal#closeOnBackdrop keydown.esc@window->recurring-series-modal#close">
+       data-recurring-series-modal-extend-url-value="<%= extend_series_manage_production_shows_path(@production) %>"         data-recurring-series-modal-preview-reschedule-url-value="<%= preview_reschedule_manage_production_shows_path(@production) %>"
+         data-recurring-series-modal-reschedule-url-value="<%= reschedule_future_manage_production_shows_path(@production) %>"       data-action="click->recurring-series-modal#closeOnBackdrop keydown.esc@window->recurring-series-modal#close">
     <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg max-h-[85vh] flex flex-col" data-action="click->recurring-series-modal#stopPropagation">
       <%# Header %>
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
@@ -166,6 +166,82 @@
             </div>
           </div>
         </div>
+
+        <% if @upcoming_shows.any? %>
+          <%# Change Schedule Section %>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M2.985 19.644v-4.992" />
+              </svg>
+              Change schedule for future events
+            </h4>
+            <p class="text-xs text-blue-700 mb-3">Move <%= @upcoming_shows.length %> upcoming <%= 'event'.pluralize(@upcoming_shows.length) %> to a new day and time. Past events are not affected.</p>
+
+            <%# Step 1: Pick new day/time %>
+            <form data-recurring-series-modal-target="rescheduleForm" data-action="submit->recurring-series-modal#previewReschedule">
+              <input type="hidden" name="recurrence_group_id" value="<%= @recurrence_group_id %>">
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New day</label>
+                    <select name="new_day_of_week" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                      <option value="0" <%= 'selected' if @first_show.date_and_time.wday == 0 %>>Sunday</option>
+                      <option value="1" <%= 'selected' if @first_show.date_and_time.wday == 1 %>>Monday</option>
+                      <option value="2" <%= 'selected' if @first_show.date_and_time.wday == 2 %>>Tuesday</option>
+                      <option value="3" <%= 'selected' if @first_show.date_and_time.wday == 3 %>>Wednesday</option>
+                      <option value="4" <%= 'selected' if @first_show.date_and_time.wday == 4 %>>Thursday</option>
+                      <option value="5" <%= 'selected' if @first_show.date_and_time.wday == 5 %>>Friday</option>
+                      <option value="6" <%= 'selected' if @first_show.date_and_time.wday == 6 %>>Saturday</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New time</label>
+                    <input type="time" name="new_time" required
+                           value="<%= @first_show.date_and_time.strftime('%H:%M') %>"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Run through (optional)</label>
+                  <input type="date" name="reschedule_end_date"
+                         value="<%= @last_show.date_and_time.to_date.to_s %>"
+                         min="<%= Date.current.to_s %>"
+                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                  <p class="text-xs text-gray-500 mt-1">Leave as-is to keep roughly the same end date</p>
+                </div>
+                <div class="flex justify-end pt-1">
+                  <%= render "shared/button", text: "Preview Changes", variant: "primary", type: :submit, data: { "recurring-series-modal-target": "reschedulePreviewButton" } %>
+                </div>
+              </div>
+            </form>
+
+            <%# Error message %>
+            <p data-recurring-series-modal-target="rescheduleError" class="hidden text-sm text-red-600 mt-2"></p>
+
+            <%# Step 2: Preview and confirm %>
+            <div data-recurring-series-modal-target="reschedulePreviewContainer" class="hidden">
+              <div class="mb-3">
+                <p class="text-sm text-gray-700">
+                  <span class="text-red-600 font-medium"><span data-recurring-series-modal-target="rescheduleRemoving"></span> future events will be removed</span>
+                  and replaced with
+                  <strong data-recurring-series-modal-target="rescheduleAdding"></strong> new events:
+                </p>
+              </div>
+              <div class="max-h-48 overflow-y-auto border border-blue-200 rounded-lg bg-white divide-y divide-gray-100">
+                <ul data-recurring-series-modal-target="rescheduleList" class="divide-y divide-gray-100"></ul>
+              </div>
+              <div class="flex items-center justify-between pt-4">
+                <button type="button" class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer" data-action="click->recurring-series-modal#backToRescheduleOptions">
+                  ← Change options
+                </button>
+                <%= form_with url: reschedule_future_manage_production_shows_path(@production), method: :post, local: true, data: { "recurring-series-modal-target": "rescheduleConfirmForm", turbo_confirm: "This will delete the future events and create new ones on the new schedule. Continue?" } do %>
+                  <%= render "shared/button", text: "Confirm & Reschedule", variant: "primary", type: :submit %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
 
       <%# Footer %>

@@ -757,6 +757,11 @@ module Manage
         group.group_memberships.each { |gm| all_person_ids << gm.person_id }
       end
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
+
+      # Count of this show + future shows in the series (for "this and future" option)
+      if @show.recurring?
+        @future_count = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).count
+      end
     end
 
     def cancel_show
@@ -771,6 +776,22 @@ module Manage
         count = @show.recurrence_group.update_all(canceled: true)
 
         # Send notifications if requested (uses template automatically)
+        if notify_cast
+          send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
+        end
+
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
+                    status: :see_other
+      elsif scope == "this_and_future" && @show.recurring?
+        # Cancel this and all future occurrences
+        shows_to_cancel = @show.recurrence_group
+                               .where("date_and_time >= ?", @show.date_and_time)
+                               .where(canceled: false).to_a
+        count = @show.recurrence_group
+                     .where("date_and_time >= ?", @show.date_and_time)
+                     .update_all(canceled: true)
+
         if notify_cast
           send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
         end
@@ -804,6 +825,14 @@ module Manage
         redirect_to manage_production_shows_path(@production),
                     notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}",
                     status: :see_other
+      elsif scope == "this_and_future" && @show.recurring?
+        # Delete this and all future occurrences, keep past shows
+        future_shows = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time)
+        count = future_shows.count
+        future_shows.destroy_all
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully deleted #{count} future #{event_label.pluralize.downcase}",
+                    status: :see_other
       else
         # Delete just this occurrence
         @show.destroy!
@@ -820,6 +849,15 @@ module Manage
       if scope == "all" && @show.recurring?
         # Uncancel all canceled occurrences in the recurrence group
         count = @show.recurrence_group.where(canceled: true).update_all(canceled: false)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
+                    status: :see_other
+      elsif scope == "this_and_future" && @show.recurring?
+        # Uncancel this and all future canceled occurrences
+        count = @show.recurrence_group
+                     .where("date_and_time >= ?", @show.date_and_time)
+                     .where(canceled: true)
+                     .update_all(canceled: false)
         redirect_to manage_production_shows_path(@production),
                     notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
                     status: :see_other
@@ -1311,6 +1349,133 @@ module Manage
       end
     end
 
+    # POST /manage/productions/:production_id/shows/preview_reschedule
+    # Preview what rescheduling future events would look like
+    def preview_reschedule
+      @recurrence_group_id = params[:recurrence_group_id]
+      return head :not_found unless @recurrence_group_id.present?
+
+      shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
+      return head :not_found if shows_in_series.empty?
+
+      pattern = shows_in_series.first.recurrence_pattern || infer_recurrence_pattern(shows_in_series)
+      future_shows = shows_in_series.select { |s| s.date_and_time > Time.current }
+
+      # Parse new schedule params
+      new_day = params[:new_day_of_week]&.to_i # 0=Sun, 1=Mon, ..., 6=Sat
+      new_hour = params[:new_hour]&.to_i
+      new_minute = params[:new_minute]&.to_i || 0
+
+      if new_day.nil? || new_hour.nil?
+        render json: { error: "Please select a day and time." }, status: :unprocessable_entity
+        return
+      end
+
+      # Determine end date: use custom or keep the last future show's date
+      end_date = if params[:reschedule_end_date].present?
+        begin
+          Date.parse(params[:reschedule_end_date])
+        rescue Date::Error
+          nil
+        end
+      else
+        future_shows.last&.date_and_time&.to_date
+      end
+
+      if end_date.nil?
+        render json: { error: "No future events to reschedule." }, status: :unprocessable_entity
+        return
+      end
+
+      # Find the first occurrence of the new day starting from today
+      start_date = Date.current
+      days_until_new_day = (new_day - start_date.wday) % 7
+      days_until_new_day = 7 if days_until_new_day == 0 && Time.current.hour >= new_hour
+      first_new_date = start_date + days_until_new_day.days
+      start_datetime = first_new_date.in_time_zone.change(hour: new_hour, min: new_minute)
+
+      new_dates = generate_recurring_dates(start_datetime, pattern, end_date)
+
+      if new_dates.empty?
+        render json: { error: "No dates would be generated with this schedule." }, status: :unprocessable_entity
+        return
+      end
+
+      render json: {
+        removing: future_shows.length,
+        adding: new_dates.length,
+        dates: new_dates.map { |d| { display: d.strftime("%A, %B %-d, %Y"), time: d.strftime("%-I:%M %p") } },
+        end_date: end_date.strftime("%B %-d, %Y")
+      }
+    end
+
+    # POST /manage/productions/:production_id/shows/reschedule_future
+    # Delete future events and regenerate with new day/time
+    def reschedule_future
+      @recurrence_group_id = params[:recurrence_group_id]
+      return head :not_found unless @recurrence_group_id.present?
+
+      shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
+      return head :not_found if shows_in_series.empty?
+
+      pattern = shows_in_series.first.recurrence_pattern || infer_recurrence_pattern(shows_in_series)
+      template_show = shows_in_series.last
+
+      # Parse new schedule params
+      new_day = params[:new_day_of_week].to_i
+      new_hour = params[:new_hour].to_i
+      new_minute = params[:new_minute]&.to_i || 0
+
+      end_date = if params[:reschedule_end_date].present?
+        Date.parse(params[:reschedule_end_date])
+      else
+        shows_in_series.select { |s| s.date_and_time > Time.current }.last&.date_and_time&.to_date
+      end
+
+      if end_date.nil?
+        redirect_to manage_production_shows_path(@production), alert: "No future events to reschedule."
+        return
+      end
+
+      # Find the first occurrence of the new day
+      start_date = Date.current
+      days_until_new_day = (new_day - start_date.wday) % 7
+      days_until_new_day = 7 if days_until_new_day == 0 && Time.current.hour >= new_hour
+      first_new_date = start_date + days_until_new_day.days
+      start_datetime = first_new_date.in_time_zone.change(hour: new_hour, min: new_minute)
+
+      new_dates = generate_recurring_dates(start_datetime, pattern, end_date)
+
+      # Delete future shows (callbacks handle sign-up instance cleanup)
+      deleted_count = @production.shows.in_recurrence_group(@recurrence_group_id)
+                                       .where("date_and_time > ?", Time.current)
+                                       .destroy_all.length
+
+      # Create new shows with same properties as last show in series
+      created_count = 0
+      new_dates.each do |datetime|
+        show = @production.shows.new(
+          event_type: template_show.event_type,
+          secondary_name: template_show.secondary_name,
+          location_id: template_show.location_id,
+          is_online: template_show.is_online,
+          online_location_info: template_show.online_location_info,
+          casting_enabled: template_show.casting_enabled,
+          casting_source: template_show.casting_source,
+          public_profile_visible: template_show.public_profile_visible,
+          date_and_time: datetime,
+          recurrence_group_id: @recurrence_group_id,
+          recurrence_pattern: pattern
+        )
+        created_count += 1 if show.save
+      end
+
+      day_name = Date::DAYNAMES[new_day]
+      time_str = start_datetime.strftime("%-I:%M %p")
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Rescheduled: removed #{deleted_count} future events, created #{created_count} new events on #{day_name}s at #{time_str}"
+    end
+
     private
 
     def set_production
@@ -1521,7 +1686,6 @@ module Manage
       Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
     end
 
-    # Compute the extend-through date from params, used by both preview and extend actions
     def compute_extend_through_date
       last_show = @last_show
       case params[:extend_duration]

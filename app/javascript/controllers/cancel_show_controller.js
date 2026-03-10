@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = [
-    "scopeCheckbox",
+    "scopeRadio",
     "scopeField",
     "notifyCheckbox",
     "notifySection",
@@ -16,22 +16,28 @@ export default class extends Controller {
   static values = {
     eventType: String,
     singleDate: String,
-    occurrenceCount: Number
+    occurrenceCount: Number,
+    futureCount: Number
   }
 
   toggleScope() {
-    const isAll = this.hasScopeCheckboxTarget && this.scopeCheckboxTarget.checked
+    // Find the selected radio button
+    const selectedRadio = this.scopeRadioTargets.find(r => r.checked)
+    const scope = selectedRadio ? selectedRadio.value : "this"
 
     // Update hidden scope field
     if (this.hasScopeFieldTarget) {
-      this.scopeFieldTarget.value = isAll ? "all" : "this"
+      this.scopeFieldTarget.value = scope
     }
 
     // Update button text and confirmation message
     if (this.hasSubmitButtonTarget) {
-      if (isAll) {
+      if (scope === "all") {
         this.submitButtonTarget.value = `Cancel All ${this.occurrenceCountValue} ${this.eventTypeValue}s`
         this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel all ${this.occurrenceCountValue} occurrences in this series?`)
+      } else if (scope === "this_and_future") {
+        this.submitButtonTarget.value = `Cancel This & ${this.futureCountValue - 1} Future ${this.eventTypeValue}s`
+        this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel this and ${this.futureCountValue - 1} future occurrences?`)
       } else {
         this.submitButtonTarget.value = `Cancel ${this.eventTypeValue}`
         this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel this ${this.eventTypeValue.toLowerCase()} on ${this.singleDateValue}?`)
