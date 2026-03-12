@@ -24,8 +24,10 @@ module Manage
         q: "%#{q}%"
       ).limit(15).to_a
 
-      # Find user IDs already on this org's team
-      team_user_ids = Current.organization.organization_roles.pluck(:user_id)
+      # Find user IDs already on this org's team (manager or viewer roles only)
+      team_user_ids = Current.organization.organization_roles
+        .where(company_role: %w[manager viewer])
+        .pluck(:user_id)
 
       # Find emails with pending invitations
       pending_emails = Current.organization.team_invitations.where(accepted_at: nil).pluck(:email).map(&:downcase)
