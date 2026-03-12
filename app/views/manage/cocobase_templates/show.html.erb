@@ -1,0 +1,119 @@
+<% content_for :title, "Cocobase Template" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)]
+    ],
+    text: "Cocobase Template",
+    links: []
+  } %>
+
+  <div class="max-w-3xl mx-auto">
+    <!-- Template Settings -->
+    <%= form_with model: @template, url: manage_update_casting_cocobase_template_path(@production), method: :patch, class: "space-y-6" do |f| %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Template Settings</h2>
+        <p class="text-sm text-gray-500 mb-6">Configure which shows automatically get a Cocobase form and the default deadline.</p>
+
+        <!-- Enabled Toggle -->
+        <div class="flex items-center gap-3 mb-6">
+          <%= f.check_box :enabled, class: "h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <%= f.label :enabled, "Enable Cocobases for this production", class: "text-sm font-medium text-gray-900" %>
+        </div>
+
+        <!-- Event Types -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Auto-generate Cocobases for these event types</label>
+          <p class="text-xs text-gray-500 mb-3">When a show of a selected type is created, a Cocobase form will be automatically set up.</p>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <% EventTypes.for_select.each do |label, key| %>
+              <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <%= check_box_tag "cocobase_template[event_types][]", key,
+                  @template.event_types&.include?(key),
+                  class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+                  id: "event_type_#{key}" %>
+                <span class="text-sm text-gray-700"><%= label %></span>
+              </label>
+            <% end %>
+          </div>
+          <!-- Hidden field to ensure empty array is submitted when nothing is checked -->
+          <%= hidden_field_tag "cocobase_template[event_types][]", "" %>
+        </div>
+
+        <!-- Default Deadline -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Default submission deadline</label>
+          <p class="text-xs text-gray-500 mb-2">How many days before an event performers should submit their responses by.</p>
+          <div class="flex items-center gap-2">
+            <%= f.number_field :default_deadline_days, min: 1, max: 90,
+              class: "w-20 rounded-lg border-gray-300 text-sm focus:ring-pink-500 focus:border-pink-500" %>
+            <span class="text-sm text-gray-600">days before the event</span>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <%= render "shared/button", text: "Save Settings", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Template Fields -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6"
+         data-controller="cocobase-fields"
+         data-cocobase-fields-reorder-url-value="<%= manage_reorder_casting_cocobase_template_fields_path(@production) %>">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Fields</h2>
+          <p class="text-sm text-gray-500">Define which information performers should submit.</p>
+        </div>
+      </div>
+
+      <% if @fields.any? %>
+        <div class="space-y-3 mb-6" data-cocobase-fields-target="list">
+          <% @fields.each do |field| %>
+            <%= render "manage/cocobase_templates/field_row", field: field, production: @production %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-8 text-gray-500 mb-6">
+          <p class="text-sm">No fields defined yet. Add fields below to start building your template.</p>
+        </div>
+      <% end %>
+
+      <!-- Add Field Form -->
+      <div class="border-t border-gray-200 pt-6">
+        <h3 class="text-sm font-medium text-gray-700 mb-4">Add a new field</h3>
+        <%= form_with url: manage_create_casting_cocobase_template_field_path(@production), method: :post, class: "space-y-4" do |f| %>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Label</label>
+              <%= f.text_field :label, placeholder: "e.g., Performance Song", required: true,
+                class: "w-full rounded-lg border-gray-300 text-sm focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+              <%= f.select :field_type,
+                [["Short text", "text"], ["Long text", "textarea"], ["File upload", "file_upload"], ["URL / Link", "url"], ["Yes / No", "yesno"]],
+                {}, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Description / Instructions (optional)</label>
+            <%= f.text_area :description, rows: 2, placeholder: "Describe what you'd like the performer to provide...",
+              class: "w-full rounded-lg border-gray-300 text-sm focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2">
+              <%= f.check_box :required, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <span class="text-sm text-gray-700">Required</span>
+            </label>
+            <%= render "shared/button", text: "Add Field", variant: "secondary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

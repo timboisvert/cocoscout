@@ -56,6 +56,9 @@ class Show < ApplicationRecord
   has_many :sign_up_form_instances, dependent: :destroy
   has_many :sign_up_form_shows, dependent: :destroy
 
+  # Cocobases
+  has_one :cocobase, dependent: :destroy
+
   # Payouts
   has_one :show_financials, dependent: :destroy
   has_one :show_payout, dependent: :destroy
@@ -123,6 +126,10 @@ class Show < ApplicationRecord
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
   after_commit :sync_sign_up_form_instances_on_date_change, on: :update, if: :saved_change_to_date_and_time?
   before_destroy :cleanup_sign_up_form_instances
+
+  # Cocobase auto-generation
+  after_commit :generate_cocobase, on: :create
+  after_commit :update_cocobase_deadline, on: :update, if: :saved_change_to_date_and_time?
 
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
@@ -767,6 +774,17 @@ class Show < ApplicationRecord
     # When a show is deleted, destroy all its sign-up form instances
     # This cascades to slots and registrations via dependent: :destroy
     SignUpFormInstance.where(show_id: id).destroy_all
+  end
+
+  def generate_cocobase
+    CocobaseService.generate_for_show(self)
+  end
+
+  def update_cocobase_deadline
+    return unless cocobase&.cocobase_template
+
+    new_deadline = CocobaseService.calculate_deadline(self, cocobase.cocobase_template)
+    cocobase.update!(deadline: new_deadline) if new_deadline
   end
 
   def invalidate_production_caches

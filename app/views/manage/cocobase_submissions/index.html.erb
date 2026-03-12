@@ -1,0 +1,98 @@
+<% content_for :title, "Cocobase Submissions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)],
+      [@show.event_type.titleize, manage_production_show_path(@production, @show)],
+      ["Cocobase", manage_show_cocobase_path(@production, @show)]
+    ],
+    text: "Submissions",
+    links: []
+  } %>
+
+  <div class="max-w-3xl mx-auto">
+    <!-- Summary Bar -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <div>
+            <span class="text-2xl font-bold text-gray-900"><%= @summary[:submitted] %></span>
+            <span class="text-sm text-gray-500"> / <%= @summary[:total] %> submitted</span>
+          </div>
+          <% if @summary[:pending] > 0 %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+              <%= @summary[:pending] %> pending
+            </span>
+          <% end %>
+        </div>
+        <% if @cocobase.deadline.present? %>
+          <div class="text-right">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Deadline</p>
+            <p class="text-sm font-medium <%= @cocobase.past_deadline? ? 'text-red-600' : 'text-gray-900' %>">
+              <%= @cocobase.deadline.strftime("%b %-d, %Y %l:%M %p") %>
+            </p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Fields Reference -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+      <h3 class="text-sm font-medium text-gray-700 mb-2">Expected fields (<%= @fields.size %>)</h3>
+      <div class="flex flex-wrap gap-2">
+        <% @fields.each do |field| %>
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100 text-xs text-gray-700">
+            <%= field.label %>
+            <% if field.required? %>
+              <span class="text-pink-500">*</span>
+            <% end %>
+          </span>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Submissions List -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <% if @submissions.any? %>
+        <div class="divide-y divide-gray-200">
+          <% @submissions.each do |submission| %>
+            <% entity = submission.submittable %>
+            <% next unless entity %>
+            <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+            <%= link_to manage_show_cocobase_submission_path(@production, @show, submission),
+              class: "flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors" do %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, alt: entity.name, class: "w-10 h-10 rounded-lg object-cover" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
+                  <%= entity.initials %>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900"><%= entity.name %></p>
+                <% if submission.submitted_at.present? %>
+                  <p class="text-xs text-gray-500">Submitted <%= time_ago_in_words(submission.submitted_at) %> ago</p>
+                <% end %>
+              </div>
+              <% case submission.status %>
+              <% when "submitted" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Submitted</span>
+              <% when "in_progress" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">In Progress</span>
+              <% else %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Pending</span>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-12 text-gray-500">
+          <p class="text-sm">No submissions yet. Submissions are created when casting is finalized.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

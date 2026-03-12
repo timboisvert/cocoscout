@@ -37,6 +37,9 @@ class Person < ApplicationRecord
   # Sign-up registrations
   has_many :sign_up_registrations, dependent: :destroy
 
+  # Cocobase submissions
+  has_many :cocobase_submissions, as: :submittable, dependent: :destroy
+
   # Course registrations
   has_many :course_registrations, dependent: :destroy
 

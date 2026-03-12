@@ -934,6 +934,9 @@ module Manage
 
         # Mark casting as finalized
         show.finalize_casting!
+
+        # Generate Cocobase submissions for cast members
+        CocobaseService.generate_submissions_for_show(show)
       end
 
       finalized_count = shows_to_finalize.count

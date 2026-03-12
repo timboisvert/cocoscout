@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -349,6 +349,79 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
     t.index ["created_by_id"], name: "index_casting_tables_on_created_by_id"
     t.index ["finalized_by_id"], name: "index_casting_tables_on_finalized_by_id"
     t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
+  end
+
+  create_table "cocobase_answers", force: :cascade do |t|
+    t.bigint "cocobase_field_id", null: false
+    t.bigint "cocobase_submission_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "value"
+    t.index ["cocobase_field_id"], name: "index_cocobase_answers_on_cocobase_field_id"
+    t.index ["cocobase_submission_id", "cocobase_field_id"], name: "idx_cocobase_answers_unique", unique: true
+    t.index ["cocobase_submission_id"], name: "index_cocobase_answers_on_cocobase_submission_id"
+  end
+
+  create_table "cocobase_fields", force: :cascade do |t|
+    t.bigint "cocobase_id", null: false
+    t.text "config"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "field_type", null: false
+    t.string "label", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "required", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["cocobase_id", "position"], name: "index_cocobase_fields_on_cocobase_id_and_position"
+    t.index ["cocobase_id"], name: "index_cocobase_fields_on_cocobase_id"
+  end
+
+  create_table "cocobase_submissions", force: :cascade do |t|
+    t.bigint "cocobase_id", null: false
+    t.datetime "created_at", null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "submittable_id", null: false
+    t.string "submittable_type", null: false
+    t.datetime "submitted_at"
+    t.datetime "updated_at", null: false
+    t.index ["cocobase_id", "submittable_type", "submittable_id"], name: "idx_cocobase_submissions_unique", unique: true
+    t.index ["cocobase_id"], name: "index_cocobase_submissions_on_cocobase_id"
+    t.index ["submittable_type", "submittable_id"], name: "idx_cocobase_submissions_on_submittable"
+  end
+
+  create_table "cocobase_template_fields", force: :cascade do |t|
+    t.bigint "cocobase_template_id", null: false
+    t.text "config"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "field_type", null: false
+    t.string "label", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "required", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["cocobase_template_id", "position"], name: "idx_cocobase_tmpl_fields_on_tmpl_position"
+    t.index ["cocobase_template_id"], name: "index_cocobase_template_fields_on_cocobase_template_id"
+  end
+
+  create_table "cocobase_templates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "default_deadline_days", default: 7, null: false
+    t.boolean "enabled", default: false, null: false
+    t.text "event_types"
+    t.bigint "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_cocobase_templates_on_production_id", unique: true
+  end
+
+  create_table "cocobases", force: :cascade do |t|
+    t.bigint "cocobase_template_id"
+    t.datetime "created_at", null: false
+    t.datetime "deadline"
+    t.bigint "show_id", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cocobase_template_id"], name: "index_cocobases_on_cocobase_template_id"
+    t.index ["show_id"], name: "index_cocobases_on_show_id", unique: true
   end
 
   create_table "content_templates", force: :cascade do |t|
@@ -2397,6 +2470,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
   add_foreign_key "casting_tables", "organizations"
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
+  add_foreign_key "cocobase_answers", "cocobase_fields"
+  add_foreign_key "cocobase_answers", "cocobase_submissions"
+  add_foreign_key "cocobase_fields", "cocobases", column: "cocobase_id"
+  add_foreign_key "cocobase_submissions", "cocobases", column: "cocobase_id"
+  add_foreign_key "cocobase_template_fields", "cocobase_templates"
+  add_foreign_key "cocobase_templates", "productions"
+  add_foreign_key "cocobases", "cocobase_templates"
+  add_foreign_key "cocobases", "shows"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contractors", "organizations"

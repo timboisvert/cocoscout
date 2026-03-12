@@ -26,6 +26,12 @@ class ApplicationController < ActionController::Base
 
   private
 
+  def require_superadmin
+    return if Current.user&.superadmin?
+
+    redirect_to my_dashboard_path
+  end
+
   def set_sentry_context
     return unless defined?(Sentry) && Current.user.present?
 

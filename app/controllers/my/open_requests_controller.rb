@@ -43,6 +43,15 @@ module My
       # ========================================
       load_questionnaires_data(selected_person_ids, people_by_id)
 
+      # ========================================
+      # Section 3: Cocobases (superadmin only)
+      # ========================================
+      if Current.user&.superadmin?
+        load_cocobases_data(selected_person_ids, people_by_id)
+      else
+        @cocobase_items = []
+      end
+
       # Check if user is part of any productions (for showing content even when filtered results are empty)
       productions_exist = Production.joins(talent_pools: :people).where(people: { id: people_ids }).exists?
       groups_in_productions = @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
@@ -51,7 +60,8 @@ module My
       # Calculate badge counts for navigation
       @total_open_count = @availability_items.count { |i| i[:availability].nil? } +
                           @signup_items.count { |i| i[:registration].nil? } +
-                          @questionnaire_items.size
+                          @questionnaire_items.size +
+                          @cocobase_items.count { |i| !i[:submitted] }
     end
 
     def update_availability
@@ -445,6 +455,39 @@ module My
       end
 
       @questionnaire_items.sort_by! { |i| i[:questionnaire].created_at }.reverse!
+    end
+
+    def load_cocobases_data(selected_person_ids, people_by_id)
+      @cocobase_items = []
+
+      return unless selected_person_ids.any?
+
+      submissions = CocobaseSubmission
+        .where(submittable_type: "Person", submittable_id: selected_person_ids)
+        .includes(cocobase: { show: :production })
+
+      submissions.each do |submission|
+        cocobase = submission.cocobase
+        next unless cocobase&.open?
+
+        person = people_by_id[submission.submittable_id]
+        next unless person
+
+        submitted = submission.submitted?
+        next if @filter == "awaiting" && submitted
+
+        @cocobase_items << {
+          submission: submission,
+          cocobase: cocobase,
+          show: cocobase.show,
+          production: cocobase.show.production,
+          entity: person,
+          entity_key: "person_#{person.id}",
+          submitted: submitted
+        }
+      end
+
+      @cocobase_items.sort_by! { |i| i[:cocobase].deadline || Time.current + 100.years }
     end
 
     def fetch_availabilities(show_ids, selected_person_ids, selected_group_ids)

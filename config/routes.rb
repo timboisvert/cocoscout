@@ -214,7 +214,11 @@ Rails.application.routes.draw do
     get   "/shows/calendar",                to: redirect("/my"),            as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
-    # Open Requests (consolidated: availability + sign-ups + questionnaires)
+    # Cocobases (talent-facing submission forms)
+    get   "/cocobases/:id",                 to: "cocobase_submissions#show",   as: "cocobase_submission"
+    patch "/cocobases/:id",                 to: "cocobase_submissions#update", as: "update_cocobase_submission"
+
+    # Open Requests (consolidated: availability + sign-ups + questionnaires + cocobases)
     get   "/requests",                      to: "open_requests#index",      as: "requests"
     patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
     post  "/requests/signup/:show_id",      to: "open_requests#sign_up",    as: "request_sign_up"
@@ -400,6 +404,17 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:show_id/roles/execute_migration", to: "show_roles#execute_migration", as: "execute_migration_show_roles"
     get  "/shows/:production_id/:show_id/roles/:id/slot_change_preview", to: "show_roles#slot_change_preview", as: "slot_change_preview_show_role"
     post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
+
+    # Cocobases - per-show instance
+    get  "/shows/:production_id/:show_id/cocobase", to: "cocobases#show", as: "show_cocobase"
+    get  "/shows/:production_id/:show_id/cocobase/edit", to: "cocobases#edit", as: "edit_show_cocobase"
+    patch "/shows/:production_id/:show_id/cocobase", to: "cocobases#update", as: "update_show_cocobase"
+    post "/shows/:production_id/:show_id/cocobase/fields", to: "cocobase_fields#create", as: "create_show_cocobase_field"
+    patch "/shows/:production_id/:show_id/cocobase/fields/:id", to: "cocobase_fields#update", as: "update_show_cocobase_field"
+    delete "/shows/:production_id/:show_id/cocobase/fields/:id", to: "cocobase_fields#destroy", as: "destroy_show_cocobase_field"
+    post "/shows/:production_id/:show_id/cocobase/fields/reorder", to: "cocobase_fields#reorder", as: "reorder_show_cocobase_fields"
+    get  "/shows/:production_id/:show_id/cocobase/submissions", to: "cocobase_submissions#index", as: "show_cocobase_submissions"
+    get  "/shows/:production_id/:show_id/cocobase/submissions/:id", to: "cocobase_submissions#show", as: "show_cocobase_submission"
 
     # Visual Assets (production-level)
     get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
@@ -656,6 +671,14 @@ Rails.application.routes.draw do
     get  "/casting/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_casting_questionnaire"
     get  "/casting/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_casting_questionnaire"
     get  "/casting/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_casting_questionnaire"
+
+    # Cocobases - template configuration (under casting section)
+    get  "/casting/:production_id/cocobase", to: "cocobase_templates#show", as: "casting_cocobase_template"
+    patch "/casting/:production_id/cocobase", to: "cocobase_templates#update", as: "update_casting_cocobase_template"
+    post "/casting/:production_id/cocobase/fields", to: "cocobase_template_fields#create", as: "create_casting_cocobase_template_field"
+    patch "/casting/:production_id/cocobase/fields/:id", to: "cocobase_template_fields#update", as: "update_casting_cocobase_template_field"
+    delete "/casting/:production_id/cocobase/fields/:id", to: "cocobase_template_fields#destroy", as: "destroy_casting_cocobase_template_field"
+    post "/casting/:production_id/cocobase/fields/reorder", to: "cocobase_template_fields#reorder", as: "reorder_casting_cocobase_template_fields"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
