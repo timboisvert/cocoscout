@@ -173,36 +173,11 @@ class VacancyNotificationService
     end
 
     def find_notifiable_users(production)
-      organization = production.organization
-      users_with_production_permission_ids = production.production_permissions.pluck(:user_id)
-
-      # Get users with explicit production permissions who have notifications enabled
-      users_with_permissions = production.production_permissions
-                                         .includes(:user)
-                                         .select(&:notifications_enabled?)
-                                         .map(&:user)
-
-      # Get the organization owner if they don't have an explicit production permission
-      owner = organization.owner
-      owner_without_explicit_permission = if owner && !users_with_production_permission_ids.include?(owner.id)
-        owner_org_role = organization.organization_roles.find_by(user: owner)
-        if owner_org_role.nil? || owner_org_role.notifications_enabled?
-          [ owner ]
-        else
-          []
-        end
-      else
-        []
-      end
-
-      # Get users with global manager role who don't have a production permission
-      users_with_global_manager = organization.organization_roles
-                                              .where(company_role: "manager")
-                                              .where.not(user_id: users_with_production_permission_ids)
-                                              .select(&:notifications_enabled?)
-                                              .map(&:user)
-
-      (users_with_permissions + owner_without_explicit_permission + users_with_global_manager).compact.uniq
+      ProductionNotificationSetting.ensure_settings_for(production)
+      ProductionNotificationSetting.where(production: production, enabled: true)
+                                   .includes(:user)
+                                   .map(&:user)
+                                   .compact
     end
 
     def system_sender(production)

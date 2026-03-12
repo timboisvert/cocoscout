@@ -98,29 +98,11 @@ class SignUpProducerNotificationService
     end
 
     def find_notifiable_users(production)
-      organization = production.organization
-      users_with_production_permission_ids = production.production_permissions.pluck(:user_id)
-
-      # Get team members who have explicit production permissions with notifications enabled
-      users_with_permissions = production.production_permissions
-                                         .includes(:user)
-                                         .select(&:notifications_enabled?)
-                                         .map(&:user)
-
-      # Get users with global manager/viewer role who don't have a production permission
-      # and have notifications enabled on their organization role (nil = enabled)
-      users_with_global_role = organization.organization_roles
-                                           .where(company_role: %w[manager viewer])
-                                           .where(notifications_enabled: [ true, nil ])
-                                           .includes(:user)
-                                           .map(&:user)
-
-      # Filter global role users to those without explicit production permissions
-      users_with_global_role_only = users_with_global_role.reject do |user|
-        users_with_production_permission_ids.include?(user.id)
-      end
-
-      (users_with_permissions + users_with_global_role_only).compact.uniq
+      ProductionNotificationSetting.ensure_settings_for(production)
+      ProductionNotificationSetting.where(production: production, enabled: true)
+                                   .includes(:user)
+                                   .map(&:user)
+                                   .compact
     end
 
     def find_sender(production)

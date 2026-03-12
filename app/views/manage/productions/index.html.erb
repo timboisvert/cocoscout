@@ -9,6 +9,18 @@
     links: current_user_is_global_manager? ? [{ text: "Add a Production", path: manage_productions_wizard_path }] : []
   } %>
 
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "Type",
+      filters: [
+        { text: "All", path: manage_productions_path(filter: "all"), active: @filter == "all" },
+        { text: "First-party", path: manage_productions_path(filter: "first_party"), active: @filter == "first_party" },
+        { text: "Contract", path: manage_productions_path(filter: "contract"), active: @filter == "contract" },
+        { text: "Course", path: manage_productions_path(filter: "course"), active: @filter == "course" }
+      ]
+    }
+  ] %>
+
 <% if @productions.any? %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <% @productions.each do |production| %>

@@ -2,17 +2,27 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders]
     before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders]
     before_action :ensure_user_is_global_manager, only: %i[new create]
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
     skip_before_action :show_manage_sidebar, only: %i[new create]
 
     def index
+      @filter = params[:filter] || "all"
       @productions = Current.user.accessible_productions
         .where(organization: Current.organization)
         .includes(:logo_attachment)
         .order(:name)
+
+      case @filter
+      when "first_party"
+        @productions = @productions.where(production_type: "in_house")
+      when "contract"
+        @productions = @productions.where(production_type: "third_party")
+      when "course"
+        @productions = @productions.where(production_type: "course")
+      end
     end
 
     def show
@@ -153,7 +163,6 @@ module Manage
 
     def add_team_member
       role = params[:role]
-      notifications_enabled = params[:notifications_enabled] == "1"
 
       unless %w[manager viewer].include?(role)
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "Role is required" and return
@@ -176,9 +185,13 @@ module Manage
         ProductionPermission.create!(
           user: user,
           production: @production,
-          role: role,
-          notifications_enabled: notifications_enabled
+          role: role
         )
+
+        # Enable notifications for this user on this production by default
+        ProductionNotificationSetting.find_or_create_by!(user: user, production: @production) do |s|
+          s.enabled = true
+        end
 
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
                     notice: "#{user.person&.name || user.email_address} added to production team"
@@ -200,9 +213,12 @@ module Manage
           ProductionPermission.create!(
             user: user,
             production: @production,
-            role: role,
-            notifications_enabled: notifications_enabled
+            role: role
           )
+
+          ProductionNotificationSetting.find_or_create_by!(user: user, production: @production) do |s|
+            s.enabled = true
+          end
 
           redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
                       notice: "#{user.person&.name || user.email_address} added to production team"
@@ -218,8 +234,7 @@ module Manage
             email: email,
             organization: Current.organization,
             production: @production,
-            invitation_role: role,
-            invitation_notifications_enabled: notifications_enabled
+            invitation_role: role
           )
 
           Manage::TeamMailer.production_invite(invitation).deliver_later
@@ -238,7 +253,6 @@ module Manage
     def update_team_permission
       user = Current.organization.users.find_by(id: params[:user_id])
       role = params[:role]
-      notifications_enabled = params[:notifications_enabled] == "1"
 
       unless user && %w[manager viewer].include?(role)
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "Invalid user or role" and return
@@ -246,12 +260,32 @@ module Manage
 
       permission = ProductionPermission.find_by(user: user, production: @production)
 
-      if permission&.update(role: role, notifications_enabled: notifications_enabled)
+      if permission&.update(role: role)
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
                     notice: "Permission updated for #{user.person&.name || user.email_address}"
       else
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
                     alert: "Could not update permission"
+      end
+    end
+
+    def toggle_production_notification
+      user = Current.organization.users.find_by(id: params[:user_id])
+      enabled = params[:enabled] == "1"
+
+      unless user
+        redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "User not found" and return
+      end
+
+      setting = ProductionNotificationSetting.find_or_initialize_by(user: user, production: @production)
+      setting.enabled = enabled
+
+      if setting.save
+        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+                    notice: "Notification preference updated for #{user.person&.name || user.email_address}"
+      else
+        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+                    alert: "Could not update notification preference"
       end
     end
 

@@ -9,7 +9,6 @@ export default class extends Controller {
         "editUserId",
         "editUserName",
         "editRole",
-        "editNotifications",
         "removeForm",
         "removeUserId",
         "removeUserName"
@@ -33,12 +32,10 @@ export default class extends Controller {
         const userId = event.currentTarget.dataset.userId
         const userName = event.currentTarget.dataset.userName
         const role = event.currentTarget.dataset.role
-        const notifications = event.currentTarget.dataset.notifications
 
         this.editUserIdTarget.value = userId
         this.editUserNameTarget.textContent = userName
         this.editRoleTarget.value = role
-        this.editNotificationsTarget.checked = notifications === "1"
 
         this.editModalTarget.classList.remove("hidden")
     }

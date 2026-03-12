@@ -259,10 +259,15 @@ module My
     private
 
     def notify_producers_of_departure(groups_removed)
-      # Get all users with production permissions who have notifications enabled
-      @production.production_permissions.includes(:user).each do |permission|
-        next unless permission.notifications_enabled?
-        next unless permission.user.present?
+      # Get all users with notifications enabled for this production
+      ProductionNotificationSetting.ensure_settings_for(@production)
+      notifiable_users = ProductionNotificationSetting.where(production: @production, enabled: true)
+                                                      .includes(:user)
+                                                      .map(&:user)
+                                                      .compact
+
+      notifiable_users.each do |user|
+        next unless user.person.present?
 
         # Build the message
         groups_text = groups_removed.any? ? groups_removed.join(", ") : "the production"
@@ -271,7 +276,7 @@ module My
           host: ENV.fetch("HOST", "localhost:3000")
         )
         rendered = ContentTemplateService.render("talent_left_production", {
-          recipient_name: permission.user.person&.first_name || "there",
+          recipient_name: user.person&.first_name || "there",
           talent_name: Current.user.person&.full_name || "A talent",
           production_name: @production.name,
           groups_removed: groups_text,
@@ -280,7 +285,7 @@ module My
 
         MessageService.send_direct(
           sender: nil,
-          recipient_person: permission.user.person,
+          recipient_person: user.person,
           subject: rendered[:subject],
           body: rendered[:body],
           production: @production,

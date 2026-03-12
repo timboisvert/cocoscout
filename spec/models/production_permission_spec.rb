@@ -3,43 +3,18 @@
 require "rails_helper"
 
 RSpec.describe ProductionPermission, type: :model do
-  describe "#notifications_enabled?" do
-    let(:user) { create(:user) }
-    let(:organization) { create(:organization) }
-    let(:production) { create(:production, organization: organization) }
+  let(:user) { create(:user) }
+  let(:organization) { create(:organization) }
+  let(:production) { create(:production, organization: organization) }
 
-    context "when notifications_enabled is explicitly set to true" do
-      let(:permission) { ProductionPermission.create!(user: user, production: production, role: "viewer", notifications_enabled: true) }
+  it "validates role presence and inclusion" do
+    permission = ProductionPermission.new(user: user, production: production, role: "manager")
+    expect(permission).to be_valid
+  end
 
-      it "returns true" do
-        expect(permission.notifications_enabled?).to be true
-      end
-    end
-
-    context "when notifications_enabled is explicitly set to false" do
-      let(:permission) { ProductionPermission.create!(user: user, production: production, role: "manager", notifications_enabled: false) }
-
-      it "returns false" do
-        expect(permission.notifications_enabled?).to be false
-      end
-    end
-
-    context "when notifications_enabled is nil (default)" do
-      context "and role is manager" do
-        let(:permission) { ProductionPermission.create!(user: user, production: production, role: "manager", notifications_enabled: nil) }
-
-        it "returns true (default for managers)" do
-          expect(permission.notifications_enabled?).to be true
-        end
-      end
-
-      context "and role is viewer" do
-        let(:permission) { ProductionPermission.create!(user: user, production: production, role: "viewer", notifications_enabled: nil) }
-
-        it "returns false (default for viewers)" do
-          expect(permission.notifications_enabled?).to be false
-        end
-      end
-    end
+  it "validates uniqueness of user per production" do
+    ProductionPermission.create!(user: user, production: production, role: "manager")
+    duplicate = ProductionPermission.new(user: user, production: production, role: "viewer")
+    expect(duplicate).not_to be_valid
   end
 end

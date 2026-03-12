@@ -184,40 +184,11 @@ class NotificationDeliveryService
     private
 
     def find_notifiable_team_members(production)
-      organization = production.organization
-      users_with_production_permission_ids = production.production_permissions.pluck(:user_id)
-
-      # Get team members who have explicit production permissions with notifications enabled
-      users_with_permissions = production.production_permissions
-                                         .includes(:user)
-                                         .select(&:notifications_enabled?)
-                                         .map(&:user)
-
-      # Get organization owner if they don't have explicit production permission
-      owner = organization.owner
-      owner_without_explicit_permission = if owner && !users_with_production_permission_ids.include?(owner.id)
-        owner_org_role = organization.organization_roles.find_by(user: owner)
-        if owner_org_role.nil? || owner_org_role.notifications_enabled?
-          [ owner ]
-        else
-          []
-        end
-      else
-        []
-      end
-
-      # Get users with global manager role who don't have a production permission
-      users_with_global_role = organization.organization_roles
-                                           .where(company_role: %w[manager viewer])
-                                           .where(notifications_enabled: [ true, nil ])
-                                           .includes(:user)
-                                           .map(&:user)
-
-      users_with_global_role_only = users_with_global_role.reject do |user|
-        users_with_production_permission_ids.include?(user.id)
-      end
-
-      (users_with_permissions + owner_without_explicit_permission + users_with_global_role_only).compact.uniq
+      ProductionNotificationSetting.ensure_settings_for(production)
+      ProductionNotificationSetting.where(production: production, enabled: true)
+                                   .includes(:user)
+                                   .map(&:user)
+                                   .compact
     end
   end
 end

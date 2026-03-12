@@ -89,7 +89,6 @@ module Manage
           user: user,
           organization: @team_invitation.organization,
           company_role: "viewer",
-          notifications_enabled: false,
           person_id: person&.id
         )
       end
@@ -98,7 +97,11 @@ module Manage
       if @team_invitation.production_invite?
         ProductionPermission.find_or_create_by!(user: user, production: @team_invitation.production) do |perm|
           perm.role = @team_invitation.invitation_role || "viewer"
-          perm.notifications_enabled = @team_invitation.invitation_notifications_enabled.nil? ? true : @team_invitation.invitation_notifications_enabled
+        end
+
+        # Enable notifications for the new team member on this production
+        ProductionNotificationSetting.find_or_create_by!(user: user, production: @team_invitation.production) do |s|
+          s.enabled = true
         end
       end
 

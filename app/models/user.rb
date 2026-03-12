@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :organization_roles, dependent: :destroy
   has_many :organizations, through: :organization_roles
   has_many :production_permissions, dependent: :destroy
+  has_many :production_notification_settings, dependent: :destroy
   has_many :email_logs, dependent: :destroy
   has_many :audition_request_votes, dependent: :destroy
   has_many :audition_votes, dependent: :destroy

@@ -803,9 +803,7 @@ Rails.application.routes.draw do
       member do
         get :permissions
         patch :update_production_permission
-        patch :update_production_notifications
         patch :update_global_role
-        patch :update_global_notifications
       end
     end
 
@@ -867,6 +865,7 @@ Rails.application.routes.draw do
         post :add_team_member
         get :search_team_member
         patch :update_team_permission
+        patch :toggle_production_notification
         delete :remove_team_member
         delete :revoke_production_invite
         # Agreement management

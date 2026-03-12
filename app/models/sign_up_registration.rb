@@ -5,6 +5,8 @@ class SignUpRegistration < ApplicationRecord
   belongs_to :sign_up_form_instance, optional: true  # For queued registrations
   belongs_to :person, optional: true
 
+  has_many :show_attendance_records, dependent: :nullify
+
   # TODO: When adding custom questions to sign-up forms, create a migration to add
   # respondable_id and respondable_type columns to answers table for polymorphic association
   # has_many :answers, as: :respondable, dependent: :destroy

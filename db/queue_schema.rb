@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_12_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -869,7 +869,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_000000) do
   create_table "organization_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
-    t.boolean "notifications_enabled"
     t.bigint "organization_id", null: false
     t.bigint "person_id"
     t.datetime "updated_at", null: false
@@ -1159,9 +1158,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_000000) do
     t.index ["production_id"], name: "index_production_expenses_on_production_id"
   end
 
+  create_table "production_notification_settings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: false, null: false
+    t.bigint "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["production_id", "user_id"], name: "idx_prod_notif_settings_on_prod_and_user", unique: true
+    t.index ["production_id"], name: "index_production_notification_settings_on_production_id"
+    t.index ["user_id"], name: "index_production_notification_settings_on_user_id"
+  end
+
   create_table "production_permissions", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.boolean "notifications_enabled"
     t.bigint "production_id", null: false
     t.string "role", null: false
     t.datetime "updated_at", null: false
@@ -2547,6 +2556,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_000000) do
   add_foreign_key "production_expense_allocations", "production_expenses"
   add_foreign_key "production_expense_allocations", "shows"
   add_foreign_key "production_expenses", "productions"
+  add_foreign_key "production_notification_settings", "productions"
+  add_foreign_key "production_notification_settings", "users"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
   add_foreign_key "production_ticketing_setups", "locations", column: "default_location_id"

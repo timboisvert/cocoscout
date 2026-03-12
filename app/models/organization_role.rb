@@ -13,14 +13,4 @@ class OrganizationRole < ApplicationRecord
   def display_person
     person || user.person
   end
-
-  # Returns whether notifications are enabled for this organization role.
-  # If explicitly set, returns that value.
-  # Otherwise, returns a role-based default: true for managers, false for viewers/members.
-  def notifications_enabled?
-    return notifications_enabled unless notifications_enabled.nil?
-
-    # Role-based default
-    company_role == "manager"
-  end
 end
