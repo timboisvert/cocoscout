@@ -32,7 +32,7 @@ module Manage
       @organization = team_invitation.organization
       @custom_message = message
 
-      accept_url = Rails.application.routes.url_helpers.accept_team_invitation_url(
+      accept_url = Rails.application.routes.url_helpers.accept_manage_team_invitations_url(
         team_invitation.token,
         **default_url_options
       )

@@ -64,8 +64,11 @@ module Manage
           person.organizations << Current.organization
         end
 
-        # Create organization role if they don't already have one
-        unless OrganizationRole.exists?(user: user, organization: Current.organization)
+        # Create or upgrade organization role to viewer
+        existing_role = OrganizationRole.find_by(user: user, organization: Current.organization)
+        if existing_role
+          existing_role.update!(company_role: "viewer") unless existing_role.company_role.in?(%w[manager viewer])
+        else
           OrganizationRole.create!(user: user, organization: Current.organization, person: person, company_role: "viewer")
         end
 
