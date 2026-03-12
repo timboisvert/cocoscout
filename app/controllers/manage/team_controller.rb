@@ -9,6 +9,31 @@ module Manage
       redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
     end
 
+    def search
+      q = params[:q].to_s.strip
+
+      if q.blank? || q.length < 2
+        render partial: "manage/team/search_results",
+               locals: { people: [], query: q, team_user_ids: [], pending_emails: [] }
+        return
+      end
+
+      # Search all people by name or email
+      people = Person.where(
+        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)",
+        q: "%#{q}%"
+      ).limit(15).to_a
+
+      # Find user IDs already on this org's team
+      team_user_ids = Current.organization.organization_roles.pluck(:user_id)
+
+      # Find emails with pending invitations
+      pending_emails = Current.organization.team_invitations.where(accepted_at: nil).pluck(:email).map(&:downcase)
+
+      render partial: "manage/team/search_results",
+             locals: { people: people, query: q, team_user_ids: team_user_ids, pending_emails: pending_emails }
+    end
+
     def check_profiles
       email = params[:email]&.strip&.downcase
       return render json: { profiles: [] } if email.blank?
@@ -26,18 +51,47 @@ module Manage
     end
 
     def invite
-      @team_invitation = TeamInvitation.new(team_invitation_params)
-      @team_invitation.organization = Current.organization
+      person = params[:team_invitation][:person_id].present? ? Person.find_by(id: params[:team_invitation][:person_id]) : nil
 
-      # If a person_id was provided, use that profile
-      if params[:team_invitation][:person_id].present?
-        @team_invitation.person_id = params[:team_invitation][:person_id]
+      # If the person has a CocoScout user account, add them directly (no pending invitation)
+      if person&.user
+        user = person.user
+
+        # Add person to org if not already a member
+        unless person.organizations.include?(Current.organization)
+          person.organizations << Current.organization
+        end
+
+        # Create organization role if they don't already have one
+        unless OrganizationRole.exists?(user: user, organization: Current.organization)
+          OrganizationRole.create!(user: user, organization: Current.organization, person: person, company_role: "viewer")
+        end
+
+        # Send a notification email (create a pre-accepted invitation so the mailer works)
+        invitation_subject = params[:team_invitation][:invitation_subject]
+        invitation_message = params[:team_invitation][:invitation_message]
+        team_invitation = TeamInvitation.create!(
+          email: person.email,
+          organization: Current.organization,
+          person: person,
+          accepted_at: Time.current
+        )
+        Manage::TeamMailer.invite(team_invitation, invitation_subject, invitation_message).deliver_later
+
+        expire_team_cache
+        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "#{person.name} has been added to the team"
+        return
       end
 
-      default_subject = ContentTemplateService.render_subject("team_invitation", {
+      # No CocoScout account — send a pending invitation email
+      @team_invitation = TeamInvitation.new(team_invitation_params)
+      @team_invitation.organization = Current.organization
+      @team_invitation.person_id = person&.id
+
+      default_subject = ContentTemplateService.render_subject("team_organization_invitation", {
         organization_name: Current.organization.name
       })
-      default_message = ContentTemplateService.render_body("team_invitation", {
+      default_message = ContentTemplateService.render_body("team_organization_invitation", {
         organization_name: Current.organization.name,
         accept_url: "[accept link will be included]"
       })
@@ -244,7 +298,7 @@ module Manage
     end
 
     def team_invitation_params
-      params.require(:team_invitation).permit(:email)
+      params.require(:team_invitation).permit(:email, :person_id)
     end
   end
 end

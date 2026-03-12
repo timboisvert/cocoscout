@@ -1,0 +1,107 @@
+<%# Search results for team invitation - search by name or email %>
+
+<% if query.blank? || query.length < 2 %>
+  <p class="text-gray-500 text-sm p-4">Type at least 2 characters to search by name or email...</p>
+<% elsif people.empty? %>
+  <div class="p-4 text-center">
+    <div class="text-gray-500 text-sm mb-3">No results found for "<%= query %>"</div>
+    <% if query.include?("@") %>
+      <p class="text-xs text-gray-400 mb-3">Want to invite this person by email?</p>
+      <button type="button"
+              class="text-pink-600 hover:text-pink-700 text-sm font-medium"
+              data-action="team-invite-search#selectEmail"
+              data-email="<%= query %>">
+        <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %>
+        Invite <%= query %>
+      </button>
+    <% else %>
+      <p class="text-xs text-gray-400">Try searching by name or email address</p>
+    <% end %>
+  </div>
+<% else %>
+  <div class="space-y-2">
+    <% people.each do |person| %>
+      <% on_team = person.user_id.present? && team_user_ids.include?(person.user_id) %>
+      <% pending = person.email.present? && pending_emails.include?(person.email.downcase) %>
+      <% has_account = person.user_id.present? %>
+      <% if on_team %>
+        <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50 w-full opacity-60">
+          <% headshot_variant = person.safe_headshot_variant(:tile) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              <%= person.initials %>
+            </div>
+          <% end %>
+          <div class="flex-grow min-w-0">
+            <span class="font-medium text-sm block truncate"><%= person.name %></span>
+            <% if person.email.present? %>
+              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+            <% end %>
+          </div>
+          <span class="text-xs text-gray-500 flex-shrink-0">Already on team</span>
+        </div>
+      <% elsif pending %>
+        <div class="flex items-center gap-3 p-3 border border-yellow-200 rounded-lg bg-yellow-50 w-full opacity-75">
+          <% headshot_variant = person.safe_headshot_variant(:tile) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-yellow-200 flex items-center justify-center text-yellow-700 font-bold text-sm flex-shrink-0">
+              <%= person.initials %>
+            </div>
+          <% end %>
+          <div class="flex-grow min-w-0">
+            <span class="font-medium text-sm block truncate"><%= person.name %></span>
+            <% if person.email.present? %>
+              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+            <% end %>
+          </div>
+          <span class="text-xs text-yellow-600 flex-shrink-0">Invite pending</span>
+        </div>
+      <% else %>
+        <button type="button"
+                class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all w-full text-left cursor-pointer"
+                data-action="team-invite-search#selectPerson"
+                data-person-name="<%= person.name %>"
+                data-person-email="<%= person.email %>"
+                data-person-id="<%= person.id %>"
+                data-has-account="<%= has_account %>">
+          <% headshot_variant = person.safe_headshot_variant(:tile) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
+              <%= person.initials %>
+            </div>
+          <% end %>
+          <div class="flex-grow min-w-0">
+            <span class="font-medium text-sm block truncate"><%= person.name %></span>
+            <% if person.email.present? %>
+              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+            <% end %>
+          </div>
+          <span class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 flex-shrink-0">
+            <%= has_account ? "Add to team" : "Invite" %>
+          </span>
+        </button>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# Option to invite by email if query looks like an email and no exact match %>
+  <% if query.include?("@") && people.none? { |p| p.email&.downcase == query.downcase } %>
+    <div class="border-t border-gray-200 pt-3 mt-2">
+      <button type="button"
+              class="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:border-pink-300 hover:bg-pink-50 transition-all text-center cursor-pointer"
+              data-action="team-invite-search#selectEmail"
+              data-email="<%= query %>">
+        <span class="text-sm text-gray-600">
+          <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %>
+          Invite <strong><%= query %></strong> by email
+        </span>
+      </button>
+    </div>
+  <% end %>
+<% end %>

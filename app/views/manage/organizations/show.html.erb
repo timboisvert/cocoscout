@@ -217,22 +217,46 @@
           <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite an Organization Team Member</h2>
           </div>
-          <div class="p-6" data-controller="team-invite-profiles" data-team-invite-profiles-check-url-value="<%= check_profiles_manage_team_index_path %>">
+          <div class="p-6" data-controller="team-invite-search" data-team-invite-search-url-value="<%= search_manage_team_index_path %>">
             <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
-              <div class="space-y-4">
+              <input type="hidden" name="team_invitation[person_id]" value="" data-team-invite-search-target="personIdField">
+
+              <%# Step 1: Search %>
+              <div data-team-invite-search-target="searchSection">
+                <div class="mb-3">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Search for a person</label>
+                  <input type="text"
+                         placeholder="Search by name or email..."
+                         autocomplete="off"
+                         class="block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                         data-team-invite-search-target="searchInput"
+                         data-action="input->team-invite-search#search">
+                </div>
+                <div data-team-invite-search-target="searchResults" class="max-h-64 overflow-y-auto">
+                  <p class="text-gray-500 text-sm p-4">Type at least 2 characters to search by name or email...</p>
+                </div>
+              </div>
+
+              <%# Selected person display %>
+              <div data-team-invite-search-target="selectedSection" class="hidden">
+                <div class="flex items-center justify-between p-3 bg-pink-50 border border-pink-200 rounded-lg mb-4">
+                  <div>
+                    <span data-team-invite-search-target="selectedName" class="font-medium text-sm text-gray-900"></span>
+                    <span data-team-invite-search-target="selectedEmail" class="text-xs text-gray-500 block"></span>
+                  </div>
+                  <button type="button"
+                          class="text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer"
+                          data-action="team-invite-search#backToSearch">
+                    Change
+                  </button>
+                </div>
+              </div>
+
+              <%# Step 2: Email & Message (shown after selection) %>
+              <div data-team-invite-search-target="formSection" class="hidden space-y-4">
                 <div>
                   <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
-                  <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { team_invite_profiles_target: "email", action: "blur->team-invite-profiles#checkProfiles" } %>
-                </div>
-
-                <!-- Profile Selection (shown when multiple profiles exist) -->
-                <div data-team-invite-profiles-target="profilesSection" class="hidden">
-                  <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p class="text-sm font-medium text-yellow-800 mb-3">This email has multiple profiles. Which profile should be invited?</p>
-                    <div data-team-invite-profiles-target="profilesList" class="space-y-2">
-                      <!-- Profiles will be inserted here -->
-                    </div>
-                  </div>
+                  <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { team_invite_search_target: "emailField" } %>
                 </div>
 
                 <div>
@@ -244,11 +268,16 @@
                   <%= f.label :invitation_message, "Email Message", class: "block text-sm font-medium text-gray-700 mb-2" %>
                   <%= f.text_area :invitation_message, rows: 5, value: "Welcome to CocoScout!\n\n#{@organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account.", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
                 </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                  <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closeInviteModal" } %>
+                  <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
+                </div>
               </div>
 
-              <div class="mt-6 flex justify-end gap-3">
+              <%# Cancel button when in search mode %>
+              <div data-team-invite-search-target="searchCancel" class="flex justify-end gap-3 pt-4">
                 <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closeInviteModal" } %>
-                <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
               </div>
             <% end %>
           </div>
