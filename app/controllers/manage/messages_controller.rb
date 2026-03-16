@@ -62,7 +62,7 @@ module Manage
 
       # Apply ordering
       @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-      @messages = @messages.limit(100)
+      @pagy, @messages = pagy(@messages, limit: 10)
 
       # Unread count scoped to this organization's messages
       org_message_ids = Message.where(organization: Current.organization).pluck(:id)

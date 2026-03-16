@@ -119,5 +119,25 @@
         <%= render "shared/messages/message_card", message: message %>
       <% end %>
     </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          Page <%= @pagy.page %> of <%= @pagy.pages %>
+        </div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", path: manage_messages_path(page: @pagy.previous, filter: @filter, q: @search, production_id: @production_filter, order: @order) %>
+          <% else %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+          <% if @pagy.next %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", path: manage_messages_path(page: @pagy.next, filter: @filter, q: @search, production_id: @production_filter, order: @order) %>
+          <% else %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   <% end %>
 </div>
