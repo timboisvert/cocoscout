@@ -14,9 +14,9 @@ servers:
       memory: 3g  # Limit to leave headroom on 4GB instance
     env:
       clear:
-        WEB_CONCURRENCY: 2  # Puma workers (1 per vCPU on t4g.medium)
-        RAILS_MAX_THREADS: 5
-        DB_POOL: 5
+        WEB_CONCURRENCY: 1  # Puma workers (1 per vCPU on t4g.medium)
+        RAILS_MAX_THREADS: 6
+        DB_POOL: 6
   job:
     hosts:
       - ec2-3-140-1-189.us-east-2.compute.amazonaws.com # CocoScout Jobs
