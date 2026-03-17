@@ -678,19 +678,23 @@
         </h3>
       </div>
       <div class="p-6">
-        <% if @vacancy.filled_by %>
+        <% filled_person = @vacancy.filled_by %>
+        <% filled_person ||= @vacancy.show.show_person_role_assignments.find_by(role_id: @vacancy.role_id)&.assignable %>
+        <% if filled_person %>
           <div class="flex items-center gap-3">
-            <% headshot = @vacancy.filled_by.safe_headshot_variant(:thumb) %>
+            <% headshot = filled_person.safe_headshot_variant(:thumb) %>
             <% if headshot %>
-              <%= image_tag headshot, alt: @vacancy.filled_by.name, class: "w-12 h-12 rounded-lg object-cover" %>
+              <%= image_tag headshot, alt: filled_person.name, class: "w-12 h-12 rounded-lg object-cover" %>
             <% else %>
               <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm">
-                <%= @vacancy.filled_by.initials %>
+                <%= filled_person.initials %>
               </div>
             <% end %>
             <div>
-              <div class="font-medium text-gray-900"><%= @vacancy.filled_by.name %></div>
-              <div class="text-sm text-gray-500">Claimed on <%= @vacancy.filled_at.strftime("%B %d, %Y at %l:%M %p") %></div>
+              <div class="font-medium text-gray-900"><%= filled_person.name %></div>
+              <% if @vacancy.filled_at %>
+                <div class="text-sm text-gray-500">Claimed on <%= @vacancy.filled_at.strftime("%B %d, %Y at %l:%M %p") %></div>
+              <% end %>
             </div>
           </div>
         <% end %>

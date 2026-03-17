@@ -69,8 +69,34 @@
           <% end %>
         </div>
       <% else %>
-        <p class="text-gray-500 text-sm"><%= @filter == "past" ? "No past shows with casting enabled." : "No upcoming shows with casting enabled." %></p>
+        <p class="text-gray-500 text-sm">No shows with casting enabled in <%= @current_month.strftime("%B %Y") %>.</p>
       <% end %>
+    </div>
+
+    <!-- Month Navigation -->
+    <div class="flex items-center justify-between mt-6">
+      <div>
+        <% if @can_go_prev %>
+          <%= render "shared/button",
+              text: @prev_month.strftime("%B %Y"),
+              path: manage_casting_path(month: @prev_month.strftime("%Y-%m-01"), filter: @filter, hide_canceled: @hide_canceled),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-left",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
+      <div>
+        <% if @can_go_next %>
+          <%= render "shared/button",
+              text: @next_month.strftime("%B %Y"),
+              path: manage_casting_path(month: @next_month.strftime("%Y-%m-01"), filter: @filter, hide_canceled: @hide_canceled),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-right",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
     </div>
   </div>
 </div>

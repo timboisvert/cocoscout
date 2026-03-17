@@ -36,16 +36,35 @@ module Manage
       # Apply canceled filter
       base_shows = base_shows.where(canceled: false) if @hide_canceled
 
+      # Month-based pagination
+      @current_month = if params[:month].present?
+        Date.parse(params[:month]).in_time_zone.beginning_of_month
+      else
+        Time.current.beginning_of_month
+      end
+      month_end = @current_month.end_of_month
+
       case @filter
       when "past"
-        @shows = base_shows.where("date_and_time < ?", Time.current).order(date_and_time: :desc)
+        date_bounds = base_shows.where("date_and_time < ?", Time.current)
       else
         @filter = "upcoming"
-        @shows = base_shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+        date_bounds = base_shows.where("date_and_time >= ?", Time.current)
       end
 
-      # Load into memory
-      @shows = @shows.to_a
+      @first_month = date_bounds.minimum(:date_and_time)&.in_time_zone&.beginning_of_month
+      @last_month = date_bounds.maximum(:date_and_time)&.in_time_zone&.beginning_of_month
+
+      @prev_month = @current_month - 1.month
+      @next_month = @current_month + 1.month
+      @can_go_prev = @first_month.present? && @prev_month >= @first_month
+      @can_go_next = @last_month.present? && @next_month <= @last_month
+
+      # Scope shows to the selected month
+      @shows = date_bounds
+                .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", @current_month, month_end)
+                .order(Arel.sql("shows.date_and_time ASC"))
+                .to_a
 
       # Preload roles per production
       @roles_by_production = {}

@@ -125,13 +125,35 @@
     </div>
   <% else %>
     <div class="text-sm text-gray-500">
-      <% if @filter == "upcoming" %>
-        No upcoming shows or events scheduled.
-      <% else %>
-        No past shows or events found.
-      <% end %>
+      No shows or events in <%= @current_month.strftime("%B %Y") %>.
     </div>
   <% end %>
+
+  <!-- Month Navigation -->
+  <div class="flex items-center justify-between mt-6">
+    <div>
+      <% if @can_go_prev %>
+        <%= render "shared/button",
+            text: @prev_month.strftime("%B %Y"),
+            path: manage_shows_path(month: @prev_month.strftime("%Y-%m-01"), filter: @filter, event_type: @event_type_filter.join(","), production: @production_filter),
+            variant: "secondary",
+            size: "small",
+            icon: "chevron-left",
+            data: { turbo_prefetch: false } %>
+      <% end %>
+    </div>
+    <div>
+      <% if @can_go_next %>
+        <%= render "shared/button",
+            text: @next_month.strftime("%B %Y"),
+            path: manage_shows_path(month: @next_month.strftime("%Y-%m-01"), filter: @filter, event_type: @event_type_filter.join(","), production: @production_filter),
+            variant: "secondary",
+            size: "small",
+            icon: "chevron-right",
+            data: { turbo_prefetch: false } %>
+      <% end %>
+    </div>
+  </div>
   </div>
 </div>
 
