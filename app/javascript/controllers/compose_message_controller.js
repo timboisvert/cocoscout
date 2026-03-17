@@ -287,8 +287,8 @@ export default class extends Controller {
         const nameTarget = modal.querySelector('[data-compose-message-target="recipientName"]')
         const headshotTarget = modal.querySelector('[data-compose-message-target="recipientHeadshot"]')
 
-        // For show_cast or talent_pool with cast members - always show name label + headshots
-        if ((this.recipientTypeValue === 'show_cast' || this.recipientTypeValue === 'talent_pool') && this.castMembersValue?.length > 0) {
+        // For show_cast, talent_pool, or auditionees with cast members - always show name label + headshots
+        if ((this.recipientTypeValue === 'show_cast' || this.recipientTypeValue === 'talent_pool' || this.recipientTypeValue === 'auditionees') && this.castMembersValue?.length > 0) {
             if (singleRecipient) singleRecipient.classList.add('hidden')
             if (batchRecipients) {
                 batchRecipients.classList.remove('hidden')

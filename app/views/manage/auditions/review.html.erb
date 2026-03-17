@@ -63,7 +63,21 @@
           button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Audition Requests"
         %>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <%= render partial: "shared/button", locals: {text: button_text, path: manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), variant: "primary"} %>
+          <div class="flex items-center gap-2">
+            <%= render partial: "shared/button", locals: {text: button_text, path: manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), variant: "primary"} %>
+
+            <% auditionees = @audition_cycle.audition_requests.active.includes(requestable: { headshot_attachment: :blob }).map(&:person).compact.uniq %>
+            <% if auditionees.any? %>
+              <% auditionees_json = auditionees.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil } }.to_json %>
+              <div data-controller="compose-message"
+                   data-compose-message-recipient-type-value="auditionees"
+                   data-compose-message-recipient-id-value="<%= @audition_cycle.id %>"
+                   data-compose-message-recipient-name-value="<%= @production.name %> Auditionees"
+                   data-compose-message-cast-members-value="<%= auditionees_json %>">
+                <%= render "shared/button", text: "Contact Auditionees", variant: "secondary", type: :button, data: { action: "click->compose-message#open" } %>
+              </div>
+            <% end %>
+          </div>
 
           <% if current_user_has_role?(@production) %>
             <div class="flex items-center justify-between sm:justify-start gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
@@ -345,3 +359,5 @@
 
   <% end %>
 </div>
+
+<%= render "shared/compose_message_modal" %>
