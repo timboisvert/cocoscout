@@ -74,6 +74,13 @@ module Manage
 
         # Switch the mode
         @organization.update!(talent_pool_mode: :single)
+
+        # Link all productions to the org pool via TalentPoolShare
+        # so existing queries find members for all productions' shows
+        @organization.productions.type_in_house.each do |prod|
+          next if prod.id == org_pool.production_id
+          TalentPoolShare.find_or_create_by!(production: prod, talent_pool: org_pool)
+        end
       end
 
       redirect_to manage_casting_talent_pools_path, notice: "Switched to single talent pool mode."
@@ -142,6 +149,11 @@ module Manage
 
         # Switch the mode
         @organization.update!(talent_pool_mode: :per_production)
+
+        # Remove org pool shares since we're back to per-production mode
+        if org_pool
+          TalentPoolShare.where(talent_pool: org_pool).destroy_all
+        end
       end
 
       redirect_to manage_casting_talent_pools_path, notice: "Switched to per-production talent pools."

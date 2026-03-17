@@ -390,7 +390,18 @@ class Production < ApplicationRecord
   end
 
   def create_default_talent_pool
-    talent_pools.create!(name: "Talent Pool")
+    pool = talent_pools.create!(name: "Talent Pool")
+
+    # In single talent pool mode, also link this production to the org pool
+    # so existing queries find members through talent_pool_shares
+    if organization&.talent_pool_single?
+      org_pool = organization.talent_pool
+      if org_pool && org_pool.id != pool.id
+        TalentPoolShare.find_or_create_by!(production: self, talent_pool: org_pool)
+      end
+    end
+
+    pool
   end
 
   # Contract-related helpers

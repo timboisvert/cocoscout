@@ -30,7 +30,7 @@ class AuditionRequestNotificationJob < ApplicationJob
         recipient_name: user.person.first_name || "there",
         requestable_name: audition_request.person&.name || "An applicant",
         production_name: production.name,
-        review_url: Rails.application.routes.url_helpers.manage_auditions_url(
+        review_url: Rails.application.routes.url_helpers.manage_signups_auditions_url(
           production_id: production.id,
           host: ENV.fetch("HOST", "localhost:3000")
         )
