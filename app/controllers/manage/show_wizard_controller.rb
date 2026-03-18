@@ -250,6 +250,8 @@ module Manage
 
       while current < end_date.end_of_day
         next_date = case pattern
+        when "daily"
+          current + 1.day
         when "weekly"
           current + 1.week
         when "biweekly"

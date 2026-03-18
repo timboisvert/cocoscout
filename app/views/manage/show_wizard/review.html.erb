@@ -23,6 +23,20 @@
           <p class="text-sm text-gray-600">
             Starting <%= Time.zone.parse(@wizard_state[:recurrence_start_datetime])&.strftime("%B %-d, %Y at %-I:%M %p") rescue @wizard_state[:recurrence_start_datetime] %>
           </p>
+          <p class="text-sm text-gray-600">
+            <% end_type = @wizard_state[:recurrence_end_type] %>
+            <% if end_type == "custom" && @wizard_state[:recurrence_custom_end_date].present? %>
+              Until <%= Date.parse(@wizard_state[:recurrence_custom_end_date]).strftime("%B %-d, %Y") rescue @wizard_state[:recurrence_custom_end_date] %>
+            <% elsif end_type == "3_months" %>
+              For 3 months
+            <% elsif end_type == "6_months" %>
+              For 6 months
+            <% elsif end_type == "12_months" %>
+              For 12 months
+            <% elsif end_type == "end_of_year" %>
+              Until end of <%= Date.current.year %>
+            <% end %>
+          </p>
         <% else %>
           <% datetime = @wizard_state[:date_and_time].is_a?(String) ? Time.zone.parse(@wizard_state[:date_and_time]) : @wizard_state[:date_and_time] rescue nil %>
           <p class="text-base text-gray-900"><%= datetime&.strftime("%B %-d, %Y at %-I:%M %p") || @wizard_state[:date_and_time] %></p>

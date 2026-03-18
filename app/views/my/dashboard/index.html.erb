@@ -125,6 +125,22 @@
       toggle_label: "Filters",
       filter_groups: [
         {
+          label: "View",
+          filters: [
+            {
+              text: "My Assignments",
+              path: my_dashboard_path(month: params[:month], scope: "my_assignments", event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+              active: @calendar_scope == "my_assignments"
+            },
+            {
+              text: "All Shows & Events",
+              path: my_dashboard_path(month: params[:month], scope: "all_shows", event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+              active: @calendar_scope == "all_shows"
+            }
+          ]
+        },
+        { separator: true },
+        {
           label: "Show",
           filters: calendar_types.map { |type, config|
             current_types = @event_type_filter.dup
@@ -132,7 +148,7 @@
             toggled = [type] if toggled.empty?
             {
               text: config[:label],
-              path: my_dashboard_path(month: params[:month], event_type: toggled.join(","), entity: @entity_filter.join(",")),
+              path: my_dashboard_path(month: params[:month], scope: @calendar_scope, event_type: toggled.join(","), entity: @entity_filter.join(",")),
               active: @event_type_filter.include?(type)
             }
           }
@@ -147,11 +163,18 @@
             entity_filter: @entity_filter,
             label: "Include",
             event_type: @event_type_filter.join(","),
-            month: params[:month]
+            month: params[:month],
+            scope: @calendar_scope
           }
         } : nil
       ].compact
   %>
+
+  <% if @calendar_scope == "all_shows" %>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 mb-4 text-sm text-gray-600">
+      Showing all events associated with your productions. Your assignments are highlighted.
+    </div>
+  <% end %>
 
   <!-- Month Navigation -->
   <div class="flex items-center justify-between mb-4">
@@ -159,7 +182,7 @@
       <% if @can_go_prev %>
         <%= render "shared/button",
             text: @prev_month.strftime("%B"),
-            path: my_dashboard_path(month: @prev_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            path: my_dashboard_path(month: @prev_month.strftime("%Y-%m-01"), scope: @calendar_scope, event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
             variant: "secondary",
             size: "small",
             icon: "chevron-left",
@@ -172,7 +195,7 @@
       <% if desktop_month != Time.current.beginning_of_month %>
         <%= render "shared/button",
             text: "Today",
-            path: my_dashboard_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            path: my_dashboard_path(scope: @calendar_scope, event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
             variant: "outline-pink",
             size: "small",
             data: { turbo_prefetch: false } %>
@@ -183,7 +206,7 @@
       <% if @can_go_next %>
         <%= render "shared/button",
             text: @next_month.strftime("%B"),
-            path: my_dashboard_path(month: @next_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
+            path: my_dashboard_path(month: @next_month.strftime("%Y-%m-01"), scope: @calendar_scope, event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
             variant: "secondary",
             size: "small",
             icon: "chevron-right",
@@ -218,13 +241,17 @@
 
           <% day_events.first(4).each do |event| %>
             <%
-              color_classes = case event[:color]
-                when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
-                when "blue" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
-                when "green" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
-                when "purple" then "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
-                when "amber" then "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
-                else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+              if event[:color] == "gray"
+                color_classes = "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              else
+                color_classes = case event[:color]
+                  when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+                  when "blue" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+                  when "green" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                  when "purple" then "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
+                  when "amber" then "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+                  else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+                end
               end
               color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
             %>
@@ -232,7 +259,9 @@
               <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
                 <div class="font-semibold truncate"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
                 <div class="truncate text-[10px]"><%= event[:title] %></div>
-                <div class="truncate text-[10px] font-semibold <%= is_past ? 'text-gray-500' : '' %>"><%= event[:subtitle] %></div>
+                <% unless event[:color] == "gray" %>
+                  <div class="truncate text-[10px] font-semibold <%= is_past ? 'text-gray-500' : '' %>"><%= event[:subtitle] %></div>
+                <% end %>
               </div>
             <% end %>
           <% end %>
@@ -265,21 +294,40 @@
           </div>
           <% day_events.each do |event| %>
             <%
-              dot_color = case event[:color]
-                when "pink" then "bg-pink-400"
-                when "blue" then "bg-blue-400"
-                when "green" then "bg-green-400"
-                when "purple" then "bg-purple-400"
-                when "amber" then "bg-amber-400"
-                else "bg-gray-400"
+              is_assigned = event[:color] != "gray"
+              if is_assigned
+                row_bg = case event[:color]
+                  when "pink" then "bg-pink-50 border border-pink-200"
+                  when "blue" then "bg-blue-50 border border-blue-200"
+                  when "green" then "bg-green-50 border border-green-200"
+                  when "purple" then "bg-purple-50 border border-purple-200"
+                  when "amber" then "bg-amber-50 border border-amber-200"
+                  else ""
+                end
+                dot_color = case event[:color]
+                  when "pink" then "bg-pink-400"
+                  when "blue" then "bg-blue-400"
+                  when "green" then "bg-green-400"
+                  when "purple" then "bg-purple-400"
+                  when "amber" then "bg-amber-400"
+                  else "bg-gray-400"
+                end
+              else
+                row_bg = ""
+                dot_color = "bg-gray-400"
               end
-              dot_color = "bg-gray-300" if is_past
+              if is_past
+                row_bg = ""
+                dot_color = "bg-gray-300"
+              end
             %>
-            <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors" do %>
+            <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors #{row_bg}" do %>
               <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></div>
               <span class="text-xs text-gray-500 w-14 flex-shrink-0"><%= event[:time].strftime("%-I:%M%p").downcase %></span>
               <span class="text-sm truncate flex-1 <%= is_past ? 'text-gray-400' : 'text-gray-900' %>"><%= event[:title] %></span>
-              <span class="text-xs text-gray-400 truncate max-w-[100px]"><%= event[:subtitle] %></span>
+              <% unless event[:color] == "gray" %>
+                <span class="text-xs text-gray-400 truncate max-w-[100px]"><%= event[:subtitle] %></span>
+              <% end %>
             <% end %>
           <% end %>
         </div>

@@ -97,6 +97,7 @@ export default class extends Controller {
 
         // Add pattern options
         const patterns = [
+            { label: 'Daily', value: 'daily' },
             { label: `Weekly on ${dayNamePlural}`, value: 'weekly' },
             { label: `Every other ${dayName}`, value: 'biweekly' },
             { label: `Monthly on the ${ordinal}`, value: 'monthly_date' },

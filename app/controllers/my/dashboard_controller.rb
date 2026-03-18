@@ -37,6 +37,7 @@ module My
       @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : all_calendar_types
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
+      @calendar_scope = params[:scope].presence || "my_assignments"
 
       selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
@@ -53,28 +54,101 @@ module My
       # --- Shows (from talent pools, both own and shared) ---
       show_data_by_id = {}
 
+      if @calendar_scope == "all_shows"
+        # Load ALL shows from productions the user is in (via talent pools)
+        if show_event_types.any?
+          production_ids = @productions.pluck(:id)
+          all_shows = Show
+            .where(production_id: production_ids)
+            .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
+            .where(canceled: false)
+            .where.not(productions: { production_type: "course" })
+            .where(event_type: show_event_types)
+            .joins(:production)
+            .includes(:production, :location, show_person_role_assignments: :role)
+            .distinct.to_a
+
+          # Pre-fetch IDs of shows user is signed up for
+          signup_show_ids = if selected_person_ids.any?
+            Show.joins(sign_up_form_instances: { sign_up_slots: :sign_up_registrations })
+              .where(sign_up_registrations: { person_id: selected_person_ids, status: "confirmed" })
+              .where(id: all_shows.map(&:id))
+              .pluck(:id).to_set
+          else
+            Set.new
+          end
+
+          all_shows.each do |show|
+            show_data_by_id[show.id] = show
+
+            # Check if user has a direct role assignment on this show
+            person_assignment = show.show_person_role_assignments
+              .detect { |a| a.assignable_type == "Person" && selected_person_ids.include?(a.assignable_id) }
+            group_assignment = person_assignment.nil? ? show.show_person_role_assignments
+              .detect { |a| a.assignable_type == "Group" && selected_group_ids.include?(a.assignable_id) } : nil
+            assignment = person_assignment || group_assignment
+            has_signup = signup_show_ids.include?(show.id)
+
+            if assignment || has_signup
+              role_name = assignment&.role&.name
+              color = case show.event_type
+              when "rehearsal" then "blue"
+              when "meeting" then "green"
+              else "pink"
+              end
+              @calendar_events << {
+                date: show.date_and_time.to_date,
+                time: show.date_and_time,
+                title: show.production.name,
+                subtitle: role_name || (has_signup ? "Signed Up" : show.event_type.titleize),
+                path: my_show_path(show),
+                type: :show,
+                color: color,
+                event_type: show.event_type
+              }
+            else
+              @calendar_events << {
+                date: show.date_and_time.to_date,
+                time: show.date_and_time,
+                title: show.secondary_name.presence || show.production.name,
+                subtitle: show.date_and_time.strftime("%-I:%M%p").downcase,
+                path: my_show_path(show),
+                type: :show,
+                color: "gray",
+                event_type: show.event_type
+              }
+            end
+          end
+        end
+      else
       if show_event_types.any? && selected_person_ids.any?
-        person_shows = Show
-          .joins(production: { talent_pools: :people })
-          .where(people: { id: selected_person_ids })
-          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
-          .where(canceled: false)
+        # Shows where the person has a direct role assignment
+        person_assigned_shows = Show
+          .joins(:show_person_role_assignments)
+          .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: selected_person_ids })
+          .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
+          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
-          .where(event_type: show_event_types)
+          .where(shows: { event_type: show_event_types })
+          .joins(:production)
           .includes(:production, :location, show_person_role_assignments: :role)
           .distinct.to_a
 
-        shared_person_shows = Show
-          .joins(production: { talent_pool_shares: { talent_pool: :people } })
-          .where(people: { id: selected_person_ids })
-          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
-          .where(canceled: false)
+        # Shows where the person has a confirmed sign-up registration
+        person_signup_shows = Show
+          .joins(sign_up_form_instances: { sign_up_slots: :sign_up_registrations })
+          .where(sign_up_registrations: { person_id: selected_person_ids, status: "confirmed" })
+          .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
+          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
-          .where(event_type: show_event_types)
+          .where(shows: { event_type: show_event_types })
+          .joins(:production)
           .includes(:production, :location, show_person_role_assignments: :role)
           .distinct.to_a
 
-        (person_shows + shared_person_shows).uniq(&:id).each do |show|
+        signup_show_ids_my = person_signup_shows.map(&:id).to_set
+
+        (person_assigned_shows + person_signup_shows).uniq(&:id).each do |show|
           show_data_by_id[show.id] = show
           role_name = show.show_person_role_assignments
             .detect { |a| a.assignable_type == "Person" && selected_person_ids.include?(a.assignable_id) }
@@ -90,7 +164,7 @@ module My
             date: show.date_and_time.to_date,
             time: show.date_and_time,
             title: show.production.name,
-            subtitle: role_name || show.event_type.titleize,
+            subtitle: role_name || (signup_show_ids_my.include?(show.id) ? "Signed Up" : show.event_type.titleize),
             path: my_show_path(show),
             type: :show,
             color: color,
@@ -99,29 +173,20 @@ module My
         end
       end
 
-      # Group shows
+      # Group shows (direct role assignments only)
       if show_event_types.any? && selected_group_ids.any?
-        group_shows = Show
-          .joins(production: { talent_pools: :groups })
-          .where(groups: { id: selected_group_ids })
-          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
-          .where(canceled: false)
+        group_assigned_shows = Show
+          .joins(:show_person_role_assignments)
+          .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: selected_group_ids })
+          .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
+          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
-          .where(event_type: show_event_types)
+          .where(shows: { event_type: show_event_types })
+          .joins(:production)
           .includes(:production, :location, show_person_role_assignments: :role)
           .distinct.to_a
 
-        shared_group_shows = Show
-          .joins(production: { talent_pool_shares: { talent_pool: :groups } })
-          .where(groups: { id: selected_group_ids })
-          .where("date_and_time >= ? AND date_and_time <= ?", cal_start, cal_end)
-          .where(canceled: false)
-          .where.not(productions: { production_type: "course" })
-          .where(event_type: show_event_types)
-          .includes(:production, :location, show_person_role_assignments: :role)
-          .distinct.to_a
-
-        (group_shows + shared_group_shows).uniq(&:id).each do |show|
+        group_assigned_shows.each do |show|
           next if show_data_by_id[show.id] # Already added from person shows
 
           role_name = show.show_person_role_assignments
@@ -146,6 +211,7 @@ module My
           }
         end
       end
+      end # end of my_assignments scope
 
       # --- Course sessions ---
       if @event_type_filter.include?("course") && selected_person_ids.any?

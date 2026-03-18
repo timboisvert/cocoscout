@@ -53,6 +53,7 @@
                 class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-96"
                 data-recurring-event-target="patternSelect">
           <option value="">Select pattern</option>
+          <option value="daily" <%= "selected" if @wizard_state[:recurrence_pattern] == "daily" %>>Daily</option>
           <option value="weekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "weekly" %>>Weekly (same day each week)</option>
           <option value="biweekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "biweekly" %>>Every other week</option>
           <option value="monthly_date" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_date" %>>Monthly (same date each month)</option>

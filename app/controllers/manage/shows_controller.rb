@@ -696,6 +696,9 @@ module Manage
       # Generate datetimes based on pattern
       while current_datetime.to_date <= end_date
         case pattern
+        when "daily"
+          datetimes << current_datetime
+          current_datetime += 1.day
         when "weekly"
           datetimes << current_datetime
           current_datetime += 1.week
