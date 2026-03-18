@@ -19,7 +19,9 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "Production Messages",
-    links: []
+    links: [
+      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0 }
+    ]
   } %>
 
   <%# Filter Bar %>

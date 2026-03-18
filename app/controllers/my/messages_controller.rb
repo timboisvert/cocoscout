@@ -40,7 +40,7 @@ class My::MessagesController < ApplicationController
 
     # Apply ordering
     @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-    @pagy, @messages = pagy(@messages, items: 25)
+    @pagy, @messages = pagy(@messages, limit: 10)
     @unread_count = Current.user.unread_message_count
 
     # For production dropdown
@@ -63,7 +63,7 @@ class My::MessagesController < ApplicationController
                            .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
                            .order(updated_at: :desc)
 
-    @pagy, @messages = pagy(@messages, items: 25)
+    @pagy, @messages = pagy(@messages, limit: 10)
     @hide_production_via = true  # Don't show "via" since we're already filtered by production
   end
 

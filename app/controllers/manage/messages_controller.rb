@@ -65,8 +65,8 @@ module Manage
       @pagy, @messages = pagy(@messages, limit: 10)
 
       # Unread count scoped to this organization's messages
-      org_message_ids = Message.where(organization: Current.organization).pluck(:id)
-      @unread_count = Current.user.message_subscriptions.unread.where(message_id: org_message_ids).count
+      @unread_count = Current.user.message_subscriptions.unread
+        .where(message_id: Message.where(organization: Current.organization).select(:id)).count
     end
 
     # GET /manage/messages/production/:production_id
@@ -100,6 +100,13 @@ module Manage
 
       @hide_production_via = true  # Don't show "via" since we're already filtered by production
       render :production
+    end
+
+    def mark_all_read
+      Current.user.message_subscriptions.active
+        .where(message_id: Message.where(organization: Current.organization).select(:id))
+        .each(&:mark_read!)
+      redirect_to manage_messages_path, notice: "All messages marked as read"
     end
 
     def show

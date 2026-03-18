@@ -324,6 +324,7 @@ Rails.application.routes.draw do
         delete :destroy
       end
       collection do
+        post :mark_all_read
         get "production/:production_id", action: :production, as: :production
         get "production/:production_id/:id", action: :show, as: :production_message
       end
