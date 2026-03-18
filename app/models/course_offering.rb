@@ -11,6 +11,8 @@ class CourseOffering < ApplicationRecord
   has_rich_text :description
   has_rich_text :instructor_bio
 
+  has_one_attached :instructor_headshot
+
   enum :status, {
     draft: "draft",
     open: "open",

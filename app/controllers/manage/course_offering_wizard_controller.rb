@@ -30,11 +30,14 @@ module Manage
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
       @step = 2
       @contracts = Current.organization.contracts.status_active.order(:contractor_name)
+      @locations = Current.organization.locations.order(:name)
     end
 
     def save_schedule
       @wizard_state[:contract_id] = params[:contract_id].presence&.to_i
       @wizard_state[:schedule_mode] = params[:schedule_mode].presence || "independent"
+      @wizard_state[:location_id] = params[:location_id].presence&.to_i
+      @wizard_state[:is_online] = params[:is_online] == "1"
 
       if @wizard_state[:schedule_mode] == "contract" && @wizard_state[:contract_id].present?
         # Store selected show IDs from the contract's events
@@ -75,6 +78,16 @@ module Manage
     def save_instructor
       @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
       @wizard_state[:instructor_bio] = params[:instructor_bio].presence
+
+      # Handle instructor headshot upload
+      if params[:instructor_headshot].present?
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: params[:instructor_headshot],
+          filename: params[:instructor_headshot].original_filename,
+          content_type: params[:instructor_headshot].content_type
+        )
+        @wizard_state[:instructor_headshot_blob_id] = blob.id
+      end
 
       # Keep instructor_name in sync with the selected person
       if @wizard_state[:instructor_person_id].present?
@@ -301,6 +314,12 @@ module Manage
           contract: contract
         )
 
+        # Attach instructor headshot if uploaded during wizard
+        if @wizard_state[:instructor_headshot_blob_id].present?
+          blob = ActiveStorage::Blob.find_by(id: @wizard_state[:instructor_headshot_blob_id])
+          @offering.instructor_headshot.attach(blob) if blob
+        end
+
         # Create shows (sessions) for the course
         create_course_sessions!(contract)
 
@@ -353,8 +372,10 @@ module Manage
           @production.shows.create!(
             date_and_time: dt,
             duration_minutes: duration,
-            name: session[:name] || session["name"],
-            event_type: "class"
+            secondary_name: session[:name] || session["name"],
+            event_type: "class",
+            location_id: @wizard_state[:location_id],
+            is_online: @wizard_state[:is_online] || false
           )
         end
       end

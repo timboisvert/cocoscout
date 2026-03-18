@@ -126,11 +126,26 @@
         </div>
       </div>
 
-      <%# Instructor Bio + Save %>
-      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, class: "space-y-6" do |form| %>
+      <%# Instructor Bio + Headshot + Save %>
+      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, multipart: true, class: "space-y-6" do |form| %>
         <input type="hidden" name="instructor_person_id"
                value="<%= @course_offering.instructor_person_id %>"
                data-instructor-search-target="personIdField">
+
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <%= render "shared/card_header", title: "Instructor Photo" %>
+          <div class="p-5">
+            <p class="text-xs text-gray-500 mb-2">Upload a photo for the instructor shown on the registration page. If not set, their profile photo will be used.</p>
+            <% if @course_offering.instructor_headshot.attached? %>
+              <div class="mb-3 flex items-center gap-3">
+                <%= image_tag @course_offering.instructor_headshot.variant(resize_to_fill: [128, 128]), alt: "Instructor photo", class: "w-16 h-16 rounded-lg object-cover" %>
+                <span class="text-xs text-gray-500">Current photo</span>
+              </div>
+            <% end %>
+            <input type="file" name="instructor_headshot" accept="image/*"
+                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+          </div>
+        </div>
 
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <%= render "shared/card_header", title: "Instructor Bio" %>
@@ -191,7 +206,13 @@
               <input type="checkbox" id="enable_early_bird"
                      <%= 'checked' if @course_offering.early_bird_price_cents.present? %>
                      class="sr-only peer"
-                     onchange="document.getElementById('early-bird-fields').classList.toggle('hidden', !this.checked)">
+                     onchange="
+                       var fields = document.getElementById('early-bird-fields');
+                       fields.classList.toggle('hidden', !this.checked);
+                       if (!this.checked) {
+                         fields.querySelectorAll('input').forEach(function(i) { i.value = ''; });
+                       }
+                     ">
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>

@@ -72,6 +72,41 @@
         <%# Schedule %>
         <% if @all_sessions.any? %>
           <h3 class="text-base font-semibold text-slate-900">Schedule</h3>
+          <% if @all_sessions.size == 1 %>
+            <%# Single session: show details directly without summary/toggle %>
+            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
+              <div class="space-y-1.5">
+                <% show = @all_sessions.first %>
+                <div class="flex items-center gap-3 py-2 px-3 rounded-md">
+                  <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-100 rounded-md flex flex-col items-center justify-center">
+                    <span class="text-[10px] font-medium text-pink-600 uppercase leading-none"><%= show.date_and_time.strftime("%b") %></span>
+                    <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900">
+                      <%= show.date_and_time.strftime("%A, %B %-d") %>
+                    </p>
+                    <p class="text-xs text-slate-500">
+                      <% if show.duration_minutes.present? %>
+                        <% end_time = show.date_and_time + show.duration_minutes.minutes %>
+                        <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
+                          <%= show.date_and_time.strftime("%-I:%M") %> - <%= end_time.strftime("%-I:%M %p") %>
+                        <% else %>
+                          <%= show.date_and_time.strftime("%-I:%M %p") %> - <%= end_time.strftime("%-I:%M %p") %>
+                        <% end %>
+                      <% else %>
+                        <%= show.date_and_time.strftime("%-I:%M %p") %>
+                      <% end %>
+                    </p>
+                  </div>
+                  <% if show.secondary_name.present? %>
+                    <span class="text-xs text-slate-400"><%= show.secondary_name %></span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% else %>
+          <%# Multiple sessions: show summary with expandable list %>
           <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3" data-controller="disclosure">
             <div class="flex flex-col gap-1.5">
               <p class="text-sm font-medium text-slate-900"><%= date_range %></p>
@@ -88,7 +123,7 @@
                   <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <%= @all_sessions.size %> session<%= @all_sessions.size == 1 ? "" : "s" %>
+                  <%= @all_sessions.size %> sessions
                 </span>
               </div>
             </div>
@@ -109,9 +144,15 @@
                         <%= show.date_and_time.strftime("%A, %B %-d") %>
                       </p>
                       <p class="text-xs text-slate-500">
-                        <%= show.date_and_time.strftime("%-I:%M %p") %>
                         <% if show.duration_minutes.present? %>
-                          &middot; <%= show.duration_minutes %> min
+                          <% end_time = show.date_and_time + show.duration_minutes.minutes %>
+                          <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
+                            <%= show.date_and_time.strftime("%-I:%M") %> - <%= end_time.strftime("%-I:%M %p") %>
+                          <% else %>
+                            <%= show.date_and_time.strftime("%-I:%M %p") %> - <%= end_time.strftime("%-I:%M %p") %>
+                          <% end %>
+                        <% else %>
+                          <%= show.date_and_time.strftime("%-I:%M %p") %>
                         <% end %>
                       </p>
                     </div>
@@ -123,6 +164,7 @@
               </div>
             </div>
           </div>
+          <% end %>
         <% end %>
 
         <%# Instructor %>
@@ -132,13 +174,17 @@
             <div class="flex items-center gap-4">
               <% if @course_offering.instructor_person.present? %>
                 <% instructor = @course_offering.instructor_person %>
-                <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+                <% if @course_offering.instructor_headshot.attached? %>
+                  <%= image_tag @course_offering.instructor_headshot.variant(resize_to_fill: [112, 112]), alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
                 <% else %>
-                  <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-lg flex-shrink-0">
-                    <%= instructor.initials %>
-                  </div>
+                  <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-lg flex-shrink-0">
+                      <%= instructor.initials %>
+                    </div>
+                  <% end %>
                 <% end %>
                 <div class="flex-1 min-w-0">
                   <p class="font-medium text-slate-900"><%= instructor.name %></p>
@@ -289,11 +335,12 @@
               <span class="text-sm font-medium text-slate-600">Course Fee</span>
               <div class="text-right">
                 <% if @course_offering.early_bird_active? %>
-                  <div class="flex items-baseline gap-2">
+                  <div class="flex items-baseline justify-end gap-2">
                     <span class="text-sm text-slate-400 line-through"><%= @course_offering.formatted_price %></span>
                     <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_early_bird_price %></span>
+                    <span class="text-xs text-slate-400">+ tax</span>
                   </div>
-                  <p class="text-xs text-slate-400">+ tax</p>
+                  <p class="text-xs text-slate-500">Early bird price · ends <%= @course_offering.early_bird_deadline.strftime("%B %-d") %></p>
                 <% else %>
                   <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_price %></span>
                   <span class="text-xs text-slate-400">+ tax</span>

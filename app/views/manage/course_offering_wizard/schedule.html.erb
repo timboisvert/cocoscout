@@ -73,6 +73,31 @@
 
     <%# Independent mode - manual session entry %>
     <div id="independent-section" class="<%= 'hidden' if @wizard_state[:schedule_mode] == 'contract' %> space-y-5">
+
+      <%# Location picker %>
+      <div>
+        <label for="location_id" class="block text-sm font-medium text-gray-900 mb-1.5">Location</label>
+        <p class="text-xs text-gray-500 mb-2">Where will this course meet? This applies to all sessions.</p>
+        <% if @locations.any? %>
+          <select name="location_id" id="location_id"
+                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <option value="">Select a location...</option>
+            <% @locations.each do |loc| %>
+              <option value="<%= loc.id %>" <%= 'selected' if @wizard_state[:location_id].to_s == loc.id.to_s %>><%= loc.name %></option>
+            <% end %>
+          </select>
+        <% else %>
+          <p class="text-sm text-gray-400 italic mb-2">No locations added yet.</p>
+        <% end %>
+        <label class="inline-flex items-center gap-2 mt-2 cursor-pointer">
+          <input type="hidden" name="is_online" value="0">
+          <input type="checkbox" name="is_online" value="1"
+                 <%= 'checked' if @wizard_state[:is_online] %>
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span class="text-sm text-gray-700">This course meets online</span>
+        </label>
+      </div>
+
       <p class="text-sm font-medium text-gray-900 mb-2">Session dates & times</p>
       <p class="text-xs text-gray-500 mb-3">Add each class meeting. You can skip this and add sessions later from the course management page.</p>
 

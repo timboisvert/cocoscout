@@ -14,7 +14,8 @@ export default class extends Controller {
         "personIdField",
         "inviteName",
         "inviteEmail",
-        "inviteForm"
+        "inviteForm",
+        "headshotUploadSection"
     ]
 
     static values = {
@@ -86,6 +87,9 @@ export default class extends Controller {
         // Toggle sections
         this.searchSectionTarget.classList.add("hidden")
         this.selectedSectionTarget.classList.remove("hidden")
+        if (this.hasHeadshotUploadSectionTarget) {
+            this.headshotUploadSectionTarget.classList.remove("hidden")
+        }
     }
 
     changePerson(event) {
@@ -95,6 +99,9 @@ export default class extends Controller {
         this.searchResultsTarget.innerHTML = ""
         this.selectedSectionTarget.classList.add("hidden")
         this.searchSectionTarget.classList.remove("hidden")
+        if (this.hasHeadshotUploadSectionTarget) {
+            this.headshotUploadSectionTarget.classList.add("hidden")
+        }
         this.searchInputTarget.focus()
     }
 

@@ -88,6 +88,11 @@ module Manage
       updates[:instructor_bio] = bio if bio
 
       if @course_offering.update(updates)
+        # Attach instructor headshot if uploaded
+        if params[:instructor_headshot].present?
+          @course_offering.instructor_headshot.attach(params[:instructor_headshot])
+        end
+
         # If an instructor person was set, assign them to the Instructor role on all sessions
         if person_id.present? && @course_offering.instructor_person.present?
           assign_instructor_to_sessions(@course_offering)
