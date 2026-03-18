@@ -118,6 +118,14 @@
             <dd class="text-gray-700"><%= truncate(@wizard_state[:instructor_bio], length: 200) %></dd>
           </div>
         <% end %>
+        <% if @wizard_state[:instructor_on_team] %>
+          <div class="text-sm mt-2">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Added to production team
+            </span>
+          </div>
+        <% end %>
       <% elsif @wizard_state[:instructor_name].present? %>
         <dl class="space-y-2 text-sm">
           <div>

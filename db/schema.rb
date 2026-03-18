@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_12_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -529,6 +529,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_110000) do
     t.integer "early_bird_price_cents"
     t.text "instruction_text"
     t.string "instructor_name"
+    t.boolean "instructor_on_team", default: false, null: false
     t.bigint "instructor_person_id"
     t.datetime "opens_at"
     t.integer "price_cents", null: false

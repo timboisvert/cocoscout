@@ -127,10 +127,32 @@
       </div>
 
       <%# Instructor Bio + Headshot + Save %>
-      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, multipart: true, class: "space-y-6" do |form| %>
+      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, multipart: true, class: "space-y-6", id: "instructor-form" do |form| %>
         <input type="hidden" name="instructor_person_id"
                value="<%= @course_offering.instructor_person_id %>"
                data-instructor-search-target="personIdField">
+
+        <%# Add to Production Team toggle %>
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+             data-instructor-search-target="teamToggleSection"
+             style="<%= 'display:none' unless @instructor_person %>">
+          <%= render "shared/card_header", title: "Production Team" %>
+          <div class="p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-sm font-medium text-gray-900">Add to production team</span>
+                <p class="text-xs text-gray-500 mt-0.5">Make the instructor a manager of this course's production with notifications enabled.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="instructor_on_team" value="0">
+                <input type="checkbox" name="instructor_on_team" value="1"
+                       <%= 'checked' if @course_offering.instructor_on_team? %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          </div>
+        </div>
 
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <%= render "shared/card_header", title: "Instructor Photo" %>

@@ -15,7 +15,8 @@ export default class extends Controller {
         "inviteName",
         "inviteEmail",
         "inviteForm",
-        "headshotUploadSection"
+        "headshotUploadSection",
+        "teamToggleSection"
     ]
 
     static values = {
@@ -90,6 +91,10 @@ export default class extends Controller {
         if (this.hasHeadshotUploadSectionTarget) {
             this.headshotUploadSectionTarget.classList.remove("hidden")
         }
+        if (this.hasTeamToggleSectionTarget) {
+            this.teamToggleSectionTarget.classList.remove("hidden")
+            this.teamToggleSectionTarget.style.display = ""
+        }
     }
 
     changePerson(event) {
@@ -101,6 +106,10 @@ export default class extends Controller {
         this.searchSectionTarget.classList.remove("hidden")
         if (this.hasHeadshotUploadSectionTarget) {
             this.headshotUploadSectionTarget.classList.add("hidden")
+        }
+        if (this.hasTeamToggleSectionTarget) {
+            this.teamToggleSectionTarget.classList.add("hidden")
+            this.teamToggleSectionTarget.style.display = "none"
         }
         this.searchInputTarget.focus()
     }

@@ -78,6 +78,7 @@ module Manage
     def save_instructor
       @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
       @wizard_state[:instructor_bio] = params[:instructor_bio].presence
+      @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
 
       # Handle instructor headshot upload
       if params[:instructor_headshot].present?
@@ -311,7 +312,8 @@ module Manage
           closes_at: @wizard_state[:closes_at],
           instruction_text: @wizard_state[:instruction_text],
           success_text: @wizard_state[:success_text],
-          contract: contract
+          contract: contract,
+          instructor_on_team: @wizard_state[:instructor_on_team] == true
         )
 
         # Attach instructor headshot if uploaded during wizard
@@ -334,6 +336,24 @@ module Manage
                 assignable: instructor_person
               )
             end
+          end
+
+          # Add instructor to production team if requested
+          if @offering.instructor_on_team && instructor_person.user.present?
+            ProductionPermission.find_or_create_by!(
+              user: instructor_person.user,
+              production: @production
+            ) { |pp| pp.role = "manager" }
+
+            ProductionNotificationSetting.find_or_create_by!(
+              user: instructor_person.user,
+              production: @production
+            ) { |ns| ns.enabled = true }
+            # Ensure enabled if it already existed but was disabled
+            ProductionNotificationSetting.where(
+              user: instructor_person.user,
+              production: @production
+            ).update_all(enabled: true)
           end
         end
       end

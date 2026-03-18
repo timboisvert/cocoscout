@@ -76,6 +76,7 @@ module Manage
     def update_instructor
       person_id = params[:instructor_person_id]
       bio = params[:instructor_bio]
+      instructor_on_team = params[:instructor_on_team] == "1"
 
       updates = {}
       if person_id.present?
@@ -86,6 +87,7 @@ module Manage
         updates[:instructor_person_id] = nil
       end
       updates[:instructor_bio] = bio if bio
+      updates[:instructor_on_team] = instructor_on_team
 
       if @course_offering.update(updates)
         # Attach instructor headshot if uploaded
@@ -97,6 +99,10 @@ module Manage
         if person_id.present? && @course_offering.instructor_person.present?
           assign_instructor_to_sessions(@course_offering)
         end
+
+        # Manage production team membership
+        manage_instructor_team_membership(@course_offering)
+
         redirect_to manage_edit_course_offering_path(@course_offering, tab: 1), notice: "Instructor updated."
       else
         redirect_to manage_edit_course_offering_path(@course_offering, tab: 1), alert: "Failed to update instructor."
@@ -265,6 +271,35 @@ module Manage
           assignable: person,
           role: role
         )
+      end
+    end
+
+    def manage_instructor_team_membership(course_offering)
+      person = course_offering.instructor_person
+      production = course_offering.production
+
+      if course_offering.instructor_on_team? && person&.user.present?
+        # Add as manager with notifications enabled
+        ProductionPermission.find_or_create_by!(
+          user: person.user,
+          production: production
+        ) { |pp| pp.role = "manager" }
+
+        setting = ProductionNotificationSetting.find_or_create_by!(
+          user: person.user,
+          production: production
+        ) { |ns| ns.enabled = true }
+        setting.update!(enabled: true) unless setting.enabled?
+      elsif !course_offering.instructor_on_team? && person&.user.present?
+        # Remove production team role and notification setting
+        ProductionPermission.where(
+          user: person.user,
+          production: production
+        ).destroy_all
+        ProductionNotificationSetting.where(
+          user: person.user,
+          production: production
+        ).destroy_all
       end
     end
   end
