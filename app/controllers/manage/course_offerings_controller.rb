@@ -9,9 +9,8 @@ module Manage
     ]
 
     def index
-      @course_offerings = Current.organization.productions
+      @course_offerings = Current.user.accessible_productions
         .courses
-        .active
         .includes(:course_offerings)
         .flat_map(&:course_offerings)
         .sort_by(&:created_at)
@@ -277,8 +276,15 @@ module Manage
     def manage_instructor_team_membership(course_offering)
       person = course_offering.instructor_person
       production = course_offering.production
+      organization = production.organization
 
       if course_offering.instructor_on_team? && person&.user.present?
+        # Add as member of the organization so they can access /manage
+        OrganizationRole.find_or_create_by!(
+          user: person.user,
+          organization: organization
+        ) { |or_role| or_role.company_role = "member"; or_role.person = person }
+
         # Add as manager with notifications enabled
         ProductionPermission.find_or_create_by!(
           user: person.user,
@@ -300,6 +306,14 @@ module Manage
           user: person.user,
           production: production
         ).destroy_all
+
+        # Remove org role only if they have no other production permissions in this org
+        remaining = ProductionPermission.joins(:production)
+          .where(user: person.user, productions: { organization_id: organization.id })
+          .exists?
+        unless remaining
+          OrganizationRole.where(user: person.user, organization: organization, company_role: "member").destroy_all
+        end
       end
     end
   end
