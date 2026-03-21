@@ -8,11 +8,11 @@
       [@production.name, manage_contacts_questionnaires_path(@production)],
       ["Questionnaires", manage_contacts_questionnaires_path(@production)],
       [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)],
-      ["Responses", responses_contacts_questionnaire_path(@production, @questionnaire)]
+      ["Responses", manage_responses_contacts_questionnaire_path(@production, @questionnaire)]
     ],
     text: "Table View",
     links: [
-      { text: "List View", path: responses_contacts_questionnaire_path(@production, @questionnaire) }
+      { text: "List View", path: manage_responses_contacts_questionnaire_path(@production, @questionnaire) }
     ]
   } %>
 
