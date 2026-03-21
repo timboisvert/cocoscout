@@ -285,7 +285,7 @@ module Manage
         visibility = params[:sender_identity] == "personal" ? :personal : :production
 
         if person_ids.empty?
-          redirect_back fallback_location: manage_directory_path, alert: "Please select at least one person or group."
+          redirect_back fallback_location: manage_contacts_path, alert: "Please select at least one person or group."
           return
         end
 

@@ -138,13 +138,13 @@ module Manage
       # Remove the group from the organization
       Current.organization.groups.delete(@group)
 
-      redirect_to manage_directory_path, notice: "#{@group.name} was removed from #{Current.organization.name}",
+      redirect_to manage_contacts_path, notice: "#{@group.name} was removed from #{Current.organization.name}",
                                          status: :see_other
     end
 
     def destroy
       @group.destroy
-      redirect_to manage_directory_path, notice: "#{@group.name} was deleted", status: :see_other
+      redirect_to manage_contacts_path, notice: "#{@group.name} was deleted", status: :see_other
     end
 
     def update

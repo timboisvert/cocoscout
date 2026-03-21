@@ -3,12 +3,13 @@
 # Service object for handling all directory query logic
 # Centralizes filtering, searching, sorting, and segmentation
 class DirectoryQueryService
-  attr_reader :params, :organization, :production
+  attr_reader :params, :organization, :production, :accessible_production_ids
 
-  def initialize(params, organization, production = nil)
+  def initialize(params, organization, production = nil, accessible_production_ids: nil)
     @params = params
     @organization = organization
     @production = production
+    @accessible_production_ids = accessible_production_ids
   end
 
   def call
@@ -30,12 +31,29 @@ class DirectoryQueryService
   private
 
   def base_people_query
-    organization.people
+    scope = organization.people
+    if accessible_production_ids
+      # Include people from talent pools owned by accessible productions
+      # OR shared with accessible productions
+      pool_ids = TalentPool.where(production_id: accessible_production_ids)
+        .or(TalentPool.joins(:talent_pool_shares).where(talent_pool_shares: { production_id: accessible_production_ids }))
+        .select(:id)
+      scope.where(id: TalentPoolMembership.where(talent_pool_id: pool_ids, member_type: "Person").select(:member_id))
+    else
+      scope
+    end
   end
 
   def base_groups_query
-    organization.groups
-                .where(archived_at: nil)
+    scope = organization.groups.where(archived_at: nil)
+    if accessible_production_ids
+      pool_ids = TalentPool.where(production_id: accessible_production_ids)
+        .or(TalentPool.joins(:talent_pool_shares).where(talent_pool_shares: { production_id: accessible_production_ids }))
+        .select(:id)
+      scope.where(id: TalentPoolMembership.where(talent_pool_id: pool_ids, member_type: "Group").select(:member_id))
+    else
+      scope
+    end
   end
 
   def apply_type_filter(people, groups)

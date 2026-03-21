@@ -5,7 +5,7 @@ module Manage
     before_action :set_production, except: [ :select_production, :save_production_selection, :org_index ]
     before_action :set_questionnaire,
                   only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
-                           responses show_response invite_people]
+                           responses responses_table show_response invite_people]
 
     # Org-level index showing all questionnaires across productions
     def org_index
@@ -51,7 +51,7 @@ module Manage
       end
 
       # Redirect to the production-level new questionnaire page
-      redirect_to manage_new_casting_questionnaire_path(production)
+      redirect_to manage_new_contacts_questionnaire_path(production)
     end
 
     def index
@@ -86,7 +86,7 @@ module Manage
       @questionnaire = @production.questionnaires.new(questionnaire_params)
 
       if @questionnaire.save
-        redirect_to manage_form_casting_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
                     notice: "Questionnaire created successfully"
       else
         render :new, status: :unprocessable_entity
@@ -96,25 +96,16 @@ module Manage
     def update
       params_to_update = questionnaire_params
 
-      # Clean availability_show_ids array
-      if params_to_update[:availability_show_ids].present?
-        params_to_update[:availability_show_ids] = params_to_update[:availability_show_ids].reject(&:blank?).map(&:to_i)
-        params_to_update[:availability_show_ids] = nil if params_to_update[:availability_show_ids].empty?
-      end
-
       if @questionnaire.update(params_to_update)
         respond_to do |format|
           format.html do
-            # If updating from the form page (availability settings or title), redirect back to form
-            if params[:questionnaire]&.key?(:include_availability_section) ||
-               params[:questionnaire]&.key?(:availability_show_ids) ||
-               params[:questionnaire]&.key?(:title) ||
-               params[:questionnaire]&.key?(:require_all_availability) ||
+            # If updating from the form page (title or instruction), redirect back to form
+            if params[:questionnaire]&.key?(:title) ||
                params[:questionnaire]&.key?(:instruction_text)
-              redirect_to manage_form_casting_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
                           notice: "Questionnaire updated successfully"
             else
-              redirect_to manage_casting_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
                           notice: "Questionnaire updated successfully"
             end
           end
@@ -130,12 +121,12 @@ module Manage
 
     def archive
       @questionnaire.update(archived_at: Time.current)
-      redirect_to manage_casting_questionnaires_path(@production), notice: "Questionnaire archived successfully"
+      redirect_to manage_contacts_questionnaires_path(@production), notice: "Questionnaire archived successfully"
     end
 
     def unarchive
       @questionnaire.update(archived_at: nil)
-      redirect_to manage_casting_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
                   notice: "Questionnaire unarchived successfully"
     end
 
@@ -153,16 +144,6 @@ module Manage
 
     def preview
       @questions = @questionnaire.questions.order(:position)
-
-      # Load shows for availability section if enabled
-      return unless @questionnaire.include_availability_section
-
-      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-      # Filter shows by selected show IDs if specified
-      return unless @questionnaire.availability_show_ids.present?
-
-      @shows = @shows.where(id: @questionnaire.availability_show_ids)
     end
 
     def create_question
@@ -173,7 +154,7 @@ module Manage
       @question.position = max_position + 1
 
       if @question.save
-        redirect_to manage_form_casting_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
                     notice: "Question added successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -185,7 +166,7 @@ module Manage
       @question = @questionnaire.questions.find(params[:question_id])
 
       if @question.update(question_params)
-        redirect_to manage_form_casting_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
                     notice: "Question updated successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -196,7 +177,7 @@ module Manage
     def destroy_question
       @question = @questionnaire.questions.find(params[:question_id])
       @question.destroy
-      redirect_to manage_form_casting_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
                   notice: "Question deleted successfully"
     end
 
@@ -214,27 +195,29 @@ module Manage
                                  .order(created_at: :desc)
     end
 
+    def responses_table
+      @questions = @questionnaire.questions.order(:position)
+      @responses = @questionnaire.questionnaire_responses
+                                 .includes(:respondent, questionnaire_answers: { file_attachment: :blob })
+                                 .order(created_at: :desc)
+
+      # Build matrix: { response_id => { question_id => answer_object } }
+      @answers_matrix = {}
+      @responses.each do |response|
+        @answers_matrix[response.id] = response.questionnaire_answers.index_by(&:question_id)
+      end
+    end
+
     def show_response
       @response = @questionnaire.questionnaire_responses.find(params[:response_id])
       @questions = @questionnaire.questions.order(:position)
       @answers = {}
+      @answer_objects = {}
       @questions.each do |question|
-        answer = @response.questionnaire_answers.find_by(question: question)
-        @answers[question.id.to_s] = answer.value if answer
-      end
-
-      # Load availability data if enabled
-      if @questionnaire.include_availability_section
-        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-        # Filter by show ids if specified
-        @shows = @shows.where(id: @questionnaire.availability_show_ids) if @questionnaire.availability_show_ids.present?
-
-        # Load availability data for this respondent (person or group)
-        @availability = {}
-        ShowAvailability.where(available_entity: @response.respondent,
-                               show_id: @shows.pluck(:id)).each do |show_availability|
-          @availability[show_availability.show_id.to_s] = show_availability.status.to_s
+        answer = @response.questionnaire_answers.includes(file_attachment: :blob).find_by(question: question)
+        if answer
+          @answers[question.id.to_s] = answer.value
+          @answer_objects[question.id.to_s] = answer
         end
       end
 
@@ -360,7 +343,7 @@ module Manage
         end
       end
 
-      redirect_to manage_casting_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
                   notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
     end
 
@@ -380,8 +363,7 @@ module Manage
     end
 
     def questionnaire_params
-      params.require(:questionnaire).permit(:title, :instruction_text, :accepting_responses,
-                                            :include_availability_section, :require_all_availability, availability_show_ids: [])
+      params.require(:questionnaire).permit(:title, :instruction_text, :accepting_responses)
     end
 
     def question_params

@@ -302,6 +302,11 @@ class PayoutScheme < ApplicationRecord
     rules.dig("performer_overrides") || {}
   end
 
+  # Get excluded role IDs
+  def excluded_role_ids
+    rules.dig("excluded_role_ids") || []
+  end
+
   # Get distribution method
   def distribution_method
     distribution_config["method"] || "equal"
@@ -331,6 +336,12 @@ class PayoutScheme < ApplicationRecord
       when "remainder"
         # implicit
       end
+    end
+
+    # Excluded roles summary
+    if excluded_role_ids.any?
+      role_names = Role.where(id: excluded_role_ids).pluck(:name)
+      parts << "Excluding: #{role_names.join(', ')}" if role_names.any?
     end
 
     # Distribution summary

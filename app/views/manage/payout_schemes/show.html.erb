@@ -101,6 +101,23 @@
               </div>
             </div>
           <% end %>
+
+          <!-- Excluded Roles -->
+          <% if @payout_scheme.excluded_role_ids.any? %>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Excluded Roles</h4>
+              <div class="text-sm text-gray-600">
+                <% Role.where(id: @payout_scheme.excluded_role_ids).includes(:production).each do |role| %>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0"></span>
+                    <span><%= role.name %></span>
+                    <span class="text-xs text-gray-400">(<%= role.production.name %>)</span>
+                  </div>
+                <% end %>
+                <p class="text-xs text-gray-500 mt-2">Cast members assigned only to these roles are excluded from payouts.</p>
+              </div>
+            </div>
+          <% end %>
         </div>
       </div>
 

@@ -240,10 +240,14 @@ module Manage
         performer_overrides[person_id.to_s] = override if override.any?
       end
 
+      # Build excluded role IDs
+      excluded_role_ids = Array(rules_params[:excluded_role_ids]).map(&:to_i).reject(&:zero?)
+
       {
         "allocation" => allocation,
         "distribution" => distribution,
-        "performer_overrides" => performer_overrides
+        "performer_overrides" => performer_overrides,
+        "excluded_role_ids" => excluded_role_ids
       }
     end
   end

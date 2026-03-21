@@ -43,10 +43,6 @@ development:
     class: ContractCompletionJob
     schedule: every hour
 
-  cocobase_deadline:
-    class: CocobaseDeadlineJob
-    schedule: every hour
-
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -95,7 +91,3 @@ production:
   contract_completion:
     class: ContractCompletionJob
     schedule: at 2am every day
-
-  cocobase_deadline:
-    class: CocobaseDeadlineJob
-    schedule: every hour

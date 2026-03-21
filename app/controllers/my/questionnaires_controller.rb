@@ -143,20 +143,6 @@ module My
         return
       end
 
-      # Load shows for availability section if enabled
-      if @questionnaire.include_availability_section
-        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-        # Filter by show ids if specified
-        @shows = @shows.where(id: @questionnaire.availability_show_ids) if @questionnaire.availability_show_ids.present?
-
-        # Load existing availability data for the respondent (person or group)
-        @availability = {}
-        ShowAvailability.where(available_entity: @respondent, show_id: @shows.pluck(:id)).each do |show_availability|
-          @availability[show_availability.show_id.to_s] = show_availability.status.to_s
-        end
-      end
-
       # Check if they've already responded
       if @questionnaire.questionnaire_responses.exists?(respondent: @respondent)
         @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
@@ -257,6 +243,18 @@ module My
           answer.save!
           @answers[id.to_s] = answer.value
         end
+
+        # Handle file uploads for file_upload questions
+        params[:file_upload]&.each do |id, file|
+          question_id = id.to_i
+          next unless file.present? && questions_by_id[question_id]&.question_type == "file_upload"
+
+          answer = existing_answers[question_id] || @questionnaire_response.questionnaire_answers.find_or_create_by!(question: questions_by_id[question_id])
+          answer.file.attach(file)
+          answer.value = file.original_filename
+          answer.save!
+          @answers[id.to_s] = answer.value
+        end
       else
         # New response
         @questionnaire_response = QuestionnaireResponse.new(respondent: @respondent)
@@ -277,54 +275,37 @@ module My
       @missing_required_questions = []
       @questions.select(&:required).each do |question|
         answer_value = @answers[question.id.to_s]
-        if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
+
+        if question.question_type == "file_upload"
+          # For file uploads, check if a file was uploaded (new or existing)
+          has_file = params.dig(:file_upload, question.id.to_s).present?
+          has_existing = existing_response && existing_response.questionnaire_answers.find_by(question: question)&.file&.attached?
+          @missing_required_questions << question unless has_file || has_existing
+        elsif answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
           @missing_required_questions << question
         end
       end
 
-      # Validate required availability if enabled
-      @missing_availability = false
-      if @questionnaire.include_availability_section && @questionnaire.require_all_availability
-        # Load shows to check (only future dates)
-        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-        @shows = @shows.where(id: @questionnaire.availability_show_ids) if @questionnaire.availability_show_ids.present?
-        @shows = @shows.to_a
-
-        # Check if all shows have a response
-        @shows.each do |show|
-          if params[:availability].blank? || params[:availability][show.id.to_s].blank?
-            @missing_availability = true
-            break
-          end
-        end
-      end
-
-      # Save availability data if provided
-      if params[:availability].present?
-        # Preload existing availabilities for this respondent
-        show_ids = params[:availability].keys.map(&:to_i)
-        existing_availabilities = ShowAvailability
-                                  .where(available_entity: @respondent, show_id: show_ids)
-                                  .index_by(&:show_id)
-
-        params[:availability].each do |show_id, status|
-          next if status.blank?
-
-          show_id_int = show_id.to_i
-          show_availability = existing_availabilities[show_id_int] || ShowAvailability.new(
-            available_entity: @respondent,
-            show_id: show_id_int
-          )
-          show_availability.status = status
-          show_availability.save!
-        end
-      end
-
       # Validate and save
-      if @missing_required_questions.any? || @missing_availability
+      if @missing_required_questions.any?
         render :form, status: :unprocessable_entity
       elsif @questionnaire_response.valid?
         @questionnaire_response.save!
+
+        # Attach files for new responses (after save so answer records have IDs)
+        if existing_response.nil?
+          params[:file_upload]&.each do |id, file|
+            question_id = id.to_i
+            next unless file.present? && questions_by_id[question_id]&.question_type == "file_upload"
+
+            answer = @questionnaire_response.questionnaire_answers.find_by(question_id: question_id)
+            if answer
+              answer.file.attach(file)
+              answer.update!(value: file.original_filename)
+            end
+          end
+        end
+
         redirect_to my_questionnaire_success_path(token: @questionnaire.token), status: :see_other
       else
         render :form

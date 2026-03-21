@@ -265,6 +265,37 @@
         </div>
       </div>
 
+      <% if @course_offering.questionnaire.present? %>
+        <%# Questionnaire %>
+        <div class="bg-white border border-gray-200 rounded-lg">
+          <%= render "shared/card_header", title: "Questionnaire" %>
+          <div class="p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= @course_offering.questionnaire.title %></p>
+                <% stats = @course_offering.questionnaire.cached_response_stats %>
+                <p class="text-xs text-gray-500 mt-0.5"><%= stats[:responded] %> response<%= stats[:responded] == 1 ? '' : 's' %></p>
+              </div>
+              <%= link_to manage_contacts_questionnaire_path(@course_offering.production, @course_offering.questionnaire) do %>
+                <%= render "shared/button", text: "View", variant: "secondary", size: "small" %>
+              <% end %>
+            </div>
+
+            <% if @course_offering.delivery_mode == "manual" %>
+              <div class="pt-3 border-t border-gray-100">
+                <%= form_with url: manage_course_offering_send_questionnaire_path(@course_offering), method: :post do %>
+                  <%= render "shared/button", text: "Send to All Registrants", variant: "secondary", size: "small", type: :submit %>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-xs text-gray-400">
+                Delivery: <%= { "immediate" => "Immediately after registration", "delayed" => "#{@course_offering.delivery_delay_minutes} minutes after registration", "scheduled" => @course_offering.delivery_scheduled_at&.strftime("%b %-d, %Y %-I:%M %p") || "Scheduled", "manual" => "Manual" }[@course_offering.delivery_mode] || "Immediate" %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
       <%# Course Details - collapsible %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="disclosure">
         <button type="button"

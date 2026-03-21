@@ -1,0 +1,12 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please upload a file for this question</div>
+<% end %>
+
+<%= file_field_tag "file_upload[#{question.id}]", accept: "image/jpeg,image/png,image/gif,image/webp,audio/mpeg,audio/wav,audio/aac,audio/ogg,audio/mp4", class: "block mt-2 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
+<p class="mt-1 text-xs text-gray-400">Images (JPEG, PNG, GIF, WebP) or audio files (MP3, WAV, AAC, OGG, MP4). Max 25MB.</p>
+
+<% if answer_value.present? %>
+  <div class="mt-2 p-2 bg-gray-50 rounded-lg text-sm text-gray-600">
+    <span class="text-green-600 font-medium">File already uploaded.</span> Upload a new file to replace it.
+  </div>
+<% end %>

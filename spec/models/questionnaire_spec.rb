@@ -53,45 +53,6 @@ RSpec.describe Questionnaire, type: :model do
     end
   end
 
-  describe 'availability fields' do
-    it 'has include_availability_section field' do
-      questionnaire = create(:questionnaire, include_availability_section: true)
-      expect(questionnaire.include_availability_section).to be true
-    end
-
-    it 'defaults include_availability_section to false' do
-      questionnaire = create(:questionnaire)
-      expect(questionnaire.include_availability_section).to be false
-    end
-
-    it 'has require_all_availability field' do
-      questionnaire = create(:questionnaire, require_all_availability: true)
-      expect(questionnaire.require_all_availability).to be true
-    end
-
-    it 'defaults require_all_availability to false' do
-      questionnaire = create(:questionnaire)
-      expect(questionnaire.require_all_availability).to be false
-    end
-
-    it 'serializes availability_show_ids as array' do
-      questionnaire = create(:questionnaire, availability_show_ids: %w[1 2])
-      expect(questionnaire.availability_show_ids).to eq(%w[1 2])
-      expect(questionnaire.availability_show_ids).to be_a(Array)
-    end
-
-    it 'defaults availability_show_ids to empty array' do
-      questionnaire = create(:questionnaire)
-      expect(questionnaire.availability_show_ids).to eq([])
-    end
-
-    it 'persists availability_show_ids correctly' do
-      questionnaire = create(:questionnaire, availability_show_ids: %w[1 3])
-      questionnaire.reload
-      expect(questionnaire.availability_show_ids).to eq(%w[1 3])
-    end
-  end
-
   describe 'token generation' do
     it 'generates a token on create' do
       questionnaire = create(:questionnaire, token: nil)

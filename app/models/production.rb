@@ -27,9 +27,6 @@ class Production < ApplicationRecord
   has_many :production_expenses, dependent: :destroy
   has_many :production_ticketing_setups, dependent: :destroy
 
-  # Cocobases
-  has_one :cocobase_template, dependent: :destroy
-
   # Payroll and advances
   has_one :payroll_schedule, dependent: :destroy
   has_many :payroll_runs, dependent: :destroy

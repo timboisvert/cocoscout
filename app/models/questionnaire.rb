@@ -8,10 +8,9 @@ class Questionnaire < ApplicationRecord
     where(questionnaire_invitations: { invitee_type: "Person" })
   }, through: :questionnaire_invitations, source: :invitee, source_type: "Person"
   has_many :questionnaire_responses, dependent: :destroy
+  has_many :course_offerings
 
   has_rich_text :instruction_text
-
-  serialize :availability_show_ids, type: Array, coder: YAML
 
   validates :title, presence: true
   validates :token, presence: true, uniqueness: true

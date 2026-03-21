@@ -214,11 +214,8 @@ Rails.application.routes.draw do
     get   "/shows/calendar",                to: redirect("/my"),            as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
-    # Cocobases (talent-facing submission forms)
-    get   "/cocobases/:id",                 to: "cocobase_submissions#show",   as: "cocobase_submission"
-    patch "/cocobases/:id",                 to: "cocobase_submissions#update", as: "update_cocobase_submission"
 
-    # Open Requests (consolidated: availability + sign-ups + questionnaires + cocobases)
+    # Open Requests (consolidated: availability + sign-ups + questionnaires)
     get   "/requests",                      to: "open_requests#index",      as: "requests"
     patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
     post  "/requests/signup/:show_id",      to: "open_requests#sign_up",    as: "request_sign_up"
@@ -405,17 +402,6 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:show_id/roles/execute_migration", to: "show_roles#execute_migration", as: "execute_migration_show_roles"
     get  "/shows/:production_id/:show_id/roles/:id/slot_change_preview", to: "show_roles#slot_change_preview", as: "slot_change_preview_show_role"
     post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
-
-    # Cocobases - per-show instance
-    get  "/shows/:production_id/:show_id/cocobase", to: "cocobases#show", as: "show_cocobase"
-    get  "/shows/:production_id/:show_id/cocobase/edit", to: "cocobases#edit", as: "edit_show_cocobase"
-    patch "/shows/:production_id/:show_id/cocobase", to: "cocobases#update", as: "update_show_cocobase"
-    post "/shows/:production_id/:show_id/cocobase/fields", to: "cocobase_fields#create", as: "create_show_cocobase_field"
-    patch "/shows/:production_id/:show_id/cocobase/fields/:id", to: "cocobase_fields#update", as: "update_show_cocobase_field"
-    delete "/shows/:production_id/:show_id/cocobase/fields/:id", to: "cocobase_fields#destroy", as: "destroy_show_cocobase_field"
-    post "/shows/:production_id/:show_id/cocobase/fields/reorder", to: "cocobase_fields#reorder", as: "reorder_show_cocobase_fields"
-    get  "/shows/:production_id/:show_id/cocobase/submissions", to: "cocobase_submissions#index", as: "show_cocobase_submissions"
-    get  "/shows/:production_id/:show_id/cocobase/submissions/:id", to: "cocobase_submissions#show", as: "show_cocobase_submission"
 
     # Visual Assets (production-level)
     get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
@@ -643,43 +629,35 @@ Rails.application.routes.draw do
     post "/casting/availability/pre_register_all", to: "casting_availability#org_pre_register_all", as: "org_availability_pre_register_all"
     post "/casting/availability/set_availability", to: "casting_availability#org_set_availability", as: "org_availability_set_availability"
 
-    # Questionnaires (moved from communications to casting)
-    # IMPORTANT: These must come BEFORE /casting/:production_id routes to avoid "questionnaires" being treated as production_id
+    # Questionnaires (under contacts section)
     # Org-level index showing all questionnaires across productions
-    get  "/casting/questionnaires", to: "questionnaires#org_index", as: "casting_questionnaires_index"
+    get  "/contacts/questionnaires", to: "questionnaires#org_index", as: "contacts_questionnaires_index"
 
     # Production selection wizard (for org-level entry point)
-    get  "/casting/questionnaires/select_production", to: "questionnaires#select_production", as: "select_production_casting_questionnaires"
-    post "/casting/questionnaires/select_production", to: "questionnaires#save_production_selection", as: "save_production_selection_casting_questionnaires"
+    get  "/contacts/questionnaires/select_production", to: "questionnaires#select_production", as: "select_production_contacts_questionnaires"
+    post "/contacts/questionnaires/select_production", to: "questionnaires#save_production_selection", as: "save_production_selection_contacts_questionnaires"
 
     # Production-scoped questionnaires
-    get  "/casting/:production_id/questionnaires", to: "questionnaires#index", as: "casting_questionnaires"
-    get  "/casting/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_casting_questionnaire"
-    post "/casting/:production_id/questionnaires", to: "questionnaires#create", as: "create_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id", to: "questionnaires#show", as: "casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_casting_questionnaire"
-    patch "/casting/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_casting_questionnaire"
-    delete "/casting/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_casting_questionnaire"
-    post "/casting/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_casting_questionnaire"
-    patch "/casting/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_casting_questionnaire"
-    delete "/casting/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_casting_questionnaire"
-    post "/casting/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_casting_questionnaire"
-    post "/casting/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_casting_questionnaire"
-    patch "/casting/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_casting_questionnaire"
-    patch "/casting/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_casting_questionnaire"
-    get  "/casting/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_casting_questionnaire"
-
-    # Cocobases - template configuration (under casting section)
-    get  "/casting/:production_id/cocobase", to: "cocobase_templates#show", as: "casting_cocobase_template"
-    patch "/casting/:production_id/cocobase", to: "cocobase_templates#update", as: "update_casting_cocobase_template"
-    post "/casting/:production_id/cocobase/fields", to: "cocobase_template_fields#create", as: "create_casting_cocobase_template_field"
-    patch "/casting/:production_id/cocobase/fields/:id", to: "cocobase_template_fields#update", as: "update_casting_cocobase_template_field"
-    delete "/casting/:production_id/cocobase/fields/:id", to: "cocobase_template_fields#destroy", as: "destroy_casting_cocobase_template_field"
-    post "/casting/:production_id/cocobase/fields/reorder", to: "cocobase_template_fields#reorder", as: "reorder_casting_cocobase_template_fields"
+    get  "/contacts/:production_id/questionnaires", to: "questionnaires#index", as: "contacts_questionnaires"
+    get  "/contacts/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_contacts_questionnaire"
+    post "/contacts/:production_id/questionnaires", to: "questionnaires#create", as: "create_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id", to: "questionnaires#show", as: "contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_contacts_questionnaire"
+    patch "/contacts/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_contacts_questionnaire"
+    delete "/contacts/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_contacts_questionnaire"
+    post "/contacts/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_contacts_questionnaire"
+    patch "/contacts/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_contacts_questionnaire"
+    delete "/contacts/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_contacts_questionnaire"
+    post "/contacts/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_contacts_questionnaire"
+    post "/contacts/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_contacts_questionnaire"
+    patch "/contacts/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_contacts_questionnaire"
+    patch "/contacts/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/responses/table", to: "questionnaires#responses_table", as: "responses_table_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_contacts_questionnaire"
+    get  "/contacts/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_contacts_questionnaire"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
@@ -744,35 +722,35 @@ Rails.application.routes.draw do
     patch "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_casting_audition_email_assignment"
     delete "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_casting_audition_email_assignment"
 
-    # Directory - unified people and groups listing
-    get "/directory",          to: "directory#index", as: "directory"
-    patch "/directory/group/:id/update_availability", to: "directory#update_group_availability",
+    # Contacts - unified people and groups listing
+    get "/contacts",          to: "directory#index", as: "contacts"
+    patch "/contacts/group/:id/update_availability", to: "directory#update_group_availability",
                                                       as: "update_group_availability"
 
-    # Directory - people (new URL pattern: /manage/directory/people/:id)
-    get  "/directory/people/new", to: "people#new", as: "new_directory_person"
-    post "/directory/people", to: "people#create", as: "create_directory_person"
-    get  "/directory/people/search", to: "people#search", as: "search_directory_people"
-    get  "/directory/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_directory_people"
-    get  "/directory/people/check_email", to: "people#check_email", as: "check_email_directory_people"
-    get  "/directory/people/:id", to: "people#show", as: "directory_person"
-    get  "/directory/people/:id/edit", to: "people#edit", as: "edit_directory_person"
-    patch "/directory/people/:id", to: "people#update", as: "update_directory_person"
-    post "/directory/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_directory_person"
-    post "/directory/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_directory_person"
-    post "/directory/people/:id/remove_from_organization", to: "people#remove_from_organization", as: "remove_from_organization_directory_person"
-    patch "/directory/people/:id/update_availability", to: "people#update_availability", as: "update_availability_directory_person"
-    get  "/directory/people/:id/availability_modal", to: "people#availability_modal", as: "availability_modal_directory_person"
+    # Contacts - people (new URL pattern: /manage/contacts/people/:id)
+    get  "/contacts/people/new", to: "people#new", as: "new_contacts_person"
+    post "/contacts/people", to: "people#create", as: "create_contacts_person"
+    get  "/contacts/people/search", to: "people#search", as: "search_contacts_people"
+    get  "/contacts/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_contacts_people"
+    get  "/contacts/people/check_email", to: "people#check_email", as: "check_email_contacts_people"
+    get  "/contacts/people/:id", to: "people#show", as: "contacts_person"
+    get  "/contacts/people/:id/edit", to: "people#edit", as: "edit_contacts_person"
+    patch "/contacts/people/:id", to: "people#update", as: "update_contacts_person"
+    post "/contacts/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_contacts_person"
+    post "/contacts/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_contacts_person"
+    post "/contacts/people/:id/remove_from_organization", to: "people#remove_from_organization", as: "remove_from_organization_contacts_person"
+    patch "/contacts/people/:id/update_availability", to: "people#update_availability", as: "update_availability_contacts_person"
+    get  "/contacts/people/:id/availability_modal", to: "people#availability_modal", as: "availability_modal_contacts_person"
 
-    # Directory - groups (new URL pattern: /manage/directory/groups/:id)
-    get  "/directory/groups/:id", to: "groups#show", as: "directory_group"
-    patch "/directory/groups/:id", to: "groups#update", as: "update_directory_group"
-    delete "/directory/groups/:id", to: "groups#destroy", as: "destroy_directory_group"
-    post "/directory/groups/:id/add_to_cast", to: "groups#add_to_cast", as: "add_to_cast_directory_group"
-    post "/directory/groups/:id/remove_from_cast", to: "groups#remove_from_cast", as: "remove_from_cast_directory_group"
-    post "/directory/groups/:id/remove_from_organization", to: "groups#remove_from_organization", as: "remove_from_organization_directory_group"
-    patch "/directory/groups/:id/update_availability", to: "groups#update_availability", as: "update_availability_directory_group"
-    get "/directory/groups/:id/availability_modal", to: "groups#availability_modal", as: "availability_modal_directory_group"
+    # Contacts - groups (new URL pattern: /manage/contacts/groups/:id)
+    get  "/contacts/groups/:id", to: "groups#show", as: "contacts_group"
+    patch "/contacts/groups/:id", to: "groups#update", as: "update_contacts_group"
+    delete "/contacts/groups/:id", to: "groups#destroy", as: "destroy_contacts_group"
+    post "/contacts/groups/:id/add_to_cast", to: "groups#add_to_cast", as: "add_to_cast_contacts_group"
+    post "/contacts/groups/:id/remove_from_cast", to: "groups#remove_from_cast", as: "remove_from_cast_contacts_group"
+    post "/contacts/groups/:id/remove_from_organization", to: "groups#remove_from_organization", as: "remove_from_organization_contacts_group"
+    patch "/contacts/groups/:id/update_availability", to: "groups#update_availability", as: "update_availability_contacts_group"
+    get "/contacts/groups/:id/availability_modal", to: "groups#availability_modal", as: "availability_modal_contacts_group"
 
     resources :organizations do
       collection do
@@ -847,9 +825,9 @@ Rails.application.routes.draw do
       end
     end
 
-    # Email logs are accessed through directory (people/groups)
-    scope "/directory" do
-      get "/emails/:id", to: "email_logs#show", as: "directory_email"
+    # Email logs are accessed through contacts (people/groups)
+    scope "/contacts" do
+      get "/emails/:id", to: "email_logs#show", as: "contacts_email"
     end
 
     resources :locations do
@@ -1145,6 +1123,9 @@ Rails.application.routes.draw do
     post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"
     post "courses/:id/registrations/:registration_id/cancel", to: "course_offerings#cancel_registration", as: "course_offering_cancel_registration"
     post "courses/:id/registrations/:registration_id/refund", to: "course_offerings#refund_registration", as: "course_offering_refund_registration"
+    post "courses/:id/enable_questionnaire",  to: "course_offerings#enable_questionnaire",  as: "course_offering_enable_questionnaire"
+    post "courses/:id/disable_questionnaire", to: "course_offerings#disable_questionnaire", as: "course_offering_disable_questionnaire"
+    post "courses/:id/send_questionnaire",    to: "course_offerings#send_questionnaire",    as: "course_offering_send_questionnaire"
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"

@@ -1,0 +1,144 @@
+<% content_for :title, "Response Table - #{@questionnaire.title}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Contacts", manage_contacts_path],
+      [@production.name, manage_contacts_questionnaires_path(@production)],
+      ["Questionnaires", manage_contacts_questionnaires_path(@production)],
+      [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)],
+      ["Responses", responses_contacts_questionnaire_path(@production, @questionnaire)]
+    ],
+    text: "Table View",
+    links: [
+      { text: "List View", path: responses_contacts_questionnaire_path(@production, @questionnaire) }
+    ]
+  } %>
+
+  <div class="mb-4">
+    <p class="text-sm text-gray-600">
+      <%= @responses.count %> <%= @responses.count == 1 ? 'response' : 'responses' %> &middot; <%= @questions.count %> <%= @questions.count == 1 ? 'question' : 'questions' %>
+    </p>
+  </div>
+
+  <% if @responses.any? && @questions.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">
+                Respondent
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap border-r border-gray-100">
+                Submitted
+              </th>
+              <% @questions.each do |question| %>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-100 max-w-[200px]" title="<%= question.text %>">
+                  <div class="truncate max-w-[180px]"><%= question.text %></div>
+                </th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @responses.each do |response| %>
+              <tr class="hover:bg-gray-50">
+                <td class="sticky left-0 z-10 bg-white px-4 py-3 whitespace-nowrap border-r border-gray-200">
+                  <%= link_to manage_response_contacts_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "flex items-center gap-2 no-underline" do %>
+                    <% headshot_variant = response.respondent.respond_to?(:safe_headshot_variant) ? response.respondent.safe_headshot_variant(:thumb) : nil %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: response.respondent.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                        <span class="text-pink-600 font-bold text-xs"><%= response.respondent.initials %></span>
+                      </div>
+                    <% end %>
+                    <span class="text-sm font-medium text-gray-900"><%= response.respondent.name %></span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 border-r border-gray-100">
+                  <%= response.created_at.strftime("%b %-d, %Y") %>
+                </td>
+                <% @questions.each do |question| %>
+                  <td class="px-4 py-3 text-sm text-gray-700 border-r border-gray-100 max-w-[250px]">
+                    <% answer = @answers_matrix.dig(response.id, question.id) %>
+                    <% if answer %>
+                      <% type_class = question.question_type_class %>
+                      <% if type_class&.key == "file_upload" %>
+                        <% if answer.file.attached? %>
+                          <% if answer.image? %>
+                            <%= image_tag answer.file, class: "w-16 h-16 rounded object-cover" %>
+                          <% elsif answer.audio? %>
+                            <span class="inline-flex items-center gap-1 text-xs text-pink-600">
+                              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>
+                              Audio
+                            </span>
+                          <% else %>
+                            <span class="text-xs text-gray-500"><%= answer.value %></span>
+                          <% end %>
+                        <% else %>
+                          <span class="text-xs text-gray-400 italic">No file</span>
+                        <% end %>
+                      <% elsif type_class&.key == "url" %>
+                        <% if answer.youtube_url? %>
+                          <span class="inline-flex items-center gap-1 text-xs text-red-600">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                            YouTube
+                          </span>
+                        <% elsif answer.spotify_url? %>
+                          <span class="inline-flex items-center gap-1 text-xs text-green-600">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.669 11.538a.498.498 0 01-.686.166c-1.878-1.148-4.243-1.408-7.028-.771a.499.499 0 01-.222-.972c3.048-.696 5.662-.397 7.77.891a.498.498 0 01.166.686z"/></svg>
+                            Spotify
+                          </span>
+                        <% else %>
+                          <a href="<%= answer.value %>" target="_blank" rel="noopener noreferrer" class="text-xs text-pink-600 hover:text-pink-800 truncate block max-w-[200px]"><%= answer.value %></a>
+                        <% end %>
+                      <% elsif type_class&.key == "ranking" %>
+                        <% parsed = answer.value.is_a?(Array) ? answer.value : (JSON.parse(answer.value) rescue nil) %>
+                        <% if parsed.is_a?(Array) %>
+                          <ol class="text-xs space-y-0.5">
+                            <% parsed.each_with_index do |item, i| %>
+                              <li><span class="text-pink-500 font-medium"><%= i + 1 %>.</span> <%= item %></li>
+                            <% end %>
+                          </ol>
+                        <% else %>
+                          <span class="text-xs"><%= answer.value %></span>
+                        <% end %>
+                      <% elsif type_class&.key == "multiple-multiple" %>
+                        <% parsed = answer.value.is_a?(Hash) ? answer.value : (JSON.parse(answer.value) rescue nil) %>
+                        <% if parsed.is_a?(Hash) %>
+                          <div class="text-xs"><%= parsed.select { |_k, v| v.present? }.keys.join(", ") %></div>
+                        <% else %>
+                          <span class="text-xs"><%= answer.value %></span>
+                        <% end %>
+                      <% elsif type_class&.key == "yesno" %>
+                        <% if answer.value == "yes" %>
+                          <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Yes</span>
+                        <% elsif answer.value == "no" %>
+                          <span class="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full">No</span>
+                        <% end %>
+                      <% else %>
+                        <div class="truncate max-w-[200px]" title="<%= answer.value %>"><%= answer.value %></div>
+                      <% end %>
+                    <% else %>
+                      <span class="text-xs text-gray-400 italic">—</span>
+                    <% end %>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% elsif @responses.empty? %>
+    <div class="text-center py-12">
+      <p class="text-gray-600">No responses yet</p>
+    </div>
+  <% else %>
+    <div class="text-center py-12">
+      <p class="text-gray-600">No questions have been added to this questionnaire yet</p>
+    </div>
+  <% end %>
+</div>

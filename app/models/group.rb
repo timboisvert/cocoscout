@@ -32,9 +32,6 @@ class Group < ApplicationRecord
   # Shoutout associations
   has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
 
-  # Cocobase submissions
-  has_many :cocobase_submissions, as: :submittable, dependent: :destroy
-
   # Messages addressed to this group (via MessageRecipient)
   has_many :message_recipients, as: :recipient, dependent: :destroy
   has_many :received_messages, through: :message_recipients, source: :message

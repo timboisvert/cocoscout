@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_18_231452) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -351,79 +351,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
     t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
   end
 
-  create_table "cocobase_answers", force: :cascade do |t|
-    t.bigint "cocobase_field_id", null: false
-    t.bigint "cocobase_submission_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.text "value"
-    t.index ["cocobase_field_id"], name: "index_cocobase_answers_on_cocobase_field_id"
-    t.index ["cocobase_submission_id", "cocobase_field_id"], name: "idx_cocobase_answers_unique", unique: true
-    t.index ["cocobase_submission_id"], name: "index_cocobase_answers_on_cocobase_submission_id"
-  end
-
-  create_table "cocobase_fields", force: :cascade do |t|
-    t.bigint "cocobase_id", null: false
-    t.text "config"
-    t.datetime "created_at", null: false
-    t.text "description"
-    t.string "field_type", null: false
-    t.string "label", null: false
-    t.integer "position", default: 0, null: false
-    t.boolean "required", default: false, null: false
-    t.datetime "updated_at", null: false
-    t.index ["cocobase_id", "position"], name: "index_cocobase_fields_on_cocobase_id_and_position"
-    t.index ["cocobase_id"], name: "index_cocobase_fields_on_cocobase_id"
-  end
-
-  create_table "cocobase_submissions", force: :cascade do |t|
-    t.bigint "cocobase_id", null: false
-    t.datetime "created_at", null: false
-    t.string "status", default: "pending", null: false
-    t.bigint "submittable_id", null: false
-    t.string "submittable_type", null: false
-    t.datetime "submitted_at"
-    t.datetime "updated_at", null: false
-    t.index ["cocobase_id", "submittable_type", "submittable_id"], name: "idx_cocobase_submissions_unique", unique: true
-    t.index ["cocobase_id"], name: "index_cocobase_submissions_on_cocobase_id"
-    t.index ["submittable_type", "submittable_id"], name: "idx_cocobase_submissions_on_submittable"
-  end
-
-  create_table "cocobase_template_fields", force: :cascade do |t|
-    t.bigint "cocobase_template_id", null: false
-    t.text "config"
-    t.datetime "created_at", null: false
-    t.text "description"
-    t.string "field_type", null: false
-    t.string "label", null: false
-    t.integer "position", default: 0, null: false
-    t.boolean "required", default: false, null: false
-    t.datetime "updated_at", null: false
-    t.index ["cocobase_template_id", "position"], name: "idx_cocobase_tmpl_fields_on_tmpl_position"
-    t.index ["cocobase_template_id"], name: "index_cocobase_template_fields_on_cocobase_template_id"
-  end
-
-  create_table "cocobase_templates", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.integer "default_deadline_days", default: 7, null: false
-    t.boolean "enabled", default: false, null: false
-    t.text "event_types"
-    t.bigint "production_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["production_id"], name: "index_cocobase_templates_on_production_id", unique: true
-  end
-
-  create_table "cocobases", force: :cascade do |t|
-    t.bigint "cocobase_template_id"
-    t.datetime "created_at", null: false
-    t.datetime "deadline"
-    t.bigint "show_id", null: false
-    t.string "status", default: "open", null: false
-    t.datetime "updated_at", null: false
-    t.index ["cocobase_template_id"], name: "index_cocobases_on_cocobase_template_id"
-    t.index ["show_id"], name: "index_cocobases_on_show_id", unique: true
-  end
-
   create_table "content_templates", force: :cascade do |t|
     t.boolean "active", default: true
     t.jsonb "available_variables", default: []
@@ -525,6 +452,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
     t.bigint "contract_id"
     t.datetime "created_at", null: false
     t.string "currency", default: "usd", null: false
+    t.integer "delivery_delay_minutes"
+    t.string "delivery_mode"
+    t.datetime "delivery_scheduled_at"
     t.datetime "early_bird_deadline"
     t.integer "early_bird_price_cents"
     t.text "instruction_text"
@@ -534,6 +464,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
     t.datetime "opens_at"
     t.integer "price_cents", null: false
     t.bigint "production_id", null: false
+    t.bigint "questionnaire_id"
     t.string "short_code", null: false
     t.string "status", default: "draft", null: false
     t.string "stripe_early_bird_price_id"
@@ -546,6 +477,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
     t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
     t.index ["instructor_person_id"], name: "index_course_offerings_on_instructor_person_id"
     t.index ["production_id"], name: "index_course_offerings_on_production_id"
+    t.index ["questionnaire_id"], name: "index_course_offerings_on_questionnaire_id"
     t.index ["short_code"], name: "index_course_offerings_on_short_code", unique: true
     t.index ["status"], name: "index_course_offerings_on_status"
   end
@@ -1371,11 +1303,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
   create_table "questionnaires", force: :cascade do |t|
     t.boolean "accepting_responses", default: true, null: false
     t.datetime "archived_at"
-    t.text "availability_show_ids"
     t.datetime "created_at", null: false
-    t.boolean "include_availability_section", default: false, null: false
     t.bigint "production_id", null: false
-    t.boolean "require_all_availability", default: false, null: false
     t.string "title", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
@@ -2480,14 +2409,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
   add_foreign_key "casting_tables", "organizations"
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
-  add_foreign_key "cocobase_answers", "cocobase_fields"
-  add_foreign_key "cocobase_answers", "cocobase_submissions"
-  add_foreign_key "cocobase_fields", "cocobases", column: "cocobase_id"
-  add_foreign_key "cocobase_submissions", "cocobases", column: "cocobase_id"
-  add_foreign_key "cocobase_template_fields", "cocobase_templates"
-  add_foreign_key "cocobase_templates", "productions"
-  add_foreign_key "cocobases", "cocobase_templates"
-  add_foreign_key "cocobases", "shows"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contractors", "organizations"
@@ -2496,6 +2417,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_120000) do
   add_foreign_key "course_offerings", "contracts"
   add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify
   add_foreign_key "course_offerings", "productions"
+  add_foreign_key "course_offerings", "questionnaires"
   add_foreign_key "course_registrations", "course_offerings"
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"

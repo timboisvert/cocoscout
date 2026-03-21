@@ -40,6 +40,12 @@ class PayoutCalculator
     # Get performers from show assignments (including guests)
     assignments = @show.show_person_role_assignments.includes(:assignable, :role)
 
+    # Filter out assignments for excluded roles
+    excluded_role_ids = (@rules["excluded_role_ids"] || []).map(&:to_i)
+    if excluded_role_ids.any?
+      assignments = assignments.reject { |a| excluded_role_ids.include?(a.role_id) }
+    end
+
     # Separate regular performers and guest assignments
     regular_performers = assignments.reject(&:guest?).map(&:assignable).compact.uniq
     guest_assignments = assignments.select(&:guest?)

@@ -26,7 +26,7 @@ module Manage
 
     def set_expense_item
       @expense_item = ExpenseItem.joins(show_financials: { show: :production })
-                                 .where(productions: { organization: Current.organization })
+                                 .where(productions: { organization: Current.organization, id: Current.user.accessible_productions.select(:id) })
                                  .find(params[:id])
     end
   end

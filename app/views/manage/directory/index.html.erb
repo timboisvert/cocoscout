@@ -1,13 +1,14 @@
-<% content_for :title, "Directory" %>
+<% content_for :title, "Contacts" %>
 
 <%
   directory_actions = [
-    { icon: "user-plus", text: "Invite People", description: "Add new performers or staff", path: new_manage_person_path }
+    { icon: "user-plus", text: "Invite People", description: "Add new performers or staff", path: new_manage_person_path },
+    { icon: "clipboard-list", text: "Questionnaires", description: "Create and manage questionnaires", path: manage_contacts_questionnaires_index_path }
   ]
 
   directory_description = <<~HTML
     <p>
-      Your organization's directory of performers, staff, and groups. Search, filter, and manage everyone
+      Your organization's contacts — performers, staff, and groups. Search, filter, and manage everyone
       who's part of your productions.
     </p>
   HTML
@@ -17,7 +18,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render "shared/module_header",
-    title: "Directory",
+    title: "Contacts",
     description: directory_description,
     actions: directory_actions
   %>
@@ -25,7 +26,7 @@
   <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search Bar - Always Visible %>
   <div class="mb-4" data-controller="search-bar">
-    <%= form_with url: manage_directory_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+    <%= form_with url: manage_contacts_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
       <div class="relative flex-1">
         <input
           type="text"
@@ -164,7 +165,7 @@
         {
           partial: "shared/filters/view_mode_filter",
           locals: {
-            path_helper: method(:manage_directory_path),
+            path_helper: method(:manage_contacts_path),
             current_mode: @show,
             q: @search,
             sort: @sort,
@@ -201,11 +202,11 @@
     <% if @pagy.pages > 1 && @pagy.page < @pagy.pages %>
       <%= turbo_frame_tag "pagination" do %>
         <div data-controller="infinite-scroll"
-             data-infinite-scroll-url-value="<%= manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream) %>"
+             data-infinite-scroll-url-value="<%= manage_contacts_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream) %>"
              data-infinite-scroll-page-value="<%= @pagy.page %>"
              data-infinite-scroll-pages-value="<%= @pagy.pages %>">
           <%= link_to "Load More",
-                  manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream),
+                  manage_contacts_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream),
                   data: {
                     infinite_scroll_target: "nextLink"
                   },
@@ -226,7 +227,7 @@
         <p class="text-lg font-medium mb-2">No results found</p>
         <% if @search.present? %>
           <p>Try adjusting your filters or search query.</p>
-          <%= link_to "Clear all filters", manage_directory_path, class: "inline-block mt-3 text-pink-500 hover:text-pink-600 font-medium" %>
+          <%= link_to "Clear all filters", manage_contacts_path, class: "inline-block mt-3 text-pink-500 hover:text-pink-600 font-medium" %>
         <% else %>
           <p>No people or groups in this organization yet.</p>
         <% end %>

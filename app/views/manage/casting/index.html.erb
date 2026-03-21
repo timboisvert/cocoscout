@@ -9,9 +9,8 @@
     ],
     text: @production.name,
     links: [
-      { text: "Questionnaires", path: manage_casting_questionnaires_path(@production), icon: "clipboard-list" },
-      (Current.user&.superadmin? ? { text: "Cocobase", path: manage_casting_cocobase_template_path(@production), icon: "clipboard" } : nil)
-    ].compact
+      { text: "Questionnaires", path: manage_contacts_questionnaires_path(@production), icon: "clipboard-list" }
+    ]
   } %>
 
   <div class="pt-4 mt-2" data-controller="casting-filter">

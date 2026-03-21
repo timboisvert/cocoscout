@@ -30,18 +30,13 @@
     </div>
   <% end %>
 
-  <%
-    show_links = []
-    show_links << { text: "Cocobase", path: manage_show_cocobase_path(@production, @show), icon: "clipboard" } if @show.cocobase.present? && Current.user&.superadmin?
-  %>
-
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Shows & Events", manage_shows_path],
       [@production.name, manage_production_shows_path(@production)]
     ],
     text: "#{@show.event_type.titleize}",
-    links: show_links
+    links: []
   } %>
 
   <%

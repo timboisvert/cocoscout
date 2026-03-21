@@ -6,6 +6,7 @@ module Manage
       show edit update open_registration close_registration
       search_instructor update_instructor invite_instructor
       cancel_registration refund_registration
+      enable_questionnaire disable_questionnaire send_questionnaire
     ]
 
     def index
@@ -210,6 +211,47 @@ module Manage
       end
     end
 
+    def enable_questionnaire
+      if @course_offering.questionnaire.present?
+        redirect_to manage_edit_course_offering_path(@course_offering, tab: 3), notice: "Questionnaire is already enabled."
+        return
+      end
+
+      questionnaire = Questionnaire.create!(
+        production: @course_offering.production,
+        title: "#{@course_offering.title} - Registration Questionnaire",
+        accepting_responses: true
+      )
+
+      @course_offering.update!(questionnaire: questionnaire, delivery_mode: "immediate")
+
+      redirect_to manage_form_contacts_questionnaire_path(@course_offering.production, questionnaire),
+                  notice: "Questionnaire created. Add your questions below."
+    end
+
+    def disable_questionnaire
+      @course_offering.update!(questionnaire: nil, delivery_mode: nil, delivery_delay_minutes: nil, delivery_scheduled_at: nil)
+      redirect_to manage_edit_course_offering_path(@course_offering, tab: 3), notice: "Questionnaire disabled."
+    end
+
+    def send_questionnaire
+      unless @course_offering.questionnaire.present?
+        redirect_to manage_edit_course_offering_path(@course_offering, tab: 3), alert: "No questionnaire configured."
+        return
+      end
+
+      count = 0
+      @course_offering.course_registrations.where(status: :confirmed).find_each do |registration|
+        next if @course_offering.questionnaire.questionnaire_invitations.exists?(invitee: registration.person)
+
+        CourseQuestionnaireDeliveryJob.perform_later(registration.id)
+        count += 1
+      end
+
+      redirect_to manage_course_offering_path(@course_offering),
+                  notice: "Questionnaire queued for #{count} #{'registrant'.pluralize(count)}."
+    end
+
     private
 
     def load_course_offering
@@ -217,6 +259,11 @@ module Manage
       # Verify it belongs to the current organization
       unless @course_offering.production.organization == Current.organization
         redirect_to manage_course_offerings_path, alert: "Course offering not found."
+        return
+      end
+      # Verify user has access to this production
+      unless Current.user.accessible_productions.include?(@course_offering.production)
+        redirect_to manage_course_offerings_path, alert: "You do not have access to this course offering."
       end
     end
 
@@ -226,7 +273,8 @@ module Manage
         :early_bird_deadline,
         :currency, :capacity, :opens_at, :closes_at,
         :instruction_text, :success_text,
-        :instructor_bio
+        :instructor_bio,
+        :delivery_mode, :delivery_delay_minutes, :delivery_scheduled_at
       )
 
       # Convert dollar amounts to cents

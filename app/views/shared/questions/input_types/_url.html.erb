@@ -1,0 +1,6 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please provide a URL for this question</div>
+<% end %>
+
+<%= url_field_tag "question[#{question.id}]", answer_value, placeholder: "https://...", class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", required: required %>
+<p class="mt-1 text-xs text-gray-400">YouTube, Spotify, or any web link.</p>

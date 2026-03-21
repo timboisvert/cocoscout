@@ -25,7 +25,7 @@ module Manage
         @back_path = manage_group_path(@recipient_entity)
         @emails_tab_path = "#{@back_path}#tab-4"
       else
-        @back_path = manage_directory_path
+        @back_path = manage_contacts_path
         @emails_tab_path = @back_path
       end
     end

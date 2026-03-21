@@ -17,11 +17,11 @@
 <%= turbo_frame_tag "pagination" do %>
   <% if @pagy.page < @pagy.pages %>
     <div data-controller="infinite-scroll"
-         data-infinite-scroll-url-value="<%= manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type) %>"
+         data-infinite-scroll-url-value="<%= manage_contacts_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type) %>"
          data-infinite-scroll-page-value="<%= @pagy.page %>"
          data-infinite-scroll-pages-value="<%= @pagy.pages %>">
       <%= link_to "Load More",
-              manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type),
+              manage_contacts_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type),
               data: {
                 infinite_scroll_target: "nextLink",
                 turbo_frame: "pagination"

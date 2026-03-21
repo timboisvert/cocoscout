@@ -42,6 +42,11 @@ module Manage
       session[:directory_type] = @type
 
       # Use service to build queries
+      # For users without manager/viewer default role, scope to their accessible productions
+      accessible_prod_ids = unless %w[manager viewer].include?(Current.user.default_role)
+        Current.user.accessible_productions.pluck(:id)
+      end
+
       query_service = DirectoryQueryService.new(
         {
           sort: @sort,
@@ -51,7 +56,8 @@ module Manage
           talent_pool_id: @talent_pool_id
         },
         Current.organization,
-        Current.production
+        Current.production,
+        accessible_production_ids: accessible_prod_ids
       )
 
       people, groups = query_service.call
