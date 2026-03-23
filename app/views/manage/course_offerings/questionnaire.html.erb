@@ -157,6 +157,45 @@
         </div>
       </div>
 
+      <%# ── Responses ── %>
+      <div class="bg-white border border-gray-200 rounded-lg mb-6">
+        <%= render "shared/card_header",
+          title: "Responses (#{@context_responded}/#{@context_invited})",
+          links: @context_responses.any? ? [
+            { text: "View All", path: manage_responses_contacts_questionnaire_path(@questionnaire) },
+            { text: "Grid View", path: manage_responses_table_contacts_questionnaire_path(@questionnaire) }
+          ] : [] %>
+        <div class="p-5">
+          <% if @context_responses.any? %>
+            <div class="space-y-2">
+              <% @context_responses.each do |response| %>
+                <% respondent = response.respondent %>
+                <% next unless respondent %>
+                <%= link_to manage_response_contacts_questionnaire_path(@questionnaire, response_id: response.id), class: "flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition no-underline" do %>
+                  <% headshot_variant = respondent.respond_to?(:safe_headshot_variant) ? respondent.safe_headshot_variant(:thumb) : nil %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: respondent.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
+                      <%= respondent.initials %>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate"><%= respondent.name %></p>
+                    <p class="text-xs text-gray-500"><%= time_ago_in_words(response.created_at) %> ago</p>
+                  </div>
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500">No responses yet.</p>
+          <% end %>
+        </div>
+      </div>
+
       <%# ── Manual Send (only when delivery mode is manual) ── %>
       <% if @course_offering.delivery_mode == "manual" %>
         <div class="bg-white border border-gray-200 rounded-lg">

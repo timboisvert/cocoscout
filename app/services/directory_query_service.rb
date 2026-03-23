@@ -33,11 +33,10 @@ class DirectoryQueryService
   def base_people_query
     scope = organization.people
     if accessible_production_ids
-      # Include people from talent pools owned by accessible productions
-      # OR shared with accessible productions
-      pool_ids = TalentPool.where(production_id: accessible_production_ids)
-        .or(TalentPool.joins(:talent_pool_shares).where(talent_pool_shares: { production_id: accessible_production_ids }))
-        .select(:id)
+      # Include people from talent pools owned by or shared with accessible productions
+      owned_ids = TalentPool.where(production_id: accessible_production_ids).pluck(:id)
+      shared_ids = TalentPoolShare.where(production_id: accessible_production_ids).pluck(:talent_pool_id)
+      pool_ids = (owned_ids + shared_ids).uniq
       scope.where(id: TalentPoolMembership.where(talent_pool_id: pool_ids, member_type: "Person").select(:member_id))
     else
       scope
@@ -47,9 +46,9 @@ class DirectoryQueryService
   def base_groups_query
     scope = organization.groups.where(archived_at: nil)
     if accessible_production_ids
-      pool_ids = TalentPool.where(production_id: accessible_production_ids)
-        .or(TalentPool.joins(:talent_pool_shares).where(talent_pool_shares: { production_id: accessible_production_ids }))
-        .select(:id)
+      owned_ids = TalentPool.where(production_id: accessible_production_ids).pluck(:id)
+      shared_ids = TalentPoolShare.where(production_id: accessible_production_ids).pluck(:talent_pool_id)
+      pool_ids = (owned_ids + shared_ids).uniq
       scope.where(id: TalentPoolMembership.where(talent_pool_id: pool_ids, member_type: "Group").select(:member_id))
     else
       scope

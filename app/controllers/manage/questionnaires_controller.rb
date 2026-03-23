@@ -5,11 +5,16 @@ module Manage
     before_action :set_questionnaire,
                   only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
                            responses responses_table show_response invite_people]
+    before_action :ensure_questionnaire_access, only: %i[show responses responses_table show_response]
+    before_action :ensure_global_manager_for_questionnaire, only: %i[
+      new create update archive unarchive form preview
+      create_question update_question destroy_question reorder_questions invite_people
+    ]
 
     def index
       @filter = params[:filter] || "all"
 
-      base = Current.organization.questionnaires
+      base = accessible_questionnaires_scope
       @questionnaires = case @filter
       when "accepting"
         base.where(archived_at: nil, accepting_responses: true).order(created_at: :desc)
@@ -247,6 +252,32 @@ module Manage
 
     def set_questionnaire
       @questionnaire = Current.organization.questionnaires.find(params[:id])
+    end
+
+    def accessible_questionnaires_scope
+      if Current.user.manager? || Current.user.default_role == "viewer"
+        Current.organization.questionnaires
+      else
+        production_ids = Current.user.accessible_productions.pluck(:id)
+        questionnaire_ids = CourseOffering.where(production_id: production_ids)
+                                          .where.not(questionnaire_id: nil)
+                                          .pluck(:questionnaire_id)
+        direct_ids = Current.organization.questionnaires.where(production_id: production_ids).pluck(:id)
+        Current.organization.questionnaires.where(id: (questionnaire_ids + direct_ids).uniq)
+      end
+    end
+
+    def ensure_questionnaire_access
+      return if Current.user.manager? || Current.user.default_role == "viewer"
+      return if accessible_questionnaires_scope.exists?(id: @questionnaire.id)
+
+      redirect_to manage_contacts_questionnaires_path, alert: "You do not have access to this questionnaire."
+    end
+
+    def ensure_global_manager_for_questionnaire
+      return if Current.user.manager?
+
+      redirect_to manage_contacts_questionnaires_path, alert: "You do not have permission to manage questionnaires."
     end
 
     def questionnaire_params

@@ -294,6 +294,7 @@ module Manage
       permission = ProductionPermission.find_by(user: user, production: @production)
 
       if permission&.destroy
+        ProductionNotificationSetting.find_by(user: user, production: @production)&.destroy
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
                     notice: "#{user.person&.name || user.email_address} removed from production team"
       else

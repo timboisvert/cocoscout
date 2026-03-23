@@ -267,6 +267,10 @@ module Manage
       if @questionnaire
         @context_invited = @questionnaire.questionnaire_invitations.where(context: @course_offering).count
         @context_responded = @questionnaire.questionnaire_responses.where(context: @course_offering).count
+        @context_responses = @questionnaire.questionnaire_responses
+          .where(context: @course_offering)
+          .includes(:respondent)
+          .order(created_at: :desc)
 
         @email_draft = @course_offering.email_draft || @course_offering.build_email_draft(
           title: "Please complete a questionnaire",

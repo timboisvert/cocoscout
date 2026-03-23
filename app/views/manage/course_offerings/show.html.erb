@@ -28,7 +28,7 @@
     text: @course_offering.title,
     links: [
       { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
-      { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
+      { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering), always_visible: true }
     ]
   } %>
 
