@@ -1,15 +1,14 @@
-<% content_for :title, "#{@production.name} - #{@questionnaire.title}" %>
+<% content_for :title, "CocoScout - #{@questionnaire.title}" %>
 
 <% content_for :head do %>
-  <meta name="description" content="Respond to questionnaire for <%= @production.name %>">
+  <meta name="description" content="Respond to questionnaire: <%= @questionnaire.title %>">
   <link rel="canonical" href="<%= my_questionnaire_form_url(token: @questionnaire.token) %>">
 <% end %>
 
 <div class="min-h-screen bg-white flex items-center justify-center px-4 py-12">
   <div class="w-full max-w-md">
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-slate-900 mb-2 coustard-regular"><%= @production.name %></h1>
-      <p class="text-lg text-slate-600"><%= @questionnaire.title %></p>
+      <h1 class="text-3xl font-bold text-slate-900 mb-2 coustard-regular"><%= @questionnaire.title %></h1>
     </div>
 
     <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6">

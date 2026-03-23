@@ -48,10 +48,11 @@ module My
       groups_in_productions = @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
       @has_any_productions = productions_exist || groups_in_productions
 
-      # Calculate badge counts for navigation
-      @total_open_count = @availability_items.count { |i| i[:availability].nil? } +
-                          @signup_items.count { |i| i[:registration].nil? } +
-                          @questionnaire_items.size
+      # Calculate badge counts for tabs (always count "awaiting" items regardless of filter)
+      @signup_awaiting_count = @signup_items.count { |i| i[:registration].nil? && !i[:declined] }
+      @availability_awaiting_count = @availability_items.count { |i| i[:availability].nil? }
+      @questionnaire_awaiting_count = @questionnaire_items.count { |i| !i[:responded] }
+      @total_open_count = @signup_awaiting_count + @availability_awaiting_count + @questionnaire_awaiting_count
     end
 
     def update_availability
@@ -421,7 +422,14 @@ module My
                                                  .uniq
 
       questionnaires = Questionnaire.where(id: questionnaire_ids)
-                                    .includes(:production, :questionnaire_invitations, :questionnaire_responses)
+                                    .includes(:organization, :production, :questionnaire_invitations, :questionnaire_responses)
+
+      # Pre-load invitation contexts for display (course offerings and their productions)
+      invitations_with_context = QuestionnaireInvitation
+        .where(invitee_type: "Person", invitee_id: selected_person_ids, questionnaire_id: questionnaire_ids)
+        .where.not(context_type: nil)
+        .includes(context: :production)
+        .group_by { |i| [ i.questionnaire_id, i.invitee_id ] }
 
       questionnaires.each do |questionnaire|
         selected_person_ids.each do |person_id|
@@ -435,11 +443,20 @@ module My
           next if questionnaire.archived_at.present?
           next unless questionnaire.accepting_responses
 
+          # Determine the best context name to display
+          invitation_context = invitations_with_context[[ questionnaire.id, person_id ]]&.first&.context
+          context_name = if invitation_context.is_a?(CourseOffering)
+                           invitation_context.title
+          elsif questionnaire.production
+                           questionnaire.production.name
+          end
+
           @questionnaire_items << {
             questionnaire: questionnaire,
             entity: person,
             entity_key: "person_#{person_id}",
-            responded: responded
+            responded: responded,
+            context_name: context_name
           }
         end
       end

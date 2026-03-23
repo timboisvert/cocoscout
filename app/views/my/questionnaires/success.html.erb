@@ -20,8 +20,7 @@
 
     <!-- Production Info -->
     <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 text-center">
-      <h2 class="text-xl font-semibold text-slate-900 mb-2"><%= @production.name %></h2>
-      <p class="text-sm text-slate-600 mb-4"><%= @questionnaire.title %></p>
+      <h2 class="text-xl font-semibold text-slate-900 mb-2"><%= @questionnaire.title %></h2>
       <% if @questionnaire.accepting_responses %>
         <p class="text-sm text-slate-600">
           You can update your response anytime by visiting the questionnaire link again.
@@ -31,7 +30,9 @@
 
     <!-- Back to Dashboard -->
     <div class="text-center mt-8">
-      <%= link_to "Back to Open Requests", my_requests_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
+      <%= link_to my_requests_path do %>
+        <%= render "shared/button", text: "Back to Open Requests", variant: "primary", size: "medium" %>
+      <% end %>
     </div>
 
   </div>

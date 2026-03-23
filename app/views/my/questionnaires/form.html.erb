@@ -1,7 +1,7 @@
 <% content_for :title, "CocoScout - #{@questionnaire.title}" %>
 
 <% content_for :head do %>
-  <meta name="description" content="Respond to questionnaire for <%= @production.name %>">
+  <meta name="description" content="Respond to questionnaire: <%= @questionnaire.title %>">
   <link rel="canonical" href="<%= my_questionnaire_form_url(token: @questionnaire.token) %>">
 <% end %>
 
@@ -10,8 +10,7 @@
 
     <!-- Full-Width Header -->
     <div class="mb-8 sm:mb-10">
-      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-      <p class="text-lg text-slate-600"><%= @questionnaire.title %></p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @questionnaire.title %></h1>
     </div>
 
     <!-- Two Column Layout: Instruction Text & Form -->

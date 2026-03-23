@@ -6,7 +6,8 @@
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
       ["Questionnaires", manage_contacts_questionnaires_path],
-      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)]
+      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)],
+      ["Responses", manage_responses_contacts_questionnaire_path(@questionnaire)]
     ],
     text: @response.respondent.name,
     links: []

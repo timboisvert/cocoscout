@@ -182,8 +182,8 @@ module Manage
 
       # Get email content from EmailDraft form fields
       email_draft_params = params[:email_draft] || {}
-      subject_template = email_draft_params[:title].presence || default_questionnaire_email_subject
-      message_template = email_draft_params[:body].to_s.presence || default_questionnaire_email_body
+      custom_subject = email_draft_params[:title].presence
+      custom_body = email_draft_params[:body].to_s.presence
 
       # Get IDs of already invited people
       already_invited_person_ids = @questionnaire.questionnaire_invitations
@@ -195,7 +195,6 @@ module Manage
                                               .reject { |p| already_invited_person_ids.include?(p.id) }
 
       invitation_count = 0
-      org_name = Current.organization.name
 
       # Create invitations for people and send messages
       person_recipients.each do |person|
@@ -207,24 +206,34 @@ module Manage
 
         # Send in-app message if person has a user account
         if person.user
-          questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
-            @questionnaire,
+          questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_form_url(
+            token: @questionnaire.token,
             host: ENV.fetch("HOST", "localhost:3000")
           )
 
-          rendered = ContentTemplateService.render("questionnaire_invitation", {
+          variables = {
             person_name: person.first_name || "there",
             questionnaire_title: @questionnaire.title,
-            production_name: org_name,
-            questionnaire_url: questionnaire_url,
-            custom_message: message_template
-          })
+            questionnaire_url: questionnaire_url
+          }
+
+          if custom_subject.present? && custom_body.present?
+            # Use customized content with variable interpolation
+            subject = custom_subject
+            body = custom_body.gsub("{{questionnaire_url}}", questionnaire_url)
+                              .gsub("{{person_name}}", person.first_name || "there")
+                              .gsub("{{questionnaire_title}}", @questionnaire.title)
+          else
+            rendered = ContentTemplateService.render("questionnaire_invitation", variables)
+            subject = rendered[:subject]
+            body = rendered[:body]
+          end
 
           MessageService.send_direct(
             sender: Current.user,
             recipient_person: person,
-            subject: rendered[:subject],
-            body: rendered[:body],
+            subject: subject,
+            body: body,
             organization: Current.organization
           )
         end
@@ -251,14 +260,12 @@ module Manage
 
     def default_questionnaire_email_subject
       ContentTemplateService.render_subject("questionnaire_invitation", {
-        production_name: Current.organization.name,
         questionnaire_title: @questionnaire.title
       })
     end
 
     def default_questionnaire_email_body
       ContentTemplateService.render_body("questionnaire_invitation", {
-        production_name: Current.organization.name,
         questionnaire_title: @questionnaire.title,
         questionnaire_url: @questionnaire.respond_url
       })

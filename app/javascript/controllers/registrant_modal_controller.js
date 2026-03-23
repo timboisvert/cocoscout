@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "backdrop", "name", "email", "headshot", "initials",
         "status", "amount", "date", "cancelForm", "refundForm",
-        "confirmPanel", "actionPanel"]
+        "confirmPanel", "actionPanel", "responseLink"]
 
     open(event) {
         event.preventDefault()
@@ -20,6 +20,7 @@ export default class extends Controller {
         const cancelUrl = el.dataset.registrantCancelUrl
         const refundUrl = el.dataset.registrantRefundUrl
         const canRefund = el.dataset.registrantCanRefund === "true"
+        const responseUrl = el.dataset.registrantResponseUrl
 
         // Populate modal
         this.nameTarget.textContent = name
@@ -57,6 +58,16 @@ export default class extends Controller {
         const cancelSection = this.element.querySelector('[data-cancel-section]')
         if (cancelSection) {
             cancelSection.classList.toggle('hidden', status === 'refunded' || status === 'cancelled')
+        }
+
+        // Show/hide questionnaire response link
+        if (this.hasResponseLinkTarget) {
+            if (responseUrl) {
+                this.responseLinkTarget.classList.remove('hidden')
+                this.responseLinkTarget.href = responseUrl
+            } else {
+                this.responseLinkTarget.classList.add('hidden')
+            }
         }
 
         // Reset to action panel

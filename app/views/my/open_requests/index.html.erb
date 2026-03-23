@@ -21,148 +21,154 @@
   %>
 
   <%# ========================================= %>
-  <%# Section 1: Sign-up Opportunities %>
+  <%# Filter Bar %>
   <%# ========================================= %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Sign-ups" %>
-    <div class="p-4">
-      <p class="text-sm text-gray-600 mb-4">Register for these events to reserve your spot.</p>
-
-      <%# Filter bar inside card %>
-      <div class="mb-4">
-        <%= render "shared/filters/filter_bar",
-            toggle_label: "Filters",
-            filter_groups: [
-              {
-                label: "Show",
-                filters: view_filters
-              }
-            ]
-        %>
-      </div>
-
-      <% has_any_signups = @signup_items.any? || @non_event_signups.any? %>
-      <% if has_any_signups %>
-        <div class="space-y-1">
-          <%# Event-based sign-ups %>
-          <% @signup_items.each do |item| %>
-            <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
-              <%= render partial: "my/open_requests/request_item", locals: { item: item } %>
-            </div>
-          <% end %>
-
-          <%# Non-event sign-ups (waitlists, shared pools) %>
-          <% @non_event_signups.each do |item| %>
-            <%= render partial: "my/open_requests/non_event_signup", locals: { item: item } %>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="border-2 border-dashed border-gray-200 rounded-lg">
-          <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No sign-ups</h3>
-            <p class="mt-1 text-sm text-gray-500">No sign-up opportunities are awaiting your response.</p>
-          </div>
-        </div>
-      <% end %>
-    </div>
+  <div class="mb-4">
+    <%= render "shared/filters/filter_bar",
+        toggle_label: "Filters",
+        filter_groups: [
+          {
+            label: "Show",
+            filters: view_filters
+          },
+          has_multiple_entities ? { separator: true } : nil,
+          has_multiple_entities ? {
+            partial: "shared/filters/entity_filter",
+            locals: {
+              path_helper: method(:my_requests_path),
+              people: @people,
+              groups: @groups,
+              entity_filter: @entity_filter,
+              label: "Include",
+              filter: @filter
+            }
+          } : nil
+        ].compact
+    %>
   </div>
 
   <%# ========================================= %>
-  <%# Section 2: Availability Requests %>
+  <%# Tabbed Content %>
   <%# ========================================= %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Availability", links: [{ text: "Availability Calendar", path: my_availability_calendar_path }] %>
-    <div class="p-4">
-      <p class="text-sm text-gray-600 mb-4">Let your production managers know if you can make these shows.</p>
-
-      <%# Filter bar inside card %>
-      <div class="mb-4">
-        <%= render "shared/filters/filter_bar",
-            toggle_label: "Filters",
-            filter_groups: [
-              {
-                label: "Show",
-                filters: view_filters
-              },
-              has_multiple_entities ? { separator: true } : nil,
-              has_multiple_entities ? {
-                partial: "shared/filters/entity_filter",
-                locals: {
-                  path_helper: method(:my_requests_path),
-                  people: @people,
-                  groups: @groups,
-                  entity_filter: @entity_filter,
-                  label: "Include",
-                  filter: @filter
-                }
-              } : nil
-            ].compact
-        %>
-      </div>
-
-      <% if @availability_items.any? %>
-        <div class="space-y-1" data-controller="linked-highlight">
-          <% @availability_items.each do |item| %>
-            <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
-              <%= render partial: "my/open_requests/request_item", locals: { item: item } %>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="border-2 border-dashed border-gray-200 rounded-lg">
-          <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No availability requests</h3>
-            <p class="mt-1 text-sm text-gray-500">No availability requests are awaiting your response.</p>
-          </div>
-        </div>
-      <% end %>
+  <div data-controller="tabs">
+    <%# Tab bar %>
+    <div class="flex border-b border-gray-200 mb-0">
+      <button data-tabs-target="tab" data-index="0" data-action="click->tabs#select"
+              class="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer">
+        Sign-ups
+        <% if @signup_awaiting_count > 0 %>
+          <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @signup_awaiting_count %></span>
+        <% end %>
+      </button>
+      <button data-tabs-target="tab" data-index="1" data-action="click->tabs#select"
+              class="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer">
+        Availability
+        <% if @availability_awaiting_count > 0 %>
+          <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @availability_awaiting_count %></span>
+        <% end %>
+      </button>
+      <button data-tabs-target="tab" data-index="2" data-action="click->tabs#select"
+              class="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer">
+        Questionnaires
+        <% if @questionnaire_awaiting_count > 0 %>
+          <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @questionnaire_awaiting_count %></span>
+        <% end %>
+      </button>
     </div>
-  </div>
 
-  <%# ========================================= %>
-  <%# Section 3: Questionnaires %>
-  <%# ========================================= %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Questionnaires" %>
-    <div class="p-4">
-      <p class="text-sm text-gray-600 mb-4">Complete these questionnaires from your production managers.</p>
+    <%# ========================================= %>
+    <%# Panel 0: Sign-ups %>
+    <%# ========================================= %>
+    <div data-tabs-target="panel" class="bg-white border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-4">Register for these events to reserve your spot.</p>
 
-      <%# Filter bar inside card %>
-      <div class="mb-4">
-        <%= render "shared/filters/filter_bar",
-            toggle_label: "Filters",
-            filter_groups: [
-              {
-                label: "Show",
-                filters: view_filters
-              }
-            ]
-        %>
+        <% has_any_signups = @signup_items.any? || @non_event_signups.any? %>
+        <% if has_any_signups %>
+          <div class="space-y-1">
+            <% @signup_items.each do |item| %>
+              <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
+                <%= render partial: "my/open_requests/request_item", locals: { item: item } %>
+              </div>
+            <% end %>
+
+            <% @non_event_signups.each do |item| %>
+              <%= render partial: "my/open_requests/non_event_signup", locals: { item: item } %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="border-2 border-dashed border-gray-200 rounded-lg">
+            <div class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No sign-ups</h3>
+              <p class="mt-1 text-sm text-gray-500">No sign-up opportunities are awaiting your response.</p>
+            </div>
+          </div>
+        <% end %>
       </div>
+    </div>
 
-      <% if @questionnaire_items.any? %>
-        <div class="space-y-2">
-          <% @questionnaire_items.each do |item| %>
-            <%= render partial: "my/open_requests/questionnaire_item", locals: { item: item } %>
+    <%# ========================================= %>
+    <%# Panel 1: Availability %>
+    <%# ========================================= %>
+    <div data-tabs-target="panel" class="hidden bg-white border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-600">Let your production managers know if you can make these shows.</p>
+          <%= link_to my_availability_calendar_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium whitespace-nowrap ml-4" do %>
+            Availability Calendar &rarr;
           <% end %>
         </div>
-      <% else %>
-        <div class="border-2 border-dashed border-gray-200 rounded-lg">
-          <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No questionnaires</h3>
-            <p class="mt-1 text-sm text-gray-500">No questionnaires are awaiting your response.</p>
+
+        <% if @availability_items.any? %>
+          <div class="space-y-1" data-controller="linked-highlight">
+            <% @availability_items.each do |item| %>
+              <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
+                <%= render partial: "my/open_requests/request_item", locals: { item: item } %>
+              </div>
+            <% end %>
           </div>
-        </div>
-      <% end %>
+        <% else %>
+          <div class="border-2 border-dashed border-gray-200 rounded-lg">
+            <div class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No availability requests</h3>
+              <p class="mt-1 text-sm text-gray-500">No availability requests are awaiting your response.</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# ========================================= %>
+    <%# Panel 2: Questionnaires %>
+    <%# ========================================= %>
+    <div data-tabs-target="panel" class="hidden bg-white border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-4">Complete these questionnaires from your production managers.</p>
+
+        <% if @questionnaire_items.any? %>
+          <div class="space-y-2">
+            <% @questionnaire_items.each do |item| %>
+              <%= render partial: "my/open_requests/questionnaire_item", locals: { item: item } %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="border-2 border-dashed border-gray-200 rounded-lg">
+            <div class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No questionnaires</h3>
+              <p class="mt-1 text-sm text-gray-500">No questionnaires are awaiting your response.</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
     </div>
   </div>
 

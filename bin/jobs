@@ -4,5 +4,8 @@
 # Must be set before Ruby starts to prevent crashes on macOS
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
+# Use async mode (threads) instead of fork mode on macOS to prevent SIGSEGV crashes
+export SOLID_QUEUE_SUPERVISOR_MODE=async
+
 # Run Solid Queue via bundler
 exec bundle exec rails solid_queue:start "$@"

@@ -6,6 +6,7 @@ class CourseOffering < ApplicationRecord
   belongs_to :instructor_person, class_name: "Person", optional: true
   belongs_to :questionnaire, optional: true
   has_many :course_registrations, dependent: :restrict_with_error
+  has_one :email_draft, as: :emailable, dependent: :destroy
 
   has_one :organization, through: :production
 

@@ -25,6 +25,13 @@ module Manage
         .includes(:person)
         .order(registered_at: :desc)
       @sessions = @course_offering.sessions
+
+      if @course_offering.questionnaire_id?
+        @questionnaire_responses_by_person = @course_offering.questionnaire
+          .questionnaire_responses
+          .where(respondent_type: "Person")
+          .index_by(&:respondent_id)
+      end
     end
 
     def edit
@@ -260,12 +267,18 @@ module Manage
       if @questionnaire
         @context_invited = @questionnaire.questionnaire_invitations.where(context: @course_offering).count
         @context_responded = @questionnaire.questionnaire_responses.where(context: @course_offering).count
+
+        @email_draft = @course_offering.email_draft || @course_offering.build_email_draft(
+          title: "Please complete a questionnaire",
+          body: '<p>Hi {{person_name}},</p><p>Please fill out the following questionnaire:</p><p><a href="{{questionnaire_url}}">{{questionnaire_title}}</a></p>'
+        )
       end
     end
 
     def update_questionnaire_settings
       if params[:questionnaire_id] == ""
-        # Unlinking questionnaire
+        # Unlinking questionnaire — also remove the saved email draft
+        @course_offering.email_draft&.destroy
         @course_offering.update!(questionnaire: nil, delivery_mode: nil, delivery_delay_minutes: nil, delivery_scheduled_at: nil)
         redirect_to manage_course_offering_questionnaire_path(@course_offering), notice: "Questionnaire unlinked."
         return
@@ -281,6 +294,13 @@ module Manage
       updates[:delivery_scheduled_at] = params[:delivery_scheduled_at] if params[:delivery_scheduled_at].present?
 
       @course_offering.update!(updates)
+
+      # Save email draft if provided
+      if params[:email_draft].present?
+        draft = @course_offering.email_draft || @course_offering.build_email_draft
+        draft.update!(title: params[:email_draft][:title], body: params[:email_draft][:body])
+      end
+
       redirect_to manage_course_offering_questionnaire_path(@course_offering), notice: "Questionnaire settings updated."
     end
 

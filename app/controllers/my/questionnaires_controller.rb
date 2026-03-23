@@ -333,6 +333,15 @@ module My
 
       @production = @questionnaire.production
       resolve_context
+
+      # Context-aware name for display
+      @context_name = if @context.is_a?(CourseOffering)
+                        @context.title
+      elsif @production
+                        @production.name
+      else
+                        @questionnaire.organization.name
+      end
     end
 
     ALLOWED_CONTEXT_TYPES = %w[CourseOffering Show Production].freeze

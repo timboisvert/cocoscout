@@ -24,25 +24,34 @@ class CourseQuestionnaireDeliveryJob < ApplicationJob
     return unless person.user
 
     organization = offering.production.organization
-    questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
-      questionnaire,
+    questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_form_url(
+      token: questionnaire.token,
       host: ENV.fetch("HOST", "localhost:3000"),
       ctx: "CourseOffering-#{offering.id}"
     )
 
-    rendered = ContentTemplateService.render("questionnaire_invitation", {
-      person_name: person.first_name || "there",
-      questionnaire_title: questionnaire.title,
-      production_name: organization.name,
-      questionnaire_url: questionnaire_url,
-      custom_message: ""
-    })
+    # Use the offering's saved email draft if present, otherwise fall back to content template
+    draft = offering.email_draft
+    if draft&.title.present? && draft&.body.present?
+      subject = draft.title
+      body = draft.body.to_s.gsub("{{questionnaire_url}}", questionnaire_url)
+                              .gsub("{{person_name}}", person.first_name || "there")
+                              .gsub("{{questionnaire_title}}", questionnaire.title)
+    else
+      rendered = ContentTemplateService.render("questionnaire_invitation", {
+        person_name: person.first_name || "there",
+        questionnaire_title: questionnaire.title,
+        questionnaire_url: questionnaire_url
+      })
+      subject = rendered[:subject]
+      body = rendered[:body]
+    end
 
     MessageService.send_direct(
       sender: nil,
       recipient_person: person,
-      subject: rendered[:subject],
-      body: rendered[:body],
+      subject: subject,
+      body: body,
       organization: organization
     )
   end

@@ -41,9 +41,23 @@ class CourseRegistration < ApplicationRecord
 
   def cancel!
     update!(status: :cancelled, cancelled_at: Time.current)
+    cleanup_questionnaire_invitation
   end
 
   def refund!
     update!(status: :refunded, refunded_at: Time.current)
+    cleanup_questionnaire_invitation
+  end
+
+  private
+
+  def cleanup_questionnaire_invitation
+    return unless course_offering.questionnaire_id?
+
+    QuestionnaireInvitation.where(
+      questionnaire_id: course_offering.questionnaire_id,
+      invitee: person,
+      context: course_offering
+    ).destroy_all
   end
 end
