@@ -53,7 +53,7 @@ class CourseRegistrationConfirmationJob < ApplicationJob
         # Scheduled time has passed — deliver immediately
         CourseQuestionnaireDeliveryJob.perform_later(registration.id)
       end
-    # "manual" mode: do nothing — producer triggers bulk send from course page
+      # "manual" mode: do nothing — producer triggers bulk send from course page
     end
   end
 end
