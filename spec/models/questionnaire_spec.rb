@@ -24,9 +24,14 @@ RSpec.describe Questionnaire, type: :model do
   end
 
   describe 'associations' do
-    it 'belongs to production' do
+    it 'belongs to organization' do
       questionnaire = create(:questionnaire)
-      expect(questionnaire.production).to be_present
+      expect(questionnaire.organization).to be_present
+      expect(questionnaire).to respond_to(:organization)
+    end
+
+    it 'optionally belongs to production' do
+      questionnaire = create(:questionnaire)
       expect(questionnaire).to respond_to(:production)
     end
 
