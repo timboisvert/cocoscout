@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class Questionnaire < ApplicationRecord
-  belongs_to :production
+  belongs_to :production, optional: true
+  belongs_to :organization
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :questionnaire_invitations, dependent: :destroy
   has_many :invited_people, lambda {

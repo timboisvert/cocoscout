@@ -143,9 +143,9 @@ module My
         return
       end
 
-      # Check if they've already responded
-      if @questionnaire.questionnaire_responses.exists?(respondent: @respondent)
-        @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
+      # Check if they've already responded (within this context)
+      if @questionnaire.questionnaire_responses.exists?(respondent: @respondent, context: @context)
+        @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent, context: @context)
         @answers = {}
         @questions.each do |question|
           answer = @questionnaire_response.questionnaire_answers.find_by(question: question)
@@ -219,14 +219,14 @@ module My
       end
 
       # Associate the person with the organization if not already
-      organization = @questionnaire.production.organization
+      organization = @questionnaire.organization
       @person.organizations << organization unless @person.organization_ids.include?(organization.id)
 
       # Preload questions by ID for efficient lookup
       questions_by_id = @questions.index_by(&:id)
 
-      # Check if updating existing response
-      existing_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
+      # Check if updating existing response (within this context)
+      existing_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent, context: @context)
 
       if existing_response
         @questionnaire_response = existing_response
@@ -257,7 +257,7 @@ module My
         end
       else
         # New response
-        @questionnaire_response = QuestionnaireResponse.new(respondent: @respondent)
+        @questionnaire_response = QuestionnaireResponse.new(respondent: @respondent, context: @context)
         @questionnaire_response.questionnaire = @questionnaire
 
         # Loop through the questions and store the answers
@@ -332,6 +332,19 @@ module My
       end
 
       @production = @questionnaire.production
+      resolve_context
+    end
+
+    ALLOWED_CONTEXT_TYPES = %w[CourseOffering Show Production].freeze
+
+    def resolve_context
+      @context = nil
+      return if params[:ctx].blank?
+
+      type, id = params[:ctx].split("-", 2)
+      return unless type.in?(ALLOWED_CONTEXT_TYPES) && id.present?
+
+      @context = type.constantize.find_by(id: id)
     end
 
     def ensure_user_is_signed_in

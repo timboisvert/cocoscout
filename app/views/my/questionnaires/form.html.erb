@@ -30,7 +30,7 @@
 
       <!-- Right Column: Form -->
       <div>
-        <%= form_with(model: @questionnaire_response, url: my_submit_questionnaire_form_path(@questionnaire.token), method: :post, data: { turbo: false, controller: "questionnaire-respondent-selector" }, html: { multipart: true }, class: "space-y-4") do |form| %>
+        <%= form_with(model: @questionnaire_response, url: my_submit_questionnaire_form_path(@questionnaire.token, ctx: params[:ctx]), method: :post, data: { turbo: false, controller: "questionnaire-respondent-selector" }, html: { multipart: true }, class: "space-y-4") do |form| %>
 
           <!-- Respondent Selection Section -->
           <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">

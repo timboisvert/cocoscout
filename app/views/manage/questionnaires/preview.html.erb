@@ -5,13 +5,12 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
-      [@production.name, manage_contacts_questionnaires_path(@production)],
-      ["Questionnaires", manage_contacts_questionnaires_path(@production)],
-      [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)]
+      ["Questionnaires", manage_contacts_questionnaires_path],
+      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)]
     ],
     text: "Preview Questionnaire",
     links: [
-      {text: "Edit Questionnaire", path: manage_form_contacts_questionnaire_path(@production, @questionnaire)}
+      {text: "Edit Questionnaire", path: manage_form_contacts_questionnaire_path(@questionnaire)}
     ]
   } %>
 
@@ -27,8 +26,7 @@
 
     <!-- Full-Width Header -->
     <div class="mb-8 sm:mb-10">
-      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-      <p class="text-lg text-slate-600"><%= @questionnaire.title %></p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @questionnaire.title %></h1>
     </div>
 
     <!-- Two Column Layout: Instruction Text & Form -->

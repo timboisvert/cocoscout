@@ -27,7 +27,8 @@
     ],
     text: @course_offering.title,
     links: [
-      { text: "Edit", path: manage_edit_course_offering_path(@course_offering) }
+      { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
+      { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
   } %>
 
@@ -276,7 +277,7 @@
                 <% stats = @course_offering.questionnaire.cached_response_stats %>
                 <p class="text-xs text-gray-500 mt-0.5"><%= stats[:responded] %> response<%= stats[:responded] == 1 ? '' : 's' %></p>
               </div>
-              <%= link_to manage_contacts_questionnaire_path(@course_offering.production, @course_offering.questionnaire) do %>
+              <%= link_to manage_contacts_questionnaire_path(@course_offering.questionnaire) do %>
                 <%= render "shared/button", text: "View", variant: "secondary", size: "small" %>
               <% end %>
             </div>

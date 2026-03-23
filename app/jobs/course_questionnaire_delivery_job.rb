@@ -14,25 +14,26 @@ class CourseQuestionnaireDeliveryJob < ApplicationJob
     person = registration.person
     return unless person
 
-    # Idempotent: skip if invitation already exists
-    return if questionnaire.questionnaire_invitations.exists?(invitee: person)
+    # Idempotent: skip if invitation already exists for this context
+    return if questionnaire.questionnaire_invitations.exists?(invitee: person, context: offering)
 
-    # Create invitation
-    QuestionnaireInvitation.create!(questionnaire: questionnaire, invitee: person)
+    # Create invitation with course offering context
+    QuestionnaireInvitation.create!(questionnaire: questionnaire, invitee: person, context: offering)
 
     # Send in-app message if person has a user account
     return unless person.user
 
-    production = offering.production
+    organization = offering.production.organization
     questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
       questionnaire,
-      host: ENV.fetch("HOST", "localhost:3000")
+      host: ENV.fetch("HOST", "localhost:3000"),
+      ctx: "CourseOffering-#{offering.id}"
     )
 
     rendered = ContentTemplateService.render("questionnaire_invitation", {
       person_name: person.first_name || "there",
       questionnaire_title: questionnaire.title,
-      production_name: production.name,
+      production_name: organization.name,
       questionnaire_url: questionnaire_url,
       custom_message: ""
     })
@@ -42,8 +43,7 @@ class CourseQuestionnaireDeliveryJob < ApplicationJob
       recipient_person: person,
       subject: rendered[:subject],
       body: rendered[:body],
-      production: production,
-      organization: production.organization
+      organization: organization
     )
   end
 end

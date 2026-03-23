@@ -5,9 +5,8 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
-      [@production.name, manage_contacts_questionnaires_path(@production)],
-      ["Questionnaires", manage_contacts_questionnaires_path(@production)],
-      [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)]
+      ["Questionnaires", manage_contacts_questionnaires_path],
+      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)]
     ],
     text: @response.respondent.name,
     links: []

@@ -630,34 +630,26 @@ Rails.application.routes.draw do
     post "/casting/availability/set_availability", to: "casting_availability#org_set_availability", as: "org_availability_set_availability"
 
     # Questionnaires (under contacts section)
-    # Org-level index showing all questionnaires across productions
-    get  "/contacts/questionnaires", to: "questionnaires#org_index", as: "contacts_questionnaires_index"
-
-    # Production selection wizard (for org-level entry point)
-    get  "/contacts/questionnaires/select_production", to: "questionnaires#select_production", as: "select_production_contacts_questionnaires"
-    post "/contacts/questionnaires/select_production", to: "questionnaires#save_production_selection", as: "save_production_selection_contacts_questionnaires"
-
-    # Production-scoped questionnaires
-    get  "/contacts/:production_id/questionnaires", to: "questionnaires#index", as: "contacts_questionnaires"
-    get  "/contacts/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_contacts_questionnaire"
-    post "/contacts/:production_id/questionnaires", to: "questionnaires#create", as: "create_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id", to: "questionnaires#show", as: "contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_contacts_questionnaire"
-    patch "/contacts/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_contacts_questionnaire"
-    delete "/contacts/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_contacts_questionnaire"
-    post "/contacts/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_contacts_questionnaire"
-    patch "/contacts/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_contacts_questionnaire"
-    delete "/contacts/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_contacts_questionnaire"
-    post "/contacts/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_contacts_questionnaire"
-    post "/contacts/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_contacts_questionnaire"
-    patch "/contacts/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_contacts_questionnaire"
-    patch "/contacts/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/responses/table", to: "questionnaires#responses_table", as: "responses_table_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_contacts_questionnaire"
-    get  "/contacts/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_contacts_questionnaire"
+    get  "/contacts/questionnaires",          to: "questionnaires#index",    as: "contacts_questionnaires"
+    get  "/contacts/questionnaires/new",      to: "questionnaires#new",      as: "new_contacts_questionnaire"
+    post "/contacts/questionnaires",          to: "questionnaires#create",   as: "create_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id",      to: "questionnaires#show",     as: "contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/edit", to: "questionnaires#edit",     as: "edit_contacts_questionnaire"
+    patch "/contacts/questionnaires/:id",     to: "questionnaires#update",   as: "update_contacts_questionnaire"
+    delete "/contacts/questionnaires/:id",    to: "questionnaires#destroy",  as: "destroy_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/form", to: "questionnaires#form",     as: "form_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_contacts_questionnaire"
+    post "/contacts/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_contacts_questionnaire"
+    patch "/contacts/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_contacts_questionnaire"
+    delete "/contacts/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_contacts_questionnaire"
+    post "/contacts/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_contacts_questionnaire"
+    post "/contacts/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_contacts_questionnaire"
+    patch "/contacts/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_contacts_questionnaire"
+    patch "/contacts/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/responses/table", to: "questionnaires#responses_table", as: "responses_table_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_contacts_questionnaire"
+    get  "/contacts/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_contacts_questionnaire"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
@@ -1126,6 +1118,8 @@ Rails.application.routes.draw do
     post "courses/:id/enable_questionnaire",  to: "course_offerings#enable_questionnaire",  as: "course_offering_enable_questionnaire"
     post "courses/:id/disable_questionnaire", to: "course_offerings#disable_questionnaire", as: "course_offering_disable_questionnaire"
     post "courses/:id/send_questionnaire",    to: "course_offerings#send_questionnaire",    as: "course_offering_send_questionnaire"
+    get  "courses/:id/questionnaire",         to: "course_offerings#questionnaire",         as: "course_offering_questionnaire"
+    patch "courses/:id/questionnaire",        to: "course_offerings#update_questionnaire_settings", as: "update_course_offering_questionnaire"
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"

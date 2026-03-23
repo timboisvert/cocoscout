@@ -6,10 +6,9 @@ export default class extends Controller {
     toggleStatus(event) {
         const checkbox = event.target
         const questionnaireId = this.element.dataset.questionnaireId
-        const productionId = this.element.dataset.productionId
         const accepting = checkbox.checked
 
-        fetch(`/manage/casting/${productionId}/questionnaires/${questionnaireId}`, {
+        fetch(`/manage/contacts/questionnaires/${questionnaireId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

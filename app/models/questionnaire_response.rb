@@ -3,11 +3,12 @@
 class QuestionnaireResponse < ApplicationRecord
   belongs_to :questionnaire
   belongs_to :respondent, polymorphic: true
+  belongs_to :context, polymorphic: true, optional: true
   has_many :questionnaire_answers, dependent: :destroy
 
   validates :questionnaire, presence: true
   validates :respondent, presence: true
-  validates :respondent_id, uniqueness: { scope: %i[questionnaire_id respondent_type] }
+  validates :respondent_id, uniqueness: { scope: %i[questionnaire_id respondent_type context_type context_id] }
 
   # Helper method for backward compatibility
   def person

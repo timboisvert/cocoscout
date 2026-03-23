@@ -6,9 +6,8 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
-      [@production.name, manage_contacts_questionnaires_path(@production)],
-      ["Questionnaires", manage_contacts_questionnaires_path(@production)],
-      [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)]
+      ["Questionnaires", manage_contacts_questionnaires_path],
+      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)]
     ],
     text: "Invite People",
     links: []
@@ -18,7 +17,7 @@
     Invite people to respond to this questionnaire. They will receive an email with a link to access the form.
   </div>
 
-  <%= form_with url: manage_invite_people_contacts_questionnaire_path(@production, @questionnaire), method: :post, local: true, class: "contents", data: { controller: "questionnaire-invitation" } do |form| %>
+  <%= form_with url: manage_invite_people_contacts_questionnaire_path(@questionnaire), method: :post, local: true, class: "contents", data: { controller: "questionnaire-invitation" } do |form| %>
 
     <!-- Already Invited People -->
     <% if @invited_people.any? %>

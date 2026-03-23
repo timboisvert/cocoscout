@@ -2,76 +2,29 @@
 
 module Manage
   class QuestionnairesController < Manage::ManageController
-    before_action :set_production, except: [ :select_production, :save_production_selection, :org_index ]
     before_action :set_questionnaire,
                   only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
                            responses responses_table show_response invite_people]
 
-    # Org-level index showing all questionnaires across productions
-    def org_index
-      @filter = params[:filter] || "all"
-
-      @questionnaires_by_production = Current.user.accessible_productions
-        .includes(:questionnaires)
-        .order(:name)
-        .map do |prod|
-          questionnaires = case @filter
-          when "accepting"
-            prod.questionnaires.where(archived_at: nil, accepting_responses: true).order(created_at: :desc)
-          when "archived"
-            prod.questionnaires.where.not(archived_at: nil).order(archived_at: :desc)
-          else # 'all'
-            prod.questionnaires.where(archived_at: nil).order(created_at: :desc)
-          end
-
-          [ prod, questionnaires ]
-        end
-        .reject { |_prod, questionnaires| questionnaires.empty? }
-    end
-
-    # Step 0: Select Production (when entering from org-level)
-    def select_production
-      @productions = Current.user.accessible_productions.order(:name)
-    end
-
-    def save_production_selection
-      production_id = params[:production_id]
-
-      if production_id.blank?
-        flash.now[:alert] = "Please select a production"
-        @productions = Current.user.accessible_productions.order(:name)
-        render :select_production, status: :unprocessable_entity and return
-      end
-
-      production = Current.user.accessible_productions.find_by(id: production_id)
-      unless production
-        flash.now[:alert] = "Production not found"
-        @productions = Current.user.accessible_productions.order(:name)
-        render :select_production, status: :unprocessable_entity and return
-      end
-
-      # Redirect to the production-level new questionnaire page
-      redirect_to manage_new_contacts_questionnaire_path(production)
-    end
-
     def index
       @filter = params[:filter] || "all"
 
-      case @filter
+      base = Current.organization.questionnaires
+      @questionnaires = case @filter
       when "accepting"
-        @questionnaires = @production.questionnaires.where(archived_at: nil,
-                                                           accepting_responses: true).order(created_at: :desc)
+        base.where(archived_at: nil, accepting_responses: true).order(created_at: :desc)
       when "archived"
-        @questionnaires = @production.questionnaires.where.not(archived_at: nil).order(archived_at: :desc)
+        base.where.not(archived_at: nil).order(archived_at: :desc)
       else # 'all'
-        @questionnaires = @production.questionnaires.where(archived_at: nil).order(created_at: :desc)
+        base.where(archived_at: nil).order(created_at: :desc)
       end
     end
 
     def show
       @questions = @questionnaire.questions.order(:position)
+      @linked_course_offerings = @questionnaire.course_offerings.includes(:production)
 
-      # Create email draft for invitation form
+      # Create email draft for invitation form (only needed when no course delivery)
       @questionnaire_email_draft = EmailDraft.new(
         title: default_questionnaire_email_subject,
         body: default_questionnaire_email_body
@@ -79,14 +32,15 @@ module Manage
     end
 
     def new
-      @questionnaire = @production.questionnaires.new
+      @questionnaire = Current.organization.questionnaires.new
+      @questionnaire.title = params[:title] if params[:title].present?
     end
 
     def create
-      @questionnaire = @production.questionnaires.new(questionnaire_params)
+      @questionnaire = Current.organization.questionnaires.new(questionnaire_params)
 
       if @questionnaire.save
-        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@questionnaire),
                     notice: "Questionnaire created successfully"
       else
         render :new, status: :unprocessable_entity
@@ -102,10 +56,10 @@ module Manage
             # If updating from the form page (title or instruction), redirect back to form
             if params[:questionnaire]&.key?(:title) ||
                params[:questionnaire]&.key?(:instruction_text)
-              redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_form_contacts_questionnaire_path(@questionnaire),
                           notice: "Questionnaire updated successfully"
             else
-              redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_contacts_questionnaire_path(@questionnaire),
                           notice: "Questionnaire updated successfully"
             end
           end
@@ -121,18 +75,17 @@ module Manage
 
     def archive
       @questionnaire.update(archived_at: Time.current)
-      redirect_to manage_contacts_questionnaires_path(@production), notice: "Questionnaire archived successfully"
+      redirect_to manage_contacts_questionnaires_path, notice: "Questionnaire archived successfully"
     end
 
     def unarchive
       @questionnaire.update(archived_at: nil)
-      redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_contacts_questionnaire_path(@questionnaire),
                   notice: "Questionnaire unarchived successfully"
     end
 
     def form
       @questions = @questionnaire.questions.order(:position)
-      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
       # Check if we're editing a specific question
       @question = if params[:question_id].present?
@@ -154,7 +107,7 @@ module Manage
       @question.position = max_position + 1
 
       if @question.save
-        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@questionnaire, questions_open: true),
                     notice: "Question added successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -166,7 +119,7 @@ module Manage
       @question = @questionnaire.questions.find(params[:question_id])
 
       if @question.update(question_params)
-        redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_contacts_questionnaire_path(@questionnaire, questions_open: true),
                     notice: "Question updated successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -177,7 +130,7 @@ module Manage
     def destroy_question
       @question = @questionnaire.questions.find(params[:question_id])
       @question.destroy
-      redirect_to manage_form_contacts_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_form_contacts_questionnaire_path(@questionnaire, questions_open: true),
                   notice: "Question deleted successfully"
     end
 
@@ -225,52 +178,24 @@ module Manage
     end
 
     def invite_people
-      recipient_type = params[:recipient_type]
-      talent_pool_id = params[:talent_pool_id]
       person_ids = params[:person_ids] || []
-      group_ids = params[:group_ids] || []
 
       # Get email content from EmailDraft form fields
       email_draft_params = params[:email_draft] || {}
       subject_template = email_draft_params[:title].presence || default_questionnaire_email_subject
       message_template = email_draft_params[:body].to_s.presence || default_questionnaire_email_body
 
-      # Get IDs of already invited people and groups
+      # Get IDs of already invited people
       already_invited_person_ids = @questionnaire.questionnaire_invitations
-                                                 .where(invitee_type: "Person").pluck(:invitee_id)
-      already_invited_group_ids = @questionnaire.questionnaire_invitations
-                                                .where(invitee_type: "Group").pluck(:invitee_id)
+                                                 .where(invitee_type: "Person").pluck(:invitee_id).to_set
 
-      # Get all people and groups in the production's effective talent pool
-      talent_pool = @production.effective_talent_pool
-      all_people = talent_pool&.people&.to_a || []
-      all_groups = talent_pool&.groups&.to_a || []
-
-      # Filter to only those not yet invited
-      not_invited_people = all_people.reject { |p| already_invited_person_ids.include?(p.id) }
-      not_invited_groups = all_groups.reject { |g| already_invited_group_ids.include?(g.id) }
-
-      # Determine person and group recipients based on recipient_type
-      person_recipients = []
-      group_recipients = []
-
-      case recipient_type
-      when "all"
-        # Only send to those NOT yet invited
-        person_recipients = not_invited_people
-        group_recipients = not_invited_groups
-      when "cast"
-        talent_pool = TalentPool.find(talent_pool_id)
-        # Only send to those in the talent pool who are NOT yet invited
-        person_recipients = talent_pool.people.reject { |p| already_invited_person_ids.include?(p.id) }
-        group_recipients = talent_pool.groups.reject { |g| already_invited_group_ids.include?(g.id) }
-      when "specific"
-        # For specific selection, only include those not yet invited
-        person_recipients = Person.where(id: person_ids).reject { |p| already_invited_person_ids.include?(p.id) }
-        group_recipients = Group.where(id: group_ids).reject { |g| already_invited_group_ids.include?(g.id) }
-      end
+      # Only include people not yet invited, scoped to the organization
+      person_recipients = Current.organization.people
+                                              .where(id: person_ids)
+                                              .reject { |p| already_invited_person_ids.include?(p.id) }
 
       invitation_count = 0
+      org_name = Current.organization.name
 
       # Create invitations for people and send messages
       person_recipients.each do |person|
@@ -290,7 +215,7 @@ module Manage
           rendered = ContentTemplateService.render("questionnaire_invitation", {
             person_name: person.first_name || "there",
             questionnaire_title: @questionnaire.title,
-            production_name: @production.name,
+            production_name: org_name,
             questionnaire_url: questionnaire_url,
             custom_message: message_template
           })
@@ -300,66 +225,19 @@ module Manage
             recipient_person: person,
             subject: rendered[:subject],
             body: rendered[:body],
-            production: @production,
-            organization: @production.organization
+            organization: Current.organization
           )
         end
       end
 
-      # Create invitations for groups and send to members with notifications enabled
-      group_recipients.each do |group|
-        QuestionnaireInvitation.create!(
-          questionnaire: @questionnaire,
-          invitee: group
-        )
-        invitation_count += 1
-
-        # Send messages to all group members with notifications enabled
-        members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
-        members_with_notifications.each do |person|
-          if person.user
-            questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_url(
-              @questionnaire,
-              host: ENV.fetch("HOST", "localhost:3000")
-            )
-
-            rendered = ContentTemplateService.render("questionnaire_invitation", {
-              person_name: person.first_name || "there",
-              questionnaire_title: @questionnaire.title,
-              production_name: @production.name,
-              questionnaire_url: questionnaire_url,
-              custom_message: message_template
-            })
-
-            MessageService.send_direct(
-              sender: Current.user,
-              recipient_person: person,
-              subject: rendered[:subject],
-              body: rendered[:body],
-              production: @production,
-              organization: @production.organization
-            )
-          end
-        end
-      end
-
-      redirect_to manage_contacts_questionnaire_path(@production, @questionnaire),
-                  notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
+      redirect_to manage_contacts_questionnaire_path(@questionnaire),
+                  notice: "Invited #{invitation_count} #{'person'.pluralize(invitation_count)}"
     end
 
     private
 
-    def set_production
-      unless Current.organization
-        redirect_to select_organization_path, alert: "Please select an organization first."
-        return
-      end
-      @production = Current.organization.productions.find(params[:production_id])
-      sync_current_production(@production)
-    end
-
     def set_questionnaire
-      @questionnaire = @production.questionnaires.find(params[:id])
+      @questionnaire = Current.organization.questionnaires.find(params[:id])
     end
 
     def questionnaire_params
@@ -373,14 +251,14 @@ module Manage
 
     def default_questionnaire_email_subject
       ContentTemplateService.render_subject("questionnaire_invitation", {
-        production_name: @production.name,
+        production_name: Current.organization.name,
         questionnaire_title: @questionnaire.title
       })
     end
 
     def default_questionnaire_email_body
       ContentTemplateService.render_body("questionnaire_invitation", {
-        production_name: @production.name,
+        production_name: Current.organization.name,
         questionnaire_title: @questionnaire.title,
         questionnaire_url: @questionnaire.respond_url
       })

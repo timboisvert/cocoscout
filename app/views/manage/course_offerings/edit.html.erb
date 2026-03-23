@@ -324,10 +324,10 @@
                 <p class="text-xs text-green-600 mt-0.5"><%= @course_offering.questionnaire.title %></p>
               </div>
               <div class="flex items-center gap-2">
-                <%= link_to manage_form_contacts_questionnaire_path(@course_offering.production, @course_offering.questionnaire) do %>
+                <%= link_to manage_form_contacts_questionnaire_path(@course_offering.questionnaire) do %>
                   <%= render "shared/button", text: "Edit Questions", variant: "secondary", size: "small" %>
                 <% end %>
-                <%= link_to manage_contacts_questionnaire_path(@course_offering.production, @course_offering.questionnaire) do %>
+                <%= link_to manage_contacts_questionnaire_path(@course_offering.questionnaire) do %>
                   <%= render "shared/button", text: "View Responses", variant: "secondary", size: "small" %>
                 <% end %>
               </div>

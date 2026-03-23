@@ -7,6 +7,7 @@ module Manage
       search_instructor update_instructor invite_instructor
       cancel_registration refund_registration
       enable_questionnaire disable_questionnaire send_questionnaire
+      questionnaire update_questionnaire_settings
     ]
 
     def index
@@ -218,14 +219,14 @@ module Manage
       end
 
       questionnaire = Questionnaire.create!(
-        production: @course_offering.production,
+        organization: Current.organization,
         title: "#{@course_offering.title} - Registration Questionnaire",
         accepting_responses: true
       )
 
       @course_offering.update!(questionnaire: questionnaire, delivery_mode: "immediate")
 
-      redirect_to manage_form_contacts_questionnaire_path(@course_offering.production, questionnaire),
+      redirect_to manage_form_contacts_questionnaire_path(questionnaire),
                   notice: "Questionnaire created. Add your questions below."
     end
 
@@ -242,7 +243,7 @@ module Manage
 
       count = 0
       @course_offering.course_registrations.where(status: :confirmed).find_each do |registration|
-        next if @course_offering.questionnaire.questionnaire_invitations.exists?(invitee: registration.person)
+        next if @course_offering.questionnaire.questionnaire_invitations.exists?(invitee: registration.person, context: @course_offering)
 
         CourseQuestionnaireDeliveryJob.perform_later(registration.id)
         count += 1
@@ -250,6 +251,37 @@ module Manage
 
       redirect_to manage_course_offering_path(@course_offering),
                   notice: "Questionnaire queued for #{count} #{'registrant'.pluralize(count)}."
+    end
+
+    def questionnaire
+      @questionnaire = @course_offering.questionnaire
+      @available_questionnaires = Current.organization.questionnaires.active.order(:title)
+
+      if @questionnaire
+        @context_invited = @questionnaire.questionnaire_invitations.where(context: @course_offering).count
+        @context_responded = @questionnaire.questionnaire_responses.where(context: @course_offering).count
+      end
+    end
+
+    def update_questionnaire_settings
+      if params[:questionnaire_id] == ""
+        # Unlinking questionnaire
+        @course_offering.update!(questionnaire: nil, delivery_mode: nil, delivery_delay_minutes: nil, delivery_scheduled_at: nil)
+        redirect_to manage_course_offering_questionnaire_path(@course_offering), notice: "Questionnaire unlinked."
+        return
+      end
+
+      updates = {}
+      if params[:questionnaire_id].present?
+        questionnaire = Current.organization.questionnaires.find(params[:questionnaire_id])
+        updates[:questionnaire_id] = questionnaire.id
+      end
+      updates[:delivery_mode] = params[:delivery_mode] if params[:delivery_mode].present?
+      updates[:delivery_delay_minutes] = params[:delivery_delay_minutes] if params[:delivery_delay_minutes].present?
+      updates[:delivery_scheduled_at] = params[:delivery_scheduled_at] if params[:delivery_scheduled_at].present?
+
+      @course_offering.update!(updates)
+      redirect_to manage_course_offering_questionnaire_path(@course_offering), notice: "Questionnaire settings updated."
     end
 
     private

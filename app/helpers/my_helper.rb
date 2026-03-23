@@ -133,16 +133,17 @@ module MyHelper
     cycle = audition_request.audition_cycle
     requestable = audition_request.requestable
 
-    # Check if they were added to talent pool via cast_assignment_stages
-    is_cast = CastAssignmentStage.exists?(
+    # Check if they were cast or rejected via CastAssignmentStage
+    cast_stage = CastAssignmentStage.find_by(
       audition_cycle_id: cycle.id,
       assignable_type: requestable.class.name,
       assignable_id: requestable.id
     )
 
-    # If already cast, show cast status immediately (regardless of finalization)
-    if is_cast
+    if cast_stage&.decision_type == "cast"
       return CAST_SPOT_OFFERED_BADGE.html_safe
+    elsif cast_stage&.decision_type == "rejected"
+      return NO_CAST_SPOT_OFFERED_BADGE.html_safe
     end
 
     # If cycle is archived (not active)
@@ -172,16 +173,17 @@ module MyHelper
     cycle = audition_request.audition_cycle
     requestable = audition_request.requestable
 
-    # Check if they were added to talent pool via cast_assignment_stages
-    is_cast = CastAssignmentStage.exists?(
+    # Check if they were cast or rejected via CastAssignmentStage
+    cast_stage = CastAssignmentStage.find_by(
       audition_cycle_id: cycle.id,
       assignable_type: requestable.class.name,
       assignable_id: requestable.id
     )
 
-    # If already cast, show cast status immediately (regardless of finalization)
-    if is_cast
+    if cast_stage&.decision_type == "cast"
       return CAST_SPOT_OFFERED_TEXT
+    elsif cast_stage&.decision_type == "rejected"
+      return NO_CAST_SPOT_OFFERED_TEXT
     end
 
     # If cycle is archived (not active)

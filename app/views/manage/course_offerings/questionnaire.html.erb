@@ -1,0 +1,156 @@
+<% content_for :title, "Manage Questionnaire - #{@course_offering.title}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Courses", manage_course_offerings_path],
+      [@course_offering.title, manage_course_offering_path(@course_offering)]
+    ],
+    text: "Manage Questionnaire",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <%# ── Step 1: Select Questionnaire ── %>
+    <div class="bg-white border border-gray-200 rounded-lg mb-6">
+      <%= render "shared/card_header", title: "Questionnaire" %>
+      <div class="p-5">
+        <% if @questionnaire.present? %>
+          <div class="flex items-center gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate"><%= @questionnaire.title %></p>
+              <div class="flex items-center gap-3 mt-0.5">
+                <span class="text-xs text-gray-500"><%= @questionnaire.questions.count %> question<%= @questionnaire.questions.count == 1 ? '' : 's' %></span>
+                <span class="text-xs text-gray-500"><%= @context_responded %>/<%= @context_invited %> responded</span>
+                <% if @questionnaire.accepting_responses %>
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Active
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-500">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                    Inactive
+                  </span>
+                <% end %>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <%= link_to manage_contacts_questionnaire_path(@questionnaire) do %>
+                <%= render "shared/button", text: "View", variant: "secondary", size: "small" %>
+              <% end %>
+              <%= form_with url: manage_update_course_offering_questionnaire_path(@course_offering), method: :patch, local: true, class: "inline" do %>
+                <input type="hidden" name="questionnaire_id" value="">
+                <%= render "shared/button", text: "Unlink", variant: "ghost-cancel", size: "small", type: :submit %>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500 mb-4">Choose a questionnaire to send to registrants, or create a new one.</p>
+
+          <% if @available_questionnaires.any? %>
+            <%= form_with url: manage_update_course_offering_questionnaire_path(@course_offering), method: :patch, local: true do %>
+              <input type="hidden" name="delivery_mode" value="immediate">
+              <div class="flex items-end gap-3">
+                <div class="flex-1">
+                  <select name="questionnaire_id" class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    <option value="">— Select a questionnaire —</option>
+                    <% @available_questionnaires.each do |q| %>
+                      <option value="<%= q.id %>"><%= q.title %> (<%= q.questions.count %> questions)</option>
+                    <% end %>
+                  </select>
+                </div>
+                <%= render "shared/button", text: "Link", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+
+            <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+              <%= link_to manage_new_contacts_questionnaire_path(title: "#{@course_offering.title} Course Questionnaire"), class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
+                or create a new questionnaire &rarr;
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center py-4">
+              <p class="text-sm text-gray-400 mb-3">No questionnaires yet.</p>
+              <%= link_to manage_new_contacts_questionnaire_path(title: "#{@course_offering.title} Course Questionnaire") do %>
+                <%= render "shared/button", text: "Create a Questionnaire", variant: "primary", size: "medium" %>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @questionnaire.present? %>
+      <%# ── Step 2: Delivery Rules ── %>
+      <div class="bg-white border border-gray-200 rounded-lg mb-6">
+        <%= render "shared/card_header", title: "Delivery Rules" %>
+        <div class="p-5">
+          <p class="text-sm text-gray-500 mb-4">When should the questionnaire be sent to course registrants?</p>
+
+          <%= form_with url: manage_update_course_offering_questionnaire_path(@course_offering), method: :patch, local: true do %>
+            <input type="hidden" name="questionnaire_id" value="<%= @questionnaire.id %>">
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-1.5">Delivery Mode</label>
+                <select name="delivery_mode"
+                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+                  onchange="
+                    document.getElementById('cq-delay-fields').classList.toggle('hidden', this.value !== 'delayed');
+                    document.getElementById('cq-scheduled-fields').classList.toggle('hidden', this.value !== 'scheduled');
+                    document.getElementById('cq-manual-note').classList.toggle('hidden', this.value !== 'manual');
+                  ">
+                  <option value="immediate" <%= 'selected' if @course_offering.delivery_mode == 'immediate' %>>Immediately after registration</option>
+                  <option value="delayed" <%= 'selected' if @course_offering.delivery_mode == 'delayed' %>>After a delay</option>
+                  <option value="scheduled" <%= 'selected' if @course_offering.delivery_mode == 'scheduled' %>>At a scheduled date</option>
+                  <option value="manual" <%= 'selected' if @course_offering.delivery_mode == 'manual' %>>Manually (I'll send it myself)</option>
+                </select>
+              </div>
+
+              <div id="cq-delay-fields" class="<%= 'hidden' unless @course_offering.delivery_mode == 'delayed' %>">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Delay (minutes after registration)</label>
+                <input type="number" name="delivery_delay_minutes" value="<%= @course_offering.delivery_delay_minutes %>" min="1" placeholder="60"
+                  class="block w-48 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+
+              <div id="cq-scheduled-fields" class="<%= 'hidden' unless @course_offering.delivery_mode == 'scheduled' %>">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Send At</label>
+                <input type="datetime-local" name="delivery_scheduled_at" value="<%= @course_offering.delivery_scheduled_at&.strftime('%Y-%m-%dT%H:%M') %>"
+                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+
+              <div id="cq-manual-note" class="<%= 'hidden' unless @course_offering.delivery_mode == 'manual' %>">
+                <p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">You'll need to send the questionnaire yourself from this page after registrants sign up.</p>
+              </div>
+
+              <div class="pt-4 border-t border-gray-200">
+                <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# ── Manual Send (only when delivery mode is manual) ── %>
+      <% if @course_offering.delivery_mode == "manual" %>
+        <div class="bg-white border border-gray-200 rounded-lg">
+          <%= render "shared/card_header", title: "Send Now" %>
+          <div class="p-5">
+            <p class="text-sm text-gray-500 mb-4">Send the questionnaire to all confirmed registrants who haven't received it yet.</p>
+            <%= form_with url: manage_course_offering_send_questionnaire_path(@course_offering), method: :post do %>
+              <%= render "shared/button", text: "Send to Registrants", variant: "primary", size: "medium", type: :submit %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

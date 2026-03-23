@@ -1,18 +1,17 @@
-<% content_for :title, "New Questionnaire - #{@production.name}" %>
+<% content_for :title, @questionnaire.title.present? ? @questionnaire.title : "New Questionnaire" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
-      [@production.name, manage_contacts_questionnaires_path(@production)],
-      ["Questionnaires", manage_contacts_questionnaires_path(@production)]
+      ["Questionnaires", manage_contacts_questionnaires_path]
     ],
-    text: "Create Questionnaire",
+    text: @questionnaire.title.present? ? @questionnaire.title : "Create Questionnaire",
     links: []
   } %>
 
-  <%= form_with(model: @questionnaire, url: manage_contacts_questionnaires_path(@production), method: :post, data: { turbo: false }, class: "contents") do |form| %>
+  <%= form_with(model: @questionnaire, url: manage_create_contacts_questionnaire_path, method: :post, data: { turbo: false }, class: "contents") do |form| %>
 
     <div class="my-5">
       <% if @questionnaire.errors[:title].none? %>

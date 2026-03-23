@@ -5,14 +5,13 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path],
-      [@production.name, manage_contacts_questionnaires_path(@production)],
-      ["Questionnaires", manage_contacts_questionnaires_path(@production)],
-      [@questionnaire.title, manage_contacts_questionnaire_path(@production, @questionnaire)],
-      ["Responses", manage_responses_contacts_questionnaire_path(@production, @questionnaire)]
+      ["Questionnaires", manage_contacts_questionnaires_path],
+      [@questionnaire.title, manage_contacts_questionnaire_path(@questionnaire)],
+      ["Responses", manage_responses_contacts_questionnaire_path(@questionnaire)]
     ],
     text: "Table View",
     links: [
-      { text: "List View", path: manage_responses_contacts_questionnaire_path(@production, @questionnaire) }
+      { text: "List View", path: manage_responses_contacts_questionnaire_path(@questionnaire) }
     ]
   } %>
 
@@ -45,7 +44,7 @@
             <% @responses.each do |response| %>
               <tr class="hover:bg-gray-50">
                 <td class="sticky left-0 z-10 bg-white px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                  <%= link_to manage_response_contacts_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "flex items-center gap-2 no-underline" do %>
+                  <%= link_to manage_response_contacts_questionnaire_path(@questionnaire, response_id: response.id), class: "flex items-center gap-2 no-underline" do %>
                     <% headshot_variant = response.respondent.respond_to?(:safe_headshot_variant) ? response.respondent.safe_headshot_variant(:thumb) : nil %>
                     <% if headshot_variant %>
                       <%= image_tag headshot_variant, alt: response.respondent.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>

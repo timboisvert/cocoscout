@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_231452) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_172801) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1279,24 +1279,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_231452) do
   end
 
   create_table "questionnaire_invitations", force: :cascade do |t|
+    t.bigint "context_id"
+    t.string "context_type"
     t.datetime "created_at", null: false
     t.integer "invitee_id"
     t.string "invitee_type"
     t.bigint "questionnaire_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["invitee_type", "invitee_id", "questionnaire_id"], name: "index_questionnaire_invitations_unique", unique: true
+    t.index ["context_type", "context_id"], name: "index_questionnaire_invitations_on_context_type_and_context_id"
+    t.index ["invitee_type", "invitee_id", "questionnaire_id", "context_type", "context_id"], name: "index_q_invitations_unique_with_context", unique: true
     t.index ["invitee_type", "invitee_id"], name: "index_questionnaire_invitations_on_invitee_type_and_invitee_id"
     t.index ["questionnaire_id"], name: "index_questionnaire_invitations_on_questionnaire_id"
   end
 
   create_table "questionnaire_responses", force: :cascade do |t|
+    t.bigint "context_id"
+    t.string "context_type"
     t.datetime "created_at", null: false
     t.bigint "questionnaire_id", null: false
     t.integer "respondent_id"
     t.string "respondent_type"
     t.datetime "updated_at", null: false
+    t.index ["context_type", "context_id"], name: "index_questionnaire_responses_on_context_type_and_context_id"
     t.index ["questionnaire_id"], name: "index_questionnaire_responses_on_questionnaire_id"
-    t.index ["respondent_type", "respondent_id", "questionnaire_id"], name: "index_questionnaire_responses_unique", unique: true
+    t.index ["respondent_type", "respondent_id", "questionnaire_id", "context_type", "context_id"], name: "index_q_responses_unique_with_context", unique: true
     t.index ["respondent_type", "respondent_id"], name: "idx_on_respondent_type_respondent_id_7f07f0f816"
   end
 
@@ -1304,10 +1310,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_231452) do
     t.boolean "accepting_responses", default: true, null: false
     t.datetime "archived_at"
     t.datetime "created_at", null: false
-    t.bigint "production_id", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "production_id"
     t.string "title", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_questionnaires_on_organization_id"
     t.index ["production_id", "title"], name: "index_questionnaires_on_production_id_and_title"
     t.index ["production_id"], name: "index_questionnaires_on_production_id"
     t.index ["token"], name: "index_questionnaires_on_token", unique: true
@@ -2499,6 +2507,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_231452) do
   add_foreign_key "questionnaire_answers", "questions"
   add_foreign_key "questionnaire_invitations", "questionnaires"
   add_foreign_key "questionnaire_responses", "questionnaires"
+  add_foreign_key "questionnaires", "organizations"
   add_foreign_key "questionnaires", "productions"
   add_foreign_key "remote_ticketing_events", "organizations"
   add_foreign_key "remote_ticketing_events", "production_ticketing_setups"
