@@ -5,11 +5,11 @@ module Manage
     before_action :set_questionnaire,
                   only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
                            responses responses_table show_response invite_people]
-    before_action :ensure_questionnaire_access, only: %i[show responses responses_table show_response]
-    before_action :ensure_global_manager_for_questionnaire, only: %i[
-      new create update archive unarchive form preview
-      create_question update_question destroy_question reorder_questions invite_people
+    before_action :ensure_questionnaire_access, only: %i[show form preview responses responses_table show_response]
+    before_action :ensure_manager_for_questionnaire, only: %i[
+      update create_question update_question destroy_question reorder_questions invite_people
     ]
+    before_action :ensure_global_manager_for_questionnaire, only: %i[new create archive unarchive]
 
     def index
       @filter = params[:filter] || "all"
@@ -252,6 +252,15 @@ module Manage
 
     def set_questionnaire
       @questionnaire = Current.organization.questionnaires.find(params[:id])
+
+      # Set @production so current_user_can_manage? works for production team managers
+      linked_production_ids = CourseOffering.where(questionnaire_id: @questionnaire.id)
+                                            .pluck(:production_id)
+      linked_production_ids += [@questionnaire.production_id] if @questionnaire.production_id.present?
+      managed_production = Current.user.accessible_productions
+                                       .where(id: linked_production_ids.uniq)
+                                       .first
+      @production = managed_production if managed_production
     end
 
     def accessible_questionnaires_scope
@@ -272,6 +281,13 @@ module Manage
       return if accessible_questionnaires_scope.exists?(id: @questionnaire.id)
 
       redirect_to manage_contacts_questionnaires_path, alert: "You do not have access to this questionnaire."
+    end
+
+    def ensure_manager_for_questionnaire
+      return if Current.user.manager?
+      return if @production && Current.user.manager_for_production?(@production)
+
+      redirect_to manage_contacts_questionnaires_path, alert: "You do not have permission to manage this questionnaire."
     end
 
     def ensure_global_manager_for_questionnaire

@@ -8,6 +8,7 @@ module ApplicationHelper
   def current_user_can_manage?(production = nil)
     return false unless Current.user
 
+    production ||= controller.instance_variable_get(:@production) if controller.respond_to?(:instance_variable_get)
     production ||= Current.production
     if production
       Current.user.manager_for_production?(production)

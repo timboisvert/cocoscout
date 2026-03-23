@@ -317,8 +317,9 @@ module Manage
         redirect_to manage_course_offerings_path, alert: "Course offering not found."
         return
       end
+      @production = @course_offering.production
       # Verify user has access to this production
-      unless Current.user.accessible_productions.include?(@course_offering.production)
+      unless Current.user.accessible_productions.include?(@production)
         redirect_to manage_course_offerings_path, alert: "You do not have access to this course offering."
       end
     end

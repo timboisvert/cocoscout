@@ -29,9 +29,7 @@
       <% links.each do |link| %>
         <%
           # For Manage controllers, check permissions
-          if link[:always_visible]
-            can_show_link = true
-          elsif controller.class.ancestors.include?(Manage::ManageController)
+          if controller.class.ancestors.include?(Manage::ManageController)
             requires_global_manager = link[:global_manager_required] || false
             can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
           else
