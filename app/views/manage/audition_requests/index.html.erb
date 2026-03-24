@@ -64,89 +64,129 @@
     </div>
   <% end %>
 
-  <div class="space-y-1 mb-4">
-    <% if @audition_requests.any? %>
-      <% @audition_requests.each do |audition_request| %>
-        <% requestable = audition_request.requestable %>
-        <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
+  <div data-controller="bulk-select" class="mb-4">
+    <div class="space-y-1">
+      <% if @audition_requests.any? %>
+        <% @audition_requests.each do |audition_request| %>
+          <% requestable = audition_request.requestable %>
+          <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
 
-        <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, audition_request),
-            class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200",
-            data: { turbo_prefetch: false } do %>
-
-          <%# Left Section: Headshot & Name (50%) %>
-          <div class="w-1/2 flex items-center gap-4">
-            <% if requestable.present? %>
-              <div class="flex-shrink-0">
-                <% headshot_url = safe_headshot_url(requestable) %>
-                <% if headshot_url %>
-                  <%= image_tag headshot_url, class: "relative inline-block h-8 w-8 !rounded-md object-cover object-center" %>
-                <% else %>
-                  <% if requestable.is_a?(Person) %>
-                    <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-black text-xs font-bold">
-                      <%= requestable.initials %>
-                    </div>
-                  <% else %>
-                    <%# Group without headshot %>
-                    <div class="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                  <% end %>
-                <% end %>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-gray-900 truncate">
-                  <%= truncate(requestable.name, length: 50, omission: "...") %>
-                </div>
-              </div>
-            <% else %>
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">
-                  ?
-                </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-gray-500">[Deleted]</div>
+          <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200">
+            <% if current_user_has_role?(@production) %>
+              <div class="flex items-center mr-3">
+                <input type="checkbox"
+                       value="<%= audition_request.id %>"
+                       name="ids[]"
+                       form="bulk-archive-form"
+                       data-bulk-select-target="checkbox"
+                       data-action="change->bulk-select#toggle"
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
               </div>
             <% end %>
+
+            <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, audition_request),
+                class: "flex items-stretch flex-1 min-w-0",
+                data: { turbo_prefetch: false } do %>
+
+              <%# Left Section: Headshot & Name (50%) %>
+              <div class="w-1/2 flex items-center gap-4">
+                <% if requestable.present? %>
+                  <div class="flex-shrink-0">
+                    <% headshot_url = safe_headshot_url(requestable) %>
+                    <% if headshot_url %>
+                      <%= image_tag headshot_url, class: "relative inline-block h-8 w-8 !rounded-md object-cover object-center" %>
+                    <% else %>
+                      <% if requestable.is_a?(Person) %>
+                        <div class="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-black text-xs font-bold">
+                          <%= requestable.initials %>
+                        </div>
+                      <% else %>
+                        <%# Group without headshot %>
+                        <div class="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate">
+                      <%= truncate(requestable.name, length: 50, omission: "...") %>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="flex-shrink-0">
+                    <div class="w-8 h-8 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">
+                      ?
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-500">[Deleted]</div>
+                  </div>
+                <% end %>
+              </div>
+
+              <%# Right Section: Vote Counts in thirds (50%) %>
+              <% if current_user_can_review?(@production) && vote_counts %>
+                <div class="w-1/2 border-l border-gray-200 pl-4 grid grid-cols-3 items-center divide-x divide-gray-200">
+                  <div class="text-center px-2">
+                    <div class="text-xs text-gray-400 uppercase tracking-wide">Yes</div>
+                    <div class="text-lg font-bold text-pink-600"><%= vote_counts[:yes] %></div>
+                  </div>
+                  <div class="text-center px-2">
+                    <div class="text-xs text-gray-400 uppercase tracking-wide">No</div>
+                    <div class="text-lg font-bold text-pink-600"><%= vote_counts[:no] %></div>
+                  </div>
+                  <div class="text-center px-2">
+                    <div class="text-xs text-gray-400 uppercase tracking-wide">Not Sure</div>
+                    <div class="text-lg font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
+                  </div>
+                </div>
+              <% end %>
+
+            <% end %>
           </div>
-
-          <%# Right Section: Vote Counts in thirds (50%) %>
-          <% if current_user_can_review?(@production) && vote_counts %>
-            <div class="w-1/2 border-l border-gray-200 pl-4 grid grid-cols-3 items-center divide-x divide-gray-200">
-              <div class="text-center px-2">
-                <div class="text-xs text-gray-400 uppercase tracking-wide">Yes</div>
-                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:yes] %></div>
-              </div>
-              <div class="text-center px-2">
-                <div class="text-xs text-gray-400 uppercase tracking-wide">No</div>
-                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:no] %></div>
-              </div>
-              <div class="text-center px-2">
-                <div class="text-xs text-gray-400 uppercase tracking-wide">Not Sure</div>
-                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
-              </div>
-            </div>
-          <% end %>
-
         <% end %>
-      <% end %>
-    <% else %>
 
-    <p class="text-gray-500 text-sm pt-2">
-      <% if @audition_cycle.video_only? %>
-        No one has submitted a video audition yet.
+        <% if current_user_has_role?(@production) %>
+          <!-- Bulk Archive Action Bar -->
+          <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox"
+                       data-bulk-select-target="selectAllCheckbox"
+                       data-action="change->bulk-select#toggleAll"
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-600">Select all</span>
+              </label>
+              <span data-bulk-select-target="count" class="text-sm font-medium text-gray-700"></span>
+            </div>
+
+            <%= form_tag manage_bulk_archive_signups_auditions_cycle_requests_path(@production, @audition_cycle), method: :post, id: "bulk-archive-form" do %>
+              <%= render "shared/button", text: "Archive Selected", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          </div>
+        <% end %>
       <% else %>
-        No one has signed up for an audition yet.
-      <% end %>
-    </p>
-  <% end %>
 
-  <% if @archived_count && @archived_count > 0 %>
-    <div class="mt-6 text-center">
-      <%= link_to "View #{@archived_count} archived #{'sign-up'.pluralize(@archived_count)}", manage_archived_signups_auditions_cycle_requests_path(@production, @audition_cycle), class: "text-sm text-gray-500 hover:underline" %>
-    </div>
-  <% end %>
+      <p class="text-gray-500 text-sm pt-2">
+        <% if @audition_cycle.video_only? %>
+          No one has submitted a video audition yet.
+        <% else %>
+          No one has signed up for an audition yet.
+        <% end %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="mt-6 text-center">
+    <%= link_to manage_archived_signups_auditions_cycle_requests_path(@production, @audition_cycle), class: "text-sm text-gray-500 hover:underline" do %>
+      <% if @archived_count && @archived_count > 0 %>
+        View <%= @archived_count %> archived <%= 'sign-up'.pluralize(@archived_count) %>
+      <% else %>
+        View archived sign-ups
+      <% end %>
+    <% end %>
+  </div>
 </div>

@@ -191,6 +191,14 @@ module Manage
                   notice: "Sign-up archived successfully"
     end
 
+    def bulk_archive
+      ids = Array(params[:ids]).map(&:to_i)
+      requests = @audition_cycle.audition_requests.active.where(id: ids)
+      count = requests.update_all(archived_at: Time.current)
+      redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+                  notice: "#{count} #{'sign-up'.pluralize(count)} archived successfully"
+    end
+
     def unarchive
       @audition_request.unarchive!
       redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),

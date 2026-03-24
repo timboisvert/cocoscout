@@ -557,6 +557,7 @@ Rails.application.routes.draw do
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/unarchive", to: "audition_requests#unarchive", as: "unarchive_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
