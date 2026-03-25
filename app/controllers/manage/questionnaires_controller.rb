@@ -256,7 +256,7 @@ module Manage
       # Set @production so current_user_can_manage? works for production team managers
       linked_production_ids = CourseOffering.where(questionnaire_id: @questionnaire.id)
                                             .pluck(:production_id)
-      linked_production_ids += [@questionnaire.production_id] if @questionnaire.production_id.present?
+      linked_production_ids += [ @questionnaire.production_id ] if @questionnaire.production_id.present?
       managed_production = Current.user.accessible_productions
                                        .where(id: linked_production_ids.uniq)
                                        .first
