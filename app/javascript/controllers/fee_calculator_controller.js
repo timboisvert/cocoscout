@@ -8,7 +8,7 @@ export default class extends Controller {
         "promoInput", "promoStatus", "promoHidden",
         "promoModal", "promoLink", "promoAppliedBadge",
         "feeRow", "feeLabel", "feeDetails", "feeChevron",
-        "registrationPrice", "cocoscoutFee", "producerNet", "stripeFee", "platformFee",
+        "registrationPrice", "cocoscoutFee", "producerNet", "stripeFee", "stripeFeeLabel", "platformFee",
         "earlyBirdNet"
     ]
 
@@ -57,13 +57,21 @@ export default class extends Controller {
             this.feeRowTarget.classList.toggle("text-green-600", this.promoAppliedValue)
             this.feeRowTarget.classList.toggle("text-gray-600", !this.promoAppliedValue)
         }
-        // Hide expandable details when fee is waived
-        if (this.hasFeeDetailsTarget && this.promoAppliedValue) {
-            this.feeDetailsTarget.classList.add("hidden")
-            if (this.hasFeeChevronTarget) this.feeChevronTarget.classList.remove("rotate-180")
+        // When fee is waived, auto-expand details to show CocoScout is covering Stripe fees
+        if (this.hasFeeDetailsTarget) {
+            if (this.promoAppliedValue) {
+                this.feeDetailsTarget.classList.remove("hidden")
+                if (this.hasFeeChevronTarget) this.feeChevronTarget.classList.add("rotate-180")
+            }
         }
         if (this.hasFeeChevronTarget) {
             this.feeChevronTarget.classList.toggle("hidden", this.promoAppliedValue)
+        }
+        // Update Stripe fee label based on waived status
+        if (this.hasStripeFeeLabelTarget) {
+            this.stripeFeeLabelTarget.textContent = this.promoAppliedValue
+                ? "Stripe card processing (2.9% + 30\u00a2) \u2014 covered by CocoScout"
+                : "Stripe card processing (2.9% + 30\u00a2)"
         }
 
         // Early bird net (shown inline if early bird price is set)
