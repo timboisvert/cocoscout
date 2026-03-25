@@ -1,0 +1,109 @@
+<% content_for :title, "New Promo Code - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path],
+      ["Promo Codes", promo_codes_path]
+    ],
+    text: "New Promo Code",
+    links: []
+  } %>
+
+  <div class="mt-4 max-w-xl">
+    <%= form_with model: @promo_code, url: promo_code_create_path, method: :post, local: true do |form| %>
+      <% if @promo_code.errors.any? %>
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p class="text-sm font-medium text-red-800">Please fix the following errors:</p>
+          <ul class="mt-1 text-sm text-red-700 list-disc list-inside">
+            <% @promo_code.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Promo Code Details" %>
+        <div class="p-5 space-y-5">
+          <div>
+            <label for="feature_credit_code" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Code <span class="text-pink-500">*</span>
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Will be auto-uppercased. E.g., WELCOME2025, PARTNER-ACME</p>
+            <%= form.text_field :code,
+                placeholder: "WELCOME2025",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition font-mono uppercase" %>
+          </div>
+
+          <div>
+            <label for="feature_credit_recipient_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Recipient Name
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Who is this code for? For your reference only.</p>
+            <%= form.text_field :recipient_name,
+                placeholder: "e.g., Acme Theater Company",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
+
+          <div>
+            <label for="feature_credit_description" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Description
+            </label>
+            <p class="text-xs text-gray-500 mb-2">Internal note about the purpose of this code.</p>
+            <%= form.text_area :description, rows: 2,
+                placeholder: "e.g., Partner discount for first course offering",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="feature_credit_feature_type" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Feature Type <span class="text-pink-500">*</span>
+              </label>
+              <%= form.select :feature_type, [["Courses", "courses"], ["Ticketing", "ticketing"]], {},
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+            <div>
+              <label for="feature_credit_scope_type" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Scope <span class="text-pink-500">*</span>
+              </label>
+              <p class="text-xs text-gray-500 mb-2">What level does this code apply to?</p>
+              <%= form.select :scope_type,
+                  [["Single Course", "course_offering"], ["Whole Production", "production"], ["Whole Organization", "organization"]],
+                  {},
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="feature_credit_max_uses" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Max Uses
+              </label>
+              <p class="text-xs text-gray-500 mb-2">How many times this code can be redeemed.</p>
+              <%= form.number_field :max_uses, min: 1,
+                  placeholder: "1",
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+            <div>
+              <label for="feature_credit_expires_at" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Expires At
+              </label>
+              <p class="text-xs text-gray-500 mb-2">Leave blank for no expiration.</p>
+              <%= form.datetime_local_field :expires_at,
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center gap-3">
+        <%= render "shared/button", text: "Create Promo Code", variant: "primary", size: "medium", type: :submit %>
+        <%= link_to "Cancel", promo_codes_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>

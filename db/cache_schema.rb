@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_192406) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -457,6 +457,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
     t.datetime "delivery_scheduled_at"
     t.datetime "early_bird_deadline"
     t.integer "early_bird_price_cents"
+    t.bigint "feature_credit_redemption_id"
     t.text "instruction_text"
     t.string "instructor_name"
     t.boolean "instructor_on_team", default: false, null: false
@@ -475,6 +476,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
+    t.index ["feature_credit_redemption_id"], name: "index_course_offerings_on_feature_credit_redemption_id"
     t.index ["instructor_person_id"], name: "index_course_offerings_on_instructor_person_id"
     t.index ["production_id"], name: "index_course_offerings_on_production_id"
     t.index ["questionnaire_id"], name: "index_course_offerings_on_questionnaire_id"
@@ -598,6 +600,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
     t.datetime "updated_at", null: false
     t.index ["show_financials_id", "position"], name: "index_expense_items_on_show_financials_id_and_position"
     t.index ["show_financials_id"], name: "index_expense_items_on_show_financials_id"
+  end
+
+  create_table "feature_credit_redemptions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "feature_credit_id", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "redeemable_id", null: false
+    t.string "redeemable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["feature_credit_id"], name: "index_feature_credit_redemptions_on_feature_credit_id"
+    t.index ["organization_id"], name: "index_feature_credit_redemptions_on_organization_id"
+    t.index ["redeemable_type", "redeemable_id"], name: "idx_fcr_redeemable"
+  end
+
+  create_table "feature_credits", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_user_id"
+    t.text "description"
+    t.datetime "expires_at"
+    t.string "feature_type", default: "courses", null: false
+    t.integer "max_uses", default: 1
+    t.string "recipient_name"
+    t.string "scope_type", default: "course_offering", null: false
+    t.datetime "updated_at", null: false
+    t.integer "uses_count", default: 0, null: false
+    t.index ["active"], name: "index_feature_credits_on_active"
+    t.index ["code"], name: "index_feature_credits_on_code", unique: true
+    t.index ["feature_type"], name: "index_feature_credits_on_feature_type"
   end
 
   create_table "group_invitations", force: :cascade do |t|
@@ -2423,6 +2455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
   add_foreign_key "course_offerings", "contracts"
+  add_foreign_key "course_offerings", "feature_credit_redemptions"
   add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify
   add_foreign_key "course_offerings", "productions"
   add_foreign_key "course_offerings", "questionnaires"
@@ -2439,6 +2472,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_210400) do
   add_foreign_key "event_linkages", "productions"
   add_foreign_key "event_linkages", "shows", column: "primary_show_id"
   add_foreign_key "expense_items", "show_financials", column: "show_financials_id"
+  add_foreign_key "feature_credit_redemptions", "feature_credits"
+  add_foreign_key "feature_credit_redemptions", "organizations"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"

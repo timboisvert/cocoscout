@@ -163,7 +163,7 @@
               <span data-bulk-select-target="count" class="text-sm font-medium text-gray-700"></span>
             </div>
 
-            <%= form_tag manage_bulk_archive_signups_auditions_cycle_requests_path(@production, @audition_cycle), method: :post, id: "bulk-archive-form" do %>
+            <%= form_tag manage_confirm_bulk_archive_signups_auditions_cycle_requests_path(@production, @audition_cycle), method: :post, id: "bulk-archive-form", data: { turbo: false } do %>
               <%= render "shared/button", text: "Archive Selected", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           </div>

@@ -1,0 +1,107 @@
+<% content_for :title, "Confirm Archive" %>
+<div class="w-full">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)],
+      ["Open Sign-ups", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle)]
+    ],
+    text: "Confirm Archive",
+    links: []
+  } %>
+
+  <%= form_tag manage_bulk_archive_signups_auditions_cycle_requests_path(@production, @audition_cycle), method: :post, id: "confirm-archive-form", data: { controller: "confirm-archive" } do %>
+    <% @audition_requests.each do |req| %>
+      <input type="hidden" name="ids[]" value="<%= req.id %>">
+    <% end %>
+
+    <% if @undecided_requests.any? %>
+      <input type="hidden" name="confirm_undecided" value="0" data-confirm-archive-target="hiddenField">
+    <% end %>
+
+    <%# Decided requests (accepted or rejected) %>
+    <% if @decided_requests.any? %>
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Ready to archive</h2>
+        <p class="text-sm text-gray-500 mb-3">These people have been accepted or rejected.</p>
+        <div class="flex flex-wrap gap-2">
+          <% @decided_requests.each do |audition_request| %>
+            <% requestable = audition_request.requestable %>
+            <div class="inline-flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded-lg">
+              <% if requestable.present? %>
+                <% headshot_url = safe_headshot_url(requestable) %>
+                <% if headshot_url %>
+                  <%= image_tag headshot_url, class: "h-6 w-6 rounded-md object-cover" %>
+                <% else %>
+                  <div class="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-black text-[10px] font-bold">
+                    <%= requestable.initials %>
+                  </div>
+                <% end %>
+                <span class="text-sm text-gray-900"><%= requestable.name %></span>
+              <% else %>
+                <div class="w-6 h-6 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 text-[10px] font-bold">?</div>
+                <span class="text-sm text-gray-500">[Deleted]</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Undecided requests (not accepted or rejected yet) %>
+    <% if @undecided_requests.any? %>
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold text-amber-700 mb-1">Not yet accepted or rejected</h2>
+        <p class="text-sm text-gray-500 mb-3">
+          These people haven't received an accept or reject decision yet. Are you sure you want to archive them?
+        </p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <% @undecided_requests.each do |audition_request| %>
+            <% requestable = audition_request.requestable %>
+            <div class="inline-flex items-center gap-2 px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg">
+              <% if requestable.present? %>
+                <% headshot_url = safe_headshot_url(requestable) %>
+                <% if headshot_url %>
+                  <%= image_tag headshot_url, class: "h-6 w-6 rounded-md object-cover" %>
+                <% else %>
+                  <div class="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-black text-[10px] font-bold">
+                    <%= requestable.initials %>
+                  </div>
+                <% end %>
+                <span class="text-sm text-gray-900"><%= requestable.name %></span>
+              <% else %>
+                <div class="w-6 h-6 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 text-[10px] font-bold">?</div>
+                <span class="text-sm text-gray-500">[Deleted]</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <label class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-pointer">
+          <input type="checkbox"
+                 data-confirm-archive-target="confirmCheckbox"
+                 data-action="change->confirm-archive#toggle"
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span class="text-sm text-gray-700">
+            I understand that <%= @undecided_requests.count %> <%= 'person'.pluralize(@undecided_requests.count) %> ha<%= @undecided_requests.count == 1 ? 's' : 've' %>n't been accepted or rejected yet
+          </span>
+        </label>
+      </div>
+    <% end %>
+
+    <div class="flex items-center gap-3 mt-6">
+      <%= render "shared/button",
+        text: "Archive #{@audition_requests.count} #{'Sign-up'.pluralize(@audition_requests.count)}",
+        variant: "primary",
+        size: "medium",
+        type: :submit,
+        data: { confirm_archive_target: "submitButton" },
+        disabled: @undecided_requests.any? %>
+
+      <%= link_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle) do %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

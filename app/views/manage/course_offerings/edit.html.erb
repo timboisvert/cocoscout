@@ -189,80 +189,93 @@
     <%= form_with model: @course_offering, url: manage_course_offering_path(@course_offering), method: :patch, local: true, class: "space-y-6" do |form| %>
       <%= hidden_field_tag :tab, "2" %>
 
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Registration Fee" %>
-        <div class="p-5 space-y-5">
-          <div class="grid grid-cols-2 gap-4">
+      <div data-controller="fee-calculator"
+           data-fee-calculator-validate-url-value="<%= manage_course_validate_promo_code_path %>"
+           data-fee-calculator-promo-applied-value="<%= @course_offering.feature_credit_redemption.present? %>">
+
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <%= render "shared/card_header", title: "Pricing" %>
+          <div class="p-5 space-y-5">
             <div>
               <label for="course_offering_price_dollars" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Price <span class="text-pink-500">*</span>
+                Registration Price <span class="text-pink-500">*</span>
               </label>
-              <div class="relative mt-2">
+              <div class="relative w-48">
                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none">$</span>
                 <%= number_field_tag "course_offering[price_dollars]",
                     @course_offering.price_cents.present? ? format("%.2f", @course_offering.price_cents / 100.0) : nil,
                     min: 0, step: 0.01,
                     placeholder: "150.00",
+                    data: { fee_calculator_target: "priceInput", action: "input->fee-calculator#calculate" },
                     class: "block w-full pl-7 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
               </div>
             </div>
-            <div>
-              <label for="course_offering_currency" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Currency
-              </label>
-              <div class="mt-5">
-                <%= form.select :currency, [["USD", "usd"], ["CAD", "cad"], ["GBP", "gbp"], ["EUR", "eur"]], {},
-                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+
+            <div class="border-t border-gray-200 pt-5">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-900">Offer early bird pricing</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="enable_early_bird"
+                         <%= 'checked' if @course_offering.early_bird_price_cents.present? %>
+                         class="sr-only peer"
+                         onchange="
+                           var fields = document.getElementById('early-bird-fields');
+                           fields.classList.toggle('hidden', !this.checked);
+                           if (!this.checked) {
+                             fields.querySelectorAll('input').forEach(function(i) { i.value = ''; });
+                           }
+                         ">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+              <div id="early-bird-fields" class="<%= 'hidden' unless @course_offering.early_bird_price_cents.present? %>">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label for="course_offering_early_bird_price_dollars" class="block text-sm font-medium text-gray-700 mb-1.5">
+                      Early Bird Price
+                    </label>
+                    <div class="relative">
+                      <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none">$</span>
+                      <%= number_field_tag "course_offering[early_bird_price_dollars]",
+                          @course_offering.early_bird_price_cents.present? ? format("%.2f", @course_offering.early_bird_price_cents / 100.0) : nil,
+                          min: 0, step: 0.01,
+                          placeholder: "120.00",
+                          data: { fee_calculator_target: "earlyBirdInput", action: "input->fee-calculator#calculate" },
+                          class: "block w-full pl-7 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+                    </div>
+                  </div>
+                  <div>
+                    <label for="course_offering_early_bird_deadline" class="block text-sm font-medium text-gray-700 mb-1.5">
+                      Early Bird Deadline
+                    </label>
+                    <%= form.datetime_local_field :early_bird_deadline,
+                        class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+                  </div>
+                </div>
               </div>
             </div>
+
+          </div>
+        </div>
+
+        <%# Processing & Fees card %>
+        <div class="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <%= render "shared/card_header", title: "Processing & Fees" %>
+          <div class="p-5">
+            <% existing_promo = @course_offering.feature_credit_redemption&.feature_credit&.code %>
+            <%= render "manage/course_offerings/fee_breakdown",
+                       promo_code: existing_promo,
+                       promo_field_name: "course_offering[promo_code]" %>
           </div>
         </div>
       </div>
 
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Early Bird Pricing" %>
-        <div class="p-5 space-y-5">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-sm font-medium text-gray-900">Offer early bird pricing</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="enable_early_bird"
-                     <%= 'checked' if @course_offering.early_bird_price_cents.present? %>
-                     class="sr-only peer"
-                     onchange="
-                       var fields = document.getElementById('early-bird-fields');
-                       fields.classList.toggle('hidden', !this.checked);
-                       if (!this.checked) {
-                         fields.querySelectorAll('input').forEach(function(i) { i.value = ''; });
-                       }
-                     ">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-          <div id="early-bird-fields" class="<%= 'hidden' unless @course_offering.early_bird_price_cents.present? %>">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="course_offering_early_bird_price_dollars" class="block text-sm font-medium text-gray-700 mb-1.5">
-                  Early Bird Price
-                </label>
-                <div class="relative mt-2">
-                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 pointer-events-none">$</span>
-                  <%= number_field_tag "course_offering[early_bird_price_dollars]",
-                      @course_offering.early_bird_price_cents.present? ? format("%.2f", @course_offering.early_bird_price_cents / 100.0) : nil,
-                      min: 0, step: 0.01,
-                      placeholder: "120.00",
-                      class: "block w-full pl-7 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-                </div>
-              </div>
-              <div>
-                <label for="course_offering_early_bird_deadline" class="block text-sm font-medium text-gray-700 mb-1.5">
-                  Early Bird Deadline
-                </label>
-                <%= form.datetime_local_field :early_bird_deadline,
-                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-              </div>
-            </div>
-          </div>
-        </div>
+      <%# Pink banner %>
+      <div class="bg-pink-50 border border-pink-200 rounded-lg px-4 py-3 flex items-start gap-2.5">
+        <svg class="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="text-xs text-pink-700">No monthly fees — CocoScout takes a small 5% per registration and covers payment processing on your behalf.</p>
       </div>
 
       <div class="flex items-center gap-3">

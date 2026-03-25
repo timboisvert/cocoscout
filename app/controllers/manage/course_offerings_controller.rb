@@ -42,6 +42,11 @@ module Manage
     def update
       tab = params[:tab].to_i
 
+      # Handle promo code for pricing tab
+      if tab == 2
+        handle_promo_code_for_update
+      end
+
       if @course_offering.update(course_offering_params)
         redirect_to manage_edit_course_offering_path(@course_offering, tab: tab), notice: "Course offering updated."
       else
@@ -308,6 +313,21 @@ module Manage
       redirect_to manage_course_offering_questionnaire_path(@course_offering), notice: "Questionnaire settings updated."
     end
 
+    def validate_promo_code
+      code = params[:code].to_s.strip
+      credit = FeatureCredit.find_by_normalized_code(code)
+
+      if credit.nil?
+        render json: { valid: false, error: "Code not found" }
+      elsif !credit.redeemable?
+        render json: { valid: false, error: "This code is no longer valid" }
+      elsif credit.feature_type != "courses"
+        render json: { valid: false, error: "This code does not apply to courses" }
+      else
+        render json: { valid: true, description: "Promo code applied — CocoScout fee waived!" }
+      end
+    end
+
     private
 
     def load_course_offering
@@ -347,6 +367,26 @@ module Manage
       end
 
       permitted
+    end
+
+    def handle_promo_code_for_update
+      promo_code = params.dig(:course_offering, :promo_code).to_s.strip
+      existing_redemption = @course_offering.feature_credit_redemption
+
+      if promo_code.present? && existing_redemption.nil?
+        # Applying a new promo code
+        credit = FeatureCredit.find_by_normalized_code(promo_code)
+        if credit&.redeemable? && credit.feature_type == "courses"
+          redemption = credit.redeem!(
+            organization: Current.organization,
+            redeemable: @course_offering
+          )
+          @course_offering.update_column(:feature_credit_redemption_id, redemption.id)
+        end
+      elsif promo_code.blank? && existing_redemption.present?
+        # Removing an existing promo code
+        @course_offering.update_column(:feature_credit_redemption_id, nil)
+      end
     end
 
     def assign_instructor_to_sessions(course_offering)

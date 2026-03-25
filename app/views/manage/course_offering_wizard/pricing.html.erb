@@ -3,36 +3,27 @@
   <p class="text-sm text-gray-600 mb-6">Set the registration fee. You can optionally offer an early bird discount.</p>
 
   <%= form_with url: manage_course_wizard_pricing_path, method: :post, local: true do |form| %>
-    <div class="space-y-5">
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label for="price_dollars" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Price
-            <span class="text-pink-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-            <input type="number" name="price_dollars" id="price_dollars" required
-                   min="0.01" step="0.01"
-                   value="<%= @wizard_state[:price_cents] ? (@wizard_state[:price_cents].to_f / 100).round(2) : '' %>"
-                   placeholder="150.00"
-                   class="block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-          </div>
-        </div>
-        <div>
-          <label for="currency" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Currency
-          </label>
-          <select name="currency" id="currency"
-                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <% [["USD", "usd"], ["CAD", "cad"], ["GBP", "gbp"], ["EUR", "eur"]].each do |label, val| %>
-              <option value="<%= val %>" <%= 'selected' if (@wizard_state[:currency] || 'usd') == val %>><%= label %></option>
-            <% end %>
-          </select>
+    <div data-controller="fee-calculator"
+         data-fee-calculator-validate-url-value="<%= manage_course_validate_promo_code_path %>"
+         data-fee-calculator-promo-applied-value="<%= @wizard_state[:promo_code].present? %>">
+
+      <div>
+        <label for="price_dollars" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Registration Price <span class="text-pink-500">*</span>
+        </label>
+        <div class="relative w-48">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <input type="number" name="price_dollars" id="price_dollars" required
+                 min="0.01" step="0.01"
+                 value="<%= @wizard_state[:price_cents] ? (@wizard_state[:price_cents].to_f / 100).round(2) : '' %>"
+                 placeholder="150.00"
+                 data-fee-calculator-target="priceInput"
+                 data-action="input->fee-calculator#calculate"
+                 class="block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
         </div>
       </div>
 
-      <div class="border-t border-gray-200 pt-5">
+      <div class="border-t border-gray-200 pt-5 mt-5">
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-medium text-gray-900">Offer early bird pricing</span>
           <label class="relative inline-flex items-center cursor-pointer">
@@ -55,6 +46,8 @@
                        min="0.01" step="0.01"
                        value="<%= @wizard_state[:early_bird_price_cents] ? (@wizard_state[:early_bird_price_cents].to_f / 100).round(2) : '' %>"
                        placeholder="120.00"
+                       data-fee-calculator-target="earlyBirdInput"
+                       data-action="input->fee-calculator#calculate"
                        class="block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
               </div>
             </div>
@@ -69,6 +62,25 @@
           </div>
         </div>
       </div>
+
+    </div>
+
+    <%# Processing & Fees card %>
+    <div class="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <%= render "shared/card_header", title: "Processing & Fees" %>
+      <div class="p-5">
+        <%= render "manage/course_offerings/fee_breakdown",
+                   promo_code: @wizard_state[:promo_code],
+                   promo_field_name: "promo_code" %>
+      </div>
+    </div>
+
+    <%# Pink banner %>
+    <div class="mt-6 bg-pink-50 border border-pink-200 rounded-lg px-4 py-3 flex items-start gap-2.5">
+      <svg class="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p class="text-xs text-pink-700">No monthly fees — CocoScout takes a small 5% per registration and covers payment processing on your behalf.</p>
     </div>
 
     <div class="mt-8 flex items-center justify-between">

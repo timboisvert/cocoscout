@@ -191,9 +191,73 @@ module Manage
                   notice: "Sign-up archived successfully"
     end
 
+    def confirm_bulk_archive
+      ids = Array(params[:ids]).map(&:to_i)
+      @audition_requests = @audition_cycle.audition_requests.active.where(id: ids).includes(:requestable)
+
+      if @audition_requests.empty?
+        redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+                    alert: "No sign-ups selected"
+        return
+      end
+
+      # Find which requestables have a casting decision (cast or rejected)
+      decided_ids_by_type = @audition_cycle.cast_assignment_stages
+        .pluck(:assignable_type, :assignable_id)
+        .group_by(&:first)
+        .transform_values { |pairs| pairs.map(&:last).to_set }
+
+      @decided_requests = []
+      @undecided_requests = []
+
+      @audition_requests.each do |req|
+        type_set = decided_ids_by_type[req.requestable_type]
+        if type_set&.include?(req.requestable_id)
+          @decided_requests << req
+        else
+          @undecided_requests << req
+        end
+      end
+    end
+
     def bulk_archive
       ids = Array(params[:ids]).map(&:to_i)
       requests = @audition_cycle.audition_requests.active.where(id: ids)
+
+      # Check if there are undecided requests that need confirmation
+      decided_ids_by_type = @audition_cycle.cast_assignment_stages
+        .pluck(:assignable_type, :assignable_id)
+        .group_by(&:first)
+        .transform_values { |pairs| pairs.map(&:last).to_set }
+
+      has_undecided = requests.any? do |req|
+        type_set = decided_ids_by_type[req.requestable_type]
+        !type_set&.include?(req.requestable_id)
+      end
+
+      if has_undecided && params[:confirm_undecided] != "1"
+        redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+                    alert: "You must confirm archiving sign-ups that haven't been accepted or rejected"
+        return
+      end
+
+      # Auto-reject undecided people being archived
+      if has_undecided
+        talent_pool = @production.effective_talent_pool
+        requests.includes(:requestable).each do |req|
+          type_set = decided_ids_by_type[req.requestable_type]
+          next if type_set&.include?(req.requestable_id)
+
+          CastAssignmentStage.create!(
+            audition_cycle_id: @audition_cycle.id,
+            talent_pool_id: talent_pool.id,
+            assignable_type: req.requestable_type,
+            assignable_id: req.requestable_id,
+            decision_type: :rejected
+          )
+        end
+      end
+
       count = requests.update_all(archived_at: Time.current)
       redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
                   notice: "#{count} #{'sign-up'.pluralize(count)} archived successfully"

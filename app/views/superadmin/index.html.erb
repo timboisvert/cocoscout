@@ -456,5 +456,24 @@
       </div>
     <% end %>
 
+    <!-- Promo Codes -->
+    <%= link_to promo_codes_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+        <div class="p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Promo Codes</h3>
+              <p class="text-xs text-gray-500">Fee waivers & credits</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
   </div>
 </div>

@@ -11,7 +11,8 @@ class SuperadminController < ApplicationController
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
-                         agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread]
+                         agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
+                         promo_codes promo_code_new promo_code_create promo_code_deactivate]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -2327,5 +2328,41 @@ class SuperadminController < ApplicationController
     @subscription = MessageSubscription.find(params[:id])
     @subscription.update!(unread_count: 1, last_read_at: nil)
     redirect_to message_detail_path(params[:message_id]), notice: "Subscription marked as unread for #{@subscription.user&.email_address}"
+  end
+
+  # ==================== Promo Codes ====================
+
+  def promo_codes
+    @promo_codes = FeatureCredit.order(created_at: :desc)
+  end
+
+  def promo_code_new
+    @promo_code = FeatureCredit.new(feature_type: "courses", scope_type: "organization", max_uses: 1)
+  end
+
+  def promo_code_create
+    @promo_code = FeatureCredit.new(promo_code_params)
+    @promo_code.created_by_user_id = Current.user.id
+
+    if @promo_code.save
+      redirect_to promo_codes_path, notice: "Promo code #{@promo_code.code} created."
+    else
+      render :promo_code_new, status: :unprocessable_entity
+    end
+  end
+
+  def promo_code_deactivate
+    @promo_code = FeatureCredit.find(params[:id])
+    @promo_code.update!(active: false)
+    redirect_to promo_codes_path, notice: "Promo code #{@promo_code.code} deactivated."
+  end
+
+  private
+
+  def promo_code_params
+    params.require(:feature_credit).permit(
+      :code, :recipient_name, :description, :feature_type,
+      :scope_type, :max_uses, :expires_at
+    )
   end
 end

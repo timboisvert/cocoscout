@@ -216,6 +216,8 @@ module Manage
         @wizard_state[:early_bird_deadline] = nil
       end
 
+      @wizard_state[:promo_code] = params[:promo_code].to_s.strip.presence
+
       save_wizard_state
       redirect_to manage_course_wizard_details_path
     end
@@ -320,6 +322,18 @@ module Manage
         if @wizard_state[:instructor_headshot_blob_id].present?
           blob = ActiveStorage::Blob.find_by(id: @wizard_state[:instructor_headshot_blob_id])
           @offering.instructor_headshot.attach(blob) if blob
+        end
+
+        # Redeem promo code if provided
+        if @wizard_state[:promo_code].present?
+          credit = FeatureCredit.find_by_normalized_code(@wizard_state[:promo_code])
+          if credit&.redeemable? && credit.feature_type == "courses"
+            redemption = credit.redeem!(
+              organization: Current.organization,
+              redeemable: @offering
+            )
+            @offering.update!(feature_credit_redemption: redemption)
+          end
         end
 
         # Create shows (sessions) for the course

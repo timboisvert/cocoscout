@@ -132,6 +132,12 @@ Rails.application.routes.draw do
 
     # Rake Tasks
     get    "/tasks",            to: "superadmin#tasks",               as: "tasks_monitor"
+
+    # Promo Codes (Feature Credits)
+    get    "/promo_codes",       to: "superadmin#promo_codes",         as: "promo_codes"
+    get    "/promo_codes/new",   to: "superadmin#promo_code_new",      as: "promo_code_new"
+    post   "/promo_codes",       to: "superadmin#promo_code_create",   as: "promo_code_create"
+    patch  "/promo_codes/:id/deactivate", to: "superadmin#promo_code_deactivate", as: "promo_code_deactivate"
   end
 
   # Pilot user setup (superadmins only)
@@ -553,11 +559,12 @@ Rails.application.routes.draw do
     get  "/signups/auditions/:production_id/:cycle_id/requests/archived", to: "audition_requests#archived", as: "archived_signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/new", to: "audition_requests#new", as: "new_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#create", as: "create_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/confirm_bulk_archive", to: "audition_requests#confirm_bulk_archive", as: "confirm_bulk_archive_signups_auditions_cycle_requests"
+    post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#show", as: "signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
-    post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/unarchive", to: "audition_requests#unarchive", as: "unarchive_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
@@ -1103,6 +1110,9 @@ Rails.application.routes.draw do
     get  "courses/wizard/review",     to: "course_offering_wizard#review",          as: "course_wizard_review"
     post "courses/wizard/create",     to: "course_offering_wizard#create_offering", as: "course_wizard_create"
     delete "courses/wizard/cancel",   to: "course_offering_wizard#cancel",          as: "course_wizard_cancel"
+
+    # Promo code validation (must be before :id routes)
+    post "courses/validate_promo_code", to: "course_offerings#validate_promo_code", as: "course_validate_promo_code"
 
     # Course Offering CRUD (after wizard so :id doesn't match "wizard")
     get "courses/:id",          to: "course_offerings#show",    as: "course_offering"
