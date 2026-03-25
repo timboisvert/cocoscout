@@ -12,7 +12,8 @@ class SuperadminController < ApplicationController
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
                          agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
-                         promo_codes promo_code_new promo_code_create promo_code_deactivate]
+                         promo_codes promo_code_new promo_code_create promo_code_deactivate
+                         finances]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -2357,7 +2358,68 @@ class SuperadminController < ApplicationController
     redirect_to promo_codes_path, notice: "Promo code #{@promo_code.code} deactivated."
   end
 
+  # ==================== Finances ====================
+
+  def finances
+    @period = params[:period].presence || "all_time"
+    date_range = finances_date_range(@period)
+
+    registrations = CourseRegistration.confirmed
+      .includes(course_offering: [ :production, :organization, :feature_credit_redemption ])
+      .includes(:person)
+    registrations = registrations.where(paid_at: date_range) if date_range
+
+    @registrations = registrations.order(paid_at: :desc)
+
+    @gross_revenue_cents = 0
+    @cocoscout_fees_cents = 0
+    @stripe_fees_cents = 0
+    @waived_count = 0
+    @missing_stripe_fee_count = 0
+
+    @rows = @registrations.map do |reg|
+      amount_cents = reg.amount_cents
+      waived = reg.cocoscout_fee_cents == 0 || reg.cocoscout_fee_cents.nil? && reg.course_offering.feature_credit_redemption.present?
+      stripe_fee_cents = reg.stripe_fee_cents
+      cocoscout_fee_cents = reg.cocoscout_fee_cents || 0
+      @missing_stripe_fee_count += 1 if stripe_fee_cents.nil?
+      net_cents = cocoscout_fee_cents - (stripe_fee_cents || 0)
+
+      @gross_revenue_cents += amount_cents
+      @cocoscout_fees_cents += cocoscout_fee_cents
+      @stripe_fees_cents += (stripe_fee_cents || 0)
+      @waived_count += 1 if waived
+
+      {
+        registration: reg,
+        amount_cents: amount_cents,
+        waived: waived,
+        stripe_fee_cents: stripe_fee_cents,
+        cocoscout_fee_cents: cocoscout_fee_cents,
+        net_cents: net_cents
+      }
+    end
+
+    @net_income_cents = @cocoscout_fees_cents - @stripe_fees_cents
+    @total_registrations = @registrations.size
+  end
+
   private
+
+  def finances_date_range(period)
+    case period
+    when "this_month"
+      Time.current.beginning_of_month..Time.current
+    when "last_month"
+      1.month.ago.beginning_of_month..1.month.ago.end_of_month
+    when "last_30_days"
+      30.days.ago..Time.current
+    when "this_year"
+      Time.current.beginning_of_year..Time.current
+    else
+      nil
+    end
+  end
 
   def promo_code_params
     params.require(:feature_credit).permit(

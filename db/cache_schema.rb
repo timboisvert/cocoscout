@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_192406) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_225106) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -487,6 +487,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_192406) do
   create_table "course_registrations", force: :cascade do |t|
     t.integer "amount_cents", null: false
     t.datetime "cancelled_at"
+    t.integer "cocoscout_fee_cents"
     t.bigint "course_offering_id", null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "usd", null: false
@@ -496,6 +497,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_192406) do
     t.datetime "registered_at", null: false
     t.string "status", default: "pending", null: false
     t.string "stripe_checkout_session_id"
+    t.integer "stripe_fee_cents"
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"

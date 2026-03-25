@@ -59,8 +59,12 @@ class StripeWebhooksController < ApplicationController
       registered_at: Time.current,
       paid_at: Time.current,
       stripe_checkout_session_id: session.id,
-      stripe_payment_intent_id: session.payment_intent
+      stripe_payment_intent_id: session.payment_intent,
+      cocoscout_fee_cents: calculate_cocoscout_fee(offering, metadata["amount_cents"].to_i)
     )
+
+    # Fetch actual Stripe fee from the charge's balance transaction
+    record_stripe_fee(registration, session.payment_intent)
 
     # Release Redis spot hold
     CourseSpotHoldService.release(offering.id, person.id)
@@ -79,5 +83,27 @@ class StripeWebhooksController < ApplicationController
     return if registration.refunded? # Idempotent
 
     registration.refund!
+  end
+
+  def calculate_cocoscout_fee(offering, amount_cents)
+    return 0 if offering.feature_credit_redemption.present?
+    (amount_cents * 0.05).round
+  end
+
+  def record_stripe_fee(registration, payment_intent_id)
+    return unless payment_intent_id.present?
+
+    payment_intent = Stripe::PaymentIntent.retrieve(payment_intent_id)
+    charge_id = payment_intent.latest_charge
+    return unless charge_id
+
+    charge = Stripe::Charge.retrieve(charge_id)
+    balance_transaction_id = charge.balance_transaction
+    return unless balance_transaction_id
+
+    balance_transaction = Stripe::BalanceTransaction.retrieve(balance_transaction_id)
+    registration.update!(stripe_fee_cents: balance_transaction.fee)
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Failed to fetch Stripe fee for registration #{registration.id}: #{e.message}"
   end
 end

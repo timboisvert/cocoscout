@@ -138,6 +138,9 @@ Rails.application.routes.draw do
     get    "/promo_codes/new",   to: "superadmin#promo_code_new",      as: "promo_code_new"
     post   "/promo_codes",       to: "superadmin#promo_code_create",   as: "promo_code_create"
     patch  "/promo_codes/:id/deactivate", to: "superadmin#promo_code_deactivate", as: "promo_code_deactivate"
+
+    # Finances
+    get    "/finances",          to: "superadmin#finances",            as: "finances"
   end
 
   # Pilot user setup (superadmins only)
