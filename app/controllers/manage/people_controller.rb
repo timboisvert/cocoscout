@@ -65,6 +65,7 @@ module Manage
             # Multiple profiles with same email - need user to select which ones
             @person = Person.new(person_params)
             @multiple_profiles = existing_profiles
+            load_talent_pools
             render :new, status: :unprocessable_entity
           elsif existing_profiles.count == 1
             # Single profile exists - use it
@@ -234,6 +235,7 @@ module Manage
 
         redirect_to new_manage_person_path, notice: "Invitation sent to #{@person.name}"
       else
+        load_talent_pools
         render :new, status: :unprocessable_entity
       end
     end
