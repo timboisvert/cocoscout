@@ -65,20 +65,18 @@
         </div>
       </div>
 
-    </div>
-
-    <%# Processing & Fees card %>
-    <div class="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <%= render "shared/card_header", title: "Processing & Fees" %>
-      <div class="p-5">
+      <%# Fee breakdown - inside the fee-calculator controller scope %>
+      <div class="border-t border-gray-200 pt-5 mt-5">
+        <p class="text-sm font-medium text-gray-900 mb-3">Processing & Fees</p>
         <%= render "manage/course_offerings/fee_breakdown",
                    promo_code: @wizard_state[:promo_code],
                    promo_field_name: "promo_code" %>
       </div>
+
     </div>
 
     <div class="mt-8 flex items-center justify-between">
-      <%= link_to manage_course_wizard_instructor_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
+      <%= link_to manage_course_wizard_schedule_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>

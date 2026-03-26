@@ -7,19 +7,22 @@ module My
 
     def index
       # Get all payment history for the current person across all shows
-      @payment_history = ShowPayoutLineItem
+      paid_items = ShowPayoutLineItem
         .where(payee: @person)
         .joins(show_payout: :show)
         .where(show_payouts: { status: "paid" })
         .includes(show_payout: { show: :production })
         .order("show_payout_line_items.paid_at DESC NULLS LAST, shows.date_and_time DESC")
-        .limit(50)
 
-      # Calculate totals
-      @total_received = @payment_history.sum(&:amount)
-      @venmo_total = @payment_history.select(&:paid_via_venmo?).sum(&:amount)
-      @zelle_total = @payment_history.select(&:paid_via_zelle?).sum(&:amount)
-      @offline_total = @payment_history.reject { |p| p.paid_via_venmo? || p.paid_via_zelle? }.sum(&:amount)
+      # Calculate totals from full dataset
+      all_items = paid_items.to_a
+      @total_received = all_items.sum(&:amount)
+      @venmo_total = all_items.select(&:paid_via_venmo?).sum(&:amount)
+      @zelle_total = all_items.select(&:paid_via_zelle?).sum(&:amount)
+      @offline_total = all_items.reject { |p| p.paid_via_venmo? || p.paid_via_zelle? }.sum(&:amount)
+
+      # Paginate
+      @pagy, @payment_history = pagy(paid_items, limit: 25)
 
       # Pending payouts (awaiting payout but not yet paid)
       @pending_payouts = ShowPayoutLineItem

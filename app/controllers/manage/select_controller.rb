@@ -9,10 +9,17 @@ module Manage
 
     def organization
       # Organization selection screen
-      @organizations = Current.user.organizations.non_demo.includes(:owner, :productions, :users).order(:name)
-      @demo_organizations = Current.user.organizations.demo.includes(:owner, :productions, :users).order(:name)
+      @organizations = Current.user.accessible_organizations.non_demo.includes(:owner, :productions, :users).order(:name)
+      @demo_organizations = Current.user.accessible_organizations.demo.includes(:owner, :productions, :users).order(:name)
+      @onboarding_intent = session[:manage_onboarding_intent]
 
-      all_orgs = Current.user.organizations
+      # Clear stale intents that are just the generic /manage path
+      if @onboarding_intent.present? && (@onboarding_intent == manage_path || @onboarding_intent == "#{manage_path}/")
+        session.delete(:manage_onboarding_intent)
+        @onboarding_intent = nil
+      end
+
+      all_orgs = Current.user.accessible_organizations
       non_demo = all_orgs.non_demo
 
       # Auto-select: if 1 non-demo org, pick it. If only demo org, pick it.
@@ -31,7 +38,7 @@ module Manage
           session[:current_organization_id] ||= {}
           session[:current_organization_id][user_id.to_s] = auto_select_org.id
         end
-        redirect_to manage_path
+        redirect_to_intent_or(manage_path)
         return
       end
 
@@ -45,7 +52,7 @@ module Manage
     end
 
     def set_organization
-      organization = Current.user.organizations.find(params[:id])
+      organization = Current.user.accessible_organizations.find(params[:id])
 
       # Set the organization in session using the same format as set_current_organization
       user_id = Current.user&.id
@@ -54,8 +61,8 @@ module Manage
         session[:current_organization_id][user_id.to_s] = organization.id
       end
 
-      # Always redirect to manage - production auto-selection happens there if needed
-      redirect_to manage_path, status: :see_other
+      # Always redirect to manage (or stored intent) - production auto-selection happens there if needed
+      redirect_to_intent_or(manage_path, status: :see_other)
     end
 
     private

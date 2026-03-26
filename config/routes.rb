@@ -218,6 +218,7 @@ Rails.application.routes.draw do
     post   "/direct_messages",              to: "direct_messages#create",   as: "direct_messages"
 
     get   "/courses",                       to: "courses#index",            as: "courses"
+    get   "/courses/directory",               to: "courses#directory",        as: "courses_directory"
     get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/calendar",                to: redirect("/my"),            as: "shows_calendar"

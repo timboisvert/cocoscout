@@ -63,7 +63,7 @@
         <%# ===== ORGANIZATION (only if multiple orgs) ===== %>
         <% if Current.organization.present? %>
           <%
-            all_orgs = current_user_is_global_manager? ? Current.user.organizations.includes(:logo_attachment) : []
+            all_orgs = current_user_is_global_manager? ? Current.user.accessible_organizations.includes(:logo_attachment) : []
             other_orgs = all_orgs.reject { |o| o.id == Current.organization&.id }
             has_multiple_orgs = other_orgs.any?
           %>
@@ -96,7 +96,7 @@
 
         <%# ===== NAVIGATION LINKS ===== %>
         <% if Current.organization.present? %>
-          <% has_team_access = Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? } %>
+          <% has_team_access = %w[manager viewer].include?(Current.user.default_role) || Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? } %>
           <nav class="space-y-1 mb-5">
             <% if has_team_access %>
               <%= link_to manage_path, class: "flex items-center gap-3 px-4 py-2 rounded-lg text-lg font-medium hover:bg-pink-50 hover:text-pink-600 transition #{controller_name == 'manage' && action_name == 'index' ? 'bg-pink-50 text-pink-600' : 'text-gray-800'}" do %>
@@ -287,7 +287,7 @@
 
             <%# Other orgs %>
             <%
-              all_orgs_popup = Current.user.organizations.includes(:logo_attachment)
+              all_orgs_popup = Current.user.accessible_organizations.includes(:logo_attachment)
               other_orgs_popup = all_orgs_popup.reject { |o| o.id == Current.organization&.id }
             %>
             <% other_orgs_popup.each do |org| %>
@@ -337,7 +337,7 @@
           <%# Organization info for single-org users %>
           <% if Current.organization.present? %>
             <%
-              all_orgs_check = current_user_is_global_manager? ? Current.user.organizations : []
+              all_orgs_check = current_user_is_global_manager? ? Current.user.accessible_organizations : []
               single_org = all_orgs_check.count <= 1
             %>
             <% if single_org %>

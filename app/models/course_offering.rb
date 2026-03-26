@@ -35,6 +35,7 @@ class CourseOffering < ApplicationRecord
 
   scope :active, -> { where(status: %w[open closed]) }
   scope :accepting, -> { open }
+  scope :listed, -> { where(listed_in_directory: true) }
 
   # --- Pricing ---
 

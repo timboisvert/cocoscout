@@ -20,9 +20,9 @@
   <nav class="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Basics</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Instructor</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Pricing</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Details</button>
-    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Sessions</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Sessions</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Pricing</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Details</button>
   </nav>
 
   <%# ==================== TAB 0: BASICS ==================== %>
@@ -184,10 +184,63 @@
     </div>
   </div>
 
-  <%# ==================== TAB 2: PRICING ==================== %>
+  <%# ==================== TAB 2: SESSIONS ==================== %>
+  <div data-tabs-target="panel" class="hidden">
+    <div class="space-y-6">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Class Sessions" %>
+        <div class="p-5">
+          <p class="text-sm text-gray-600 mb-4">
+            Sessions are managed as events on this course's production.
+            You can edit dates, times, locations, and other details from the shows page.
+          </p>
+
+          <% if @sessions.any? %>
+            <div class="space-y-2">
+              <% @sessions.each do |show| %>
+                <div class="flex items-center gap-3 py-2 px-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                  <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-100 rounded-md flex flex-col items-center justify-center">
+                    <span class="text-[10px] font-medium text-pink-600 uppercase leading-none"><%= show.date_and_time.strftime("%b") %></span>
+                    <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">
+                      <%= show.date_and_time.strftime("%A, %B %-d, %Y") %>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      <%= show.date_and_time.strftime("%-I:%M %p") %>
+                      <% if show.duration_minutes.present? %>
+                        &middot; <%= show.duration_minutes %> min
+                      <% end %>
+                      <% if show.location.present? %>
+                        &middot; <%= show.location.name %>
+                      <% end %>
+                    </p>
+                  </div>
+                  <% if show.secondary_name.present? %>
+                    <span class="text-xs text-gray-400"><%= show.secondary_name %></span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-400 italic">No sessions scheduled yet.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <%= link_to manage_production_shows_path(@course_offering.production) do %>
+          <%= render "shared/button", text: "Manage Sessions", variant: "secondary", size: "medium" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# ==================== TAB 3: PRICING ==================== %>
   <div data-tabs-target="panel" class="hidden">
     <%= form_with model: @course_offering, url: manage_course_offering_path(@course_offering), method: :patch, local: true, class: "space-y-6" do |form| %>
-      <%= hidden_field_tag :tab, "2" %>
+      <%= hidden_field_tag :tab, "3" %>
 
       <div data-controller="fee-calculator"
            data-fee-calculator-validate-url-value="<%= manage_course_validate_promo_code_path %>"
@@ -278,10 +331,10 @@
     <% end %>
   </div>
 
-  <%# ==================== TAB 3: DETAILS ==================== %>
+  <%# ==================== TAB 4: DETAILS ==================== %>
   <div data-tabs-target="panel" class="hidden">
     <%= form_with model: @course_offering, url: manage_course_offering_path(@course_offering), method: :patch, local: true, class: "space-y-6" do |form| %>
-      <%= hidden_field_tag :tab, "3" %>
+      <%= hidden_field_tag :tab, "4" %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <%= render "shared/card_header", title: "Capacity" %>
@@ -385,63 +438,26 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <%= render "shared/button", text: "Save Details", variant: "primary", size: "medium", type: :submit %>
-      </div>
-    <% end %>
-  </div>
-
-  <%# ==================== TAB 4: SESSIONS ==================== %>
-  <div data-tabs-target="panel" class="hidden">
-    <div class="space-y-6">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Class Sessions" %>
+        <%= render "shared/card_header", title: "Course Directory" %>
         <div class="p-5">
-          <p class="text-sm text-gray-600 mb-4">
-            Sessions are managed as events on this course's production.
-            You can edit dates, times, locations, and other details from the shows page.
-          </p>
-
-          <% if @sessions.any? %>
-            <div class="space-y-2">
-              <% @sessions.each do |show| %>
-                <div class="flex items-center gap-3 py-2 px-3 border border-gray-100 rounded-lg hover:bg-gray-50">
-                  <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-100 rounded-md flex flex-col items-center justify-center">
-                    <span class="text-[10px] font-medium text-pink-600 uppercase leading-none"><%= show.date_and_time.strftime("%b") %></span>
-                    <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900">
-                      <%= show.date_and_time.strftime("%A, %B %-d, %Y") %>
-                    </p>
-                    <p class="text-xs text-gray-500">
-                      <%= show.date_and_time.strftime("%-I:%M %p") %>
-                      <% if show.duration_minutes.present? %>
-                        &middot; <%= show.duration_minutes %> min
-                      <% end %>
-                      <% if show.location.present? %>
-                        &middot; <%= show.location.name %>
-                      <% end %>
-                    </p>
-                  </div>
-                  <% if show.secondary_name.present? %>
-                    <span class="text-xs text-gray-400"><%= show.secondary_name %></span>
-                  <% end %>
-                </div>
-              <% end %>
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-sm font-medium text-gray-900">List in course directory</span>
+              <p class="text-xs text-gray-500 mt-0.5">Make this course discoverable to other CocoScout users in the global course directory.</p>
             </div>
-          <% else %>
-            <p class="text-sm text-gray-400 italic">No sessions scheduled yet.</p>
-          <% end %>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+              <%= form.check_box :listed_in_directory, { class: "sr-only peer", include_hidden: true }, "1", "0" %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
-        <%= link_to manage_production_shows_path(@course_offering.production) do %>
-          <%= render "shared/button", text: "Manage Sessions", variant: "secondary", size: "medium" %>
-        <% end %>
+        <%= render "shared/button", text: "Save Details", variant: "primary", size: "medium", type: :submit %>
       </div>
-    </div>
+    <% end %>
   </div>
 
 </div>

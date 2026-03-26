@@ -7,8 +7,9 @@
       <% if Current.organization.present? %>
 
         <%
-        # Check if user has team access to any production
-        has_team_access = Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? }
+        # Check if user has team access to any production, or is an org-level manager/viewer
+        has_team_access = %w[manager viewer].include?(Current.user.default_role) ||
+          Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? }
 
         # Build links based on access level
         links = []

@@ -26,10 +26,10 @@ module Manage
       # Check if user needs to see welcome page (but not when impersonating)
       if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank? && cookies.signed[:impersonator_user_id].blank?
         @show_manage_sidebar = false
-        @has_organization = Current.user.organizations.any?
+        @has_organization = Current.user.accessible_organizations.any?
         @has_production = @has_organization && Current.organization&.productions&.any?
         @current_org = Current.organization
-        @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
+        @user_orgs = Current.user.accessible_organizations.includes(:organization_roles).order(:name)
         render "welcome" and return
       end
 
@@ -45,6 +45,8 @@ module Manage
 
       # Redirect to organization selection if no organization is set
       unless Current.organization
+        # Clear any stale intent — user navigated to /manage generically
+        session.delete(:manage_onboarding_intent)
         redirect_to select_organization_path and return
       end
 
@@ -61,10 +63,10 @@ module Manage
 
     def welcome
       @show_manage_sidebar = false
-      @has_organization = Current.user.organizations.any?
+      @has_organization = Current.user.accessible_organizations.any?
       @has_production = @has_organization && Current.organization&.productions&.any?
       @current_org = Current.organization
-      @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
+      @user_orgs = Current.user.accessible_organizations.includes(:organization_roles).order(:name)
       render "welcome"
     end
 
@@ -153,9 +155,16 @@ module Manage
       user_id = Current.user&.id
       if user_id && session[:current_organization_id].is_a?(Hash)
         company_id = session[:current_organization_id][user_id.to_s]
-        Current.organization = Organization.find_by(id: company_id)
+        org = Organization.find_by(id: company_id)
+        # Verify user still has access to this org (role may have been removed)
+        if org && Current.user.accessible_organizations.where(id: org.id).exists?
+          Current.organization = org
+        else
+          session[:current_organization_id].delete(user_id.to_s)
+          Current.organization = nil
+        end
       elsif Current.user
-        orgs = Current.user.organizations
+        orgs = Current.user.accessible_organizations
         non_demo_orgs = orgs.non_demo
 
         # Auto-select if user has exactly one non-demo org (ignore demo org)
@@ -196,7 +205,23 @@ module Manage
 
       return if Current.organization
 
+      # Store the user's intended destination so we can redirect back after org setup.
+      # Only store specific deep-link paths — not the generic /manage landing page,
+      # which would create a misleading "you were trying to do X" context.
+      if request.get?
+        if request.fullpath == manage_path || request.fullpath == "#{manage_path}/"
+          session.delete(:manage_onboarding_intent)
+        else
+          session[:manage_onboarding_intent] = request.fullpath
+        end
+      end
+
       redirect_to select_organization_path and return
+    end
+
+    def redirect_to_intent_or(fallback_path, **options)
+      intent = session.delete(:manage_onboarding_intent)
+      redirect_to(intent || fallback_path, **options)
     end
 
     # Shared data fetchers for use across controllers

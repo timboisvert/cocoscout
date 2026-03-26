@@ -1,8 +1,32 @@
 <% content_for :title, "Select Organization" %>
 
+<%
+  intent = @onboarding_intent || ""
+  intent_is_course = intent.include?("course")
+  intent_is_production = intent.include?("production")
+  intent_label = if intent_is_course
+                   "create your course"
+                 elsif intent_is_production
+                   "set up your production"
+                 else
+                   "get started"
+                 end
+%>
+
 <div class="max-w-md mx-auto py-8">
 
   <% if @organizations.any? || @demo_organizations.any? %>
+
+    <% if @onboarding_intent.present? %>
+      <%# Intent context banner %>
+      <div class="mb-6 bg-pink-50 border border-pink-200 rounded-lg px-4 py-3">
+        <p class="text-sm text-pink-800">
+          <strong>Almost there!</strong> Select an organization to <%= intent_label %>, or
+          <%= link_to "create a new one", new_manage_organization_path, class: "underline font-medium hover:text-pink-900" %>.
+        </p>
+      </div>
+    <% end %>
+
     <!-- Organization Selection -->
     <div class="mb-6">
       <h2 class="text-xl font-bold text-gray-900 mb-1">Select an organization</h2>
@@ -81,23 +105,78 @@
     <% end %>
 
   <% else %>
-    <!-- Empty State - No Organizations -->
-    <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
-      <div class="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
+    <!-- Educational Onboarding -->
+    <div class="max-w-lg mx-auto">
+
+      <%# Header %>
+      <div class="text-center mb-8">
+        <%= render "shared/cocoscout_logo", size: :medium, class: "mx-auto mb-3" %>
+        <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-2">Welcome to the Production Side</h1>
+        <% if intent_is_course %>
+          <p class="text-sm text-gray-600">To create a course, you'll first set up an organization — it only takes a minute.</p>
+        <% elsif intent_is_production %>
+          <p class="text-sm text-gray-600">To set up a production, you'll first create an organization — it only takes a minute.</p>
+        <% else %>
+          <p class="text-sm text-gray-600">This is where you manage the things you're producing — shows, courses, casting, and more. To get started, create an organization.</p>
+        <% end %>
       </div>
-      <h3 class="text-lg font-bold text-gray-900 mb-2">No Organizations Yet</h3>
-      <p class="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-        Create your first organization to start managing productions, casting calls, and your team.
-      </p>
-      <%= link_to new_manage_organization_path, class: "inline-flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg text-sm transition-colors" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-        Create Your First Organization
+
+      <% if @onboarding_intent.present? %>
+        <%# Step indicator — only show when user has a specific destination in mind %>
+        <div class="flex items-center justify-center gap-3 mb-8">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">1</div>
+            <span class="text-sm font-medium text-pink-600">Create org</span>
+          </div>
+          <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold">2</div>
+            <span class="text-sm text-gray-400"><%= intent_is_course ? "Create course" : "Create production" %></span>
+          </div>
+          <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold">3</div>
+            <span class="text-sm text-gray-400">Go live</span>
+          </div>
+        </div>
       <% end %>
+
+      <%# What is an organization? %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">What's an organization?</h3>
+        <p class="text-xs text-gray-600 leading-relaxed">
+          An organization is your workspace for the things <strong>you're producing</strong>.
+          It's separate from any shows or productions you perform in — those live on your Talent Dashboard.
+          Think of it as your production company, teaching brand, or theater group — even if it's just you.
+        </p>
+      </div>
+
+      <%# Inline org creation form %>
+      <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-900 mb-1">Name your organization</h2>
+        <p class="text-xs text-gray-500 mb-4">You can always change this later. Many people just use their own name to start.</p>
+
+        <%= form_with(model: [:manage, @organization], class: "space-y-4") do |form| %>
+          <div>
+            <%= form.text_field :name,
+                required: true,
+                placeholder: "e.g., #{Current.user&.person&.name || 'Your Name'} Productions",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition text-sm" %>
+          </div>
+
+          <%= render "shared/button", text: "Create Organization & Continue", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
+
+      <%# Reassurance %>
+      <p class="text-center text-xs text-gray-400 mt-4">
+        You'll be the owner. You can invite team members and create as many productions or courses as you like.
+      </p>
+
     </div>
   <% end %>
 

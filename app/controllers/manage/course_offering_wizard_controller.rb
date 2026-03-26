@@ -22,13 +22,49 @@ module Manage
       end
 
       save_wizard_state
+      redirect_to manage_course_wizard_instructor_path
+    end
+
+    # Step 2: Instructor info
+    def instructor
+      redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
+      @step = 2
+      if @wizard_state[:instructor_person_id].present?
+        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
+      end
+    end
+
+    def save_instructor
+      @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
+      @wizard_state[:instructor_bio] = params[:instructor_bio].presence
+      @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
+
+      # Handle instructor headshot upload
+      if params[:instructor_headshot].present?
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: params[:instructor_headshot],
+          filename: params[:instructor_headshot].original_filename,
+          content_type: params[:instructor_headshot].content_type
+        )
+        @wizard_state[:instructor_headshot_blob_id] = blob.id
+      end
+
+      # Keep instructor_name in sync with the selected person
+      if @wizard_state[:instructor_person_id].present?
+        person = Person.find_by(id: @wizard_state[:instructor_person_id])
+        @wizard_state[:instructor_name] = person&.name
+      else
+        @wizard_state[:instructor_name] = nil
+      end
+
+      save_wizard_state
       redirect_to manage_course_wizard_schedule_path
     end
 
-    # Step 2: Schedule (sessions & optional contract link)
+    # Step 3: Schedule (sessions & optional contract link)
     def schedule
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
-      @step = 2
+      @step = 3
       @contracts = Current.organization.contracts.status_active.order(:contractor_name)
       @locations = Current.organization.locations.order(:name)
     end
@@ -60,42 +96,6 @@ module Manage
           end
         end
         @wizard_state[:sessions] = sessions
-      end
-
-      save_wizard_state
-      redirect_to manage_course_wizard_instructor_path
-    end
-
-    # Step 3: Instructor info
-    def instructor
-      redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
-      @step = 3
-      if @wizard_state[:instructor_person_id].present?
-        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
-      end
-    end
-
-    def save_instructor
-      @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
-      @wizard_state[:instructor_bio] = params[:instructor_bio].presence
-      @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
-
-      # Handle instructor headshot upload
-      if params[:instructor_headshot].present?
-        blob = ActiveStorage::Blob.create_and_upload!(
-          io: params[:instructor_headshot],
-          filename: params[:instructor_headshot].original_filename,
-          content_type: params[:instructor_headshot].content_type
-        )
-        @wizard_state[:instructor_headshot_blob_id] = blob.id
-      end
-
-      # Keep instructor_name in sync with the selected person
-      if @wizard_state[:instructor_person_id].present?
-        person = Person.find_by(id: @wizard_state[:instructor_person_id])
-        @wizard_state[:instructor_name] = person&.name
-      else
-        @wizard_state[:instructor_name] = nil
       end
 
       save_wizard_state
@@ -234,6 +234,7 @@ module Manage
       @wizard_state[:closes_at] = params[:closes_at].presence
       @wizard_state[:instruction_text] = params[:instruction_text].presence
       @wizard_state[:success_text] = params[:success_text].presence
+      @wizard_state[:listed_in_directory] = params[:listed_in_directory] == "1"
 
       save_wizard_state
       redirect_to manage_course_wizard_review_path
@@ -315,7 +316,8 @@ module Manage
           instruction_text: @wizard_state[:instruction_text],
           success_text: @wizard_state[:success_text],
           contract: contract,
-          instructor_on_team: @wizard_state[:instructor_on_team] == true
+          instructor_on_team: @wizard_state[:instructor_on_team] == true,
+          listed_in_directory: @wizard_state[:listed_in_directory] != false
         )
 
         # Attach instructor headshot if uploaded during wizard

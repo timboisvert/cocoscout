@@ -351,7 +351,8 @@ module Manage
         :currency, :capacity, :opens_at, :closes_at,
         :instruction_text, :success_text,
         :instructor_bio,
-        :delivery_mode, :delivery_delay_minutes, :delivery_scheduled_at
+        :delivery_mode, :delivery_delay_minutes, :delivery_scheduled_at,
+        :listed_in_directory
       )
 
       # Convert dollar amounts to cents

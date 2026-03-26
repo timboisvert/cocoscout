@@ -84,6 +84,47 @@ module My
       @past_courses.sort_by! { |c| c[:all_sessions].last&.date_and_time || Time.at(0) }.reverse!
     end
 
+    def directory
+      @offerings = CourseOffering
+        .open
+        .listed
+        .includes(:production, :instructor_person, :organization)
+        .order(created_at: :desc)
+
+      # Pre-load session data for each offering
+      @offerings_data = @offerings.map do |offering|
+        all_sessions = offering.sessions.includes(:location).to_a
+        upcoming_sessions = all_sessions.select { |s| s.date_and_time >= Time.current }
+        next if upcoming_sessions.empty?
+
+        first_session = all_sessions.first
+        last_session = all_sessions.last
+        location = all_sessions.detect { |s| s.location.present? }&.location
+
+        # Detect recurring pattern
+        days = all_sessions.map { |s| s.date_and_time.strftime("%A") }
+        times = all_sessions.map { |s| s.date_and_time.strftime("%-I:%M %p") }
+        schedule_pattern = if days.uniq.size == 1 && times.uniq.size == 1
+                             "#{days.first.pluralize} at #{times.first}"
+        elsif days.uniq.size == 1
+                             days.first.pluralize
+        end
+
+        {
+          offering: offering,
+          all_sessions: all_sessions,
+          first_session: first_session,
+          last_session: last_session,
+          total_sessions: all_sessions.size,
+          upcoming_sessions_count: upcoming_sessions.size,
+          next_session: upcoming_sessions.first,
+          location: location,
+          schedule_pattern: schedule_pattern,
+          instructor: offering.instructor_person
+        }
+      end.compact
+    end
+
     def show
       @person = Current.user.person
       people_ids = Current.user.people.active.pluck(:id)

@@ -27,14 +27,15 @@
       </div>
       <div class="space-y-1">
         <% org_people.each do |person| %>
+          <% headshot_variant = person.safe_headshot_variant(:tile) %>
           <button type="button"
                   class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all w-full text-left cursor-pointer"
                   data-action="instructor-search#selectPerson"
                   data-person-id="<%= person.id %>"
                   data-person-name="<%= person.name %>"
                   data-person-email="<%= person.email %>"
+                  data-person-headshot-url="<%= headshot_variant ? url_for(headshot_variant) : '' %>"
                   data-person-source="org">
-            <% headshot_variant = person.safe_headshot_variant(:tile) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
             <% else %>
@@ -65,14 +66,15 @@
       </div>
       <div class="space-y-1">
         <% global_people.each do |person| %>
+          <% headshot_variant = person.safe_headshot_variant(:tile) %>
           <button type="button"
                   class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all w-full text-left cursor-pointer"
                   data-action="instructor-search#selectPerson"
                   data-person-id="<%= person.id %>"
                   data-person-name="<%= person.name %>"
                   data-person-email="<%= person.email %>"
+                  data-person-headshot-url="<%= headshot_variant ? url_for(headshot_variant) : '' %>"
                   data-person-source="global">
-            <% headshot_variant = person.safe_headshot_variant(:tile) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
             <% else %>

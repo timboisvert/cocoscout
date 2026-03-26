@@ -65,11 +65,12 @@ export default class extends Controller {
         const personId = button.dataset.personId
         const personName = button.dataset.personName
         const personEmail = button.dataset.personEmail || ""
+        const personHeadshotUrl = button.dataset.personHeadshotUrl || ""
 
-        this.setSelectedPerson(personId, personName, personEmail)
+        this.setSelectedPerson(personId, personName, personEmail, personHeadshotUrl)
     }
 
-    setSelectedPerson(personId, name, email) {
+    setSelectedPerson(personId, name, email, headshotUrl = "") {
         // Set the hidden field
         this.personIdFieldTarget.value = personId
 
@@ -77,13 +78,19 @@ export default class extends Controller {
         this.selectedNameTarget.textContent = name
         this.selectedEmailTarget.textContent = email
 
-        // Show initials in headshot area
+        // Show headshot or initials in headshot area
         const initials = name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
-        this.selectedHeadshotTarget.innerHTML = `
+        if (headshotUrl) {
+            this.selectedHeadshotTarget.innerHTML = `
+      <img src="${headshotUrl}" alt="${name}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
+    `
+        } else {
+            this.selectedHeadshotTarget.innerHTML = `
       <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
         ${initials}
       </div>
     `
+        }
 
         // Toggle sections
         this.searchSectionTarget.classList.add("hidden")

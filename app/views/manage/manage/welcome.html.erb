@@ -4,8 +4,8 @@
     <!-- Header with Logo -->
     <div class="text-center mb-8 sm:mb-12">
       <%= render "shared/cocoscout_logo", size: :large, class: "mx-auto mb-4" %>
-      <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 mb-3 coustard-regular">Start Producing Shows</h1>
-      <p class="text-lg sm:text-xl text-slate-600">Your complete toolkit for managing auditions, casting, and productions</p>
+      <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 mb-3 coustard-regular">Start Producing</h1>
+      <p class="text-lg sm:text-xl text-slate-600">Your complete toolkit for managing shows, courses, casting, and productions</p>
     </div>
 
     <!-- Features Grid -->
@@ -153,6 +153,49 @@
 
     </div>
 
+    <!-- Create a Course Card -->
+    <div class="mb-8">
+      <% if @has_organization %>
+        <%= link_to manage_course_wizard_basics_path, class: "group block" do %>
+          <div class="bg-white border-2 border-pink-300 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-400 transition-all">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+                <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">
+                  Create a Course
+                  <span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ml-2 relative -top-0.5">New</span>
+                </h3>
+                <p class="text-sm text-slate-600">Run workshops and classes with registration, payments, scheduling, and a listing in the course directory.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <%= link_to manage_course_wizard_basics_path, class: "group block" do %>
+          <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-80 hover:opacity-100 hover:border-pink-300 transition-all">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                <svg class="w-6 h-6 text-slate-600 group-hover:text-pink-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">
+                  Create a Course
+                  <span class="bg-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ml-2 relative -top-0.5">New</span>
+                </h3>
+                <p class="text-sm text-slate-600">Run workshops and classes with registration, payments, scheduling, and a listing in the course directory.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
     <!-- Quick Tips -->
     <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm mb-8">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">Getting Started Tips</h3>
@@ -161,13 +204,13 @@
           <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="text-sm text-slate-700">Create your organization first—this represents your theater company or production house</span>
+          <span class="text-sm text-slate-700">Create your organization first—this represents your theater company, production house, or teaching brand</span>
         </li>
         <li class="flex items-start gap-3">
           <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="text-sm text-slate-700">After creating an organization, you can add team members and set up your first production</span>
+          <span class="text-sm text-slate-700">After creating an organization, you can add team members and set up productions or courses</span>
         </li>
         <li class="flex items-start gap-3">
           <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

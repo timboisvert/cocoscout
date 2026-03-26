@@ -161,6 +161,12 @@
           </div>
         <% end %>
       </div>
+
+      <% if @pagy.pages > 1 %>
+        <div class="px-5 py-4 border-t border-gray-200">
+          <%= pagy_nav_tailwind(@pagy) %>
+        </div>
+      <% end %>
     <% else %>
       <div class="text-center py-12 text-gray-500">
         <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

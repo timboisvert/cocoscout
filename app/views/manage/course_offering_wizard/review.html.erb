@@ -31,62 +31,6 @@
       </dl>
     </div>
 
-    <!-- Schedule -->
-    <div class="border border-gray-200 rounded-lg p-4">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-gray-900">Schedule</h3>
-        <%= link_to manage_course_wizard_schedule_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
-          Edit
-        <% end %>
-      </div>
-      <% if @wizard_state[:schedule_mode] == "contract" && @contract.present? %>
-        <dl class="space-y-2 text-sm">
-          <div>
-            <dt class="text-gray-500">Linked Contract</dt>
-            <dd class="font-medium text-gray-900"><%= @contract.contractor_name %><% if @contract.production_name.present? %> — <%= @contract.production_name %><% end %></dd>
-          </div>
-          <div>
-            <dt class="text-gray-500">Sessions</dt>
-            <dd class="text-gray-700">
-              <% if @selected_shows&.any? %>
-                <span class="font-medium"><%= @selected_shows.count %> session<%= @selected_shows.count == 1 ? '' : 's' %></span>
-                <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
-                  <% @selected_shows.first(5).each do |show| %>
-                    <li><%= show.date_and_time.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= show.duration_minutes %> min)</li>
-                  <% end %>
-                  <% if @selected_shows.count > 5 %>
-                    <li>...and <%= @selected_shows.count - 5 %> more</li>
-                  <% end %>
-                </ul>
-              <% else %>
-                <span class="text-gray-400">No sessions selected</span>
-              <% end %>
-            </dd>
-          </div>
-        </dl>
-      <% elsif @wizard_state[:sessions].present? && @wizard_state[:sessions].any? { |s| (s[:datetime] || s["datetime"]).present? } %>
-        <dl class="text-sm">
-          <dt class="text-gray-500">Sessions</dt>
-          <dd class="text-gray-700 mt-1">
-            <% valid_sessions = @wizard_state[:sessions].select { |s| (s[:datetime] || s["datetime"]).present? } %>
-            <span class="font-medium"><%= valid_sessions.count %> session<%= valid_sessions.count == 1 ? '' : 's' %></span>
-            <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
-              <% valid_sessions.first(5).each do |session| %>
-                <% dt = DateTime.parse(session[:datetime] || session["datetime"]) rescue nil %>
-                <% dur = (session[:duration] || session["duration"])&.to_i || 60 %>
-                <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
-              <% end %>
-              <% if valid_sessions.count > 5 %>
-                <li>...and <%= valid_sessions.count - 5 %> more</li>
-              <% end %>
-            </ul>
-          </dd>
-        </dl>
-      <% else %>
-        <p class="text-sm text-gray-400 italic">No sessions scheduled — you can add them later</p>
-      <% end %>
-    </div>
-
     <!-- Instructor -->
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-2">
@@ -141,6 +85,62 @@
         </dl>
       <% else %>
         <p class="text-sm text-gray-400 italic">No instructor specified</p>
+      <% end %>
+    </div>
+
+    <!-- Schedule -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-gray-900">Schedule</h3>
+        <%= link_to manage_course_wizard_schedule_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
+          Edit
+        <% end %>
+      </div>
+      <% if @wizard_state[:schedule_mode] == "contract" && @contract.present? %>
+        <dl class="space-y-2 text-sm">
+          <div>
+            <dt class="text-gray-500">Linked Contract</dt>
+            <dd class="font-medium text-gray-900"><%= @contract.contractor_name %><% if @contract.production_name.present? %> — <%= @contract.production_name %><% end %></dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Sessions</dt>
+            <dd class="text-gray-700">
+              <% if @selected_shows&.any? %>
+                <span class="font-medium"><%= @selected_shows.count %> session<%= @selected_shows.count == 1 ? '' : 's' %></span>
+                <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
+                  <% @selected_shows.first(5).each do |show| %>
+                    <li><%= show.date_and_time.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= show.duration_minutes %> min)</li>
+                  <% end %>
+                  <% if @selected_shows.count > 5 %>
+                    <li>...and <%= @selected_shows.count - 5 %> more</li>
+                  <% end %>
+                </ul>
+              <% else %>
+                <span class="text-gray-400">No sessions selected</span>
+              <% end %>
+            </dd>
+          </div>
+        </dl>
+      <% elsif @wizard_state[:sessions].present? && @wizard_state[:sessions].any? { |s| (s[:datetime] || s["datetime"]).present? } %>
+        <dl class="text-sm">
+          <dt class="text-gray-500">Sessions</dt>
+          <dd class="text-gray-700 mt-1">
+            <% valid_sessions = @wizard_state[:sessions].select { |s| (s[:datetime] || s["datetime"]).present? } %>
+            <span class="font-medium"><%= valid_sessions.count %> session<%= valid_sessions.count == 1 ? '' : 's' %></span>
+            <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
+              <% valid_sessions.first(5).each do |session| %>
+                <% dt = DateTime.parse(session[:datetime] || session["datetime"]) rescue nil %>
+                <% dur = (session[:duration] || session["duration"])&.to_i || 60 %>
+                <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
+              <% end %>
+              <% if valid_sessions.count > 5 %>
+                <li>...and <%= valid_sessions.count - 5 %> more</li>
+              <% end %>
+            </ul>
+          </dd>
+        </dl>
+      <% else %>
+        <p class="text-sm text-gray-400 italic">No sessions scheduled — you can add them later</p>
       <% end %>
     </div>
 

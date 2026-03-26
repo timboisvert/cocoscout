@@ -9,7 +9,7 @@ module Manage
 
     def index
       # Management screen - list all organizations with management options
-      @organizations = Current.user.organizations.includes(:owner, :productions, :users).order(:name)
+      @organizations = Current.user.accessible_organizations.includes(:owner, :productions, :users).order(:name)
 
       # Add role information for each organization
       @organization_roles = {}
@@ -60,7 +60,7 @@ module Manage
         session[:current_organization_id] ||= {}
         session[:current_organization_id][Current.user&.id.to_s] = @organization.id
 
-        redirect_to manage_path, notice: "#{@organization.name} was successfully created"
+        redirect_to_intent_or(manage_path, notice: "#{@organization.name} was successfully created")
       else
         render :new, status: :unprocessable_entity
       end
@@ -111,7 +111,7 @@ module Manage
     end
 
     def set_current
-      organization = Current.user.organizations.find(params[:id])
+      organization = Current.user.accessible_organizations.find(params[:id])
 
       # Proceed with setting the new organization
       user_id = Current.user&.id

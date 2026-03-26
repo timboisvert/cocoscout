@@ -135,12 +135,27 @@ class User < ApplicationRecord
                                                 .pluck("shows.id")
                                                 .to_set
 
+      # Get shows where the person declined (cancelled registration = actively declined)
+      declined_show_ids = SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
+                                            .where(shows: { id: show_ids })
+                                            .where(person_id: person_ids)
+                                            .where(status: "cancelled")
+                                            .pluck("shows.id")
+                                            .to_set
+
+      # Also include shows declined via unavailable availability
+      declined_show_ids.merge(
+        ShowAvailability.where(show_id: show_ids)
+                        .where(available_entity_type: "Person", available_entity_id: person_ids, status: "unavailable")
+                        .pluck(:show_id)
+      )
+
       # Count unanswered availability requests (shows without sign-up forms and no availability)
       show_ids.each do |show_id|
         instance = shows_with_signup_by_id[show_id]
         if instance
           # Sign-up show: count if not registered, not declined, and talent can act
-          next if registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id)
+          next if registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id) || declined_show_ids.include?(show_id)
 
           form = instance.sign_up_form
           if instance.status == "open"
@@ -237,6 +252,25 @@ class User < ApplicationRecord
   end
 
   # Returns the role for the current organization (default role)
+  # Returns all organizations the user has access to on the manage side.
+  # Includes orgs from organization_roles PLUS orgs where the user is a reviewer
+  # for an active audition cycle (even without an org role).
+  def accessible_organizations
+    org_ids = organization_roles.pluck(:organization_id)
+
+    # Add orgs where user is an explicit reviewer for an active audition cycle
+    if person
+      reviewer_org_ids = Organization.joins(productions: { audition_cycles: :audition_reviewers })
+                                     .where(audition_cycles: { active: true })
+                                     .where(audition_reviewers: { person_id: person.id })
+                                     .pluck(:id)
+      org_ids = (org_ids + reviewer_org_ids).uniq
+    end
+
+    Organization.where(id: org_ids)
+  end
+
+  # Returns the effective role for the current organization
   def default_role
     return nil unless Current.organization
 

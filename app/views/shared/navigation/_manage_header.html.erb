@@ -1,6 +1,53 @@
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-50">
   <div class="flex items-center">
     <%= render "shared/navigation/dashboard_selector", current_dashboard: "production" %>
+
+    <% if Current.organization.present? %>
+      <%# Organization context dropdown — next to Production Dashboard %>
+      <div class="relative ml-1" data-controller="dropdown">
+        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-2 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-10">
+          <% if Current.organization.logo.attached? %>
+            <%= image_tag Current.organization.logo, class: "w-5 h-5 rounded object-cover" %>
+          <% else %>
+            <div class="w-5 h-5 rounded bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-[10px]">
+              <%= Current.organization.name[0..1].upcase %>
+            </div>
+          <% end %>
+          <div class="flex flex-col items-start leading-none">
+            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Organization</span>
+            <span class="text-sm font-medium text-slate-700 max-w-[180px] truncate"><%= Current.organization.name %></span>
+          </div>
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+          <%# Organization section %>
+          <div class="px-4 py-3">
+            <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Organization</div>
+            <div class="text-sm text-slate-900 font-medium mb-2"><%= Current.organization.name %></div>
+            <div class="flex flex-col gap-1">
+              <% if current_user_is_global_manager? %>
+                <%= link_to "Manage this Organization", manage_organization_path(Current.organization), class: "text-xs text-pink-500 hover:text-pink-600 hover:underline" %>
+              <% end %>
+              <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs text-pink-500 hover:text-pink-600 hover:underline" %>
+            </div>
+          </div>
+
+          <%# Productions section %>
+          <div class="px-4 py-3 border-t border-slate-100">
+            <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Productions</div>
+            <div class="flex flex-col gap-1">
+              <%= link_to "Manage Productions", manage_productions_path, class: "text-xs text-pink-500 hover:text-pink-600 hover:underline" %>
+              <% if current_user_is_global_manager? %>
+                <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-500 hover:text-pink-600 hover:underline" %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </div>
 
   <div class="flex items-center mr-2 border-l border-slate-200 h-12">
@@ -36,40 +83,8 @@
           </svg>
         </button>
 
-        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
           <%= link_to "My Profile", profile_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-
-          <% if Current.organization.present? %>
-            <div class="border-t border-slate-200 my-1"></div>
-
-            <!-- Productions Section -->
-            <div class="px-4 py-3">
-              <div class="text-xs text-slate-500 font-semibold uppercase mb-2">Productions</div>
-              <div class="flex flex-col gap-1">
-                <%= link_to "Manage Productions", manage_productions_path, class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
-                <% if current_user_is_global_manager? %>
-                  <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
-                <% end %>
-              </div>
-            </div>
-
-            <!-- Organization Section -->
-            <div class="px-4 py-3 border-t border-slate-100">
-              <div class="text-xs text-slate-500 font-semibold uppercase mb-2">Organization</div>
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-sm text-slate-900 font-medium"><%= Current.organization.name %></div>
-              </div>
-              <div class="flex flex-col gap-1">
-                <% if current_user_is_global_manager? %>
-                  <%= link_to "Manage this Organization", manage_organization_path(Current.organization), class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
-                <% end %>
-                <% if Current.user.organizations.count > 1 %>
-                  <%= link_to "Switch Organization", select_organization_path(switch: 1), class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
-                <% end %>
-                <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
-              </div>
-            </div>
-          <% end %>
 
           <% if Current.user.superadmin? %>
             <div class="border-t border-slate-200 my-1"></div>

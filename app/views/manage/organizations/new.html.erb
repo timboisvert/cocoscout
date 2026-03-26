@@ -13,10 +13,10 @@
         <div class="lg:sticky lg:top-8">
           <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <div class="inline-block bg-pink-100 text-pink-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
-              FOR PRODUCERS, THEATER OWNERS, AND FESTIVAL ORGANIZERS
+              FOR PRODUCERS, INSTRUCTORS, AND ORGANIZERS
             </div>
             <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Create your organization</h2>
-            <p class="text-slate-600 mb-6">Start managing your productions, casting, and team all in one place.</p>
+            <p class="text-slate-600 mb-6">Start managing your productions, courses, and team all in one place.</p>
 
             <!-- For Organizations -->
             <div class="mb-6">
@@ -51,6 +51,12 @@
                   </svg>
                   <span class="text-sm text-slate-700"><strong>Track availability</strong> and communicate with your cast instantly</span>
                 </li>
+                <li class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span class="text-sm text-slate-700"><strong>Run courses & workshops</strong> with registration, payments, and scheduling</span>
+                </li>
               </ul>
             </div>
 
@@ -67,7 +73,7 @@
       <div class="order-1 lg:order-2">
         <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
           <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Create your organization</h2>
-          <p class="text-sm text-slate-600 mb-6">This will be your workspace for managing productions, casting, and your team.</p>
+          <p class="text-sm text-slate-600 mb-6">This will be your workspace for managing productions, courses, and your team.</p>
 
           <%= form_with(model: [:manage, @organization], class: "space-y-5") do |form| %>
 
