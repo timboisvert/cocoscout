@@ -58,7 +58,6 @@ Rails.application.routes.draw do
   post  "/account/profiles/:id/archive",  to: "account#archive_profile",     as: "archive_profile_account"
   get   "/account/notifications",         to: "account#notifications",       as: "account_notifications"
   patch "/account/notifications",         to: "account#update_notifications"
-  get   "/account/subscription",          to: "account#billing",             as: "account_billing"
   get   "/account/organizations",         to: "account#organizations",       as: "account_organizations"
   delete "/account/organizations/:id/leave", to: "account#leave_organization", as: "leave_organization_account"
 

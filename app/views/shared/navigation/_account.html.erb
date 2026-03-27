@@ -1,4 +1,6 @@
-<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between">
+<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-50 fixed left-0 top-0 h-screen justify-between">
+  <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "account" %>
+
   <div class="flex-1 overflow-y-auto">
 
     <div class="mt-2">
@@ -6,7 +8,6 @@
       <%= render "shared/nav_link", text: "Profiles", path: account_profiles_path, active: action_name == "profiles" %>
       <%= render "shared/nav_link", text: "Organizations", path: account_organizations_path, active: action_name == "organizations" %>
       <%= render "shared/nav_link", text: "Notifications", path: account_notifications_path, active: action_name == "notifications" %>
-      <%= render "shared/nav_link", text: "Subscription", path: account_billing_path, active: action_name == "billing" %>
     </div>
 
   </div>

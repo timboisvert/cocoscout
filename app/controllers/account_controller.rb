@@ -129,9 +129,6 @@ class AccountController < ApplicationController
     end
   end
 
-  def billing
-  end
-
   def organizations
     @person = Current.user.person
     @people = Current.user.people.active.order(:created_at).to_a

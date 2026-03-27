@@ -1,0 +1,44 @@
+<%# Dashboard selector for top of left nav %>
+<%# Required local: current_dashboard - one of "production", "talent", "profile", "account" %>
+<%
+  all_profiles = Current.user.people.active rescue []
+  group_memberships = Current.user.person&.groups&.active || []
+  has_multiple_profiles = all_profiles.count > 1 || group_memberships.any?
+  profile_label = has_multiple_profiles ? "My Profiles" : "My Profile"
+
+  dashboard_labels = {
+    "production" => "Production Dashboard",
+    "talent" => "Talent Dashboard",
+    "profile" => profile_label,
+    "account" => "My Account"
+  }
+  current_label = dashboard_labels[current_dashboard] || "Dashboard"
+
+  dashboards = [
+    { key: "production", label: "Production Dashboard", path: manage_path, desc: "Manage shows, casting, and availability" },
+    { key: "talent", label: "Talent Dashboard", path: my_dashboard_path, desc: "Manage your availability, auditions, and courses" },
+    { key: "profile", label: profile_label, path: profile_path, desc: "Edit your headshots, resume, and settings" }
+  ]
+  dashboards << { key: "account", label: "My Account", path: account_path, desc: "Email, password, subscription, and notifications" } if current_dashboard == "account"
+%>
+<div class="relative h-16 flex items-center px-3 pt-1 border-b border-gray-200 shrink-0" data-controller="dropdown">
+  <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center justify-between w-full rounded-lg px-2 py-1.5 transition cursor-pointer hover:bg-slate-50">
+    <span class="text-sm font-semibold coustard-regular text-pink-500 truncate"><%= current_label %></span>
+    <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+  <div data-dropdown-target="menu" class="hidden absolute left-3 right-3 top-2 py-1 bg-pink-500 rounded-lg shadow-lg z-50">
+    <div class="flex flex-col">
+      <% dashboards.each_with_index do |d, i| %>
+        <% is_current = d[:key] == current_dashboard %>
+        <% is_first = i == 0 %>
+        <% is_last = i == dashboards.length - 1 %>
+        <%= link_to d[:path], data: { turbo: false }, class: "block px-3 py-2 #{ is_current ? 'bg-pink-600' : 'hover:bg-pink-600' } #{ is_first ? 'rounded-t-lg' : '' } #{ is_last ? 'rounded-b-lg' : '' } transition" do %>
+          <div class="text-sm font-medium text-white"><%= d[:label] %></div>
+          <div class="text-xs text-pink-200"><%= d[:desc] %></div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
