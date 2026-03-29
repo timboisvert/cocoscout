@@ -62,7 +62,7 @@
               <% end %>
               <% end %>
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 text-sm truncate"><%= is_guest ? assignment.guest_name : assignable.name %></div>
+                <div class="font-medium text-sm truncate"><% if is_guest %><span class="text-gray-900"><%= assignment.guest_name %></span><% else %><%= link_to assignable.name, assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable), class: "text-gray-900 hover:text-pink-600 transition-colors" %><% end %></div>
                 <div class="text-xs text-gray-500">
                   <%= role.name %>
                   <% if role_quantity > 1 %>

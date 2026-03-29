@@ -7,6 +7,8 @@ class CourseOffering < ApplicationRecord
   belongs_to :questionnaire, optional: true
   belongs_to :feature_credit_redemption, optional: true
   has_many :course_registrations, dependent: :restrict_with_error
+  has_many :course_offering_instructors, dependent: :destroy
+  has_many :instructor_people, through: :course_offering_instructors, source: :person
   has_one :email_draft, as: :emailable, dependent: :destroy
 
   has_one :organization, through: :production
@@ -115,6 +117,12 @@ class CourseOffering < ApplicationRecord
 
   def upcoming_sessions
     sessions.where("date_and_time >= ?", Time.current)
+  end
+
+  # --- Instructors ---
+
+  def instructor_names
+    instructor_people.map(&:name).join(", ")
   end
 
   private

@@ -20,7 +20,27 @@
     breadcrumbs: [],
     text: "Production Messages",
     links: [
-      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0 }
+      {
+        text: "Send a Message",
+        icon: "envelope",
+        type: :button,
+        data: {
+          controller: "compose-message",
+          action: "click->compose-message#openWithSteps",
+          "compose-message-productions-value": @accessible_productions.map { |p| { id: p.id, name: p.name } }.to_json,
+          "compose-message-production-data-url-value": production_data_manage_messages_path(':production_id'),
+          "compose-message-search-url-value": search_people_manage_messages_path,
+          "compose-message-single-talent-pool-value": Current.organization.talent_pool_single? ? "true" : "false",
+          "compose-message-org-talent-pool-value": Current.organization.talent_pool_single? && Current.organization.organization_talent_pool ? {
+            id: Current.organization.organization_talent_pool.id,
+            name: "#{Current.organization.name} Talent Pool",
+            count: Current.organization.organization_talent_pool.people.distinct.count,
+            members: Current.organization.organization_talent_pool.people.distinct.includes(profile_headshots: { image_attachment: :blob }).first(20).map { |p|
+              { id: p.id, name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "", initials: p.initials }
+            }
+          }.to_json : "{}"
+        }
+      }
     ]
   } %>
 
@@ -37,6 +57,11 @@
               { text: "Unread", path: manage_messages_path(filter: "unread", q: @search, production_id: @production_filter, order: @order), active: @filter == "unread" },
               { text: "Sent by Me", path: manage_messages_path(filter: "sent_by_me", q: @search, production_id: @production_filter, order: @order), active: @filter == "sent_by_me" }
             ]
+          },
+          { separator: true },
+          {
+            partial: "manage/messages/mark_all_read_filter",
+            locals: { path: mark_all_read_manage_messages_path, disabled: @unread_count == 0 }
           },
           { separator: true },
           {
@@ -143,3 +168,6 @@
     <% end %>
   <% end %>
 </div>
+
+<%# Compose Message Modal %>
+<%= render "shared/compose_message_modal" %>

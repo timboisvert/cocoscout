@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_26_135837) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_29_042722) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -126,6 +126,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_135837) do
     t.text "header_text"
     t.boolean "include_audition_availability_section", default: false
     t.boolean "include_availability_section", default: false
+    t.boolean "listed_in_directory", default: true, null: false
     t.boolean "notify_on_submission", default: true, null: false
     t.datetime "opens_at"
     t.integer "production_id", null: false
@@ -444,6 +445,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_135837) do
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["status"], name: "index_contracts_on_status"
+  end
+
+  create_table "course_offering_instructors", force: :cascade do |t|
+    t.text "bio"
+    t.bigint "course_offering_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "person_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_offering_id", "person_id"], name: "idx_course_offering_instructors_unique", unique: true
+    t.index ["course_offering_id"], name: "index_course_offering_instructors_on_course_offering_id"
+    t.index ["person_id"], name: "index_course_offering_instructors_on_person_id"
   end
 
   create_table "course_offerings", force: :cascade do |t|
@@ -2457,6 +2470,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_135837) do
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
+  add_foreign_key "course_offering_instructors", "course_offerings"
+  add_foreign_key "course_offering_instructors", "people"
   add_foreign_key "course_offerings", "contracts"
   add_foreign_key "course_offerings", "feature_credit_redemptions"
   add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify

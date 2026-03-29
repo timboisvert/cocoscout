@@ -1,55 +1,98 @@
-<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Instructor" } do %>
-  <h2 class="text-lg font-bold text-gray-900 mb-1">Instructor</h2>
-  <p class="text-sm text-gray-600 mb-6">Search for the instructor on CocoScout, or invite them if they don't have an account yet.</p>
+<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Instructors" } do %>
+  <h2 class="text-lg font-bold text-gray-900 mb-1">Instructors</h2>
+  <p class="text-sm text-gray-600 mb-6">Search for instructors on CocoScout, or invite them if they don't have an account yet. You can add multiple instructors.</p>
 
   <%= form_with url: manage_course_wizard_instructor_path, method: :post, local: true, multipart: true do |form| %>
     <div class="space-y-5" data-controller="instructor-search"
          data-instructor-search-search-url-value="<%= manage_course_wizard_search_instructor_path %>"
          data-instructor-search-invite-url-value="<%= manage_course_wizard_invite_instructor_path %>">
 
-      <%# Hidden field for person ID %>
-      <input type="hidden" name="instructor_person_id"
-             value="<%= @wizard_state[:instructor_person_id] %>"
-             data-instructor-search-target="personIdField">
-
-      <%# Selected person display (shown when someone is selected) %>
-      <div data-instructor-search-target="selectedSection"
-           class="<%= 'hidden' unless @instructor_person %>">
-        <label class="block text-sm font-medium text-gray-900 mb-1.5">Selected Instructor</label>
-        <div class="flex items-center gap-4 p-4 border border-pink-200 bg-pink-50 rounded-lg">
-          <div data-instructor-search-target="selectedHeadshot">
-            <% if @instructor_person %>
-              <% headshot_variant = @instructor_person.safe_headshot_variant(:tile) %>
-              <% if headshot_variant %>
-                <%= image_tag headshot_variant, alt: @instructor_person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-              <% else %>
-                <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
-                  <%= @instructor_person.initials %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-          <div class="flex-grow min-w-0">
-            <div class="font-medium text-gray-900" data-instructor-search-target="selectedName">
-              <%= @instructor_person&.name %>
-            </div>
-            <div class="text-sm text-gray-500" data-instructor-search-target="selectedEmail">
-              <%= @instructor_person&.email %>
-            </div>
-          </div>
-          <button type="button"
-                  data-action="instructor-search#changePerson"
-                  class="px-3 py-1.5 text-gray-600 bg-white rounded-md text-xs font-medium shadow-sm hover:bg-gray-50 transition-all border border-gray-300 cursor-pointer flex-shrink-0">
-            Change
-          </button>
-        </div>
+      <%# Hidden inputs container for selected instructor IDs %>
+      <div data-instructor-search-target="personIdsContainer">
+        <%
+          instructor_bios = @wizard_state[:instructor_bios] || {}
+          instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {}
+        %>
+        <% (@instructor_people || []).each do |person| %>
+          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+          <% has_headshot = instructor_headshot_blob_ids[person.id.to_s].present? %>
+          <input type="hidden" name="instructor_person_ids[]"
+                 value="<%= person.id %>"
+                 data-name="<%= person.name %>"
+                 data-email="<%= person.email %>"
+                 data-headshot-url="<%= headshot_variant ? url_for(headshot_variant) : '' %>"
+                 data-bio="<%= instructor_bios[person.id.to_s] %>"
+                 data-has-existing-headshot="<%= has_headshot %>">
+        <% end %>
       </div>
 
-      <%# Search section (shown when no one is selected) %>
-      <div data-instructor-search-target="searchSection"
-           class="<%= 'hidden' if @instructor_person %>">
+      <%# Selected instructors list (JS will re-render with bio/headshot fields) %>
+      <div data-instructor-search-target="selectedList"
+           class="space-y-3 <%= 'hidden' if (@instructor_people || []).empty? %>">
+        <label class="block text-sm font-medium text-gray-900 mb-1.5">Selected Instructors</label>
+        <% (@instructor_people || []).each do |person| %>
+          <% person_bio = instructor_bios[person.id.to_s] || "" %>
+          <% person_headshot_blob_id = instructor_headshot_blob_ids[person.id.to_s] %>
+          <div class="border border-pink-200 bg-pink-50 rounded-lg overflow-hidden">
+            <div class="flex items-center gap-3 p-3">
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+              <div class="flex-grow min-w-0">
+                <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
+                <% if person.email.present? %>
+                  <div class="text-xs text-gray-500"><%= person.email %></div>
+                <% end %>
+              </div>
+              <button type="button"
+                      data-action="instructor-search#removeInstructor"
+                      data-person-id="<%= person.id %>"
+                      class="text-gray-400 hover:text-red-500 cursor-pointer flex-shrink-0 p-1"
+                      title="Remove instructor">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="px-3 pb-3 pt-1 border-t border-pink-100 space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Alternate Photo</label>
+                <% if person_headshot_blob_id %>
+                  <% existing_blob = ActiveStorage::Blob.find_by(id: person_headshot_blob_id) %>
+                  <% if existing_blob %>
+                    <div class="mb-2 flex items-center gap-2">
+                      <%= image_tag existing_blob.url, alt: "#{person.name} photo", class: "w-10 h-10 rounded-lg object-cover" %>
+                      <span class="text-xs text-green-600">Alternate photo uploaded</span>
+                    </div>
+                  <% end %>
+                <% end %>
+                <input type="file" name="instructor_headshots[<%= person.id %>]" accept="image/*"
+                       class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+                <p class="text-[11px] text-gray-400 mt-1">Overrides their profile photo on the registration page.</p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+                <textarea name="instructor_bios[<%= person.id %>]" rows="2" placeholder="Brief bio for registration page..."
+                          class="block w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= person_bio %></textarea>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Search section (always visible) %>
+      <div data-instructor-search-target="searchSection">
         <label for="instructor_search" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Search for Instructor
+          <% if (@instructor_people || []).any? %>
+            Add Another Instructor
+          <% else %>
+            Search for Instructor
+          <% end %>
         </label>
         <input type="text" id="instructor_search"
                data-instructor-search-target="searchInput"
@@ -61,48 +104,24 @@
         <div data-instructor-search-target="searchResults" class="mt-3 max-h-80 overflow-y-auto"></div>
       </div>
 
-      <%# Alternate Instructor Headshot Upload %>
-      <div data-instructor-search-target="headshotUploadSection"
-           class="<%= 'hidden' unless @instructor_person %>">
-        <label class="block text-sm font-medium text-gray-900 mb-1.5">Alternate Instructor Photo</label>
-        <p class="text-xs text-gray-500 mb-2">Their profile photo will be used by default. Upload an alternate photo here only if you'd like to override it on the registration page.</p>
-        <% if @wizard_state[:instructor_headshot_blob_id] %>
-          <% existing_blob = ActiveStorage::Blob.find_by(id: @wizard_state[:instructor_headshot_blob_id]) %>
-          <% if existing_blob %>
-            <div class="mb-3 flex items-center gap-3">
-              <%= image_tag existing_blob.url, alt: "Instructor photo", class: "w-16 h-16 rounded-lg object-cover" %>
-              <span class="text-xs text-gray-500">Current upload</span>
+      <%# Production Team toggle (shown when at least one instructor is selected) %>
+      <div data-instructor-search-target="instructorOptionsSection"
+           class="<%= 'hidden' if (@instructor_people || []).empty? %>">
+        <div class="border-t border-gray-200 pt-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="block text-sm font-medium text-gray-900">Production Team</label>
+              <p class="text-xs text-gray-500 mt-0.5">Add the instructors as managers of this course's production. They'll be able to view registrations, manage students, and receive notifications.</p>
             </div>
-          <% end %>
-        <% end %>
-        <input type="file" name="instructor_headshot" accept="image/*"
-               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
-      </div>
-
-      <%# Production Team %>
-      <div data-instructor-search-target="teamToggleSection"
-           class="<%= 'hidden' unless @instructor_person %> border-t border-gray-200 pt-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="block text-sm font-medium text-gray-900">Production Team</label>
-            <p class="text-xs text-gray-500 mt-0.5">Add the instructor as a manager of this course's production. They'll be able to view registrations, manage students, and receive notifications.</p>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+              <input type="hidden" name="instructor_on_team" value="0">
+              <input type="checkbox" name="instructor_on_team" value="1"
+                     <%= 'checked' if @wizard_state[:instructor_on_team] == true || @wizard_state[:instructor_on_team] == "1" %>
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
-            <input type="hidden" name="instructor_on_team" value="0">
-            <input type="checkbox" name="instructor_on_team" value="1"
-                   <%= 'checked' if @wizard_state[:instructor_on_team] == true || @wizard_state[:instructor_on_team] == "1" %>
-                   class="sr-only peer">
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-          </label>
         </div>
-      </div>
-
-      <div>
-        <label for="instructor_bio" class="block text-sm font-medium text-gray-900 mb-1.5">
-          Bio
-        </label>
-        <p class="text-xs text-gray-500 mb-2">A brief bio shown on the registration page. Optional.</p>
-        <%= rich_text_area_tag :instructor_bio, @wizard_state[:instructor_bio], class: "w-full min-h-[120px]" %>
       </div>
     </div>
 

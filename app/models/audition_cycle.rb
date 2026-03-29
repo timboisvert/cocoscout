@@ -12,6 +12,9 @@ class AuditionCycle < ApplicationRecord
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages
 
+  scope :listed, -> { where(listed_in_directory: true) }
+  scope :currently_open, -> { where(active: true, form_reviewed: true).where("opens_at <= ?", Time.current).where("closes_at IS NULL OR closes_at > ?", Time.current) }
+
   has_rich_text :instruction_text
   has_rich_text :video_field_text
   has_rich_text :success_text

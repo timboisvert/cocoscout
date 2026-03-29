@@ -27,14 +27,27 @@
         <p class="text-sm text-gray-500">Messages</p>
       </div>
 
-      <%# Contact Talent Pool Button %>
-      <% talent_pool = @production.effective_talent_pool %>
-      <% if talent_pool %>
-        <% talent_pool_members = talent_pool.people.distinct %>
-        <%
-          # Determine display name for the talent pool
-          pool_productions = [talent_pool.production] + talent_pool.shared_productions.to_a
+      <%# Send a Message Button (opens step-select flow) %>
+      <%
+        # Prepare shows data for JS
+        shows_data = @shows_for_message.map do |show|
+          cast_people = show.show_person_role_assignments
+            .select { |a| a.assignable_type == "Person" && a.assignable.present? }
+            .map(&:assignable).uniq
+          {
+            id: show.id,
+            name: show.display_name,
+            date: show.date_and_time&.strftime("%b %-d, %Y at %-I:%M %p"),
+            cast_count: cast_people.size,
+            cast_members: cast_people.first(10).map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "" } }
+          }
+        end
+
+        # Prepare talent pool data
+        talent_pool = @talent_pool
+        if talent_pool
           single_pool_mode = Current.organization.talent_pool_single?
+          pool_productions = [talent_pool.production] + talent_pool.shared_productions.to_a
           if single_pool_mode
             talent_pool_display_name = "#{Current.organization.name} Talent Pool"
           elsif pool_productions.size > 1
@@ -42,21 +55,35 @@
           else
             talent_pool_display_name = "#{talent_pool.production.name} Talent Pool"
           end
-        %>
-        <div data-controller="compose-message"
-             data-compose-message-recipient-type-value="talent_pool"
-             data-compose-message-recipient-id-value="<%= talent_pool.id %>"
-             data-compose-message-recipient-name-value="<%= talent_pool_display_name %>"
-             data-compose-message-production-id-value="<%= @production.id %>"
-             data-compose-message-cast-members-value="<%= talent_pool_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
-          <%= render "shared/button",
-              text: "Contact Talent Pool",
-              variant: "primary",
-              size: "small",
-              type: :button,
-              data: { action: "click->compose-message#open" } %>
-        </div>
-      <% end %>
+
+          talent_pool_members_data = @talent_pool_members.first(20).map do |p|
+            {
+              id: p.id,
+              name: p.name,
+              headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "",
+              initials: p.initials
+            }
+          end
+          talent_pool_total_count = @talent_pool_members.size
+        end
+      %>
+      <div data-controller="compose-message"
+           data-compose-message-production-id-value="<%= @production.id %>"
+           data-compose-message-shows-value="<%= shows_data.to_json %>"
+           data-compose-message-search-url-value="<%= manage_casting_search_people_path(@production) %>"
+           <% if talent_pool %>
+             data-compose-message-talent-pool-id-value="<%= talent_pool.id %>"
+             data-compose-message-talent-pool-name-value="<%= talent_pool_display_name %>"
+             data-compose-message-talent-pool-members-value="<%= talent_pool_members_data.to_json %>"
+             data-compose-message-talent-pool-count-value="<%= talent_pool_total_count %>"
+           <% end %>>
+        <%= render "shared/button",
+            text: "Send a Message",
+            variant: "primary",
+            size: "small",
+            type: :button,
+            data: { action: "click->compose-message#openWithSteps" } %>
+      </div>
     </div>
   </div>
 

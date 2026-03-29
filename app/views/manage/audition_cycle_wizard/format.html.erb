@@ -33,6 +33,21 @@
           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
         </label>
       </div>
+
+      <!-- Directory Listing Toggle -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex-1 mr-4">
+          <p class="font-medium text-gray-900">List in Auditions Directory</p>
+          <p class="text-sm text-gray-500 mt-1">Make this audition discoverable in the public "Find an Audition" directory</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="hidden" name="listed_in_directory" value="0">
+          <input type="checkbox" name="listed_in_directory" value="1"
+                 <%= "checked" if @wizard_state[:listed_in_directory] != false %>
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
     </div>
 
     <div class="mt-8 flex justify-end">

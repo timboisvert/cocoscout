@@ -168,7 +168,13 @@
                   tooltip_text += " (Can't make it)" if cant_make_it
                 %>
                 <% headshot_variant = assignable&.safe_headshot_variant(:thumb) %>
-                <div class="relative">
+                <%
+                  person_link = if !is_guest && assignable
+                    assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable)
+                  end
+                %>
+                <div class="relative<%= ' cursor-pointer' if person_link %>"
+                     <% if person_link %>onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<%= person_link %>';"<% end %>>
                   <% if headshot_variant %>
                     <%= image_tag headshot_variant,
                         alt: assignable.name,

@@ -1,0 +1,6 @@
+<%= button_to "Mark All Read",
+    path,
+    method: :post,
+    disabled: disabled,
+    class: "px-3 py-1.5 rounded text-xs font-medium transition #{disabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'}",
+    form: { data: { turbo_action: "replace" } } %>

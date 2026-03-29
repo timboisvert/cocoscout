@@ -239,6 +239,7 @@ Rails.application.routes.draw do
     patch "/availability/:show_id/note",    to: "availability#update_note",  as: "update_availability_note"
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
+    get   "/auditions/directory",           to: "auditions#directory",      as: "auditions_directory"
     get   "/auditions/:id",                 to: "auditions#show",           as: "audition"
     post  "/auditions/:id/accept",          to: "auditions#accept",         as: "accept_audition"
     post  "/auditions/:id/decline",         to: "auditions#decline",        as: "decline_audition"
@@ -331,8 +332,10 @@ Rails.application.routes.draw do
       end
       collection do
         post :mark_all_read
+        get :search_people
         get "production/:production_id", action: :production, as: :production
         get "production/:production_id/:id", action: :show, as: :production_message
+        get "production_data/:production_id", action: :production_data, as: :production_data
       end
     end
 

@@ -13,9 +13,10 @@ module My
         .order(registered_at: :desc)
         .to_a
 
-      # Also find courses where the user is the instructor (no registration needed)
+      # Also find courses where the user is an instructor (no registration needed)
       instructor_offerings = CourseOffering
-        .where(instructor_person_id: people_ids)
+        .joins(:course_offering_instructors)
+        .where(course_offering_instructors: { person_id: people_ids })
         .includes(production: :organization)
         .to_a
 
@@ -120,7 +121,7 @@ module My
           next_session: upcoming_sessions.first,
           location: location,
           schedule_pattern: schedule_pattern,
-          instructor: offering.instructor_person
+          instructor: offering.instructor_people.first
         }
       end.compact
     end
@@ -132,8 +133,8 @@ module My
       @course_offering = CourseOffering.find(params[:id])
       @production = @course_offering.production
 
-      # Check if user is the instructor
-      @is_instructor = people_ids.include?(@course_offering.instructor_person_id)
+      # Check if user is an instructor
+      @is_instructor = @course_offering.course_offering_instructors.where(person_id: people_ids).exists?
 
       # Find user's registration for this course (any status except cancelled)
       @registration = CourseRegistration
@@ -153,7 +154,9 @@ module My
       @location = @all_sessions.detect { |s| s.location.present? }&.location
 
       # Instructor info
-      @instructor = @course_offering.instructor_person
+      @instructors = @course_offering.instructor_people.to_a
+      @instructor = @instructors.first  # backward compat for contact card
+      @lead_coi = @course_offering.course_offering_instructors.first
 
       # If this user IS the instructor, load registered students for the panel
       if @is_instructor

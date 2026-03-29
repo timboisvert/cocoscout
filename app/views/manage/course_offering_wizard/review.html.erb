@@ -31,37 +31,39 @@
       </dl>
     </div>
 
-    <!-- Instructor -->
+    <!-- Instructors -->
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-gray-900">Instructor</h3>
+        <h3 class="text-sm font-semibold text-gray-900">Instructors</h3>
         <%= link_to manage_course_wizard_instructor_path, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" do %>
           Edit
         <% end %>
       </div>
-      <% if @instructor_person %>
-        <div class="flex items-center gap-3 mb-2">
-          <% headshot_variant = @instructor_person.safe_headshot_variant(:tile) %>
-          <% if headshot_variant %>
-            <%= image_tag headshot_variant, alt: @instructor_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
-              <%= @instructor_person.initials %>
+      <% if @instructor_people.any? %>
+        <div class="space-y-2 mb-2">
+          <% @instructor_people.each do |person| %>
+            <div class="flex items-center gap-3">
+              <% headshot_variant = person.safe_headshot_variant(:tile) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+              <div>
+                <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
+                <% if person.email.present? %>
+                  <div class="text-xs text-gray-500"><%= person.email %></div>
+                <% end %>
+                <% bio = @wizard_state[:instructor_bios]&.dig(person.id.to_s) %>
+                <% if bio.present? %>
+                  <div class="text-xs text-gray-500 mt-0.5"><%= truncate(bio, length: 120) %></div>
+                <% end %>
+              </div>
             </div>
           <% end %>
-          <div>
-            <div class="font-medium text-sm text-gray-900"><%= @instructor_person.name %></div>
-            <% if @instructor_person.email.present? %>
-              <div class="text-xs text-gray-500"><%= @instructor_person.email %></div>
-            <% end %>
-          </div>
         </div>
-        <% if @wizard_state[:instructor_bio].present? %>
-          <div class="text-sm mt-2">
-            <dt class="text-gray-500">Bio</dt>
-            <dd class="text-gray-700"><%= truncate(@wizard_state[:instructor_bio], length: 200) %></dd>
-          </div>
-        <% end %>
         <% if @wizard_state[:instructor_on_team] %>
           <div class="text-sm mt-2">
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -70,21 +72,8 @@
             </span>
           </div>
         <% end %>
-      <% elsif @wizard_state[:instructor_name].present? %>
-        <dl class="space-y-2 text-sm">
-          <div>
-            <dt class="text-gray-500">Name</dt>
-            <dd class="font-medium text-gray-900"><%= @wizard_state[:instructor_name] %></dd>
-          </div>
-          <% if @wizard_state[:instructor_bio].present? %>
-            <div>
-              <dt class="text-gray-500">Bio</dt>
-              <dd class="text-gray-700"><%= truncate(@wizard_state[:instructor_bio], length: 200) %></dd>
-            </div>
-          <% end %>
-        </dl>
       <% else %>
-        <p class="text-sm text-gray-400 italic">No instructor specified</p>
+        <p class="text-sm text-gray-400 italic">No instructors specified</p>
       <% end %>
     </div>
 

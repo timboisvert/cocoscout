@@ -99,7 +99,109 @@ module Manage
         .limit(100)
 
       @hide_production_via = true  # Don't show "via" since we're already filtered by production
+
+      # Load data for the step-select "Send a Message" flow
+      @shows_for_message = @production.shows
+        .order(date_and_time: :desc)
+        .limit(50)
+        .includes(show_person_role_assignments: { assignable: { profile_headshots: { image_attachment: :blob } } })
+
+      @talent_pool = @production.effective_talent_pool
+      @talent_pool_members = @talent_pool&.people&.distinct&.includes(profile_headshots: { image_attachment: :blob }) || []
+
       render :production
+    end
+
+    # GET /manage/messages/production_data/:production_id (JSON)
+    # Returns shows and talent pool data for the step-select compose flow
+    def production_data
+      production = Current.user.accessible_productions
+                                .where(organization: Current.organization)
+                                .find(params[:production_id])
+
+      shows = production.shows
+        .order(date_and_time: :desc)
+        .limit(50)
+        .includes(show_person_role_assignments: { assignable: { profile_headshots: { image_attachment: :blob } } })
+
+      shows_data = shows.map do |show|
+        cast_people = show.show_person_role_assignments
+          .select { |a| a.assignable_type == "Person" && a.assignable.present? }
+          .map(&:assignable).uniq
+        {
+          id: show.id,
+          name: show.display_name,
+          date: show.date_and_time&.strftime("%b %-d, %Y at %-I:%M %p"),
+          cast_count: cast_people.size,
+          cast_members: cast_people.first(10).map { |p|
+            { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "" }
+          }
+        }
+      end
+
+      talent_pool = production.effective_talent_pool
+      talent_pool_data = nil
+      if talent_pool
+        members = talent_pool.people.distinct.includes(profile_headshots: { image_attachment: :blob })
+        single_pool_mode = Current.organization.talent_pool_single?
+        pool_productions = [ talent_pool.production ] + talent_pool.shared_productions.to_a
+        display_name = if single_pool_mode
+          "#{Current.organization.name} Talent Pool"
+        elsif pool_productions.size > 1
+          "Shared Talent Pool"
+        else
+          "#{talent_pool.production.name} Talent Pool"
+        end
+
+        talent_pool_data = {
+          id: talent_pool.id,
+          name: display_name,
+          count: members.size,
+          members: members.first(20).map { |p|
+            {
+              id: p.id,
+              name: p.name,
+              headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "",
+              initials: p.initials
+            }
+          }
+        }
+      end
+
+      render json: {
+        shows: shows_data,
+        talent_pool: talent_pool_data,
+        search_url: manage_casting_search_people_path(production)
+      }
+    end
+
+    # GET /manage/messages/search_people (JSON)
+    # Org-level people search for the compose modal (no production required)
+    def search_people
+      q = params[:q].to_s.strip
+
+      if q.length < 2
+        render json: { people: [] }
+        return
+      end
+
+      people = Current.organization.people
+                      .where("LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)", q: "%#{q}%")
+                      .order(:name)
+                      .limit(20)
+                      .includes(profile_headshots: { image_attachment: :blob })
+
+      render json: {
+        people: people.map { |p|
+          {
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            initials: p.initials,
+            headshot_url: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil
+          }
+        }
+      }
     end
 
     def mark_all_read

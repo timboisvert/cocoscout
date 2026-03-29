@@ -166,6 +166,39 @@ module My
       @auditionable = @audition.auditionable
     end
 
+    def directory
+      @cycles = AuditionCycle
+        .currently_open
+        .listed
+        .includes(production: :organization)
+        .order(created_at: :desc)
+
+      @cycles_data = @cycles.map do |cycle|
+        production = cycle.production
+        organization = production.organization
+        sessions = cycle.audition_sessions.order(:start_at).to_a
+        upcoming_sessions = sessions.select { |s| s.start_at >= Time.current }
+
+        location = sessions.detect { |s| s.location.present? }&.location
+
+        # Format types
+        formats = []
+        formats << "In-Person" if cycle.accepts_in_person_auditions?
+        formats << "Video" if cycle.accepts_video_submissions?
+
+        {
+          cycle: cycle,
+          production: production,
+          organization: organization,
+          sessions: sessions,
+          upcoming_sessions_count: upcoming_sessions.size,
+          next_session: upcoming_sessions.first,
+          location: location,
+          formats: formats
+        }
+      end.compact
+    end
+
     def accept
       @audition = find_audition
       return redirect_to my_auditions_path, alert: "Audition not found" unless @audition

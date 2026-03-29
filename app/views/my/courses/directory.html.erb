@@ -44,23 +44,27 @@
             <%# Details section %>
             <div class="px-5 pb-4 flex-1 space-y-3">
 
-              <%# Instructor %>
-              <% if instructor %>
-                <div class="flex items-center gap-2.5">
-                  <% if offering.instructor_headshot.attached? %>
-                    <%= image_tag offering.instructor_headshot.variant(resize_to_fill: [64, 64]), alt: instructor.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-                  <% else %>
-                    <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: instructor.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+              <%# Instructor(s) %>
+              <% cois = offering.course_offering_instructors.includes(:person) %>
+              <% if cois.any? %>
+                <% cois.each do |coi| %>
+                  <% instr = coi.person %>
+                  <div class="flex items-center gap-2.5">
+                    <% if coi.headshot.attached? %>
+                      <%= image_tag coi.headshot.variant(resize_to_fill: [64, 64]), alt: instr.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
                     <% else %>
-                      <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
-                        <%= instructor.initials %>
-                      </div>
+                      <% headshot_variant = instr.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: instr.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
+                          <%= instr.initials %>
+                        </div>
+                      <% end %>
                     <% end %>
-                  <% end %>
-                  <span class="text-sm text-gray-700"><%= instructor.name %></span>
-                </div>
+                    <span class="text-sm text-gray-700"><%= instr.name %></span>
+                  </div>
+                <% end %>
               <% end %>
 
               <%# Schedule info %>

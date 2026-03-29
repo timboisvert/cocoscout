@@ -4,10 +4,11 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Auditions",
-    links: []
+  <%= render partial: "shared/top_menu_tabs", locals: {
+    tabs: [
+      { name: "My Auditions", path: my_auditions_path, active: true },
+      { name: "Find an Audition", path: my_auditions_directory_path, active: false }
+    ]
   } %>
 
   <%# ========================================= %>

@@ -167,51 +167,65 @@
           <% end %>
         <% end %>
 
-        <%# Instructor %>
-        <% if @course_offering.instructor_person.present? || @course_offering.instructor_name.present? %>
-          <h3 class="text-base font-semibold text-slate-900">Instructor</h3>
-          <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
-            <div class="flex items-center gap-4">
-              <% if @course_offering.instructor_person.present? %>
-                <% instructor = @course_offering.instructor_person %>
-                <% if @course_offering.instructor_headshot.attached? %>
-                  <%= image_tag @course_offering.instructor_headshot.variant(resize_to_fill: [112, 112]), alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
-                <% else %>
-                  <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
-                  <% else %>
-                    <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-lg flex-shrink-0">
-                      <%= instructor.initials %>
+        <%# Instructors %>
+        <% cois = @course_offering.course_offering_instructors.includes(:person) %>
+        <% instructors = cois.map(&:person) %>
+        <% coi_by_person = cois.index_by(&:person_id) %>
+        <% if instructors.any? || @course_offering.instructor_name.present? %>
+          <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
+          <% if instructors.any? %>
+            <div class="space-y-3 -mt-3">
+              <% instructors.each do |instructor| %>
+                <% coi = coi_by_person[instructor.id] %>
+                <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+                  <div class="flex items-center gap-4">
+                    <% if coi&.headshot&.attached? %>
+                      <%= image_tag coi.headshot.variant(resize_to_fill: [112, 112]), alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-lg flex-shrink-0">
+                          <%= instructor.initials %>
+                        </div>
+                      <% end %>
+                    <% end %>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-medium text-slate-900"><%= instructor.name %></p>
+                      <% if coi&.bio.present? %>
+                        <p class="text-sm text-slate-600 mt-1"><%= coi.bio %></p>
+                      <% end %>
                     </div>
-                  <% end %>
-                <% end %>
-                <div class="flex-1 min-w-0">
-                  <p class="font-medium text-slate-900"><%= instructor.name %></p>
+                  </div>
                 </div>
-              <% else %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
+              <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg flex-shrink-0">
                   <%= @course_offering.instructor_name.to_s.split(" ").map { |n| n[0] }.join("").first(2).upcase %>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="font-medium text-slate-900"><%= @course_offering.instructor_name %></p>
                 </div>
+              </div>
+              <% if @course_offering.instructor_bio.present? %>
+                <div class="mt-3 pt-3 border-t border-slate-100" data-controller="text-expand" data-text-expand-max-height-value="96">
+                  <div class="relative">
+                    <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 overflow-hidden" style="max-height: 96px;">
+                      <%= @course_offering.instructor_bio %>
+                    </div>
+                    <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                  </div>
+                  <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
+                    Read more
+                  </button>
+                </div>
               <% end %>
             </div>
-            <% if @course_offering.instructor_bio.present? %>
-              <div class="mt-3 pt-3 border-t border-slate-100" data-controller="text-expand" data-text-expand-max-height-value="96">
-                <div class="relative">
-                  <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 overflow-hidden" style="max-height: 96px;">
-                    <%= @course_offering.instructor_bio %>
-                  </div>
-                  <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-                </div>
-                <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
-                  Read more
-                </button>
-              </div>
-            <% end %>
-          </div>
+          <% end %>
         <% end %>
 
         <%# Location Box with Map (matches sign-up form) %>

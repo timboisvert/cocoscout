@@ -18,6 +18,7 @@
   <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
     <div class="flex items-center gap-4">
       <% headshot_variant = @advance.person.safe_headshot_variant(:small) %>
+      <%= link_to manage_person_path(@advance.person), class: "flex items-center gap-4 flex-1 min-w-0" do %>
       <% if headshot_variant %>
         <%= image_tag headshot_variant, class: "w-16 h-16 rounded-lg object-cover" %>
       <% else %>
@@ -25,10 +26,11 @@
           <%= @advance.person.initials %>
         </div>
       <% end %>
-      <div class="flex-1">
-        <h2 class="text-xl font-semibold text-gray-900"><%= @advance.person.name %></h2>
+      <div class="flex-1 min-w-0">
+        <h2 class="text-xl font-semibold text-gray-900 hover:text-pink-600 transition-colors"><%= @advance.person.name %></h2>
         <p class="text-gray-500"><%= @advance.production.name %></p>
       </div>
+      <% end %>
       <div class="text-right space-y-1">
         <% if @advance.unpaid? %>
           <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800">

@@ -52,6 +52,7 @@
   <%# Modal Panel %>
   <div class="flex min-h-full items-center justify-center p-4">
     <div class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
+         data-compose-message-target="modalPanel"
          data-action="click->compose-message#stopPropagation">
 
       <%# Header %>
@@ -76,6 +77,156 @@
           </button>
         </div>
       </div>
+
+      <%# Step 1: Recipient Type Selector (shown when opened via step-select flow) %>
+      <div data-compose-message-target="step1Panel" class="hidden p-6 space-y-4">
+        <div>
+          <h4 class="text-lg font-bold text-gray-900 coustard-regular">Who would you like to message?</h4>
+          <p class="text-sm text-gray-500 mt-1">Choose who should receive this message.</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3" data-controller="option-select" data-option-select-selected-value="" data-compose-message-target="recipientCards">
+          <%# Individuals Card %>
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="individuals"
+               data-action="click->option-select#select">
+            <input type="radio" name="step1_recipient_type" value="individuals" class="sr-only" data-option-select-target="input">
+            <div class="flex flex-col items-center text-center gap-2">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900 text-sm">Individuals</p>
+                <p class="text-xs text-gray-500 mt-0.5">Specific people</p>
+              </div>
+            </div>
+          </div>
+
+          <%# Show Cast Card %>
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="show_cast"
+               data-action="click->option-select#select">
+            <input type="radio" name="step1_recipient_type" value="show_cast" class="sr-only" data-option-select-target="input">
+            <div class="flex flex-col items-center text-center gap-2">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900 text-sm">Show Cast</p>
+                <p class="text-xs text-gray-500 mt-0.5">Entire show cast</p>
+              </div>
+            </div>
+          </div>
+
+          <%# Talent Pool Card %>
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="talent_pool"
+               data-action="click->option-select#select">
+            <input type="radio" name="step1_recipient_type" value="talent_pool" class="sr-only" data-option-select-target="input">
+            <div class="flex flex-col items-center text-center gap-2">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900 text-sm">Talent Pool</p>
+                <p class="text-xs text-gray-500 mt-0.5">Entire talent pool</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# Step 1 sub-panels (shown after selecting a type) %>
+
+        <%# Individuals: Person Search %>
+        <div data-compose-message-target="individualsPanel" class="hidden">
+          <div class="relative">
+            <input type="text"
+                   data-compose-message-target="personSearchInput"
+                   data-action="input->compose-message#searchPeople"
+                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 pl-10 text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors"
+                   placeholder="Search by name or email..."
+                   autocomplete="off">
+            <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <%# Selected chips %>
+          <div data-compose-message-target="selectedPeopleChips" class="flex flex-wrap gap-2 mt-2 empty:hidden"></div>
+          <%# Search results %>
+          <div data-compose-message-target="personSearchResults" class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-gray-200 hidden"></div>
+        </div>
+
+        <%# Show Cast: Production picker + Show Picker %>
+        <div data-compose-message-target="showCastPanel" class="hidden space-y-3">
+          <%# Production picker (shown only when multiple productions, no pre-selected production) %>
+          <div data-compose-message-target="showCastProductionPicker" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Production</label>
+            <select data-compose-message-target="showCastProductionSelect"
+                    data-action="change->compose-message#selectProductionForShowCast"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+              <option value="">Select a production...</option>
+            </select>
+          </div>
+          <div data-compose-message-target="showSelectWrapper" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Show</label>
+            <select data-compose-message-target="showSelect"
+                    data-action="change->compose-message#selectShow"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+              <option value="">Select a show...</option>
+            </select>
+          </div>
+          <div data-compose-message-target="showCastPreview" class="mt-3 hidden">
+            <p class="text-sm text-gray-500"><span data-compose-message-target="showCastCount"></span> cast members</p>
+            <div data-compose-message-target="showCastHeadshots" class="flex flex-wrap -space-x-1.5 mt-2"></div>
+          </div>
+        </div>
+
+        <%# Talent Pool: Production picker (if needed) + Auto-selected preview %>
+        <div data-compose-message-target="talentPoolPanel" class="hidden space-y-3">
+          <%# Production picker (shown only when NOT single talent pool mode) %>
+          <div data-compose-message-target="talentPoolProductionPicker" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Production</label>
+            <select data-compose-message-target="talentPoolProductionSelect"
+                    data-action="change->compose-message#selectProductionForTalentPool"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+              <option value="">Select a production...</option>
+            </select>
+          </div>
+          <div data-compose-message-target="talentPoolPreviewBox" class="hidden">
+            <div class="rounded-lg bg-pink-50 border border-pink-200 p-4">
+              <p class="text-sm text-gray-700"><span data-compose-message-target="talentPoolCount" class="font-semibold"></span> people in the talent pool</p>
+              <div data-compose-message-target="talentPoolHeadshots" class="flex flex-wrap -space-x-1.5 mt-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <%# Continue Button %>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <%= render "shared/button",
+              text: "Cancel",
+              variant: "ghost",
+              type: :button,
+              data: { action: "click->compose-message#close" } %>
+          <%= render "shared/button",
+              text: "Continue",
+              variant: "primary",
+              type: :button,
+              data: { action: "click->compose-message#continueToCompose", "compose-message-target": "continueButton" },
+              disabled: true %>
+        </div>
+      </div>
+
+      <%# Step 2: Compose Form (the original form) %>
+      <div data-compose-message-target="step2Panel">
 
       <%# Form %>
       <form data-compose-message-target="form"
@@ -199,27 +350,38 @@
         </div>
 
         <%# Send Separately Toggle - only shown for batch messages %>
-        <div data-compose-message-target="sendSeparatelySection" class="hidden">
-          <label class="flex items-start gap-2 cursor-pointer">
-            <input type="checkbox"
-                   name="send_separately"
-                   data-compose-message-target="sendSeparately"
-                   data-action="change->compose-message#toggleSendSeparately"
-                   class="h-4 w-4 mt-0.5 rounded border-gray-300 accent-pink-500">
-            <span>
-              <span class="text-sm text-gray-700">Send as separate message threads</span>
+        <div data-compose-message-target="sendSeparatelySection" class="hidden border-t border-b border-gray-200 py-4 -mx-6 px-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-sm font-medium text-gray-900">Send as separate message threads</span>
               <p class="text-xs text-gray-500 mt-0.5">Each person will receive their own conversation instead of a group message.</p>
-            </span>
-          </label>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-3">
+              <input type="checkbox"
+                     name="send_separately"
+                     data-compose-message-target="sendSeparately"
+                     data-action="change->compose-message#toggleSendSeparately"
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
         </div>
 
         <%# Actions %>
         <div class="flex items-center justify-end gap-3">
+          <%# Back to step 1 (hidden by default, shown when in step-select mode) %>
+          <%= render "shared/button",
+              text: "\u2190 Back",
+              variant: "ghost",
+              size: "small",
+              type: :button,
+              classes: "hidden mr-auto",
+              data: { "compose-message-target": "backToStep1", action: "click->compose-message#backToStep1" } %>
           <%= render "shared/button",
               text: "Cancel",
               variant: "ghost",
               type: :button,
-              data: { action: "click->compose-message#close" } %>
+              data: { "compose-message-target": "cancelButton", action: "click->compose-message#close" } %>
           <%= render "shared/button",
               text: "Send Message",
               variant: "primary",
@@ -227,6 +389,7 @@
               data: { "compose-message-target": "submitButton" } %>
         </div>
       </form>
+      </div><%# end step2Panel %>
     </div>
   </div>
 </div>

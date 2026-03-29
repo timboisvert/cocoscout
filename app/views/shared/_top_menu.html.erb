@@ -59,7 +59,9 @@
             variant: button_variant,
             data: button_data,
             size: "small",
-            method: link[:method]
+            method: link[:method],
+            type: link[:type] || :submit,
+            disabled: link[:disabled] || false
           } %>
         <% end %>
       <% end %>

@@ -42,6 +42,7 @@ module Manage
     def save_format
       @wizard_state[:allow_video_submissions] = params[:allow_video_submissions] == "1"
       @wizard_state[:allow_in_person_auditions] = params[:allow_in_person_auditions] == "1"
+      @wizard_state[:listed_in_directory] = params[:listed_in_directory] == "1"
 
       unless @wizard_state[:allow_video_submissions] || @wizard_state[:allow_in_person_auditions]
         flash.now[:alert] = "Please select at least one audition format"
@@ -249,6 +250,7 @@ module Manage
         active: true,
         allow_video_submissions: @wizard_state[:allow_video_submissions],
         allow_in_person_auditions: @wizard_state[:allow_in_person_auditions],
+        listed_in_directory: @wizard_state[:listed_in_directory] != false,
         opens_at: @wizard_state[:opens_at],
         closes_at: @wizard_state[:closes_at],
         include_availability_section: @wizard_state[:include_availability_section],

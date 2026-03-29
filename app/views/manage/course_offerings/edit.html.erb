@@ -70,78 +70,117 @@
   <%# ==================== TAB 1: INSTRUCTOR ==================== %>
   <div data-tabs-target="panel" class="hidden">
     <div class="space-y-6">
-      <%# Current Instructor Display %>
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Instructor" %>
-        <div class="p-5">
+      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, multipart: true, class: "space-y-6", id: "instructor-form" do |form| %>
 
-          <%# Selected instructor section %>
-          <div data-instructor-search-target="selectedSection"
-               class="<%= 'hidden' unless @instructor_person %>">
-            <label class="block text-sm font-medium text-gray-900 mb-1.5">Current Instructor</label>
-            <div class="flex items-center gap-4 p-4 border border-pink-200 bg-pink-50 rounded-lg">
-              <div data-instructor-search-target="selectedHeadshot">
-                <% if @instructor_person %>
-                  <% headshot_variant = @instructor_person.safe_headshot_variant(:tile) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: @instructor_person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-                  <% else %>
-                    <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
-                      <%= @instructor_person.initials %>
+        <%# Instructor Selection Card %>
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <%= render "shared/card_header", title: "Instructors" %>
+          <div class="p-5">
+
+            <%# Hidden inputs container for selected instructor IDs %>
+            <%
+              coi_by_person = @course_offering.course_offering_instructors.index_by(&:person_id)
+            %>
+            <div data-instructor-search-target="personIdsContainer">
+              <% (@instructor_people || []).each do |person| %>
+                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                <% coi = coi_by_person[person.id] %>
+                <input type="hidden" name="instructor_person_ids[]"
+                       value="<%= person.id %>"
+                       data-name="<%= person.name %>"
+                       data-email="<%= person.email %>"
+                       data-headshot-url="<%= headshot_variant ? url_for(headshot_variant) : '' %>"
+                       data-bio="<%= coi&.bio %>"
+                       data-has-existing-headshot="<%= coi&.headshot&.attached? ? 'true' : 'false' %>">
+              <% end %>
+            </div>
+
+            <%# Selected instructors list with per-instructor bio/headshot %>
+            <div data-instructor-search-target="selectedList"
+                 class="space-y-3 mb-4 <%= 'hidden' if (@instructor_people || []).empty? %>">
+              <label class="block text-sm font-medium text-gray-900 mb-1.5">Current Instructors</label>
+              <% (@instructor_people || []).each do |person| %>
+                <% coi = coi_by_person[person.id] %>
+                <div class="border border-pink-200 bg-pink-50 rounded-lg overflow-hidden">
+                  <div class="flex items-center gap-3 p-3">
+                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
+                    <div class="flex-grow min-w-0">
+                      <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
+                      <% if person.email.present? %>
+                        <div class="text-xs text-gray-500"><%= person.email %></div>
+                      <% end %>
                     </div>
-                  <% end %>
+                    <button type="button"
+                            data-action="instructor-search#removeInstructor"
+                            data-person-id="<%= person.id %>"
+                            class="text-gray-400 hover:text-red-500 cursor-pointer flex-shrink-0 p-1"
+                            title="Remove instructor">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="px-3 pb-3 pt-1 border-t border-pink-100 space-y-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Alternate Photo</label>
+                      <% if coi&.headshot&.attached? %>
+                        <div class="mb-2 flex items-center gap-2">
+                          <%= image_tag coi.headshot.variant(resize_to_fill: [80, 80]), alt: "#{person.name} photo", class: "w-10 h-10 rounded-lg object-cover" %>
+                          <span class="text-xs text-green-600">Alternate photo uploaded</span>
+                        </div>
+                      <% end %>
+                      <input type="file" name="instructor_headshots[<%= person.id %>]" accept="image/*"
+                             class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+                      <p class="text-[11px] text-gray-400 mt-1">Overrides their profile photo on the registration page.</p>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+                      <textarea name="instructor_bios[<%= person.id %>]" rows="2" placeholder="Brief bio for registration page..."
+                                class="block w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= coi&.bio %></textarea>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <%# Search section (always visible) %>
+            <div data-instructor-search-target="searchSection">
+              <label for="instructor_search" class="block text-sm font-medium text-gray-900 mb-1.5">
+                <% if (@instructor_people || []).any? %>
+                  Add Another Instructor
+                <% else %>
+                  Search for Instructor
                 <% end %>
-              </div>
-              <div class="flex-grow min-w-0">
-                <div class="font-medium text-gray-900" data-instructor-search-target="selectedName">
-                  <%= @instructor_person&.name %>
-                </div>
-                <div class="text-sm text-gray-500" data-instructor-search-target="selectedEmail">
-                  <%= @instructor_person&.email %>
-                </div>
-              </div>
-              <button type="button"
-                      data-action="instructor-search#changePerson"
-                      class="px-3 py-1.5 text-gray-600 bg-white rounded-md text-xs font-medium shadow-sm hover:bg-gray-50 transition-all border border-gray-300 cursor-pointer flex-shrink-0">
-                Change
-              </button>
+              </label>
+              <input type="text" id="instructor_search"
+                     data-instructor-search-target="searchInput"
+                     data-action="input->instructor-search#search"
+                     placeholder="Search by name or email..."
+                     autocomplete="off"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+
+              <div data-instructor-search-target="searchResults" class="mt-3 max-h-80 overflow-y-auto"></div>
             </div>
           </div>
-
-          <%# Search section %>
-          <div data-instructor-search-target="searchSection"
-               class="<%= 'hidden' if @instructor_person %>">
-            <label for="instructor_search" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Search for Instructor
-            </label>
-            <input type="text" id="instructor_search"
-                   data-instructor-search-target="searchInput"
-                   data-action="input->instructor-search#search"
-                   placeholder="Search by name or email..."
-                   autocomplete="off"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-
-            <div data-instructor-search-target="searchResults" class="mt-3 max-h-80 overflow-y-auto"></div>
-          </div>
         </div>
-      </div>
-
-      <%# Instructor Bio + Headshot + Save %>
-      <%= form_with url: manage_course_offering_update_instructor_path(@course_offering), method: :post, local: true, multipart: true, class: "space-y-6", id: "instructor-form" do |form| %>
-        <input type="hidden" name="instructor_person_id"
-               value="<%= @course_offering.instructor_person_id %>"
-               data-instructor-search-target="personIdField">
 
         <%# Add to Production Team toggle %>
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
              data-instructor-search-target="teamToggleSection"
-             style="<%= 'display:none' unless @instructor_person %>">
+             style="<%= 'display:none' if (@instructor_people || []).empty? %>">
           <%= render "shared/card_header", title: "Production Team" %>
           <div class="p-5">
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-sm font-medium text-gray-900">Add to production team</span>
-                <p class="text-xs text-gray-500 mt-0.5">Make the instructor a manager of this course's production with notifications enabled.</p>
+                <p class="text-xs text-gray-500 mt-0.5">Make instructors managers of this course's production with notifications enabled.</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="instructor_on_team" value="0">
@@ -154,31 +193,8 @@
           </div>
         </div>
 
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <%= render "shared/card_header", title: "Instructor Photo" %>
-          <div class="p-5">
-            <p class="text-xs text-gray-500 mb-2">Upload a photo for the instructor shown on the registration page. If not set, their profile photo will be used.</p>
-            <% if @course_offering.instructor_headshot.attached? %>
-              <div class="mb-3 flex items-center gap-3">
-                <%= image_tag @course_offering.instructor_headshot.variant(resize_to_fill: [128, 128]), alt: "Instructor photo", class: "w-16 h-16 rounded-lg object-cover" %>
-                <span class="text-xs text-gray-500">Current photo</span>
-              </div>
-            <% end %>
-            <input type="file" name="instructor_headshot" accept="image/*"
-                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
-          </div>
-        </div>
-
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <%= render "shared/card_header", title: "Instructor Bio" %>
-          <div class="p-5">
-            <p class="text-xs text-gray-500 mb-2">A brief bio shown on the registration page. Optional.</p>
-            <%= rich_text_area_tag :instructor_bio, @course_offering.instructor_bio, class: "w-full min-h-[120px]" %>
-          </div>
-        </div>
-
         <div class="flex items-center gap-3">
-          <%= render "shared/button", text: "Save Instructor", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Save Instructors", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
     </div>

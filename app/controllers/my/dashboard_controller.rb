@@ -240,9 +240,10 @@ module My
           end
         end
 
-        # Courses where user is the instructor (not already included via registration)
+        # Courses where user is an instructor (not already included via registration)
         instructor_offerings = CourseOffering
-          .where(instructor_person_id: selected_person_ids)
+          .joins(:course_offering_instructors)
+          .where(course_offering_instructors: { person_id: selected_person_ids })
           .where.not(id: registered_offering_ids.to_a)
           .includes(production: :shows)
           .to_a

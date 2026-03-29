@@ -132,7 +132,13 @@
                     </div>
                   <% end %>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 truncate"><%= respondent.name %></p>
+                    <p class="text-sm font-medium text-gray-900 truncate">
+                      <% if respondent.is_a?(Person) %>
+                        <span class="cursor-pointer hover:text-pink-600 transition-colors" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<%= manage_person_path(respondent) %>';"><%= respondent.name %></span>
+                      <% else %>
+                        <%= respondent.name %>
+                      <% end %>
+                    </p>
                     <% if response.context.present? %>
                       <p class="text-xs text-gray-500"><%= response.context.title %></p>
                     <% end %>
@@ -172,7 +178,9 @@
                         </div>
                       <% end %>
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                        <p class="text-sm font-medium text-gray-900 truncate">
+                          <span class="cursor-pointer hover:text-pink-600 transition-colors" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<%= manage_person_path(person) %>';"><%= person.name %></span>
+                        </p>
                         <p class="text-xs text-pink-600">✓ Responded</p>
                       </div>
                     </div>
@@ -189,7 +197,9 @@
                         </div>
                       <% end %>
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                        <p class="text-sm font-medium text-gray-900 truncate">
+                          <%= link_to person.name, manage_person_path(person), class: "hover:text-pink-600 transition-colors" %>
+                        </p>
                         <p class="text-xs text-gray-500">Not yet responded</p>
                       </div>
                     </div>

@@ -29,30 +29,44 @@ module Manage
     def instructor
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
       @step = 2
-      if @wizard_state[:instructor_person_id].present?
-        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
-      end
+      ids = Array(@wizard_state[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
+      @instructor_people = ids.any? ? Person.where(id: ids).index_by(&:id).values_at(*ids).compact : []
     end
 
     def save_instructor
-      @wizard_state[:instructor_person_id] = params[:instructor_person_id].presence&.to_i
-      @wizard_state[:instructor_bio] = params[:instructor_bio].presence
+      @wizard_state[:instructor_person_ids] = Array(params[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
       @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
 
-      # Handle instructor headshot upload
-      if params[:instructor_headshot].present?
-        blob = ActiveStorage::Blob.create_and_upload!(
-          io: params[:instructor_headshot],
-          filename: params[:instructor_headshot].original_filename,
-          content_type: params[:instructor_headshot].content_type
-        )
-        @wizard_state[:instructor_headshot_blob_id] = blob.id
+      # Save per-instructor bios
+      @wizard_state[:instructor_bios] ||= {}
+      if params[:instructor_bios].is_a?(ActionController::Parameters) || params[:instructor_bios].is_a?(Hash)
+        params[:instructor_bios].each do |person_id, bio|
+          @wizard_state[:instructor_bios][person_id.to_s] = bio.presence
+        end
       end
+      # Clean up bios for removed instructors
+      active_ids = @wizard_state[:instructor_person_ids].map(&:to_s)
+      @wizard_state[:instructor_bios].select! { |k, _| active_ids.include?(k) }
 
-      # Keep instructor_name in sync with the selected person
-      if @wizard_state[:instructor_person_id].present?
-        person = Person.find_by(id: @wizard_state[:instructor_person_id])
-        @wizard_state[:instructor_name] = person&.name
+      # Handle per-instructor headshot uploads
+      @wizard_state[:instructor_headshot_blob_ids] ||= {}
+      if params[:instructor_headshots].is_a?(ActionController::Parameters) || params[:instructor_headshots].is_a?(Hash)
+        params[:instructor_headshots].each do |person_id, file|
+          next unless file.present? && file.respond_to?(:original_filename)
+          blob = ActiveStorage::Blob.create_and_upload!(
+            io: file,
+            filename: file.original_filename,
+            content_type: file.content_type
+          )
+          @wizard_state[:instructor_headshot_blob_ids][person_id.to_s] = blob.id
+        end
+      end
+      @wizard_state[:instructor_headshot_blob_ids].select! { |k, _| active_ids.include?(k) }
+
+      # Keep instructor_name in sync with selected people
+      if @wizard_state[:instructor_person_ids].any?
+        people = Person.where(id: @wizard_state[:instructor_person_ids])
+        @wizard_state[:instructor_name] = people.pluck(:name).join(", ")
       else
         @wizard_state[:instructor_name] = nil
       end
@@ -152,8 +166,8 @@ module Manage
           existing_person.organizations << Current.organization
         end
 
-        @wizard_state[:instructor_person_id] = existing_person.id
-        @wizard_state[:instructor_name] = existing_person.name
+        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [existing_person.id]).uniq
+        @wizard_state[:instructor_name] = Person.where(id: @wizard_state[:instructor_person_ids]).pluck(:name).join(", ")
         save_wizard_state
 
         render json: { success: true, person_id: existing_person.id, message: "#{existing_person.name} selected as instructor" }
@@ -175,8 +189,8 @@ module Manage
         )
         Manage::PersonMailer.person_invitation(invitation).deliver_later
 
-        @wizard_state[:instructor_person_id] = person.id
-        @wizard_state[:instructor_name] = person.name
+        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [person.id]).uniq
+        @wizard_state[:instructor_name] = Person.where(id: @wizard_state[:instructor_person_ids]).pluck(:name).join(", ")
         save_wizard_state
 
         render json: {
@@ -246,10 +260,9 @@ module Manage
       redirect_to(manage_course_wizard_pricing_path) and return unless @wizard_state[:price_cents].present?
       @step = 6
 
-      # Load instructor person for display
-      if @wizard_state[:instructor_person_id].present?
-        @instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
-      end
+      # Load instructor people for display
+      ids = Array(@wizard_state[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
+      @instructor_people = ids.any? ? Person.where(id: ids).index_by(&:id).values_at(*ids).compact : []
 
       # Load contract for display if linked
       if @wizard_state[:contract_id].present?
@@ -280,21 +293,19 @@ module Manage
           contract: contract
         )
 
-        # Set up instructor person if selected
-        instructor_person = nil
-        if @wizard_state[:instructor_person_id].present?
-          instructor_person = Person.find_by(id: @wizard_state[:instructor_person_id])
-          if instructor_person
-            # Ensure instructor is in the organization
-            unless instructor_person.organizations.include?(Current.organization)
-              instructor_person.organizations << Current.organization
-            end
+        # Set up instructor people if selected
+        instructor_person_ids = Array(@wizard_state[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
+        instructor_people = instructor_person_ids.any? ? Person.where(id: instructor_person_ids).to_a : []
+        instructor_people.each do |instructor_person|
+          # Ensure instructor is in the organization
+          unless instructor_person.organizations.include?(Current.organization)
+            instructor_person.organizations << Current.organization
+          end
 
-            # Add instructor to the production's talent pool
-            talent_pool = @production.talent_pool || @production.create_talent_pool!
-            unless talent_pool.people.exists?(instructor_person.id)
-              talent_pool.people << instructor_person
-            end
+          # Add instructor to the production's talent pool
+          talent_pool = @production.talent_pool || @production.create_talent_pool!
+          unless talent_pool.people.exists?(instructor_person.id)
+            talent_pool.people << instructor_person
           end
         end
 
@@ -304,8 +315,7 @@ module Manage
           subtitle: @wizard_state[:subtitle],
           description: @wizard_state[:description],
           instructor_name: @wizard_state[:instructor_name],
-          instructor_person: instructor_person,
-          instructor_bio: @wizard_state[:instructor_bio],
+          instructor_person: instructor_people.first,
           price_cents: @wizard_state[:price_cents],
           currency: @wizard_state[:currency] || "usd",
           early_bird_price_cents: @wizard_state[:early_bird_price_cents],
@@ -320,10 +330,11 @@ module Manage
           listed_in_directory: @wizard_state[:listed_in_directory] != false
         )
 
-        # Attach instructor headshot if uploaded during wizard
-        if @wizard_state[:instructor_headshot_blob_id].present?
-          blob = ActiveStorage::Blob.find_by(id: @wizard_state[:instructor_headshot_blob_id])
-          @offering.instructor_headshot.attach(blob) if blob
+        # Attach instructor headshot if uploaded during wizard (legacy, keep first instructor's)
+        instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {}
+        if instructor_headshot_blob_ids.any?
+          first_blob = ActiveStorage::Blob.find_by(id: instructor_headshot_blob_ids.values.first)
+          @offering.instructor_headshot.attach(first_blob) if first_blob
         end
 
         # Redeem promo code if provided
@@ -341,10 +352,26 @@ module Manage
         # Create shows (sessions) for the course
         create_course_sessions!(contract)
 
-        # Assign instructor to the Instructor role for all sessions
-        if instructor_person
-          instructor_role = @production.roles.find_by(name: "Instructor")
-          if instructor_role
+        # Create course_offering_instructors join records with per-instructor bio/headshot
+        instructor_bios = @wizard_state[:instructor_bios] || {}
+        instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {}
+        instructor_people.each_with_index do |instructor_person, position|
+          coi = @offering.course_offering_instructors.create!(
+            person: instructor_person,
+            position: position,
+            bio: instructor_bios[instructor_person.id.to_s]
+          )
+          blob_id = instructor_headshot_blob_ids[instructor_person.id.to_s]
+          if blob_id.present?
+            blob = ActiveStorage::Blob.find_by(id: blob_id)
+            coi.headshot.attach(blob) if blob
+          end
+        end
+
+        # Assign instructors to the Instructor role for all sessions
+        instructor_role = @production.roles.find_by(name: "Instructor")
+        if instructor_role
+          instructor_people.each do |instructor_person|
             @production.shows.each do |show|
               ShowPersonRoleAssignment.find_or_create_by!(
                 show: show,
@@ -353,9 +380,13 @@ module Manage
               )
             end
           end
+        end
 
-          # Add instructor to production team if requested
-          if @offering.instructor_on_team && instructor_person.user.present?
+        # Add instructors to production team if requested
+        if @offering.instructor_on_team
+          instructor_people.each do |instructor_person|
+            next unless instructor_person.user.present?
+
             ProductionPermission.find_or_create_by!(
               user: instructor_person.user,
               production: @production
@@ -365,7 +396,6 @@ module Manage
               user: instructor_person.user,
               production: @production
             ) { |ns| ns.enabled = true }
-            # Ensure enabled if it already existed but was disabled
             ProductionNotificationSetting.where(
               user: instructor_person.user,
               production: @production

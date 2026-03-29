@@ -61,7 +61,9 @@
                   <% @memberships.each do |membership| %>
                     <% member = membership.member %>
                     <% next unless member %>
+                    <% member_link = member.is_a?(Person) ? manage_person_path(member) : manage_group_path(member) %>
                     <% headshot = member.safe_headshot_variant(:thumb) if member.respond_to?(:safe_headshot_variant) %>
+                    <span class="cursor-pointer" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<%= member_link %>';">
                     <% if headshot %>
                       <%= image_tag headshot,
                           alt: member.name,
@@ -74,6 +76,7 @@
                         <span class="text-xs font-medium text-gray-500"><%= member.respond_to?(:initials) ? member.initials[0] : member.name[0] %></span>
                       </div>
                     <% end %>
+                    </span>
                   <% end %>
                 </div>
               <% else %>
@@ -124,7 +127,9 @@
                     <% memberships.each do |membership| %>
                       <% member = membership.member %>
                       <% next unless member %>
+                      <% member_link = member.is_a?(Person) ? manage_person_path(member) : manage_group_path(member) %>
                       <% headshot = member.safe_headshot_variant(:thumb) if member.respond_to?(:safe_headshot_variant) %>
+                      <span class="cursor-pointer" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<%= member_link %>';">
                       <% if headshot %>
                         <%= image_tag headshot,
                             alt: member.name,
@@ -137,6 +142,7 @@
                           <span class="text-xs font-medium text-gray-500"><%= member.respond_to?(:initials) ? member.initials[0] : member.name[0] %></span>
                         </div>
                       <% end %>
+                      </span>
                     <% end %>
                   </div>
                 <% else %>

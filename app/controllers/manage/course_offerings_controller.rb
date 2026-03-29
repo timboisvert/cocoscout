@@ -36,7 +36,7 @@ module Manage
 
     def edit
       @sessions = @course_offering.sessions.includes(:location)
-      @instructor_person = @course_offering.instructor_person
+      @instructor_people = @course_offering.instructor_people.to_a
     end
 
     def update
@@ -48,10 +48,24 @@ module Manage
       end
 
       if @course_offering.update(course_offering_params)
+        # Re-sync Stripe prices if the offering is already open and pricing fields changed
+        if @course_offering.open? && @course_offering.stripe_product_id.present? &&
+           (@course_offering.saved_change_to_price_cents? ||
+            @course_offering.saved_change_to_early_bird_price_cents? ||
+            @course_offering.saved_change_to_early_bird_deadline? ||
+            @course_offering.saved_change_to_currency?)
+          begin
+            CourseOfferingStripeService.new(@course_offering).ensure_stripe_resources!
+          rescue CourseOfferingStripeService::StripeError => e
+            redirect_to manage_edit_course_offering_path(@course_offering, tab: tab),
+                        alert: "Pricing saved but failed to update Stripe: #{e.message}"
+            return
+          end
+        end
         redirect_to manage_edit_course_offering_path(@course_offering, tab: tab), notice: "Course offering updated."
       else
         @sessions = @course_offering.sessions.includes(:location)
-        @instructor_person = @course_offering.instructor_person
+        @instructor_people = @course_offering.instructor_people.to_a
         render :edit, status: :unprocessable_entity
       end
     end
@@ -87,34 +101,46 @@ module Manage
     end
 
     def update_instructor
-      person_id = params[:instructor_person_id]
-      bio = params[:instructor_bio]
+      person_ids = Array(params[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
       instructor_on_team = params[:instructor_on_team] == "1"
+      bios = params[:instructor_bios] || {}
+      headshots = params[:instructor_headshots] || {}
 
       updates = {}
-      if person_id.present?
-        person = Person.find(person_id)
-        updates[:instructor_person_id] = person.id
-        updates[:instructor_name] = person.name
+      if person_ids.any?
+        people = Person.where(id: person_ids)
+        updates[:instructor_person_id] = person_ids.first
+        updates[:instructor_name] = people.pluck(:name).join(", ")
       else
         updates[:instructor_person_id] = nil
+        updates[:instructor_name] = nil
       end
-      updates[:instructor_bio] = bio if bio
       updates[:instructor_on_team] = instructor_on_team
 
       if @course_offering.update(updates)
-        # Attach instructor headshot if uploaded
-        if params[:instructor_headshot].present?
-          @course_offering.instructor_headshot.attach(params[:instructor_headshot])
+        # Sync course_offering_instructors join records with per-instructor data
+        existing_cois = @course_offering.course_offering_instructors.index_by(&:person_id)
+        @course_offering.course_offering_instructors.where.not(person_id: person_ids).destroy_all
+
+        person_ids.each_with_index do |pid, position|
+          coi = existing_cois[pid] || @course_offering.course_offering_instructors.build(person_id: pid)
+          coi.position = position
+          coi.bio = bios[pid.to_s] if bios.key?(pid.to_s)
+          coi.save!
+
+          if headshots[pid.to_s].present?
+            coi.headshot.attach(headshots[pid.to_s])
+          end
         end
 
-        # If an instructor person was set, assign them to the Instructor role on all sessions
-        if person_id.present? && @course_offering.instructor_person.present?
-          assign_instructor_to_sessions(@course_offering)
+        # Assign all instructors to the Instructor role on all sessions
+        person_ids.each do |pid|
+          person = Person.find(pid)
+          assign_instructor_to_sessions(@course_offering, person)
         end
 
-        # Manage production team membership
-        manage_instructor_team_membership(@course_offering)
+        # Manage production team membership for all instructors
+        manage_instructor_team_membership(@course_offering, person_ids)
 
         redirect_to manage_edit_course_offering_path(@course_offering, tab: 1), notice: "Instructor updated."
       else
@@ -390,8 +416,8 @@ module Manage
       end
     end
 
-    def assign_instructor_to_sessions(course_offering)
-      person = course_offering.instructor_person
+    def assign_instructor_to_sessions(course_offering, person = nil)
+      person ||= course_offering.instructor_person
       production = course_offering.production
       role = production.roles.find_by(name: "Instructor")
       return unless person && role
@@ -419,46 +445,54 @@ module Manage
       end
     end
 
-    def manage_instructor_team_membership(course_offering)
-      person = course_offering.instructor_person
+    def manage_instructor_team_membership(course_offering, person_ids = nil)
       production = course_offering.production
       organization = production.organization
+      people = if person_ids
+        Person.where(id: person_ids)
+      else
+        course_offering.instructor_people.to_a
+      end
 
-      if course_offering.instructor_on_team? && person&.user.present?
-        # Add as member of the organization so they can access /manage
-        OrganizationRole.find_or_create_by!(
-          user: person.user,
-          organization: organization
-        ) { |or_role| or_role.company_role = "member"; or_role.person = person }
+      if course_offering.instructor_on_team?
+        people.each do |person|
+          next unless person.user.present?
 
-        # Add as manager with notifications enabled
-        ProductionPermission.find_or_create_by!(
-          user: person.user,
-          production: production
-        ) { |pp| pp.role = "manager" }
+          OrganizationRole.find_or_create_by!(
+            user: person.user,
+            organization: organization
+          ) { |or_role| or_role.company_role = "member"; or_role.person = person }
 
-        setting = ProductionNotificationSetting.find_or_create_by!(
-          user: person.user,
-          production: production
-        ) { |ns| ns.enabled = true }
-        setting.update!(enabled: true) unless setting.enabled?
-      elsif !course_offering.instructor_on_team? && person&.user.present?
-        # Remove production team role and notification setting
-        ProductionPermission.where(
-          user: person.user,
-          production: production
-        ).destroy_all
-        ProductionNotificationSetting.where(
-          user: person.user,
-          production: production
-        ).destroy_all
+          ProductionPermission.find_or_create_by!(
+            user: person.user,
+            production: production
+          ) { |pp| pp.role = "manager" }
 
-        # Remove org role only if they have no other production permissions in this org
-        remaining = ProductionPermission.joins(:production)
-          .where(user: person.user, productions: { organization_id: organization.id })
-          .exists?
-        unless remaining
-          OrganizationRole.where(user: person.user, organization: organization, company_role: "member").destroy_all
+          setting = ProductionNotificationSetting.find_or_create_by!(
+            user: person.user,
+            production: production
+          ) { |ns| ns.enabled = true }
+          setting.update!(enabled: true) unless setting.enabled?
+        end
+      else
+        people.each do |person|
+          next unless person.user.present?
+
+          ProductionPermission.where(
+            user: person.user,
+            production: production
+          ).destroy_all
+          ProductionNotificationSetting.where(
+            user: person.user,
+            production: production
+          ).destroy_all
+
+          remaining = ProductionPermission.joins(:production)
+            .where(user: person.user, productions: { organization_id: organization.id })
+            .exists?
+          unless remaining
+            OrganizationRole.where(user: person.user, organization: organization, company_role: "member").destroy_all
+          end
         end
       end
     end

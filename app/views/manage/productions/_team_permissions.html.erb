@@ -18,7 +18,13 @@
                 </div>
               <% end %>
               <div class="min-w-0">
-                <div class="font-medium text-sm text-gray-900 truncate"><%= user.person&.name || user.email_address %></div>
+                <div class="font-medium text-sm text-gray-900 truncate">
+                  <% if user.person %>
+                    <%= link_to (user.person.name || user.email_address), manage_person_path(user.person), class: "hover:text-pink-600 transition-colors" %>
+                  <% else %>
+                    <%= user.email_address %>
+                  <% end %>
+                </div>
                 <div class="text-xs text-gray-500 truncate"><%= user.email_address %></div>
               </div>
             </div>

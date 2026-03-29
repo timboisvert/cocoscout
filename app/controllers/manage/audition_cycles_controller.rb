@@ -260,6 +260,7 @@ module Manage
     def audition_cycle_params
       params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type,
                                              :allow_video_submissions, :allow_in_person_auditions,
+                                             :listed_in_directory,
                                              :instruction_text, :notify_on_submission,
                                              :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :include_audition_availability_section, :require_all_audition_availability, :form_reviewed, availability_show_ids: [])
     end
