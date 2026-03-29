@@ -3,40 +3,6 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
-      "fingerprint": "128fc784c8077a2907a20c7d7be5d359416dcdab9d17d82f64a2b65d8fb8fa08",
-      "check_name": "RenderInline",
-      "message": "Unescaped model attribute rendered inline",
-      "file": "app/views/manage/vacancies/show.html.erb",
-      "line": 661,
-      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
-      "code": "render(text => \"Put #{RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name} Back\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::VacanciesController",
-          "method": "show",
-          "line": 81,
-          "file": "app/controllers/manage/vacancies_controller.rb",
-          "rendered": {
-            "name": "manage/vacancies/show",
-            "file": "app/views/manage/vacancies/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/vacancies/show"
-      },
-      "user_input": "RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name",
-      "confidence": "Medium",
-      "cwe_id": [
-        79
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 84,
       "fingerprint": "35b439a99ab30b078366f6df51f4c7771f758fea4b56451a6442bd5a30fe97e1",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
@@ -49,7 +15,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -83,7 +49,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "index",
-          "line": 70,
+          "line": 69,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/index",
@@ -93,7 +59,7 @@
         {
           "type": "template",
           "name": "manage/messages/index",
-          "line": 119,
+          "line": 146,
           "file": "app/views/manage/messages/index.html.erb",
           "rendered": {
             "name": "shared/messages/_message_card",
@@ -137,7 +103,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "index",
-          "line": 70,
+          "line": 69,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/index",
@@ -147,7 +113,7 @@
         {
           "type": "template",
           "name": "manage/messages/index",
-          "line": 119,
+          "line": 146,
           "file": "app/views/manage/messages/index.html.erb",
           "rendered": {
             "name": "shared/messages/_message_card",
@@ -191,7 +157,7 @@
           "type": "controller",
           "class": "Manage::ProductionsController",
           "method": "agreement_status",
-          "line": 323,
+          "line": 324,
           "file": "app/controllers/manage/productions_controller.rb",
           "rendered": {
             "name": "manage/productions/agreement_status",
@@ -293,7 +259,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -361,7 +327,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -395,7 +361,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -429,7 +395,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -445,6 +411,29 @@
       "confidence": "Medium",
       "cwe_id": [
         79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "HTTP Verb Confusion",
+      "warning_code": 118,
+      "fingerprint": "f0249e3a64c73d54e590f644b7ff7590582a171ffd5a2a4e0ac77a5f42323b8c",
+      "check_name": "VerbConfusion",
+      "message": "Potential HTTP verb confusion. `HEAD` is routed like `GET` but `request.get?` will return `false`",
+      "file": "app/controllers/manage/manage_controller.rb",
+      "line": 211,
+      "link": "https://brakemanscanner.org/docs/warning_types/http_verb_confusion/",
+      "code": "if request.get? then\n  if ((request.fullpath == manage_path) or (request.fullpath == \"#{manage_path}/\")) then\n    session.delete(:manage_onboarding_intent)\n  else\n    session[:manage_onboarding_intent] = request.fullpath\n  end\nend",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::ManageController",
+        "method": "require_current_organization"
+      },
+      "user_input": "request.get?",
+      "confidence": "Weak",
+      "cwe_id": [
+        352
       ],
       "note": ""
     },
@@ -531,7 +520,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 763,
+          "line": 784,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",

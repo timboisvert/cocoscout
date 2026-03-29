@@ -166,7 +166,7 @@ module Manage
           existing_person.organizations << Current.organization
         end
 
-        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [existing_person.id]).uniq
+        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [ existing_person.id ]).uniq
         @wizard_state[:instructor_name] = Person.where(id: @wizard_state[:instructor_person_ids]).pluck(:name).join(", ")
         save_wizard_state
 
@@ -189,7 +189,7 @@ module Manage
         )
         Manage::PersonMailer.person_invitation(invitation).deliver_later
 
-        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [person.id]).uniq
+        @wizard_state[:instructor_person_ids] = (Array(@wizard_state[:instructor_person_ids]) + [ person.id ]).uniq
         @wizard_state[:instructor_name] = Person.where(id: @wizard_state[:instructor_person_ids]).pluck(:name).join(", ")
         save_wizard_state
 

@@ -43,6 +43,10 @@ development:
     class: ContractCompletionJob
     schedule: every hour
 
+  backfill_stripe_fees:
+    class: BackfillStripeFeeJob
+    schedule: every hour
+
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -91,3 +95,7 @@ production:
   contract_completion:
     class: ContractCompletionJob
     schedule: at 2am every day
+
+  backfill_stripe_fees:
+    class: BackfillStripeFeeJob
+    schedule: every hour

@@ -7,7 +7,7 @@ class CreateCourseOfferingInstructors < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :course_offering_instructors, [:course_offering_id, :person_id], unique: true,
+    add_index :course_offering_instructors, [ :course_offering_id, :person_id ], unique: true,
               name: "idx_course_offering_instructors_unique"
 
     # Migrate existing single-instructor data to the join table
