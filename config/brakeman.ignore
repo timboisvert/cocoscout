@@ -3,6 +3,40 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
+      "fingerprint": "128fc784c8077a2907a20c7d7be5d359416dcdab9d17d82f64a2b65d8fb8fa08",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/vacancies/show.html.erb",
+      "line": 664,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Put #{RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name} Back\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::VacanciesController",
+          "method": "show",
+          "line": 81,
+          "file": "app/controllers/manage/vacancies_controller.rb",
+          "rendered": {
+            "name": "manage/vacancies/show",
+            "file": "app/views/manage/vacancies/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/vacancies/show"
+      },
+      "user_input": "RoleVacancy.joins(:show).includes(:role).where(:shows => ({ :production_id => Current.organization.productions.find(params[:production_id]).id })).find(params[:id]).vacated_by.name",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
       "fingerprint": "35b439a99ab30b078366f6df51f4c7771f758fea4b56451a6442bd5a30fe97e1",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
