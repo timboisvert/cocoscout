@@ -70,7 +70,7 @@ export default class extends Controller {
         // Update Stripe fee label based on waived status
         if (this.hasStripeFeeLabelTarget) {
             this.stripeFeeLabelTarget.textContent = this.promoAppliedValue
-                ? "Stripe card processing (2.9% + 30\u00a2) \u2014 covered by CocoScout"
+                ? "Stripe card processing (2.9% + 30\u00a2) \u2014 included in CocoScout fee"
                 : "Stripe card processing (2.9% + 30\u00a2)"
         }
 
