@@ -291,6 +291,16 @@ module Manage
         return
       end
 
+      # Prevent duplicate registrations for the same person on this instance
+      already_registered = SignUpRegistration.joins(:sign_up_slot)
+        .where(sign_up_slots: { sign_up_form_instance_id: instance.id })
+        .where(person: person, status: %w[confirmed waitlisted queued])
+        .exists?
+      if already_registered
+        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_entity
+        return
+      end
+
       # Helper to check if slot has capacity
       slot_has_capacity = ->(s) {
         current = s.sign_up_registrations.where(status: %w[confirmed waitlisted]).count
@@ -346,6 +356,18 @@ module Manage
       # Find or create instance for the show
       instance = sign_up_form.sign_up_form_instances.find_by(show: show)
       instance ||= sign_up_form.sign_up_form_instances.create!(show: show)
+
+      # Prevent duplicate registrations for the same person on this instance
+      already_registered = SignUpRegistration
+        .where(sign_up_form_instance_id: instance.id, person: person, status: %w[confirmed waitlisted queued])
+        .or(SignUpRegistration.joins(:sign_up_slot)
+          .where(sign_up_slots: { sign_up_form_instance_id: instance.id })
+          .where(person: person, status: %w[confirmed waitlisted queued]))
+        .exists?
+      if already_registered
+        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_entity
+        return
+      end
 
       # Create queued registration
       registration = instance.register_to_queue!(person: person)
