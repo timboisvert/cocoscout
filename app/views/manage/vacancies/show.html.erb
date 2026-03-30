@@ -137,7 +137,8 @@
         <%# Right half: Vacated by entity with role %>
         <div class="w-full md:w-1/2 md:border-l border-t md:border-t-0 border-gray-200 px-3 py-2 flex items-center gap-3">
           <% if vacated_by %>
-            <%= link_to(vacated_by.is_a?(Person) ? manage_person_path(vacated_by) : manage_group_path(vacated_by), class: "flex items-center gap-3 flex-1 min-w-0 group") do %>
+            <% vacated_by_path = vacated_by.is_a?(Person) ? manage_person_path(vacated_by) : manage_group_path(vacated_by) %>
+            <%= link_to vacated_by_path, class: "flex items-center gap-3 flex-1 min-w-0 group" do %>
             <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
@@ -146,7 +147,6 @@
                 <%= vacated_by.initials %>
               </div>
             <% end %>
-          <% end %>
           <div class="flex-1 min-w-0">
             <div class="text-[10px] text-gray-400 uppercase tracking-wide">Can't make it</div>
             <div class="text-sm flex items-center gap-1">
@@ -155,6 +155,8 @@
               <strong class="text-pink-500"><%= @vacancy.role.name %></strong>
             </div>
           </div>
+            <% end %>
+          <% end %>
         </div>
       </div>
     </div>
@@ -683,7 +685,8 @@
         <% filled_person ||= @vacancy.show.show_person_role_assignments.find_by(role_id: @vacancy.role_id)&.assignable %>
         <% if filled_person %>
           <% filled_person_link = filled_person.is_a?(Person) ? manage_person_path(filled_person) : (filled_person.is_a?(Group) ? manage_group_path(filled_person) : nil) %>
-          <%= link_to (filled_person_link || "#"), class: "flex items-center gap-3 group #{'pointer-events-none' unless filled_person_link}" do %>
+          <% filled_link_classes = "flex items-center gap-3 group #{'pointer-events-none' unless filled_person_link}" %>
+          <%= link_to (filled_person_link || "#"), class: filled_link_classes do %>
             <% headshot = filled_person.safe_headshot_variant(:thumb) %>
             <% if headshot %>
               <%= image_tag headshot, alt: filled_person.name, class: "w-12 h-12 rounded-lg object-cover" %>

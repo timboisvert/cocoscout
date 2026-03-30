@@ -318,8 +318,8 @@
         </div>
       </div>
 
-      <%# Linked Contract %>
-      <% if @course_offering.contract.present? %>
+      <%# Linked Contract (only visible to org-level roles) %>
+      <% if @course_offering.contract.present? && Current.organization.organization_roles.exists?(user: Current.user) %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="px-5 py-4 flex items-center justify-between">
             <div>
