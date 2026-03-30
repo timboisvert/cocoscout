@@ -77,8 +77,7 @@
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
-                <textarea name="instructor_bios[<%= person.id %>]" rows="2" placeholder="Brief bio for registration page..."
-                          class="block w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= person_bio %></textarea>
+                <%= rich_text_area_tag "instructor_bios[#{person.id}]", person_bio %>
               </div>
             </div>
           </div>
@@ -102,6 +101,16 @@
                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
 
         <div data-instructor-search-target="searchResults" class="mt-3 max-h-80 overflow-y-auto"></div>
+      </div>
+
+      <%# Instructor Preface (shown when 2+ instructors selected) %>
+      <div data-instructor-search-target="prefaceSection"
+           class="<%= 'hidden' if (@instructor_people || []).size < 2 %>">
+        <div class="border-t border-gray-200 pt-5">
+          <label class="block text-sm font-medium text-gray-900 mb-1">Instructor Preface</label>
+          <p class="text-xs text-gray-500 mb-2">Optional paragraph shown above the instructor cards on the registration page. Useful for describing the group of instructors together.</p>
+          <%= rich_text_area_tag :instructor_preface, @wizard_state[:instructor_preface] %>
+        </div>
       </div>
 
       <%# Production Team toggle (shown when at least one instructor is selected) %>

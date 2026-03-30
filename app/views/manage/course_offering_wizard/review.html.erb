@@ -40,11 +40,18 @@
         <% end %>
       </div>
       <% if @instructor_people.any? %>
+        <% instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {} %>
+        <% if @wizard_state[:instructor_preface].present? && @instructor_people.size > 1 %>
+          <p class="text-sm text-gray-600 mb-2 prose prose-sm max-w-none"><%= sanitize @wizard_state[:instructor_preface] %></p>
+        <% end %>
         <div class="space-y-2 mb-2">
           <% @instructor_people.each do |person| %>
             <div class="flex items-center gap-3">
-              <% headshot_variant = person.safe_headshot_variant(:tile) %>
-              <% if headshot_variant %>
+              <% override_blob_id = instructor_headshot_blob_ids[person.id.to_s] %>
+              <% override_blob = override_blob_id.present? ? ActiveStorage::Blob.find_by(id: override_blob_id) : nil %>
+              <% if override_blob %>
+                <%= image_tag override_blob.url, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% elsif (headshot_variant = person.safe_headshot_variant(:tile)) %>
                 <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
               <% else %>
                 <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm flex-shrink-0">
@@ -58,7 +65,7 @@
                 <% end %>
                 <% bio = @wizard_state[:instructor_bios]&.dig(person.id.to_s) %>
                 <% if bio.present? %>
-                  <div class="text-xs text-gray-500 mt-0.5"><%= truncate(bio, length: 120) %></div>
+                  <div class="text-xs text-gray-500 mt-0.5"><%= truncate(strip_tags(bio), length: 120) %></div>
                 <% end %>
               </div>
             </div>

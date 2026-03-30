@@ -6,6 +6,8 @@ class CourseOfferingInstructor < ApplicationRecord
 
   has_one_attached :headshot
 
+  has_rich_text :bio
+
   validates :person_id, uniqueness: { scope: :course_offering_id }
 
   default_scope { order(:position) }

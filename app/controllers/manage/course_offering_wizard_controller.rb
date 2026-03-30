@@ -37,6 +37,9 @@ module Manage
       @wizard_state[:instructor_person_ids] = Array(params[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
       @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
 
+      # Save instructor preface (shown before instructor cards when multiple instructors)
+      @wizard_state[:instructor_preface] = params[:instructor_preface].presence
+
       # Save per-instructor bios
       @wizard_state[:instructor_bios] ||= {}
       if params[:instructor_bios].is_a?(ActionController::Parameters) || params[:instructor_bios].is_a?(Hash)
@@ -327,7 +330,8 @@ module Manage
           success_text: @wizard_state[:success_text],
           contract: contract,
           instructor_on_team: @wizard_state[:instructor_on_team] == true,
-          listed_in_directory: @wizard_state[:listed_in_directory] != false
+          listed_in_directory: @wizard_state[:listed_in_directory] != false,
+          instructor_preface: @wizard_state[:instructor_preface]
         )
 
         # Attach instructor headshot if uploaded during wizard (legacy, keep first instructor's)

@@ -1,28 +1,8 @@
 <% content_for :title, @course_offering.title %>
 
 <%
-  # Build schedule summary
+  # Get location from first session that has one
   if @all_sessions.any?
-    first_session = @all_sessions.first
-    last_session = @all_sessions.last
-    date_range = if first_session.date_and_time.to_date == last_session.date_and_time.to_date
-                   first_session.date_and_time.strftime("%B %-d, %Y")
-                 else
-                   "#{first_session.date_and_time.strftime("%B %-d")} – #{last_session.date_and_time.strftime("%B %-d, %Y")}"
-                 end
-
-    # Detect recurring day/time pattern
-    days = @all_sessions.map { |s| s.date_and_time.strftime("%A") }
-    times = @all_sessions.map { |s| s.date_and_time.strftime("%-I:%M %p") }
-    if days.uniq.size == 1 && times.uniq.size == 1
-      schedule_pattern = "#{days.first.pluralize} at #{times.first}"
-    elsif days.uniq.size == 1
-      schedule_pattern = "#{days.first.pluralize}"
-    else
-      schedule_pattern = nil
-    end
-
-    # Get location from first session that has one
     course_location = @all_sessions.detect { |s| s.location.present? }&.location
   end
 %>
@@ -72,99 +52,32 @@
         <%# Schedule %>
         <% if @all_sessions.any? %>
           <h3 class="text-base font-semibold text-slate-900">Schedule</h3>
-          <% if @all_sessions.size == 1 %>
-            <%# Single session: show details directly without summary/toggle %>
-            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
-              <div class="space-y-1.5">
-                <% show = @all_sessions.first %>
-                <div class="flex items-center gap-3 py-2 px-3 rounded-md">
-                  <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-100 rounded-md flex flex-col items-center justify-center">
-                    <span class="text-[10px] font-medium text-pink-600 uppercase leading-none"><%= show.date_and_time.strftime("%b") %></span>
-                    <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900">
-                      <%= show.date_and_time.strftime("%A, %B %-d") %>
-                    </p>
-                    <p class="text-xs text-slate-500">
-                      <% if show.duration_minutes.present? %>
-                        <% end_time = show.date_and_time + show.duration_minutes.minutes %>
-                        <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
-                          <%= show.date_and_time.strftime("%-I:%M") %> - <%= end_time.strftime("%-I:%M %p") %>
-                        <% else %>
-                          <%= show.date_and_time.strftime("%-I:%M %p") %> - <%= end_time.strftime("%-I:%M %p") %>
-                        <% end %>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm -mt-3 divide-y divide-slate-100">
+            <% @all_sessions.each do |show| %>
+              <div class="flex items-center gap-3 px-4 py-3">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-slate-900">
+                    <%= show.date_and_time.strftime("%a, %b %-d") %>
+                    <% if show.secondary_name.present? %>
+                      <span class="text-slate-400 font-normal">— <%= show.secondary_name %></span>
+                    <% end %>
+                  </p>
+                  <p class="text-xs text-slate-500">
+                    <% if show.duration_minutes.present? %>
+                      <% end_time = show.date_and_time + show.duration_minutes.minutes %>
+                      <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
+                        <%= show.date_and_time.strftime("%-I:%M") %> – <%= end_time.strftime("%-I:%M %p") %>
                       <% else %>
-                        <%= show.date_and_time.strftime("%-I:%M %p") %>
+                        <%= show.date_and_time.strftime("%-I:%M %p") %> – <%= end_time.strftime("%-I:%M %p") %>
                       <% end %>
-                    </p>
-                  </div>
-                  <% if show.secondary_name.present? %>
-                    <span class="text-xs text-slate-400"><%= show.secondary_name %></span>
-                  <% end %>
+                    <% else %>
+                      <%= show.date_and_time.strftime("%-I:%M %p") %>
+                    <% end %>
+                  </p>
                 </div>
               </div>
-            </div>
-          <% else %>
-          <%# Multiple sessions: show summary with expandable list %>
-          <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3" data-controller="disclosure">
-            <div class="flex flex-col gap-1.5">
-              <p class="text-sm font-medium text-slate-900"><%= date_range %></p>
-              <div class="flex items-center gap-3 text-xs text-slate-500">
-                <% if schedule_pattern %>
-                  <span class="inline-flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <%= schedule_pattern %>
-                  </span>
-                <% end %>
-                <span class="inline-flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <%= @all_sessions.size %> sessions
-                </span>
-              </div>
-            </div>
-            <button type="button" data-action="disclosure#toggle" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-2 cursor-pointer">
-              Show all sessions
-            </button>
-
-            <div data-disclosure-target="content" class="hidden mt-3 border-t border-slate-100 pt-3">
-              <div class="space-y-1.5">
-                <% @all_sessions.each do |show| %>
-                  <div class="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-slate-50">
-                    <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-100 rounded-md flex flex-col items-center justify-center">
-                      <span class="text-[10px] font-medium text-pink-600 uppercase leading-none"><%= show.date_and_time.strftime("%b") %></span>
-                      <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-slate-900">
-                        <%= show.date_and_time.strftime("%A, %B %-d") %>
-                      </p>
-                      <p class="text-xs text-slate-500">
-                        <% if show.duration_minutes.present? %>
-                          <% end_time = show.date_and_time + show.duration_minutes.minutes %>
-                          <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
-                            <%= show.date_and_time.strftime("%-I:%M") %> - <%= end_time.strftime("%-I:%M %p") %>
-                          <% else %>
-                            <%= show.date_and_time.strftime("%-I:%M %p") %> - <%= end_time.strftime("%-I:%M %p") %>
-                          <% end %>
-                        <% else %>
-                          <%= show.date_and_time.strftime("%-I:%M %p") %>
-                        <% end %>
-                      </p>
-                    </div>
-                    <% if show.secondary_name.present? %>
-                      <span class="text-xs text-slate-400"><%= show.secondary_name %></span>
-                    <% end %>
-                  </div>
-                <% end %>
-              </div>
-            </div>
+            <% end %>
           </div>
-          <% end %>
         <% end %>
 
         <%# Instructors %>
@@ -174,27 +87,40 @@
         <% if instructors.any? || @course_offering.instructor_name.present? %>
           <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
           <% if instructors.any? %>
-            <div class="space-y-3 -mt-3">
+            <% if @course_offering.instructor_preface.present? && instructors.size > 1 %>
+              <div class="text-sm text-slate-600 -mt-3 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
+            <% end %>
+            <div class="space-y-3 <%= @course_offering.instructor_preface.present? && instructors.size > 1 ? '' : '-mt-3' %>">
               <% instructors.each do |instructor| %>
                 <% coi = coi_by_person[instructor.id] %>
+                <% has_override = coi&.headshot&.attached? %>
+                <% has_profile = !has_override && instructor.safe_headshot_variant(:tile).present? %>
+                <% has_image = has_override || has_profile %>
                 <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
-                  <div class="flex items-center gap-4">
-                    <% if coi&.headshot&.attached? %>
-                      <%= image_tag coi.headshot.variant(resize_to_fill: [112, 112]), alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+                  <div class="flex items-start gap-5">
+                    <% if has_override %>
+                      <%= image_tag coi.headshot.variant(resize_to_limit: [200, 400]), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
+                    <% elsif has_profile %>
+                      <%= image_tag instructor.safe_headshot_variant(:tile), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
                     <% else %>
-                      <% headshot_variant = instructor.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: instructor.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
-                      <% else %>
-                        <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-lg flex-shrink-0">
-                          <%= instructor.initials %>
-                        </div>
-                      <% end %>
+                      <div class="w-[120px] h-[120px] rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-2xl flex-shrink-0">
+                        <%= instructor.initials %>
+                      </div>
                     <% end %>
                     <div class="flex-1 min-w-0">
-                      <p class="font-medium text-slate-900"><%= instructor.name %></p>
+                      <p class="font-semibold text-slate-900 text-lg"><%= instructor.name %></p>
                       <% if coi&.bio.present? %>
-                        <p class="text-sm text-slate-600 mt-1"><%= coi.bio %></p>
+                        <div data-controller="text-expand" data-text-expand-max-height-value="120">
+                          <div class="relative">
+                            <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 mt-1 overflow-hidden" style="max-height: 120px;">
+                              <%= coi.bio %>
+                            </div>
+                            <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                          </div>
+                          <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
+                            Show more
+                          </button>
+                        </div>
                       <% end %>
                     </div>
                   </div>
@@ -204,11 +130,11 @@
           <% else %>
             <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
               <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg flex-shrink-0">
+                <div class="w-[120px] h-[120px] rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl flex-shrink-0">
                   <%= @course_offering.instructor_name.to_s.split(" ").map { |n| n[0] }.join("").first(2).upcase %>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-medium text-slate-900"><%= @course_offering.instructor_name %></p>
+                  <p class="font-semibold text-slate-900 text-lg"><%= @course_offering.instructor_name %></p>
                 </div>
               </div>
               <% if @course_offering.instructor_bio.present? %>
@@ -220,7 +146,7 @@
                     <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                   </div>
                   <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
-                    Read more
+                    Show more
                   </button>
                 </div>
               <% end %>

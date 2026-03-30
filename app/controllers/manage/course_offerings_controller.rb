@@ -116,6 +116,7 @@ module Manage
         updates[:instructor_name] = nil
       end
       updates[:instructor_on_team] = instructor_on_team
+      updates[:instructor_preface] = params.dig(:course_offering, :instructor_preface).presence
 
       if @course_offering.update(updates)
         # Sync course_offering_instructors join records with per-instructor data
@@ -376,7 +377,7 @@ module Manage
         :early_bird_deadline,
         :currency, :capacity, :opens_at, :closes_at,
         :instruction_text, :success_text,
-        :instructor_bio,
+        :instructor_bio, :instructor_preface,
         :delivery_mode, :delivery_delay_minutes, :delivery_scheduled_at,
         :listed_in_directory
       )

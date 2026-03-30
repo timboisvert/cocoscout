@@ -13,7 +13,8 @@ export default class extends Controller {
         "inviteEmail",
         "inviteForm",
         "teamToggleSection",
-        "instructorOptionsSection"
+        "instructorOptionsSection",
+        "prefaceSection"
     ]
 
     static values = {
@@ -193,11 +194,11 @@ export default class extends Controller {
 
     _captureBios() {
         if (!this.hasSelectedListTarget) return
-        this.selectedListTarget.querySelectorAll('textarea[name^="instructor_bios"]').forEach(ta => {
-            const match = ta.name.match(/\[(\d+)\]/)
+        this.selectedListTarget.querySelectorAll('input[name^="instructor_bios"]').forEach(input => {
+            const match = input.name.match(/\[(\d+)\]/)
             if (match) {
                 const instructor = this.selectedInstructors.find(i => String(i.id) === match[1])
-                if (instructor) instructor.bio = ta.value
+                if (instructor) instructor.bio = input.value
             }
         })
     }
@@ -216,16 +217,16 @@ export default class extends Controller {
         this.selectedListTarget.classList.remove("hidden")
         this.selectedListTarget.innerHTML = `<label class="block text-sm font-medium text-gray-900 mb-1.5">Selected Instructors</label>` +
             this.selectedInstructors.map((instructor) => {
-            const initials = instructor.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
-            const headshot = instructor.headshotUrl
-                ? `<img src="${instructor.headshotUrl}" alt="${this._escapeHtml(instructor.name)}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
-                : `<div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">${initials}</div>`
+                const initials = instructor.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+                const headshot = instructor.headshotUrl
+                    ? `<img src="${instructor.headshotUrl}" alt="${this._escapeHtml(instructor.name)}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+                    : `<div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">${initials}</div>`
 
-            const existingHeadshotHtml = instructor.hasExistingHeadshot
-                ? `<p class="text-xs text-green-600 mb-1">Alternate photo uploaded</p>`
-                : ""
+                const existingHeadshotHtml = instructor.hasExistingHeadshot
+                    ? `<p class="text-xs text-green-600 mb-1">Alternate photo uploaded</p>`
+                    : ""
 
-            return `
+                return `
                 <div class="border border-pink-200 bg-pink-50 rounded-lg overflow-hidden">
                     <div class="flex items-center gap-3 p-3">
                         ${headshot}
@@ -253,13 +254,13 @@ export default class extends Controller {
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
-                            <textarea name="instructor_bios[${instructor.id}]" rows="2" placeholder="Brief bio for registration page..."${formPart}
-                                      class="block w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">${this._escapeHtml(instructor.bio)}</textarea>
+                            <input type="hidden" id="instructor_bio_trix_${instructor.id}" name="instructor_bios[${instructor.id}]" value="${this._escapeHtml(instructor.bio)}"${formPart}>
+                            <trix-editor input="instructor_bio_trix_${instructor.id}" class="trix-content"></trix-editor>
                         </div>
                     </div>
                 </div>
             `
-        }).join("")
+            }).join("")
     }
 
     _updateHiddenInputs() {
@@ -274,12 +275,16 @@ export default class extends Controller {
 
     _showOptionsIfNeeded() {
         const hasInstructors = this.selectedInstructors.length > 0
+        const hasMultiple = this.selectedInstructors.length >= 2
         if (this.hasTeamToggleSectionTarget) {
             this.teamToggleSectionTarget.classList.toggle("hidden", !hasInstructors)
             this.teamToggleSectionTarget.style.display = hasInstructors ? "" : "none"
         }
         if (this.hasInstructorOptionsSectionTarget) {
             this.instructorOptionsSectionTarget.classList.toggle("hidden", !hasInstructors)
+        }
+        if (this.hasPrefaceSectionTarget) {
+            this.prefaceSectionTarget.classList.toggle("hidden", !hasMultiple)
         }
     }
 

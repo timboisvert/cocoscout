@@ -15,6 +15,7 @@ class CourseOffering < ApplicationRecord
 
   has_rich_text :description
   has_rich_text :instructor_bio
+  has_rich_text :instructor_preface
 
   has_one_attached :instructor_headshot
 
