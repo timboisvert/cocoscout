@@ -425,9 +425,7 @@ module Manage
 
       # Add to org if not already
       unless Current.organization.people.exists?(id: person.id)
-        Current.organization.organization_memberships.find_or_create_by!(person: person) do |m|
-          m.role = :member
-        end
+        Current.organization.people << person
       end
 
       # Add to talent pool
