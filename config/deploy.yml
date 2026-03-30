@@ -24,6 +24,10 @@ servers:
     proxy: false
     options:
       health-cmd: "true"
+      health-interval: 2s
+      health-timeout: 5s
+      health-retries: 3
+      health-start-period: 5s
       memory: 1200m  # Limit to leave headroom on 2GB instance
     env:
       clear:
