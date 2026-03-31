@@ -3,8 +3,9 @@
   <p class="text-sm text-gray-600 mb-6">When does this course meet? Add your session dates now, or you can adjust them later.</p>
 
   <%= form_with url: manage_course_wizard_schedule_path, method: :post, local: true do |form| %>
-    <%# Contract toggle %>
-    <% if @contracts.any? %>
+    <%# Contract toggle - only visible to users with organizational roles %>
+    <% has_org_role = Current.user.organization_roles.where(organization: Current.organization).exists? %>
+    <% if has_org_role && @contracts.any? %>
       <div class="mb-6">
         <div class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg">
           <label class="relative inline-flex items-center cursor-pointer mt-0.5">
@@ -72,75 +73,394 @@
     </div>
 
     <%# Independent mode - manual session entry %>
-    <div id="independent-section" class="<%= 'hidden' if @wizard_state[:schedule_mode] == 'contract' %> space-y-5">
+    <div id="independent-section" class="<%= 'hidden' if @wizard_state[:schedule_mode] == 'contract' %> space-y-5"
+         data-controller="location-modal"
+         data-location-modal-event-type-value="class">
 
-      <%# Location picker %>
+      <%# Location picker with create modal %>
       <div>
         <label for="location_id" class="block text-sm font-medium text-gray-900 mb-1.5">Location</label>
         <p class="text-xs text-gray-500 mb-2">Where will this course meet? This applies to all sessions.</p>
-        <% if @locations.any? %>
-          <select name="location_id" id="location_id"
-                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <option value="">Select a location...</option>
-            <% @locations.each do |loc| %>
-              <option value="<%= loc.id %>" <%= 'selected' if @wizard_state[:location_id].to_s == loc.id.to_s %>><%= loc.name %></option>
-            <% end %>
-          </select>
-        <% else %>
-          <p class="text-sm text-gray-400 italic mb-2">No locations added yet.</p>
-        <% end %>
-        <label class="inline-flex items-center gap-2 mt-2 cursor-pointer">
-          <input type="hidden" name="is_online" value="0">
-          <input type="checkbox" name="is_online" value="1"
-                 <%= 'checked' if @wizard_state[:is_online] %>
-                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-          <span class="text-sm text-gray-700">This course meets online</span>
-        </label>
+        <select name="location_id" id="location_id"
+                data-location-modal-target="locationSelect"
+                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          <option value="">Select a location...</option>
+          <% @locations.each do |loc| %>
+            <option value="<%= loc.id %>" <%= 'selected' if @wizard_state[:location_id].to_s == loc.id.to_s %>><%= loc.name %></option>
+          <% end %>
+        </select>
+        <a href="#" data-action="click->location-modal#openModal" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1.5 inline-block">+ Create a location</a>
+      </div>
+
+      <%# Location creation modal %>
+      <div data-location-modal-target="modal" class="hidden fixed inset-0 z-50">
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" data-action="click->location-modal#closeModal"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Add Location</h3>
+              <p class="text-xs text-gray-500 mt-1">Create a new location for your organization.</p>
+            </div>
+            <div data-location-modal-target="errorContainer" class="hidden px-6 pt-4">
+              <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-sm text-red-600" data-location-modal-target="errorCount"></p>
+                <ul class="mt-1 text-sm text-red-500 list-disc list-inside" data-location-modal-target="errorList"></ul>
+              </div>
+            </div>
+            <div data-location-modal-target="form" data-form-url="<%= manage_locations_path %>">
+              <div class="px-6 py-4">
+                <%= render "manage/productions/location_form_fields" %>
+              </div>
+              <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+                <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "location-modal#closeModal" } %>
+                <%= render "shared/button", text: "Create Location", variant: "primary", size: "medium", type: :button, data: { action: "click->location-modal#submitForm" } %>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p class="text-sm font-medium text-gray-900 mb-2">Session dates & times</p>
-      <p class="text-xs text-gray-500 mb-3">Add each class meeting. You can skip this and add sessions later from the course management page.</p>
+      <p class="text-xs text-gray-500 mb-3">Add each class meeting. You can add single sessions or a recurring series. You can skip this and add sessions later.</p>
 
-      <div id="sessions-list" class="space-y-3">
-        <%
-          existing_sessions = @wizard_state[:sessions] || []
-          existing_sessions = [{}] if existing_sessions.empty?
-        %>
-        <% existing_sessions.each_with_index do |session, i| %>
-          <div class="session-row flex items-start gap-3 p-3 border border-gray-200 rounded-lg">
-            <div class="flex-1 grid grid-cols-3 gap-3">
-              <div class="col-span-2">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
-                <input type="datetime-local" name="session_datetimes[]"
-                       value="<%= session[:datetime] || session['datetime'] %>"
-                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      <div data-controller="course-sessions">
+        <input type="hidden" name="session_rules_json" data-course-sessions-target="rulesJson" value="">
+
+        <div data-course-sessions-target="sessionsList" class="space-y-3">
+          <%
+            # Prefer session_rules (new format) over legacy sessions
+            existing_rules = @wizard_state[:session_rules] || []
+            if existing_rules.empty?
+              legacy_sessions = (@wizard_state[:sessions] || []).select { |s| (s[:datetime] || s["datetime"]).present? }
+              existing_rules = legacy_sessions.map { |s| { "type" => "single", "datetime" => s[:datetime] || s["datetime"], "duration_minutes" => (s[:duration] || s["duration"])&.to_i || 60 } }
+            end
+            session_index = 0
+          %>
+          <% existing_rules.each do |rule| %>
+            <% rule_type = rule[:type] || rule["type"] || "single" %>
+            <% if rule_type == "single" %>
+              <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="single" data-session-index="<%= session_index %>">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                      </svg>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">Session <%= session_index + 1 %></span>
+                  </div>
+                  <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Date & Time</label>
+                    <input type="datetime-local" data-field="datetime" name="session_datetimes[]"
+                           value="<%= rule[:datetime] || rule['datetime'] %>"
+                           data-action="change->course-sessions#inputChanged"
+                           class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                    <% rule_dur = (rule[:duration_minutes] || rule["duration_minutes"] || rule[:duration] || rule["duration"])&.to_i || 60 %>
+                    <select data-field="duration" name="session_durations[]"
+                            data-action="change->course-sessions#inputChanged"
+                            class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                      <option value="30" <%= 'selected' if rule_dur == 30 %>>30 minutes</option>
+                      <option value="60" <%= 'selected' if rule_dur == 60 %>>1 hour</option>
+                      <option value="90" <%= 'selected' if rule_dur == 90 %>>1 hour 30 minutes</option>
+                      <option value="120" <%= 'selected' if rule_dur == 120 %>>2 hours</option>
+                      <option value="180" <%= 'selected' if rule_dur == 180 %>>3 hours</option>
+                      <option value="240" <%= 'selected' if rule_dur == 240 %>>4 hours</option>
+                      <option value="300" <%= 'selected' if rule_dur == 300 %>>5 hours</option>
+                      <option value="360" <%= 'selected' if rule_dur == 360 %>>6 hours</option>
+                      <option value="420" <%= 'selected' if rule_dur == 420 %>>7 hours</option>
+                      <option value="480" <%= 'selected' if rule_dur == 480 %>>8 hours</option>
+                      <option value="540" <%= 'selected' if rule_dur == 540 %>>9 hours</option>
+                      <option value="600" <%= 'selected' if rule_dur == 600 %>>10 hours</option>
+                      <option value="660" <%= 'selected' if rule_dur == 660 %>>11 hours</option>
+                      <option value="720" <%= 'selected' if rule_dur == 720 %>>12 hours</option>
+                      <% (13..24).each do |h| %>
+                        <option value="<%= h * 60 %>" <%= 'selected' if rule_dur == h * 60 %>><%= h %> hours</option>
+                      <% end %>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Duration (min)</label>
-                <input type="number" name="session_durations[]" min="15" step="15"
-                       value="<%= session[:duration] || session['duration'] || 60 %>"
-                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <% elsif rule_type == "recurring" %>
+              <% rule_freq = rule[:frequency] || rule["frequency"] || "weekly" %>
+              <% rule_dow = (rule[:day_of_week] || rule["day_of_week"])&.to_i || 1 %>
+              <% rule_time = rule[:time] || rule["time"] || "19:00" %>
+              <% rule_dur = (rule[:duration_minutes] || rule["duration_minutes"])&.to_i || 60 %>
+              <% rule_start = rule[:start_date] || rule["start_date"] || Date.current.to_s %>
+              <% rule_end = rule[:end_date] || rule["end_date"] || (Date.current + 3.months).to_s %>
+              <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="recurring" data-session-index="<%= session_index %>">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                      </svg>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">Recurring Series</span>
+                  </div>
+                  <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Frequency</label>
+                    <select data-field="frequency" data-action="change->course-sessions#inputChanged"
+                            class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                      <option value="weekly" <%= 'selected' if rule_freq == 'weekly' %>>Weekly</option>
+                      <option value="biweekly" <%= 'selected' if rule_freq == 'biweekly' %>>Every 2 weeks</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Day of Week</label>
+                    <select data-field="day_of_week" data-action="change->course-sessions#inputChanged"
+                            class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                      <option value="0" <%= 'selected' if rule_dow == 0 %>>Sunday</option>
+                      <option value="1" <%= 'selected' if rule_dow == 1 %>>Monday</option>
+                      <option value="2" <%= 'selected' if rule_dow == 2 %>>Tuesday</option>
+                      <option value="3" <%= 'selected' if rule_dow == 3 %>>Wednesday</option>
+                      <option value="4" <%= 'selected' if rule_dow == 4 %>>Thursday</option>
+                      <option value="5" <%= 'selected' if rule_dow == 5 %>>Friday</option>
+                      <option value="6" <%= 'selected' if rule_dow == 6 %>>Saturday</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                    <input type="time" data-field="time" value="<%= rule_time %>"
+                           data-action="change->course-sessions#inputChanged"
+                           class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                    <select data-field="duration" data-action="change->course-sessions#inputChanged"
+                            class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                      <option value="30" <%= 'selected' if rule_dur == 30 %>>30 minutes</option>
+                      <option value="60" <%= 'selected' if rule_dur == 60 %>>1 hour</option>
+                      <option value="90" <%= 'selected' if rule_dur == 90 %>>1 hour 30 minutes</option>
+                      <option value="120" <%= 'selected' if rule_dur == 120 %>>2 hours</option>
+                      <option value="180" <%= 'selected' if rule_dur == 180 %>>3 hours</option>
+                      <option value="240" <%= 'selected' if rule_dur == 240 %>>4 hours</option>
+                      <option value="300" <%= 'selected' if rule_dur == 300 %>>5 hours</option>
+                      <option value="360" <%= 'selected' if rule_dur == 360 %>>6 hours</option>
+                      <option value="420" <%= 'selected' if rule_dur == 420 %>>7 hours</option>
+                      <option value="480" <%= 'selected' if rule_dur == 480 %>>8 hours</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="date" data-field="start_date" value="<%= rule_start %>"
+                           data-action="change->course-sessions#inputChanged"
+                           class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Until</label>
+                    <input type="date" data-field="end_date" value="<%= rule_end %>"
+                           data-action="change->course-sessions#inputChanged"
+                           class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="flex-shrink-0 pt-5">
-              <button type="button" class="remove-session text-gray-400 hover:text-red-500 transition" title="Remove session">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <% end %>
+            <% session_index += 1 %>
+          <% end %>
+        </div>
+
+        <%# Add buttons %>
+        <div class="flex gap-3 mt-3">
+          <button type="button" data-action="click->course-sessions#addSingleSession"
+                  class="flex-1 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Single Session
+          </button>
+          <button type="button" data-action="click->course-sessions#addRecurringSeries"
+                  class="flex-1 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" stroke-width="1.5"/>
+            </svg>
+            Add Recurring Series
+          </button>
+        </div>
+
+        <%# Single session template %>
+        <template data-course-sessions-target="singleTemplate">
+          <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="single">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <span class="text-sm font-medium text-gray-900">Single Session</span>
+              </div>
+              <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Date & Time</label>
+                <input type="datetime-local" data-field="datetime" name="session_datetimes[]"
+                       data-action="change->course-sessions#inputChanged"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                <select data-field="duration" name="session_durations[]"
+                        data-action="change->course-sessions#inputChanged"
+                        class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  <option value="30">30 minutes</option>
+                  <option value="60" selected>1 hour</option>
+                  <option value="90">1 hour 30 minutes</option>
+                  <option value="120">2 hours</option>
+                  <option value="180">3 hours</option>
+                  <option value="240">4 hours</option>
+                  <option value="300">5 hours</option>
+                  <option value="360">6 hours</option>
+                  <option value="420">7 hours</option>
+                  <option value="480">8 hours</option>
+                  <option value="540">9 hours</option>
+                  <option value="600">10 hours</option>
+                  <option value="660">11 hours</option>
+                  <option value="720">12 hours</option>
+                  <option value="780">13 hours</option>
+                  <option value="840">14 hours</option>
+                  <option value="900">15 hours</option>
+                  <option value="960">16 hours</option>
+                  <option value="1020">17 hours</option>
+                  <option value="1080">18 hours</option>
+                  <option value="1140">19 hours</option>
+                  <option value="1200">20 hours</option>
+                  <option value="1260">21 hours</option>
+                  <option value="1320">22 hours</option>
+                  <option value="1380">23 hours</option>
+                  <option value="1440">24 hours</option>
+                </select>
+              </div>
+            </div>
           </div>
-        <% end %>
-      </div>
+        </template>
 
-      <button type="button" id="add-session-btn"
-              class="w-full flex items-center justify-center gap-2 py-2.5 px-4 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        Add Session
-      </button>
-    </div>
+        <%# Recurring series template %>
+        <template data-course-sessions-target="recurringTemplate">
+          <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="recurring">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                  </svg>
+                </div>
+                <span class="text-sm font-medium text-gray-900">Recurring Series</span>
+              </div>
+              <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Frequency</label>
+                <select data-field="frequency"
+                        data-action="change->course-sessions#inputChanged"
+                        class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  <option value="weekly" selected>Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Day of Week</label>
+                <select data-field="day_of_week"
+                        data-action="change->course-sessions#inputChanged"
+                        class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  <option value="0">Sunday</option>
+                  <option value="1" selected>Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                <input type="time" data-field="time" value="19:00"
+                       data-action="change->course-sessions#inputChanged"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                <select data-field="duration"
+                        data-action="change->course-sessions#inputChanged"
+                        class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                  <option value="30">30 minutes</option>
+                  <option value="60" selected>1 hour</option>
+                  <option value="90">1 hour 30 minutes</option>
+                  <option value="120">2 hours</option>
+                  <option value="180">3 hours</option>
+                  <option value="240">4 hours</option>
+                  <option value="300">5 hours</option>
+                  <option value="360">6 hours</option>
+                  <option value="420">7 hours</option>
+                  <option value="480">8 hours</option>
+                  <option value="540">9 hours</option>
+                  <option value="600">10 hours</option>
+                  <option value="660">11 hours</option>
+                  <option value="720">12 hours</option>
+                  <option value="780">13 hours</option>
+                  <option value="840">14 hours</option>
+                  <option value="900">15 hours</option>
+                  <option value="960">16 hours</option>
+                  <option value="1020">17 hours</option>
+                  <option value="1080">18 hours</option>
+                  <option value="1140">19 hours</option>
+                  <option value="1200">20 hours</option>
+                  <option value="1260">21 hours</option>
+                  <option value="1320">22 hours</option>
+                  <option value="1380">23 hours</option>
+                  <option value="1440">24 hours</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" data-field="start_date" value="<%= Date.current.to_s %>"
+                       data-action="change->course-sessions#inputChanged"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Until</label>
+                <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
+                       data-action="change->course-sessions#inputChanged"
+                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
 
     <div class="mt-8 flex items-center justify-between">
       <%= link_to manage_course_wizard_instructor_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
@@ -162,8 +482,6 @@
       const contractSelect = document.getElementById('contract-select');
       const rentalCheckboxes = document.getElementById('rental-checkboxes');
       const rentalList = document.getElementById('rental-list');
-      const sessionsList = document.getElementById('sessions-list');
-      const addSessionBtn = document.getElementById('add-session-btn');
       const selectAllBtn = document.getElementById('select-all-rentals');
 
       // Previously selected show IDs for pre-checking
@@ -232,51 +550,6 @@
           this.textContent = allChecked ? 'Select All' : 'Deselect All';
         });
       }
-
-      // Add session row
-      if (addSessionBtn) {
-        addSessionBtn.addEventListener('click', function() {
-          const row = document.createElement('div');
-          row.className = 'session-row flex items-start gap-3 p-3 border border-gray-200 rounded-lg';
-          row.innerHTML = `
-            <div class="flex-1 grid grid-cols-3 gap-3">
-              <div class="col-span-2">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
-                <input type="datetime-local" name="session_datetimes[]"
-                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Duration (min)</label>
-                <input type="number" name="session_durations[]" min="15" step="15" value="60"
-                       class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-              </div>
-            </div>
-            <div class="flex-shrink-0 pt-5">
-              <button type="button" class="remove-session text-gray-400 hover:text-red-500 transition" title="Remove session">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-          `;
-          sessionsList.appendChild(row);
-        });
-      }
-
-      // Remove session row
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.remove-session');
-        if (btn) {
-          const row = btn.closest('.session-row');
-          const rows = sessionsList.querySelectorAll('.session-row');
-          if (rows.length > 1) {
-            row.remove();
-          } else {
-            // Clear the last row instead of removing it
-            row.querySelectorAll('input').forEach(input => input.value = '');
-          }
-        }
-      });
     })();
   </script>
 <% end %>

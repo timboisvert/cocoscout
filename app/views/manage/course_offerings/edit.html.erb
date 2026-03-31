@@ -3,7 +3,15 @@
 <div class="w-full pb-24" data-controller="tabs instructor-search"
      data-tabs-initial-tab-value="<%= params[:tab].to_i %>"
      data-instructor-search-search-url-value="<%= manage_course_offering_search_instructor_path(@course_offering) %>"
-     data-instructor-search-invite-url-value="<%= manage_course_offering_invite_instructor_path(@course_offering) %>">
+     data-instructor-search-invite-url-value="<%= manage_course_offering_invite_instructor_path(@course_offering) %>"
+     <% current_person = Current.user&.person %>
+     <% current_person_headshot = current_person&.safe_headshot_variant(:thumb) %>
+     <% if current_person %>
+     data-instructor-search-current-person-id-value="<%= current_person.id %>"
+     data-instructor-search-current-person-name-value="<%= current_person.name %>"
+     data-instructor-search-current-person-email-value="<%= current_person.email %>"
+     data-instructor-search-current-person-headshot-url-value="<%= current_person_headshot ? url_for(current_person_headshot) : '' %>"
+     <% end %>>
 
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
@@ -101,8 +109,8 @@
               <label class="block text-sm font-medium text-gray-900 mb-1.5">Current Instructors</label>
               <% (@instructor_people || []).each do |person| %>
                 <% coi = coi_by_person[person.id] %>
-                <div class="border border-pink-200 bg-pink-50 rounded-lg overflow-hidden">
-                  <div class="flex items-center gap-3 p-3">
+                <div class="border border-gray-200 bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                     <% headshot_variant = person.safe_headshot_variant(:thumb) %>
                     <% if headshot_variant %>
                       <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
@@ -127,9 +135,9 @@
                       </svg>
                     </button>
                   </div>
-                  <div class="px-3 pb-3 pt-1 border-t border-pink-100 space-y-3">
+                  <div class="p-4 space-y-4">
                     <div>
-                      <label class="block text-xs font-medium text-gray-700 mb-1">Alternate Photo</label>
+                      <label class="block text-xs font-medium text-gray-700 mb-1.5">Alternate Photo</label>
                       <% if coi&.headshot&.attached? %>
                         <div class="mb-2 flex items-center gap-2">
                           <%= image_tag coi.headshot.variant(resize_to_fill: [80, 80]), alt: "#{person.name} photo", class: "w-10 h-10 rounded-lg object-cover" %>
@@ -141,13 +149,30 @@
                       <p class="text-[11px] text-gray-400 mt-1">Overrides their profile photo on the registration page.</p>
                     </div>
                     <div>
-                      <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+                      <label class="block text-xs font-medium text-gray-700 mb-1.5">Bio</label>
                       <%= rich_text_area_tag "instructor_bios[#{person.id}]", coi&.bio&.body %>
                     </div>
                   </div>
                 </div>
               <% end %>
             </div>
+
+            <%# Quick self-select button %>
+            <% if current_person %>
+              <% already_selected = (@instructor_people || []).any? { |p| p.id == current_person.id } %>
+              <button type="button"
+                      data-action="instructor-search#selectSelf"
+                      class="w-full flex items-center gap-3 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-pink-400 hover:bg-pink-50 transition cursor-pointer mb-4 <%= 'hidden' if already_selected %>">
+                <% if current_person_headshot %>
+                  <%= image_tag current_person_headshot, alt: current_person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
+                    <%= current_person.initials %>
+                  </div>
+                <% end %>
+                <span class="text-sm font-medium text-gray-700">I'm the instructor</span>
+              </button>
+            <% end %>
 
             <%# Search section (always visible) %>
             <div data-instructor-search-target="searchSection">
@@ -189,7 +214,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-sm font-medium text-gray-900">Add to production team</span>
-                <p class="text-xs text-gray-500 mt-0.5">Make instructors managers of this course's production with notifications enabled.</p>
+                <p class="text-xs text-gray-500 mt-0.5">Add the instructors to the production team for this course. Production team members can view registrations, view registration notifications, and manage students.</p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="instructor_on_team" value="0">
@@ -254,6 +279,174 @@
         </div>
       </div>
 
+      <%# Add new sessions %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Add Sessions" %>
+        <div class="p-5">
+          <p class="text-sm text-gray-600 mb-3">Add single sessions or a recurring series to this course.</p>
+
+          <%= form_with url: manage_course_offering_add_sessions_path(@course_offering), method: :post, local: true do %>
+            <div data-controller="course-sessions">
+              <input type="hidden" name="session_rules_json" data-course-sessions-target="rulesJson" value="">
+
+              <div data-course-sessions-target="sessionsList" class="space-y-3"></div>
+
+              <div class="flex gap-3 mt-3">
+                <button type="button" data-action="click->course-sessions#addSingleSession"
+                        class="flex-1 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  Add Single Session
+                </button>
+                <button type="button" data-action="click->course-sessions#addRecurringSeries"
+                        class="flex-1 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-pink-400 hover:text-pink-600 transition flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" stroke-width="1.5"/>
+                  </svg>
+                  Add Recurring Series
+                </button>
+              </div>
+
+              <%# Single session template %>
+              <template data-course-sessions-target="singleTemplate">
+                <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="single">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                      </div>
+                      <span class="text-sm font-medium text-gray-900">Single Session</span>
+                    </div>
+                    <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Date & Time</label>
+                      <input type="datetime-local" data-field="datetime"
+                             data-action="change->course-sessions#inputChanged"
+                             class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                      <select data-field="duration"
+                              data-action="change->course-sessions#inputChanged"
+                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="90">1 hour 30 minutes</option>
+                        <option value="120">2 hours</option>
+                        <option value="180">3 hours</option>
+                        <option value="240">4 hours</option>
+                        <option value="300">5 hours</option>
+                        <option value="360">6 hours</option>
+                        <option value="420">7 hours</option>
+                        <option value="480">8 hours</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <%# Recurring series template %>
+              <template data-course-sessions-target="recurringTemplate">
+                <div class="session-item bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3" data-session-type="recurring">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-3.5 h-3.5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                        </svg>
+                      </div>
+                      <span class="text-sm font-medium text-gray-900">Recurring Series</span>
+                    </div>
+                    <button type="button" data-action="click->course-sessions#removeSession" class="text-gray-400 hover:text-red-500 transition p-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Frequency</label>
+                      <select data-field="frequency"
+                              data-action="change->course-sessions#inputChanged"
+                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="weekly" selected>Weekly</option>
+                        <option value="biweekly">Every 2 weeks</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Day of Week</label>
+                      <select data-field="day_of_week"
+                              data-action="change->course-sessions#inputChanged"
+                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="0">Sunday</option>
+                        <option value="1" selected>Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                      <input type="time" data-field="time" value="19:00"
+                             data-action="change->course-sessions#inputChanged"
+                             class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+                      <select data-field="duration"
+                              data-action="change->course-sessions#inputChanged"
+                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="90">1 hour 30 minutes</option>
+                        <option value="120">2 hours</option>
+                        <option value="180">3 hours</option>
+                        <option value="240">4 hours</option>
+                        <option value="300">5 hours</option>
+                        <option value="360">6 hours</option>
+                        <option value="420">7 hours</option>
+                        <option value="480">8 hours</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                      <input type="date" data-field="start_date" value="<%= Date.current.to_s %>"
+                             data-action="change->course-sessions#inputChanged"
+                             class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Until</label>
+                      <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
+                             data-action="change->course-sessions#inputChanged"
+                             class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div class="mt-4">
+              <%= render "shared/button", text: "Add Sessions", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3">
         <%= link_to manage_production_shows_path(@course_offering.production) do %>
           <%= render "shared/button", text: "Manage Sessions", variant: "secondary", size: "medium" %>
@@ -290,18 +483,39 @@
               <p class="text-xs text-gray-400 mt-1">plus applicable tax</p>
             </div>
 
-            <div class="border-t border-gray-200 pt-5">
+            <div class="border-t border-gray-200 pt-5" data-fee-calculator-target="earlyBirdSection"
+                 <% unless @course_offering.price_cents.present? && @course_offering.price_cents > 0 %>style="display:none"<% end %>>
+              <%
+                first_session = @sessions.first
+                first_session_iso = first_session&.date_and_time&.iso8601
+              %>
               <div class="flex items-center justify-between mb-3">
-                <span class="text-sm font-medium text-gray-900">Offer early bird pricing</span>
+                <span class="text-sm font-medium text-gray-900">Also offer early bird pricing</span>
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" id="enable_early_bird"
                          <%= 'checked' if @course_offering.early_bird_price_cents.present? %>
                          class="sr-only peer"
+                         data-first-session="<%= first_session_iso %>"
                          onchange="
                            var fields = document.getElementById('early-bird-fields');
+                           var hint = document.getElementById('early-bird-auto-hint');
                            fields.classList.toggle('hidden', !this.checked);
                            if (!this.checked) {
                              fields.querySelectorAll('input').forEach(function(i) { i.value = ''; });
+                             if (hint) hint.style.display = 'none';
+                           } else {
+                             var deadlineField = document.getElementById('course_offering_early_bird_deadline');
+                             if (deadlineField && !deadlineField.value && this.dataset.firstSession) {
+                               var now = new Date();
+                               var firstSession = new Date(this.dataset.firstSession);
+                               var midpoint = new Date(now.getTime() + (firstSession.getTime() - now.getTime()) / 2);
+                               midpoint.setHours(23, 59, 0, 0);
+                               var y = midpoint.getFullYear();
+                               var m = String(midpoint.getMonth() + 1).padStart(2, '0');
+                               var d = String(midpoint.getDate()).padStart(2, '0');
+                               deadlineField.value = y + '-' + m + '-' + d + 'T23:59';
+                               if (hint) hint.style.display = 'block';
+                             }
                            }
                          ">
                   <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
@@ -330,6 +544,9 @@
                     </label>
                     <%= form.datetime_local_field :early_bird_deadline,
                         class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+                    <p id="early-bird-auto-hint" class="text-xs text-gray-400 mt-1" style="display:none">
+                      We've selected a date halfway between now and the start of your course. Feel free to change it.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -343,9 +560,11 @@
           <%= render "shared/card_header", title: "Processing & Fees" %>
           <div class="p-5">
             <% existing_promo = @course_offering.feature_credit_redemption&.feature_credit&.code %>
+            <% existing_coverage = @course_offering.feature_credit_redemption&.feature_credit&.coverage_type || "none" %>
             <%= render "manage/course_offerings/fee_breakdown",
                        promo_code: existing_promo,
-                       promo_field_name: "course_offering[promo_code]" %>
+                       promo_field_name: "course_offering[promo_code]",
+                       promo_coverage_type: existing_promo.present? ? existing_coverage : "none" %>
           </div>
         </div>
       </div>
@@ -369,7 +588,7 @@
           </label>
           <p class="text-xs text-gray-500 mb-2">Leave blank for unlimited spots.</p>
           <%= form.number_field :capacity, min: 1,
-              placeholder: "20",
+              placeholder: "12",
               class: "block w-48 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
         </div>
       </div>

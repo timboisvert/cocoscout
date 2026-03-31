@@ -19,7 +19,11 @@ export default class extends Controller {
 
     static values = {
         searchUrl: String,
-        inviteUrl: String
+        inviteUrl: String,
+        currentPersonId: String,
+        currentPersonName: String,
+        currentPersonEmail: String,
+        currentPersonHeadshotUrl: String
     }
 
     connect() {
@@ -45,6 +49,32 @@ export default class extends Controller {
                 })
             })
         }
+
+        this._updateSelfButtonVisibility()
+    }
+
+    selectSelf(event) {
+        event.preventDefault()
+        if (!this.currentPersonIdValue) return
+
+        // Prevent duplicates
+        if (this.selectedInstructors.some(i => String(i.id) === String(this.currentPersonIdValue))) return
+
+        this._captureBios()
+        this.selectedInstructors.push({
+            id: this.currentPersonIdValue,
+            name: this.currentPersonNameValue || "",
+            email: this.currentPersonEmailValue || "",
+            headshotUrl: this.currentPersonHeadshotUrlValue || "",
+            bio: "",
+            hasExistingHeadshot: false
+        })
+
+        this._renderSelectedList()
+        this._updateHiddenInputs()
+        this._showOptionsIfNeeded()
+        this._disableAlreadySelected()
+        this._updateSelfButtonVisibility()
     }
 
     search() {
@@ -104,6 +134,7 @@ export default class extends Controller {
         this._updateHiddenInputs()
         this._showOptionsIfNeeded()
         this._disableAlreadySelected()
+        this._updateSelfButtonVisibility()
 
         // Clear search
         this.searchInputTarget.value = ""
@@ -120,6 +151,7 @@ export default class extends Controller {
         this._updateHiddenInputs()
         this._showOptionsIfNeeded()
         this._disableAlreadySelected()
+        this._updateSelfButtonVisibility()
     }
 
     showInviteForm(event) {
@@ -172,6 +204,7 @@ export default class extends Controller {
                 this._renderSelectedList()
                 this._updateHiddenInputs()
                 this._showOptionsIfNeeded()
+                this._updateSelfButtonVisibility()
 
                 // Reset invite form
                 this.inviteNameTarget.value = ""
@@ -215,7 +248,7 @@ export default class extends Controller {
         const formPart = this._formAttr ? ` form="${this._formAttr}"` : ""
 
         this.selectedListTarget.classList.remove("hidden")
-        this.selectedListTarget.innerHTML = `<label class="block text-sm font-medium text-gray-900 mb-1.5">Selected Instructors</label>` +
+        this.selectedListTarget.innerHTML = `<label class="block text-sm font-medium text-gray-900 mb-2">Selected Instructors</label>` +
             this.selectedInstructors.map((instructor) => {
                 const initials = instructor.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
                 const headshot = instructor.headshotUrl
@@ -227,8 +260,8 @@ export default class extends Controller {
                     : ""
 
                 return `
-                <div class="border border-pink-200 bg-pink-50 rounded-lg overflow-hidden">
-                    <div class="flex items-center gap-3 p-3">
+                <div class="border border-gray-200 bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                         ${headshot}
                         <div class="flex-grow min-w-0">
                             <div class="font-medium text-sm text-gray-900">${this._escapeHtml(instructor.name)}</div>
@@ -244,16 +277,16 @@ export default class extends Controller {
                             </svg>
                         </button>
                     </div>
-                    <div class="px-3 pb-3 pt-1 border-t border-pink-100 space-y-3">
+                    <div class="p-4 space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Alternate Photo</label>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">Alternate Photo</label>
                             ${existingHeadshotHtml}
                             <input type="file" name="instructor_headshots[${instructor.id}]" accept="image/*"${formPart}
                                    class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
                             <p class="text-[11px] text-gray-400 mt-1">Overrides their profile photo on the registration page.</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">Bio</label>
                             <input type="hidden" id="instructor_bio_trix_${instructor.id}" name="instructor_bios[${instructor.id}]" value="${this._escapeHtml(instructor.bio)}"${formPart}>
                             <trix-editor input="instructor_bio_trix_${instructor.id}" class="trix-content"></trix-editor>
                         </div>
@@ -302,6 +335,13 @@ export default class extends Controller {
                 btn.appendChild(badge)
             }
         })
+    }
+
+    _updateSelfButtonVisibility() {
+        const selfBtn = this.element.querySelector('[data-action="instructor-search#selectSelf"]')
+        if (!selfBtn || !this.currentPersonIdValue) return
+        const alreadySelected = this.selectedInstructors.some(i => String(i.id) === String(this.currentPersonIdValue))
+        selfBtn.classList.toggle('hidden', alreadySelected)
     }
 
     _escapeHtml(text) {

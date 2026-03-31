@@ -24,9 +24,10 @@
         <p class="text-xs text-gray-400 mt-1">plus applicable tax</p>
       </div>
 
-      <div class="border-t border-gray-200 pt-5 mt-5">
+      <div class="border-t border-gray-200 pt-5 mt-5" data-fee-calculator-target="earlyBirdSection"
+           <% unless @wizard_state[:price_cents].present? && @wizard_state[:price_cents].to_i > 0 %>style="display:none"<% end %>>
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-gray-900">Offer early bird pricing</span>
+          <span class="text-sm font-medium text-gray-900">Also offer early bird pricing</span>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="enable_early_bird"
                    <%= 'checked' if @wizard_state[:early_bird_price_cents].present? %>
@@ -57,9 +58,40 @@
               <label for="early_bird_deadline" class="block text-sm font-medium text-gray-700 mb-1.5">
                 Early Bird Deadline
               </label>
+              <%
+                early_bird_val = @wizard_state[:early_bird_deadline]
+                early_bird_auto_calculated = false
+                if early_bird_val.blank?
+                  # Compute smart default: halfway between now and first session, at 11:59 PM
+                  first_dt = nil
+                  rules = @wizard_state[:session_rules] || []
+                  rules.each do |r|
+                    rt = r[:type] || r["type"]
+                    if rt == "single"
+                      dt_str = r[:datetime] || r["datetime"]
+                      dt = DateTime.parse(dt_str) rescue nil if dt_str.present?
+                    elsif rt == "recurring"
+                      sd = r[:start_date] || r["start_date"]
+                      tm = r[:time] || r["time"]
+                      dt = DateTime.parse("#{sd}T#{tm}") rescue nil if sd.present? && tm.present?
+                    end
+                    first_dt = dt if dt && (first_dt.nil? || dt < first_dt)
+                  end
+                  if first_dt
+                    midpoint = Time.current + ((first_dt.to_time - Time.current) / 2)
+                    early_bird_val = midpoint.strftime("%Y-%m-%d") + "T23:59"
+                    early_bird_auto_calculated = true
+                  end
+                end
+              %>
               <input type="datetime-local" name="early_bird_deadline" id="early_bird_deadline"
-                     value="<%= @wizard_state[:early_bird_deadline] %>"
+                     value="<%= early_bird_val %>"
                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              <% if early_bird_auto_calculated %>
+                <p class="text-xs text-gray-400 mt-1">
+                  We've selected a date halfway between now and the start of your course. Feel free to change it.
+                </p>
+              <% end %>
             </div>
           </div>
         </div>

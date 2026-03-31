@@ -26,7 +26,7 @@
                 <span class="text-[10px] font-semibold text-yellow-800 uppercase">Impersonating:</span>
                 <span class="text-xs font-medium text-yellow-900 ml-1"><%= Current.user.person&.name || Current.user.email_address %></span>
               </div>
-              <%= link_to "Stop", stop_impersonating_user_path, data: { turbo_method: :post }, class: "text-xs font-semibold text-yellow-800 underline" %>
+              <%= render "shared/button", text: "Stop", variant: "outline-pink", size: "small", path: stop_impersonating_user_path, data: { turbo_method: :post } %>
             </div>
           </div>
         <% end %>

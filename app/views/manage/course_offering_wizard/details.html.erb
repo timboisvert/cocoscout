@@ -11,31 +11,61 @@
         <p class="text-xs text-gray-500 mb-2">Leave blank for unlimited spots.</p>
         <input type="number" name="capacity" id="capacity"
                min="1"
-               value="<%= @wizard_state[:capacity] %>"
-               placeholder="20"
+               value="<%= @wizard_state[:capacity] || 12 %>"
+               placeholder="12"
                class="block w-48 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
       </div>
 
       <div class="border-t border-gray-200 pt-5">
-        <p class="text-sm font-medium text-gray-900 mb-3">Registration Window <span class="text-gray-400 font-normal">(optional)</span></p>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label for="opens_at" class="block text-sm font-medium text-gray-700 mb-1.5">
-              Opens At
-            </label>
-            <p class="text-xs text-gray-500 mb-2">When registration becomes available.</p>
-            <input type="datetime-local" name="opens_at" id="opens_at"
-                   value="<%= @wizard_state[:opens_at] %>"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-          </div>
-          <div>
-            <label for="closes_at" class="block text-sm font-medium text-gray-700 mb-1.5">
-              Closes At
-            </label>
-            <p class="text-xs text-gray-500 mb-2">Auto-close registration date.</p>
-            <input type="datetime-local" name="closes_at" id="closes_at"
-                   value="<%= @wizard_state[:closes_at] %>"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        <p class="text-sm font-medium text-gray-900 mb-3">Registration Window</p>
+
+        <% has_custom_dates = @wizard_state[:opens_at].present? || @wizard_state[:closes_at].present? %>
+        <% registration_mode = @wizard_state[:registration_mode] || (has_custom_dates ? 'custom' : 'auto') %>
+
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                 id="reg-mode-auto-label"
+                 onclick="document.getElementById('reg-mode-auto').checked = true; document.getElementById('custom-dates-fields').classList.add('hidden');">
+            <input type="radio" name="registration_mode" value="auto" id="reg-mode-auto"
+                   <%= 'checked' if registration_mode == 'auto' %>
+                   class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div>
+              <p class="text-sm font-medium text-gray-900">Open immediately, close when course starts</p>
+              <p class="text-xs text-gray-500 mt-0.5">Registration opens right away and automatically closes at the first session.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                 id="reg-mode-custom-label"
+                 onclick="document.getElementById('reg-mode-custom').checked = true; document.getElementById('custom-dates-fields').classList.remove('hidden');">
+            <input type="radio" name="registration_mode" value="custom" id="reg-mode-custom"
+                   <%= 'checked' if registration_mode == 'custom' %>
+                   class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div>
+              <p class="text-sm font-medium text-gray-900">Set specific dates</p>
+              <p class="text-xs text-gray-500 mt-0.5">Choose exactly when registration opens and closes.</p>
+            </div>
+          </label>
+        </div>
+
+        <div id="custom-dates-fields" class="mt-4 <%= 'hidden' unless registration_mode == 'custom' %>">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="opens_at" class="block text-sm font-medium text-gray-700 mb-1.5">
+                Opens At
+              </label>
+              <input type="datetime-local" name="opens_at" id="opens_at"
+                     value="<%= @wizard_state[:opens_at] %>"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            </div>
+            <div>
+              <label for="closes_at" class="block text-sm font-medium text-gray-700 mb-1.5">
+                Closes At
+              </label>
+              <input type="datetime-local" name="closes_at" id="closes_at"
+                     value="<%= @wizard_state[:closes_at] %>"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            </div>
           </div>
         </div>
       </div>

@@ -1127,6 +1127,7 @@ Rails.application.routes.draw do
     put "courses/:id",          to: "course_offerings#update"
     post "courses/:id/open",    to: "course_offerings#open_registration",  as: "open_course_offering"
     post "courses/:id/close",   to: "course_offerings#close_registration", as: "close_course_offering"
+    post "courses/:id/add_sessions", to: "course_offerings#add_sessions", as: "course_offering_add_sessions"
     get  "courses/:id/search_instructor",  to: "course_offerings#search_instructor",  as: "course_offering_search_instructor"
     post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"
     post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"

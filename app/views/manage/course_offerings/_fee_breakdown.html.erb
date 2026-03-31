@@ -5,6 +5,10 @@
 <% has_promo = promo_code.present? %>
 
 <%# Single unified breakdown %>
+<div data-fee-calculator-target="breakdownPlaceholder" class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+  <p class="text-sm text-gray-400 italic text-center">Enter a price above to calculate fees</p>
+</div>
+
 <div data-fee-calculator-target="breakdown" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4">
   <div class="space-y-2">
     <div class="flex justify-between text-sm">
@@ -59,6 +63,7 @@
 </div>
 
 <%= hidden_field_tag promo_field, promo_code || "", data: { fee_calculator_target: "promoHidden" } %>
+<%= hidden_field_tag "promo_coverage_type", (local_assigns[:promo_coverage_type] || "none"), data: { fee_calculator_target: "promoCoverageHidden" } %>
 
 <%# Promo code modal %>
 <div data-fee-calculator-target="promoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
@@ -74,10 +79,8 @@
            class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition text-sm font-mono uppercase">
     <div data-fee-calculator-target="promoStatus" class="mt-2 min-h-[20px]"></div>
     <div class="mt-4 flex items-center justify-end gap-3">
-      <button type="button" data-action="fee-calculator#closePromoModal"
-              class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
-      <button type="button" data-action="fee-calculator#applyPromo"
-              class="px-4 py-2 bg-pink-500 text-white text-sm font-medium rounded-lg hover:bg-pink-600 transition cursor-pointer">Apply</button>
+      <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "fee-calculator#closePromoModal" } %>
+      <%= render "shared/button", text: "Apply", variant: "primary", size: "medium", type: :button, data: { action: "fee-calculator#applyPromo" } %>
     </div>
   </div>
 </div>

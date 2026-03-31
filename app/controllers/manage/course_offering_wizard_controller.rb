@@ -97,10 +97,22 @@ module Manage
         selected_show_ids = Array(params[:show_ids]).map(&:to_i).reject(&:zero?)
         @wizard_state[:selected_show_ids] = selected_show_ids
         @wizard_state[:sessions] = nil # Clear manual sessions
+        @wizard_state[:session_rules] = nil
       else
         @wizard_state[:contract_id] = nil
         @wizard_state[:selected_show_ids] = nil
-        # Store manually entered sessions
+
+        # Parse session rules JSON if present (new format with recurring support)
+        if params[:session_rules_json].present?
+          begin
+            rules = JSON.parse(params[:session_rules_json])
+            @wizard_state[:session_rules] = rules if rules.is_a?(Array) && rules.any?
+          rescue JSON::ParserError
+            # Fall through to legacy format
+          end
+        end
+
+        # Also store manually entered sessions (legacy single-session inputs)
         sessions = []
         if params[:session_datetimes].present?
           params[:session_datetimes].each_with_index do |dt, i|
@@ -234,6 +246,7 @@ module Manage
       end
 
       @wizard_state[:promo_code] = params[:promo_code].to_s.strip.presence
+      @wizard_state[:promo_coverage_type] = params[:promo_coverage_type].to_s.strip.presence
 
       save_wizard_state
       redirect_to manage_course_wizard_details_path
@@ -247,8 +260,14 @@ module Manage
 
     def save_details
       @wizard_state[:capacity] = params[:capacity].presence&.to_i
-      @wizard_state[:opens_at] = params[:opens_at].presence
-      @wizard_state[:closes_at] = params[:closes_at].presence
+      @wizard_state[:registration_mode] = params[:registration_mode].presence || "auto"
+      if @wizard_state[:registration_mode] == "custom"
+        @wizard_state[:opens_at] = params[:opens_at].presence
+        @wizard_state[:closes_at] = params[:closes_at].presence
+      else
+        @wizard_state[:opens_at] = nil
+        @wizard_state[:closes_at] = nil
+      end
       @wizard_state[:instruction_text] = params[:instruction_text].presence
       @wizard_state[:success_text] = params[:success_text].presence
       @wizard_state[:listed_in_directory] = params[:listed_in_directory] == "1"
@@ -276,6 +295,11 @@ module Manage
             .where(id: @wizard_state[:selected_show_ids])
             .order(:date_and_time)
         end
+      end
+
+      # Load location for display
+      if @wizard_state[:location_id].present?
+        @location = Current.organization.locations.find_by(id: @wizard_state[:location_id])
       end
     end
 
@@ -312,6 +336,15 @@ module Manage
           end
         end
 
+        # Compute registration window
+        reg_opens_at = @wizard_state[:opens_at]
+        reg_closes_at = @wizard_state[:closes_at]
+        if @wizard_state[:registration_mode] != "custom"
+          reg_opens_at = Time.current
+          # closes_at will be set after sessions are created (first session start time)
+          reg_closes_at = nil
+        end
+
         # Create the course offering
         @offering = @production.course_offerings.create!(
           title: @wizard_state[:title],
@@ -324,8 +357,9 @@ module Manage
           early_bird_price_cents: @wizard_state[:early_bird_price_cents],
           early_bird_deadline: @wizard_state[:early_bird_deadline],
           capacity: @wizard_state[:capacity],
-          opens_at: @wizard_state[:opens_at],
-          closes_at: @wizard_state[:closes_at],
+          opens_at: reg_opens_at,
+          closes_at: reg_closes_at,
+          status: @wizard_state[:registration_mode] == "custom" ? :draft : :open,
           instruction_text: @wizard_state[:instruction_text],
           success_text: @wizard_state[:success_text],
           contract: contract,
@@ -355,6 +389,12 @@ module Manage
 
         # Create shows (sessions) for the course
         create_course_sessions!(contract)
+
+        # For auto registration mode, close registration at the first session start time
+        if @wizard_state[:registration_mode] != "custom" && @offering.closes_at.nil?
+          first_show = @production.shows.order(:date_and_time).first
+          @offering.update!(closes_at: first_show.date_and_time) if first_show
+        end
 
         # Create course_offering_instructors join records with per-instructor bio/headshot
         instructor_bios = @wizard_state[:instructor_bios] || {}
@@ -406,6 +446,17 @@ module Manage
             ).update_all(enabled: true)
           end
         end
+
+        # Always add the course creator to the production team
+        ProductionPermission.find_or_create_by!(
+          user: Current.user,
+          production: @production
+        ) { |pp| pp.role = "manager" }
+
+        ProductionNotificationSetting.find_or_create_by!(
+          user: Current.user,
+          production: @production
+        ) { |ns| ns.enabled = true }
       end
 
       clear_wizard_state
@@ -413,6 +464,17 @@ module Manage
     rescue ActiveRecord::RecordInvalid => e
       @step = 6
       flash.now[:alert] = "Something went wrong: #{e.message}"
+      ids = Array(@wizard_state[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
+      @instructor_people = ids.any? ? Person.where(id: ids).index_by(&:id).values_at(*ids).compact : []
+      if @wizard_state[:contract_id].present?
+        @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
+        if @contract && @wizard_state[:selected_show_ids].present?
+          @selected_shows = Show.joins(:production)
+            .where(productions: { contract_id: @contract.id })
+            .where(id: @wizard_state[:selected_show_ids])
+            .order(:date_and_time)
+        end
+      end
       render :review, status: :unprocessable_entity
     end
 
@@ -433,21 +495,73 @@ module Manage
         shows.each do |show|
           show.update!(production: @production, event_type: "class")
         end
-      elsif @wizard_state[:sessions].present?
-        # Create sessions from manually entered dates
-        @wizard_state[:sessions].each do |session|
-          next if session[:datetime].blank? && session["datetime"].blank?
-          dt = Time.zone.parse(session[:datetime] || session["datetime"])
-          duration = (session[:duration] || session["duration"])&.to_i || 60
-          @production.shows.create!(
-            date_and_time: dt,
-            duration_minutes: duration,
-            secondary_name: session[:name] || session["name"],
-            event_type: "class",
-            location_id: @wizard_state[:location_id],
-            is_online: @wizard_state[:is_online] || false
-          )
+      else
+        # Create from session rules (new format with recurring support)
+        if @wizard_state[:session_rules].present?
+          @wizard_state[:session_rules].each do |rule|
+            rule = rule.with_indifferent_access
+            if rule[:type] == "single" && rule[:datetime].present?
+              dt = Time.zone.parse(rule[:datetime])
+              duration = rule[:duration_minutes]&.to_i || 60
+              @production.shows.create!(
+                date_and_time: dt,
+                duration_minutes: duration,
+                event_type: "class",
+                location_id: @wizard_state[:location_id],
+                is_online: @wizard_state[:is_online] || false
+              )
+            elsif rule[:type] == "recurring"
+              expand_recurring_sessions(rule)
+            end
+          end
         end
+
+        # Also create from manually entered dates (single sessions from form inputs)
+        if @wizard_state[:sessions].present?
+          @wizard_state[:sessions].each do |session|
+            next if session[:datetime].blank? && session["datetime"].blank?
+            dt = Time.zone.parse(session[:datetime] || session["datetime"])
+            duration = (session[:duration] || session["duration"])&.to_i || 60
+            @production.shows.create!(
+              date_and_time: dt,
+              duration_minutes: duration,
+              secondary_name: session[:name] || session["name"],
+              event_type: "class",
+              location_id: @wizard_state[:location_id],
+              is_online: @wizard_state[:is_online] || false
+            )
+          end
+        end
+      end
+    end
+
+    def expand_recurring_sessions(rule)
+      start_date = Date.parse(rule[:start_date])
+      end_date = Date.parse(rule[:end_date])
+      time_parts = (rule[:time] || "19:00").split(":")
+      hour = time_parts[0].to_i
+      minute = time_parts[1].to_i
+      duration = rule[:duration_minutes]&.to_i || 60
+      day_of_week = rule[:day_of_week]&.to_i || 1
+      frequency = rule[:frequency] || "weekly"
+
+      # Find the first occurrence on or after start_date
+      current = start_date
+      days_ahead = (day_of_week - current.wday) % 7
+      current += days_ahead
+
+      step = frequency == "biweekly" ? 14 : 7
+
+      while current <= end_date
+        dt = Time.zone.local(current.year, current.month, current.day, hour, minute)
+        @production.shows.create!(
+          date_and_time: dt,
+          duration_minutes: duration,
+          event_type: "class",
+          location_id: @wizard_state[:location_id],
+          is_online: @wizard_state[:is_online] || false
+        )
+        current += step
       end
     end
 

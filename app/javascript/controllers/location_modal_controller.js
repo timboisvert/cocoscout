@@ -115,8 +115,19 @@ export default class extends Controller {
         }
         this.modalTarget.classList.add("hidden")
         document.removeEventListener("keydown", this.escapeListener)
-        // Reset the form
-        this.formTarget.reset()
+        // Reset the form inputs
+        if (typeof this.formTarget.reset === "function") {
+            this.formTarget.reset()
+        } else {
+            // Reset inputs manually for non-form containers
+            this.formTarget.querySelectorAll("input, select, textarea").forEach(input => {
+                if (input.type === "checkbox" || input.type === "radio") {
+                    input.checked = false
+                } else {
+                    input.value = ""
+                }
+            })
+        }
         this.clearErrors()
     }
 
@@ -197,15 +208,28 @@ export default class extends Controller {
     async submitForm(event) {
         event.preventDefault()
 
-        const formData = new FormData(this.formTarget)
-        const url = this.formTarget.action
+        const formEl = this.formTarget
+        const url = formEl.action || formEl.dataset.formUrl
+        const formData = new FormData()
+
+        // Collect inputs from the form target (works whether it's a <form> or <div>)
+        formEl.querySelectorAll("input, select, textarea").forEach(input => {
+            if (input.name && !input.disabled) {
+                if (input.type === "checkbox" || input.type === "radio") {
+                    if (input.checked) formData.append(input.name, input.value)
+                } else {
+                    formData.append(input.name, input.value)
+                }
+            }
+        })
 
         try {
             const response = await fetch(url, {
                 method: "POST",
                 body: formData,
                 headers: {
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content
                 }
             })
 

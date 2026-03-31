@@ -15,8 +15,8 @@
   current_label = dashboard_labels[current_dashboard] || "Dashboard"
 
   dashboards = [
-    { key: "production", label: "Production Dashboard", path: manage_path, desc: "Manage shows, casting, and availability" },
     { key: "talent", label: "Talent Dashboard", path: my_dashboard_path, desc: "Manage your availability, auditions, and courses" },
+    { key: "production", label: "Production Dashboard", path: manage_path, desc: "Manage shows, casting, and availability" },
     { key: "profile", label: profile_label, path: profile_path, desc: "Edit your headshots, resume, and settings" }
   ]
   dashboards << { key: "account", label: "My Account", path: account_path, desc: "Email, password, subscription, and notifications" } if current_dashboard == "account"

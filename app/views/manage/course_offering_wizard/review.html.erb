@@ -92,8 +92,27 @@
           Edit
         <% end %>
       </div>
-      <% if @wizard_state[:schedule_mode] == "contract" && @contract.present? %>
-        <dl class="space-y-2 text-sm">
+
+      <dl class="space-y-2 text-sm">
+        <%# Location %>
+        <div>
+          <dt class="text-gray-500">Location</dt>
+          <dd class="font-medium text-gray-900">
+            <% if @wizard_state[:is_online] %>
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Online
+              </span>
+            <% elsif @location %>
+              <%= @location.name %>
+            <% else %>
+              <span class="text-gray-400">Not specified</span>
+            <% end %>
+          </dd>
+        </div>
+
+        <%# Sessions %>
+        <% if @wizard_state[:schedule_mode] == "contract" && @contract.present? %>
           <div>
             <dt class="text-gray-500">Linked Contract</dt>
             <dd class="font-medium text-gray-900"><%= @contract.contractor_name %><% if @contract.production_name.present? %> — <%= @contract.production_name %><% end %></dd>
@@ -116,28 +135,79 @@
               <% end %>
             </dd>
           </div>
-        </dl>
-      <% elsif @wizard_state[:sessions].present? && @wizard_state[:sessions].any? { |s| (s[:datetime] || s["datetime"]).present? } %>
-        <dl class="text-sm">
-          <dt class="text-gray-500">Sessions</dt>
-          <dd class="text-gray-700 mt-1">
-            <% valid_sessions = @wizard_state[:sessions].select { |s| (s[:datetime] || s["datetime"]).present? } %>
-            <span class="font-medium"><%= valid_sessions.count %> session<%= valid_sessions.count == 1 ? '' : 's' %></span>
-            <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
-              <% valid_sessions.first(5).each do |session| %>
-                <% dt = DateTime.parse(session[:datetime] || session["datetime"]) rescue nil %>
-                <% dur = (session[:duration] || session["duration"])&.to_i || 60 %>
-                <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
-              <% end %>
-              <% if valid_sessions.count > 5 %>
-                <li>...and <%= valid_sessions.count - 5 %> more</li>
-              <% end %>
-            </ul>
-          </dd>
-        </dl>
-      <% else %>
-        <p class="text-sm text-gray-400 italic">No sessions scheduled — you can add them later</p>
-      <% end %>
+        <% else %>
+          <%# Check for session_rules (new format) or sessions (legacy format) %>
+          <% session_rules = @wizard_state[:session_rules] %>
+          <% legacy_sessions = @wizard_state[:sessions] %>
+          <% if session_rules.present? && session_rules.any? %>
+            <div>
+              <dt class="text-gray-500">Sessions</dt>
+              <dd class="text-gray-700 mt-1">
+                <% single_rules = session_rules.select { |r| (r[:type] || r["type"]) == "single" } %>
+                <% recurring_rules = session_rules.select { |r| (r[:type] || r["type"]) == "recurring" } %>
+                <% total_single = single_rules.count %>
+                <% total_recurring = recurring_rules.count %>
+
+                <% if single_rules.any? %>
+                  <span class="font-medium"><%= total_single %> individual session<%= total_single == 1 ? '' : 's' %></span>
+                  <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
+                    <% single_rules.first(5).each do |rule| %>
+                      <% dt = DateTime.parse(rule[:datetime] || rule["datetime"]) rescue nil %>
+                      <% dur = (rule[:duration_minutes] || rule["duration_minutes"] || rule[:duration] || rule["duration"])&.to_i || 60 %>
+                      <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
+                    <% end %>
+                    <% if total_single > 5 %>
+                      <li>...and <%= total_single - 5 %> more</li>
+                    <% end %>
+                  </ul>
+                <% end %>
+
+                <% recurring_rules.each do |rule| %>
+                  <div class="<%= 'mt-2' if single_rules.any? %>">
+                    <span class="font-medium">Recurring series</span>
+                    <% freq = (rule[:frequency] || rule["frequency"])&.to_s&.capitalize %>
+                    <% day_num = (rule[:day_of_week] || rule["day_of_week"]) %>
+                    <% day = day_num.present? ? %w[Sunday Monday Tuesday Wednesday Thursday Friday Saturday][day_num.to_i] : nil %>
+                    <% time = rule[:time] || rule["time"] %>
+                    <% dur = (rule[:duration_minutes] || rule["duration_minutes"] || rule[:duration] || rule["duration"])&.to_i || 60 %>
+                    <% start_d = rule[:start_date] || rule["start_date"] %>
+                    <% end_d = rule[:end_date] || rule["end_date"] %>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      <%= freq %> on <%= day %><%= "s" if day.present? %> at <%= time %> (<%= dur %> min)
+                      <% if start_d.present? && end_d.present? %>
+                        <br>From <%= Date.parse(start_d).strftime("%b %-d, %Y") rescue start_d %> to <%= Date.parse(end_d).strftime("%b %-d, %Y") rescue end_d %>
+                      <% end %>
+                    </p>
+                  </div>
+                <% end %>
+              </dd>
+            </div>
+          <% elsif legacy_sessions.present? && legacy_sessions.any? { |s| (s[:datetime] || s["datetime"]).present? } %>
+            <div>
+              <dt class="text-gray-500">Sessions</dt>
+              <dd class="text-gray-700 mt-1">
+                <% valid_sessions = legacy_sessions.select { |s| (s[:datetime] || s["datetime"]).present? } %>
+                <span class="font-medium"><%= valid_sessions.count %> session<%= valid_sessions.count == 1 ? '' : 's' %></span>
+                <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
+                  <% valid_sessions.first(5).each do |session| %>
+                    <% dt = DateTime.parse(session[:datetime] || session["datetime"]) rescue nil %>
+                    <% dur = (session[:duration] || session["duration"])&.to_i || 60 %>
+                    <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
+                  <% end %>
+                  <% if valid_sessions.count > 5 %>
+                    <li>...and <%= valid_sessions.count - 5 %> more</li>
+                  <% end %>
+                </ul>
+              </dd>
+            </div>
+          <% else %>
+            <div>
+              <dt class="text-gray-500">Sessions</dt>
+              <dd class="text-gray-400 italic">No sessions scheduled — you can add them later</dd>
+            </div>
+          <% end %>
+        <% end %>
+      </dl>
     </div>
 
     <!-- Pricing -->
@@ -209,10 +279,10 @@
           <dt class="text-gray-500">Capacity</dt>
           <dd class="font-medium text-gray-900"><%= @wizard_state[:capacity].present? ? "#{@wizard_state[:capacity]} spots" : "Unlimited" %></dd>
         </div>
-        <% if @wizard_state[:opens_at].present? || @wizard_state[:closes_at].present? %>
-          <div>
-            <dt class="text-gray-500">Registration Window</dt>
-            <dd class="text-gray-700">
+        <div>
+          <dt class="text-gray-500">Registration Window</dt>
+          <dd class="text-gray-700">
+            <% if @wizard_state[:registration_mode] == "custom" %>
               <% if @wizard_state[:opens_at].present? %>
                 Opens <%= DateTime.parse(@wizard_state[:opens_at]).strftime("%B %-d, %Y at %-I:%M %p") rescue @wizard_state[:opens_at] %>
               <% end %>
@@ -220,10 +290,27 @@
               <% if @wizard_state[:closes_at].present? %>
                 Closes <%= DateTime.parse(@wizard_state[:closes_at]).strftime("%B %-d, %Y at %-I:%M %p") rescue @wizard_state[:closes_at] %>
               <% end %>
-            </dd>
-          </div>
-        <% end %>
-
+              <% unless @wizard_state[:opens_at].present? || @wizard_state[:closes_at].present? %>
+                <span class="text-gray-400">Custom dates not set</span>
+              <% end %>
+            <% else %>
+              Open immediately, closes when course starts
+            <% end %>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-gray-500">Course Directory</dt>
+          <dd class="font-medium text-gray-900">
+            <% if @wizard_state[:listed_in_directory] != false %>
+              <span class="inline-flex items-center gap-1 text-green-700">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                Listed in directory
+              </span>
+            <% else %>
+              <span class="text-gray-500">Not listed</span>
+            <% end %>
+          </dd>
+        </div>
       </dl>
     </div>
   </div>

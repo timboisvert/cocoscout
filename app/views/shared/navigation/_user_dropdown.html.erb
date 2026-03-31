@@ -3,14 +3,12 @@
 <div class="flex items-center border-l border-slate-200 h-full">
   <div class="flex items-center gap-3">
     <% if impersonating? %>
-      <div class="flex items-center gap-3 bg-pink-100 border border-pink-300 px-4 py-2 rounded-lg ml-3">
+      <div class="flex items-center gap-3 bg-pink-100 border border-pink-300 px-4 py-2 rounded-md ml-3">
         <div class="flex flex-col">
           <div class="text-xs font-semibold text-pink-800 uppercase">Impersonating</div>
           <div class="text-sm font-medium text-pink-900"><%= Current.user.person&.name || Current.user.email_address %></div>
         </div>
-        <%= button_to stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded-md bg-pink-600 text-white font-semibold text-sm hover:bg-pink-700 transition cursor-pointer" do %>
-          Stop
-        <% end %>
+        <%= render "shared/button", text: "Stop", variant: "outline-pink", size: "small", path: stop_impersonating_user_path, method: :post %>
       </div>
     <% end %>
 

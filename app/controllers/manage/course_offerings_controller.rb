@@ -197,6 +197,54 @@ module Manage
       }
     end
 
+    def add_sessions
+      production = @course_offering.production
+      session_rules_json = params[:session_rules_json]
+
+      if session_rules_json.blank?
+        redirect_to manage_edit_course_offering_path(@course_offering, tab: 2), alert: "No sessions to add."
+        return
+      end
+
+      rules = JSON.parse(session_rules_json) rescue []
+      created_count = 0
+
+      rules.each do |rule|
+        type = rule["type"]
+        duration = (rule["duration_minutes"] || 60).to_i
+
+        if type == "single" && rule["datetime"].present?
+          dt = DateTime.parse(rule["datetime"]) rescue nil
+          next unless dt
+          production.shows.create!(
+            date_and_time: dt,
+            duration_minutes: duration,
+            event_type: "Class",
+            location: production.shows.last&.location
+          )
+          created_count += 1
+        elsif type == "recurring"
+          expand_recurring_sessions(rule).each do |session_dt|
+            production.shows.create!(
+              date_and_time: session_dt,
+              duration_minutes: duration,
+              event_type: "Class",
+              location: production.shows.last&.location
+            )
+            created_count += 1
+          end
+        end
+      end
+
+      # Assign instructors to new sessions
+      @course_offering.instructor_people.each do |person|
+        assign_instructor_to_sessions(@course_offering, person)
+      end
+
+      redirect_to manage_edit_course_offering_path(@course_offering, tab: 2),
+                  notice: "#{created_count} session#{'s' unless created_count == 1} added."
+    end
+
     def open_registration
       # Create/update Stripe product and prices
       begin
@@ -351,7 +399,12 @@ module Manage
       elsif credit.feature_type != "courses"
         render json: { valid: false, error: "This code does not apply to courses" }
       else
-        render json: { valid: true, description: "Promo code applied — CocoScout fee waived!" }
+        description = if credit.coverage_type == "platform_only"
+          "Promo code applied — CocoScout platform fee waived! Stripe processing fees still apply."
+        else
+          "Promo code applied — all fees waived!"
+        end
+        render json: { valid: true, description: description, coverage_type: credit.coverage_type }
       end
     end
 
@@ -494,6 +547,30 @@ module Manage
           end
         end
       end
+    end
+
+    def expand_recurring_sessions(rule)
+      start_date = Date.parse(rule["start_date"])
+      end_date = Date.parse(rule["end_date"])
+      time_parts = (rule["time"] || "19:00").split(":")
+      hour = time_parts[0].to_i
+      minute = time_parts[1].to_i
+      day_of_week = (rule["day_of_week"] || 1).to_i
+      frequency = rule["frequency"] || "weekly"
+
+      current = start_date
+      days_ahead = (day_of_week - current.wday) % 7
+      current += days_ahead
+
+      step = frequency == "biweekly" ? 14 : 7
+      sessions = []
+
+      while current <= end_date
+        sessions << Time.zone.local(current.year, current.month, current.day, hour, minute)
+        current += step
+      end
+
+      sessions
     end
   end
 end
