@@ -58,24 +58,15 @@
                 class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="feature_credit_feature_type" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Feature Type <span class="text-pink-500">*</span>
-              </label>
-              <%= form.select :feature_type, [["Courses", "courses"], ["Ticketing", "ticketing"]], {},
-                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-            </div>
-            <div>
-              <label for="feature_credit_scope_type" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Scope <span class="text-pink-500">*</span>
-              </label>
-              <p class="text-xs text-gray-500 mb-2">What level does this code apply to?</p>
-              <%= form.select :scope_type,
-                  [["Single Course", "course_offering"], ["Whole Production", "production"], ["Whole Organization", "organization"]],
-                  {},
-                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-            </div>
+          <div>
+            <label for="feature_credit_coverage_type" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Coverage <span class="text-pink-500">*</span>
+            </label>
+            <p class="text-xs text-gray-500 mb-2">What fees does this code cover?</p>
+            <%= form.select :coverage_type,
+                [["CocoScout fee only", "platform_only"], ["CocoScout fee + Stripe fees", "full"]],
+                {},
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
           </div>
 
           <div class="grid grid-cols-2 gap-4">

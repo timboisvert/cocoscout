@@ -86,7 +86,13 @@ class StripeWebhooksController < ApplicationController
   end
 
   def calculate_cocoscout_fee(offering, amount_cents)
-    return 0 if offering.feature_credit_redemption.present?
+    if offering.feature_credit_redemption.present?
+      coverage = offering.feature_credit_redemption.feature_credit&.coverage_type
+      return 0 if coverage == "full"
+      # platform_only: waive CocoScout's platform cut, but Stripe fees still apply to producer
+      # We still charge 0 platform fee — Stripe fees are deducted separately by Stripe
+      return 0
+    end
     (amount_cents * 0.05).round
   end
 

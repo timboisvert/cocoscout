@@ -2338,7 +2338,7 @@ class SuperadminController < ApplicationController
   end
 
   def promo_code_new
-    @promo_code = FeatureCredit.new(feature_type: "courses", scope_type: "organization", max_uses: 1)
+    @promo_code = FeatureCredit.new(feature_type: "courses", scope_type: "course_offering", coverage_type: "platform_only", max_uses: 1)
   end
 
   def promo_code_create
@@ -2423,8 +2423,8 @@ class SuperadminController < ApplicationController
 
   def promo_code_params
     params.require(:feature_credit).permit(
-      :code, :recipient_name, :description, :feature_type,
-      :scope_type, :max_uses, :expires_at
+      :code, :recipient_name, :description,
+      :coverage_type, :max_uses, :expires_at
     )
   end
 end

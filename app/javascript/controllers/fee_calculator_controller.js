@@ -9,7 +9,7 @@ export default class extends Controller {
         "promoModal", "promoLink", "promoAppliedBadge",
         "feeRow", "feeLabel", "feeDetails", "feeChevron",
         "registrationPrice", "cocoscoutFee", "producerNet", "stripeFee", "stripeFeeLabel", "platformFee",
-        "earlyBirdNet"
+        "earlyBirdNet", "feeExplanation"
     ]
 
     static values = {
@@ -109,6 +109,16 @@ export default class extends Controller {
                 this.stripeFeeLabelTarget.textContent = "Stripe card processing (2.9% + 30\u00a2) \u2014 paid by you"
             } else {
                 this.stripeFeeLabelTarget.textContent = "Stripe card processing (2.9% + 30\u00a2)"
+            }
+        }
+        // Update fee explanation based on coverage
+        if (this.hasFeeExplanationTarget) {
+            if (coverageType === "full") {
+                this.feeExplanationTarget.textContent = "Your promo code covers both the CocoScout fee and Stripe processing fees. You keep 100% of each registration."
+            } else if (coverageType === "platform_only") {
+                this.feeExplanationTarget.textContent = "Your promo code covers the CocoScout platform fee. Stripe processing fees (2.9% + 30\u00a2) still apply and are deducted from your revenue."
+            } else {
+                this.feeExplanationTarget.textContent = "Stripe fees are the standard rate for online card payments. CocoScout covers these out of the 5% fee \u2014 net revenue will always be exactly 95%."
             }
         }
 
