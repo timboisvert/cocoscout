@@ -40,11 +40,11 @@ class AuditionRequest < ApplicationRecord
   end
 
   def next
-    audition_cycle.audition_requests.where("created_at > ?", created_at).order(created_at: :asc).first
+    audition_cycle.audition_requests.active.where("created_at > ?", created_at).order(created_at: :asc).first
   end
 
   def previous
-    audition_cycle.audition_requests.where("created_at < ?", created_at).order(created_at: :desc).first
+    audition_cycle.audition_requests.active.where("created_at < ?", created_at).order(created_at: :desc).first
   end
 
   def scheduled_in_any?(audition_sessions)

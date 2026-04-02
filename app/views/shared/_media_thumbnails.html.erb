@@ -1,0 +1,68 @@
+<%#
+  Compact Media Thumbnails
+  Renders a row of tiny clickable thumbnails with a lightbox modal.
+
+  Parameters:
+    items: Collection of ProfileHeadshot or ProfileResume records
+    type:  "headshot" or "resume"
+    label: Optional display label (defaults to type name)
+%>
+
+<%
+  type  ||= "headshot"
+  label ||= type == "resume" ? "Resume" : "Headshots"
+
+  gallery_id = "mt_#{type}_#{SecureRandom.hex(4)}"
+  gallery_images = []
+
+  items.each do |item|
+    if type == "resume"
+      next unless item.file&.attached?
+      if item.file.content_type == "application/pdf"
+        next unless item.file.representable?
+        preview_url = url_for(item.file.representation(resize_to_limit: [200, 260]))
+        full_url    = url_for(item.file.representation(resize_to_limit: [1224, 1584]))
+      else
+        preview_url = url_for(item.file.variant(resize_to_limit: [200, 260]))
+        full_url    = url_for(item.file)
+      end
+      gallery_images << { preview_url: preview_url, full_url: full_url, name: item.name.presence || "Resume" }
+    else
+      next unless item.image&.attached?
+      preview_url = url_for(item.image.variant(resize_to_limit: [200, 266]))
+      full_url    = url_for(item.image)
+      gallery_images << { preview_url: preview_url, full_url: full_url, name: (item.respond_to?(:category) ? item.category : nil) || "Headshot" }
+    end
+  end
+%>
+
+<div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2"><%= label %></div>
+
+<% if gallery_images.any? %>
+  <div data-controller="image-gallery"
+       data-image-gallery-images-value="<%= gallery_images.to_json %>"
+       data-image-gallery-current-index-value="0"
+       data-image-gallery-modal-id-value="<%= gallery_id %>">
+    <div class="flex gap-1.5 overflow-x-auto pb-1">
+      <% gallery_images.each_with_index do |img, i| %>
+        <div class="flex-shrink-0 w-11 h-14 rounded overflow-hidden border border-gray-200 cursor-pointer hover:border-pink-400 transition-colors"
+             data-action="click->image-gallery#goToIndex click->image-gallery#openModal"
+             data-index="<%= i %>">
+          <img src="<%= img[:preview_url] %>" alt="<%= img[:name] %>" class="w-full h-full object-cover" loading="lazy">
+        </div>
+      <% end %>
+    </div>
+
+    <%# Lightbox modal %>
+    <div id="<%= gallery_id %>" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->image-gallery#closeModal keydown.escape->image-gallery#closeModal">
+      <div class="relative max-w-6xl max-h-full" data-action="click->image-gallery#stopPropagation">
+        <button type="button" data-action="click->image-gallery#closeModal" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors cursor-pointer">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img id="<%= gallery_id %>_image" src="" alt="Full size" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+      </div>
+    </div>
+  </div>
+<% else %>
+  <p class="text-sm text-gray-400">None uploaded</p>
+<% end %>

@@ -6,7 +6,14 @@ module Manage
     before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal]
 
     def show
-      # Person detail view
+      @profile_headshots = @person.profile_headshots.order(is_primary: :desc, position: :asc)
+      @profile_resumes = @person.profile_resumes.order(is_primary: :desc, position: :asc)
+      @profile_videos = @person.profile_videos.order(:position)
+      @profile_skills = @person.profile_skills.order(:category, :skill_name)
+      @performance_sections = @person.performance_sections.includes(:performance_credits).order(:position)
+      @training_credits = @person.training_credits.order(:position)
+      @socials = @person.socials
+      @talent_pools = @person.talent_pools.includes(:production)
     end
 
     def new

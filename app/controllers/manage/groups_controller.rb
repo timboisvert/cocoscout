@@ -6,7 +6,14 @@ module Manage
                   only: %i[show update update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
 
     def show
-      # Group detail view
+      @members = @group.members.includes(profile_headshots_attachment: :blob)
+      @profile_headshots = @group.profile_headshots.order(is_primary: :desc, position: :asc)
+      @profile_resumes = @group.profile_resumes.order(is_primary: :desc, position: :asc)
+      @profile_videos = @group.profile_videos.order(:position)
+      @profile_skills = @group.profile_skills.order(:category, :skill_name)
+      @performance_sections = @group.performance_sections.includes(:performance_credits).order(:position)
+      @socials = @group.socials
+      @talent_pools = @group.talent_pools.includes(:production)
     end
 
     def update_availability

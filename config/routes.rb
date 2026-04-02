@@ -576,6 +576,7 @@ Rails.application.routes.draw do
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_video", to: "audition_requests#edit_video", as: "edit_video_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_session_availability_signups_auditions_cycle_request"
+    patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_show_availability", to: "audition_requests#update_show_availability", as: "update_show_availability_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/cast_vote", to: "audition_requests#cast_vote", as: "cast_vote_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/votes", to: "audition_requests#votes", as: "votes_signups_auditions_cycle_request"
 

@@ -12,8 +12,8 @@
     links: []
   } %>
 
-  <%# Hero Section with Headshot, Name, Email, Profile Link %>
-  <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+  <%# Hero Section %>
+  <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
     <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
       <% headshot_variant = @group.safe_headshot_variant(:thumb) %>
       <% if headshot_variant %>
@@ -29,73 +29,144 @@
           <% if @group.email.present? %>
             <%= link_to @group.email, "mailto:#{@group.email}", class: "text-pink-500 hover:underline truncate max-w-[200px] sm:max-w-none" %>
           <% end %>
+          <% if @group.website.present? %>
+            <span class="text-gray-400">·</span>
+            <%= link_to @group.website, "https://#{@group.website}", target: "_blank", rel: "noopener", class: "text-pink-500 hover:underline truncate" %>
+          <% end %>
         </div>
       </div>
     </div>
-    <% if @group.public_key.present? %>
-      <div class="flex-shrink-0">
-        <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@group.public_key), variant: "primary", target: "_blank" } %>
-      </div>
-    <% end %>
+    <div class="flex-shrink-0 flex items-center gap-2">
+      <% if @group.public_key.present? %>
+        <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@group.public_key), variant: "outline", size: "small", target: "_blank" } %>
+      <% end %>
+    </div>
   </div>
 
-  <div class="w-full" data-controller="tabs">
-    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto -mx-5 px-5 scrollbar-hide">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Members</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
-    </nav>
+  <%# Dashboard tiles %>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 
-    <div data-tabs-target="panel">
-      <%= render "shared/group_card", group: @group %>
+    <%# Members %>
+    <div class="border border-gray-200 rounded-lg p-3 md:col-span-2 lg:col-span-1">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Members (<%= @members.size %>)</div>
+      <% if @members.any? %>
+        <div class="flex flex-wrap gap-1.5">
+          <% @members.each do |member| %>
+            <%= link_to manage_person_path(member), class: "group inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50 hover:bg-pink-50 transition-colors", title: member.name do %>
+              <% hs = member.safe_headshot_variant(:thumb) %>
+              <% if hs %>
+                <img src="<%= url_for(hs) %>" class="w-6 h-6 rounded-lg object-cover" loading="lazy">
+              <% else %>
+                <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-600"><%= member.initials %></div>
+              <% end %>
+              <span class="text-xs text-gray-700 group-hover:text-pink-600 truncate max-w-[100px]"><%= member.name %></span>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-400">No members</p>
+      <% end %>
     </div>
 
-    <div data-tabs-target="panel" class="hidden">
-      <% if @group.members.empty? %>
-        <p class="text-left text-gray-500 text-sm">No members found.</p>
-      <% else %>
-        <div class="space-y-3">
-          <% @group.members.each do |member| %>
-            <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-              <%= link_to manage_person_path(member), class: "flex items-center space-x-4" do %>
-                <% headshot = member.primary_headshot %>
-                <% if headshot&.image&.attached? %>
-                  <%= image_tag url_for(headshot.image.variant(:thumb)), class: "w-12 h-12 rounded-full object-cover" %>
-                <% else %>
-                  <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span class="text-gray-500 text-sm font-semibold"><%= member.initials %></span>
-                  </div>
-                <% end %>
-                <div class="flex-1">
-                  <div class="text-sm font-semibold text-gray-900"><%= member.name %></div>
-                  <div class="text-xs text-gray-500"><%= member.email %></div>
-                </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
+    <%# Headshots %>
+    <div class="border border-gray-200 rounded-lg p-3">
+      <%= render "shared/media_thumbnails", items: @profile_headshots, type: "headshot", label: "Headshots" %>
+    </div>
+
+    <%# Resume %>
+    <div class="border border-gray-200 rounded-lg p-3">
+      <%= render "shared/media_thumbnails", items: @profile_resumes, type: "resume", label: "Resume" %>
+    </div>
+
+    <%# Videos %>
+    <% if @profile_videos.any? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Videos (<%= @profile_videos.size %>)</div>
+        <div class="space-y-1">
+          <% @profile_videos.first(5).each do |video| %>
+            <%= link_to video.url, video.url, target: "_blank", rel: "noopener noreferrer", class: "block truncate" do %>
+              <span class="inline-flex items-center gap-1 text-sm text-pink-500 hover:underline">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <%= video.title.presence || video.url.truncate(30) %>
+              </span>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Socials %>
+    <% if @socials.any? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Socials</div>
+        <div class="space-y-1.5">
+          <% @socials.each do |social| %>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-400 flex-shrink-0"><%= social.icon(18) %></span>
+              <% if social.url.present? %>
+                <%= link_to social.display_name, social.url, target: "_blank", rel: "noopener", class: "text-sm text-pink-500 hover:underline truncate" %>
+              <% else %>
+                <span class="text-sm text-gray-700 truncate"><%= social.display_name %></span>
               <% end %>
             </div>
           <% end %>
         </div>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
 
-    <%# Notes Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Producer Notes" %>
-        <div class="p-4">
-          <p class="text-sm text-gray-500 mb-4">Private notes about this group. Only visible to producers.</p>
-          <%= form_with model: [:manage, @group], url: manage_group_path(@group), method: :patch, data: { turbo: true } do |form| %>
-            <div class="mb-4">
-              <%= form.rich_text_area :producer_notes, class: "min-h-[200px]" %>
-            </div>
-            <%= render "shared/button", text: "Save Notes", variant: "primary", type: :submit %>
+    <%# Actions %>
+    <% if current_user_can_manage? || Current.user&.superadmin? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
+        <div class="flex flex-wrap gap-2">
+          <% if current_user_can_manage? && @group.organizations.include?(Current.organization) %>
+            <%= link_to remove_from_organization_manage_group_path(@group), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to remove #{@group.name} from #{Current.organization.name}?" } do %>
+              <%= render "shared/button", text: "Remove from org", variant: "outline", size: "small" %>
+            <% end %>
           <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
 
   </div>
+
+  <%# Producer Notes %>
+  <% if current_user_can_manage? || Current.user&.superadmin? %>
+    <div class="mt-3 border border-gray-200 rounded-lg p-3">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Producer Notes</span>
+        <button type="button" onclick="document.getElementById('producer-notes-modal').classList.remove('hidden')" class="text-xs text-pink-500 hover:underline cursor-pointer">Edit</button>
+      </div>
+      <% if @group.producer_notes.present? %>
+        <div class="text-sm text-gray-700 prose prose-sm max-w-none"><%= @group.producer_notes %></div>
+      <% else %>
+        <p class="text-sm text-gray-400 italic">No notes yet</p>
+      <% end %>
+    </div>
+
+    <%# Producer Notes Edit Modal %>
+    <div id="producer-notes-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+      <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="document.getElementById('producer-notes-modal').classList.add('hidden')"></div>
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-900">Edit Producer Notes</h3>
+            <button type="button" onclick="document.getElementById('producer-notes-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="p-4">
+            <%= form_with model: [:manage, @group], url: manage_group_path(@group), method: :patch, data: { turbo: true } do |form| %>
+              <%= form.rich_text_area :producer_notes, class: "min-h-[150px]" %>
+              <div class="mt-3 flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('producer-notes-modal').classList.add('hidden')" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
+                <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
 
 </div>

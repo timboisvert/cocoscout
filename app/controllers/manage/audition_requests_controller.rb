@@ -5,9 +5,9 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability cast_vote votes archive unarchive]
+    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability update_show_availability cast_vote votes archive unarchive]
     before_action :ensure_user_is_manager, except: %i[index show cast_vote votes archived]
-    before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability cast_vote]
+    before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability update_show_availability cast_vote]
 
     def index
       # Redirect to audition cycle show page if archived
@@ -23,6 +23,17 @@ module Manage
     def show
       # Get the requestable (Person or Group)
       @requestable = @audition_request.requestable
+
+      # Eager load profile data for the requestable
+      if @requestable.present?
+        @profile_headshots = @requestable.profile_headshots
+        @profile_resumes = @requestable.profile_resumes
+        @profile_videos = @requestable.respond_to?(:profile_videos) ? @requestable.profile_videos : []
+        @profile_skills = @requestable.respond_to?(:profile_skills) ? @requestable.profile_skills : []
+        @performance_sections = @requestable.respond_to?(:performance_sections) ? @requestable.performance_sections.includes(:performance_credits) : []
+        @training_credits = @requestable.respond_to?(:training_credits) ? @requestable.training_credits : []
+        @socials = @requestable.respond_to?(:socials) ? @requestable.socials : []
+      end
 
       # Get the answers
       @answers = @audition_request.answers.includes(:question)
@@ -185,6 +196,23 @@ module Manage
       end
     end
 
+    def update_show_availability
+      requestable = @audition_request.requestable
+      show = Show.find(params[:show_id])
+
+      availability = ShowAvailability.find_or_initialize_by(
+        available_entity: requestable,
+        show: show
+      )
+
+      availability.status = params[:status]
+      if availability.save
+        render json: { status: availability.status }
+      else
+        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
+    end
+
     def archive
       @audition_request.archive!
       redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
@@ -289,7 +317,9 @@ module Manage
     end
 
     def set_audition_cycle
-      if params[:audition_cycle_id].present?
+      if params[:cycle_id].present?
+        @audition_cycle = AuditionCycle.find(params[:cycle_id])
+      elsif params[:audition_cycle_id].present?
         @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
       else
         @audition_cycle = @production.active_audition_cycle

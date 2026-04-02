@@ -1,8 +1,6 @@
-<% answers.each do |answer| %>
-    <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all mt-2">
-        <div class="text-md"><%= answer.question.text %></div>
-        <div class="text-md font-medium">
-            <%= render_question_answer(answer) %>
-        </div>
-    </div>
+<% answers.each_with_index do |answer, i| %>
+  <div class="<%= i > 0 ? 'mt-2.5 pt-2.5 border-t border-gray-100' : '' %>">
+    <div class="text-xs text-gray-500 mb-1"><%= answer.question.text %></div>
+    <div class="text-sm font-medium text-gray-900"><%= render_question_answer(answer) %></div>
+  </div>
 <% end %>

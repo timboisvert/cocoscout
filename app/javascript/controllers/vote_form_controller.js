@@ -20,50 +20,41 @@ export default class extends Controller {
         const vote = event.params.vote
         const url = event.params.url
         const comment = this.getVisibleCommentValue()
-
-        // Save current tab
-        const currentTab = this.getCurrentTab()
-
-        // Create a form and submit it
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = url
-
-        // Add CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
-        if (csrfToken) {
-            const csrfInput = document.createElement('input')
-            csrfInput.type = 'hidden'
-            csrfInput.name = 'authenticity_token'
-            csrfInput.value = csrfToken
-            form.appendChild(csrfInput)
-        }
 
-        // Add vote
-        const voteInput = document.createElement('input')
-        voteInput.type = 'hidden'
-        voteInput.name = 'vote'
-        voteInput.value = vote
-        form.appendChild(voteInput)
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ vote, comment })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.updateVoteButtons(vote)
+                }
+            })
+            .catch(e => console.error('Vote failed:', e))
+    }
 
-        // Add comment
-        const commentInput = document.createElement('input')
-        commentInput.type = 'hidden'
-        commentInput.name = 'comment'
-        commentInput.value = comment
-        form.appendChild(commentInput)
+    updateVoteButtons(selectedVote) {
+        // Update all vote buttons in this controller's scope
+        const activeClasses = ['bg-pink-500', 'hover:bg-pink-600', 'text-white']
+        const inactiveClasses = ['bg-white', 'border', 'border-gray-300', 'hover:bg-gray-50', 'text-gray-700']
 
-        // Add current tab to preserve it after redirect
-        if (currentTab !== null) {
-            const tabInput = document.createElement('input')
-            tabInput.type = 'hidden'
-            tabInput.name = 'tab'
-            tabInput.value = currentTab
-            form.appendChild(tabInput)
-        }
-
-        document.body.appendChild(form)
-        form.submit()
+        this.element.querySelectorAll('[data-vote-form-vote-param]').forEach(btn => {
+            const btnVote = btn.dataset.voteFormVoteParam
+            if (btnVote === selectedVote) {
+                btn.classList.remove(...inactiveClasses)
+                btn.classList.add(...activeClasses)
+            } else {
+                btn.classList.remove(...activeClasses)
+                btn.classList.add(...inactiveClasses)
+            }
+        })
     }
 
     getCurrentTab() {
@@ -85,43 +76,28 @@ export default class extends Controller {
     submitComment(event) {
         const url = event.params.url
         const comment = this.getVisibleCommentValue()
-
-        // Save current tab
-        const currentTab = this.getCurrentTab()
-
-        // Create a form and submit it (saves comment only, no vote change)
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = url
-
-        // Add CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
-        if (csrfToken) {
-            const csrfInput = document.createElement('input')
-            csrfInput.type = 'hidden'
-            csrfInput.name = 'authenticity_token'
-            csrfInput.value = csrfToken
-            form.appendChild(csrfInput)
-        }
 
-        // Add comment only (no vote param means keep existing vote)
-        const commentInput = document.createElement('input')
-        commentInput.type = 'hidden'
-        commentInput.name = 'comment'
-        commentInput.value = comment
-        form.appendChild(commentInput)
-
-        // Add current tab to preserve it after redirect
-        if (currentTab !== null) {
-            const tabInput = document.createElement('input')
-            tabInput.type = 'hidden'
-            tabInput.name = 'tab'
-            tabInput.value = currentTab
-            form.appendChild(tabInput)
-        }
-
-        document.body.appendChild(form)
-        form.submit()
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ comment })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Brief visual feedback on save button
+                    const btn = event.currentTarget
+                    const originalText = btn.textContent
+                    btn.textContent = '✓'
+                    setTimeout(() => { btn.textContent = originalText }, 1500)
+                }
+            })
+            .catch(e => console.error('Comment save failed:', e))
     }
 
     // Navigate to another page, saving comment first via fetch

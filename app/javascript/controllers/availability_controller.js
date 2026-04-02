@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static values = { showId: Number, status: String, personId: Number, updateUrl: String }
-    static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText", "noteInput", "noteContainer", "saveButton"]
+    static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText", "noteInput", "noteContainer", "saveButton", "readIndicator"]
 
     connect() {
         // Only update buttons if this is a show row (has showIdValue)
@@ -31,14 +31,13 @@ export default class extends Controller {
         const entityType = showRow.dataset.availabilityEntityTypeValue;
 
         let url, body;
-        if (updateUrl && personId) {
-            // Admin updating someone else's availability
+        if (updateUrl) {
+            // Admin updating someone else's availability via manage endpoint
             url = updateUrl;
-            // For audition sessions, use different parameter names
             if (entityKey === "audition_session") {
                 body = { availability_session_id: showId, [`availability_${showId}`]: status };
             } else {
-                body = { [`availability_${showId}`]: status };
+                body = { show_id: showId, status: status };
             }
         } else {
             // User updating their own availability
@@ -66,7 +65,7 @@ export default class extends Controller {
                     // Show check icon in the selected button
                     this.showCheckForStatus(showRow, data.status);
                 } else if (data.error) {
-                    alert(data.error);
+                    console.error("Availability update failed:", data.error);
                 }
             });
     }
@@ -102,7 +101,7 @@ export default class extends Controller {
                     this.statusValue = data.status;
                     this.updateButtons();
                 } else if (data.error) {
-                    alert(data.error);
+                    console.error("Availability update failed:", data.error);
                 }
             });
     }
@@ -125,12 +124,20 @@ export default class extends Controller {
             const linkStatus = link.dataset.availabilityStatus;
             if (linkStatus === currentStatus) {
                 link.classList.add('bg-pink-500', 'text-white');
-                link.classList.remove('bg-white', 'text-gray-700', 'hover:bg-gray-50');
+                link.classList.remove('bg-white', 'text-gray-700', 'text-gray-600', 'hover:bg-gray-50');
             } else {
                 link.classList.remove('bg-pink-500', 'text-white');
-                link.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-50');
+                link.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-50');
             }
         });
+
+        // Update read-only indicator if present
+        const readIndicator = row.querySelector('[data-availability-target="readIndicator"]');
+        if (readIndicator) {
+            readIndicator.textContent = currentStatus === 'available' ? 'A' : 'U';
+            readIndicator.classList.remove('text-pink-500', 'text-gray-400', 'text-gray-300');
+            readIndicator.classList.add(currentStatus === 'available' ? 'text-pink-500' : 'text-gray-400');
+        }
 
         // Show/hide note container based on status
         const noteContainer = row.querySelector('[data-availability-target="noteContainer"]');
@@ -188,7 +195,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    console.error("Note save failed:", data.error);
                 } else {
                     // Show checkmark feedback
                     const originalText = button.textContent;

@@ -205,7 +205,50 @@ module Manage
     end
 
     # GET /auditions/1
-    def show; end
+    def show
+      @auditionable = @audition.auditionable
+      @audition_request = @audition.audition_request
+
+      # Eager load profile data
+      if @auditionable.present?
+        @profile_headshots = @auditionable.profile_headshots
+        @profile_resumes = @auditionable.profile_resumes
+        @socials = @auditionable.respond_to?(:socials) ? @auditionable.socials : []
+      end
+
+      # Get answers from the audition request
+      @answers = @audition_request&.answers&.includes(:question) || []
+
+      # Get all votes for this audition
+      @votes = @audition.audition_votes.includes(user: :default_person)
+
+      # Load availability data if enabled
+      if @audition_cycle.include_availability_section && @auditionable.present?
+        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
+
+        @show_availabilities = {}
+        ShowAvailability.where(available_entity: @auditionable, show_id: @shows.pluck(:id)).each do |sa|
+          @show_availabilities[sa.show_id] = sa
+        end
+      end
+
+      # Load audition session availability
+      if @audition_cycle.include_audition_availability_section
+        @audition_sessions_list = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+
+        @audition_availability = {}
+        AuditionSessionAvailability.where(available_entity: @auditionable, audition_session_id: @audition_sessions_list.pluck(:id)).each do |sa|
+          @audition_availability[sa.audition_session_id.to_s] = sa.status.to_s
+        end
+      end
+
+      # Navigation between auditions in session
+      @auditions_in_session = @audition.audition_session.auditions.order(:id)
+      current_index = @auditions_in_session.find_index(@audition)
+      @prev_audition = current_index && current_index > 0 ? @auditions_in_session[current_index - 1] : nil
+      @next_audition = current_index && current_index < @auditions_in_session.size - 1 ? @auditions_in_session[current_index + 1] : nil
+    end
 
     # POST /auditions/:id/cast_audition_vote
     def cast_audition_vote

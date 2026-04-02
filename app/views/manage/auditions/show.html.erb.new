@@ -152,9 +152,9 @@
                     <span class="text-gray-900 truncate"><%= show.display_name %></span>
                   </div>
                   <% if availability %>
-                    <span class="flex-shrink-0 text-xs font-medium <%= availability.status == 'available' ? 'text-pink-500' : 'text-gray-400' %>"><%= availability.status == 'available' ? 'A' : 'U' %></span>
+                    <span class="flex-shrink-0 w-2 h-2 rounded-full <%= availability.status == 'available' ? 'bg-green-500' : 'bg-red-400' %>"></span>
                   <% else %>
-                    <span class="flex-shrink-0 text-xs font-medium text-gray-300">&ndash;</span>
+                    <span class="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300"></span>
                   <% end %>
                 </div>
               <% end %>
@@ -174,9 +174,9 @@
                     <span class="text-gray-900 truncate"><%= session.start_at.strftime("%l:%M %p").strip %></span>
                   </div>
                   <% if current_status.present? %>
-                    <span class="flex-shrink-0 text-xs font-medium <%= current_status == 'available' ? 'text-pink-500' : 'text-gray-400' %>"><%= current_status == 'available' ? 'A' : 'U' %></span>
+                    <span class="flex-shrink-0 w-2 h-2 rounded-full <%= current_status == 'available' ? 'bg-green-500' : 'bg-red-400' %>"></span>
                   <% else %>
-                    <span class="flex-shrink-0 text-xs font-medium text-gray-300">&ndash;</span>
+                    <span class="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300"></span>
                   <% end %>
                 </div>
               <% end %>

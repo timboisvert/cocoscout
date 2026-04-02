@@ -1,5 +1,6 @@
 <% content_for :title, "Audition Requests" %>
-<div class="w-full pb-48 lg:pb-40 relative">
+<% can_vote = (current_user_can_review?(@production) || current_user_can_manage?(@production)) && current_user_can_review?(@production) && @audition_cycle.voting_enabled && @audition_cycle.active %>
+<div class="w-full <%= can_vote ? 'pb-48 lg:pb-40' : 'pb-8' %> relative">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%# Archived stamp - inky rubber stamp effect %>
@@ -41,7 +42,7 @@
 
   <%# Hero Section with Headshot, Name, Email, Profile Link %>
   <% if @requestable.present? %>
-    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
+    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-4">
       <%# Top row: Headshot + Name/Email %>
       <div class="flex items-center gap-4 flex-1 min-w-0">
         <% if @requestable.respond_to?(:safe_headshot_variant) %>
@@ -77,388 +78,245 @@
              data-compose-message-recipient-name-value="<%= @requestable.name %>"
              data-compose-message-recipient-headshot-value="<%= @requestable.safe_headshot_variant(:thumb) ? url_for(@requestable.safe_headshot_variant(:thumb)) : '' %>">
           <% if @requestable.is_a?(Person) %>
-            <%= render "shared/button", text: "Contact", variant: "outline", type: :button, data: { action: "click->compose-message#open" } %>
+            <%= render "shared/button", text: "Contact", variant: "outline", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
           <% end %>
-          <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@requestable.public_key), variant: "outline", target: "_blank" } %>
+          <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@requestable.public_key), variant: "outline", size: "small", target: "_blank" } %>
         </div>
       <% end %>
     </div>
   <% end %>
 
-  <div class="w-full" data-controller="tabs">
-    <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
-      <% idx = 0 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Profile</button>
-      <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Headshots</button>
-      <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
-      <% idx += 1 %>
-      <% if @audition_cycle.accepts_video_submissions? %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Video</button>
-        <% idx += 1 %>
-      <% end %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Availability</button>
-      <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Audition Questions</button>
-      <% idx += 1 %>
-      <% if current_user_can_review?(@production) %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Votes</button>
-        <% idx += 1 %>
-      <% end %>
-    </nav>
+  <div class="space-y-4">
 
-    <%# Profile Tab %>
-    <div data-tabs-target="panel">
-      <% if @requestable.is_a?(Person) %>
-        <%= render "manage/audition_requests/profile_tab", person: @requestable %>
-      <% elsif @requestable.present? %>
-        <%= render "shared/group_card", group: @requestable, show_delete_signup: true, show_public_profile_link: false %>
-      <% else %>
-        <p class="text-gray-500">This person/group is no longer available.</p>
-      <% end %>
-    </div>
-
-    <%# Headshots Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <% if @requestable.nil? %>
-        <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
-      <% elsif @requestable.respond_to?(:profile_headshots) && @requestable.profile_headshots.any? %>
-        <%= render "shared/image_gallery", items: @requestable.profile_headshots, type: "headshot", empty_message: "No headshots uploaded" %>
-      <% else %>
-        <p class="text-left text-gray-500 text-sm">No headshots uploaded</p>
-      <% end %>
-    </div>
-
-    <%# Resume Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <% if @requestable.nil? %>
-        <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
-      <% else %>
-        <%= render "shared/image_gallery", items: @requestable.profile_resumes, type: "resume", empty_message: "No resume found" %>
-      <% end %>
-    </div>
-
-    <%# Video Tab (conditional) %>
-    <% if @audition_cycle.accepts_video_submissions? %>
-      <div data-tabs-target="panel" class="hidden">
-        <% if @audition_request.video_url.present? %>
-          <div class="mt-2">
-            <%= render "manage/audition_requests/video", audition_request: @audition_request %>
-          </div>
-          <% if @audition_cycle.active %>
-            <div class="mt-2">
-              <%= link_to "Edit Video",
-                  manage_edit_video_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
-                  class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
-              %>
+    <%# Headshots, Resume & Socials %>
+    <% if @requestable.present? %>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="border border-gray-200 rounded-lg p-3">
+          <%= render "shared/media_thumbnails", items: @profile_headshots, type: "headshot", label: "Headshots" %>
+        </div>
+        <div class="border border-gray-200 rounded-lg p-3">
+          <%= render "shared/media_thumbnails", items: @profile_resumes, type: "resume", label: "Resume" %>
+        </div>
+        <div class="border border-gray-200 rounded-lg p-3">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Socials</div>
+          <% if @socials.any? %>
+            <div class="space-y-1.5">
+              <% @socials.each do |social| %>
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-400 flex-shrink-0"><%= social.icon(18) %></span>
+                  <% if social.url.present? %>
+                    <%= link_to social.display_name, social.url, target: "_blank", rel: "noopener", class: "text-sm text-pink-500 hover:underline truncate" %>
+                  <% else %>
+                    <span class="text-sm text-gray-700 truncate"><%= social.display_name %></span>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
+          <% else %>
+            <p class="text-sm text-gray-400 italic">No socials</p>
           <% end %>
-        <% else %>
-          <p class="text-sm text-gray-500">No video uploaded</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Video %>
+    <% if @audition_cycle.accepts_video_submissions? && @audition_request.video_url.present? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Video</div>
+        <%= render "manage/audition_requests/video", audition_request: @audition_request %>
+        <% if @audition_cycle.active && current_user_can_manage?(@production) %>
+          <div class="mt-2">
+            <%= link_to manage_edit_video_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) do %>
+              <%= render "shared/button", text: "Edit Video", variant: "outline", size: "small" %>
+            <% end %>
+          </div>
         <% end %>
       </div>
     <% end %>
 
-    <%# Availability Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <% if current_user_can_manage?(@production) && @audition_cycle.active %>
-        <%# Manager view: availability with edit buttons %>
-        <% if @audition_cycle.include_availability_section && @shows.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <%= render "shared/card_header", title: "Show & Event Availability" %>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @shows.each do |show| %>
-                  <% availability = @show_availabilities[show.id] %>
-                  <%= render partial: "shared/show_row", locals: {
-                    show: show,
-                    show_location: true,
-                    show_production: false,
-                    show_linked: false,
-                    availability: availability,
-                    entity_key: "show_#{show.id}",
-                    entity: @requestable,
-                    has_groups: false,
-                    right_panel: :availability,
-                    manage_context: true
-                  } %>
-                <% end %>
-              </div>
-            </div>
+    <%# Actions - full width %>
+    <% if current_user_can_manage? && @audition_request.present? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
+        <% if @audition_request.archived? %>
+          <div class="p-2 bg-amber-50 border border-amber-200 rounded-lg mb-2">
+            <p class="text-sm text-amber-800">
+              Archived on <%= @audition_request.archived_at.strftime("%b %-d, %Y") %>
+            </p>
           </div>
         <% end %>
+        <div class="flex flex-wrap gap-2">
+          <% if @audition_request.archived? %>
+            <%= link_to manage_unarchive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to restore this sign-up? It will appear in the active sign-ups list again." } do %>
+              <%= render "shared/button", text: "Restore Sign-up", variant: "outline", size: "small" %>
+            <% end %>
+          <% else %>
+            <%= link_to manage_archive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to archive this sign-up? They will be removed from the active sign-ups list but their request will be preserved." } do %>
+              <%= render "shared/button", text: "Archive Sign-up", variant: "outline", size: "small" %>
+            <% end %>
+          <% end %>
+          <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :delete, turbo_confirm: "⚠️ PERMANENTLY DELETE this sign-up?\n\nThis will completely remove their audition request, answers, votes, and all associated data. This cannot be undone.\n\nIf you just want to remove them from the active list, use 'Archive' instead." } do %>
+            <%= render "shared/button", text: "Delete Sign-up", variant: "outline", size: "small" %>
+          <% end %>
+          <% if Current.user&.superadmin? && @requestable.is_a?(Person) && @requestable.user %>
+            <%= button_to impersonate_user_path, method: :post, params: { email: @requestable.user.email_address }, class: "inline-block" do %>
+              <%= render "shared/button", text: "Impersonate User", variant: "outline", size: "small" %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
-        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <%= render "shared/card_header", title: "Audition Session Availability" %>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @audition_sessions.each do |session| %>
-                  <% current_status = @audition_availability&.dig("#{session.id}") %>
-                  <div class="group relative flex flex-col md:flex-row md:items-center gap-2 md:gap-0 px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200"
-                       data-controller="availability"
-                       data-availability-show-id-value="<%= session.id %>"
-                       data-availability-status-value="<%= current_status || 'unset' %>"
-                       data-availability-entity-key-value="audition_session"
-                       data-availability-entity-id="<%= @requestable.id %>"
-                       data-availability-entity-type="<%= @requestable.class.name %>"
-                       data-availability-update-url-value="<%= manage_update_session_availability_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
-                       data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>">
-                    <div class="w-full md:w-1/3 flex items-center gap-4">
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900">Audition Session</div>
-                        <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
-                      </div>
-                    </div>
-                    <div class="w-full md:w-2/3 md:border-l border-gray-200 md:pl-4 flex items-center gap-3 border-t md:border-t-0 pt-2 md:pt-0">
-                      <%# Headshot %>
-                      <% headshot_variant = @requestable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-                      <% else %>
-                        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
-                          <%= @requestable.respond_to?(:initials) ? @requestable.initials : @requestable.name[0..1].upcase %>
-                        </div>
-                      <% end %>
-                      <div class="flex-shrink-0">
-                        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
-                        <div class="flex gap-0">
-                          <% [:available, :unavailable].each do |status| %>
-                            <% classes = "w-8 sm:w-20 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center" %>
-                            <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
-                            <% classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50" %>
-                            <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
-                              <span data-availability-target="<%= status %>Check" class="hidden">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
-                                </svg>
-                              </span>
-                              <span data-availability-target="<%= status %>Text">
-                                <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
-                                <span class="sm:hidden"><%= status == :available ? '✓' : '✗' %></span>
-                              </span>
-                            <% end %>
-                          <% end %>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-
-        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
-          <p class="text-center mt-10 text-gray-500">No availability entered</p>
-        <% end %>
-      <% else %>
-        <%# Reviewer view: read-only availability display %>
-        <% if @audition_cycle.include_availability_section && @shows.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <%= render "shared/card_header", title: "Show & Event Availability" %>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @shows.each do |show| %>
-                  <% availability = @show_availabilities[show.id] %>
-                  <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200">
-                    <div class="w-1/2 flex items-center gap-4">
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900"><%= show.display_name %></div>
-                        <div class="text-sm text-gray-600"><%= show.time_range_display %></div>
-                      </div>
-                    </div>
-                    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
-                      <% if availability %>
-                        <span class="px-2 py-1 text-xs rounded <%= availability.status == 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
-                          <%= availability.status.humanize %>
-                        </span>
-                      <% else %>
-                        <span class="text-xs text-gray-400">Not set</span>
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-
-        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <%= render "shared/card_header", title: "Audition Session Availability" %>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @audition_sessions.each do |session| %>
-                  <% current_status = @audition_availability&.dig("#{session.id}") %>
-                  <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 px-3 py-2 border rounded-lg bg-white border-gray-200">
-                    <div class="w-full md:w-1/3 flex items-center gap-4">
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900">Audition Session</div>
-                        <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
-                      </div>
-                    </div>
-                    <div class="w-full md:w-2/3 md:border-l border-gray-200 md:pl-4 flex items-center border-t md:border-t-0 pt-2 md:pt-0">
-                      <% if current_status.present? %>
-                        <span class="px-2 py-1 text-xs rounded <%= current_status == 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
-                          <%= current_status.humanize %>
-                        </span>
-                      <% else %>
-                        <span class="text-xs text-gray-400">Not set</span>
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-
-        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
-          <p class="text-center mt-10 text-gray-500">No availability entered</p>
-        <% end %>
-      <% end %>
-    </div>
-
-    <%# Audition Questions Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <% if @answers&.any? %>
-        <div class="mt-2">
+    <%# Questions & Availability side by side %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <%# Audition Questions %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Audition Questions</div>
+        <% if @answers&.any? %>
           <%= render "manage/audition_requests/answers", answers: @answers %>
-        </div>
-
-        <% if current_user_can_manage?(@production) && @audition_cycle.active %>
-          <div class="mt-2">
-            <%= link_to "Edit Answers",
-                manage_edit_answers_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
-                class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
-            %>
-          </div>
+          <% if current_user_can_manage?(@production) && @audition_cycle.active %>
+            <div class="mt-3 pt-3 border-t border-gray-100">
+              <%= link_to manage_edit_answers_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) do %>
+                <%= render "shared/button", text: "Edit Answers", variant: "outline", size: "small" %>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-gray-400 italic">No questions asked</p>
         <% end %>
-      <% else %>
-        <p class="text-center mt-10">No audition questions answered</p>
-      <% end %>
+      </div>
+
+      <%# Availability %>
+      <% can_manage_active = current_user_can_manage?(@production) && @audition_cycle.active %>
+      <div class="border border-gray-200 rounded-lg p-3"<%= ' data-controller=availability-edit'.html_safe if can_manage_active %>>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Availability</div>
+          <% if can_manage_active %>
+            <a href="#" data-action="click->availability-edit#toggle" data-availability-edit-target="link" class="text-xs text-pink-500 hover:underline">Change</a>
+          <% end %>
+        </div>
+        <% has_show_availability = @audition_cycle.include_availability_section && @shows&.present? %>
+        <% has_session_availability = @audition_cycle.include_audition_availability_section && @audition_sessions&.present? %>
+        <% if has_show_availability || has_session_availability %>
+          <div class="divide-y divide-gray-100">
+            <% if has_show_availability %>
+              <% @shows.each do |show| %>
+                <% availability = @show_availabilities[show.id] %>
+                <div class="flex items-center justify-between py-1.5 gap-2 text-xs"
+                  <% if can_manage_active %>
+                     data-controller="availability"
+                     data-availability-show-id-value="<%= show.id %>"
+                     data-availability-status-value="<%= availability&.status || 'unset' %>"
+                     data-availability-entity-key-value="show_<%= show.id %>"
+                     data-availability-entity-type-value="<%= @requestable.class.name %>"
+                     data-availability-update-url-value="<%= manage_update_show_availability_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
+                  <% end %>>
+                  <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-gray-500 flex-shrink-0 w-12"><%= show.date_and_time.strftime("%b %-d") %></span>
+                    <span class="text-gray-900 truncate"><%= show.display_name %></span>
+                  </div>
+                  <%# Read-only A/U indicator (default visible) %>
+                  <span data-availability-edit-target="readView" data-availability-target="readIndicator" class="flex-shrink-0 text-xs font-medium <%= availability&.status == 'available' ? 'text-pink-500' : availability&.status == 'unavailable' ? 'text-gray-400' : 'text-gray-300' %>"><%= availability&.status == 'available' ? 'A' : availability&.status == 'unavailable' ? 'U' : '–' %></span>
+                  <% if can_manage_active %>
+                    <%# Edit buttons (hidden by default) %>
+                    <div data-availability-edit-target="editView" class="hidden flex gap-0 flex-shrink-0">
+                      <% [:available, :unavailable].each do |status| %>
+                        <% classes = "px-4 py-1.5 sm:px-0 sm:w-[5.5rem] sm:py-1 text-xs text-center border border-gray-200 cursor-pointer" %>
+                        <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
+                        <% classes += (availability&.status == status.to_s) ? " bg-pink-500 text-white" : " bg-white text-gray-600 hover:bg-gray-50" %>
+                        <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
+                          <span data-availability-target="<%= status %>Check" class="hidden">✓</span>
+                          <span data-availability-target="<%= status %>Text"><span class="sm:hidden"><%= status == :available ? 'A' : 'U' %></span><span class="hidden sm:inline"><%= status == :available ? 'Available' : 'Unavailable' %></span></span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+
+            <% if has_session_availability %>
+              <% if has_show_availability %>
+                <div class="pt-2 pb-1">
+                  <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Audition Sessions</span>
+                </div>
+              <% end %>
+              <% @audition_sessions.each do |session| %>
+                <% current_status = @audition_availability&.dig("#{session.id}") %>
+                <div class="flex items-center justify-between py-1.5 gap-2 text-xs"
+                  <% if can_manage_active %>
+                     data-controller="availability"
+                     data-availability-show-id-value="<%= session.id %>"
+                     data-availability-status-value="<%= current_status || 'unset' %>"
+                     data-availability-entity-key-value="audition_session"
+                     data-availability-entity-id="<%= @requestable.id %>"
+                     data-availability-entity-type="<%= @requestable.class.name %>"
+                     data-availability-update-url-value="<%= manage_update_session_availability_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
+                     data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>"
+                  <% end %>>
+                  <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-gray-500 flex-shrink-0 w-12"><%= session.start_at.strftime("%b %-d") %></span>
+                    <span class="text-gray-900 truncate"><%= session.start_at.strftime("%l:%M %p").strip %></span>
+                  </div>
+                  <%# Read-only A/U indicator (default visible) %>
+                  <span data-availability-edit-target="readView" data-availability-target="readIndicator" class="flex-shrink-0 text-xs font-medium <%= current_status == 'available' ? 'text-pink-500' : current_status == 'unavailable' ? 'text-gray-400' : 'text-gray-300' %>"><%= current_status == 'available' ? 'A' : current_status == 'unavailable' ? 'U' : '–' %></span>
+                  <% if can_manage_active %>
+                    <%# Edit buttons (hidden by default) %>
+                    <div data-availability-edit-target="editView" class="hidden flex gap-0 flex-shrink-0">
+                      <% [:available, :unavailable].each do |status| %>
+                        <% classes = "px-4 py-1.5 sm:px-0 sm:w-[5.5rem] sm:py-1 text-xs text-center border border-gray-200 cursor-pointer" %>
+                        <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
+                        <% classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-600 hover:bg-gray-50" %>
+                        <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
+                          <span data-availability-target="<%= status %>Check" class="hidden">✓</span>
+                          <span data-availability-target="<%= status %>Text"><span class="sm:hidden"><%= status == :available ? 'A' : 'U' %></span><span class="hidden sm:inline"><%= status == :available ? 'Available' : 'Unavailable' %></span></span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-400 italic">No availability requested</p>
+        <% end %>
+      </div>
     </div>
 
-    <%# Votes Tab (for reviewers only) %>
-    <% if current_user_can_review?(@production) %>
-      <div data-tabs-target="panel" class="hidden">
-        <% votes = @audition_request.audition_request_votes.includes(user: :default_person).order(created_at: :desc) %>
-        <% vote_counts = @audition_request.vote_counts %>
-
-        <%# Vote count boxes spanning full width %>
-        <div class="grid grid-cols-3 gap-2 mb-4">
-          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
-            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:yes] %></div>
-            <div class="text-xs text-gray-500">Yes</div>
-          </div>
-          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
-            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:no] %></div>
-            <div class="text-xs text-gray-500">No</div>
-          </div>
-          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
-            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
-            <div class="text-xs text-gray-500">Not Sure</div>
-          </div>
-        </div>
-
-        <%# Two column layout: Reviewers on left, Comments on right %>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <%# Left side: Reviewers list %>
-          <div>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <%= render "shared/card_header", title: "Reviewers" %>
-              <div class="divide-y divide-gray-200">
-                <% if votes.any? %>
-                  <% votes.each do |vote| %>
-                    <div class="flex items-center px-4 py-3">
-                      <div class="w-1/2 flex items-center gap-2">
-                        <% if vote.user&.person %>
-                          <% headshot = vote.user.person.safe_headshot_variant(:thumb) %>
-                          <% if headshot %>
-                            <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-                          <% else %>
-                            <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
-                              <%= vote.user.person.initials %>
-                            </div>
-                          <% end %>
-                          <span class="text-sm text-gray-900 truncate"><%= vote.user.person.name %></span>
-                        <% else %>
-                          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">?</div>
-                          <span class="text-sm text-gray-500">Unknown</span>
-                        <% end %>
-                      </div>
-                      <div class="w-1/2 text-right">
-                        <% vote_label = case vote.vote
-                           when "yes" then "Yes"
-                           when "no" then "No"
-                           when "maybe" then "Not Sure"
-                           else "—"
-                           end %>
-                        <% vote_class = case vote.vote
-                           when "yes" then "bg-green-100 text-green-700"
-                           when "no" then "bg-red-100 text-red-700"
-                           when "maybe" then "bg-yellow-100 text-yellow-700"
-                           else "bg-gray-100 text-gray-500"
-                           end %>
-                        <span class="px-2 py-1 text-xs rounded font-medium <%= vote_class %>"><%= vote_label %></span>
-                      </div>
-                    </div>
-                  <% end %>
-                <% else %>
-                  <p class="px-4 py-3 text-sm text-gray-500">No votes yet</p>
+    <%# Votes box - shows how everyone has voted %>
+    <% if @votes.any? %>
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Votes</div>
+        <div class="space-y-2">
+          <% @votes.order(created_at: :desc).each do |vote| %>
+            <% voter_person = vote.user&.person %>
+            <% next unless voter_person %>
+            <div class="flex items-center gap-2">
+              <% headshot = voter_person.safe_headshot_variant(:thumb) %>
+              <% if headshot %>
+                <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600 flex-shrink-0">
+                  <%= voter_person.initials %>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <span class="text-sm font-medium text-gray-900"><%= voter_person.name %></span>
+                <% if vote.comment.present? %>
+                  <span class="text-sm text-gray-500 ml-1">&mdash; <%= vote.comment %></span>
                 <% end %>
               </div>
+              <% vote_badge = case vote.vote
+                 when "yes" then { text: "Yes", classes: "bg-green-100 text-green-700" }
+                 when "no" then { text: "No", classes: "bg-red-100 text-red-700" }
+                 when "maybe" then { text: "Not Sure", classes: "bg-amber-100 text-amber-700" }
+                 end %>
+              <% if vote_badge %>
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 <%= vote_badge[:classes] %>"><%= vote_badge[:text] %></span>
+              <% end %>
             </div>
-          </div>
-
-          <%# Right side: Comments %>
-          <div>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <%= render "shared/card_header", title: "Comments" %>
-              <div class="divide-y divide-gray-200">
-                <% votes_with_comments = votes.select { |v| v.comment.present? } %>
-                <% if votes_with_comments.any? %>
-                  <% votes_with_comments.each do |vote| %>
-                    <div class="px-4 py-3">
-                      <p class="text-sm text-gray-900 mb-2"><%= vote.comment %></p>
-                      <div class="flex items-center gap-2">
-                        <% if vote.user&.person %>
-                          <% headshot = vote.user.person.safe_headshot_variant(:thumb) %>
-                          <% if headshot %>
-                            <%= image_tag headshot, class: "w-5 h-5 rounded-lg object-cover flex-shrink-0" %>
-                          <% else %>
-                            <div class="w-5 h-5 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-[8px] flex-shrink-0">
-                              <%= vote.user.person.initials %>
-                            </div>
-                          <% end %>
-                          <span class="text-xs text-gray-500"><%= vote.user.person.name %></span>
-                        <% end %>
-                      </div>
-                    </div>
-                  <% end %>
-                <% else %>
-                  <p class="px-4 py-3 text-sm text-gray-500">No comments yet</p>
-                <% end %>
-              </div>
-            </div>
-          </div>
+          <% end %>
         </div>
       </div>
     <% end %>
@@ -467,10 +325,11 @@
 </div>
 
 
-<%# Fade overlay for bottom of content %>
-<div class="fixed bottom-0 left-0 right-0 lg:left-56 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
+<% if can_vote %>
+  <%# Fade overlay for bottom of content %>
+  <div class="fixed bottom-0 left-0 right-0 lg:left-56 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
 
-<% if current_user_can_review?(@production) && @audition_cycle.voting_enabled && @audition_cycle.active %>
+  <% votes = @audition_request.audition_request_votes.includes(user: :default_person).order(created_at: :desc) %>
   <% current_vote = @audition_request.vote_for(Current.user) %>
   <% vote_counts = @audition_request.vote_counts %>
 
@@ -493,7 +352,7 @@
         <div class="flex-shrink-0">
           <% if @audition_request.previous %>
             <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.previous),
-                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
                 data: { action: "click->vote-form#navigateWithSave" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -548,7 +407,7 @@
         <div class="flex-shrink-0 sm:hidden">
           <% if @audition_request.next %>
             <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.next),
-                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
                 data: { action: "click->vote-form#navigateWithSave" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -646,7 +505,7 @@
       <div class="hidden sm:block flex-shrink-0">
         <% if @audition_request.next %>
           <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.next),
-              class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+              class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
               data: { action: "click->vote-form#navigateWithSave" } do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -663,28 +522,6 @@
     </div>
   </div>
 <% end %>
-
-<script>
-  // Update navigation links to preserve current tab
-  document.addEventListener('DOMContentLoaded', function() {
-    function updateNavLinks() {
-      const hash = window.location.hash;
-      let tabIndex = 0;
-      if (hash && hash.startsWith('#tab-')) {
-        tabIndex = parseInt(hash.replace('#tab-', ''), 10);
-      }
-
-      document.querySelectorAll('.nav-preserve-tab').forEach(function(link) {
-        const url = new URL(link.href, window.location.origin);
-        url.searchParams.set('tab', tabIndex);
-        link.href = url.toString();
-      });
-    }
-
-    updateNavLinks();
-    window.addEventListener('hashchange', updateNavLinks);
-  });
-</script>
 
 <%# Compose Message Modal %>
 <%= render "shared/compose_message_modal" %>
