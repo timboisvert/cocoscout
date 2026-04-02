@@ -338,6 +338,9 @@ module My
         .where("slot_instances.show_id = :show_id OR direct_instances.show_id = :show_id", show_id: @show.id)
         .includes(:person, sign_up_slot: { sign_up_form_instance: :sign_up_form })
         .to_a
+
+      # My availability for this show, defaulting to current person
+      @my_availability = ShowAvailability.find_or_initialize_by(show: @show, available_entity: @person)
     end
 
     def calendar

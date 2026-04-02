@@ -1,0 +1,83 @@
+<%#
+  Standalone availability panel for card contexts (e.g., my/shows/show "My Availability" card).
+  Includes its own data-controller="availability" and all necessary data attributes.
+
+  Required locals:
+    - show: Show
+    - availability: ShowAvailability or nil
+    - entity: Person or Group
+    - current_status: string ('available','unavailable','unset')
+%>
+
+<%
+  entity_key = entity.is_a?(Person) ? "person_#{entity.id}" : "group_#{entity.id}"
+%>
+
+<div data-controller="availability"
+     data-availability-show-id-value="<%= show.id %>"
+     data-availability-status-value="<%= current_status %>"
+     data-availability-entity-key-value="<%= entity_key %>"
+     data-availability-entity-type-value="<%= entity.class.name %>">
+  <div class="flex items-center gap-3">
+    <%# Headshot %>
+    <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+    <% if headshot_variant %>
+      <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+        <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
+      </div>
+    <% end %>
+    <%# Name + Buttons %>
+    <div class="flex-1">
+      <div class="text-sm text-gray-700 mb-1"><%= entity.name %></div>
+      <div class="flex gap-0">
+        <% [:available, :unavailable].each do |status| %>
+          <%
+            classes = "w-8 sm:w-24 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
+            classes += status == :available ? " rounded-l border-r-0" : " rounded-r"
+            classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50"
+          %>
+          <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
+            <span data-availability-target="<%= status %>Check" class="hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+              </svg>
+            </span>
+            <span data-availability-target="<%= status %>Text">
+              <span class="sm:hidden">
+                <% if status == :available %>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
+                <% else %>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
+                <% end %>
+              </span>
+              <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
+            </span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Note field (only shown when available) %>
+  <% availability_note = availability&.note %>
+  <div data-availability-target="noteContainer" class="mt-3 pt-3 border-t border-gray-200 <%= current_status == 'available' ? '' : 'hidden' %>">
+    <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Note</div>
+    <div class="flex items-center gap-1">
+      <input type="text"
+             data-availability-target="noteInput"
+             data-action="focus->availability#showSaveButton"
+             value="<%= availability_note %>"
+             maxlength="100"
+             placeholder="Add a note..."
+             class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+      <button type="button"
+              data-availability-target="saveButton"
+              data-action="click->availability#saveNote"
+              class="hidden px-2 py-1.5 text-xs bg-pink-500 text-white rounded hover:bg-pink-600 cursor-pointer flex-shrink-0 transition-all">
+        Save
+      </button>
+    </div>
+  </div>
+</div>
