@@ -36,7 +36,7 @@ class GroupInvitationsController < ApplicationController
       if existing_person.user.present?
         group_url = Rails.application.routes.url_helpers.group_url(
           @group,
-          host: ENV.fetch("HOST", "localhost:3000")
+          **Rails.application.config.action_mailer.default_url_options
         )
 
         rendered = ContentTemplateService.render("group_member_added", {

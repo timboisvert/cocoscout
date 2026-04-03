@@ -107,7 +107,7 @@ module My
 
       shoutout_url = Rails.application.routes.url_helpers.my_shoutouts_url(
         tab: "received",
-        host: ENV.fetch("HOST", "localhost:3000")
+        **Rails.application.config.action_mailer.default_url_options
       )
 
       variables = {

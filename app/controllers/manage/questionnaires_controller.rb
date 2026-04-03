@@ -213,7 +213,7 @@ module Manage
         if person.user
           questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_form_url(
             token: @questionnaire.token,
-            host: ENV.fetch("HOST", "localhost:3000")
+            **Rails.application.config.action_mailer.default_url_options
           )
 
           variables = {

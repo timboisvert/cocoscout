@@ -26,8 +26,8 @@ class CourseQuestionnaireDeliveryJob < ApplicationJob
     organization = offering.production.organization
     questionnaire_url = Rails.application.routes.url_helpers.my_questionnaire_form_url(
       token: questionnaire.token,
-      host: ENV.fetch("HOST", "localhost:3000"),
-      ctx: "CourseOffering-#{offering.id}"
+      ctx: "CourseOffering-#{offering.id}",
+      **Rails.application.config.action_mailer.default_url_options
     )
 
     # Use the offering's saved email draft if present, otherwise fall back to content template

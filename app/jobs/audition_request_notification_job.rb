@@ -32,7 +32,7 @@ class AuditionRequestNotificationJob < ApplicationJob
         production_name: production.name,
         review_url: Rails.application.routes.url_helpers.manage_signups_auditions_url(
           production_id: production.id,
-          host: ENV.fetch("HOST", "localhost:3000")
+          **Rails.application.config.action_mailer.default_url_options
         )
       })
 

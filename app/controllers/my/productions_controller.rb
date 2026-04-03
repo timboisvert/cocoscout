@@ -273,7 +273,7 @@ module My
         groups_text = groups_removed.any? ? groups_removed.join(", ") : "the production"
         talent_pool_url = Rails.application.routes.url_helpers.manage_auditions_url(
           production_id: @production.id,
-          host: ENV.fetch("HOST", "localhost:3000")
+          **Rails.application.config.action_mailer.default_url_options
         )
         rendered = ContentTemplateService.render("talent_left_production", {
           recipient_name: user.person&.first_name || "there",
