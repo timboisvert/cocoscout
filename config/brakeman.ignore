@@ -280,6 +280,40 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "8f772cd7d35b573d310cb0cf91cf685dee64f5603dd905fca08b645ab0287155",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/groups/show.html.erb",
+      "line": 107,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to((Unresolved Model).new.display_name, (Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener\", :class => \"text-sm text-pink-500 hover:underline truncate\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::GroupsController",
+          "method": "show",
+          "line": 17,
+          "file": "app/controllers/manage/groups_controller.rb",
+          "rendered": {
+            "name": "manage/groups/show",
+            "file": "app/views/manage/groups/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/groups/show"
+      },
+      "user_input": "(Unresolved Model).new.url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "9145541b41d5f3f2c3cd582bce3a7d1cb4e2e5746f7c49fbf4cb13d6784d717c",
       "check_name": "RenderInline",
@@ -382,6 +416,40 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "cd4b6e8a6b4bd9c9c5d3593aac068ab171fece35403170d3f820d3c3d8064695",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/groups/show.html.erb",
+      "line": 87,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to((Unresolved Model).new.url, (Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"block truncate\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::GroupsController",
+          "method": "show",
+          "line": 17,
+          "file": "app/controllers/manage/groups_controller.rb",
+          "rendered": {
+            "name": "manage/groups/show",
+            "file": "app/views/manage/groups/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/groups/show"
+      },
+      "user_input": "(Unresolved Model).new.url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "d4ae03b34ae8b0a8b8fba3b2c1f067361dbeb4cea2db50f076f30633cac2ae32",
       "check_name": "RenderInline",
@@ -455,7 +523,7 @@
       "check_name": "VerbConfusion",
       "message": "Potential HTTP verb confusion. `HEAD` is routed like `GET` but `request.get?` will return `false`",
       "file": "app/controllers/manage/manage_controller.rb",
-      "line": 211,
+      "line": 273,
       "link": "https://brakemanscanner.org/docs/warning_types/http_verb_confusion/",
       "code": "if request.get? then\n  if ((request.fullpath == manage_path) or (request.fullpath == \"#{manage_path}/\")) then\n    session.delete(:manage_onboarding_intent)\n  else\n    session[:manage_onboarding_intent] = request.fullpath\n  end\nend",
       "render_path": null,
@@ -512,7 +580,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/show_payouts/show.html.erb",
-      "line": 1591,
+      "line": 1767,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Add #{(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => PayoutScheme.default_for_show(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id])), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size} #{if ((Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_person_role_assignments.where.not(:assignable_id => nil).pluck(:assignable_id).compact - (Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).show_payout or Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id]).create_show_payout!(:payout_scheme => PayoutScheme.default_for_show(Show.joins(:production).where(:productions => ({ :organization => Current.organization })).find(params[:id])), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").where(:is_guest => false).pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
       "render_path": [
@@ -520,7 +588,7 @@
           "type": "controller",
           "class": "Manage::ShowPayoutsController",
           "method": "show",
-          "line": 35,
+          "line": 24,
           "file": "app/controllers/manage/show_payouts_controller.rb",
           "rendered": {
             "name": "manage/show_payouts/show",
