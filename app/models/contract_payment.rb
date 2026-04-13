@@ -42,13 +42,18 @@ class ContractPayment < ApplicationRecord
   end
 
   # Mark as paid
-  def mark_paid!(paid_on: Date.current, method: nil, reference: nil)
-    update!(
+  def mark_paid!(paid_on: Date.current, method: nil, reference: nil, amount: nil)
+    attrs = {
       status: :paid,
       paid_date: paid_on,
       payment_method: method,
       reference_number: reference
-    )
+    }
+    if amount.present?
+      attrs[:amount] = amount.to_f
+      attrs[:amount_tbd] = false
+    end
+    update!(attrs)
   end
 
   # Display helpers

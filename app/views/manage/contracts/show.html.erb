@@ -204,7 +204,14 @@
                     <div class="text-sm text-gray-500"><%= pluralize(production.shows.count, "show") %></div>
                   </div>
                 </div>
-                <%= render "shared/button", text: "View", variant: "secondary", size: "small", path: manage_production_shows_path(production) %>
+                <div class="flex items-center gap-2">
+                  <%= link_to manage_money_production_financials_path(production) do %>
+                    <%= render "shared/button", text: "Financials", variant: "secondary", size: "small" %>
+                  <% end %>
+                  <%= link_to manage_production_shows_path(production) do %>
+                    <%= render "shared/button", text: "View Shows", variant: "secondary", size: "small" %>
+                  <% end %>
+                </div>
               </div>
             <% end %>
           </div>

@@ -208,7 +208,7 @@ class Contract < ApplicationRecord
                                         .order(:due_date)
 
     case settlement
-    when "per_event", "next_day"
+    when "per_event", "next_day", "same_day"
       # Match by closest due_date to show date
       show_date = show.date_and_time.to_date
       revenue_payments.min_by { |p| (p.due_date - show_date).abs }
@@ -231,7 +231,7 @@ class Contract < ApplicationRecord
     all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).order(:date_and_time).to_a }
 
     case settlement
-    when "per_event", "next_day"
+    when "per_event", "next_day", "same_day"
       # For per-event, find the single closest show
       show = all_shows.min_by { |s| (s.date_and_time.to_date - payment.due_date).abs }
       show ? [ show ] : []

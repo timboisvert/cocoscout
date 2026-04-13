@@ -17,9 +17,9 @@ module Manage
 
     def update
       if @payment.update(payment_params)
-        redirect_to manage_contract_path(@contract), notice: "Payment updated."
+        redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment updated."
       else
-        redirect_to manage_contract_path(@contract), alert: "Could not update payment: #{@payment.errors.full_messages.join(', ')}"
+        redirect_back fallback_location: manage_contract_path(@contract), alert: "Could not update payment: #{@payment.errors.full_messages.join(', ')}"
       end
     end
 
@@ -32,9 +32,10 @@ module Manage
       @payment.mark_paid!(
         paid_on: params[:paid_date].present? ? Date.parse(params[:paid_date]) : Date.current,
         method: params[:payment_method],
-        reference: params[:reference_number]
+        reference: params[:reference_number],
+        amount: params[:payment_amount]
       )
-      redirect_to manage_contract_path(@contract), notice: "Payment marked as paid."
+      redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment marked as paid."
     end
 
     private
@@ -49,7 +50,7 @@ module Manage
 
     def payment_params
       params.require(:contract_payment).permit(
-        :description, :amount, :direction, :due_date, :notes
+        :description, :amount, :amount_tbd, :direction, :due_date, :notes
       )
     end
   end

@@ -18,7 +18,7 @@ class ContractPaymentSyncService
     settlement = @contract.draft_payment_config["revenue_settlement"] || "monthly"
 
     case settlement
-    when "per_event", "next_day"
+    when "per_event", "next_day", "same_day"
       sync_per_event
     when "weekly"
       sync_period(:beginning_of_week)
