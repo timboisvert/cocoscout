@@ -37,6 +37,12 @@ module Manage
       @wizard_state[:instructor_person_ids] = Array(params[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
       @wizard_state[:instructor_on_team] = params[:instructor_on_team] == "1"
 
+      # Save instructor display options
+      @wizard_state[:show_individual_photos] = params[:show_individual_photos] == "1"
+      @wizard_state[:show_individual_bios] = params[:show_individual_bios] == "1"
+      @wizard_state[:show_group_photo] = params[:show_group_photo] == "1"
+      @wizard_state[:show_group_bio] = params[:show_group_bio] == "1"
+
       # Save instructor preface (shown before instructor cards when multiple instructors)
       @wizard_state[:instructor_preface] = params[:instructor_preface].presence
 
@@ -365,7 +371,11 @@ module Manage
           contract: contract,
           instructor_on_team: @wizard_state[:instructor_on_team] == true,
           listed_in_directory: @wizard_state[:listed_in_directory] != false,
-          instructor_preface: @wizard_state[:instructor_preface]
+          instructor_preface: @wizard_state[:instructor_preface],
+          show_individual_photos: @wizard_state[:show_individual_photos] != false,
+          show_individual_bios: @wizard_state[:show_individual_bios] != false,
+          show_group_photo: @wizard_state[:show_group_photo] == true,
+          show_group_bio: @wizard_state[:show_group_bio] != false
         )
 
         # Attach instructor headshot if uploaded during wizard (legacy, keep first instructor's)

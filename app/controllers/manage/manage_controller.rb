@@ -58,6 +58,68 @@ module Manage
         @production_dashboards[production.id] = DashboardService.new(production).generate
       end
 
+      # Calendar: month navigation
+      @current_month = if params[:month].present?
+        Date.parse(params[:month]).in_time_zone.beginning_of_month
+      else
+        Time.current.beginning_of_month
+      end
+      cal_start = Time.current.beginning_of_month
+      cal_end = 12.months.from_now.end_of_month
+      @prev_month = @current_month - 1.month
+      @next_month = @current_month + 1.month
+      @can_go_prev = @prev_month >= cal_start
+      @can_go_next = @next_month <= cal_end
+
+      # Calendar: load shows for the displayed month (all productions including courses)
+      month_start = @current_month.beginning_of_month.beginning_of_day
+      month_end = @current_month.end_of_month.end_of_day
+      all_production_ids = @productions.map(&:id)
+
+      # Build a lookup for course productions → their first course offering
+      course_production_ids = @productions.select(&:type_course?).map(&:id)
+      @course_offering_by_production = if course_production_ids.any?
+        CourseOffering.where(production_id: course_production_ids)
+                      .group_by(&:production_id)
+                      .transform_values(&:first)
+      else
+        {}
+      end
+
+      calendar_shows = Show.where(production_id: all_production_ids)
+                           .where(date_and_time: month_start..month_end)
+                           .includes(:location, :production)
+                           .order(date_and_time: :asc)
+
+      @calendar_events = calendar_shows.map do |show|
+        production = show.production
+        if production.type_course?
+          color = "purple"
+          offering = @course_offering_by_production[production.id]
+          path = offering ? manage_course_offering_path(offering) : manage_show_path(production, show)
+        elsif production.type_third_party?
+          color = "amber"
+          path = manage_show_path(production, show)
+        else
+          color = case show.event_type
+          when "rehearsal" then "blue"
+          when "meeting" then "green"
+          else "pink"
+          end
+          path = manage_show_path(production, show)
+        end
+        {
+          date: show.date_and_time.to_date,
+          time: show.date_and_time,
+          title: production.name,
+          path: path,
+          color: color,
+          production: production
+        }
+      end
+
+      @events_by_date = @calendar_events.group_by { |e| e[:date] }
+
       render "home"
     end
 

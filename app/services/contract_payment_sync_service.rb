@@ -77,7 +77,7 @@ class ContractPaymentSyncService
         update_payment(payment, contractor_amount, show_details, pending_count: period_shows.size - confirmed_shows.size)
       elsif payment.revenue_share?
         # All shows still pending — keep TBD
-        payment.update(amount: 0, amount_tbd: true) unless payment.amount_tbd?
+        payment.update(amount: 0, amount_tbd: true)
       end
     end
   end

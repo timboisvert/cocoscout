@@ -87,29 +87,41 @@
         <% if instructors.any? || @course_offering.instructor_name.present? %>
           <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
           <% if instructors.any? %>
-            <% if @course_offering.instructor_preface.present? && instructors.size > 1 %>
+            <%# Group photo — controlled by show_group_photo setting %>
+            <% if @course_offering.show_group_photo? && @course_offering.group_photo.attached? %>
+              <div class="-mt-2 mb-2">
+                <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [600, 400]), alt: "Instructors", class: "w-full rounded-lg object-cover" %>
+              </div>
+            <% end %>
+            <%# Group bio (preface) — controlled by show_group_bio setting %>
+            <% if @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
               <div class="text-sm text-slate-600 -mt-3 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
             <% end %>
-            <div class="space-y-3 <%= @course_offering.instructor_preface.present? && instructors.size > 1 ? '' : '-mt-3' %>">
+            <% show_preface = @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
+            <div class="space-y-3 <%= show_preface ? '' : '-mt-3' %>">
               <% instructors.each do |instructor| %>
                 <% coi = coi_by_person[instructor.id] %>
                 <% has_override = coi&.headshot&.attached? %>
                 <% has_profile = !has_override && instructor.safe_headshot_variant(:tile).present? %>
                 <% has_image = has_override || has_profile %>
+                <% show_photo = @course_offering.show_individual_photos? && has_image %>
+                <% show_bio = @course_offering.show_individual_bios? && coi&.bio.present? %>
                 <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
                   <div class="flex items-start gap-5">
-                    <% if has_override %>
-                      <%= image_tag coi.headshot.variant(resize_to_limit: [200, 400]), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
-                    <% elsif has_profile %>
-                      <%= image_tag instructor.safe_headshot_variant(:tile), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
-                    <% else %>
-                      <div class="w-[120px] h-[120px] rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-2xl flex-shrink-0">
-                        <%= instructor.initials %>
-                      </div>
+                    <% if @course_offering.show_individual_photos? %>
+                      <% if has_override %>
+                        <%= image_tag coi.headshot.variant(resize_to_limit: [200, 400]), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
+                      <% elsif has_profile %>
+                        <%= image_tag instructor.safe_headshot_variant(:tile), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-[120px] h-[120px] rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-2xl flex-shrink-0">
+                          <%= instructor.initials %>
+                        </div>
+                      <% end %>
                     <% end %>
                     <div class="flex-1 min-w-0">
                       <p class="font-semibold text-slate-900 text-lg"><%= instructor.name %></p>
-                      <% if coi&.bio.present? %>
+                      <% if show_bio %>
                         <div data-controller="text-expand" data-text-expand-max-height-value="120">
                           <div class="relative">
                             <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 mt-1 overflow-hidden" style="max-height: 120px;">

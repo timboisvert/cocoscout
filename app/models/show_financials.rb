@@ -18,6 +18,9 @@ class ShowFinancials < ApplicationRecord
   validates :other_revenue, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :expenses, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
+  # Contract payment sync - update revenue-share contract payments if financial data is removed
+  after_destroy :sync_contract_payments_on_destroy
+
   # Revenue type helpers
   def ticket_sales?
     revenue_type.nil? || revenue_type == "ticket_sales"
@@ -151,6 +154,11 @@ class ShowFinancials < ApplicationRecord
   end
 
   private
+
+  def sync_contract_payments_on_destroy
+    # When financial data is deleted, sync contract payments to reset TBD flags
+    show&.sync_contract_payments
+  end
 
   # Normalize details data - converts hash to array if needed
   def normalize_details(details)

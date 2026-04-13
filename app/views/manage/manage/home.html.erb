@@ -9,7 +9,6 @@
       all_open_calls = []
       all_sign_up_forms = []
       all_open_vacancies = []
-      all_upcoming_shows = []
 
       @productions.each do |production|
         dashboard = @production_dashboards[production.id]
@@ -26,191 +25,158 @@
         dashboard[:open_vacancies].each do |vacancy_data|
           all_open_vacancies << vacancy_data.merge(production: production)
         end
-
-        dashboard[:upcoming_shows].each do |show_data|
-          all_upcoming_shows << show_data.merge(production: production)
-        end
       end
 
-      # Sort upcoming shows by date
-      all_upcoming_shows.sort_by! { |s| s[:show].date_and_time }
+      total_audition_signups = all_open_calls.sum { |c| c[:auditionee_count] }
+
+      # Sort sign-up forms by next event date (soonest first)
+      all_sign_up_forms.sort_by! { |f| f[:instance]&.show&.date_and_time || 100.years.from_now }
+      soonest_form = all_sign_up_forms.first
     %>
 
-    <!-- Audition Cycles -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Audition Cycles", links: [
-        { text: "All Auditions", path: manage_signups_all_auditions_path }
-      ] %>
-      <div class="p-4">
-        <% if all_open_calls.any? %>
-        <div class="space-y-1">
-            <% all_open_calls.each do |call_data| %>
-              <% cycle = call_data[:call] %>
-              <% production = call_data[:production] %>
-              <%
-                if cycle.opens_at > Time.current
-                  status_text = "Opening Soon"
-                  status_color = "text-yellow-600"
-                elsif cycle.closes_at.present? && cycle.closes_at <= Time.current
-                  status_text = "Closed"
-                  status_color = "text-gray-500"
-                else
-                  status_text = "Open"
-                  status_color = "text-green-600"
-                end
-              %>
-              <%= link_to manage_signups_auditions_path(production), class: "block no-underline" do %>
-                <div class="px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
-                  <div class="flex flex-col sm:flex-row sm:items-stretch gap-2 sm:gap-0">
-                    <%# Left Third: Production + Audition Type %>
-                    <div class="sm:w-1/3 flex items-center gap-3">
-                      <% logo_variant = production.safe_logo_variant(:small) %>
-                      <% if logo_variant %>
-                        <div class="flex-shrink-0 w-10 h-6 rounded flex items-center justify-center overflow-hidden">
-                          <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                        </div>
+    <!-- Row 1: Summary Boxes -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <%# Audition Sign-ups — accordion %>
+      <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
+        <details class="group">
+          <summary class="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors [&::-webkit-details-marker]:hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Audition Sign-ups</div>
+                <% if total_audition_signups > 0 %>
+                  <div class="text-2xl font-bold text-gray-900 tabular-nums"><%= total_audition_signups %> <span class="text-sm font-normal text-gray-500">to review</span></div>
+                <% else %>
+                  <div class="text-sm text-gray-500">No open auditions</div>
+                <% end %>
+              </div>
+              <svg class="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </summary>
+          <div class="border-t border-gray-200 divide-y divide-gray-100">
+            <% if all_open_calls.any? %>
+              <% all_open_calls.each do |call_data| %>
+                <% cycle = call_data[:call] %>
+                <% production = call_data[:production] %>
+                <%= link_to manage_signups_auditions_path(production), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
+                  <% logo_variant = production.safe_logo_variant(:small) %>
+                  <% if logo_variant %>
+                    <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">
+                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
+                    </div>
+                  <% else %>
+                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 text-sm truncate"><%= production.name %></div>
+                    <div class="text-xs text-gray-500">
+                      <% if cycle.closes_at.present? %>
+                        Closes <%= cycle.closes_at.strftime("%b %-d") %>
                       <% else %>
-                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                          <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-                        </div>
+                        Open-ended
                       <% end %>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
-                        <div class="text-sm text-gray-500">
-                          <% formats = [] %>
-                          <% formats << "Video" if cycle.accepts_video_submissions? %>
-                          <% formats << "In-Person" if cycle.accepts_in_person_auditions? %>
-                          <%= formats.join(" + ") %> Auditions
-                        </div>
-                      </div>
-                    </div>
-
-                    <%# Middle Third: Dates & Status %>
-                    <div class="sm:w-1/3 border-t sm:border-t-0 sm:border-l border-gray-200 pt-2 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                      <div class="text-sm text-gray-600">
-                        <%= cycle.opens_at.strftime("%b %-d") %><% if cycle.closes_at.present? %> - <%= cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>
-                      </div>
-                      <div class="text-sm <%= status_color %>"><%= status_text %></div>
-                    </div>
-
-                    <%# Right Third: Open Sign-ups count %>
-                    <div class="sm:w-1/3 border-t sm:border-t-0 sm:border-l border-gray-200 pt-2 sm:pt-0 sm:pl-4 flex items-center sm:self-stretch justify-between">
-                      <div class="flex-1">
-                        <div class="text-xs text-gray-400 uppercase tracking-wide">Open Sign-ups</div>
-                        <div class="text-base">
-                          <span class="text-gray-900 font-medium tabular-nums"><%= call_data[:auditionee_count] %></span>
-                        </div>
-                      </div>
-                      <svg class="w-5 h-5 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                      </svg>
                     </div>
                   </div>
-                </div>
+                  <div class="text-right flex-shrink-0">
+                    <span class="text-lg font-bold text-gray-900 tabular-nums"><%= call_data[:auditionee_count] %></span>
+                    <div class="text-xs text-gray-500"><%= 'sign-up'.pluralize(call_data[:auditionee_count]) %></div>
+                  </div>
+                <% end %>
               <% end %>
-            <% end %>
-        </div>
-        <% else %>
-        <p class="text-sm text-gray-500">No open audition cycles.</p>
-        <% end %>
-      </div>
-    </div>
-
-    <!-- Sign-Up Forms -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Sign-Up Forms", links: [
-        { text: "All Sign-Ups", path: manage_signups_path }
-      ] %>
-      <div class="p-4">
-        <% if all_sign_up_forms.any? %>
-          <div class="space-y-1">
-            <% all_sign_up_forms.each do |form_data| %>
-              <% form = form_data[:form] %>
-              <% instance = form_data[:instance] %>
-              <% form_status = form_data[:form_status] %>
-              <% production = form_data[:production] %>
-              <%= link_to manage_signups_form_path(production, form), class: "block px-4 py-3 border border-gray-200 rounded-lg hover:border-gray-400 bg-white transition-all no-underline" do %>
-                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
-                  <%# Left third: Production + Form Name %>
-                  <div class="w-full md:w-1/3 flex items-center gap-3">
-                    <% logo_variant = production.safe_logo_variant(:small) %>
-                    <% if logo_variant %>
-                      <div class="flex-shrink-0 w-10 h-6 rounded flex items-center justify-center overflow-hidden">
-                        <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                      </div>
-                    <% else %>
-                      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                        <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-                      </div>
-                    <% end %>
-                    <div class="flex-1 min-w-0">
-                      <h3 class="text-base font-medium text-gray-900 truncate"><%= form.name %></h3>
-                      <div class="text-sm text-gray-500 truncate"><%= production.name %></div>
-                    </div>
-                  </div>
-
-                  <%# Middle third: Status %>
-                  <div class="w-full md:w-1/3 md:border-l border-gray-200 md:pl-4 flex flex-col justify-center md:self-stretch border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
-                    <div class="flex items-center">
-                      <% if form_status[:accepting_registrations] %>
-                        <span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm font-medium bg-green-100 text-green-700">
-                          <span class="relative flex h-2.5 w-2.5">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                          </span>
-                          <%= form_status[:label] %>
-                        </span>
-                      <% elsif !form.active? %>
-                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-gray-100 text-gray-600">
-                          Off
-                        </span>
-                      <% elsif form_status[:state] == :scheduled %>
-                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-amber-100 text-amber-700">
-                          <%= form_status[:label] %>
-                        </span>
-                      <% else %>
-                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-gray-100 text-gray-600">
-                          <%= form_status[:label] %>
-                        </span>
-                      <% end %>
-                    </div>
-                  </div>
-
-                  <%# Right third: Registrations %>
-                  <div class="w-full md:w-1/3 md:border-l border-gray-200 md:pl-4 flex items-center md:self-stretch justify-between border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
-                    <div class="flex-1">
-                      <% if form_status[:accepting_registrations] || form_status[:state] == :full %>
-                        <div class="text-xs text-gray-400 uppercase tracking-wide">Registrations</div>
-                        <div class="text-base">
-                          <span class="text-gray-900 font-medium tabular-nums"><%= form_status[:total_registrations] || 0 %></span>
-                          <% if (form_status[:total_capacity] || 0) < 1000 %>
-                            <span class="text-gray-400">/</span>
-                            <span class="text-gray-500 tabular-nums"><%= form_status[:total_capacity] || 0 %> slots</span>
-                          <% end %>
-                        </div>
-                      <% else %>
-                        <div class="text-sm text-gray-500">&nbsp;</div>
-                      <% end %>
-                    </div>
-                    <svg class="w-5 h-5 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                  </div>
-                </div>
-              <% end %>
+            <% else %>
+              <div class="px-4 py-3 text-sm text-gray-500">No open audition cycles.</div>
             <% end %>
           </div>
-        <% else %>
-          <p class="text-sm text-gray-500">No active sign-up forms.</p>
-        <% end %>
+        </details>
+      </div>
+
+      <%# Event Registrations — accordion %>
+      <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
+        <details class="group">
+          <summary class="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors [&::-webkit-details-marker]:hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15a2.25 2.25 0 0 1 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Event Registrations</div>
+                <% if soonest_form %>
+                  <% soonest_show = soonest_form[:instance]&.show %>
+                  <% soonest_regs = soonest_form[:form_status][:total_registrations] || 0 %>
+                  <div class="text-sm font-medium text-gray-900 truncate"><%= soonest_form[:form].name %></div>
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-lg font-bold text-gray-900 tabular-nums"><%= soonest_regs %></span>
+                    <span class="text-xs text-gray-500">registered</span>
+                    <% if soonest_show %>
+                      <span class="text-xs text-gray-400">· <%= soonest_show.date_and_time.strftime("%b %-d") %></span>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-sm text-gray-500">No active sign-up forms</div>
+                <% end %>
+              </div>
+              <svg class="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </summary>
+          <div class="border-t border-gray-200 divide-y divide-gray-100">
+            <% if all_sign_up_forms.any? %>
+              <% all_sign_up_forms.each do |form_data| %>
+                <% form = form_data[:form] %>
+                <% instance = form_data[:instance] %>
+                <% form_status = form_data[:form_status] %>
+                <% production = form_data[:production] %>
+                <% next_show = instance&.show %>
+                <%= link_to manage_signups_form_path(production, form), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
+                  <% logo_variant = production.safe_logo_variant(:small) %>
+                  <% if logo_variant %>
+                    <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">
+                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
+                    </div>
+                  <% else %>
+                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 text-sm truncate"><%= form.name %></div>
+                    <div class="text-xs text-gray-500">
+                      <%= production.name %>
+                      <% if next_show %>
+                        · Next: <%= next_show.date_and_time.strftime("%b %-d, %-I:%M%p") %>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="text-right flex-shrink-0">
+                    <span class="text-lg font-bold text-gray-900 tabular-nums"><%= form_status[:total_registrations] || 0 %></span>
+                    <div class="text-xs text-gray-500">registered</div>
+                  </div>
+                <% end %>
+              <% end %>
+            <% else %>
+              <div class="px-4 py-3 text-sm text-gray-500">No active sign-up forms.</div>
+            <% end %>
+          </div>
+        </details>
       </div>
     </div>
 
-    <!-- Open Vacancies -->
+    <!-- Row 2: Vacancy Alerts -->
     <% if all_open_vacancies.any? %>
-      <div class="border border-pink-200 rounded-lg overflow-hidden mb-8 bg-pink-50">
+      <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
         <%= render "shared/card_header",
-          title: "Open Vacancies",
+          title: "Open Vacancies (#{all_open_vacancies.size})",
           bg_class: "bg-pink-100",
           border_class: "border-pink-200",
           title_class: "text-pink-900",
@@ -224,7 +190,6 @@
             <% is_linked = vacancy_data[:is_linked] %>
             <% affected_shows = is_linked ? vacancy_data[:affected_shows] : [show] %>
             <div class="group flex flex-col sm:flex-row sm:items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
-              <%# Left third: Production + Show dates %>
               <div class="sm:w-1/3 px-3 py-2">
                 <div class="flex items-center gap-3 mb-2">
                   <% logo_variant = production.safe_logo_variant(:small) %>
@@ -246,20 +211,14 @@
                   <% end %>
                 </div>
               </div>
-
-              <%# Middle third: Show details %>
               <div class="sm:w-1/3 border-t sm:border-t-0 sm:border-l border-pink-200 px-3 py-2 flex flex-col justify-center">
-                <div class="font-medium text-gray-900">
-                  <%= show.display_name %>
-                </div>
+                <div class="font-medium text-gray-900"><%= show.display_name %></div>
                 <% if show.is_online %>
                   <div class="text-sm text-gray-600">Online</div>
                 <% elsif show.location.present? %>
                   <div class="text-sm text-gray-600"><%= show.location.name %></div>
                 <% end %>
               </div>
-
-              <%# Right third: Vacated by entity with role %>
               <div class="sm:w-1/3 border-t sm:border-t-0 sm:border-l border-pink-200 px-3 py-2 flex items-center gap-3">
                 <% if vacated_by %>
                   <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
@@ -289,135 +248,178 @@
       </div>
     <% end %>
 
-    <!-- Upcoming Shows & Events -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Upcoming Shows & Events (Next 45 Days)", links: [
-        { text: "All Shows", path: manage_shows_path }
-      ] %>
-      <div class="p-4">
-        <% if all_upcoming_shows.any? %>
-        <div class="space-y-1">
-          <% all_upcoming_shows.first(10).each do |show_data| %>
-            <% show = show_data[:show] %>
-            <% production = show_data[:production] %>
-              <%= link_to manage_show_path(production, show), class: "block no-underline" do %>
-                <div class="px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
-                  <div class="flex flex-col sm:flex-row sm:items-stretch gap-3 sm:gap-4">
-                    <%# Left Third: Date & Show Details (matching shared/show_row) %>
-                    <div class="flex-1 flex items-center gap-4">
-                      <%# Date Box %>
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
-                      </div>
-
-                      <%# Show Details %>
-                      <div class="flex-1 min-w-0">
-                        <% if production.type_third_party? && production.contract&.contractor_name.present? %>
-                          <div class="text-xs text-gray-400 mb-0"><%= production.contract.contractor_name %></div>
-                        <% else %>
-                          <div class="text-xs text-gray-400 mb-0"><%= production.name %></div>
-                        <% end %>
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-medium text-gray-900"><%= show.display_name %></span>
-                          <% if show.recurring? %>
-                            <span data-controller="tooltip" data-tooltip-text="This is a recurring event">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                              </svg>
-                            </span>
-                          <% end %>
-                          <% if show.linked? %>
-                            <%
-                              other_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time)
-                              linked_tooltip = "Linked with: " + other_shows.map { |s| "#{s.date_and_time.strftime('%b %-d')} #{s.display_name}" }.join(", ")
-                            %>
-                            <span data-controller="tooltip" data-tooltip-text="<%= linked_tooltip %>">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-                              </svg>
-                            </span>
-                          <% end %>
-                        </div>
-                        <div class="text-sm text-gray-600">
-                          <%= show.time_range_display %>
-                          <% if show.is_online %>
-                            · Online
-                          <% elsif show.location.present? %>
-                            · <%= show.location.name %>
-                          <% end %>
-                        </div>
-                      </div>
-                    </div>
-
-                    <% if production.type_third_party? %>
-                      <%# For third-party productions, show rental info instead of availability/casting %>
-                      <div class="flex-1 border-t sm:border-t-0 sm:border-l border-gray-200 pt-3 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                        <div class="text-xs font-semibold text-gray-700 mb-1">Type</div>
-                        <div class="text-xs text-gray-600">Third-party rental</div>
-                      </div>
-                      <div class="flex-1 border-t sm:border-t-0 sm:border-l border-gray-200 pt-3 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                        <% if production.contract.present? %>
-                          <div class="text-xs font-semibold text-gray-700 mb-1">Contract</div>
-                          <div class="text-xs text-gray-600"><%= production.contract.status.titleize %></div>
-                        <% end %>
-                      </div>
-                    <% else %>
-                      <%# Middle Third: Availability %>
-                      <div class="flex-1 border-t sm:border-t-0 sm:border-l border-gray-200 pt-3 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                        <% if show_data[:roles_count] > 0 %>
-                          <div class="text-xs font-semibold text-gray-700 mb-1">Availability</div>
-                          <% if show_data[:total_cast_count] > 0 %>
-                            <% all_submitted = show_data[:availability_count] == show_data[:total_cast_count] %>
-                            <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1">
-                              <div class="h-full rounded-full <%= all_submitted ? 'bg-green-500' : 'bg-pink-500' %>" style="width: <%= show_data[:availability_percentage] %>%"></div>
-                            </div>
-                            <div class="text-xs <%= all_submitted ? 'text-green-600' : 'text-gray-500' %>">
-                              <%= show_data[:availability_count] %>/<%= show_data[:total_cast_count] %>
-                            </div>
-                          <% else %>
-                            <div class="text-xs text-gray-500">No cast yet</div>
-                          <% end %>
-                        <% else %>
-                          <div class="text-xs font-semibold text-gray-700 mb-1">Availability</div>
-                          <div class="text-xs text-gray-500">No roles defined</div>
-                        <% end %>
-                      </div>
-
-                      <%# Right Third: Casting %>
-                      <div class="flex-1 border-t sm:border-t-0 sm:border-l border-gray-200 pt-3 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                        <div class="text-xs font-semibold text-gray-700 mb-1">Casting</div>
-                        <% if show_data[:roles_count] > 0 %>
-                          <% fully_cast = show_data[:cast_percentage] == 100 %>
-                          <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1">
-                            <div class="h-full rounded-full <%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %>" style="width: <%= show_data[:cast_percentage] %>%"></div>
-                          </div>
-                          <div class="text-xs <%= fully_cast ? 'text-green-600' : 'text-gray-500' %>">
-                            <% if fully_cast %>
-                              Fully cast
-                            <% else %>
-                              <%= show_data[:cast_count] %>/<%= show_data[:roles_count] %> roles
-                            <% end %>
-                          </div>
-                        <% else %>
-                          <span class="text-xs text-gray-500">No roles defined</span>
-                        <% end %>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
+    <!-- Row 3: Calendar -->
+    <%
+      month_start_date = @current_month.to_date
+      month_end_date = @current_month.end_of_month.to_date
+    %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <%# Calendar Header with Navigation %>
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <div>
+          <% if @can_go_prev %>
+            <%= link_to manage_path(month: @prev_month.strftime("%Y-%m-01")), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+              <%= @prev_month.strftime("%b") %>
             <% end %>
-            <% if all_upcoming_shows.size > 10 %>
-              <div class="text-center pt-2">
-                <%= link_to "View all #{all_upcoming_shows.size} upcoming events →", manage_shows_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
+          <% end %>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-bold text-gray-900"><%= @current_month.strftime("%B %Y") %></h2>
+          <% if @current_month != Time.current.beginning_of_month %>
+            <%= link_to "Today", manage_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
+          <% end %>
+        </div>
+
+        <div>
+          <% if @can_go_next %>
+            <%= link_to manage_path(month: @next_month.strftime("%Y-%m-01")), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+              <%= @next_month.strftime("%b") %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Desktop Calendar Grid %>
+      <div class="hidden md:block p-4">
+        <%# Day headers %>
+        <div class="grid grid-cols-7 gap-1 mb-1">
+          <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day_name| %>
+            <div class="text-center text-xs font-semibold text-gray-500 py-1"><%= day_name %></div>
+          <% end %>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1">
+          <%# Empty cells before month starts %>
+          <% month_start_date.wday.times do %>
+            <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
+          <% end %>
+
+          <%# Calendar days %>
+          <% current_date = month_start_date %>
+          <% while current_date <= month_end_date %>
+            <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
+            <% is_past = current_date < Date.current %>
+            <% is_today = current_date == Date.current %>
+            <div class="border border-gray-200 min-h-[80px] p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+              <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
+                <%= current_date.day %>
               </div>
-            <% end %>
-          </div>
-        <% else %>
-        <p class="text-sm text-gray-500">No upcoming shows or events in the next 45 days.</p>
+
+              <% day_events.first(4).each do |event| %>
+                <%
+                  color_classes = case event[:color]
+                    when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+                    when "blue" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+                    when "green" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                    when "amber" then "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+                    when "purple" then "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
+                    else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+                  end
+                  color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
+                %>
+                <%= link_to event[:path], class: "block mb-1" do %>
+                  <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
+                    <div class="font-semibold truncate"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
+                    <div class="truncate text-[10px]"><%= event[:title] %></div>
+                  </div>
+                <% end %>
+              <% end %>
+              <% if day_events.size > 4 %>
+                <div class="text-[10px] text-gray-500 text-center mt-0.5">+<%= day_events.size - 4 %> more</div>
+              <% end %>
+            </div>
+            <% current_date = current_date + 1.day %>
+          <% end %>
+
+          <%# Empty cells after month ends %>
+          <% remaining_cells = (7 - (month_end_date + 1.day).wday) % 7 %>
+          <% remaining_cells.times do %>
+            <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Mobile List View %>
+      <div class="md:hidden p-4 space-y-1">
+        <% current_date = month_start_date %>
+        <% has_events = false %>
+        <% while current_date <= month_end_date %>
+          <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
+          <% if day_events.any? %>
+            <% has_events = true %>
+            <% is_past = current_date < Date.current %>
+            <% is_today = current_date == Date.current %>
+            <div class="<%= 'opacity-50' if is_past %>">
+              <div class="text-xs font-semibold px-1 py-1 <%= is_today ? 'text-pink-600' : (is_past ? 'text-gray-400' : 'text-gray-500') %>">
+                <%= current_date.strftime("%a, %b %-d") %>
+              </div>
+              <% day_events.each do |event| %>
+                <%
+                  dot_color = case event[:color]
+                    when "pink" then "bg-pink-400"
+                    when "blue" then "bg-blue-400"
+                    when "green" then "bg-green-400"
+                    when "amber" then "bg-amber-400"
+                    when "purple" then "bg-purple-400"
+                    else "bg-gray-400"
+                  end
+                  row_bg = case event[:color]
+                    when "pink" then "bg-pink-50 border border-pink-200"
+                    when "blue" then "bg-blue-50 border border-blue-200"
+                    when "green" then "bg-green-50 border border-green-200"
+                    when "amber" then "bg-amber-50 border border-amber-200"
+                    when "purple" then "bg-purple-50 border border-purple-200"
+                    else ""
+                  end
+                  if is_past
+                    dot_color = "bg-gray-300"
+                    row_bg = ""
+                  end
+                %>
+                <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors #{row_bg}" do %>
+                  <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></div>
+                  <span class="text-xs text-gray-500 w-14 flex-shrink-0"><%= event[:time].strftime("%-I:%M%p").downcase %></span>
+                  <span class="text-sm truncate flex-1 <%= is_past ? 'text-gray-400' : 'text-gray-900' %>"><%= event[:title] %></span>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+          <% current_date = current_date + 1.day %>
         <% end %>
+        <% unless has_events %>
+          <div class="text-center text-sm text-gray-500 py-8">No events this month.</div>
+        <% end %>
+      </div>
+
+      <%# Legend %>
+      <div class="px-4 pb-3 flex flex-wrap gap-3 text-xs text-gray-500">
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-sm bg-pink-300"></div>
+          Shows
+        </div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-sm bg-blue-300"></div>
+          Rehearsals
+        </div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-sm bg-green-300"></div>
+          Meetings
+        </div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-sm bg-purple-300"></div>
+          Course Sessions
+        </div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-sm bg-amber-300"></div>
+          Third-party
+        </div>
       </div>
     </div>
 

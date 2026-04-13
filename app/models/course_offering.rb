@@ -18,6 +18,7 @@ class CourseOffering < ApplicationRecord
   has_rich_text :instructor_preface
 
   has_one_attached :instructor_headshot
+  has_one_attached :group_photo
 
   enum :status, {
     draft: "draft",

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_12_190707) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -482,6 +482,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_12_190707) do
     t.bigint "production_id", null: false
     t.bigint "questionnaire_id"
     t.string "short_code", null: false
+    t.boolean "show_group_bio", default: true, null: false
+    t.boolean "show_group_photo", default: false, null: false
+    t.boolean "show_individual_bios", default: true, null: false
+    t.boolean "show_individual_photos", default: true, null: false
     t.string "status", default: "draft", null: false
     t.string "stripe_early_bird_price_id"
     t.string "stripe_price_id"

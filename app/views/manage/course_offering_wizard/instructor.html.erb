@@ -143,6 +143,43 @@
       <%# Production Team toggle (shown when at least one instructor is selected) %>
       <div data-instructor-search-target="instructorOptionsSection"
            class="<%= 'hidden' if (@instructor_people || []).empty? %>">
+
+        <%# Instructor Display Options %>
+        <div class="border-t border-gray-200 pt-5 mb-5">
+          <label class="block text-sm font-medium text-gray-900 mb-1">Instructor Display Options</label>
+          <p class="text-xs text-gray-500 mb-3">Choose how instructors appear on the course registration page.</p>
+          <div class="space-y-3">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="hidden" name="show_individual_photos" value="0">
+              <input type="checkbox" name="show_individual_photos" value="1"
+                     <%= 'checked' if @wizard_state[:show_individual_photos] != false && @wizard_state[:show_individual_photos] != "0" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-700">Show individual instructor photos</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="hidden" name="show_individual_bios" value="0">
+              <input type="checkbox" name="show_individual_bios" value="1"
+                     <%= 'checked' if @wizard_state[:show_individual_bios] != false && @wizard_state[:show_individual_bios] != "0" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-700">Show individual instructor bios</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="hidden" name="show_group_photo" value="0">
+              <input type="checkbox" name="show_group_photo" value="1"
+                     <%= 'checked' if @wizard_state[:show_group_photo] == true || @wizard_state[:show_group_photo] == "1" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-700">Show group photo</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="hidden" name="show_group_bio" value="0">
+              <input type="checkbox" name="show_group_bio" value="1"
+                     <%= 'checked' if @wizard_state[:show_group_bio] != false && @wizard_state[:show_group_bio] != "0" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-700">Show group bio (preface text above instructor cards)</span>
+            </label>
+          </div>
+        </div>
+
         <div class="border-t border-gray-200 pt-5">
           <div class="flex items-center justify-between">
             <div>

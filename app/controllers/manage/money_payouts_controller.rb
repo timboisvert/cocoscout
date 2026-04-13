@@ -92,32 +92,48 @@ module Manage
         @hide_non_revenue = cookies[:money_hide_non_revenue] != "false"
       end
 
-      # Build query based on hide future events toggle
-      if @hide_future_events
-        @shows = @production.shows
-                            .where("date_and_time <= ?", 1.day.from_now)
-                            .order(date_and_time: :desc)
-                            .includes(:show_financials, :show_payout, :location)
-                            .limit(100)
-                            .to_a
-      else
-        @shows = @production.shows
-                            .order(date_and_time: :desc)
-                            .includes(:show_financials, :show_payout, :location)
-                            .limit(100)
-                            .to_a
-      end
-
-      # Apply filter
+      # Apply filter parameter
       @filter = params[:filter].presence || "all"
-      @shows = apply_filter(@shows, @filter)
 
-      if @hide_non_revenue
-        @shows = @shows.select { |show| EventTypes.revenue_event_types.include?(show.event_type) }
+      # Build database query with filtering at DB level
+      query =  @production.shows.order(date_and_time: :desc)
+
+      # Apply date filter
+      if @hide_future_events
+        query = query.where("date_and_time <= ?", 1.day.from_now)
       end
+
+      # Apply event type filter - always exclude non-revenue event types unless specifically requested
+      revenue_types = EventTypes.revenue_event_types
+      unless @filter == "all"
+        query = query.where(event_type: revenue_types)
+      end
+
+      # Apply payout status filter
+      query = case @filter
+      when "awaiting_calculation"
+                query.where(event_type: revenue_types)
+                     .left_joins(:show_payout)
+                     .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+      when "awaiting_payout"
+                query.joins(:show_payout)
+                     .where(show_payouts: { status: "awaiting_payout" })
+                     .where.not(show_payouts: { calculated_at: nil })
+      when "paid"
+                query.joins(:show_payout)
+                     .where(show_payouts: { status: "paid" })
+      else
+                # Default: show revenue events only
+                query.where(event_type: revenue_types)
+      end
+
+      # Load shows with pre-fetched associations
+      @shows = query
+               .includes(:show_financials, :show_payout, :location, show_payout: :show_payout_line_items)
+               .limit(100)
+               .to_a
 
       # Summary stats for production
-      revenue_types = EventTypes.revenue_event_types
       revenue_shows = @production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
 
       @needs_calculation_count = revenue_shows.left_joins(:show_payout)
@@ -142,8 +158,8 @@ module Manage
     end
 
     def load_all_productions
-      # Show all productions the user has access to
-      @productions = Current.user.accessible_productions.order(:name)
+      # Show all productions the user has access to (excludes courses which use different scheduling)
+      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
       @production_summaries = @productions.map do |production|
         build_payout_summary(production)
       end
@@ -191,25 +207,6 @@ module Manage
         outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
         total_advances: production.person_advances.sum(:original_amount)
       }
-    end
-
-    def apply_filter(scope, filter)
-      revenue_types = EventTypes.revenue_event_types
-
-      case filter
-      when "awaiting_calculation"
-        scope.select do |show|
-          revenue_types.include?(show.event_type) &&
-          (show.show_payout.nil? || show.show_payout.calculated_at.nil?)
-        end
-      when "awaiting_payout"
-        scope.select { |show| show.show_payout&.status == "awaiting_payout" && show.show_payout.calculated_at.present? }
-      when "paid"
-        scope.select { |show| show.show_payout&.status == "paid" }
-      else
-        # Only show revenue events by default for payouts
-        scope.select { |show| revenue_types.include?(show.event_type) }
-      end
     end
 
     def people_missing_payment_info

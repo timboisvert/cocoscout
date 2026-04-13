@@ -16,8 +16,8 @@ module Manage
       # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
-      # Get productions the user has access to
-      @productions = Current.user.accessible_productions.order(:name)
+      # Get productions the user has access to (exclude courses — they use session scheduling)
+      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
 
       # Handle production filter
       @production_filter = params[:production].presence
@@ -117,8 +117,8 @@ module Manage
       @filter = params[:filter] || session[:shows_filter] || "upcoming"
       session[:shows_filter] = @filter
 
-      # Get productions the user has access to
-      @productions = Current.user.accessible_productions.order(:name)
+      # Get productions the user has access to (exclude courses — they use session scheduling)
+      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
 
       # Get shows across all productions, eager load location and production
       @shows = Show.where(production: @productions)

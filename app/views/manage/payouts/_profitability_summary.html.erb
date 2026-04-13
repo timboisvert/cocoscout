@@ -7,12 +7,35 @@
     - period_path: Path to use for period switching (e.g. manage_money_financials_path)
   Optional:
     - production: Production object (for display purposes only)
+    - refresh_url: Path to POST for cache refresh (enables refresh button)
+    - cached_at: ISO8601 timestamp of when data was cached (enables auto-refresh)
 %>
 
 <% period_labels = FinancialSummaryService::PERIOD_LABELS %>
+<% refresh_url = local_assigns[:refresh_url] %>
+<% cached_at = local_assigns[:cached_at] %>
 
-<div class="flex items-center justify-between mb-4">
-  <h2 class="text-lg font-semibold text-gray-900">Financial Overview</h2>
+<div class="flex items-center justify-between mb-4"
+  <% if refresh_url %>
+    data-controller="refresh-financials"
+    data-refresh-financials-url-value="<%= refresh_url %>"
+    <% if cached_at %>data-refresh-financials-cached-at-value="<%= cached_at %>"<% end %>
+  <% end %>
+>
+  <div class="flex items-center gap-2">
+    <h2 class="text-lg font-semibold text-gray-900">Financial Overview</h2>
+    <% if refresh_url %>
+      <button type="button"
+        data-action="click->refresh-financials#refresh"
+        data-refresh-financials-target="button"
+        class="inline-flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        title="Refresh financials">
+        <svg data-refresh-financials-target="icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M20.016 4.66v4.993" />
+        </svg>
+      </button>
+    <% end %>
+  </div>
 
   <div class="flex items-center gap-2">
     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</span>

@@ -927,6 +927,7 @@ Rails.application.routes.draw do
 
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
+    post "money/refresh", to: "money#refresh", as: "refresh_money"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"

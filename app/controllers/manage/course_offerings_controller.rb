@@ -117,8 +117,17 @@ module Manage
       end
       updates[:instructor_on_team] = instructor_on_team
       updates[:instructor_preface] = params.dig(:course_offering, :instructor_preface).presence
+      updates[:show_individual_photos] = params[:show_individual_photos] == "1"
+      updates[:show_individual_bios] = params[:show_individual_bios] == "1"
+      updates[:show_group_photo] = params[:show_group_photo] == "1"
+      updates[:show_group_bio] = params[:show_group_bio] == "1"
 
       if @course_offering.update(updates)
+        # Attach group photo if uploaded
+        if params[:group_photo].present?
+          @course_offering.group_photo.attach(params[:group_photo])
+        end
+
         # Sync course_offering_instructors join records with per-instructor data
         existing_cois = @course_offering.course_offering_instructors.index_by(&:person_id)
         @course_offering.course_offering_instructors.where.not(person_id: person_ids).destroy_all

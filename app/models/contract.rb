@@ -391,7 +391,8 @@ class Contract < ApplicationRecord
     # Always create a production and shows for all bookings
     if rentals.any?
       prod_data = draft_data["production"] || {}
-      production = productions.create!(
+      # Use existing production if one is already linked (e.g., from course offering wizard)
+      production = productions.first || productions.create!(
         organization: organization,
         name: production_name.presence || prod_data["name"].presence || contractor_name,
         production_type: "third_party",

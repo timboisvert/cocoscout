@@ -205,10 +205,66 @@
           </div>
         </div>
 
+        <%# Group Photo %>
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+             data-instructor-search-target="groupPhotoSection"
+             style="<%= 'display:none' if (@instructor_people || []).empty? %>">
+          <%= render "shared/card_header", title: "Group Photo" %>
+          <div class="p-5">
+            <p class="text-xs text-gray-500 mb-2">Optional shared photo shown at the top of the instructor section (enable via display options below).</p>
+            <% if @course_offering.group_photo.attached? %>
+              <div class="mb-3 flex items-center gap-3">
+                <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [200, 200]), alt: "Group photo", class: "w-16 h-16 rounded-lg object-cover" %>
+                <span class="text-xs text-green-600">Group photo uploaded</span>
+              </div>
+            <% end %>
+            <input type="file" name="group_photo" accept="image/*"
+                   class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+          </div>
+        </div>
+
         <%# Add to Production Team toggle %>
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
              data-instructor-search-target="teamToggleSection"
              style="<%= 'display:none' if (@instructor_people || []).empty? %>">
+
+          <%# Instructor Display Options %>
+          <%= render "shared/card_header", title: "Instructor Display Options" %>
+          <div class="p-5">
+            <p class="text-xs text-gray-500 mb-3">Choose how instructors appear on the course registration page.</p>
+            <div class="space-y-3">
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="hidden" name="show_individual_photos" value="0">
+                <input type="checkbox" name="show_individual_photos" value="1"
+                       <%= 'checked' if @course_offering.show_individual_photos? %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-700">Show individual instructor photos</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="hidden" name="show_individual_bios" value="0">
+                <input type="checkbox" name="show_individual_bios" value="1"
+                       <%= 'checked' if @course_offering.show_individual_bios? %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-700">Show individual instructor bios</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="hidden" name="show_group_photo" value="0">
+                <input type="checkbox" name="show_group_photo" value="1"
+                       <%= 'checked' if @course_offering.show_group_photo? %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-700">Show group photo</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="hidden" name="show_group_bio" value="0">
+                <input type="checkbox" name="show_group_bio" value="1"
+                       <%= 'checked' if @course_offering.show_group_bio? %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-700">Show group bio (preface text above instructor cards)</span>
+              </label>
+            </div>
+          </div>
+
+          <%# Production Team Toggle %>
           <%= render "shared/card_header", title: "Production Team" %>
           <div class="p-5">
             <div class="flex items-center justify-between">

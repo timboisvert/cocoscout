@@ -118,6 +118,10 @@ class Show < ApplicationRecord
   # Ticketing sync - trigger sync when show is created/updated for productions with active ticketing
   after_commit :trigger_ticketing_sync, on: [ :create, :update ]
 
+  # Contract payment sync - update revenue-share contract payments when show or its financials change
+  after_commit :sync_contract_payments, on: [ :create, :update ]
+  after_destroy :sync_contract_payments
+
   # Sign-up form instance management
   after_commit :create_sign_up_form_instances, on: :create
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
@@ -782,6 +786,14 @@ class Show < ApplicationRecord
     # Explicitly nullify any event linkages that reference this show as primary_show
     # This is needed because dependent: :nullify on has_one may not work with destroy_all
     EventLinkage.where(primary_show_id: id).update_all(primary_show_id: nil)
+  end
+
+  def sync_contract_payments
+    # Sync revenue-share contract payments when show or its financials change
+    # This includes when show is created, updated, destroyed, or its financials are modified
+    return unless production&.type_third_party? && production.contract&.revenue_share?
+
+    ContractPaymentSyncService.new(self).call
   end
 
   def poster_content_type

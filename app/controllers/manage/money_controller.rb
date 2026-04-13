@@ -13,7 +13,10 @@ module Manage
       @show_all = params[:show_all] == "true"
 
       # Get productions the user has access to (exclude courses from main list)
-      all_productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
+      all_productions = Current.user.accessible_productions
+        .where.not(production_type: "course")
+        .includes(:logo_attachment, :contract)
+        .order(:name)
 
       # Apply production type filter
       @productions = case @production_filter
@@ -34,19 +37,52 @@ module Manage
         @hidden_count = @all_count - @productions.count
       end
 
-      # Build summary data for each production
-      @production_summaries = @productions.map do |production|
-        build_production_summary(production)
+      # Build summary data for each production with caching
+      cache_key = "money_summaries_#{Current.organization.id}_#{@production_filter}_#{@selected_period}_#{@show_all}"
+      cached_data = Rails.cache.fetch(cache_key, expires_in: 15.minutes) do
+        { data: @productions.map { |production| build_production_summary(production) }, cached_at: Time.current.iso8601 }
+      end
+      if cached_data.is_a?(Hash) && cached_data.key?(:data)
+        @production_summaries = cached_data[:data]
+        @cached_at = cached_data[:cached_at]
+      else
+        @production_summaries = cached_data
+        @cached_at = nil
       end
 
       # Courses (separate collapsed section)
-      @courses = Current.user.accessible_productions.where(production_type: "course").order(:name)
-      @course_summaries = @courses.map do |course|
-        build_production_summary(course)
+      @courses = Current.user.accessible_productions
+        .where(production_type: "course")
+        .includes(:logo_attachment, :contract)
+        .order(:name)
+      @course_summaries = Rails.cache.fetch("#{cache_key}_courses", expires_in: 15.minutes) do
+        @courses.map do |course|
+          build_production_summary(course)
+        end
       end
 
       # Overall organization summary (uses filtered productions)
       @org_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
+    end
+
+    def refresh
+      # Clear all financial summary cache variants
+      organization_id = Current.organization.id
+      periods = FinancialSummaryService::PERIOD_LABELS.keys.map(&:to_s)
+      periods.each do |period|
+        %w[all first_party third_party].each do |filter|
+          [ true, false ].each do |show_all|
+            cache_key = "money_summaries_#{organization_id}_#{filter}_#{period}_#{show_all}"
+            Rails.cache.delete(cache_key)
+            Rails.cache.delete("#{cache_key}_courses")
+          end
+        end
+      end
+
+      respond_to do |format|
+        format.json { render json: { success: true } }
+        format.html { redirect_to manage_money_index_path(period: params[:period], production_filter: params[:production_filter]), notice: "Financials refreshed successfully" }
+      end
     end
 
     private

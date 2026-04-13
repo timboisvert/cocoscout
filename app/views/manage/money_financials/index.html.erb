@@ -40,7 +40,8 @@
       summary: @financial_summary,
       selected_period: @selected_period,
       production: @production,
-      period_path: manage_money_production_financials_path(@production)
+      period_path: manage_money_production_financials_path(@production),
+      refresh_url: manage_refresh_money_path
     } %>
 
     <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
@@ -95,7 +96,8 @@
       summary: @financial_summary,
       selected_period: @selected_period,
       production: nil,
-      period_path: manage_money_financials_path
+      period_path: manage_money_financials_path,
+      refresh_url: manage_refresh_money_path
     } %>
 
     <div class="">

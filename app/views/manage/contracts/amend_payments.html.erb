@@ -93,7 +93,7 @@
                 </div>
                 <div class="text-right">
                   <div class="font-semibold <%= is_marked_for_removal ? 'line-through text-gray-400' : (payment.direction == 'incoming' ? 'text-green-600' : 'text-red-600') %>">
-                    <%= payment.direction == 'incoming' ? '+' : '-' %><% if payment.amount_tbd? %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
+                    <%= payment.direction == 'incoming' ? '+' : '-' %><% if payment.amount_tbd? && payment.amount.to_f == 0 %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
                   </div>
                   <div class="text-xs">
                     <% if is_marked_for_removal %>

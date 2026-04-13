@@ -30,25 +30,31 @@
       summary: @org_summary,
       selected_period: @selected_period,
       production: nil,
-      period_path: manage_money_index_path(production_filter: @production_filter)
+      period_path: manage_money_index_path(production_filter: @production_filter),
+      refresh_url: manage_refresh_money_path(period: @selected_period, production_filter: @production_filter),
+      cached_at: @cached_at
     } %>
   </div>
 
   <%# Production Type Filter %>
-  <%= render "shared/filters/filter_bar",
-    toggle_label: "Production Type",
-    bare: true,
-    filter_groups: [
-      {
-        label: "Productions",
-        filters: [
-          { text: "All", path: manage_money_index_path(period: @selected_period, production_filter: "all", show_all: @show_all || nil), active: @production_filter == "all" },
-          { text: "In-house", path: manage_money_index_path(period: @selected_period, production_filter: "first_party", show_all: @show_all || nil), active: @production_filter == "first_party" },
-          { text: "Third-party", path: manage_money_index_path(period: @selected_period, production_filter: "third_party", show_all: @show_all || nil), active: @production_filter == "third_party" }
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <div class="flex-1">
+      <%= render "shared/filters/filter_bar",
+        toggle_label: "Production Type",
+        bare: true,
+        filter_groups: [
+          {
+            label: "Productions",
+            filters: [
+              { text: "All", path: manage_money_index_path(period: @selected_period, production_filter: "all", show_all: @show_all || nil), active: @production_filter == "all" },
+              { text: "In-house", path: manage_money_index_path(period: @selected_period, production_filter: "first_party", show_all: @show_all || nil), active: @production_filter == "first_party" },
+              { text: "Third-party", path: manage_money_index_path(period: @selected_period, production_filter: "third_party", show_all: @show_all || nil), active: @production_filter == "third_party" }
+            ]
+          }
         ]
-      }
-    ]
-  %>
+      %>
+    </div>
+  </div>
 
   <%# Productions List %>
   <div class="">
