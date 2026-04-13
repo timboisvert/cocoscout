@@ -112,11 +112,11 @@
                 <div class="text-xs text-gray-500 uppercase tracking-wide">Event Registrations</div>
                 <% if soonest_form %>
                   <% soonest_show = soonest_form[:instance]&.show %>
-                  <% soonest_regs = soonest_form[:form_status][:total_registrations] || 0 %>
+                  <% soonest_regs = soonest_form[:instance]&.registration_count || 0 %>
                   <div class="text-sm font-medium text-gray-900 truncate"><%= soonest_form[:form].name %></div>
                   <div class="flex items-baseline gap-1.5">
                     <span class="text-lg font-bold text-gray-900 tabular-nums"><%= soonest_regs %></span>
-                    <span class="text-xs text-gray-500">registered</span>
+                    <span class="text-xs text-gray-500">registered for next event</span>
                     <% if soonest_show %>
                       <span class="text-xs text-gray-400">· <%= soonest_show.date_and_time.strftime("%b %-d") %></span>
                     <% end %>
@@ -159,7 +159,7 @@
                     </div>
                   </div>
                   <div class="text-right flex-shrink-0">
-                    <span class="text-lg font-bold text-gray-900 tabular-nums"><%= form_status[:total_registrations] || 0 %></span>
+                    <span class="text-lg font-bold text-gray-900 tabular-nums"><%= instance&.registration_count || 0 %></span>
                     <div class="text-xs text-gray-500">registered</div>
                   </div>
                 <% end %>
