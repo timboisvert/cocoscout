@@ -97,18 +97,38 @@ module Manage
         @space_rentals = @contract.space_rentals.includes(:shows).order(:starts_at)
 
         # Build financial summary for third-party
-        received = @contract.total_incoming
-        pending_payments = @contract.pending_payments
-        overdue_payments = @contract.overdue_payments
+        if @contract.ticket_revenue_minus_fee?
+          fee_summary = @contract.flat_fee_revenue_summary
+          received_fee = @contract.flat_fee_amount
+          outgoing_paid = @contract.contract_payments.where(direction: "outgoing").status_paid.sum(:amount)
 
-        @financial_summary = {
-          gross_revenue: received,
-          pending_amount: pending_payments.sum(:amount),
-          pending_count: pending_payments.count,
-          overdue_amount: overdue_payments.sum(:amount),
-          overdue_count: overdue_payments.count,
-          total_contract_value: @contract_payments.sum(:amount)
-        }
+          @financial_summary = {
+            gross_revenue: fee_summary ? fee_summary[:confirmed_revenue] : 0,
+            our_fee: received_fee,
+            contractor_paid: outgoing_paid,
+            pending_amount: @contract.pending_payments.sum(:amount),
+            pending_count: @contract.pending_payments.count,
+            overdue_amount: @contract.overdue_payments.sum(:amount),
+            overdue_count: @contract.overdue_payments.count,
+            total_contract_value: received_fee,
+            is_ticket_revenue_minus_fee: true,
+            confirmed_show_count: fee_summary&.dig(:confirmed_count) || 0,
+            pending_show_count: fee_summary&.dig(:pending_count) || 0
+          }
+        else
+          received = @contract.total_incoming
+          pending_payments = @contract.pending_payments
+          overdue_payments = @contract.overdue_payments
+
+          @financial_summary = {
+            gross_revenue: received,
+            pending_amount: pending_payments.sum(:amount),
+            pending_count: pending_payments.count,
+            overdue_amount: overdue_payments.sum(:amount),
+            overdue_count: overdue_payments.count,
+            total_contract_value: @contract_payments.sum(:amount)
+          }
+        end
       else
         @contract_payments = []
         @space_rentals = []
@@ -133,6 +153,7 @@ module Manage
 
       # Check for revenue share
       is_revenue_share = contract.revenue_share?
+      is_ticket_revenue_minus_fee = contract.ticket_revenue_minus_fee?
       our_share = is_revenue_share ? contract.draft_payment_config["revenue_our_share"].to_i : nil
 
       # For revenue share contracts, calculate from show financials
@@ -146,17 +167,38 @@ module Manage
           confirmed_count = rev_summary[:confirmed_count]
           pending_show_count = rev_summary[:pending_count]
         end
+      elsif is_ticket_revenue_minus_fee
+        fee_summary = contract.flat_fee_revenue_summary
+        if fee_summary
+          show_revenue = fee_summary[:confirmed_revenue]
+          confirmed_count = fee_summary[:confirmed_count]
+          pending_show_count = fee_summary[:pending_count]
+        end
+      end
+
+      # Calculate gross_revenue and net_income based on contract type
+      if is_revenue_share
+        gross_revenue = show_revenue
+        net_income = (show_revenue * (our_share || 0) / 100.0).round(2)
+      elsif is_ticket_revenue_minus_fee
+        gross_revenue = show_revenue
+        net_income = contract.flat_fee_amount
+      else
+        gross_revenue = received
+        net_income = received
       end
 
       {
         production: production,
         is_third_party: true,
         is_revenue_share: is_revenue_share,
+        is_ticket_revenue_minus_fee: is_ticket_revenue_minus_fee,
         our_share: our_share,
         their_share: is_revenue_share ? contract.contractor_share_percentage.to_i : nil,
+        flat_fee_amount: is_ticket_revenue_minus_fee ? contract.flat_fee_amount : nil,
         contract: contract,
         total_shows: production.shows.count,
-        gross_revenue: is_revenue_share ? show_revenue : received,
+        gross_revenue: gross_revenue,
         confirmed_show_count: confirmed_count,
         pending_show_count: pending_show_count,
         pending_amount: pending_payments.sum(:amount),
@@ -166,7 +208,7 @@ module Manage
         show_expenses: 0,
         production_expenses: 0,
         total_payouts: 0,
-        net_income: is_revenue_share ? (show_revenue * (our_share || 0) / 100.0).round(2) : received
+        net_income: net_income
       }
     end
 

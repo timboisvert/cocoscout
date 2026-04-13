@@ -129,7 +129,7 @@ module Manage
 
       # Load shows with pre-fetched associations
       @shows = query
-               .includes(:show_financials, :show_payout, :location, show_payout: :show_payout_line_items)
+               .includes(:show_financials, :show_payout, :location, show_payout: :line_items)
                .limit(100)
                .to_a
 

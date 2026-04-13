@@ -146,6 +146,7 @@ module Manage
       # Check for revenue share
       payment_structure = contract.draft_payment_structure
       is_revenue_share = payment_structure == "revenue_share"
+      is_ticket_revenue_minus_fee = contract.ticket_revenue_minus_fee?
       payment_config = contract.draft_payment_config
       our_share = is_revenue_share ? payment_config["revenue_our_share"].to_i : nil
       their_share = is_revenue_share ? payment_config["revenue_their_share"].to_i : nil
@@ -161,6 +162,25 @@ module Manage
           confirmed_count = rev_summary[:confirmed_count]
           pending_show_count = rev_summary[:pending_count]
         end
+      elsif is_ticket_revenue_minus_fee
+        fee_summary = contract.flat_fee_revenue_summary
+        if fee_summary
+          show_revenue = fee_summary[:confirmed_revenue]
+          confirmed_count = fee_summary[:confirmed_count]
+          pending_show_count = fee_summary[:pending_count]
+        end
+      end
+
+      # Calculate gross_revenue and net_income based on contract type
+      if is_revenue_share
+        gross_revenue = show_revenue
+        net_income = (show_revenue * (our_share || 0) / 100.0).round(2)
+      elsif is_ticket_revenue_minus_fee
+        gross_revenue = show_revenue
+        net_income = contract.flat_fee_amount
+      else
+        gross_revenue = received
+        net_income = received
       end
 
       {
@@ -168,21 +188,23 @@ module Manage
         is_third_party: true,
         contract: contract,
         total_shows: production.shows.count,
-        gross_revenue: is_revenue_share ? show_revenue : received,
+        gross_revenue: gross_revenue,
         pending_amount: pending_amount,
         pending_count: pending_payments.count,
         overdue_amount: overdue_amount,
         overdue_count: overdue_payments.count,
         is_revenue_share: is_revenue_share,
+        is_ticket_revenue_minus_fee: is_ticket_revenue_minus_fee,
         our_share: our_share,
         their_share: their_share,
+        flat_fee_amount: is_ticket_revenue_minus_fee ? contract.flat_fee_amount : nil,
         confirmed_show_count: confirmed_count,
         pending_show_count: pending_show_count,
         # Zero out in-house specific fields
         show_expenses: 0,
         production_expenses: 0,
         total_payouts: 0,
-        net_income: is_revenue_share ? (show_revenue * (our_share || 0) / 100.0).round(2) : received
+        net_income: net_income
       }
     end
 

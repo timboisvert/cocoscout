@@ -161,7 +161,7 @@ module Manage
       financials = @show.show_financials || @show.create_show_financials!
       financials.update!(non_revenue_override: true)
       redirect_to manage_money_index_path,
-                  notice: "#{view_context.show_display_name(@show)} marked as non-revenue event."
+                  notice: "#{@show.date_and_time.strftime('%b %-d')} - #{@show.display_name} marked as non-revenue event."
     end
 
     def unmark_non_revenue
@@ -331,7 +331,7 @@ module Manage
       )
 
       redirect_to manage_money_index_path,
-                  notice: "#{view_context.show_display_name(@show)} closed as non-paying."
+                  notice: "#{@show.date_and_time.strftime('%b %-d')} - #{@show.display_name} closed as non-paying."
     end
 
     # Reopen a paid payout to add more people or make changes

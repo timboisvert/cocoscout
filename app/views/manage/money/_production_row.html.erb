@@ -64,10 +64,12 @@
       </div>
 
       <% if is_third_party %>
-        <%# Check for revenue share contracts %>
+        <%# Check for special contract types %>
         <% is_revenue_share = summary[:is_revenue_share] %>
+        <% is_ticket_revenue_minus_fee = summary[:is_ticket_revenue_minus_fee] %>
         <% our_share = summary[:our_share] %>
         <% their_share = summary[:their_share] %>
+        <% flat_fee_amount = summary[:flat_fee_amount] %>
         <% confirmed_count = summary[:confirmed_show_count] || 0 %>
         <% pending_show_count = summary[:pending_show_count] || 0 %>
 
@@ -77,6 +79,10 @@
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Revenue Share</div>
             <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Split</div>
             <div class="text-[10px] text-gray-500">You keep <%= our_share %>%</div>
+          <% elsif is_ticket_revenue_minus_fee %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Flat Fee</div>
+            <div class="text-sm font-medium text-gray-900"><%= number_to_currency(flat_fee_amount) %></div>
+            <div class="text-[10px] text-gray-500">You keep from ticket revenue</div>
           <% else %>
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Contract Revenue</div>
             <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
@@ -85,8 +91,8 @@
 
         <%# Third-party: Revenue / Received %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <% if is_revenue_share %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Revenue</div>
+          <% if is_revenue_share || is_ticket_revenue_minus_fee %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Ticket Revenue</div>
             <% if gross_revenue > 0 %>
               <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
               <div class="text-[10px] text-gray-500">
@@ -117,8 +123,8 @@
 
         <%# Third-party: Status / Your Share %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-          <% if is_revenue_share && gross_revenue > 0 %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Your Share</div>
+          <% if (is_revenue_share || is_ticket_revenue_minus_fee) && gross_revenue > 0 %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">You Keep</div>
             <div class="text-sm font-medium text-green-600"><%= number_to_currency(summary[:net_income]) %></div>
           <% else %>
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Status</div>

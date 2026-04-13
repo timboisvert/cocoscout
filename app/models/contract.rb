@@ -198,6 +198,28 @@ class Contract < ApplicationRecord
     }
   end
 
+  # Returns financial summary for ticket_revenue_minus_fee contracts
+  def flat_fee_revenue_summary
+    return nil unless ticket_revenue_minus_fee?
+
+    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).to_a }
+    confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
+    pending_shows = all_shows - confirmed_shows
+
+    confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
+    fee = flat_fee_amount
+    contractor_amount = [ confirmed_revenue - fee, 0 ].max
+
+    {
+      confirmed_revenue: confirmed_revenue,
+      confirmed_count: confirmed_shows.count,
+      pending_count: pending_shows.count,
+      our_share: fee,
+      contractor_share: contractor_amount,
+      total_shows: all_shows.count
+    }
+  end
+
   # Find the matching ContractPayment for a given show based on settlement frequency
   def find_payment_for_show(show)
     return nil unless revenue_share?
@@ -262,6 +284,14 @@ class Contract < ApplicationRecord
   # Revenue projection helpers
   def revenue_share?
     draft_payment_structure == "revenue_share"
+  end
+
+  def ticket_revenue_minus_fee?
+    draft_payment_structure == "flat_fee" && draft_payment_config["flat_fee_direction"] == "ticket_revenue_minus_fee"
+  end
+
+  def flat_fee_amount
+    draft_payment_config["flat_fee_amount"].to_f
   end
 
   def revenue_share_percentage

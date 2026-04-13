@@ -157,7 +157,7 @@ class ShowFinancials < ApplicationRecord
 
   def sync_contract_payments_on_destroy
     # When financial data is deleted, sync contract payments to reset TBD flags
-    show&.sync_contract_payments
+    show&.send(:sync_contract_payments)
   end
 
   # Normalize details data - converts hash to array if needed

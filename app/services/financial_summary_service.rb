@@ -62,8 +62,11 @@ class FinancialSummaryService
     # Only include revenue events (shows, classes, workshops) - not rehearsals/meetings
     revenue_event_types = EventTypes.revenue_event_types
 
-    # Build scope across all productions
-    production_ids = @productions.map(&:id)
+    # Build scope across all productions, excluding third-party productions
+    # (their revenue comes through contracts, not show ticket sales)
+    in_house_productions = @productions.reject(&:type_third_party?)
+    production_ids = in_house_productions.map(&:id)
+    all_production_ids = @productions.map(&:id)
     scope = Show.where(production_id: production_ids)
                 .where(event_type: revenue_event_types)
                 .where("date_and_time < ?", Time.current) # Only past shows
@@ -138,8 +141,8 @@ class FinancialSummaryService
     # In future, operating_expenses would be subtracted here
     net_income = gross_profit
 
-    # Contract revenue (incoming payments from contracts)
-    contract_revenue = calculate_contract_revenue(production_ids, date_range)
+    # Contract revenue (incoming payments from contracts, including third-party fees)
+    contract_revenue = calculate_contract_revenue(all_production_ids, date_range)
 
     {
       show_count: scope.count,
@@ -180,8 +183,16 @@ class FinancialSummaryService
                    .where("contract_end_date >= ? OR contract_end_date IS NULL", date_range.first)
     end
 
-    # Only count payments that have actually been paid
-    scope.sum { |contract| contract.contract_payments.where(direction: "incoming").status_paid.sum(:amount) }
+    scope.sum do |contract|
+      if contract.ticket_revenue_minus_fee?
+        # For ticket_revenue_minus_fee contracts, the org's revenue is the flat fee they keep
+        fee_summary = contract.flat_fee_revenue_summary
+        fee_summary && fee_summary[:confirmed_count] > 0 ? contract.flat_fee_amount : 0.0
+      else
+        # Standard: count paid incoming payments
+        contract.contract_payments.where(direction: "incoming").status_paid.sum(:amount)
+      end
+    end
   rescue
     0.0
   end

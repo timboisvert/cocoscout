@@ -59,51 +59,133 @@
       <% end %>
     </div>
   </div>
+<% elsif contract&.ticket_revenue_minus_fee? %>
+  <%# Ticket Revenue Minus Fee Contract Banner %>
+  <% fee_summary = contract.flat_fee_revenue_summary %>
+  <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-semibold text-pink-800">Flat Fee Contract</span>
+          <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
+            <%= number_to_currency(contract.flat_fee_amount) %> fee
+          </span>
+        </div>
+        <p class="text-sm text-pink-700">
+          You keep <strong><%= number_to_currency(contract.flat_fee_amount) %></strong> from ticket revenue. The rest goes to <%= contract.contractor_name %>.
+        </p>
+      </div>
+      <% if fee_summary && fee_summary[:confirmed_count] > 0 %>
+        <div class="flex gap-4 text-sm">
+          <div class="text-center">
+            <div class="font-semibold text-gray-900"><%= number_to_currency(fee_summary[:confirmed_revenue]) %></div>
+            <div class="text-xs text-gray-500">Ticket Revenue</div>
+          </div>
+          <div class="text-center">
+            <div class="font-semibold text-green-600"><%= number_to_currency(fee_summary[:our_share]) %></div>
+            <div class="text-xs text-gray-500">You Keep</div>
+          </div>
+          <div class="text-center">
+            <div class="font-semibold text-amber-600"><%= number_to_currency(fee_summary[:contractor_share]) %></div>
+            <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
+          </div>
+          <% if fee_summary[:pending_count] > 0 %>
+            <div class="text-center">
+              <div class="font-semibold text-pink-600"><%= fee_summary[:pending_count] %></div>
+              <div class="text-xs text-gray-500">Pending</div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
 <% end %>
 
 <%# Four Summary Boxes - matching in-house style %>
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <%# Total Contract Value %>
-  <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Total Contract</div>
-    <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(financial_summary[:total_contract_value]) %></div>
-    <% if contract %>
-      <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
-    <% end %>
-  </div>
-
-  <%# Received %>
-  <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Received</div>
-    <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(financial_summary[:gross_revenue]) %></div>
-    <div class="text-xs text-gray-500">
-      <%= contract_payments.select { |p| p.status_paid? }.count %> <%= "payment".pluralize(contract_payments.select { |p| p.status_paid? }.count) %>
+  <% if financial_summary[:is_ticket_revenue_minus_fee] %>
+    <%# Ticket Revenue Minus Fee layout %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Ticket Revenue</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(financial_summary[:gross_revenue]) %></div>
+      <div class="text-xs text-gray-500">
+        <%= financial_summary[:confirmed_show_count] %> <%= "show".pluralize(financial_summary[:confirmed_show_count]) %> confirmed
+      </div>
     </div>
-  </div>
 
-  <%# Pending %>
-  <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Pending</div>
-    <% if financial_summary[:pending_amount] > 0 %>
-      <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(financial_summary[:pending_amount]) %></div>
-      <div class="text-xs text-gray-500"><%= financial_summary[:pending_count] %> <%= "payment".pluralize(financial_summary[:pending_count]) %></div>
-    <% else %>
-      <div class="text-2xl font-semibold text-gray-400">$0.00</div>
-      <div class="text-xs text-gray-500">all paid</div>
-    <% end %>
-  </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Your Fee</div>
+      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(financial_summary[:our_fee]) %></div>
+      <div class="text-xs text-gray-500">You keep from revenue</div>
+    </div>
 
-  <%# Overdue %>
-  <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Overdue</div>
-    <% if financial_summary[:overdue_amount] > 0 %>
-      <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(financial_summary[:overdue_amount]) %></div>
-      <div class="text-xs red-500"><%= financial_summary[:overdue_count] %> <%= "payment".pluralize(financial_summary[:overdue_count]) %></div>
-    <% else %>
-      <div class="text-2xl font-semibold text-gray-400">$0.00</div>
-      <div class="text-xs text-gray-500">none</div>
-    <% end %>
-  </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">To Contractor</div>
+      <% contractor_owed = [financial_summary[:gross_revenue] - financial_summary[:our_fee], 0].max %>
+      <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(contractor_owed) %></div>
+      <div class="text-xs text-gray-500">
+        <% if financial_summary[:contractor_paid].to_f > 0 %>
+          <%= number_to_currency(financial_summary[:contractor_paid]) %> paid
+        <% else %>
+          revenue minus fee
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Pending Shows</div>
+      <% if financial_summary[:pending_show_count] > 0 %>
+        <div class="text-2xl font-semibold text-pink-600"><%= financial_summary[:pending_show_count] %></div>
+        <div class="text-xs text-gray-500">awaiting financials</div>
+      <% else %>
+        <div class="text-2xl font-semibold text-gray-400">0</div>
+        <div class="text-xs text-gray-500">all confirmed</div>
+      <% end %>
+    </div>
+  <% else %>
+    <%# Standard flat-fee / incoming payment layout %>
+    <%# Total Contract Value %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Total Contract</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(financial_summary[:total_contract_value]) %></div>
+      <% if contract %>
+        <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
+      <% end %>
+    </div>
+
+    <%# Received %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Received</div>
+      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(financial_summary[:gross_revenue]) %></div>
+      <div class="text-xs text-gray-500">
+        <%= contract_payments.select { |p| p.status_paid? }.count %> <%= "payment".pluralize(contract_payments.select { |p| p.status_paid? }.count) %>
+      </div>
+    </div>
+
+    <%# Pending %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Pending</div>
+      <% if financial_summary[:pending_amount] > 0 %>
+        <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(financial_summary[:pending_amount]) %></div>
+        <div class="text-xs text-gray-500"><%= financial_summary[:pending_count] %> <%= "payment".pluralize(financial_summary[:pending_count]) %></div>
+      <% else %>
+        <div class="text-2xl font-semibold text-gray-400">$0.00</div>
+        <div class="text-xs text-gray-500">all paid</div>
+      <% end %>
+    </div>
+
+    <%# Overdue %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Overdue</div>
+      <% if financial_summary[:overdue_amount] > 0 %>
+        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(financial_summary[:overdue_amount]) %></div>
+        <div class="text-xs red-500"><%= financial_summary[:overdue_count] %> <%= "payment".pluralize(financial_summary[:overdue_count]) %></div>
+      <% else %>
+        <div class="text-2xl font-semibold text-gray-400">$0.00</div>
+        <div class="text-xs text-gray-500">none</div>
+      <% end %>
+    </div>
+  <% end %>
 </div>
 
 <% if contract %>
