@@ -107,6 +107,9 @@
   </div>
 </div>
 
+<%# Compute suggested amount for TBD payments (used by both modals) %>
+<% suggestion = payment.amount_tbd? ? payment.suggested_amount_from_financials : nil %>
+
 <%# Modal for marking payment received %>
 <% if show_mark_received && payment.status_pending? %>
   <div id="mark-payment-received-<%= payment.id %>" class="hidden fixed inset-0 z-50" data-payment-modal-target="modal">
@@ -123,7 +126,10 @@
         <div class="mb-6">
           <div class="bg-gray-50 rounded-lg p-4 text-center">
             <div class="text-sm text-gray-500 mb-1">Payment Amount</div>
-            <% if payment.amount_tbd? && payment.amount.to_f == 0 %>
+            <% if payment.amount_tbd? && suggestion %>
+              <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>"><%= number_to_currency(suggestion[:amount]) %></div>
+              <div class="text-xs text-gray-500 mt-1"><%= suggestion[:explanation] %></div>
+            <% elsif payment.amount_tbd? && payment.amount.to_f == 0 %>
               <div class="text-3xl font-bold text-gray-400">TBD</div>
             <% else %>
               <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>"><%= number_to_currency(payment.amount) %></div>
@@ -134,6 +140,22 @@
           </div>
         </div>
 
+        <% if suggestion && suggestion[:shows].present? %>
+          <div class="bg-blue-50 rounded-lg p-3 mb-4">
+            <div class="text-xs font-medium text-blue-700 mb-1">Show Financials</div>
+            <% suggestion[:shows].each do |show| %>
+              <div class="flex justify-between text-sm">
+                <span class="text-blue-600"><%= show.date_and_time.strftime("%b %-d") %> — <%= show.display_name %></span>
+                <span class="font-medium text-blue-900"><%= number_to_currency(show.show_financials.total_revenue) %></span>
+              </div>
+            <% end %>
+            <div class="flex justify-between text-sm font-semibold border-t border-blue-200 mt-1 pt-1">
+              <span class="text-blue-700">Total Revenue</span>
+              <span class="text-blue-900"><%= number_to_currency(suggestion[:total_revenue]) %></span>
+            </div>
+          </div>
+        <% end %>
+
         <%= form_with url: mark_paid_manage_contract_contract_payment_path(contract, payment), method: :post, local: true do |f| %>
           <div class="space-y-4">
             <% if payment.amount_tbd? %>
@@ -141,8 +163,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                 <div class="relative">
                   <span class="absolute left-3 top-2 text-gray-500">$</span>
-                  <%= number_field_tag :payment_amount, (payment.amount.to_f > 0 ? payment.amount : nil), step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                  <%= number_field_tag :payment_amount, (suggestion ? suggestion[:amount] : (payment.amount.to_f > 0 ? payment.amount : nil)), step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
                 </div>
+                <% if suggestion %>
+                  <div class="text-xs text-gray-500 mt-1">Pre-filled from contract terms · <%= suggestion[:explanation] %></div>
+                <% end %>
               </div>
             <% end %>
 
@@ -204,14 +229,39 @@
           <% if payment.paid_date %> · Paid <%= payment.paid_date.strftime("%b %-d") %><% end %>
         </div>
 
+        <% if suggestion && suggestion[:shows].present? %>
+          <div class="bg-blue-50 rounded-lg p-3 mb-4">
+            <div class="text-xs font-medium text-blue-700 mb-1">Show Financials</div>
+            <% suggestion[:shows].each do |show| %>
+              <div class="flex justify-between text-sm">
+                <span class="text-blue-600"><%= show.date_and_time.strftime("%b %-d") %> — <%= show.display_name %></span>
+                <span class="font-medium text-blue-900"><%= number_to_currency(show.show_financials.total_revenue) %></span>
+              </div>
+            <% end %>
+            <div class="flex justify-between text-sm font-semibold border-t border-blue-200 mt-1 pt-1">
+              <span class="text-blue-700">Total Revenue</span>
+              <span class="text-blue-900"><%= number_to_currency(suggestion[:total_revenue]) %></span>
+            </div>
+          </div>
+          <% if suggestion[:amount] %>
+            <div class="bg-green-50 rounded-lg p-3 mb-4">
+              <div class="text-xs font-medium text-green-700">Suggested Amount (<%= suggestion[:explanation] %>)</div>
+              <div class="text-xl font-bold text-green-800"><%= number_to_currency(suggestion[:amount]) %></div>
+            </div>
+          <% end %>
+        <% end %>
+
         <%= form_with url: manage_contract_contract_payment_path(contract, payment), method: :patch, local: true do |f| %>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
               <div class="relative">
                 <span class="absolute left-3 top-2 text-gray-500">$</span>
-                <%= f.number_field :amount, value: (payment.amount.to_f > 0 ? payment.amount : nil), step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <%= f.number_field :amount, value: (suggestion ? suggestion[:amount] : (payment.amount.to_f > 0 ? payment.amount : nil)), step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
               </div>
+              <% if suggestion %>
+                <div class="text-xs text-gray-500 mt-1">Pre-filled from contract terms · <%= suggestion[:explanation] %></div>
+              <% end %>
             </div>
           </div>
 

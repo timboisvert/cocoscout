@@ -62,6 +62,49 @@ class ContractPayment < ApplicationRecord
     "#{prefix}$#{'%.2f' % amount}"
   end
 
+  # Compute a suggested amount based on contract terms and show financials.
+  # Returns { amount: Float, explanation: String, shows: [...] } or nil.
+  def suggested_amount_from_financials
+    return nil unless amount_tbd? && contract
+
+    linked_shows = contract.shows_for_payment(self)
+    shows_with_data = linked_shows.select { |s| s.show_financials&.has_data? }
+    return nil if shows_with_data.empty?
+
+    total_revenue = shows_with_data.sum { |s| s.show_financials.total_revenue }
+    config = contract.draft_payment_config
+    structure = contract.draft_payment_structure
+
+    suggested = case structure
+    when "revenue_share"
+      pct = direction_incoming? ? config["revenue_our_share"].to_f : config["revenue_their_share"].to_f
+      calculated = (total_revenue * pct / 100.0).round(2)
+      { amount: calculated, explanation: "#{pct.round(0)}% of revenue" }
+    when "per_event"
+      per_event_amt = config["per_event_amount"].to_f
+      if per_event_amt > 0
+        { amount: per_event_amt * linked_shows.size, explanation: "$#{'%.2f' % per_event_amt} per event" }
+      end
+    when "flat_fee"
+      flat_amt = config["flat_fee_amount"].to_f
+      fee_direction = config["flat_fee_direction"]
+      if fee_direction == "ticket_revenue_minus_fee" && flat_amt > 0
+        contractor_amount = (total_revenue - flat_amt).round(2)
+        contractor_amount = [ contractor_amount, 0 ].max
+        { amount: contractor_amount, explanation: "Ticket revenue minus $#{'%.2f' % flat_amt} fee" }
+      elsif flat_amt > 0
+        { amount: flat_amt, explanation: "Flat fee" }
+      end
+    end
+
+    if suggested
+      suggested[:shows] = shows_with_data
+      suggested[:total_revenue] = total_revenue
+    end
+
+    suggested
+  end
+
   def status_badge_class
     case status
     when "paid" then "badge-success"
