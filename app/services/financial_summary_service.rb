@@ -142,7 +142,8 @@ class FinancialSummaryService
     net_income = gross_profit
 
     # Contract revenue (incoming payments from contracts, including third-party fees)
-    contract_revenue = calculate_contract_revenue(all_production_ids, date_range)
+    # Only calculate at the org level (multiple productions), not for individual productions
+    contract_revenue = @productions.size > 1 ? calculate_contract_revenue(all_production_ids, date_range) : 0.0
 
     {
       show_count: scope.count,
