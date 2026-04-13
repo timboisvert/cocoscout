@@ -67,6 +67,10 @@
           <div class="text-xs text-pink-600">
             <%= distance_of_time_in_words(payment.due_date, Date.current) %> overdue
           </div>
+        <% elsif payment.revenue_share? && !payment.amount_tbd? && payment.notes&.include?("Auto-calculated") %>
+          <div class="text-xs text-gray-500">
+            from show financials
+          </div>
         <% end %>
       </div>
 

@@ -9,8 +9,11 @@ module Manage
       # Production type filter
       @production_filter = params[:production_filter].presence || "all"
 
-      # Get productions the user has access to
-      all_productions = Current.user.accessible_productions.order(:name)
+      # Show all toggle (bypasses relevance filtering)
+      @show_all = params[:show_all] == "true"
+
+      # Get productions the user has access to (exclude courses from main list)
+      all_productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
 
       # Apply production type filter
       @productions = case @production_filter
@@ -22,9 +25,24 @@ module Manage
         all_productions
       end
 
+      # Apply 3-month relevance filter unless "show all" is toggled
+      unless @show_all
+        relevant_production_ids = Show.where("date_and_time > ?", 3.months.ago)
+                                      .select(:production_id).distinct
+        @all_count = @productions.count
+        @productions = @productions.where(id: relevant_production_ids)
+        @hidden_count = @all_count - @productions.count
+      end
+
       # Build summary data for each production
       @production_summaries = @productions.map do |production|
         build_production_summary(production)
+      end
+
+      # Courses (separate collapsed section)
+      @courses = Current.user.accessible_productions.where(production_type: "course").order(:name)
+      @course_summaries = @courses.map do |course|
+        build_production_summary(course)
       end
 
       # Overall organization summary (uses filtered productions)
@@ -96,12 +114,25 @@ module Manage
       our_share = is_revenue_share ? payment_config["revenue_our_share"].to_i : nil
       their_share = is_revenue_share ? payment_config["revenue_their_share"].to_i : nil
 
+      # For revenue share contracts, calculate from show financials
+      show_revenue = 0
+      confirmed_count = 0
+      pending_show_count = 0
+      if is_revenue_share
+        rev_summary = contract.revenue_share_summary
+        if rev_summary
+          show_revenue = rev_summary[:confirmed_revenue]
+          confirmed_count = rev_summary[:confirmed_count]
+          pending_show_count = rev_summary[:pending_count]
+        end
+      end
+
       {
         production: production,
         is_third_party: true,
         contract: contract,
         total_shows: production.shows.count,
-        gross_revenue: received,
+        gross_revenue: is_revenue_share ? show_revenue : received,
         pending_amount: pending_amount,
         pending_count: pending_payments.count,
         overdue_amount: overdue_amount,
@@ -109,11 +140,13 @@ module Manage
         is_revenue_share: is_revenue_share,
         our_share: our_share,
         their_share: their_share,
+        confirmed_show_count: confirmed_count,
+        pending_show_count: pending_show_count,
         # Zero out in-house specific fields
         show_expenses: 0,
         production_expenses: 0,
         total_payouts: 0,
-        net_income: received
+        net_income: is_revenue_share ? (show_revenue * (our_share || 0) / 100.0).round(2) : received
       }
     end
 

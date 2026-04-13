@@ -13,27 +13,17 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments, :quick_payment_info, :issue_advances, :reset_calculation
+      :update_guest_payments, :quick_payment_info, :contractor_payment_info, :issue_advances, :reset_calculation
     ]
 
     def show
-      @line_items = @show_payout.line_items.by_amount
-      @show_financials = @show.show_financials
+      @is_third_party = @production.third_party?
+      @contract = @production.contract
 
-      # Load advances related to this show's performers
-      person_ids = @line_items.where(payee_type: "Person").pluck(:payee_id).compact
-
-      # Advances for this show (issued but not yet paid, or paid and outstanding)
-      @show_advances = @production.person_advances.for_show(@show).outstanding.where(person_id: person_ids).includes(:person)
-
-      # General outstanding advances for these people (will be deducted from any payout)
-      @general_advances = @production.person_advances.general.outstanding.where(person_id: person_ids).includes(:person)
-
-      # Build a lookup by person_id for easy access in the view
-      @advances_by_person = {}
-      (@show_advances + @general_advances).each do |advance|
-        @advances_by_person[advance.person_id] ||= []
-        @advances_by_person[advance.person_id] << advance
+      if @is_third_party && @contract&.revenue_share?
+        setup_contractor_payout
+      else
+        setup_performer_payout
       end
     end
 
@@ -67,6 +57,23 @@ module Manage
     end
 
     def calculate
+      # Third-party contract payouts are auto-calculated from financials
+      if @production.third_party? && @production.contract&.revenue_share?
+        @contract = @production.contract
+        @contractor = @contract.contractor
+        @show_financials = @show.show_financials
+
+        if @show_financials&.has_data?
+          sync_contractor_line_item
+          redirect_to manage_money_show_payout_path(@show),
+                      notice: "Contractor payout calculated: #{helpers.number_to_currency(@show_payout.total_payout)}."
+        else
+          redirect_to manage_money_show_payout_path(@show),
+                      alert: "Please enter financial data before calculating payouts."
+        end
+        return
+      end
+
       # Ensure we have financials
       unless @show.show_financials&.complete?
         redirect_to manage_edit_money_show_financials_path(@show),
@@ -474,6 +481,18 @@ module Manage
                   notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
     end
 
+    def contractor_payment_info
+      contractor = Contractor.find(params[:contractor_id])
+      venmo_handle = params[:venmo_handle]&.strip.presence
+      zelle_id = params[:zelle_email]&.strip.presence
+
+      contractor.update!(venmo_identifier: venmo_handle&.delete("@")) if venmo_handle
+      contractor.update!(zelle_identifier: zelle_id) if zelle_id
+
+      redirect_to manage_money_show_payout_path(@show),
+                  notice: "Payment info updated for #{contractor.name}."
+    end
+
     def quick_payment_info
       person = Person.find(params[:person_id])
 
@@ -557,6 +576,67 @@ module Manage
     end
 
     private
+
+    def setup_performer_payout
+      @line_items = @show_payout.line_items.by_amount
+      @show_financials = @show.show_financials
+
+      # Load advances related to this show's performers
+      person_ids = @line_items.where(payee_type: "Person").pluck(:payee_id).compact
+
+      @show_advances = @production.person_advances.for_show(@show).outstanding.where(person_id: person_ids).includes(:person)
+      @general_advances = @production.person_advances.general.outstanding.where(person_id: person_ids).includes(:person)
+
+      @advances_by_person = {}
+      (@show_advances + @general_advances).each do |advance|
+        @advances_by_person[advance.person_id] ||= []
+        @advances_by_person[advance.person_id] << advance
+      end
+    end
+
+    def setup_contractor_payout
+      @show_financials = @show.show_financials
+      @contractor = @contract.contractor
+
+      if @show_financials&.has_data?
+        sync_contractor_line_item
+      end
+
+      @line_items = @show_payout.line_items.by_amount
+      @contractor_line_item = @show_payout.line_items.find_by(payee_type: "Contractor")
+      @advances_by_person = {}
+    end
+
+    def sync_contractor_line_item
+      contractor_pct = @contract.contractor_share_percentage
+      return unless contractor_pct
+
+      total_revenue = @show_financials.total_revenue
+      contractor_amount = (total_revenue * contractor_pct / 100.0).round(2)
+
+      line_item = @show_payout.line_items.find_or_initialize_by(
+        payee_type: "Contractor",
+        payee_id: @contractor&.id
+      )
+
+      unless line_item.paid?
+        line_item.assign_attributes(
+          amount: contractor_amount,
+          calculation_details: {
+            "total_revenue" => total_revenue.to_f,
+            "contractor_share_pct" => contractor_pct,
+            "formula" => "#{helpers.number_to_currency(total_revenue)} × #{contractor_pct}%"
+          }
+        )
+        line_item.save!
+
+        @show_payout.update!(
+          calculated_at: Time.current,
+          total_payout: contractor_amount,
+          status: line_item.paid? ? "paid" : "awaiting_payout"
+        )
+      end
+    end
 
     def set_production
       @production = @show&.production

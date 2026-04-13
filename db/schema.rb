@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_31_143710) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_12_190707) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -414,6 +414,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_31_143710) do
     t.bigint "organization_id", null: false
     t.string "phone"
     t.datetime "updated_at", null: false
+    t.string "venmo_identifier"
+    t.string "zelle_identifier"
     t.index ["organization_id", "name"], name: "index_contractors_on_organization_id_and_name"
     t.index ["organization_id"], name: "index_contractors_on_organization_id"
   end

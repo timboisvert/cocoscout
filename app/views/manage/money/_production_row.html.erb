@@ -68,27 +68,41 @@
         <% is_revenue_share = summary[:is_revenue_share] %>
         <% our_share = summary[:our_share] %>
         <% their_share = summary[:their_share] %>
+        <% confirmed_count = summary[:confirmed_show_count] || 0 %>
+        <% pending_show_count = summary[:pending_show_count] || 0 %>
 
         <%# Third-party: Contract Revenue %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
           <% if is_revenue_share %>
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Revenue Share</div>
             <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Split</div>
-            <div class="text-[10px] text-gray-500">We receive <%= our_share %>%</div>
+            <div class="text-[10px] text-gray-500">You keep <%= our_share %>%</div>
           <% else %>
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Contract Revenue</div>
             <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
           <% end %>
         </div>
 
-        <%# Third-party: Pending Payments %>
+        <%# Third-party: Revenue / Received %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
           <% if is_revenue_share %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Received</div>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Revenue</div>
             <% if gross_revenue > 0 %>
               <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
+              <div class="text-[10px] text-gray-500">
+                <%= confirmed_count %> <%= "show".pluralize(confirmed_count) %> confirmed
+                <% if pending_show_count > 0 %>
+                  &middot; <%= pending_show_count %> pending
+                <% end %>
+              </div>
+            <% elsif confirmed_count > 0 %>
+              <div class="text-sm text-gray-900"><%= number_to_currency(0) %></div>
+              <div class="text-[10px] text-gray-500"><%= confirmed_count %> shows, no revenue</div>
+            <% elsif pending_show_count > 0 %>
+              <div class="text-sm text-gray-400">Awaiting data</div>
+              <div class="text-[10px] text-gray-500"><%= pending_show_count %> <%= "show".pluralize(pending_show_count) %> pending</div>
             <% else %>
-              <div class="text-sm text-gray-400">TBD</div>
+              <div class="text-sm text-gray-400">No shows yet</div>
             <% end %>
           <% else %>
             <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Pending</div>
@@ -101,17 +115,22 @@
           <% end %>
         </div>
 
-        <%# Third-party: Status %>
+        <%# Third-party: Status / Your Share %>
         <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Status</div>
-          <% overdue_count = summary[:overdue_count] || 0 %>
-          <% pending_count = summary[:pending_count] || 0 %>
-          <% if overdue_count > 0 %>
-            <div class="text-sm font-medium text-red-600"><%= overdue_count %> overdue</div>
-          <% elsif pending_count > 0 %>
-            <div class="text-sm font-medium text-amber-600"><%= pending_count %> pending</div>
+          <% if is_revenue_share && gross_revenue > 0 %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Your Share</div>
+            <div class="text-sm font-medium text-green-600"><%= number_to_currency(summary[:net_income]) %></div>
           <% else %>
-            <div class="text-sm font-medium text-green-600">All received</div>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Status</div>
+            <% overdue_count = summary[:overdue_count] || 0 %>
+            <% pending_count = summary[:pending_count] || 0 %>
+            <% if overdue_count > 0 %>
+              <div class="text-sm font-medium text-red-600"><%= overdue_count %> overdue</div>
+            <% elsif pending_count > 0 %>
+              <div class="text-sm font-medium text-amber-600"><%= pending_count %> pending</div>
+            <% else %>
+              <div class="text-sm font-medium text-green-600">All received</div>
+            <% end %>
           <% end %>
         </div>
 

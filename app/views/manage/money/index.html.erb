@@ -42,9 +42,9 @@
       {
         label: "Productions",
         filters: [
-          { text: "All", path: manage_money_index_path(period: @selected_period, production_filter: "all"), active: @production_filter == "all" },
-          { text: "First-party", path: manage_money_index_path(period: @selected_period, production_filter: "first_party"), active: @production_filter == "first_party" },
-          { text: "Third-party", path: manage_money_index_path(period: @selected_period, production_filter: "third_party"), active: @production_filter == "third_party" }
+          { text: "All", path: manage_money_index_path(period: @selected_period, production_filter: "all", show_all: @show_all || nil), active: @production_filter == "all" },
+          { text: "In-house", path: manage_money_index_path(period: @selected_period, production_filter: "first_party", show_all: @show_all || nil), active: @production_filter == "first_party" },
+          { text: "Third-party", path: manage_money_index_path(period: @selected_period, production_filter: "third_party", show_all: @show_all || nil), active: @production_filter == "third_party" }
         ]
       }
     ]
@@ -62,7 +62,7 @@
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
         <% if @production_filter == "first_party" %>
-          <p class="text-gray-600">No first-party productions found.</p>
+          <p class="text-gray-600">No in-house productions found.</p>
         <% elsif @production_filter == "third_party" %>
           <p class="text-gray-600">No third-party productions found.</p>
         <% else %>
@@ -70,5 +70,36 @@
         <% end %>
       </div>
     <% end %>
+
+    <%# Show All / Hidden Productions Toggle %>
+    <% if !@show_all && @hidden_count && @hidden_count > 0 %>
+      <div class="mt-4 text-center">
+        <%= link_to manage_money_index_path(period: @selected_period, production_filter: @production_filter, show_all: "true"),
+            class: "text-sm text-gray-500 hover:text-pink-600 transition-colors" do %>
+          <%= @hidden_count %> older <%= "production".pluralize(@hidden_count) %> hidden &middot; Show all
+        <% end %>
+      </div>
+    <% elsif @show_all %>
+      <div class="mt-4 text-center">
+        <%= link_to manage_money_index_path(period: @selected_period, production_filter: @production_filter),
+            class: "text-sm text-gray-500 hover:text-pink-600 transition-colors" do %>
+          Show only recent productions
+        <% end %>
+      </div>
+    <% end %>
   </div>
+
+  <%# Courses Section (collapsed) %>
+  <% if @course_summaries.any? %>
+    <details class="mt-8 border-t border-gray-200 pt-4">
+      <summary class="cursor-pointer text-sm font-semibold text-gray-700 uppercase tracking-wide hover:text-pink-600 transition-colors">
+        Courses (<%= @course_summaries.count %>)
+      </summary>
+      <div class="mt-3 space-y-2">
+        <% @course_summaries.each do |summary| %>
+          <%= render "manage/money/production_row", summary: summary %>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
 </div>

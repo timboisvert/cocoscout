@@ -1,0 +1,150 @@
+<%
+  contract = @contract
+  contractor = @contractor
+  show_financials = @show_financials
+  contractor_line_item = @contractor_line_item
+  has_financials = show_financials&.has_data?
+
+  contractor_share_pct = contract.contractor_share_percentage
+
+  if has_financials
+    total_revenue = show_financials.total_revenue
+    contractor_amount = (total_revenue * contractor_share_pct / 100.0).round(2)
+  end
+
+  is_paid = contractor_line_item&.paid?
+  is_calculated = contractor_line_item.present?
+%>
+
+<!-- Actions -->
+<div class="bg-white rounded-lg border border-gray-200 p-5">
+  <h3 class="font-semibold text-gray-900 mb-4">Actions</h3>
+  <div class="space-y-3">
+    <% if is_paid %>
+      <%# Paid state %>
+      <div class="flex items-center gap-3 p-3 bg-pink-50 rounded-lg">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-pink-600">Paid</div>
+          <% if contractor_line_item.paid_at %>
+            <div class="text-xs text-pink-500"><%= contractor_line_item.paid_at.strftime('%B %-d, %Y') %></div>
+          <% end %>
+        </div>
+      </div>
+
+      <%= button_to manage_unmark_line_item_paid_money_show_payout_path(@show, contractor_line_item),
+          method: :delete,
+          class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer",
+          data: { turbo_confirm: "Unmark as paid?" } do %>
+        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-gray-900">Unmark as Paid</div>
+          <div class="text-xs text-gray-500">Revert payment status</div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      <% end %>
+
+    <% elsif is_calculated %>
+      <%# Calculated but not paid %>
+      <button type="button"
+              data-action="click->payment-actions#showPayEveryoneModal"
+              class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-gray-900">Pay Contractor</div>
+          <div class="text-xs text-gray-500"><%= number_to_currency(contractor_amount) %></div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
+        <button type="submit"
+                class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-gray-900">Recalculate</div>
+            <div class="text-xs text-gray-500">Update payout amount</div>
+          </div>
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      <% end %>
+
+    <% elsif has_financials %>
+      <%# Has financials but not yet calculated %>
+      <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
+        <button type="submit"
+                class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+          <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-gray-900">Calculate Payout</div>
+            <div class="text-xs text-gray-500">Generate contractor payout from financials</div>
+          </div>
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      <% end %>
+
+    <% else %>
+      <%# No financials yet %>
+      <%= link_to manage_money_show_financials_path(@show), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-gray-900">Enter Financials</div>
+          <div class="text-xs text-gray-500">Add revenue data to calculate payout</div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      <% end %>
+    <% end %>
+
+    <%# View Financials - always available when data exists %>
+    <% if has_financials %>
+      <%= link_to manage_money_show_financials_path(@show), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-gray-900">View Financials</div>
+          <div class="text-xs text-gray-500">Revenue and expense data</div>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      <% end %>
+    <% end %>
+  </div>
+</div>

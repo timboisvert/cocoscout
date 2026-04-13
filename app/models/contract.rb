@@ -170,6 +170,80 @@ class Contract < ApplicationRecord
     contract_payments.where(status: "pending").where("due_date < ?", Date.current)
   end
 
+  # Revenue share financial helpers — calculates from show-level financials
+  def contractor_share_percentage
+    return nil unless revenue_share?
+    100.0 - revenue_share_percentage
+  end
+
+  # Returns { confirmed_revenue: X, tbd_count: N, contractor_share: Y }
+  def revenue_share_summary
+    return nil unless revenue_share?
+
+    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).to_a }
+    confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
+    pending_shows = all_shows - confirmed_shows
+
+    confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
+    our_share_amount = (confirmed_revenue * revenue_share_percentage / 100.0).round(2)
+    contractor_share_amount = (confirmed_revenue * contractor_share_percentage / 100.0).round(2)
+
+    {
+      confirmed_revenue: confirmed_revenue,
+      confirmed_count: confirmed_shows.count,
+      pending_count: pending_shows.count,
+      our_share: our_share_amount,
+      contractor_share: contractor_share_amount,
+      total_shows: all_shows.count
+    }
+  end
+
+  # Find the matching ContractPayment for a given show based on settlement frequency
+  def find_payment_for_show(show)
+    return nil unless revenue_share?
+
+    settlement = draft_payment_config["revenue_settlement"] || "monthly"
+    revenue_payments = contract_payments.where(direction: "incoming").where(amount_tbd: true)
+                                        .or(contract_payments.where(direction: "incoming").where("description LIKE ?", "%Revenue Share%"))
+                                        .order(:due_date)
+
+    case settlement
+    when "per_event", "next_day"
+      # Match by closest due_date to show date
+      show_date = show.date_and_time.to_date
+      revenue_payments.min_by { |p| (p.due_date - show_date).abs }
+    when "weekly"
+      # Match by same week (Monday-based)
+      show_week_start = show.date_and_time.to_date.beginning_of_week
+      revenue_payments.find { |p| p.due_date.beginning_of_week == show_week_start } ||
+        revenue_payments.min_by { |p| (p.due_date - show.date_and_time.to_date).abs }
+    else # monthly
+      # Match by same month
+      show_month = show.date_and_time.to_date.beginning_of_month
+      revenue_payments.find { |p| p.due_date.beginning_of_month == show_month } ||
+        revenue_payments.min_by { |p| (p.due_date - show.date_and_time.to_date).abs }
+    end
+  end
+
+  # Get all shows that map to a given ContractPayment
+  def shows_for_payment(payment)
+    settlement = draft_payment_config["revenue_settlement"] || "monthly"
+    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).order(:date_and_time).to_a }
+
+    case settlement
+    when "per_event", "next_day"
+      # For per-event, find the single closest show
+      show = all_shows.min_by { |s| (s.date_and_time.to_date - payment.due_date).abs }
+      show ? [ show ] : []
+    when "weekly"
+      week_start = payment.due_date.beginning_of_week
+      all_shows.select { |s| s.date_and_time.to_date.beginning_of_week == week_start }
+    else # monthly
+      month_start = payment.due_date.beginning_of_month
+      all_shows.select { |s| s.date_and_time.to_date.beginning_of_month == month_start }
+    end
+  end
+
   # Display helpers
   def display_name
     production_name.presence || contractor_name

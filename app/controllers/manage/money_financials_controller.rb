@@ -13,8 +13,9 @@ module Manage
         @is_third_party = @production.type_third_party?
 
         if @is_third_party
-          # Third-party production - load contract data
+          # Third-party production - load contract data AND shows for financial entry
           load_third_party_financials
+          @shows = load_shows_for_production(@production)
         else
           # In-house production - show list of shows
           @financial_summary = FinancialSummaryService.new(@production).summary_for_period(@selected_period)
@@ -45,10 +46,10 @@ module Manage
         end
       end
 
-      # Apply filter if provided (only for in-house productions)
+      # Apply filter if provided (for both in-house and third-party productions with shows)
       @filter = params[:filter].presence || "all"
 
-      if @production && @shows && !@is_third_party
+      if @production && @shows
         @shows = apply_filter(@shows, @filter)
 
         # Handle hide_future_events toggle (enabled by default)
@@ -130,12 +131,34 @@ module Manage
       pending_payments = contract.pending_payments
       overdue_payments = contract.overdue_payments
 
+      # Check for revenue share
+      is_revenue_share = contract.revenue_share?
+      our_share = is_revenue_share ? contract.draft_payment_config["revenue_our_share"].to_i : nil
+
+      # For revenue share contracts, calculate from show financials
+      show_revenue = 0
+      confirmed_count = 0
+      pending_show_count = 0
+      if is_revenue_share
+        rev_summary = contract.revenue_share_summary
+        if rev_summary
+          show_revenue = rev_summary[:confirmed_revenue]
+          confirmed_count = rev_summary[:confirmed_count]
+          pending_show_count = rev_summary[:pending_count]
+        end
+      end
+
       {
         production: production,
         is_third_party: true,
+        is_revenue_share: is_revenue_share,
+        our_share: our_share,
+        their_share: is_revenue_share ? contract.contractor_share_percentage.to_i : nil,
         contract: contract,
         total_shows: production.shows.count,
-        gross_revenue: received,
+        gross_revenue: is_revenue_share ? show_revenue : received,
+        confirmed_show_count: confirmed_count,
+        pending_show_count: pending_show_count,
         pending_amount: pending_payments.sum(:amount),
         pending_count: pending_payments.count,
         overdue_amount: overdue_payments.sum(:amount),
@@ -143,7 +166,7 @@ module Manage
         show_expenses: 0,
         production_expenses: 0,
         total_payouts: 0,
-        net_income: received
+        net_income: is_revenue_share ? (show_revenue * (our_share || 0) / 100.0).round(2) : received
       }
     end
 
@@ -151,6 +174,11 @@ module Manage
       {
         production: production,
         is_third_party: true,
+        is_revenue_share: false,
+        our_share: nil,
+        their_share: nil,
+        confirmed_show_count: 0,
+        pending_show_count: 0,
         contract: nil,
         total_shows: production.shows.count,
         gross_revenue: 0,

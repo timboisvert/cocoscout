@@ -58,6 +58,45 @@ FactoryBot.define do
         }
       end
     end
+
+    trait :revenue_share do
+      draft_data do
+        {
+          "payment_structure" => "revenue_share",
+          "payment_config" => {
+            "revenue_our_share" => 70,
+            "revenue_their_share" => 30,
+            "revenue_settlement" => "monthly"
+          }
+        }
+      end
+    end
+
+    trait :revenue_share_weekly do
+      draft_data do
+        {
+          "payment_structure" => "revenue_share",
+          "payment_config" => {
+            "revenue_our_share" => 60,
+            "revenue_their_share" => 40,
+            "revenue_settlement" => "weekly"
+          }
+        }
+      end
+    end
+
+    trait :revenue_share_per_event do
+      draft_data do
+        {
+          "payment_structure" => "revenue_share",
+          "payment_config" => {
+            "revenue_our_share" => 80,
+            "revenue_their_share" => 20,
+            "revenue_settlement" => "per_event"
+          }
+        }
+      end
+    end
   end
 
   factory :contract_document do
@@ -90,6 +129,12 @@ FactoryBot.define do
 
     trait :outgoing do
       direction { "outgoing" }
+    end
+
+    trait :revenue_share_tbd do
+      amount { 0 }
+      amount_tbd { true }
+      description { "Revenue Share Settlement" }
     end
   end
 

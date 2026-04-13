@@ -14,18 +14,23 @@
     links: @production && !@is_third_party ? [
       { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) }
     ] : (@is_third_party && @contract ? [
-      { text: "View Contract", path: manage_contract_path(@contract) }
+      { text: "View Contract", path: manage_contract_path(@contract) },
+      { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) }
     ] : [])
   } %>
 
   <% if @production && @is_third_party %>
-    <%# Third-Party Production View - Contract Financials %>
+    <%# Third-Party Production View - Contract Financials with Show Entry %>
     <%= render partial: "manage/money_financials/third_party_financials", locals: {
       production: @production,
       contract: @contract,
       contract_payments: @contract_payments,
       space_rentals: @space_rentals,
-      financial_summary: @financial_summary
+      financial_summary: @financial_summary,
+      shows: @shows || [],
+      filter: @filter || "all",
+      hide_future_events: @hide_future_events,
+      hide_non_revenue: @hide_non_revenue
     } %>
 
   <% elsif @production %>

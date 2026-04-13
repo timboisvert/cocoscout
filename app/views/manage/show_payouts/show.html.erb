@@ -86,6 +86,181 @@
     <%= render partial: "manage/payouts/money_show_row", locals: { show: @show, production: @production } %>
   </div>
 
+  <% if @is_third_party && @contract&.revenue_share? %>
+    <%
+      # Prepare contractor payee data for the payment walkthrough modal
+      contractor_line_item = @contractor_line_item
+      contractor_obj = @contractor
+      contractor_contract = @contract
+      contractor_has_financials = @show_financials&.has_data?
+
+      contractor_payees_for_js = []
+      if contractor_line_item && !contractor_line_item.paid?
+        contractor_payees_for_js = [{
+          id: contractor_line_item.id.to_s,
+          name: contractor_contract.contractor_name,
+          amount: contractor_line_item.amount,
+          venmo_handle: contractor_obj&.respond_to?(:formatted_venmo_identifier) ? contractor_obj&.formatted_venmo_identifier : nil,
+          venmo_ready: contractor_obj&.venmo_configured? || false
+        }]
+      end
+    %>
+    <!-- Third-party contractor payout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+         data-controller="payment-actions"
+         data-payment-actions-payees-value="<%= contractor_payees_for_js.to_json %>">
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-6">
+        <%= render "manage/show_payouts/contractor_payout" %>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-4">
+        <%= render "manage/show_payouts/contractor_payout_sidebar" %>
+      </div>
+
+    <%# Contractor Payment Walkthrough Modal %>
+    <% if contractor_line_item && !contractor_line_item.paid? && contractor_has_financials %>
+      <%
+        contractor_share_pct = contractor_contract.contractor_share_percentage
+        contractor_amount = (@show_financials.total_revenue * contractor_share_pct / 100.0).round(2)
+        payment_info = contractor_line_item.payee_preferred_payment
+      %>
+      <div data-payment-actions-target="payEveryoneModal"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+           data-action="click->payment-actions#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-white">Pay Contractor</h3>
+              <button type="button"
+                      data-action="click->payment-actions#hidePayEveryoneModal"
+                      class="text-white/80 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div data-payment-actions-target="payeeCard">
+            <div class="px-6 py-6">
+              <!-- Contractor Info -->
+              <div class="flex items-center gap-4 mb-6">
+                <div class="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xl">
+                  <%= contractor_obj&.initials || contractor_contract.contractor_name[0..1].upcase %>
+                </div>
+                <div>
+                  <div class="text-xl font-semibold text-gray-900"><%= contractor_contract.contractor_name %></div>
+                  <div class="text-sm text-gray-500">Contractor · <%= contractor_share_pct %>% revenue share</div>
+                </div>
+              </div>
+
+              <!-- Amount -->
+              <div class="bg-gray-50 rounded-xl p-4 mb-6 text-center">
+                <div class="text-sm text-gray-500 mb-1">Amount to Pay</div>
+                <div class="text-4xl font-bold text-gray-900"><%= number_to_currency(contractor_amount) %></div>
+              </div>
+
+              <% if payment_info %>
+                <!-- Payment Method Display -->
+                <div class="mb-6">
+                  <div class="text-sm text-gray-500 mb-2 text-center">Pay with <%= payment_info[:method].titleize %></div>
+                  <% if payment_info[:method] == "venmo" %>
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
+                        </svg>
+                        <span class="text-2xl font-semibold text-blue-700"><%= payment_info[:identifier] %></span>
+                      </div>
+                    </div>
+                  <% elsif payment_info[:method] == "zelle" %>
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                      <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8" viewBox="0 0 50 50" fill="none">
+                          <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z" fill="#6D1ED4"/>
+                          <path d="M32.5 14H19.8l-.3 3.2h8.3L17 32.5v3.5h13.2l.3-3.2h-8.8L32.5 17.5V14z" fill="white"/>
+                        </svg>
+                        <span class="text-2xl font-semibold text-purple-700"><%= payment_info[:identifier] %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+                  <div class="flex items-start gap-2">
+                    <svg class="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <% if payment_info[:method] == "venmo" %>
+                      <p class="text-sm text-gray-700">Open Venmo on your phone, send <strong><%= number_to_currency(contractor_amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                    <% elsif payment_info[:method] == "zelle" %>
+                      <p class="text-sm text-gray-700">Open your bank's Zelle, send <strong><%= number_to_currency(contractor_amount) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                  <% if payment_info[:method] == "venmo" && contractor_obj&.venmo_configured? %>
+                    <%= render "shared/button",
+                        text: "Open Venmo",
+                        variant: "primary",
+                        size: "large",
+                        type: :button,
+                        classes: "w-full bg-blue-500 hover:bg-blue-600",
+                        data: {
+                          action: "click->payment-actions#openVenmo",
+                          venmo_handle: contractor_obj.venmo_identifier,
+                          venmo_amount: contractor_amount,
+                          venmo_note: "#{@production.name} - #{@show.date_and_time.strftime('%b %-d')}"
+                        } %>
+                  <% end %>
+
+                  <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(@show, contractor_line_item.id, payment_method: payment_info[:method]), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                    <%= render "shared/button", text: "I Paid via #{payment_info[:method].titleize}", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
+                  <% end %>
+                </div>
+              <% else %>
+                <!-- No payment method configured -->
+                <div class="mb-6">
+                  <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center">
+                    <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <p class="text-gray-600 font-medium">No payment info on file</p>
+                    <p class="text-sm text-gray-500 mt-1">Add Venmo or Zelle details for this contractor first, or pay them another way.</p>
+                  </div>
+                </div>
+
+                <!-- Alternative Payment Methods -->
+                <div class="space-y-3">
+                  <p class="text-sm text-gray-500 text-center">Mark as paid via:</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <% %w[venmo zelle cash check].each do |method| %>
+                      <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(@show, contractor_line_item.id, payment_method: method), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                        <%= render "shared/button", text: method.titleize, variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+              <%= render "shared/button", text: "Close", variant: "ghost", size: "small", type: :button, data: { action: "click->payment-actions#hidePayEveryoneModal" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    </div><%# close grid %>
+
+  <% else %>
   <%
     # Prepare payee data for the walkthrough (available to both main content and sidebar)
     line_items = @line_items || []
@@ -1673,6 +1848,7 @@
                existing_advances: existing_show_advances %>
 
   </div>
+  <% end %><%# end of third_party vs performer conditional %>
 </div>
 
 <%# Modal containers for turbo frames %>

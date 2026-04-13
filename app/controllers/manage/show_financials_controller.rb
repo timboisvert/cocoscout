@@ -31,6 +31,11 @@ module Manage
 
     def update
       if @show_financials.update(show_financials_params)
+        # Sync to ContractPayments if this is a third-party/contract production
+        if @production.type_third_party? && @production.contract&.revenue_share?
+          ContractPaymentSyncService.new(@show).call
+        end
+
         respond_to do |format|
           format.html { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
           format.turbo_stream { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }

@@ -1,7 +1,7 @@
 <%#
   Third-Party Production Financials View
 
-  Shows contract-based financials instead of show-by-show data.
+  Shows contract-based financials with show-level financial entry.
 
   Required params:
     - production: Production object
@@ -9,7 +9,57 @@
     - contract_payments: Array of ContractPayment objects
     - space_rentals: Array of SpaceRental objects
     - financial_summary: Hash with financial data
+    - shows: Array of Show objects (for financial entry)
+    - filter: Current filter string
+    - hide_future_events: Boolean
+    - hide_non_revenue: Boolean
 %>
+
+<% if contract&.revenue_share? %>
+  <%# Revenue Share Contract Banner %>
+  <%
+    our_pct = contract.revenue_share_percentage.to_i
+    their_pct = contract.contractor_share_percentage.to_i
+    summary = contract.revenue_share_summary
+  %>
+  <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-semibold text-pink-800">Revenue Share Contract</span>
+          <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
+            <%= our_pct %>/<%= their_pct %> Split
+          </span>
+        </div>
+        <p class="text-sm text-pink-700">
+          You keep <strong><%= our_pct %>%</strong> of ticket revenue. <strong><%= their_pct %>%</strong> goes to <%= contract.contractor_name %>.
+        </p>
+      </div>
+      <% if summary %>
+        <div class="flex gap-4 text-sm">
+          <div class="text-center">
+            <div class="font-semibold text-gray-900"><%= number_to_currency(summary[:confirmed_revenue]) %></div>
+            <div class="text-xs text-gray-500">Gross Revenue</div>
+          </div>
+          <div class="text-center">
+            <div class="font-semibold text-green-600"><%= number_to_currency(summary[:our_share]) %></div>
+            <div class="text-xs text-gray-500">Your Share</div>
+          </div>
+          <div class="text-center">
+            <div class="font-semibold text-amber-600"><%= number_to_currency(summary[:contractor_share]) %></div>
+            <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
+          </div>
+          <% if summary[:pending_count] > 0 %>
+            <div class="text-center">
+              <div class="font-semibold text-pink-600"><%= summary[:pending_count] %></div>
+              <div class="text-xs text-gray-500">Pending</div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
 
 <%# Four Summary Boxes - matching in-house style %>
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -48,7 +98,7 @@
     <div class="text-sm text-gray-500 mb-1">Overdue</div>
     <% if financial_summary[:overdue_amount] > 0 %>
       <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(financial_summary[:overdue_amount]) %></div>
-      <div class="text-xs text-red-500"><%= financial_summary[:overdue_count] %> <%= "payment".pluralize(financial_summary[:overdue_count]) %></div>
+      <div class="text-xs red-500"><%= financial_summary[:overdue_count] %> <%= "payment".pluralize(financial_summary[:overdue_count]) %></div>
     <% else %>
       <div class="text-2xl font-semibold text-gray-400">$0.00</div>
       <div class="text-xs text-gray-500">none</div>
@@ -57,6 +107,51 @@
 </div>
 
 <% if contract %>
+  <%# Show-Level Financials - same as in-house %>
+  <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
+    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Show Financials</h3>
+
+    <%# Filter Bar %>
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      {
+        label: "Status",
+        filters: [
+          { text: "All", path: manage_money_production_financials_path(production, filter: "all"), active: filter == "all" },
+          { text: "Complete", path: manage_money_production_financials_path(production, filter: "complete"), active: filter == "complete" },
+          { text: "Pending", path: manage_money_production_financials_path(production, filter: "pending"), active: filter == "pending" }
+        ]
+      },
+      { separator: true },
+      {
+        partial: "manage/money_financials/toggle_filters",
+        locals: {
+          hide_non_revenue: hide_non_revenue,
+          hide_future_events: hide_future_events
+        }
+      }
+    ] %>
+
+    <% if shows.any? %>
+      <div class="space-y-2">
+        <% shows.each do |show| %>
+          <%= render partial: "manage/money_financials/show_row", locals: { show: show, production: production, hide_non_revenue: hide_non_revenue } %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">
+          <% if filter == "complete" %>
+            No shows with complete financial data yet.
+          <% elsif filter == "pending" %>
+            All revenue events have financial data entered.
+          <% else %>
+            No shows found. Shows will appear here after they occur.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+
   <%# Payment Schedule %>
   <div class="mb-8 pt-6 border-t border-gray-200">
     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Payment Schedule</h3>
@@ -70,31 +165,6 @@
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
         <p class="text-gray-500">No payments scheduled for this contract.</p>
-      </div>
-    <% end %>
-  </div>
-
-  <%# Events %>
-  <div class="mb-8">
-    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Events</h3>
-
-    <% shows = production.shows.order(:date_and_time) %>
-    <% if shows.any? %>
-      <div class="space-y-1">
-        <% shows.each do |show| %>
-          <%= render partial: "shared/show_row", locals: {
-            show: show,
-            link_path: manage_show_path(production, show),
-            show_canceled: true,
-            show_location: true,
-            right_panel: :rental_services,
-            services: contract.draft_services
-          } %>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
-        <p class="text-gray-500">No events scheduled.</p>
       </div>
     <% end %>
   </div>

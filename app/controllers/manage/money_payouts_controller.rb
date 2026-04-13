@@ -142,8 +142,8 @@ module Manage
     end
 
     def load_all_productions
-      # Only show in-house productions the user has access to (not third-party/renters)
-      @productions = Current.user.accessible_productions.where.not(production_type: "third_party").order(:name)
+      # Show all productions the user has access to
+      @productions = Current.user.accessible_productions.order(:name)
       @production_summaries = @productions.map do |production|
         build_payout_summary(production)
       end

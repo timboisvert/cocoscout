@@ -1093,6 +1093,8 @@ Rails.application.routes.draw do
     post "money/shows/:id/payouts/update_guest_payments", to: "show_payouts#update_guest_payments", as: "update_guest_payments_money_show_payout"
     # Quick update a person's payment info (Venmo/Zelle)
     patch "money/shows/:id/payouts/quick_payment_info/:person_id", to: "show_payouts#quick_payment_info", as: "quick_payment_info_money_show_payout"
+    # Quick update a contractor's payment info (Venmo/Zelle)
+    patch "money/shows/:id/payouts/contractor_payment_info/:contractor_id", to: "show_payouts#contractor_payment_info", as: "contractor_payment_info_money_show_payout"
     # Show advances - issue advances to cast members for a show
     post "money/shows/:id/payouts/issue_advances", to: "show_payouts#issue_advances", as: "issue_advances_money_show_payout"
     # Reset calculation - clear calculated state and line items
