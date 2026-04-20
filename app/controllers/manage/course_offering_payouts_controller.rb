@@ -125,6 +125,7 @@ module Manage
 
       if @payout.all_line_items_paid?
         @payout.mark_paid!
+        sync_contract_payment_from_payout
       end
 
       redirect_to manage_course_offering_payout_path(@course_offering),
@@ -143,6 +144,7 @@ module Manage
       end
 
       @payout.mark_paid!
+      sync_contract_payment_from_payout
 
       redirect_to manage_course_offering_payout_path(@course_offering),
         notice: "All line items marked as paid."
@@ -167,6 +169,28 @@ module Manage
       unless @payout
         redirect_to manage_course_offering_path(@course_offering),
           alert: "No payout has been calculated yet."
+      end
+    end
+
+    # When a course offering payout is marked paid, sync the corresponding
+    # contract payment so it also shows as paid on the contract page.
+    def sync_contract_payment_from_payout
+      contract = @course_offering.contract
+      return unless contract
+
+      total_payout_amount = @payout.total_payout_cents.to_i / 100.0
+      paid_method = @payout.line_items.last&.payment_method
+
+      # Find pending outgoing contract payments (revenue share payouts are outgoing)
+      contract.contract_payments.where(status: "pending").find_each do |payment|
+        payment.update!(
+          status: :paid,
+          paid_date: Date.current,
+          amount: total_payout_amount,
+          amount_tbd: false,
+          payment_method: paid_method,
+          notes: "Auto-synced from course offering payout ##{@payout.id}"
+        )
       end
     end
   end

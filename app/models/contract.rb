@@ -499,4 +499,33 @@ class Contract < ApplicationRecord
       payment.update_column(:show_id, sorted_shows[i].id)
     end
   end
+
+  # Sync paid course offering payouts to contract payments
+  def sync_course_payouts_to_payments
+    return if course_offerings.empty?
+
+    # Find all paid line items from course offering payouts
+    paid_items = CourseOfferingPayoutLineItem
+      .joins(course_offering_payout: :course_offering)
+      .where(course_offering_payout: { course_offering_id: course_offerings.ids })
+      .where(payee_type: "Contractor", payee_id: contractor_id)
+      .where(manually_paid: true)
+
+    paid_items.each do |item|
+      # Find matching pending ContractPayment (outgoing, for this contractor)
+      payments_to_sync = contract_payments
+        .where(direction: "outgoing", status: "pending")
+        .select { |p| p.description&.downcase&.include?("revenue share") }
+
+      payments_to_sync.each do |payment|
+        # Mark as paid with the payout details
+        payment.mark_paid!(
+          paid_on: item.paid_at.to_date,
+          method: item.payment_method,
+          reference: "Course offering payout",
+          amount: item.amount_cents / 100.0
+        )
+      end
+    end
+  end
 end

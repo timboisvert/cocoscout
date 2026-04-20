@@ -78,7 +78,44 @@
         <% end %>
       </div>
 
-      <% if show_mark_received && payment.status_pending? %>
+      <% if linked_payout_paid %>
+        <%# Auto-sync: mark this contract payment as paid since the course payout was already paid %>
+        <% payout_amount = linked_payout.total_payout_cents.to_i / 100.0 %>
+        <% payment.update(status: :paid, paid_date: linked_payout.paid_at&.to_date || Date.current, amount: payout_amount, amount_tbd: false, notes: "Auto-synced from course offering payout") %>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+            <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
+            Paid via Course Payout
+          </span>
+        </div>
+    <%# Right Section: Amount & Actions %>
+    <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
+      <div class="flex-1">
+        <div class="text-2xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
+          <% if payment.amount_tbd? && payment.amount.to_f == 0 %>
+            TBD
+          <% else %>
+            <%= number_to_currency(payment.amount) %>
+          <% end %>
+        </div>
+        <% if payment.amount_tbd? && payment.amount.to_f > 0 %>
+          <div class="text-xs text-amber-600">
+            Partial — some shows still pending
+          </div>
+        <% elsif is_late %>
+          <div class="text-xs text-pink-600">
+            <%= distance_of_time_in_words(payment.due_date, Date.current) %> overdue
+          </div>
+        <% elsif payment.revenue_share? && !payment.amount_tbd? && payment.notes&.include?("Auto-calculated") %>
+          <div class="text-xs text-gray-500">
+            from show financials
+          </div>
+        <% elsif payment.notes&.include?("Auto-synced from course") %>
+          <div class="text-xs text-green-600">
+            synced from course payout
+          </div>
+        <% end %>
+      </div>
         <%= render "shared/button",
           text: is_incoming ? "Mark Received" : "Mark Paid",
           variant: "secondary",

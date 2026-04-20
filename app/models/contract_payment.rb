@@ -27,9 +27,27 @@ class ContractPayment < ApplicationRecord
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
   scope :by_due_date, -> { order(:due_date) }
 
-  # Check if payment amount is to be determined (e.g., revenue share)
+  # Check if this payment amount is to be determined (e.g., revenue share)
   def amount_tbd?
     amount_tbd
+  end
+
+  # Find linked CourseOfferingPayoutLineItem if this is an outgoing payment
+  def linked_payout_line_item
+    return nil unless direction_outgoing? && contract
+
+    # Find course offerings for this contract
+    course_offerings = contract.course_offerings
+    return nil if course_offerings.empty?
+
+    # Find line items in payouts from these course offerings
+    CourseOfferingPayoutLineItem
+      .joins(course_offering_payout: :course_offering)
+      .where(course_offering_payout: { course_offering_id: course_offerings.ids })
+      .where(payee_type: "Contractor", payee_id: contract.contractor_id)
+      .where(manually_paid: true)
+      .order(paid_at: :desc)
+      .first
   end
 
   # Check if this is a revenue share payment (amount determined after events)

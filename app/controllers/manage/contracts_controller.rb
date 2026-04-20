@@ -100,6 +100,9 @@ module Manage
         redirect_to manage_contractor_contract_wizard_path(@contract) and return
       end
 
+      # Sync any paid course offering payouts to contract payments
+      @contract.sync_course_payouts_to_payments
+
       @payments = @contract.contract_payments.by_due_date
       @documents = @contract.contract_documents.recent
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
