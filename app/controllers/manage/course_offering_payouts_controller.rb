@@ -12,6 +12,12 @@ module Manage
       @line_items = @payout.line_items.order(:created_at)
       @contract = @course_offering.contract
       @has_contract = @contract&.revenue_share?
+      @coverage_type = @course_offering.feature_credit_redemption&.feature_credit&.coverage_type
+
+      # Load contractor for payment UX
+      if @has_contract
+        @contractor = @contract.contractor
+      end
     end
 
     def calculate

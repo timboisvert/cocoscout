@@ -3,12 +3,13 @@
 # Calculates what the organization owes a contractor for a course offering.
 #
 # Revenue flow:
-#   Student pays via Stripe → CocoScout keeps 5% platform fee →
-#   95% (net revenue) goes to the org automatically via Stripe.
+#   Student pays via Stripe → fees are determined by promo code coverage:
+#     - No promo:         CocoScout keeps 5% platform fee, org gets 95%
+#     - coverage "full":  All fees waived, org gets 100%
+#     - "platform_only":  Only Stripe processing fees deducted, no CocoScout fee
 #
-# This calculator only applies when a course has a contract with a
-# revenue share. It computes what the org owes the contractor from
-# their share of the net revenue.
+# This calculator computes what the org owes the contractor from
+# their share of the net revenue (after applicable fees).
 #
 # No contract = no payout needed (org already has all the money).
 class CoursePayoutCalculator
@@ -57,13 +58,14 @@ class CoursePayoutCalculator
   def revenue_summary
     total_revenue_cents = compute_total_revenue
     effective_revenue = course_offering.course_offering_payout&.total_revenue_override_cents || total_revenue_cents
-    platform_fee_cents = (effective_revenue * PLATFORM_FEE_PERCENTAGE / 100.0).round
+    platform_fee_cents = compute_platform_fee(effective_revenue)
     net_revenue_cents = effective_revenue - platform_fee_cents
 
     {
       total_revenue_cents: total_revenue_cents,
       platform_fee_cents: platform_fee_cents,
-      net_revenue_cents: net_revenue_cents
+      net_revenue_cents: net_revenue_cents,
+      coverage_type: coverage_type
     }
   end
 
@@ -72,7 +74,7 @@ class CoursePayoutCalculator
   def compute
     total_revenue_cents = compute_total_revenue
     effective_revenue = course_offering.course_offering_payout&.total_revenue_override_cents || total_revenue_cents
-    platform_fee_cents = (effective_revenue * PLATFORM_FEE_PERCENTAGE / 100.0).round
+    platform_fee_cents = compute_platform_fee(effective_revenue)
     net_revenue_cents = effective_revenue - platform_fee_cents
 
     contract = course_offering.contract
@@ -97,6 +99,28 @@ class CoursePayoutCalculator
     confirmed = course_offering.course_registrations.confirmed.sum(:amount_cents)
     refunded = course_offering.course_registrations.refunded.sum(:amount_cents)
     confirmed - refunded
+  end
+
+  # Determine the platform fee based on coverage_type from any promo code
+  def compute_platform_fee(effective_revenue)
+    case coverage_type
+    when "full"
+      # Promo covers all fees — org gets 100%
+      0
+    when "platform_only"
+      # Promo covers CocoScout fee — only actual Stripe processing fees apply
+      confirmed_stripe_fees = course_offering.course_registrations.confirmed.sum(:stripe_fee_cents)
+      refunded_stripe_fees = course_offering.course_registrations.refunded.sum(:stripe_fee_cents)
+      confirmed_stripe_fees - refunded_stripe_fees
+    else
+      # Standard 5% platform fee
+      (effective_revenue * PLATFORM_FEE_PERCENTAGE / 100.0).round
+    end
+  end
+
+  # Look up the coverage_type from the promo code used to create this course offering
+  def coverage_type
+    @coverage_type ||= course_offering.feature_credit_redemption&.feature_credit&.coverage_type
   end
 
   def build_contractor_line_items(net_revenue_cents)

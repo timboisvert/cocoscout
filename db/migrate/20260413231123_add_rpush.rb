@@ -21,10 +21,10 @@
 
 class AddRpush < ActiveRecord::Migration[5.0]
   def self.migrations
-    [CreateRapnsNotifications, CreateRapnsFeedback,
+    [ CreateRapnsNotifications, CreateRapnsFeedback,
      AddAlertIsJsonToRapnsNotifications, AddAppToRapns,
      CreateRapnsApps, AddGcm, AddWpns, AddAdm, RenameRapnsToRpush,
-     AddFailAfterToRpushNotifications]
+     AddFailAfterToRpushNotifications ]
   end
 
   def self.up
@@ -60,7 +60,7 @@ class AddRpush < ActiveRecord::Migration[5.0]
         t.timestamps
       end
 
-      add_index :rapns_notifications, [:delivered, :failed, :deliver_after], name: 'index_rapns_notifications_multi'
+      add_index :rapns_notifications, [ :delivered, :failed, :deliver_after ], name: 'index_rapns_notifications_multi'
     end
 
     def self.down
@@ -189,7 +189,7 @@ class AddRpush < ActiveRecord::Migration[5.0]
         remove_index :rapns_notifications, name: "index_rapns_notifications_on_delivered_failed_deliver_after"
       end
 
-      add_index :rapns_notifications, [:app_id, :delivered, :failed, :deliver_after], name: "index_rapns_notifications_multi"
+      add_index :rapns_notifications, [ :app_id, :delivered, :failed, :deliver_after ], name: "index_rapns_notifications_multi"
     end
 
     def self.down
@@ -231,7 +231,7 @@ class AddRpush < ActiveRecord::Migration[5.0]
 
       remove_column :rapns_notifications, :app_id
 
-      add_index :rapns_notifications, [:delivered, :failed, :deliver_after], name: :index_rapns_notifications_multi
+      add_index :rapns_notifications, [ :delivered, :failed, :deliver_after ], name: :index_rapns_notifications_multi
     end
   end
 

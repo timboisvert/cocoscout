@@ -280,6 +280,40 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "88eb4d9703dbabc59cfc760fb53c422722a5b4b79d9483f5cc21db64749d3bc2",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/superadmin/finances_org_detail.html.erb",
+      "line": 271,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"I Paid via #{Organization.find(params[:org_id]).preferred_payment_info[:method].titleize}\", { :variant => \"primary\", :size => \"large\", :type => :submit, :icon => \"check\", :classes => \"w-full bg-green-600 hover:bg-green-700\" })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "SuperadminController",
+          "method": "finances_org_detail",
+          "line": 2429,
+          "file": "app/controllers/superadmin_controller.rb",
+          "rendered": {
+            "name": "superadmin/finances_org_detail",
+            "file": "app/views/superadmin/finances_org_detail.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "superadmin/finances_org_detail"
+      },
+      "user_input": "Organization.find(params[:org_id]).preferred_payment_info[:method].titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
       "fingerprint": "8f772cd7d35b573d310cb0cf91cf685dee64f5603dd905fca08b645ab0287155",
       "check_name": "LinkToHref",

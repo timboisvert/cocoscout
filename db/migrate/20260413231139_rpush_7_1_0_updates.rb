@@ -9,4 +9,3 @@ class Rpush710Updates < ActiveRecord::Migration["#{ActiveRecord::VERSION::MAJOR}
     remove_column :rpush_apps, :json_key
   end
 end
-
