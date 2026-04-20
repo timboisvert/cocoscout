@@ -79,7 +79,10 @@ class CoursePayoutCalculator
 
     contract = course_offering.contract
     if contract&.revenue_share?
-      line_items = build_contractor_line_items(net_revenue_cents)
+      line_items = build_revenue_share_line_items(net_revenue_cents)
+      total_payout_cents = line_items.sum { |li| li[:amount_cents] }
+    elsif contract&.ticket_revenue_minus_fee?
+      line_items = build_flat_fee_line_items(net_revenue_cents)
       total_payout_cents = line_items.sum { |li| li[:amount_cents] }
     else
       line_items = []
@@ -123,7 +126,7 @@ class CoursePayoutCalculator
     @coverage_type ||= course_offering.feature_credit_redemption&.feature_credit&.coverage_type
   end
 
-  def build_contractor_line_items(net_revenue_cents)
+  def build_revenue_share_line_items(net_revenue_cents)
     contract = course_offering.contract
     contractor_pct = contract.contractor_share_percentage
     contractor_amount = (net_revenue_cents * contractor_pct / 100.0).round
@@ -138,6 +141,26 @@ class CoursePayoutCalculator
         contract_id: contract.id,
         share_percentage: contractor_pct,
         org_share_percentage: contract.revenue_share_percentage,
+        net_revenue_cents: net_revenue_cents
+      }
+    } ]
+  end
+
+  def build_flat_fee_line_items(net_revenue_cents)
+    contract = course_offering.contract
+    fee_cents = (contract.flat_fee_amount * 100).round
+    contractor_amount = [ net_revenue_cents - fee_cents, 0 ].max
+
+    [ {
+      payee_type: "Contractor",
+      payee_id: contract.contractor_id,
+      amount_cents: contractor_amount,
+      label: contract.contractor_name,
+      calculation_details: {
+        type: "contract_flat_fee",
+        contract_id: contract.id,
+        flat_fee_cents: fee_cents,
+        org_keeps_cents: [ fee_cents, net_revenue_cents ].min,
         net_revenue_cents: net_revenue_cents
       }
     } ]

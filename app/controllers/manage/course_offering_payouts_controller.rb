@@ -11,7 +11,7 @@ module Manage
         .includes(:person)
       @line_items = @payout.line_items.order(:created_at)
       @contract = @course_offering.contract
-      @has_contract = @contract&.revenue_share?
+      @has_contract = @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
       @coverage_type = @course_offering.feature_credit_redemption&.feature_credit&.coverage_type
 
       # Load contractor for payment UX
@@ -29,7 +29,7 @@ module Manage
     end
 
     def recalculate
-      unless @course_offering.contract&.revenue_share?
+      unless @course_offering.contract&.revenue_share? || @course_offering.contract&.ticket_revenue_minus_fee?
         redirect_to manage_course_offering_payout_path(@course_offering),
           alert: "Recalculate is only available for contract-based payouts."
         return

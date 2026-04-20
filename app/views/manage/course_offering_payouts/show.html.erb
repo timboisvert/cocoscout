@@ -87,7 +87,13 @@
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
                 </svg>
-                <span>Contract: <strong><%= @contract.contractor_name %></strong> · Revenue Share (<%= @contract.contractor_share_percentage.to_i %>% contractor / <%= @contract.revenue_share_percentage.to_i %>% org)</span>
+                <span>Contract: <strong><%= @contract.contractor_name %></strong> ·
+                  <% if @contract.revenue_share? %>
+                    Revenue Share (<%= @contract.contractor_share_percentage.to_i %>% contractor / <%= @contract.revenue_share_percentage.to_i %>% org)
+                  <% elsif @contract.ticket_revenue_minus_fee? %>
+                    Revenue minus <%= number_to_currency(@contract.flat_fee_amount) %> fee
+                  <% end %>
+                </span>
               </div>
               <% if @contractor&.any_payment_method_configured? %>
                 <div class="mt-2 flex items-center gap-3 text-xs text-gray-500">
@@ -150,6 +156,8 @@
                     <div class="text-sm text-gray-500">
                       <% if line_item.calculation_details["type"] == "contract_revenue_share" %>
                         Contract · <%= line_item.calculation_details["share_percentage"].to_i %>% share
+                      <% elsif line_item.calculation_details["type"] == "contract_flat_fee" %>
+                        Contract · Revenue minus <%= number_to_currency(line_item.calculation_details["flat_fee_cents"].to_i / 100.0) %>
                       <% else %>
                         Manual payment
                       <% end %>
@@ -191,7 +199,7 @@
                           class: "text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
                         <%= render "shared/button", text: "Mark Paid", variant: "secondary", size: "small", type: :submit %>
                       <% end %>
-                      <% unless line_item.calculation_details["type"] == "contract_revenue_share" %>
+                      <% unless line_item.calculation_details["type"]&.start_with?("contract_") %>
                         <%= form_with url: manage_course_offering_payout_remove_line_item_path(@course_offering, line_item_id: line_item.id), method: :delete, class: "inline" do %>
                           <button type="submit" class="text-gray-400 hover:text-red-500 p-1" title="Remove">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
