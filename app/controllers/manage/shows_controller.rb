@@ -753,18 +753,10 @@ module Manage
       # Shows the cancel/delete options page
 
       # Build cast member list for notification option
-      if @show.recurring?
-        all_show_ids = @show.recurrence_group.pluck(:id)
-        cast_assignments = ShowPersonRoleAssignment
-                            .where(show_id: all_show_ids)
-                            .includes(:role)
-        person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
-        group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
-      else
-        cast_assignments = @show.show_person_role_assignments.includes(:role)
-        person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
-        group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
-      end
+      # Always show cast for this single show (default scope)
+      cast_assignments = @show.show_person_role_assignments.includes(:role)
+      person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+      group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
 
       @cast_people = Person.where(id: person_ids).includes(profile_headshots: { image_attachment: :blob }).to_a
       @cast_groups = Group.where(id: group_ids).includes(:members, profile_headshots: { image_attachment: :blob }).to_a

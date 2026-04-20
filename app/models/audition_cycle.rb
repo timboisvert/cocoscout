@@ -66,6 +66,26 @@ class AuditionCycle < ApplicationRecord
 
   serialize :availability_show_ids, type: Array, coder: YAML
 
+  # Auto-sync availability_show_ids: add new future shows, remove past shows
+  def sync_availability_shows!
+    return unless include_availability_section
+    return if availability_show_ids.blank? # nil/empty means "all shows" — no sync needed
+
+    future_show_ids = production.shows.where("date_and_time >= ?", Time.current).pluck(:id)
+    current_ids = availability_show_ids.map(&:to_i)
+
+    # Keep only shows still in the future
+    synced_ids = current_ids & future_show_ids
+
+    # Auto-add shows created after the cycle was last updated
+    new_shows = production.shows.where("date_and_time >= ? AND created_at > ?", Time.current, updated_at).pluck(:id)
+    synced_ids = (synced_ids + new_shows).uniq
+
+    if synced_ids.sort != current_ids.sort
+      update!(availability_show_ids: synced_ids)
+    end
+  end
+
   def production_name
     production.name
   end

@@ -243,6 +243,8 @@
             <%
               if event[:color] == "gray"
                 color_classes = "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              elsif event[:color] == "canceled"
+                color_classes = "bg-gray-100 text-gray-400 border-gray-300 line-through opacity-60"
               else
                 color_classes = case event[:color]
                   when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
@@ -283,7 +285,13 @@
   <!-- Mobile: List View -->
   <div class="md:hidden space-y-1 mb-8">
     <% current_date = month_start_date %>
+    <% current_week_start = Date.current.beginning_of_week(:sunday) %>
     <% while current_date <= month_end_date %>
+      <%# Skip days from past completed weeks %>
+      <% if current_date < current_week_start %>
+        <% current_date = current_date + 1.day %>
+        <% next %>
+      <% end %>
       <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
       <% if day_events.any? %>
         <% is_past = current_date < Date.current %>
@@ -294,8 +302,12 @@
           </div>
           <% day_events.each do |event| %>
             <%
-              is_assigned = event[:color] != "gray"
-              if is_assigned
+              is_canceled = event[:canceled]
+              is_assigned = event[:color] != "gray" && !is_canceled
+              if is_canceled
+                row_bg = "bg-gray-50 border border-gray-200 opacity-60 line-through"
+                dot_color = "bg-gray-300"
+              elsif is_assigned
                 row_bg = case event[:color]
                   when "pink" then "bg-pink-50 border border-pink-200"
                   when "blue" then "bg-blue-50 border border-blue-200"

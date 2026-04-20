@@ -401,7 +401,7 @@ module Manage
 
     # Load all talent pools available for invitations
     def load_talent_pools
-      # In single mode, only show the org pool
+      # In single mode, only show the org pool — no dropdown needed
       if Current.organization.talent_pool_single? && Current.organization.organization_talent_pool
         @talent_pools = [ Current.organization.organization_talent_pool ]
         @talent_pool_options = [ {
@@ -415,11 +415,17 @@ module Manage
       org_production_ids = Current.organization.productions.pluck(:id)
       productions_receiving_shares = TalentPoolShare.where(production_id: org_production_ids).pluck(:production_id)
 
-      # Find pools, excluding those whose productions receive shares from elsewhere
-      all_pools = TalentPool.joins(:production)
-                            .includes(:production, :shared_productions)
-                            .where(productions: { organization_id: Current.organization.id })
-                            .where.not(production_id: productions_receiving_shares)
+      # Find pools that actually have members, excluding those whose productions receive shares from elsewhere
+      pool_ids_with_members = TalentPool.joins(:production)
+                                        .left_joins(:talent_pool_memberships)
+                                        .where(productions: { organization_id: Current.organization.id })
+                                        .where.not(production_id: productions_receiving_shares)
+                                        .group("talent_pools.id")
+                                        .having("COUNT(talent_pool_memberships.id) > 0")
+                                        .pluck(:id)
+
+      all_pools = TalentPool.includes(:production, :shared_productions)
+                            .where(id: pool_ids_with_members)
                             .order(:name)
 
       # Deduplicate by production - keep the pool that has shares, or the first one if none have shares
@@ -427,22 +433,11 @@ module Manage
       pools = pools_by_production.values.map do |production_pools|
         # Prefer pool with shares, otherwise take the first one
         production_pools.find { |p| p.shared_productions.any? } || production_pools.first
-      end.compact.sort_by { |p| p.name.downcase }
+      end.compact.sort_by { |p| p.production_names.downcase }
 
       # Build display options
       @talent_pool_options = pools.map do |pool|
-        shared_prod_names = pool.shared_productions.pluck(:name)
-
-        display_name = if shared_prod_names.any?
-          # Shared pool: "Show1 / Show2 / Show3"
-          all_names = [ pool.production.name ] + shared_prod_names
-          all_names.join(" / ")
-        else
-          # Single production pool: just show production name
-          pool.production.name
-        end
-
-        { pool: pool, display_name: display_name }
+        { pool: pool, display_name: pool.production_names }
       end
 
       @talent_pools = pools

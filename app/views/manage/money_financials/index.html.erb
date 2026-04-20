@@ -49,10 +49,12 @@
       coverage = offering&.feature_credit_redemption&.feature_credit&.coverage_type
       owed_cents = offering ? OrgPayout.owed_cents_for_course(offering) : 0
       platform_fee_cents = gross_revenue_cents - owed_cents
+      total_payout_cents = payout&.line_items&.sum(:amount_cents).to_i
+      net_after_payouts_cents = owed_cents - total_payout_cents
     %>
 
     <%# Course Revenue Summary %>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-<%= total_payout_cents > 0 ? 5 : 4 %> gap-4 mb-6">
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="text-sm text-gray-500 mb-1">Registrations</div>
         <div class="text-2xl font-semibold text-gray-900"><%= confirmed_count %></div>
@@ -76,14 +78,26 @@
         <div class="text-xs text-gray-500">CocoScout fee</div>
       </div>
 
+      <% if total_payout_cents > 0 %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="text-sm text-gray-500 mb-1">Payouts</div>
+          <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(total_payout_cents / 100.0) %></div>
+          <div class="text-xs text-gray-500">
+            to
+            <% payee_names = payout.line_items.map(&:payee_name).uniq %>
+            <%= payee_names.join(", ") %>
+          </div>
+        </div>
+      <% end %>
+
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="text-sm text-gray-500 mb-1">Net to Organization</div>
-        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(owed_cents / 100.0) %></div>
+        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency((total_payout_cents > 0 ? net_after_payouts_cents : owed_cents) / 100.0) %></div>
         <div class="text-xs text-gray-500">
           <% if payout&.paid? %>
             all payments complete
           <% elsif payout&.calculated? %>
-            received via Stripe
+            received via Stripe<%= total_payout_cents > 0 ? ", minus payouts" : "" %>
           <% else %>
             estimated
           <% end %>

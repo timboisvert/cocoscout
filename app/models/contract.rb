@@ -224,39 +224,63 @@ class Contract < ApplicationRecord
   def find_payment_for_show(show)
     return nil unless revenue_share?
 
+    # First, try direct show_id link
+    direct = contract_payments.find_by(show_id: show.id)
+    return direct if direct
+
     settlement = draft_payment_config["revenue_settlement"] || "monthly"
     revenue_payments = contract_payments.where(direction: "incoming").where(amount_tbd: true)
                                         .or(contract_payments.where(direction: "incoming").where("description LIKE ?", "%Revenue Share%"))
                                         .order(:due_date)
 
-    case settlement
+    payment = case settlement
     when "per_event", "next_day", "same_day"
-      # Match by closest due_date to show date
-      show_date = show.date_and_time.to_date
-      revenue_payments.min_by { |p| (p.due_date - show_date).abs }
+      # Match by positional order: sort shows and payments by date, pair 1:1
+      all_shows = productions.flat_map { |p| p.shows.order(:date_and_time).to_a }
+      show_index = all_shows.index { |s| s.id == show.id }
+      show_index ? revenue_payments.to_a[show_index] : nil
     when "weekly"
-      # Match by same week (Monday-based)
       show_week_start = show.date_and_time.to_date.beginning_of_week
-      revenue_payments.find { |p| p.due_date.beginning_of_week == show_week_start } ||
-        revenue_payments.min_by { |p| (p.due_date - show.date_and_time.to_date).abs }
+      revenue_payments.find { |p| p.due_date.beginning_of_week == show_week_start }
     else # monthly
-      # Match by same month
       show_month = show.date_and_time.to_date.beginning_of_month
-      revenue_payments.find { |p| p.due_date.beginning_of_month == show_month } ||
-        revenue_payments.min_by { |p| (p.due_date - show.date_and_time.to_date).abs }
+      revenue_payments.find { |p| p.due_date.beginning_of_month == show_month }
     end
+
+    # Link the show_id for future lookups if we found a match
+    if payment && payment.show_id.nil?
+      payment.update_column(:show_id, show.id)
+    end
+
+    payment
   end
 
   # Get all shows that map to a given ContractPayment
   def shows_for_payment(payment)
+    # If payment has a direct show link, use it
+    if payment.show_id.present?
+      show = Show.includes(:show_financials).find_by(id: payment.show_id)
+      return show ? [ show ] : []
+    end
+
     settlement = draft_payment_config["revenue_settlement"] || "monthly"
     all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).order(:date_and_time).to_a }
 
     case settlement
     when "per_event", "next_day", "same_day"
-      # For per-event, find the single closest show
-      show = all_shows.min_by { |s| (s.date_and_time.to_date - payment.due_date).abs }
-      show ? [ show ] : []
+      # Match by positional order: sort payments by due_date, pair 1:1 with shows by date
+      revenue_payments = contract_payments.where(direction: "incoming")
+                                          .where("amount_tbd = ? OR description LIKE ?", true, "%Revenue Share%")
+                                          .order(:due_date).to_a
+      payment_index = revenue_payments.index { |p| p.id == payment.id }
+      show = payment_index ? all_shows[payment_index] : nil
+      if show
+        # Link for future lookups
+        payment.update_column(:show_id, show.id) if payment.show_id.nil?
+        [ show ]
+      else
+        []
+      end
     when "weekly"
       week_start = payment.due_date.beginning_of_week
       all_shows.select { |s| s.date_and_time.to_date.beginning_of_week == week_start }
@@ -407,8 +431,9 @@ class Contract < ApplicationRecord
     end
 
     # Create payments from draft payments
+    created_payments = []
     draft_payments.each do |payment|
-      contract_payments.create!(
+      created_payments << contract_payments.create!(
         description: payment["description"],
         amount: payment["amount"],
         amount_tbd: payment["amount_tbd"] || false,
@@ -419,6 +444,7 @@ class Contract < ApplicationRecord
     end
 
     # Always create a production and shows for all bookings
+    created_shows = []
     if rentals.any?
       prod_data = draft_data["production"] || {}
       # Use existing production if one is already linked (e.g., from course offering wizard)
@@ -432,7 +458,7 @@ class Contract < ApplicationRecord
       rentals.each do |info|
         rental = info[:rental]
         duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
-        production.shows.create!(
+        show = production.shows.create!(
           date_and_time: rental.starts_at,
           duration_minutes: duration_minutes,
           location: rental.location,
@@ -440,7 +466,37 @@ class Contract < ApplicationRecord
           space_rental: rental,
           event_type: info[:event_type]
         )
+        created_shows << show
       end
+    end
+
+    # Link per-event payments to their corresponding shows
+    link_payments_to_shows(created_payments, created_shows)
+  end
+
+  # Link per-event contract payments to their corresponding shows by matching dates
+  def link_payments_to_shows(payments, shows)
+    return if payments.empty? || shows.empty?
+
+    settlement = draft_payment_config["revenue_settlement"] || "monthly"
+    structure = draft_payment_structure
+
+    # Only link for per-event or per-event revenue share settlements
+    per_event_structures = %w[per_event]
+    per_event_settlements = %w[per_event same_day next_day]
+
+    should_link = per_event_structures.include?(structure) ||
+                  (structure == "revenue_share" && per_event_settlements.include?(settlement))
+    return unless should_link
+
+    # Sort both by date and pair 1:1
+    sorted_shows = shows.sort_by(&:date_and_time)
+    sorted_payments = payments.select { |p| p.amount_tbd? || p.description&.include?("Event") || p.description&.include?("Revenue Share") }
+                              .sort_by(&:due_date)
+
+    sorted_payments.each_with_index do |payment, i|
+      next unless sorted_shows[i]
+      payment.update_column(:show_id, sorted_shows[i].id)
     end
   end
 end

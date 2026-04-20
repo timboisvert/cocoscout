@@ -270,13 +270,16 @@ export default class extends Controller {
         }
     }
 
-    _populateProductionSelect(selectEl) {
+    _populateProductionSelect(selectEl, { onlyWithTalentPool = false } = {}) {
         if (!selectEl) return
 
         // Clear options except placeholder
         while (selectEl.options.length > 1) selectEl.remove(1)
 
-        const productions = this.productionsValue || []
+        let productions = this.productionsValue || []
+        if (onlyWithTalentPool) {
+            productions = productions.filter(prod => prod.has_talent_pool)
+        }
         productions.forEach(prod => {
             const opt = document.createElement('option')
             opt.value = prod.id
@@ -386,7 +389,7 @@ export default class extends Controller {
                 const picker = modal.querySelector('[data-compose-message-target="talentPoolProductionPicker"]')
                 if (picker) picker.classList.remove('hidden')
                 const select = modal.querySelector('[data-compose-message-target="talentPoolProductionSelect"]')
-                this._populateProductionSelect(select)
+                this._populateProductionSelect(select, { onlyWithTalentPool: true })
 
                 if (this._talentPoolProductionLoaded || this._showCastProductionLoaded) {
                     // Production already selected (possibly from the other tab) — show preview

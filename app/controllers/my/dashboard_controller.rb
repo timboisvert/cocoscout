@@ -127,7 +127,6 @@ module My
           .joins(:show_person_role_assignments)
           .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: selected_person_ids })
           .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
-          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
           .where(shows: { event_type: show_event_types })
           .joins(:production)
@@ -139,7 +138,6 @@ module My
           .joins(sign_up_form_instances: { sign_up_slots: :sign_up_registrations })
           .where(sign_up_registrations: { person_id: selected_person_ids, status: "confirmed" })
           .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
-          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
           .where(shows: { event_type: show_event_types })
           .joins(:production)
@@ -167,8 +165,9 @@ module My
             subtitle: role_name || (signup_show_ids_my.include?(show.id) ? "Signed Up" : show.event_type.titleize),
             path: my_show_path(show),
             type: :show,
-            color: color,
-            event_type: show.event_type
+            color: show.canceled? ? "canceled" : color,
+            event_type: show.event_type,
+            canceled: show.canceled?
           }
         end
       end
@@ -179,7 +178,6 @@ module My
           .joins(:show_person_role_assignments)
           .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: selected_group_ids })
           .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", cal_start, cal_end)
-          .where(shows: { canceled: false })
           .where.not(productions: { production_type: "course" })
           .where(shows: { event_type: show_event_types })
           .joins(:production)
@@ -206,8 +204,9 @@ module My
             subtitle: role_name || show.event_type.titleize,
             path: my_show_path(show),
             type: :show,
-            color: color,
-            event_type: show.event_type
+            color: show.canceled? ? "canceled" : color,
+            event_type: show.event_type,
+            canceled: show.canceled?
           }
         end
       end

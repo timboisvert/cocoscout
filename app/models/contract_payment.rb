@@ -2,6 +2,7 @@
 
 class ContractPayment < ApplicationRecord
   belongs_to :contract
+  belongs_to :show, optional: true
 
   # Direction: whether they pay us or we pay them
   enum :direction, {

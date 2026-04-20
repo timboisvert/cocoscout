@@ -128,10 +128,12 @@
 
           <div class="flex items-center gap-3">
             <%= render "shared/button", text: @person.venmo_configured? ? "Update" : "Save", variant: "primary", size: "medium", type: :submit %>
-            <% if @person.venmo_configured? %>
-              <%= button_to my_payments_remove_venmo_path, method: :delete, data: { turbo_confirm: "Remove your Venmo information?" }, class: "inline-block" do %>
-                <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
-              <% end %>
+          </div>
+        <% end %>
+        <% if @person.venmo_configured? %>
+          <div class="mt-3">
+            <%= button_to my_payments_remove_venmo_path, method: :delete, data: { turbo_confirm: "Remove your Venmo information?" }, class: "inline-block" do %>
+              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
             <% end %>
           </div>
         <% end %>
@@ -200,10 +202,12 @@
 
           <div class="flex items-center gap-3">
             <%= render "shared/button", text: @person.zelle_configured? ? "Update" : "Save", variant: "primary", size: "medium", type: :submit %>
-            <% if @person.zelle_configured? %>
-              <%= button_to my_payments_remove_zelle_path, method: :delete, data: { turbo_confirm: "Remove your Zelle information?" }, class: "inline-block" do %>
-                <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
-              <% end %>
+          </div>
+        <% end %>
+        <% if @person.zelle_configured? %>
+          <div class="mt-3">
+            <%= button_to my_payments_remove_zelle_path, method: :delete, data: { turbo_confirm: "Remove your Zelle information?" }, class: "inline-block" do %>
+              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
             <% end %>
           </div>
         <% end %>

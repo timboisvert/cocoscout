@@ -64,6 +64,9 @@ module Manage
       end
       @questions = @audition_cycle.questions.order(:position)
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+
+      # Auto-sync: add new shows, remove past shows from availability selection
+      @audition_cycle.sync_availability_shows!
     end
 
     def update

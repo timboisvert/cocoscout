@@ -58,10 +58,12 @@
       </div>
     </div>
 
+    <% if audition_cycle.closes_at.present? && audition_cycle.closes_at <= Time.current %>
     <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-sm p-6">
       <h2 class="text-xl font-semibold text-blue-900 mb-2">Audition Process Complete</h2>
       <p class="text-blue-800">Once you've communicated with all candidates and added them to your cast, your audition process is complete!</p>
     </div>
+    <% end %>
 
   <% end %>
 </div>

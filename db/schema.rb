@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_163305) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -397,11 +397,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.date "paid_date"
     t.string "payment_method"
     t.string "reference_number"
+    t.bigint "show_id"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
     t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
     t.index ["due_date"], name: "index_contract_payments_on_due_date"
+    t.index ["show_id"], name: "index_contract_payments_on_show_id"
     t.index ["status"], name: "index_contract_payments_on_status"
   end
 
@@ -560,7 +562,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -2617,6 +2619,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
+  add_foreign_key "contract_payments", "shows"
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"

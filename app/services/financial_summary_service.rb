@@ -106,12 +106,17 @@ class FinancialSummaryService
       other_revenue += financials.calculated_other_revenue
 
       # Track expenses by category
-      financials.normalized_expense_details.each do |item|
-        category = item["category"].presence || "other"
-        expense_by_category[category] += item["amount"].to_f
-      end
-      # If no detailed expenses but has a raw expense amount
-      if financials.normalized_expense_details.empty? && financials.expenses.to_f > 0
+      if financials.expense_items.loaded? ? financials.expense_items.any? : financials.expense_items.exists?
+        financials.expense_items.each do |item|
+          category = item.category.presence || "other"
+          expense_by_category[category] += item.amount.to_f
+        end
+      elsif financials.normalized_expense_details.any?
+        financials.normalized_expense_details.each do |item|
+          category = item["category"].presence || "other"
+          expense_by_category[category] += item["amount"].to_f
+        end
+      elsif financials.expenses.to_f > 0
         expense_by_category["other"] += financials.expenses.to_f
       end
     end

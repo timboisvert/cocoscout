@@ -27,7 +27,7 @@
         data: {
           controller: "compose-message",
           action: "click->compose-message#openWithSteps",
-          "compose-message-productions-value": @accessible_productions.map { |p| { id: p.id, name: p.name } }.to_json,
+          "compose-message-productions-value": @accessible_productions.map { |p| { id: p.id, name: p.name, has_talent_pool: p.effective_talent_pool.present? } }.to_json,
           "compose-message-production-data-url-value": production_data_manage_messages_path(':production_id'),
           "compose-message-search-url-value": search_people_manage_messages_path,
           "compose-message-single-talent-pool-value": Current.organization.talent_pool_single? ? "true" : "false",

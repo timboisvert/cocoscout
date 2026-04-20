@@ -171,11 +171,11 @@ RSpec.describe Contract, "revenue share methods", type: :model do
         expect(contract.find_payment_for_show(show)).to eq(payment_march)
       end
 
-      it "falls back to closest payment when no exact month match" do
+      it "returns nil when no exact month match" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
         payment = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 4, 15))
 
-        expect(contract.find_payment_for_show(show)).to eq(payment)
+        expect(contract.find_payment_for_show(show)).to be_nil
       end
     end
 
@@ -236,14 +236,22 @@ RSpec.describe Contract, "revenue share methods", type: :model do
     context "with per_event settlement" do
       let(:contract) { create(:contract, :revenue_share_per_event, :active, organization: organization) }
 
-      it "returns the single closest show" do
-        payment = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 15))
+      it "returns the show at the same position (1:1 pairing by date order)" do
+        payment1 = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 2))
+        payment2 = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 15))
 
-        near_show = create(:show, production: production, date_and_time: Date.new(2026, 3, 14).to_time)
-        far_show = create(:show, production: production, date_and_time: Date.new(2026, 3, 1).to_time)
+        first_show = create(:show, production: production, date_and_time: Date.new(2026, 3, 1).to_time)
+        second_show = create(:show, production: production, date_and_time: Date.new(2026, 3, 14).to_time)
 
-        result = contract.shows_for_payment(payment)
-        expect(result).to eq([ near_show ])
+        expect(contract.shows_for_payment(payment1)).to eq([ first_show ])
+        expect(contract.shows_for_payment(payment2)).to eq([ second_show ])
+      end
+
+      it "uses direct show_id link when set" do
+        show = create(:show, production: production, date_and_time: Date.new(2026, 3, 14).to_time)
+        payment = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 15), show: show)
+
+        expect(contract.shows_for_payment(payment)).to eq([ show ])
       end
     end
   end

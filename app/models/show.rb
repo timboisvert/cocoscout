@@ -13,6 +13,7 @@ class Show < ApplicationRecord
   has_one :primary_event_linkage, class_name: "EventLinkage", foreign_key: :primary_show_id, dependent: :nullify
 
   has_many :email_drafts, dependent: :nullify
+  has_many :contract_payments, dependent: :nullify
 
   has_many :show_person_role_assignments, dependent: :destroy
 

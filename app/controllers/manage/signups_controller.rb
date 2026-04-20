@@ -27,7 +27,7 @@ module Manage
       @all_past_audition_cycles = AuditionCycle.where(production: @productions, active: false).includes(:production)
 
       # Build per-production summaries
-      @production_summaries = @productions.map do |production|
+      @production_summaries = @productions.filter_map do |production|
         sign_up_forms = @all_sign_up_forms.select { |f| f.production_id == production.id }
         # Same "active" definition per production
         active_forms = sign_up_forms.select do |f|
@@ -38,6 +38,9 @@ module Manage
         end
         active_audition_cycle = @all_active_audition_cycles.find { |c| c.production_id == production.id }
         past_audition_cycles = @all_past_audition_cycles.select { |c| c.production_id == production.id }
+
+        # Skip productions with no sign-up forms and no audition cycles
+        next if sign_up_forms.empty? && active_audition_cycle.nil? && past_audition_cycles.empty?
 
         {
           production: production,

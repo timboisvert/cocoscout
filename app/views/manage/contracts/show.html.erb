@@ -176,6 +176,43 @@
         </div>
       </div>
 
+      <%# Course Offering Payouts - show if contract has course offerings with payouts %>
+      <% course_payouts = @contract.course_offerings.includes(:course_offering_payout).filter_map(&:course_offering_payout) %>
+      <% if course_payouts.any? %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Course Payouts" %>
+          <div class="p-4 space-y-2">
+            <% course_payouts.each do |payout| %>
+              <div class="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-white">
+                <div>
+                  <div class="font-medium text-gray-900"><%= payout.course_offering.production&.name %></div>
+                  <div class="text-sm text-gray-600">
+                    <% if payout.total_payout_cents.to_i > 0 %>
+                      Payout: <%= number_to_currency(payout.total_payout_cents / 100.0) %>
+                    <% else %>
+                      Payout not yet calculated
+                    <% end %>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium
+                    <%= case payout.status
+                        when 'paid' then 'bg-green-100 text-green-700'
+                        when 'calculated' then 'bg-amber-100 text-amber-700'
+                        else 'bg-gray-100 text-gray-600'
+                        end %>">
+                    <%= payout.status.capitalize %>
+                  </span>
+                  <%= link_to manage_course_offering_payout_path(payout.course_offering) do %>
+                    <%= render "shared/button", text: "View Payout", variant: "secondary", size: "small" %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
       <%# Revenue Projection - only for revenue share contracts %>
       <% if @contract.revenue_share? %>
         <%= render "revenue_projection_card", contract: @contract %>
