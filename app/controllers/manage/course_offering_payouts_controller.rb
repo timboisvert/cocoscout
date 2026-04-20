@@ -37,8 +37,13 @@ module Manage
 
       unless @payout.can_recalculate?
         redirect_to manage_course_offering_payout_path(@course_offering),
-          alert: "Cannot recalculate — some line items have already been marked as paid."
+          alert: "Cannot recalculate — payout has not been calculated yet."
         return
+      end
+
+      # Reset paid status so the payout can be re-evaluated
+      if @payout.paid?
+        @payout.update!(status: "calculated", paid_at: nil)
       end
 
       calculator = CoursePayoutCalculator.new(@course_offering)

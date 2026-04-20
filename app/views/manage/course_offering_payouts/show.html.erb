@@ -242,13 +242,13 @@
           <h3 class="text-sm font-semibold text-gray-900">Actions</h3>
         </div>
         <div class="p-4 space-y-3">
-          <% if !@payout.paid? %>
-            <% if @has_contract && @payout.calculated? && @payout.can_recalculate? %>
-              <%= form_with url: manage_course_offering_payout_recalculate_path(@course_offering), method: :post do %>
-                <%= render "shared/button", text: "Recalculate from Contract", variant: "secondary", size: "medium", type: :submit %>
-              <% end %>
+          <% if @has_contract && @payout.can_recalculate? %>
+            <%= form_with url: manage_course_offering_payout_recalculate_path(@course_offering), method: :post do %>
+              <%= render "shared/button", text: "Recalculate from Contract", variant: "secondary", size: "medium", type: :submit %>
             <% end %>
+          <% end %>
 
+          <% if !@payout.paid? %>
             <% if @payout.calculated? && @line_items.any? %>
               <%= form_with url: manage_course_offering_payout_mark_all_paid_path(@course_offering), method: :post, class: "space-y-2" do |f| %>
                 <%= f.select :payment_method,

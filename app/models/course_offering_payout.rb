@@ -36,7 +36,7 @@ class CourseOfferingPayout < ApplicationRecord
   end
 
   def can_recalculate?
-    calculated? && line_items.where(manually_paid: true).none?
+    !pending?
   end
 
   # Effective revenue: override if set, otherwise from registrations
