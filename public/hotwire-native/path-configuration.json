@@ -1,0 +1,63 @@
+{
+  "settings": {
+    "tabs": [
+      { "title": "Dashboard", "path": "/my", "icon": "house" },
+      { "title": "Shows", "path": "/my/shows", "icon": "calendar" },
+      { "title": "Messages", "path": "/my/messages", "icon": "envelope" },
+      { "title": "Requests", "path": "/my/requests", "icon": "bell" },
+      { "title": "Profile", "path": "/my/profiles", "icon": "person" }
+    ]
+  },
+  "rules": [
+    {
+      "patterns": [".*"],
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": true
+      }
+    },
+    {
+      "patterns": ["/new$", "/edit$"],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/my/messages/[0-9]+/reply"],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/my/sign_ups/.*/form$", "/my/questionnaires/.*/form$"],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/my/direct_messages/new"],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/my/submit_audition_request/.*/form$"],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/signin$", "/signup$", "/password$", "/reset/"],
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": false,
+        "presentation": "replace_root"
+      }
+    }
+  ]
+}

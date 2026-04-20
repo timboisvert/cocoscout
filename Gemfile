@@ -30,6 +30,7 @@ gem "thruster", require: false
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[windows jruby]
 gem "redis"
+gem "rpush"
 
 group :production do
   gem "mailgun-ruby", "~> 1.2"

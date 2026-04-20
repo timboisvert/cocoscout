@@ -6,8 +6,8 @@ module Manage
       # Financial summary for selected period
       @selected_period = (params[:period].presence || "all_time").to_sym
 
-      # Production type filter
-      @production_filter = params[:production_filter].presence || "all"
+      # Production type filter (sanitize to valid values only)
+      @production_filter = %w[all first_party third_party].include?(params[:production_filter]) ? params[:production_filter] : "all"
 
       # Show all toggle (bypasses relevance filtering)
       @show_all = params[:show_all] == "true"
@@ -57,7 +57,18 @@ module Manage
         .order(:name)
       @course_summaries = Rails.cache.fetch("#{cache_key}_courses", expires_in: 15.minutes) do
         @courses.map do |course|
-          build_production_summary(course)
+          summary = build_production_summary(course)
+          # Enrich with course payout info
+          offering = course.course_offerings.first
+          if offering
+            payout = offering.course_offering_payout
+            confirmed_revenue = offering.course_registrations.confirmed.sum(:amount_cents)
+            summary[:course_offering] = offering
+            summary[:course_confirmed_revenue_cents] = confirmed_revenue
+            summary[:course_payout_status] = payout&.status
+            summary[:course_payout_total_cents] = payout&.total_payout_cents
+          end
+          summary
         end
       end
 

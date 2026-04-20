@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -460,11 +460,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.index ["person_id"], name: "index_course_offering_instructors_on_person_id"
   end
 
+  create_table "course_offering_payout_line_items", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.jsonb "calculation_details", default: {}
+    t.bigint "course_offering_payout_id", null: false
+    t.datetime "created_at", null: false
+    t.string "label"
+    t.boolean "manually_paid", default: false, null: false
+    t.datetime "manually_paid_at"
+    t.bigint "manually_paid_by_id"
+    t.datetime "paid_at"
+    t.bigint "payee_id"
+    t.string "payee_type"
+    t.string "payment_method"
+    t.text "payment_notes"
+    t.datetime "updated_at", null: false
+    t.index ["course_offering_payout_id"], name: "idx_on_course_offering_payout_id_99f85e28a3"
+    t.index ["manually_paid_by_id"], name: "index_course_offering_payout_line_items_on_manually_paid_by_id"
+    t.index ["payee_type", "payee_id"], name: "idx_course_payout_line_items_payee"
+  end
+
+  create_table "course_offering_payouts", force: :cascade do |t|
+    t.datetime "calculated_at"
+    t.bigint "course_offering_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "net_revenue_cents"
+    t.text "notes"
+    t.datetime "paid_at"
+    t.string "payout_mode", default: "lump_sum", null: false
+    t.integer "platform_fee_cents"
+    t.string "status", default: "pending", null: false
+    t.integer "total_payout_cents"
+    t.integer "total_revenue_cents"
+    t.integer "total_revenue_override_cents"
+    t.datetime "updated_at", null: false
+    t.index ["course_offering_id"], name: "index_course_offering_payouts_on_course_offering_id", unique: true
+    t.index ["status"], name: "index_course_offering_payouts_on_status"
+  end
+
   create_table "course_offerings", force: :cascade do |t|
     t.integer "capacity"
     t.datetime "closes_at"
     t.bigint "contract_id"
     t.datetime "created_at", null: false
+    t.bigint "created_by_user_id"
     t.string "currency", default: "usd", null: false
     t.integer "delivery_delay_minutes"
     t.string "delivery_mode"
@@ -495,6 +534,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
+    t.index ["created_by_user_id"], name: "index_course_offerings_on_created_by_user_id"
     t.index ["feature_credit_redemption_id"], name: "index_course_offerings_on_feature_credit_redemption_id"
     t.index ["instructor_person_id"], name: "index_course_offerings_on_instructor_person_id"
     t.index ["production_id"], name: "index_course_offerings_on_production_id"
@@ -520,7 +560,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -536,6 +576,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.text "notes"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_demo_users_on_email", unique: true
+  end
+
+  create_table "device_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "platform", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["token", "platform"], name: "index_device_tokens_on_token_and_platform", unique: true
+    t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
 
   create_table "email_batches", force: :cascade do |t|
@@ -853,6 +903,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.index ["visibility", "show_id"], name: "idx_messages_visibility_show"
   end
 
+  create_table "org_payouts", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.bigint "course_offering_id"
+    t.jsonb "covers_sessions", default: []
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.bigint "paid_by_user_id"
+    t.string "payment_method", null: false
+    t.string "payout_type", default: "custom", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_offering_id"], name: "index_org_payouts_on_course_offering_id"
+    t.index ["organization_id"], name: "index_org_payouts_on_organization_id"
+    t.index ["paid_by_user_id"], name: "index_org_payouts_on_paid_by_user_id"
+    t.index ["payout_type"], name: "index_org_payouts_on_payout_type"
+    t.index ["status"], name: "index_org_payouts_on_status"
+  end
+
   create_table "organization_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
@@ -872,8 +942,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.string "name"
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
+    t.string "preferred_payment_method"
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
+    t.string "venmo_identifier"
+    t.string "zelle_identifier"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -1500,6 +1573,77 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
     t.index ["category"], name: "index_roles_on_category"
     t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name", unique: true
     t.index ["show_id"], name: "index_roles_on_show_id"
+  end
+
+  create_table "rpush_apps", force: :cascade do |t|
+    t.string "access_token"
+    t.datetime "access_token_expiration"
+    t.text "apn_key"
+    t.string "apn_key_id"
+    t.string "auth_key"
+    t.string "bundle_id"
+    t.text "certificate"
+    t.string "client_id"
+    t.string "client_secret"
+    t.integer "connections", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "environment"
+    t.boolean "feedback_enabled", default: true
+    t.string "firebase_project_id"
+    t.text "json_key"
+    t.string "name", null: false
+    t.string "password"
+    t.string "team_id"
+    t.string "type", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "rpush_feedback", force: :cascade do |t|
+    t.integer "app_id"
+    t.datetime "created_at", null: false
+    t.string "device_token"
+    t.datetime "failed_at", precision: nil, null: false
+    t.datetime "updated_at", null: false
+    t.index ["device_token"], name: "index_rpush_feedback_on_device_token"
+  end
+
+  create_table "rpush_notifications", force: :cascade do |t|
+    t.text "alert"
+    t.boolean "alert_is_json", default: false, null: false
+    t.integer "app_id", null: false
+    t.integer "badge"
+    t.string "category"
+    t.string "collapse_key"
+    t.boolean "content_available", default: false, null: false
+    t.datetime "created_at", null: false
+    t.text "data"
+    t.boolean "delay_while_idle", default: false, null: false
+    t.datetime "deliver_after", precision: nil
+    t.boolean "delivered", default: false, null: false
+    t.datetime "delivered_at", precision: nil
+    t.string "device_token"
+    t.boolean "dry_run", default: false, null: false
+    t.integer "error_code"
+    t.text "error_description"
+    t.integer "expiry", default: 86400
+    t.string "external_device_id"
+    t.datetime "fail_after", precision: nil
+    t.boolean "failed", default: false, null: false
+    t.datetime "failed_at", precision: nil
+    t.boolean "mutable_content", default: false, null: false
+    t.text "notification"
+    t.integer "priority"
+    t.boolean "processing", default: false, null: false
+    t.text "registration_ids"
+    t.integer "retries", default: 0
+    t.string "sound"
+    t.boolean "sound_is_json", default: false
+    t.string "thread_id"
+    t.string "type", null: false
+    t.datetime "updated_at", null: false
+    t.string "uri"
+    t.text "url_args"
+    t.index ["delivered", "failed", "processing", "deliver_after", "created_at"], name: "index_rpush_notifications_multi", where: "((NOT delivered) AND (NOT failed))"
   end
 
   create_table "seating_configurations", force: :cascade do |t|
@@ -2478,15 +2622,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
   add_foreign_key "contracts", "organizations"
   add_foreign_key "course_offering_instructors", "course_offerings"
   add_foreign_key "course_offering_instructors", "people"
+  add_foreign_key "course_offering_payout_line_items", "course_offering_payouts"
+  add_foreign_key "course_offering_payout_line_items", "users", column: "manually_paid_by_id"
+  add_foreign_key "course_offering_payouts", "course_offerings"
   add_foreign_key "course_offerings", "contracts"
   add_foreign_key "course_offerings", "feature_credit_redemptions"
   add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify
   add_foreign_key "course_offerings", "productions"
   add_foreign_key "course_offerings", "questionnaires"
+  add_foreign_key "course_offerings", "users", column: "created_by_user_id"
   add_foreign_key "course_registrations", "course_offerings"
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "device_tokens", "users"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
@@ -2515,6 +2664,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_200000) do
   add_foreign_key "messages", "organizations"
   add_foreign_key "messages", "productions"
   add_foreign_key "messages", "shows"
+  add_foreign_key "org_payouts", "course_offerings"
+  add_foreign_key "org_payouts", "organizations"
+  add_foreign_key "org_payouts", "users", column: "paid_by_user_id"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"

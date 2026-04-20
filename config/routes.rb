@@ -15,6 +15,15 @@ Rails.application.routes.draw do
   post "/webhooks/ticketing/:provider_type/:token", to: "ticketing_webhooks#receive", as: "ticketing_webhook"
   post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
 
+  # API (Hotwire Native mobile apps)
+  namespace :api do
+    namespace :v1 do
+      post "sessions", to: "sessions#create"
+      delete "sessions", to: "sessions#destroy"
+      resources :push_tokens, only: [ :create, :destroy ], param: :id
+    end
+  end
+
   # Landing pages
   get "/for-performers", to: "home#new_performers", as: "performers"
   get "/for-producers", to: "home#new_producers", as: "producers"
@@ -140,6 +149,13 @@ Rails.application.routes.draw do
 
     # Finances
     get    "/finances",          to: "superadmin#finances",            as: "finances"
+    get    "/finances/orgs/:org_id", to: "superadmin#finances_org_detail", as: "finances_org_detail"
+    post   "/finances/orgs/:org_id/pay", to: "superadmin#finances_org_record_payment", as: "finances_org_record_payment"
+    patch  "/finances/orgs/:org_id/payment_info", to: "superadmin#finances_org_update_payment_info", as: "finances_org_update_payment_info"
+    get    "/finances/courses/:course_offering_id", to: "superadmin#finances_course_detail", as: "finances_course_detail"
+    post   "/finances/courses/:course_offering_id/pay", to: "superadmin#finances_record_payment", as: "finances_record_payment"
+    delete "/finances/payments/:id", to: "superadmin#finances_delete_payment", as: "finances_delete_payment"
+    post   "/finances/payments/:id/mark_paid", to: "superadmin#finances_mark_payment_paid", as: "finances_mark_payment_paid"
   end
 
   # Pilot user setup (superadmins only)
@@ -1142,6 +1158,16 @@ Rails.application.routes.draw do
     post "courses/:id/send_questionnaire",    to: "course_offerings#send_questionnaire",    as: "course_offering_send_questionnaire"
     get  "courses/:id/questionnaire",         to: "course_offerings#questionnaire",         as: "course_offering_questionnaire"
     patch "courses/:id/questionnaire",        to: "course_offerings#update_questionnaire_settings", as: "update_course_offering_questionnaire"
+
+    # Course offering payouts
+    get  "courses/:course_offering_id/payout",                  to: "course_offering_payouts#show",                    as: "course_offering_payout"
+    post "courses/:course_offering_id/payout/calculate",        to: "course_offering_payouts#calculate",               as: "course_offering_payout_calculate"
+    post "courses/:course_offering_id/payout/recalculate",      to: "course_offering_payouts#recalculate",             as: "course_offering_payout_recalculate"
+    patch "courses/:course_offering_id/payout/revenue_override", to: "course_offering_payouts#update_revenue_override", as: "course_offering_payout_revenue_override"
+    post "courses/:course_offering_id/payout/line_items",       to: "course_offering_payouts#add_line_item",           as: "course_offering_payout_add_line_item"
+    delete "courses/:course_offering_id/payout/line_items/:line_item_id", to: "course_offering_payouts#remove_line_item", as: "course_offering_payout_remove_line_item"
+    post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
+    post "courses/:course_offering_id/payout/mark_all_paid",    to: "course_offering_payouts#mark_all_paid",           as: "course_offering_payout_mark_all_paid"
 
     # Ticketing section - org-level
     get "ticketing", to: "ticketing#index", as: "ticketing_index"

@@ -27,6 +27,7 @@
     ],
     text: @course_offering.title,
     links: [
+      { text: "Financials", path: manage_money_production_financials_path(@production) },
       { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
       { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
@@ -315,6 +316,74 @@
               </div>
             </dl>
           </div>
+        </div>
+      </div>
+
+      <%# Payout Summary %>
+      <%
+        payout = @course_offering.course_offering_payout
+        confirmed_revenue = @course_offering.course_registrations.confirmed.sum(:amount_cents)
+        refunded_revenue = @course_offering.course_registrations.refunded.sum(:amount_cents)
+        gross_revenue = confirmed_revenue - refunded_revenue
+        has_contract = @course_offering.contract&.revenue_share?
+      %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700">Revenue & Payouts</span>
+          <% if payout&.paid? %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Paid</span>
+          <% elsif payout&.calculated? && payout.line_items.any? %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Awaiting Payment</span>
+          <% end %>
+        </div>
+        <div class="p-5 space-y-3">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Gross Revenue</span>
+            <span class="font-medium text-gray-900"><%= number_to_currency(gross_revenue / 100.0) %></span>
+          </div>
+          <% if payout %>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-500">Platform Fee (5%)</span>
+              <span class="text-gray-900">−<%= payout.formatted_platform_fee %></span>
+            </div>
+            <div class="flex justify-between text-sm border-t border-gray-100 pt-2">
+              <span class="font-medium text-gray-900">Net to Organization</span>
+              <span class="font-bold text-gray-900"><%= payout.formatted_net_revenue %></span>
+            </div>
+            <% if payout.line_items.any? %>
+              <div class="flex justify-between text-sm text-gray-500">
+                <span>Owed to others</span>
+                <span class="font-medium text-pink-700"><%= payout.formatted_total_payout %></span>
+              </div>
+            <% end %>
+            <div class="pt-2">
+              <%= link_to manage_course_offering_payout_path(@course_offering) do %>
+                <%= render "shared/button", text: "Manage Payouts", variant: "secondary", size: "small" %>
+              <% end %>
+            </div>
+          <% else %>
+            <% if gross_revenue > 0 %>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Platform Fee (5%)</span>
+                <span class="text-gray-900">−<%= number_to_currency(gross_revenue * 0.05 / 100.0) %></span>
+              </div>
+              <div class="flex justify-between text-sm border-t border-gray-100 pt-2">
+                <span class="font-medium text-gray-900">Est. Net to Organization</span>
+                <span class="font-bold text-gray-900"><%= number_to_currency(gross_revenue * 0.95 / 100.0) %></span>
+              </div>
+              <div class="pt-2">
+                <%= form_with url: manage_course_offering_payout_calculate_path(@course_offering), method: :post do %>
+                  <% if has_contract %>
+                    <%= render "shared/button", text: "Calculate Payout", variant: "primary", size: "small", type: :submit %>
+                  <% else %>
+                    <%= render "shared/button", text: "Set Up Payouts", variant: "primary", size: "small", type: :submit %>
+                  <% end %>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-500 text-center py-2">No confirmed revenue yet.</p>
+            <% end %>
+          <% end %>
         </div>
       </div>
 

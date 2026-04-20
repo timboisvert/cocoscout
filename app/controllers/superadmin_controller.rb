@@ -13,7 +13,7 @@ class SuperadminController < ApplicationController
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
                          agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
                          promo_codes promo_code_new promo_code_create promo_code_deactivate
-                         finances]
+                         finances finances_org_detail finances_org_record_payment finances_org_update_payment_info finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -2402,6 +2402,149 @@ class SuperadminController < ApplicationController
 
     @net_income_cents = @cocoscout_fees_cents - @stripe_fees_cents
     @total_registrations = @registrations.size
+
+    # Organization obligations
+    @org_obligations = build_org_obligations
+  end
+
+  def finances_org_detail
+    @org = Organization.find(params[:org_id])
+    @course_offerings = CourseOffering
+      .joins(:production)
+      .where(productions: { organization_id: @org.id })
+      .where.not(status: :draft)
+      .includes(:course_registrations, :org_payouts, production: :organization)
+      .order(created_at: :desc)
+
+    @course_summaries = @course_offerings.map { |co| build_course_summary(co) }
+    @total_owed = @course_summaries.sum { |s| s[:owed_cents] }
+    @payments = OrgPayout.where(organization: @org).order(created_at: :desc)
+    @total_paid = @payments.paid.sum(:amount_cents)
+    @total_balance = @total_owed - @total_paid
+
+    # Distribute org-level payments (not tied to a specific course) across course balances
+    org_level_paid = @payments.paid.where(course_offering_id: nil).sum(:amount_cents)
+    remaining = org_level_paid
+    @course_summaries.each do |s|
+      break if remaining <= 0
+      next if s[:balance_cents] <= 0
+      apply = [ remaining, s[:balance_cents] ].min
+      s[:paid_cents] += apply
+      s[:balance_cents] -= apply
+      remaining -= apply
+    end
+  end
+
+  def finances_org_record_payment
+    @org = Organization.find(params[:org_id])
+
+    amount_cents = (params[:amount].to_f * 100).round
+    if amount_cents <= 0
+      redirect_to finances_org_detail_path(org_id: @org.id), alert: "Amount must be greater than zero."
+      return
+    end
+
+    payout = OrgPayout.create!(
+      organization: @org,
+      course_offering: nil,
+      amount_cents: amount_cents,
+      payment_method: params[:payment_method],
+      payout_type: "custom",
+      status: "paid",
+      paid_at: Time.current,
+      paid_by_user: Current.user,
+      notes: params[:notes]
+    )
+
+    redirect_to finances_org_detail_path(org_id: @org.id),
+      notice: "Payment of #{payout.formatted_amount} recorded."
+  end
+
+  def finances_org_update_payment_info
+    @org = Organization.find(params[:org_id])
+
+    venmo = params[:venmo_identifier].to_s.strip.presence
+    zelle = params[:zelle_identifier].to_s.strip.presence
+
+    # Strip @ from venmo handle if present
+    venmo = venmo.delete("@") if venmo
+
+    # Auto-set preferred method
+    preferred = if venmo.present? && zelle.blank?
+      "venmo"
+    elsif zelle.present? && venmo.blank?
+      "zelle"
+    elsif venmo.present? && zelle.present?
+      @org.preferred_payment_method || "venmo"
+    end
+
+    @org.update!(
+      venmo_identifier: venmo,
+      zelle_identifier: zelle,
+      preferred_payment_method: preferred
+    )
+
+    redirect_to finances_org_detail_path(org_id: @org.id), notice: "Payment info updated."
+  end
+
+  def finances_course_detail
+    @course_offering = CourseOffering.includes(:production, :course_registrations, :org_payouts).find(params[:course_offering_id])
+    @org = @course_offering.organization
+    @sessions = @course_offering.sessions
+    @summary = build_course_summary(@course_offering)
+    @payments = @course_offering.org_payouts.order(created_at: :desc)
+    @registrations = @course_offering.course_registrations.confirmed.includes(:person).order(paid_at: :desc)
+  end
+
+  def finances_record_payment
+    @course_offering = CourseOffering.find(params[:course_offering_id])
+    org = @course_offering.organization
+
+    amount_cents = calculate_payment_amount(@course_offering, params)
+
+    if amount_cents <= 0
+      redirect_to finances_course_detail_path(course_offering_id: @course_offering.id),
+        alert: "Amount must be greater than zero."
+      return
+    end
+
+    payout = OrgPayout.create!(
+      organization: org,
+      course_offering: @course_offering,
+      amount_cents: amount_cents,
+      payment_method: params[:payment_method],
+      payout_type: params[:payout_type] || "custom",
+      status: "paid",
+      paid_at: Time.current,
+      paid_by_user: Current.user,
+      notes: params[:notes],
+      covers_sessions: params[:session_ids]&.map(&:to_i) || []
+    )
+
+    redirect_to finances_course_detail_path(course_offering_id: @course_offering.id),
+      notice: "Payment of #{payout.formatted_amount} recorded."
+  end
+
+  def finances_delete_payment
+    payout = OrgPayout.find(params[:id])
+    course_offering_id = payout.course_offering_id
+    org_id = payout.organization_id
+    payout.destroy!
+
+    if course_offering_id
+      redirect_to finances_course_detail_path(course_offering_id: course_offering_id),
+        notice: "Payment deleted."
+    else
+      redirect_to finances_org_detail_path(org_id: org_id),
+        notice: "Payment deleted."
+    end
+  end
+
+  def finances_mark_payment_paid
+    payout = OrgPayout.find(params[:id])
+    payout.mark_paid!(user: Current.user)
+
+    redirect_back fallback_location: finances_path, notice: "Payment marked as paid."
   end
 
   private
@@ -2418,6 +2561,75 @@ class SuperadminController < ApplicationController
       Time.current.beginning_of_year..Time.current
     else
       nil
+    end
+  end
+
+  def build_org_obligations
+    # Find all orgs that have course offerings with confirmed registrations
+    orgs_with_courses = Organization
+      .joins(productions: :course_offerings)
+      .joins("INNER JOIN course_registrations ON course_registrations.course_offering_id = course_offerings.id")
+      .where(course_registrations: { status: "confirmed" })
+      .distinct
+      .includes(:org_payouts)
+
+    orgs_with_courses.map do |org|
+      offerings = CourseOffering
+        .joins(:production)
+        .where(productions: { organization_id: org.id })
+        .includes(:course_registrations)
+
+      gross = 0
+      offerings.each do |co|
+        gross += co.course_registrations.confirmed.sum(:amount_cents)
+      end
+
+      owed = (gross * 0.95).round
+      paid = org.org_payouts.paid.sum(:amount_cents)
+
+      {
+        org: org,
+        course_count: offerings.count,
+        gross_cents: gross,
+        owed_cents: owed,
+        paid_cents: paid,
+        balance_cents: owed - paid
+      }
+    end.sort_by { |o| -o[:balance_cents] }
+  end
+
+  def build_course_summary(course_offering)
+    gross = course_offering.course_registrations.confirmed.sum(:amount_cents)
+    owed = (gross * 0.95).round
+    platform_fee = gross - owed
+    paid = course_offering.org_payouts.paid.sum(:amount_cents)
+    reg_count = course_offering.course_registrations.confirmed.count
+
+    {
+      course_offering: course_offering,
+      registration_count: reg_count,
+      gross_cents: gross,
+      platform_fee_cents: platform_fee,
+      owed_cents: owed,
+      paid_cents: paid,
+      balance_cents: owed - paid
+    }
+  end
+
+  def calculate_payment_amount(course_offering, params)
+    case params[:payout_type]
+    when "full_course"
+      OrgPayout.balance_cents_for_course(course_offering)
+    when "per_session"
+      session_ids = params[:session_ids]&.map(&:to_i) || []
+      return 0 if session_ids.empty?
+      total_sessions = course_offering.sessions.count
+      return 0 if total_sessions.zero?
+      owed = OrgPayout.owed_cents_for_course(course_offering)
+      per_session = owed / total_sessions
+      per_session * session_ids.size
+    else
+      (params[:amount].to_f * 100).round
     end
   end
 

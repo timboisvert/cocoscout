@@ -97,6 +97,72 @@
   <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
     <%= render "shared/card_header", title: "Transactions" %>
 
+    <%# Organization Obligations %>
+    <% if @org_obligations.any? %>
+      <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+        <% total_owed = @org_obligations.sum { |o| o[:owed_cents] } %>
+        <% total_paid = @org_obligations.sum { |o| o[:paid_cents] } %>
+        <% total_balance = total_owed - total_paid %>
+
+        <%= render "shared/card_header", title: "Organization Obligations" %>
+
+        <%# Obligation summary cards %>
+        <div class="grid grid-cols-3 gap-4 p-4 border-b border-gray-200 bg-gray-50">
+          <div class="text-center">
+            <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Owed</div>
+            <div class="text-xl font-bold text-gray-900 mt-1"><%= format_cents.call(total_owed) %></div>
+          </div>
+          <div class="text-center">
+            <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</div>
+            <div class="text-xl font-bold text-green-600 mt-1"><%= format_cents.call(total_paid) %></div>
+          </div>
+          <div class="text-center">
+            <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Outstanding</div>
+            <div class="text-xl font-bold <%= total_balance > 0 ? 'text-red-600' : 'text-green-600' %> mt-1"><%= format_cents.call(total_balance) %></div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organization</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross Revenue</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Owed (95%)</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% @org_obligations.each do |obl| %>
+                <tr>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= obl[:org].name %></td>
+                  <td class="px-4 py-3 text-sm text-gray-600 text-right"><%= obl[:course_count] %></td>
+                  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_cents.call(obl[:gross_cents]) %></td>
+                  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_cents.call(obl[:owed_cents]) %></td>
+                  <td class="px-4 py-3 text-sm text-green-600 text-right font-medium"><%= format_cents.call(obl[:paid_cents]) %></td>
+                  <td class="px-4 py-3 text-sm text-right font-bold <%= obl[:balance_cents] > 0 ? 'text-red-600' : 'text-green-600' %>">
+                    <%= format_cents.call(obl[:balance_cents]) %>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <%= link_to finances_org_detail_path(org_id: obl[:org].id) do %>
+                      <%= render "shared/button", text: "Details", variant: "secondary", size: "small" %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+  <%# CocoScout Income Transactions (existing) %>
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "CocoScout Income Transactions" %>
+
     <% if @rows.any? %>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

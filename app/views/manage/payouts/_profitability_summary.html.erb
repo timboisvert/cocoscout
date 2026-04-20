@@ -42,7 +42,7 @@
     <div class="relative">
       <select
         name="period"
-        onchange="window.location.href = '<%= period_path %>?period=' + this.value"
+        onchange="window.location.href = '<%= period_path %><%= period_path.include?('?') ? '&' : '?' %>period=' + this.value"
         class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600"
       >
         <% period_labels.each do |key, label| %>

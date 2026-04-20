@@ -11,8 +11,14 @@ module Manage
       if @production
         # Check if this is a third-party production
         @is_third_party = @production.type_third_party?
+        @is_course = @production.production_type == "course"
 
-        if @is_third_party
+        if @is_course
+          # Course production - load course offering for payout info
+          @course_offering = @production.course_offerings.first
+          @financial_summary = FinancialSummaryService.new(@production).summary_for_period(@selected_period)
+          @shows = load_shows_for_production(@production)
+        elsif @is_third_party
           # Third-party production - load contract data AND shows for financial entry
           load_third_party_financials
           @shows = load_shows_for_production(@production)

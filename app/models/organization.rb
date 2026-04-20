@@ -19,6 +19,7 @@ class Organization < ApplicationRecord
   has_many :ticket_sync_rules, dependent: :destroy
   has_many :production_ticketing_setups, through: :productions
   has_many :questionnaires, dependent: :destroy
+  has_many :org_payouts, dependent: :destroy
   has_one :payroll_schedule, dependent: :destroy
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
@@ -37,6 +38,53 @@ class Organization < ApplicationRecord
   scope :non_demo, -> { where(is_demo: false) }
 
   validates :name, presence: true
+
+  PREFERRED_PAYMENT_METHODS = %w[venmo zelle].freeze
+  validates :preferred_payment_method, inclusion: { in: PREFERRED_PAYMENT_METHODS }, allow_nil: true
+
+  # Payment method helpers (mirrors Person/Contractor interface)
+  def venmo_configured?
+    venmo_identifier.present?
+  end
+
+  def zelle_configured?
+    zelle_identifier.present?
+  end
+
+  def any_payment_method_configured?
+    venmo_configured? || zelle_configured?
+  end
+
+  def formatted_venmo_identifier
+    return nil unless venmo_identifier.present?
+    "@#{venmo_identifier.delete('@')}"
+  end
+
+  def formatted_zelle_identifier
+    zelle_identifier
+  end
+
+  def venmo_payment_link(amount, note = nil)
+    return nil unless venmo_configured?
+    username = venmo_identifier.delete("@")
+    params = { txn: "pay", recipients: username, amount: amount.to_f, note: note }.compact
+    "venmo://paycharge?#{params.to_query}"
+  end
+
+  def preferred_payment_info
+    case preferred_payment_method
+    when "venmo"
+      { method: "venmo", identifier: formatted_venmo_identifier } if venmo_configured?
+    when "zelle"
+      { method: "zelle", identifier: formatted_zelle_identifier } if zelle_configured?
+    else
+      if venmo_configured?
+        { method: "venmo", identifier: formatted_venmo_identifier }
+      elsif zelle_configured?
+        { method: "zelle", identifier: formatted_zelle_identifier }
+      end
+    end
+  end
 
   before_create :generate_invite_token
 

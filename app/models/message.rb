@@ -431,6 +431,9 @@ class Message < ApplicationRecord
           self,
           root.subject
         )
+
+        # Native push notification for backgrounded/closed apps
+        PushNotificationService.notify_new_message(subscription.user, self)
       end
     end
   end

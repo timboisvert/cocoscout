@@ -38,7 +38,11 @@
 
   <div class="flex min-h-screen">
 
-      <% if @show_manage_sidebar %>
+      <% if turbo_native_app? %>
+
+        <main class="flex-1 px-4 pt-4 pb-8 overflow-x-hidden">
+
+      <% elsif @show_manage_sidebar %>
 
         <%= render "shared/navigation/manage_header" %>
         <%= render "shared/navigation/manage_mobile" %>

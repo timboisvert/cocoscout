@@ -1,0 +1,307 @@
+<% content_for :title, "Finances: #{@org.name}" %>
+
+<%
+  format_cents = ->(cents) {
+    negative = cents < 0
+    abs = cents.abs
+    dollars = abs / 100
+    remainder = abs % 100
+    formatted = "$#{number_with_delimiter(dollars)}.#{'%02d' % remainder}"
+    negative ? "-#{formatted}" : formatted
+  }
+  balance_dollars = @total_balance / 100.0
+  payment_info = @org.preferred_payment_info
+%>
+
+<div class="w-full px-5 pt-5" data-controller="org-payout">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path],
+      ["Finances", finances_path]
+    ],
+    text: @org.name,
+    links: []
+  } %>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-3 gap-4 mt-4">
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Owed</div>
+      <div class="text-2xl font-bold text-gray-900 mt-1"><%= format_cents.call(@total_owed) %></div>
+      <div class="text-xs text-gray-400 mt-1">95% of gross revenue</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</div>
+      <div class="text-2xl font-bold text-green-600 mt-1"><%= format_cents.call(@total_paid) %></div>
+      <div class="text-xs text-gray-400 mt-1">All payments to date</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-xs text-gray-500 font-medium uppercase tracking-wide">Outstanding Balance</div>
+      <div class="text-2xl font-bold <%= @total_balance > 0 ? 'text-red-600' : 'text-green-600' %> mt-1"><%= format_cents.call(@total_balance) %></div>
+      <div class="text-xs text-gray-400 mt-1"><%= @total_balance > 0 ? "Still owed" : "All settled" %></div>
+    </div>
+  </div>
+
+  <!-- Payment Info + Pay Button Row -->
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+    <div class="p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <%# Payment method badges %>
+          <% if @org.venmo_configured? %>
+            <span class="inline-flex items-center gap-1.5 text-blue-600 text-sm">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
+              </svg>
+              <span class="font-medium"><%= @org.formatted_venmo_identifier %></span>
+            </span>
+          <% end %>
+          <% if @org.zelle_configured? %>
+            <span class="inline-flex items-center gap-1.5 text-purple-600 text-sm">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.559 24h-2.841c-.971 0-1.757-.787-1.757-1.757V14.62L4.64 24H1.525L12.669 0h3.115L5.143 18.252h3.1l3.573-6.665v10.656c0 .971-.786 1.757-1.757 1.757h-.5z"/>
+              </svg>
+              <span class="font-medium"><%= @org.formatted_zelle_identifier %></span>
+            </span>
+          <% end %>
+          <% unless @org.any_payment_method_configured? %>
+            <span class="text-sm text-gray-400">(no payment method on file)</span>
+          <% end %>
+          <button type="button" class="text-sm text-pink-600 hover:text-pink-800 font-medium"
+            data-action="click->org-payout#showPaymentInfoForm">
+            <%= @org.any_payment_method_configured? ? "Edit" : "Add Payment Info" %>
+          </button>
+        </div>
+
+        <% if @total_balance > 0 %>
+          <button type="button" data-action="click->org-payout#showPayModal"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium text-sm rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Pay <%= format_cents.call(@total_balance) %>
+          </button>
+        <% else %>
+          <span class="inline-flex items-center gap-1.5 text-green-600 text-sm font-medium">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+            </svg>
+            All settled
+          </span>
+        <% end %>
+      </div>
+
+      <%# Collapsible payment info edit form %>
+      <div data-org-payout-target="paymentInfoForm" class="hidden mt-4 pt-4 border-t border-gray-200">
+        <%= form_with url: finances_org_update_payment_info_path(org_id: @org.id), method: :patch, local: true, class: "flex flex-wrap items-end gap-4" do |f| %>
+          <div class="min-w-[180px]">
+            <label class="text-xs font-medium text-gray-600 block mb-1">Venmo Handle</label>
+            <input type="text" name="venmo_identifier" placeholder="@username" value="<%= @org.formatted_venmo_identifier %>"
+              class="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300">
+          </div>
+          <div class="min-w-[220px]">
+            <label class="text-xs font-medium text-gray-600 block mb-1">Zelle Email or Phone</label>
+            <input type="text" name="zelle_identifier" placeholder="email@example.com or phone" value="<%= @org.zelle_identifier %>"
+              class="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300">
+          </div>
+          <div>
+            <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course Breakdown -->
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Course Breakdown" %>
+
+    <% if @course_summaries.any? %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross Revenue</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Owed (95%)</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @course_summaries.each do |s| %>
+              <% co = s[:course_offering] %>
+              <tr>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= co.title %></td>
+                <td class="px-4 py-3 text-sm text-gray-600 text-right"><%= s[:registration_count] %></td>
+                <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_cents.call(s[:gross_cents]) %></td>
+                <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_cents.call(s[:owed_cents]) %></td>
+                <td class="px-4 py-3 text-sm text-green-600 text-right font-medium"><%= format_cents.call(s[:paid_cents]) %></td>
+                <td class="px-4 py-3 text-sm text-right font-bold <%= s[:balance_cents] > 0 ? 'text-red-600' : 'text-green-600' %>">
+                  <%= format_cents.call(s[:balance_cents]) %>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <% if s[:balance_cents] > 0 || s[:paid_cents] > 0 %>
+                    <%= link_to finances_course_detail_path(course_offering_id: co.id), class: "text-pink-600 hover:text-pink-800 text-sm font-medium" do %>
+                      Details →
+                    <% end %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        <p class="text-sm">No courses with revenue found for this organization.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Payment History -->
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Payment History" %>
+
+    <% if @payments.any? %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @payments.each do |p| %>
+              <tr>
+                <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><%= p.paid_at&.strftime("%b %-d, %Y") || p.created_at.strftime("%b %-d, %Y") %></td>
+                <td class="px-4 py-3 text-sm text-gray-900"><%= p.course_offering&.title || "General" %></td>
+                <td class="px-4 py-3 text-sm text-gray-600"><%= p.payment_method.titleize %></td>
+                <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900"><%= p.formatted_amount %></td>
+                <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate"><%= p.notes %></td>
+                <td class="px-4 py-3 text-right">
+                  <%= form_with url: finances_delete_payment_path(id: p.id), method: :delete, class: "inline", data: { turbo_confirm: "Delete this payment record?" } do %>
+                    <button type="submit" class="text-gray-400 hover:text-red-500 p-1" title="Delete">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                      </svg>
+                    </button>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">
+        <p class="text-sm">No payments recorded yet.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Pay Modal — inspired by show_payouts payout walkthrough %>
+  <% if @total_balance > 0 %>
+    <div data-org-payout-target="payModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50" data-action="click->org-payout#hidePayModal"></div>
+      <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+        <%# Header %>
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Pay <%= @org.name %></h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600" data-action="click->org-payout#hidePayModal">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+
+        <%# Body %>
+        <div class="p-6">
+          <%# Amount %>
+          <div class="text-center mb-6">
+            <div class="text-4xl font-bold text-gray-900"><%= format_cents.call(@total_balance) %></div>
+            <div class="text-sm text-gray-500 mt-1">Outstanding balance</div>
+          </div>
+
+          <% if payment_info %>
+            <%# Instructions %>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+              <div class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                </svg>
+                <% if payment_info[:method] == "venmo" %>
+                  <p class="text-sm text-gray-700">Open Venmo on your phone, send <strong><%= number_to_currency(balance_dollars) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                <% elsif payment_info[:method] == "zelle" %>
+                  <p class="text-sm text-gray-700">Open your bank's Zelle, send <strong><%= number_to_currency(balance_dollars) %></strong> to <strong><%= payment_info[:identifier] %></strong>, then mark as paid below.</p>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Action buttons %>
+            <div class="space-y-3">
+              <% if payment_info[:method] == "venmo" && @org.venmo_configured? %>
+                <%= render "shared/button",
+                    text: "Open Venmo",
+                    variant: "primary",
+                    size: "large",
+                    type: :button,
+                    classes: "w-full bg-blue-500 hover:bg-blue-600",
+                    data: {
+                      action: "click->org-payout#openVenmo",
+                      venmo_handle: @org.venmo_identifier,
+                      venmo_amount: balance_dollars,
+                      venmo_note: "CocoScout - #{@org.name}"
+                    } %>
+              <% end %>
+
+              <%= form_with url: finances_org_record_payment_path(org_id: @org.id), method: :post, local: true do |f| %>
+                <input type="hidden" name="amount" value="<%= '%.2f' % balance_dollars %>">
+                <input type="hidden" name="payment_method" value="<%= payment_info[:method] %>">
+                <input type="hidden" name="notes" value="Paid via <%= payment_info[:method].titleize %> to <%= payment_info[:identifier] %>">
+                <%= render "shared/button", text: "I Paid via #{payment_info[:method].titleize}", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
+              <% end %>
+            </div>
+          <% else %>
+            <%# No payment method configured %>
+            <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center mb-6">
+              <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              <p class="text-gray-600 font-medium">No payment info on file</p>
+              <p class="text-sm text-gray-500 mt-1">Add Venmo or Zelle details for this organization first, or pay via another method.</p>
+            </div>
+
+            <%# Alternative payment methods %>
+            <div class="space-y-3">
+              <p class="text-sm text-gray-500 text-center">Mark as paid via:</p>
+              <div class="grid grid-cols-2 gap-2">
+                <% %w[venmo zelle cash check].each do |method| %>
+                  <%= form_with url: finances_org_record_payment_path(org_id: @org.id), method: :post, local: true do |f| %>
+                    <input type="hidden" name="amount" value="<%= '%.2f' % balance_dollars %>">
+                    <input type="hidden" name="payment_method" value="<%= method %>">
+                    <%= render "shared/button", text: method.titleize, variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <%# Footer %>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+          <%= render "shared/button", text: "Close", variant: "ghost", size: "small", type: :button, data: { action: "click->org-payout#hidePayModal" } %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

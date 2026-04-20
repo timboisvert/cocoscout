@@ -103,7 +103,58 @@
       </summary>
       <div class="mt-3 space-y-2">
         <% @course_summaries.each do |summary| %>
-          <%= render "manage/money/production_row", summary: summary %>
+          <% offering = summary[:course_offering] %>
+          <% if offering %>
+            <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+              <%= link_to manage_money_production_financials_path(summary[:production]), class: "block" do %>
+                <div class="flex flex-col lg:flex-row lg:items-stretch">
+                  <%# Panel 1: Course Info %>
+                  <div class="flex-1 flex items-center gap-4 px-4 py-3">
+                    <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+                      <span class="text-sm font-bold text-pink-600"><%= summary[:production].initials %></span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900"><%= offering.title %></span>
+                        <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">Course</span>
+                        <% if offering.contract.present? %>
+                          <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Contract</span>
+                        <% end %>
+                      </div>
+                      <div class="text-sm text-gray-600">
+                        <%= offering.course_registrations.confirmed.count %> registrations
+                      </div>
+                    </div>
+                  </div>
+
+                  <%# Panel 2: Revenue %>
+                  <div class="flex-shrink-0 w-40 flex flex-col items-end justify-center px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-100">
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Revenue</span>
+                    <span class="text-lg font-semibold text-gray-900"><%= number_to_currency((summary[:course_confirmed_revenue_cents] || 0) / 100.0) %></span>
+                  </div>
+
+                  <%# Panel 3: Payout Status %>
+                  <div class="flex-shrink-0 w-40 flex flex-col items-end justify-center px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-100">
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Payouts</span>
+                    <% case summary[:course_payout_status] %>
+                    <% when "paid" %>
+                      <span class="inline-flex items-center gap-1 text-sm font-medium text-green-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        Paid
+                      </span>
+                    <% when "calculated" %>
+                      <span class="text-sm font-medium text-pink-600"><%= number_to_currency((summary[:course_payout_total_cents] || 0) / 100.0) %></span>
+                      <span class="text-xs text-pink-500">Awaiting payment</span>
+                    <% else %>
+                      <span class="text-sm text-gray-400">—</span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <%= render "manage/money/production_row", summary: summary %>
+          <% end %>
         <% end %>
       </div>
     </details>

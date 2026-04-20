@@ -13,7 +13,11 @@ class User < ApplicationRecord
     password_digest
   end
 
+  # API token for native mobile app authentication (Hotwire Native)
+  generates_token_for :api, expires_in: 30.days
+
   has_many :sessions, dependent: :destroy
+  has_many :device_tokens, dependent: :destroy
 
   has_many :organization_roles, dependent: :destroy
   has_many :organizations, through: :organization_roles

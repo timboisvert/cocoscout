@@ -5,6 +5,8 @@ class ApplicationController < ActionController::Base
   include Pagy::Method
   include ActivityTracking
 
+  helper_method :turbo_native_app?
+
   before_action :track_my_dashboard
   before_action :show_my_sidebar
   before_action :set_sentry_context
@@ -39,5 +41,9 @@ class ApplicationController < ActionController::Base
       id: Current.user.id,
       email: Current.user.email_address
     )
+  end
+
+  def turbo_native_app?
+    request.user_agent.to_s.include?("Turbo Native")
   end
 end

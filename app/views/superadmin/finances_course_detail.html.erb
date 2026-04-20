@@ -1,0 +1,280 @@
+<% content_for :title, "Pay: #{@course_offering.title}" %>
+
+<%
+  format_cents = ->(cents) {
+    negative = cents < 0
+    abs = cents.abs
+    dollars = abs / 100
+    remainder = abs % 100
+    formatted = "$#{number_with_delimiter(dollars)}.#{'%02d' % remainder}"
+    negative ? "-#{formatted}" : formatted
+  }
+
+  s = @summary
+  balance_dollars = s[:balance_cents] / 100.0
+  total_sessions = @sessions.count
+  per_session_cents = total_sessions > 0 ? s[:owed_cents] / total_sessions : 0
+  already_covered_session_ids = @payments.flat_map { |p| p.covers_sessions || [] }.uniq
+%>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Superadmin", superadmin_path],
+      ["Finances", finances_path],
+      [@org.name, finances_org_detail_path(org_id: @org.id)]
+    ],
+    text: @course_offering.title,
+    links: []
+  } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Revenue Summary -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Revenue Summary" %>
+        <div class="p-4">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Registrations</div>
+              <div class="text-2xl font-bold text-gray-900 mt-1"><%= s[:registration_count] %></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Gross Revenue</div>
+              <div class="text-2xl font-bold text-gray-900 mt-1"><%= format_cents.call(s[:gross_cents]) %></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Platform Fee (5%)</div>
+              <div class="text-2xl font-bold text-red-600 mt-1"><%= format_cents.call(s[:platform_fee_cents]) %></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Owed to Org</div>
+              <div class="text-2xl font-bold text-gray-900 mt-1"><%= format_cents.call(s[:owed_cents]) %></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Already Paid</div>
+              <div class="text-xl font-bold text-green-600 mt-1"><%= format_cents.call(s[:paid_cents]) %></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Remaining Balance</div>
+              <div class="text-xl font-bold <%= s[:balance_cents] > 0 ? 'text-red-600' : 'text-green-600' %> mt-1"><%= format_cents.call(s[:balance_cents]) %></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <% if total_sessions > 0 %>
+        <!-- Session Schedule -->
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Session Schedule (#{total_sessions} sessions)" %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Per-Session Value</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Paid?</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @sessions.each_with_index do |session, idx| %>
+                  <% covered = already_covered_session_ids.include?(session.id) %>
+                  <tr class="<%= covered ? 'bg-green-50' : '' %>">
+                    <td class="px-4 py-3 text-sm text-gray-600"><%= idx + 1 %></td>
+                    <td class="px-4 py-3 text-sm text-gray-900"><%= session.date_and_time.strftime("%a, %b %-d, %Y · %-I:%M %p") %></td>
+                    <td class="px-4 py-3 text-sm text-right text-gray-900"><%= format_cents.call(per_session_cents) %></td>
+                    <td class="px-4 py-3 text-sm text-center">
+                      <% if covered %>
+                        <span class="inline-flex items-center gap-1 text-green-600">
+                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                          Covered
+                        </span>
+                      <% else %>
+                        <span class="text-gray-400">—</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Payment History -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Payment History" %>
+
+        <% if @payments.any? %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @payments.each do |p| %>
+                  <tr>
+                    <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><%= p.paid_at&.strftime("%b %-d, %Y") || p.created_at.strftime("%b %-d, %Y") %></td>
+                    <td class="px-4 py-3 text-sm text-gray-600">
+                      <%= p.payout_type.titleize %>
+                      <% if p.covers_sessions.present? && p.covers_sessions.any? %>
+                        <span class="text-xs text-gray-400">(<%= p.covers_sessions.size %> session<%= p.covers_sessions.size == 1 ? '' : 's' %>)</span>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600"><%= p.payment_method.titleize %></td>
+                    <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900"><%= p.formatted_amount %></td>
+                    <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate"><%= p.notes %></td>
+                    <td class="px-4 py-3 text-right">
+                      <%= form_with url: finances_delete_payment_path(id: p.id), method: :delete, class: "inline", data: { turbo_confirm: "Delete this payment record?" } do %>
+                        <button type="submit" class="text-gray-400 hover:text-red-500 p-1" title="Delete">
+                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                          </svg>
+                        </button>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="p-6 text-center text-gray-500 text-sm">No payments recorded yet for this course.</div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Sidebar: Record Payment -->
+    <div class="space-y-4">
+      <% if s[:balance_cents] > 0 %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Record Payment" %>
+          <div class="p-4">
+            <%= form_with url: finances_record_payment_path(course_offering_id: @course_offering.id), method: :post, class: "space-y-4", data: { controller: "org-payout" } do |f| %>
+
+              <%# Payout type selector %>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-2">Payment Type</label>
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="payout_type" value="full_course" class="accent-pink-500" data-action="change->org-payout#typeChanged" checked>
+                    <span class="text-sm text-gray-700">Full Course — <strong><%= format_cents.call(s[:balance_cents]) %></strong></span>
+                  </label>
+                  <% if total_sessions > 1 %>
+                    <% uncovered_count = total_sessions - already_covered_session_ids.size %>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="payout_type" value="per_session" class="accent-pink-500" data-action="change->org-payout#typeChanged">
+                      <span class="text-sm text-gray-700">Per Session — <strong><%= format_cents.call(per_session_cents) %></strong>/session (<%= uncovered_count %> unpaid)</span>
+                    </label>
+                  <% end %>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="payout_type" value="custom" class="accent-pink-500" data-action="change->org-payout#typeChanged">
+                    <span class="text-sm text-gray-700">Custom Amount</span>
+                  </label>
+                </div>
+              </div>
+
+              <%# Per-session checkboxes (hidden by default) %>
+              <% if total_sessions > 1 %>
+                <div data-org-payout-target="sessionPicker" class="hidden">
+                  <label class="block text-xs font-medium text-gray-600 mb-2">Select Sessions</label>
+                  <div class="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                    <% @sessions.each_with_index do |session, idx| %>
+                      <% covered = already_covered_session_ids.include?(session.id) %>
+                      <label class="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 <%= covered ? 'opacity-50' : '' %>">
+                        <input type="checkbox" name="session_ids[]" value="<%= session.id %>"
+                          class="accent-pink-500 h-4 w-4"
+                          <%= covered ? 'disabled' : '' %>>
+                        <span class="text-sm text-gray-700">
+                          #<%= idx + 1 %> — <%= session.date_and_time.strftime("%b %-d · %-I:%M %p") %>
+                          <% if covered %>
+                            <span class="text-xs text-green-600">(already paid)</span>
+                          <% end %>
+                        </span>
+                      </label>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+
+              <%# Custom amount (hidden by default) %>
+              <div data-org-payout-target="customAmount" class="hidden">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input type="text" name="amount" placeholder="0.00" value="<%= '%.2f' % balance_dollars %>"
+                    class="w-full pl-7 text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+                </div>
+              </div>
+
+              <%# Payment method %>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Payment Method</label>
+                <%= f.select :payment_method,
+                  OrgPayout::PAYMENT_METHODS.map { |m| [m.titleize, m] },
+                  {},
+                  class: "w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+
+              <%# Notes %>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
+                <textarea name="notes" rows="2" class="w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" placeholder="e.g., Zelle confirmation #..."></textarea>
+              </div>
+
+              <%= render "shared/button", text: "Record Payment", variant: "primary", size: "medium", type: :submit %>
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <div class="border border-green-200 rounded-lg bg-green-50 p-6 text-center">
+          <svg class="w-8 h-8 text-green-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          <p class="text-sm font-medium text-green-700">Fully Paid</p>
+          <p class="text-xs text-green-600 mt-1">All obligations for this course have been settled.</p>
+        </div>
+      <% end %>
+
+      <!-- Course Info -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Course Info" %>
+        <div class="p-4 space-y-2 text-sm text-gray-600">
+          <div class="flex justify-between">
+            <span>Organization</span>
+            <span class="font-medium text-gray-900"><%= @org.name %></span>
+          </div>
+          <div class="flex justify-between">
+            <span>Status</span>
+            <span class="font-medium text-gray-900"><%= @course_offering.status.titleize %></span>
+          </div>
+          <% if @course_offering.price_cents > 0 %>
+            <div class="flex justify-between">
+              <span>Price</span>
+              <span class="font-medium text-gray-900"><%= number_to_currency(@course_offering.price_cents / 100.0) %></span>
+            </div>
+          <% end %>
+          <div class="flex justify-between">
+            <span>Sessions</span>
+            <span class="font-medium text-gray-900"><%= total_sessions %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

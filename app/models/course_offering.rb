@@ -6,8 +6,11 @@ class CourseOffering < ApplicationRecord
   belongs_to :instructor_person, class_name: "Person", optional: true
   belongs_to :questionnaire, optional: true
   belongs_to :feature_credit_redemption, optional: true
+  belongs_to :created_by_user, class_name: "User", optional: true
   has_many :course_registrations, dependent: :restrict_with_error
   has_many :course_offering_instructors, dependent: :destroy
+  has_one :course_offering_payout, dependent: :destroy
+  has_many :org_payouts, dependent: :nullify
   has_many :instructor_people, through: :course_offering_instructors, source: :person
   has_one :email_draft, as: :emailable, dependent: :destroy
 

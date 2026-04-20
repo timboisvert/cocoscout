@@ -38,6 +38,9 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
+# Ignore Firebase/push notification credentials.
+/config/firebase/
+
 /app/assets/builds/*
 !/app/assets/builds/.keep
 

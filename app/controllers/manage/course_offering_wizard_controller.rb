@@ -375,7 +375,8 @@ module Manage
           show_individual_photos: @wizard_state[:show_individual_photos] != false,
           show_individual_bios: @wizard_state[:show_individual_bios] != false,
           show_group_photo: @wizard_state[:show_group_photo] == true,
-          show_group_bio: @wizard_state[:show_group_bio] != false
+          show_group_bio: @wizard_state[:show_group_bio] != false,
+          created_by_user: Current.user
         )
 
         # Attach instructor headshot if uploaded during wizard (legacy, keep first instructor's)
