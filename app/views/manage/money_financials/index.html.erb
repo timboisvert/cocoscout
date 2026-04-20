@@ -46,6 +46,9 @@
       confirmed_revenue = offering ? offering.course_registrations.confirmed.sum(:amount_cents) : 0
       refunded_revenue = offering ? offering.course_registrations.refunded.sum(:amount_cents) : 0
       gross_revenue_cents = confirmed_revenue - refunded_revenue
+      coverage = offering&.feature_credit_redemption&.feature_credit&.coverage_type
+      owed_cents = offering ? OrgPayout.owed_cents_for_course(offering) : 0
+      platform_fee_cents = gross_revenue_cents - owed_cents
     %>
 
     <%# Course Revenue Summary %>
@@ -68,14 +71,14 @@
       </div>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Platform Fee (5%)</div>
-        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(gross_revenue_cents * 0.05 / 100.0) %></div>
+        <div class="text-sm text-gray-500 mb-1">Platform Fee<%= coverage == "full" ? " (waived)" : coverage == "platform_only" ? " (Stripe only)" : " (5%)" %></div>
+        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(platform_fee_cents / 100.0) %></div>
         <div class="text-xs text-gray-500">CocoScout fee</div>
       </div>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="text-sm text-gray-500 mb-1">Net to Organization</div>
-        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(gross_revenue_cents * 0.95 / 100.0) %></div>
+        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(owed_cents / 100.0) %></div>
         <div class="text-xs text-gray-500">
           <% if payout&.paid? %>
             all payments complete

@@ -2413,7 +2413,7 @@ class SuperadminController < ApplicationController
       .joins(:production)
       .where(productions: { organization_id: @org.id })
       .where.not(status: :draft)
-      .includes(:course_registrations, :org_payouts, production: :organization)
+      .includes(:course_registrations, :org_payouts, { feature_credit_redemption: :feature_credit }, production: :organization)
       .order(created_at: :desc)
 
     @course_summaries = @course_offerings.map { |co| build_course_summary(co) }
@@ -2488,7 +2488,7 @@ class SuperadminController < ApplicationController
   end
 
   def finances_course_detail
-    @course_offering = CourseOffering.includes(:production, :course_registrations, :org_payouts).find(params[:course_offering_id])
+    @course_offering = CourseOffering.includes(:production, :course_registrations, :org_payouts, feature_credit_redemption: :feature_credit).find(params[:course_offering_id])
     @org = @course_offering.organization
     @sessions = @course_offering.sessions
     @summary = build_course_summary(@course_offering)
@@ -2577,14 +2577,15 @@ class SuperadminController < ApplicationController
       offerings = CourseOffering
         .joins(:production)
         .where(productions: { organization_id: org.id })
-        .includes(:course_registrations)
+        .includes(:course_registrations, feature_credit_redemption: :feature_credit)
 
       gross = 0
+      owed = 0
       offerings.each do |co|
         gross += co.course_registrations.confirmed.sum(:amount_cents)
+        owed += OrgPayout.owed_cents_for_course(co)
       end
 
-      owed = (gross * 0.95).round
       paid = org.org_payouts.paid.sum(:amount_cents)
 
       {
@@ -2600,10 +2601,11 @@ class SuperadminController < ApplicationController
 
   def build_course_summary(course_offering)
     gross = course_offering.course_registrations.confirmed.sum(:amount_cents)
-    owed = (gross * 0.95).round
+    owed = OrgPayout.owed_cents_for_course(course_offering)
     platform_fee = gross - owed
     paid = course_offering.org_payouts.paid.sum(:amount_cents)
     reg_count = course_offering.course_registrations.confirmed.count
+    coverage = course_offering.feature_credit_redemption&.feature_credit&.coverage_type
 
     {
       course_offering: course_offering,
@@ -2612,7 +2614,8 @@ class SuperadminController < ApplicationController
       platform_fee_cents: platform_fee,
       owed_cents: owed,
       paid_cents: paid,
-      balance_cents: owed - paid
+      balance_cents: owed - paid,
+      coverage_type: coverage
     }
   end
 

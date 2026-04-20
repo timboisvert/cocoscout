@@ -15,7 +15,7 @@ module Manage
 
         if @is_course
           # Course production - load course offering for payout info
-          @course_offering = @production.course_offerings.first
+          @course_offering = @production.course_offerings.includes(feature_credit_redemption: :feature_credit).first
           @financial_summary = FinancialSummaryService.new(@production).summary_for_period(@selected_period)
           @shows = load_shows_for_production(@production)
         elsif @is_third_party

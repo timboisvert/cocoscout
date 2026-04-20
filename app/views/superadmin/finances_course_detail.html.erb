@@ -48,7 +48,7 @@
               <div class="text-2xl font-bold text-gray-900 mt-1"><%= format_cents.call(s[:gross_cents]) %></div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 font-medium uppercase">Platform Fee (5%)</div>
+              <div class="text-xs text-gray-500 font-medium uppercase">Platform Fee<%= s[:coverage_type] == "full" ? " (waived)" : s[:coverage_type] == "platform_only" ? " (Stripe only)" : " (5%)" %></div>
               <div class="text-2xl font-bold text-red-600 mt-1"><%= format_cents.call(s[:platform_fee_cents]) %></div>
             </div>
             <div>
