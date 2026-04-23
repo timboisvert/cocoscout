@@ -19,7 +19,7 @@
         <%
           is_user_reaction = user_reaction == reaction_type
           reactors = reactions_by_emoji[reaction_type] || []
-          reactor_names = reactors.map { |r| r.user.name }.join(", ")
+          reactor_names = reactors.map { |r| r.user.person&.name }.compact.join(", ")
         %>
         <span data-controller="tooltip" data-tooltip-text="<%= reactor_names %>">
           <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
