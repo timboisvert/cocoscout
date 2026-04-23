@@ -1,20 +1,27 @@
 <% content_for :title, @course_offering.title %>
 
 <%
-  og_image_url = case @course_offering.og_image_source
+  src = @course_offering.og_image_source.to_s
+  og_image_url = case src
   when "group_photo"
-    @course_offering.group_photo.attached? ? url_for(@course_offering.group_photo) : asset_url("cocoscout.png")
+    @course_offering.group_photo.attached? ? url_for(@course_offering.group_photo) : nil
   when "instructor_headshot"
-    @course_offering.instructor_headshot.attached? ? url_for(@course_offering.instructor_headshot) : asset_url("cocoscout.png")
+    @course_offering.instructor_headshot.attached? ? url_for(@course_offering.instructor_headshot) : nil
   when "none"
     nil
   else
-    if @course_offering.group_photo.attached?
+    person_id = src.to_i
+    if person_id > 0
+      coi = @course_offering.course_offering_instructors.includes(:person).find { |c| c.person_id == person_id }
+      if coi&.headshot&.attached?
+        url_for(coi.headshot)
+      elsif coi&.person&.headshot&.attached?
+        url_for(coi.person.headshot)
+      end
+    elsif @course_offering.group_photo.attached?
       url_for(@course_offering.group_photo)
     elsif @course_offering.instructor_headshot.attached?
       url_for(@course_offering.instructor_headshot)
-    else
-      asset_url("cocoscout.png")
     end
   end
   og_description = strip_tags(@course_offering.description.to_s).squish.truncate(200)
@@ -76,8 +83,9 @@
 
         <%# Schedule %>
         <% if @all_sessions.any? %>
-          <h3 class="text-base font-semibold text-slate-900">Schedule</h3>
-          <div class="bg-white border border-slate-200 rounded-lg shadow-sm -mt-3 divide-y divide-slate-100">
+          <div>
+          <h3 class="text-base font-semibold text-slate-900 mb-2">Schedule</h3>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm divide-y divide-slate-100">
             <% @all_sessions.each do |show| %>
               <div class="flex items-center gap-3 px-4 py-3">
                 <div class="flex-1 min-w-0">
@@ -103,42 +111,44 @@
               </div>
             <% end %>
           </div>
+          </div>
         <% end %>
 
         <%# Instructors %>
         <% cois = @course_offering.course_offering_instructors.includes(:person) %>
         <% instructors = cois.map(&:person) %>
         <% coi_by_person = cois.index_by(&:person_id) %>
-        <% if instructors.any? || @course_offering.instructor_name.present? %>
-          <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
+        <% show_individual = @course_offering.show_individual_photos? || @course_offering.show_individual_bios? %>
+        <% show_group_photo = @course_offering.show_group_photo? && @course_offering.group_photo.attached? && instructors.size > 1 %>
+        <% show_preface = @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
+        <% if (instructors.any? || @course_offering.instructor_name.present?) && (show_individual || show_group_photo || show_preface) %>
+          <div>
+          <h3 class="text-base font-semibold text-slate-900 mb-2"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
           <% if instructors.any? %>
-            <% show_group_photo = @course_offering.show_group_photo? && @course_offering.group_photo.attached? && instructors.size > 1 %>
             <% if show_group_photo %>
               <div class="mb-3">
                 <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [800, 800]), alt: "Instructors", class: "w-full rounded-lg" %>
               </div>
             <% end %>
-            <% show_preface = @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
             <% if show_preface %>
-              <div class="text-sm text-slate-600 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
+              <div class="text-sm text-slate-600 prose prose-sm prose-slate max-w-none mb-3"><%= @course_offering.instructor_preface %></div>
             <% end %>
-            <div class="space-y-3 <%= (show_group_photo || show_preface) ? '' : '-mt-3' %>">
+            <% if show_individual %>
+            <div class="space-y-3">
               <% instructors.each do |instructor| %>
                 <% coi = coi_by_person[instructor.id] %>
                 <% has_override = coi&.headshot&.attached? %>
                 <% has_profile = !has_override && instructor.safe_headshot_variant(:tile).present? %>
+                <% has_image = has_override || has_profile %>
+                <% show_photo = @course_offering.show_individual_photos? && has_image && !coi&.hide_photo? %>
                 <% show_bio = @course_offering.show_individual_bios? && coi&.bio.present? %>
                 <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
                   <div class="flex items-start gap-5">
-                    <% if @course_offering.show_individual_photos? %>
+                    <% if show_photo %>
                       <% if has_override %>
                         <%= image_tag coi.headshot.variant(resize_to_limit: [200, 400]), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
                       <% elsif has_profile %>
                         <%= image_tag instructor.safe_headshot_variant(:tile), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
-                      <% else %>
-                        <div class="w-[120px] h-[120px] rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-2xl flex-shrink-0">
-                          <%= instructor.initials %>
-                        </div>
                       <% end %>
                     <% end %>
                     <div class="flex-1 min-w-0">
@@ -161,8 +171,9 @@
                 </div>
               <% end %>
             </div>
+            <% end %>
           <% else %>
-            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
+            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
               <div class="flex items-center gap-4">
                 <div class="w-[120px] h-[120px] rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl flex-shrink-0">
                   <%= @course_offering.instructor_name.to_s.split(" ").map { |n| n[0] }.join("").first(2).upcase %>
@@ -186,6 +197,7 @@
               <% end %>
             </div>
           <% end %>
+          </div>
         <% end %>
 
         <%# Price %>

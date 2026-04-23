@@ -106,12 +106,14 @@
             <% headshot_variant = person.safe_headshot_variant(:thumb) %>
             <% coi = coi_by_person[person.id] %>
             <% existing_headshot_url = coi&.headshot&.attached? ? url_for(coi.headshot.variant(resize_to_limit: [160, 160])) : "" %>
+            <% edit_photo_mode = coi&.hide_photo? ? "none" : (coi&.headshot&.attached? ? "upload" : "profile") %>
             <input type="hidden" name="instructor_person_ids[]" form="instructor-form"
                    value="<%= person.id %>"
                    data-name="<%= person.name %>"
                    data-email="<%= person.email %>"
                    data-headshot-url="<%= headshot_variant ? url_for(headshot_variant) : '' %>"
-                   data-existing-headshot-url="<%= existing_headshot_url %>">
+                   data-existing-headshot-url="<%= existing_headshot_url %>"
+                   data-photo-mode="<%= edit_photo_mode %>">
           <% end %>
         </div>
 
@@ -121,17 +123,52 @@
             <% coi = coi_by_person[person.id] %>
             <% existing_bio = coi&.bio&.to_plain_text || "" %>
             <% existing_headshot_url = coi&.headshot&.attached? ? url_for(coi.headshot.variant(resize_to_limit: [160, 160])) : "" %>
+            <% edit_photo_mode = coi&.hide_photo? ? "none" : (coi&.headshot&.attached? ? "upload" : "profile") %>
+            <% person_headshot_variant = person.safe_headshot_variant(:thumb) %>
             <div id="instructor-inputs-<%= person.id %>" class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Photo Override</label>
-                <% if existing_headshot_url.present? %>
-                  <img data-photo-preview src="<%= existing_headshot_url %>" alt="<%= person.name %>" class="w-16 h-16 rounded-lg object-cover mb-2">
-                <% else %>
-                  <img data-photo-preview class="hidden w-16 h-16 rounded-lg object-cover mb-2" alt="">
-                <% end %>
-                <input type="file" name="instructor_headshots[<%= person.id %>]" accept="image/*" form="instructor-form"
-                       class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
-                <p class="text-xs text-gray-400 mt-1">Overrides their CocoScout profile photo on the registration page.</p>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Photo</label>
+                <div class="space-y-1.5">
+                  <label class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+                    <input type="radio" name="instructor_photo_modes[<%= person.id %>]" value="profile" form="instructor-form"
+                           <%= 'checked' if edit_photo_mode == 'profile' %>
+                           data-action="change->instructor-search#onPhotoModeChange"
+                           class="accent-pink-500 flex-shrink-0">
+                    <% if person_headshot_variant %>
+                      <%= image_tag person_headshot_variant, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0", alt: "" %>
+                    <% else %>
+                      <div class="w-9 h-9 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+                    <% end %>
+                    <span class="text-sm text-gray-700">Use profile picture</span>
+                  </label>
+                  <label class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+                    <input type="radio" name="instructor_photo_modes[<%= person.id %>]" value="upload" form="instructor-form"
+                           <%= 'checked' if edit_photo_mode == 'upload' %>
+                           data-action="change->instructor-search#onPhotoModeChange"
+                           class="accent-pink-500 flex-shrink-0">
+                    <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    </div>
+                    <span class="text-sm text-gray-700">Upload custom photo</span>
+                  </label>
+                  <div data-photo-upload-section class="<%= edit_photo_mode == 'upload' ? '' : 'hidden' %> pl-12 space-y-2">
+                    <% if existing_headshot_url.present? %>
+                      <img data-photo-preview src="<%= existing_headshot_url %>" class="w-12 h-12 rounded-lg object-cover" alt="">
+                    <% else %>
+                      <img data-photo-preview class="hidden w-12 h-12 rounded-lg object-cover" alt="">
+                    <% end %>
+                    <input type="file" name="instructor_headshots[<%= person.id %>]" accept="image/*" form="instructor-form"
+                           data-action="change->instructor-search#onFileChange"
+                           class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+                  </div>
+                  <label class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+                    <input type="radio" name="instructor_photo_modes[<%= person.id %>]" value="none" form="instructor-form"
+                           <%= 'checked' if edit_photo_mode == 'none' %>
+                           data-action="change->instructor-search#onPhotoModeChange"
+                           class="accent-pink-500 flex-shrink-0">
+                    <span class="text-sm text-gray-700">No photo</span>
+                  </label>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
@@ -276,10 +313,11 @@
               <%# Group bio textarea (revealed when checkbox checked) %>
               <div class="<%= 'hidden' unless has_group_bio %> ml-7"
                    data-instructor-search-target="groupBioInputSection">
-                <textarea name="course_offering[instructor_preface]" rows="4"
-                          data-action="input->instructor-search#onGroupBioChange"
-                          class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"
-                          placeholder="e.g. Jane and Marcus have been teaching improv together for five years..."><%= @course_offering.instructor_preface&.to_plain_text %></textarea>
+                <%= rich_text_area_tag :instructor_preface, @course_offering.instructor_preface,
+                    class: "w-full min-h-[100px]",
+                    form: "instructor-form",
+                    data: { action: "trix-change->instructor-search#onGroupBioChange" },
+                    placeholder: "e.g. Jane and Marcus have been teaching improv together for five years..." %>
               </div>
 
             </div>

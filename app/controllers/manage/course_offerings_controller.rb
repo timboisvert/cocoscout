@@ -105,6 +105,7 @@ module Manage
       instructor_on_team = params[:instructor_on_team] == "1"
       bios = params[:instructor_bios] || {}
       headshots = params[:instructor_headshots] || {}
+      photo_modes = params[:instructor_photo_modes] || {}
 
       updates = {}
       if person_ids.any?
@@ -116,7 +117,7 @@ module Manage
         updates[:instructor_name] = nil
       end
       updates[:instructor_on_team] = instructor_on_team
-      updates[:instructor_preface] = params.dig(:course_offering, :instructor_preface).presence
+      updates[:instructor_preface] = params[:instructor_preface].presence
       updates[:show_individual_photos] = params[:show_individual_photos] == "1"
       updates[:show_individual_bios] = params[:show_individual_bios] == "1"
       if person_ids.size <= 1
@@ -143,11 +144,16 @@ module Manage
           coi = existing_cois[pid] || @course_offering.course_offering_instructors.build(person_id: pid)
           coi.position = position
           coi.bio = bios[pid.to_s] if bios.key?(pid.to_s)
-          coi.save!
 
-          if headshots[pid.to_s].present?
+          mode = photo_modes[pid.to_s] || "profile"
+          coi.hide_photo = (mode == "none")
+          if mode == "upload" && headshots[pid.to_s].present?
             coi.headshot.attach(headshots[pid.to_s])
+          elsif mode == "profile" && coi.headshot.attached?
+            coi.headshot.purge
           end
+
+          coi.save!
         end
 
         # Assign all instructors to the Instructor role on all sessions

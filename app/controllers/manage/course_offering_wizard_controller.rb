@@ -85,6 +85,21 @@ module Manage
       end
       @wizard_state[:instructor_headshot_blob_ids].select! { |k, _| active_ids.include?(k) }
 
+      # Save per-instructor photo modes
+      @wizard_state[:instructor_photo_modes] ||= {}
+      if params[:instructor_photo_modes].is_a?(ActionController::Parameters) || params[:instructor_photo_modes].is_a?(Hash)
+        params[:instructor_photo_modes].each do |person_id, mode|
+          @wizard_state[:instructor_photo_modes][person_id.to_s] = mode
+        end
+      end
+      @wizard_state[:instructor_photo_modes].select! { |k, _| active_ids.include?(k) }
+      # If mode is "profile", clear any stored blob (no override needed)
+      @wizard_state[:instructor_photo_modes].each do |pid, mode|
+        if mode == "profile"
+          @wizard_state[:instructor_headshot_blob_ids].delete(pid)
+        end
+      end
+
       # Keep instructor_name in sync with selected people
       if @wizard_state[:instructor_person_ids].any?
         people = Person.where(id: @wizard_state[:instructor_person_ids])
@@ -430,16 +445,21 @@ module Manage
         # Create course_offering_instructors join records with per-instructor bio/headshot
         instructor_bios = @wizard_state[:instructor_bios] || {}
         instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {}
+        instructor_photo_modes = @wizard_state[:instructor_photo_modes] || {}
         instructor_people.each_with_index do |instructor_person, position|
+          mode = instructor_photo_modes[instructor_person.id.to_s] || "profile"
           coi = @offering.course_offering_instructors.create!(
             person: instructor_person,
             position: position,
-            bio: instructor_bios[instructor_person.id.to_s]
+            bio: instructor_bios[instructor_person.id.to_s],
+            hide_photo: mode == "none"
           )
-          blob_id = instructor_headshot_blob_ids[instructor_person.id.to_s]
-          if blob_id.present?
-            blob = ActiveStorage::Blob.find_by(id: blob_id)
-            coi.headshot.attach(blob) if blob
+          if mode == "upload"
+            blob_id = instructor_headshot_blob_ids[instructor_person.id.to_s]
+            if blob_id.present?
+              blob = ActiveStorage::Blob.find_by(id: blob_id)
+              coi.headshot.attach(blob) if blob
+            end
           end
         end
 

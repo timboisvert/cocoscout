@@ -34,6 +34,7 @@ export default class extends Controller {
           email: input.dataset.email || "",
           headshotUrl: input.dataset.headshotUrl || "",
           existingHeadshotUrl: input.dataset.existingHeadshotUrl || "",
+          photoMode: input.dataset.photoMode || "profile",
         })
       })
     }
@@ -75,9 +76,9 @@ export default class extends Controller {
 
     this.editingPersonId = id
 
-    // Header
+    // Header — photo based on current mode
     const initials = inst.name.split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase()
-    const photo = inst.existingHeadshotUrl || inst.headshotUrl
+    const photo = inst.photoMode === "none" ? null : (inst.existingHeadshotUrl || inst.headshotUrl)
     this.editModalHeadshotSlotTarget.innerHTML = photo
       ? `<img src="${this._esc(photo)}" class="w-12 h-12 rounded-lg object-cover" alt="">`
       : `<div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-sm">${initials}</div>`
@@ -87,17 +88,14 @@ export default class extends Controller {
     const div = document.getElementById(`instructor-inputs-${id}`)
     if (div && this.hasEditModalFileZoneTarget) {
       this.editModalFileZoneTarget.appendChild(div)
-      // Wire file→preview
-      const fileInput = div.querySelector('input[type="file"]')
-      const preview = div.querySelector("[data-photo-preview]")
-      if (fileInput && preview) {
-        fileInput.onchange = () => {
-          const file = fileInput.files[0]
-          if (!file) return
-          const reader = new FileReader()
-          reader.onload = ev => { preview.src = ev.target.result; preview.classList.remove("hidden") }
-          reader.readAsDataURL(file)
-        }
+
+      // Set the correct radio button and show/hide upload section
+      const photoMode = inst.photoMode || "profile"
+      const radio = div.querySelector(`input[name="instructor_photo_modes[${id}]"][value="${photoMode}"]`)
+      if (radio) {
+        radio.checked = true
+        const uploadSection = div.querySelector("[data-photo-upload-section]")
+        if (uploadSection) uploadSection.classList.toggle("hidden", photoMode !== "upload")
       }
     }
 
@@ -120,6 +118,16 @@ export default class extends Controller {
     if (!this.editingPersonId) return
     const id = this.editingPersonId
 
+    // Read selected photo mode and persist to inst
+    const div = document.getElementById(`instructor-inputs-${id}`)
+    const selectedRadio = div?.querySelector(`input[name="instructor_photo_modes[${id}]"]:checked`)
+    const inst = this.selectedInstructors.find(i => i.id === id)
+    if (selectedRadio && inst) {
+      inst.photoMode = selectedRadio.value
+      if (selectedRadio.value === "profile") inst.existingHeadshotUrl = ""
+      if (selectedRadio.value === "none") inst.existingHeadshotUrl = ""
+    }
+
     // Persist share choice to hidden input
     if (this.hasEditModalShareSectionTarget && !this.editModalShareSectionTarget.classList.contains("hidden") &&
         this.hasEditModalShareCheckboxTarget) {
@@ -129,14 +137,6 @@ export default class extends Controller {
       } else if (src === id) {
         this._setOgSource("auto")
       }
-    }
-
-    // Update local preview from newly selected file (for compact row)
-    const div = document.getElementById(`instructor-inputs-${id}`)
-    const fileInput = div?.querySelector('input[type="file"]')
-    const inst = this.selectedInstructors.find(i => i.id === id)
-    if (fileInput?.files?.[0] && inst) {
-      inst.existingHeadshotUrl = URL.createObjectURL(fileInput.files[0])
     }
 
     this._returnInputsDiv(id)
@@ -163,6 +163,34 @@ export default class extends Controller {
     }
     if (this.hasEditModalFileZoneTarget) this.editModalFileZoneTarget.innerHTML = ""
     this.editingPersonId = null
+  }
+
+  // ── Photo mode ─────────────────────────────────────────────────
+
+  onPhotoModeChange(e) {
+    const radio = e.target
+    const div = radio.closest('[id^="instructor-inputs-"]')
+    const uploadSection = div?.querySelector("[data-photo-upload-section]")
+    if (uploadSection) uploadSection.classList.toggle("hidden", radio.value !== "upload")
+  }
+
+  onFileChange(e) {
+    const fileInput = e.target
+    const file = fileInput.files?.[0]
+    if (!file) return
+    const div = fileInput.closest('[id^="instructor-inputs-"]')
+    const preview = div?.querySelector("[data-photo-preview]")
+    if (preview) {
+      const reader = new FileReader()
+      reader.onload = ev => { preview.src = ev.target.result; preview.classList.remove("hidden") }
+      reader.readAsDataURL(file)
+    }
+    const id = div?.id?.replace("instructor-inputs-", "")
+    if (id) {
+      const inst = this.selectedInstructors.find(i => i.id === id)
+      if (inst) inst.existingHeadshotUrl = URL.createObjectURL(file)
+      this._renderList()
+    }
   }
 
   // ── Group photo / bio ──────────────────────────────────────────
@@ -196,7 +224,9 @@ export default class extends Controller {
   }
 
   onGroupBioChange(e) {
-    const has = e.target.value.trim().length > 0
+    const has = e.target.editor
+      ? e.target.editor.getDocument().toString().trim().length > 0
+      : (e.target.value?.trim().length > 0)
     if (this.hasShowGroupBioOptionTarget) this.showGroupBioOptionTarget.classList.toggle("hidden", !has)
   }
 
@@ -232,19 +262,19 @@ export default class extends Controller {
     e.preventDefault()
     if (!this.currentPersonIdValue) return
     if (this.selectedInstructors.some(i => i.id === this.currentPersonIdValue)) return
-    this._addAndEdit({ id: this.currentPersonIdValue, name: this.currentPersonNameValue, email: this.currentPersonEmailValue, headshotUrl: this.currentPersonHeadshotUrlValue, existingHeadshotUrl: "" })
+    this._addAndEdit({ id: this.currentPersonIdValue, name: this.currentPersonNameValue, email: this.currentPersonEmailValue, headshotUrl: this.currentPersonHeadshotUrlValue, existingHeadshotUrl: "", photoMode: "profile" })
   }
 
   selectPerson(e) {
     e.preventDefault()
     const { personId: id, personName: name, personEmail: email = "", personHeadshotUrl: headshotUrl = "" } = e.currentTarget.dataset
     if (!id || this.selectedInstructors.some(i => i.id === id)) return
-    this._addAndEdit({ id, name, email, headshotUrl, existingHeadshotUrl: "" })
+    this._addAndEdit({ id, name, email, headshotUrl, existingHeadshotUrl: "", photoMode: "profile" })
   }
 
   _addAndEdit(inst) {
     this.selectedInstructors.push(inst)
-    this._createInputsDiv(inst.id)
+    this._createInputsDiv(inst)
     this._updateHiddenInputs()
     this._renderList()
     this._updateSections()
@@ -284,7 +314,7 @@ export default class extends Controller {
       })
       const data = await r.json()
       if (data.success) {
-        this._addAndEdit({ id: String(data.person_id), name, email, headshotUrl: "", existingHeadshotUrl: "" })
+        this._addAndEdit({ id: String(data.person_id), name, email, headshotUrl: "", existingHeadshotUrl: "", photoMode: "profile" })
       } else { alert(data.error || "Something went wrong.") }
     } catch { alert("Something went wrong.") }
     finally { btn.disabled = false; btn.textContent = orig }
@@ -307,19 +337,53 @@ export default class extends Controller {
     if (this.hasGroupShareCheckboxTarget) this.groupShareCheckboxTarget.checked = val === "group_photo"
   }
 
-  _createInputsDiv(id) {
+  _createInputsDiv(inst) {
     if (!this.hasFileInputsContainerTarget) return
+    const id = inst.id
     const f = this._formAttr ? ` form="${this._formAttr}"` : ""
+    const initials = inst.name.split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase()
+    const headshotUrl = inst.headshotUrl
+
+    const profileImg = headshotUrl
+      ? `<img src="${this._esc(headshotUrl)}" class="w-9 h-9 rounded-lg object-cover flex-shrink-0" alt="">`
+      : `<div class="w-9 h-9 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">${initials}</div>`
+
+    const uploadIcon = `<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>`
+
+    const radioClass = "accent-pink-500 flex-shrink-0"
+    const rowClass = "flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50"
+
     const div = document.createElement("div")
     div.id = `instructor-inputs-${id}`
     div.className = "space-y-4"
     div.innerHTML = `
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Photo Override</label>
-        <img data-photo-preview class="hidden w-16 h-16 rounded-lg object-cover mb-2" alt="">
-        <input type="file" name="instructor_headshots[${id}]" accept="image/*"${f}
-               class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
-        <p class="text-xs text-gray-400 mt-1">Overrides their CocoScout profile photo on the registration page.</p>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Photo</label>
+        <div class="space-y-1.5">
+          <label class="${rowClass}">
+            <input type="radio" name="instructor_photo_modes[${id}]" value="profile" checked
+                   data-action="change->instructor-search#onPhotoModeChange" class="${radioClass}">
+            ${profileImg}
+            <span class="text-sm text-gray-700">Use profile picture</span>
+          </label>
+          <label class="${rowClass}">
+            <input type="radio" name="instructor_photo_modes[${id}]" value="upload"
+                   data-action="change->instructor-search#onPhotoModeChange" class="${radioClass}">
+            <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">${uploadIcon}</div>
+            <span class="text-sm text-gray-700">Upload custom photo</span>
+          </label>
+        <div data-photo-upload-section class="hidden pl-12 space-y-2">
+          <img data-photo-preview class="hidden w-12 h-12 rounded-lg object-cover" alt="">
+          <input type="file" name="instructor_headshots[${id}]" accept="image/*"${f}
+                 data-action="change->instructor-search#onFileChange"
+                 class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer">
+        </div>
+          <label class="${rowClass}">
+            <input type="radio" name="instructor_photo_modes[${id}]" value="none"
+                   data-action="change->instructor-search#onPhotoModeChange" class="${radioClass}">
+            <span class="text-sm text-gray-700">No photo</span>
+          </label>
+        </div>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
@@ -334,7 +398,7 @@ export default class extends Controller {
     if (!this.hasPersonIdsContainerTarget) return
     const f = this._formAttr ? ` form="${this._formAttr}"` : ""
     this.personIdsContainerTarget.innerHTML = this.selectedInstructors.map(i =>
-      `<input type="hidden" name="instructor_person_ids[]" value="${i.id}" data-name="${this._esc(i.name)}" data-email="${this._esc(i.email)}" data-headshot-url="${this._esc(i.headshotUrl)}" data-existing-headshot-url="${this._esc(i.existingHeadshotUrl)}"${f}>`
+      `<input type="hidden" name="instructor_person_ids[]" value="${i.id}" data-name="${this._esc(i.name)}" data-email="${this._esc(i.email)}" data-headshot-url="${this._esc(i.headshotUrl)}" data-existing-headshot-url="${this._esc(i.existingHeadshotUrl)}" data-photo-mode="${i.photoMode || "profile"}"${f}>`
     ).join("")
   }
 
@@ -350,10 +414,12 @@ export default class extends Controller {
 
     this.selectedListTarget.innerHTML = this.selectedInstructors.map(inst => {
       const initials = inst.name.split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase()
-      const photo = inst.existingHeadshotUrl || inst.headshotUrl
-      const img = photo
-        ? `<img src="${this._esc(photo)}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" alt="">`
-        : `<div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">${initials}</div>`
+      const photo = inst.photoMode === "none" ? null : (inst.existingHeadshotUrl || inst.headshotUrl)
+      const img = inst.photoMode === "none"
+        ? ""
+        : photo
+          ? `<img src="${this._esc(photo)}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" alt="">`
+          : `<div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">${initials}</div>`
 
       const isShare = multi && ogSrc === inst.id
       const shareBtn = multi ? `
@@ -392,7 +458,6 @@ export default class extends Controller {
     if (this.hasProductionTeamSectionTarget) this.productionTeamSectionTarget.classList.toggle("hidden", n < 1)
     if (this.hasGroupPhotoSectionTarget) this.groupPhotoSectionTarget.classList.toggle("hidden", n < 2)
     if (this.hasDisplayOptionsSectionTarget) this.displayOptionsSectionTarget.classList.toggle("hidden", n < 2)
-    // If dropped below 2 instructors, clear person-ID based og_image_source
     if (n < 2 && this.hasOgImageSourceInputTarget) {
       const src = this.ogImageSourceInputTarget.value
       if (src && src !== "auto" && src !== "group_photo" && src !== "none") this._setOgSource("auto")
