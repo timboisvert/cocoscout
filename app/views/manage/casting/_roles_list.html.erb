@@ -208,13 +208,20 @@
                           <%= assignment.display_initials %>
                         </div>
                       <% else %>
-                        <% headshot_variant = assignable&.safe_headshot_variant(:thumb) %>
+                        <%
+                          headshot_variant = assignable&.safe_headshot_variant(:thumb)
+                          assignable_dir_path = assignable.is_a?(Person) ? manage_contacts_person_path(assignable) : manage_contacts_group_path(assignable)
+                        %>
                         <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
+                          <%= link_to assignable_dir_path, class: "flex-shrink-0 block" do %>
+                            <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover hover:ring-2 hover:ring-pink-400 transition-all #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
+                          <% end %>
                         <% else %>
-                          <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
-                            <%= assignable&.initials %>
-                          </div>
+                          <%= link_to assignable_dir_path, class: "flex-shrink-0 block" do %>
+                            <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700 hover:ring-2 hover:ring-pink-400' %> flex items-center justify-center font-bold text-xs transition-all">
+                              <%= assignable&.initials %>
+                            </div>
+                          <% end %>
                         <% end %>
                       <% end %>
 
@@ -401,13 +408,20 @@
                           <%= assignment.display_initials %>
                         </div>
                       <% else %>
-                        <% headshot_variant = assignable&.safe_headshot_variant(:thumb) %>
+                        <%
+                          headshot_variant = assignable&.safe_headshot_variant(:thumb)
+                          assignable_dir_path2 = assignable.is_a?(Person) ? manage_contacts_person_path(assignable) : manage_contacts_group_path(assignable)
+                        %>
                         <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
+                          <%= link_to assignable_dir_path2, class: "flex-shrink-0 block" do %>
+                            <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover hover:ring-2 hover:ring-pink-400 transition-all #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
+                          <% end %>
                         <% else %>
-                          <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
-                            <%= assignable&.initials %>
-                          </div>
+                          <%= link_to assignable_dir_path2, class: "flex-shrink-0 block" do %>
+                            <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700 hover:ring-2 hover:ring-pink-400' %> flex items-center justify-center font-bold text-xs transition-all">
+                              <%= assignable&.initials %>
+                            </div>
+                          <% end %>
                         <% end %>
                       <% end %>
 

@@ -403,13 +403,20 @@
                         tooltip_text = is_guest ? "#{assignment.guest_name} - #{role.name}" : "#{assignable.name} - #{role.name}"
                         tooltip_text += " (Can't make it)" if cant_make_it
                       %>
-                      <% headshot_variant = assignable&.safe_headshot_variant(:thumb) %>
+                      <%
+                        headshot_variant = assignable&.safe_headshot_variant(:thumb)
+                        assignable_path = unless is_guest
+                          assignment.assignable_type == "Person" ? manage_contacts_person_path(assignable) : manage_contacts_group_path(assignable)
+                        end
+                      %>
                       <div class="relative">
                         <% if headshot_variant %>
-                          <%= image_tag headshot_variant,
-                              alt: assignable.name,
-                              class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
-                              data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                          <%= link_to assignable_path, class: "block" do %>
+                            <%= image_tag headshot_variant,
+                                alt: assignable.name,
+                                class: "w-10 h-10 rounded-md object-cover hover:ring-2 hover:ring-pink-400 transition-all #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
+                                data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                          <% end %>
                         <% elsif is_guest %>
                           <div class="w-10 h-10 rounded-md bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs"
                                data-controller="tooltip"
@@ -417,11 +424,13 @@
                             <%= assignment.display_initials %>
                           </div>
                         <% else %>
-                          <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
-                               data-controller="tooltip"
-                               data-tooltip-text="<%= tooltip_text %>">
-                            <%= assignable.initials %>
-                          </div>
+                          <%= link_to assignable_path, class: "block" do %>
+                            <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700 hover:ring-2 hover:ring-pink-400' %> flex items-center justify-center font-bold text-xs transition-all"
+                                 data-controller="tooltip"
+                                 data-tooltip-text="<%= tooltip_text %>">
+                              <%= assignable.initials %>
+                            </div>
+                          <% end %>
                         <% end %>
                         <% if cant_make_it %>
                           <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center" data-controller="tooltip" data-tooltip-text="Can't make it">

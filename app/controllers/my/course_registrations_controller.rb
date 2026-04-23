@@ -2,12 +2,12 @@
 
 module My
   class CourseRegistrationsController < ApplicationController
-    allow_unauthenticated_access only: %i[entry inactive]
+    allow_unauthenticated_access only: %i[entry inactive show]
 
     skip_before_action :show_my_sidebar
 
-    before_action :ensure_user_is_signed_in, only: %i[show checkout success]
     before_action :load_course_offering
+    before_action :ensure_user_is_signed_in, only: %i[show checkout success]
     before_action :ensure_course_is_open, except: %i[entry inactive success]
 
     def entry
@@ -19,6 +19,7 @@ module My
 
       @user = User.new
       @production = @course_offering.production
+      @all_sessions = @course_offering.sessions.includes(:location)
 
       # Set the return_to path so post-signup redirects to course details
       session[:return_to] = my_course_show_path(code: @course_offering.short_code)

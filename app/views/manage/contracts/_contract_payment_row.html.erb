@@ -82,25 +82,27 @@
         <% end %>
       </div>
 
-      <% if show_mark_received && payment.status_pending? %>
+      <% if payment.status_paid? %>
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
-            Paid <%= payment.paid_date&.strftime("%b %-d") %>
+            Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %>
           </span>
-          <% if payment.amount_tbd? %>
-            <button type="button" data-action="click->payment-modal#open"
-              class="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors cursor-pointer">
-              <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
-              Set Amount
-            </button>
-          <% else %>
+          <% if show_mark_received %>
             <button type="button" data-action="click->payment-modal#open"
               class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
               <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
-              Edit
+              <%= payment.amount_tbd? ? "Set Amount" : "Edit" %>
             </button>
           <% end %>
+        </div>
+      <% elsif show_mark_received && payment.status_pending? %>
+        <div class="flex items-center gap-2">
+          <button type="button" data-action="click->payment-modal#open"
+            class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer">
+            <%= icon("check-circle", class: "w-3 h-3 mr-1 inline") %>
+            <%= is_incoming ? "Mark Received" : "Mark Paid" %>
+          </button>
         </div>
       <% end %>
     </div>

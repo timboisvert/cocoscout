@@ -1,5 +1,38 @@
 <% content_for :title, @course_offering.title %>
 
+<%
+  og_image_url = case @course_offering.og_image_source
+  when "group_photo"
+    @course_offering.group_photo.attached? ? url_for(@course_offering.group_photo) : asset_url("cocoscout.png")
+  when "instructor_headshot"
+    @course_offering.instructor_headshot.attached? ? url_for(@course_offering.instructor_headshot) : asset_url("cocoscout.png")
+  when "none"
+    nil
+  else
+    if @course_offering.group_photo.attached?
+      url_for(@course_offering.group_photo)
+    elsif @course_offering.instructor_headshot.attached?
+      url_for(@course_offering.instructor_headshot)
+    else
+      asset_url("cocoscout.png")
+    end
+  end
+  og_description = strip_tags(@course_offering.description.to_s).squish.truncate(200)
+  course_location = @all_sessions.detect { |s| s.location.present? }&.location
+%>
+
+<% content_for :head do %>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= @course_offering.title %>">
+  <meta property="og:description" content="<%= og_description %>">
+  <% if og_image_url %><meta property="og:image" content="<%= og_image_url %>"><% end %>
+  <meta property="og:url" content="<%= my_course_entry_url(code: @course_offering.short_code) %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= @course_offering.title %>">
+  <meta name="twitter:description" content="<%= og_description %>">
+  <% if og_image_url %><meta name="twitter:image" content="<%= og_image_url %>"><% end %>
+<% end %>
+
 <div class="min-h-screen bg-white">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
@@ -14,18 +47,25 @@
     <!-- Two Column Layout: Course Info & Create Account Form -->
     <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
 
-      <!-- Left Column: Course Details & About CocoScout -->
+      <!-- Left Column: Full Course Info -->
       <div class="space-y-6">
-        <!-- Course Description (if present) -->
+
+        <%# Description %>
         <% if @course_offering.description.present? %>
-          <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
-            <div class="prose prose-slate max-w-none text-slate-700">
-              <%= @course_offering.description %>
+          <div data-controller="text-expand" data-text-expand-max-height-value="288">
+            <div class="relative">
+              <div data-text-expand-target="content" class="prose prose-slate max-w-none text-slate-700 overflow-hidden" style="max-height: 288px;">
+                <%= @course_offering.description %>
+              </div>
+              <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
             </div>
+            <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-sm text-pink-600 hover:text-pink-700 font-medium mt-2 cursor-pointer">
+              Read more
+            </button>
           </div>
         <% end %>
 
-        <!-- Instruction Text (if present) -->
+        <%# Instruction Text %>
         <% if @course_offering.instruction_text.present? %>
           <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <div class="prose prose-slate max-w-none text-slate-700">
@@ -34,56 +74,197 @@
           </div>
         <% end %>
 
+        <%# Schedule %>
+        <% if @all_sessions.any? %>
+          <h3 class="text-base font-semibold text-slate-900">Schedule</h3>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm -mt-3 divide-y divide-slate-100">
+            <% @all_sessions.each do |show| %>
+              <div class="flex items-center gap-3 px-4 py-3">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-slate-900">
+                    <%= show.date_and_time.strftime("%a, %b %-d") %>
+                    <% if show.secondary_name.present? %>
+                      <span class="text-slate-400 font-normal">— <%= show.secondary_name %></span>
+                    <% end %>
+                  </p>
+                  <p class="text-xs text-slate-500">
+                    <% if show.duration_minutes.present? %>
+                      <% end_time = show.date_and_time + show.duration_minutes.minutes %>
+                      <% if show.date_and_time.strftime("%p") == end_time.strftime("%p") %>
+                        <%= show.date_and_time.strftime("%-I:%M") %> – <%= end_time.strftime("%-I:%M %p") %>
+                      <% else %>
+                        <%= show.date_and_time.strftime("%-I:%M %p") %> – <%= end_time.strftime("%-I:%M %p") %>
+                      <% end %>
+                    <% else %>
+                      <%= show.date_and_time.strftime("%-I:%M %p") %>
+                    <% end %>
+                  </p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# Instructors %>
+        <% cois = @course_offering.course_offering_instructors.includes(:person) %>
+        <% instructors = cois.map(&:person) %>
+        <% coi_by_person = cois.index_by(&:person_id) %>
+        <% if instructors.any? || @course_offering.instructor_name.present? %>
+          <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
+          <% if instructors.any? %>
+            <% show_group_photo = @course_offering.show_group_photo? && @course_offering.group_photo.attached? && instructors.size > 1 %>
+            <% if show_group_photo %>
+              <div class="mb-3">
+                <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [800, 800]), alt: "Instructors", class: "w-full rounded-lg" %>
+              </div>
+            <% end %>
+            <% show_preface = @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
+            <% if show_preface %>
+              <div class="text-sm text-slate-600 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
+            <% end %>
+            <div class="space-y-3 <%= (show_group_photo || show_preface) ? '' : '-mt-3' %>">
+              <% instructors.each do |instructor| %>
+                <% coi = coi_by_person[instructor.id] %>
+                <% has_override = coi&.headshot&.attached? %>
+                <% has_profile = !has_override && instructor.safe_headshot_variant(:tile).present? %>
+                <% show_bio = @course_offering.show_individual_bios? && coi&.bio.present? %>
+                <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+                  <div class="flex items-start gap-5">
+                    <% if @course_offering.show_individual_photos? %>
+                      <% if has_override %>
+                        <%= image_tag coi.headshot.variant(resize_to_limit: [200, 400]), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
+                      <% elsif has_profile %>
+                        <%= image_tag instructor.safe_headshot_variant(:tile), alt: instructor.name, class: "w-[120px] rounded-lg flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-[120px] h-[120px] rounded-lg bg-pink-100 flex items-center justify-center text-pink-700 font-bold text-2xl flex-shrink-0">
+                          <%= instructor.initials %>
+                        </div>
+                      <% end %>
+                    <% end %>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-slate-900 text-lg"><%= instructor.name %></p>
+                      <% if show_bio %>
+                        <div data-controller="text-expand" data-text-expand-max-height-value="120">
+                          <div class="relative">
+                            <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 mt-1 overflow-hidden" style="max-height: 120px;">
+                              <%= coi.bio %>
+                            </div>
+                            <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                          </div>
+                          <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
+                            Show more
+                          </button>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm -mt-3">
+              <div class="flex items-center gap-4">
+                <div class="w-[120px] h-[120px] rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl flex-shrink-0">
+                  <%= @course_offering.instructor_name.to_s.split(" ").map { |n| n[0] }.join("").first(2).upcase %>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-semibold text-slate-900 text-lg"><%= @course_offering.instructor_name %></p>
+                </div>
+              </div>
+              <% if @course_offering.instructor_bio.present? %>
+                <div class="mt-3 pt-3 border-t border-slate-100" data-controller="text-expand" data-text-expand-max-height-value="96">
+                  <div class="relative">
+                    <div data-text-expand-target="content" class="prose prose-sm prose-slate max-w-none text-slate-600 overflow-hidden" style="max-height: 96px;">
+                      <%= @course_offering.instructor_bio %>
+                    </div>
+                    <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                  </div>
+                  <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-600 hover:text-pink-700 font-medium mt-1 cursor-pointer">
+                    Show more
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <%# Price %>
+        <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-600">Course Fee</span>
+            <div class="text-right">
+              <% if @course_offering.early_bird_active? %>
+                <div class="flex items-baseline justify-end gap-2">
+                  <span class="text-sm text-slate-400 line-through"><%= @course_offering.formatted_price %></span>
+                  <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_early_bird_price %></span>
+                  <span class="text-xs text-slate-400">+ tax</span>
+                </div>
+                <p class="text-xs text-slate-500">Early bird price · ends <%= @course_offering.early_bird_deadline.strftime("%B %-d") %></p>
+              <% else %>
+                <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_price %></span>
+                <span class="text-xs text-slate-400">+ tax</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%# Location %>
+        <% if course_location.present? %>
+          <% loc = course_location %>
+          <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+            <div class="p-4 space-y-4">
+              <div>
+                <div class="font-semibold text-gray-900"><%= loc.name %></div>
+                <div class="text-sm text-gray-600 mt-1">
+                  <% if loc.address1.present? %><%= loc.address1 %><br><% end %>
+                  <% if loc.address2.present? %><%= loc.address2 %><br><% end %>
+                  <% if loc.city.present? || loc.state.present? || loc.postal_code.present? %>
+                    <%= loc.city %><% if loc.city.present? && loc.state.present? %>,<% end %> <%= loc.state %> <%= loc.postal_code %>
+                  <% end %>
+                </div>
+              </div>
+              <% if address.present? %>
+                <div class="w-full h-[200px]">
+                  <iframe
+                    width="100%" height="100%"
+                    style="border:0; border-radius: 0.5rem;"
+                    loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"
+                    src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                  </iframe>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <a href="http://maps.apple.com/?address=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                    Open in Maps
+                  </a>
+                  <a href="https://www.google.com/maps/search/?api=1&query=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                    Google Maps
+                  </a>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
         <!-- About CocoScout -->
-        <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
-          <div class="flex items-start gap-4 mb-5">
-            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-              <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-pink-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-slate-900 mb-2">About CocoScout</h3>
-              <p class="text-sm text-slate-600 mb-3">
-                <strong><%= @production.organization.name %></strong> uses CocoScout to manage productions and course registrations.
-              </p>
+              <h3 class="text-base font-semibold text-slate-900 mb-1">Register with CocoScout</h3>
               <p class="text-sm text-slate-600">
-                Create your free CocoScout account to register for this course. You'll be able to view the course schedule, track your registration, and access future opportunities.
+                <strong><%= @production.organization.name %></strong> uses CocoScout to manage registrations. Create a free account to register, view the schedule, and receive updates.
               </p>
             </div>
           </div>
-
-          <!-- Benefits -->
-          <div class="pt-5 border-t border-slate-200">
-            <h4 class="text-sm font-semibold text-slate-900 mb-3">Your free account includes:</h4>
-            <ul class="space-y-2.5">
-              <li class="flex items-start gap-2.5">
-                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span class="text-sm text-slate-700">View your course schedule and session details</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span class="text-sm text-slate-700">Track your registration status</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span class="text-sm text-slate-700">Get notified about schedule changes</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span class="text-sm text-slate-700">Access future courses and events easily</span>
-              </li>
-            </ul>
-          </div>
         </div>
+
       </div>
 
       <!-- Right Column: Signup Form (Sticky) -->
@@ -148,33 +329,23 @@
                   <p class="text-xs font-medium text-slate-700 mb-1.5">Password requirements:</p>
                   <div class="space-y-1">
                     <div class="flex items-start gap-2" data-password-strength-target="lengthCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
                       <span class="text-xs text-slate-600 transition-colors">At least 8 characters</span>
                     </div>
                     <div class="flex items-start gap-2" data-password-strength-target="uppercaseCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
                       <span class="text-xs text-slate-600 transition-colors">One uppercase letter (A-Z)</span>
                     </div>
                     <div class="flex items-start gap-2" data-password-strength-target="lowercaseCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
                       <span class="text-xs text-slate-600 transition-colors">One lowercase letter (a-z)</span>
                     </div>
                     <div class="flex items-start gap-2" data-password-strength-target="numberCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
                       <span class="text-xs text-slate-600 transition-colors">One number (0-9)</span>
                     </div>
                     <div class="flex items-start gap-2" data-password-strength-target="specialCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
                       <span class="text-xs text-slate-600 transition-colors">One special character (!@#$%)</span>
                     </div>
                   </div>

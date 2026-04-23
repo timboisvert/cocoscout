@@ -43,8 +43,21 @@ module Manage
       @wizard_state[:show_group_photo] = params[:show_group_photo] == "1"
       @wizard_state[:show_group_bio] = params[:show_group_bio] == "1"
 
-      # Save instructor preface (shown before instructor cards when multiple instructors)
+      # Save OG image source for social sharing
+      @wizard_state[:og_image_source] = params[:og_image_source].presence || "auto"
+
+      # Save instructor preface / group bio
       @wizard_state[:instructor_preface] = params[:instructor_preface].presence
+
+      # Handle group photo upload
+      if params[:group_photo].present? && params[:group_photo].respond_to?(:original_filename)
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: params[:group_photo],
+          filename: params[:group_photo].original_filename,
+          content_type: params[:group_photo].content_type
+        )
+        @wizard_state[:group_photo_blob_id] = blob.id
+      end
 
       # Save per-instructor bios
       @wizard_state[:instructor_bios] ||= {}
@@ -376,8 +389,15 @@ module Manage
           show_individual_bios: @wizard_state[:show_individual_bios] != false,
           show_group_photo: @wizard_state[:show_group_photo] == true,
           show_group_bio: @wizard_state[:show_group_bio] != false,
+          og_image_source: @wizard_state[:og_image_source].presence || "auto",
           created_by_user: Current.user
         )
+
+        # Attach group photo if uploaded during wizard
+        if @wizard_state[:group_photo_blob_id].present?
+          group_photo_blob = ActiveStorage::Blob.find_by(id: @wizard_state[:group_photo_blob_id])
+          @offering.group_photo.attach(group_photo_blob) if group_photo_blob
+        end
 
         # Attach instructor headshot if uploaded during wizard (legacy, keep first instructor's)
         instructor_headshot_blob_ids = @wizard_state[:instructor_headshot_blob_ids] || {}

@@ -4,24 +4,32 @@
 %>
 
 <%
-  reaction_counts = message.reaction_counts
+  all_reactions = message.message_reactions.includes(:user)
+  reactions_by_emoji = all_reactions.group_by(&:emoji)
+  reaction_counts = reactions_by_emoji.transform_values(&:count)
   user_reaction = Current.user ? message.user_reaction(Current.user) : nil
   is_manage = controller.controller_path.start_with?("manage")
 %>
 
-<div id="reactions_<%= message.id %>" class="flex items-center gap-1" data-controller="reaction-picker" data-reaction-picker-message-id-value="<%= message.id %>">
+<div id="reactions_<%= message.id %>" class="flex items-center gap-1 flex-wrap" data-controller="reaction-picker" data-reaction-picker-message-id-value="<%= message.id %>">
   <%# Existing reactions %>
   <% if reaction_counts.any? %>
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1 flex-wrap">
       <% reaction_counts.each do |reaction_type, count| %>
-        <% is_user_reaction = user_reaction == reaction_type %>
-        <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
-            method: :post,
-            class: "inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer #{is_user_reaction ? 'bg-pink-100 text-pink-600 border border-pink-300' : 'bg-gray-100 text-pink-400 hover:bg-pink-50 hover:text-pink-600 border border-transparent'}",
-            data: { turbo_frame: "_top" } do %>
-          <%= MessageReaction.icon_for(reaction_type).html_safe %>
-          <span class="font-medium text-sm"><%= count %></span>
-        <% end %>
+        <%
+          is_user_reaction = user_reaction == reaction_type
+          reactors = reactions_by_emoji[reaction_type] || []
+          reactor_names = reactors.map { |r| r.user.name }.join(", ")
+        %>
+        <span data-controller="tooltip" data-tooltip-text="<%= reactor_names %>">
+          <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
+              method: :post,
+              class: "inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer #{is_user_reaction ? 'bg-pink-100 text-pink-600 border border-pink-300' : 'bg-gray-100 text-pink-400 hover:bg-pink-50 hover:text-pink-600 border border-transparent'}",
+              data: { turbo_frame: "_top" } do %>
+            <%= MessageReaction.icon_for(reaction_type).html_safe %>
+            <span class="font-medium text-sm"><%= count %></span>
+          <% end %>
+        </span>
       <% end %>
     </div>
   <% end %>

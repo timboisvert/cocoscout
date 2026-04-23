@@ -527,5 +527,4 @@ class Contract < ApplicationRecord
       payment.update_column(:show_id, sorted_shows[i].id)
     end
   end
-
 end

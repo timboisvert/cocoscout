@@ -119,8 +119,15 @@ module Manage
       updates[:instructor_preface] = params.dig(:course_offering, :instructor_preface).presence
       updates[:show_individual_photos] = params[:show_individual_photos] == "1"
       updates[:show_individual_bios] = params[:show_individual_bios] == "1"
-      updates[:show_group_photo] = params[:show_group_photo] == "1"
-      updates[:show_group_bio] = params[:show_group_bio] == "1"
+      if person_ids.size <= 1
+        updates[:show_group_photo] = false
+        updates[:show_group_bio] = false
+        updates[:og_image_source] = "auto"
+      else
+        updates[:show_group_photo] = params[:show_group_photo] == "1"
+        updates[:show_group_bio] = params[:show_group_bio] == "1"
+        updates[:og_image_source] = params[:og_image_source].presence || "auto"
+      end
 
       if @course_offering.update(updates)
         # Attach group photo if uploaded

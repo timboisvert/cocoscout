@@ -1,6 +1,39 @@
 <% content_for :title, @course_offering.title %>
 
 <%
+  og_image_url = case @course_offering.og_image_source
+  when "group_photo"
+    @course_offering.group_photo.attached? ? url_for(@course_offering.group_photo) : asset_url("cocoscout.png")
+  when "instructor_headshot"
+    @course_offering.instructor_headshot.attached? ? url_for(@course_offering.instructor_headshot) : asset_url("cocoscout.png")
+  when "none"
+    nil
+  else
+    if @course_offering.group_photo.attached?
+      url_for(@course_offering.group_photo)
+    elsif @course_offering.instructor_headshot.attached?
+      url_for(@course_offering.instructor_headshot)
+    else
+      asset_url("cocoscout.png")
+    end
+  end
+
+  og_description = strip_tags(@course_offering.description.to_s).squish.truncate(200)
+%>
+
+<% content_for :head do %>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= @course_offering.title %>">
+  <meta property="og:description" content="<%= og_description %>">
+  <% if og_image_url %><meta property="og:image" content="<%= og_image_url %>"><% end %>
+  <meta property="og:url" content="<%= my_course_show_url(code: @course_offering.short_code) %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= @course_offering.title %>">
+  <meta name="twitter:description" content="<%= og_description %>">
+  <% if og_image_url %><meta name="twitter:image" content="<%= og_image_url %>"><% end %>
+<% end %>
+
+<%
   # Get location from first session that has one
   if @all_sessions.any?
     course_location = @all_sessions.detect { |s| s.location.present? }&.location
@@ -88,17 +121,18 @@
           <h3 class="text-base font-semibold text-slate-900"><%= instructors.size == 1 ? 'Instructor' : 'Instructors' %></h3>
           <% if instructors.any? %>
             <%# Group photo — controlled by show_group_photo setting %>
-            <% if @course_offering.show_group_photo? && @course_offering.group_photo.attached? %>
-              <div class="-mt-2 mb-2">
-                <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [600, 400]), alt: "Instructors", class: "w-full rounded-lg object-cover" %>
+            <% show_group_photo = @course_offering.show_group_photo? && @course_offering.group_photo.attached? && instructors.size > 1 %>
+            <% if show_group_photo %>
+              <div class="mb-3">
+                <%= image_tag @course_offering.group_photo.variant(resize_to_limit: [800, 800]), alt: "Instructors", class: "w-full rounded-lg" %>
               </div>
             <% end %>
             <%# Group bio (preface) — controlled by show_group_bio setting %>
-            <% if @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
-              <div class="text-sm text-slate-600 -mt-3 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
-            <% end %>
             <% show_preface = @course_offering.show_group_bio? && @course_offering.instructor_preface.present? && instructors.size > 1 %>
-            <div class="space-y-3 <%= show_preface ? '' : '-mt-3' %>">
+            <% if show_preface %>
+              <div class="text-sm text-slate-600 prose prose-sm prose-slate max-w-none"><%= @course_offering.instructor_preface %></div>
+            <% end %>
+            <div class="space-y-3 <%= (show_group_photo || show_preface) ? '' : '-mt-3' %>">
               <% instructors.each do |instructor| %>
                 <% coi = coi_by_person[instructor.id] %>
                 <% has_override = coi&.headshot&.attached? %>
@@ -164,6 +198,28 @@
               <% end %>
             </div>
           <% end %>
+        <% end %>
+
+        <%# Price %>
+        <% unless @existing_registration&.confirmed? %>
+          <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-slate-600">Course Fee</span>
+              <div class="text-right">
+                <% if @course_offering.early_bird_active? %>
+                  <div class="flex items-baseline justify-end gap-2">
+                    <span class="text-sm text-slate-400 line-through"><%= @course_offering.formatted_price %></span>
+                    <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_early_bird_price %></span>
+                    <span class="text-xs text-slate-400">+ tax</span>
+                  </div>
+                  <p class="text-xs text-slate-500">Early bird price · ends <%= @course_offering.early_bird_deadline.strftime("%B %-d") %></p>
+                <% else %>
+                  <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_price %></span>
+                  <span class="text-xs text-slate-400">+ tax</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
         <% end %>
 
         <%# Location Box with Map (matches sign-up form) %>
