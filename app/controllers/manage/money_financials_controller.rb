@@ -33,12 +33,22 @@ module Manage
 
         @productions = Current.user.accessible_productions.order(:name)
         @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
-        @production_summaries = @productions.map do |production|
-          if production.type_third_party?
+
+        revenue_types = EventTypes.revenue_event_types
+        # Pre-compute pending show counts per production in bulk
+        pending_counts = Show
+          .where(production_id: @productions.map(&:id), event_type: revenue_types)
+          .where("date_and_time <= ?", 1.day.from_now)
+          .left_joins(:show_financials)
+          .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
+          .group(:production_id)
+          .count
+
+        all_summaries = @productions.map do |production|
+          base = if production.type_third_party?
             build_third_party_summary(production)
           else
             summary = FinancialSummaryService.new(production).summary_for_period(@selected_period)
-            # Build summary in the format the production_row partial expects
             {
               production: production,
               revenue_shows: summary[:show_count],
@@ -49,7 +59,13 @@ module Manage
               net_income: summary[:net_income]
             }
           end
+          base.merge(pending_financials_count: pending_counts[production.id] || 0)
         end
+
+        @financials_filter = params[:filter].presence
+        @production_summaries = @financials_filter == "pending" \
+          ? all_summaries.select { |s| s[:pending_financials_count] > 0 }
+          : all_summaries
       end
 
       # Apply filter if provided (for both in-house and third-party productions with shows)

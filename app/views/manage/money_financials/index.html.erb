@@ -311,16 +311,36 @@
       refresh_url: manage_refresh_money_path
     } %>
 
+    <%# Filter Bar %>
+    <div class="mb-3">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+        {
+          label: "Status",
+          filters: [
+            { text: "All",              path: manage_money_financials_path(filter: "all"),     active: @financials_filter.blank? || @financials_filter == "all" },
+            { text: "Pending Financials", path: manage_money_financials_path(filter: "pending"), active: @financials_filter == "pending" }
+          ]
+        }
+      ] %>
+    </div>
+
     <div class="">
       <% if @production_summaries.any? %>
         <div class="space-y-2">
           <% @production_summaries.each do |summary| %>
-            <%= render "manage/money/production_row", summary: summary %>
+            <%= render "manage/money/production_row", summary: summary,
+                link_path: @financials_filter == "pending" ? manage_money_production_financials_path(summary[:production], filter: "pending") : nil %>
           <% end %>
         </div>
       <% else %>
         <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">No productions yet.</p>
+          <p class="text-gray-600">
+            <% if @financials_filter == "pending" %>
+              All past revenue shows have financial data entered.
+            <% else %>
+              No productions yet.
+            <% end %>
+          </p>
         </div>
       <% end %>
     </div>
