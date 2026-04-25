@@ -244,18 +244,40 @@
       </div>
     </div>
 
+    <%# Filter Bar %>
+    <div class="mb-3">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+        {
+          label: "Status",
+          filters: [
+            { text: "All",              path: manage_money_payouts_path(filter: "all"),              active: @org_filter.blank? || @org_filter == "all" },
+            { text: "Awaiting Payout",  path: manage_money_payouts_path(filter: "awaiting_payout"), active: @org_filter == "awaiting_payout" },
+            { text: "Paid",             path: manage_money_payouts_path(filter: "paid"),             active: @org_filter == "paid" }
+          ]
+        }
+      ] %>
+    </div>
+
     <%# Productions List %>
     <div class="">
-
       <% if @production_summaries.any? %>
         <div class="space-y-2">
           <% @production_summaries.each do |summary| %>
-            <%= render "manage/money_payouts/production_row", summary: summary %>
+            <%= render "manage/money_payouts/production_row", summary: summary,
+                link_path: @org_filter == "awaiting_payout" ? manage_money_production_payouts_path(summary[:production], filter: "awaiting_payout") : nil %>
           <% end %>
         </div>
       <% else %>
         <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">No productions yet.</p>
+          <p class="text-gray-600">
+            <% if @org_filter == "awaiting_payout" %>
+              No productions with awaiting payouts.
+            <% elsif @org_filter == "paid" %>
+              No productions with paid shows yet.
+            <% else %>
+              No productions yet.
+            <% end %>
+          </p>
         </div>
       <% end %>
     </div>

@@ -160,20 +160,24 @@ module Manage
     def load_all_productions
       # Show all productions the user has access to (excludes courses which use different scheduling)
       @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
-      @production_summaries = @productions.map do |production|
-        build_payout_summary(production)
+      all_summaries = @productions.map { |p| build_payout_summary(p) }
+
+      # Organization-wide stats (always computed from all productions)
+      @org_awaiting_payout = all_summaries.sum { |s| s[:awaiting_payout_amount] }
+      @org_paid           = all_summaries.sum { |s| s[:paid_amount] }
+      @org_awaiting_count = all_summaries.sum { |s| s[:awaiting_payout_count] }
+      @org_paid_count     = all_summaries.sum { |s| s[:paid_count] }
+
+      # Apply org-level filter to the list
+      @org_filter = params[:filter].presence
+      @production_summaries = case @org_filter
+      when "awaiting_payout"
+        all_summaries.select { |s| s[:awaiting_payout_amount] > 0 }
+      when "paid"
+        all_summaries.select { |s| s[:paid_amount] > 0 }
+      else
+        all_summaries
       end
-
-      # Organization-wide stats
-      all_awaiting = @production_summaries.sum { |s| s[:awaiting_payout_amount] }
-      all_paid = @production_summaries.sum { |s| s[:paid_amount] }
-      all_awaiting_count = @production_summaries.sum { |s| s[:awaiting_payout_count] }
-      all_paid_count = @production_summaries.sum { |s| s[:paid_count] }
-
-      @org_awaiting_payout = all_awaiting
-      @org_paid = all_paid
-      @org_awaiting_count = all_awaiting_count
-      @org_paid_count = all_paid_count
 
       @missing_payment_info = []
     end
