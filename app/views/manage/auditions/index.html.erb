@@ -28,7 +28,8 @@
       <div class="p-4">
         <%
           # Check if casting has been completed
-          has_casting_notifications = @active_audition_cycle.casting_finalized_at.present?
+          has_casting_notifications = @active_audition_cycle.casting_finalized_at.present? &&
+            @active_audition_cycle.closes_at.present?
         %>
 
         <% if has_casting_notifications %>

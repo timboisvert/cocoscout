@@ -1145,6 +1145,7 @@ Rails.application.routes.draw do
     get "courses/:id/edit",     to: "course_offerings#edit",    as: "edit_course_offering"
     patch "courses/:id",        to: "course_offerings#update"
     put "courses/:id",          to: "course_offerings#update"
+    delete "courses/:id",       to: "course_offerings#destroy",   as: "delete_course_offering"
     post "courses/:id/open",    to: "course_offerings#open_registration",  as: "open_course_offering"
     post "courses/:id/close",   to: "course_offerings#close_registration", as: "close_course_offering"
     post "courses/:id/add_sessions", to: "course_offerings#add_sessions", as: "course_offering_add_sessions"

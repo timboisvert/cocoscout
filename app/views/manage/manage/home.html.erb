@@ -311,12 +311,28 @@
             <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
             <% is_past = current_date < Date.current %>
             <% is_today = current_date == Date.current %>
-            <div class="border border-gray-200 min-h-[80px] p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+            <%
+              day_events_json = day_events.map { |e| {
+                time: e[:time].strftime("%-I:%M%p").downcase,
+                title: e[:title],
+                path: e[:path],
+                color: e[:color],
+                canceled: e[:canceled],
+                hour: e[:hour],
+                minute: e[:minute],
+                durationHours: e[:duration_hours]
+              } }.to_json
+            %>
+            <div class="border border-gray-200 min-h-[80px] p-1 cursor-pointer <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>"
+                 data-controller="calendar-day"
+                 data-action="click->calendar-day#open"
+                 data-calendar-day-date-value="<%= current_date.iso8601 %>"
+                 data-calendar-day-events-value="<%= html_escape(day_events_json) %>">
               <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
                 <%= current_date.day %>
               </div>
 
-              <% day_events.first(4).each do |event| %>
+              <% day_events.each do |event| %>
                 <%
                   color_classes = case event[:color]
                     when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
@@ -327,16 +343,17 @@
                     else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
                   end
                   color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
+                  canceled_classes = event[:canceled] ? "opacity-60 line-through" : ""
                 %>
                 <%= link_to event[:path], class: "block mb-1" do %>
                   <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
-                    <div class="font-semibold truncate"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
-                    <div class="truncate text-[10px]"><%= event[:title] %></div>
+                    <div class="font-semibold truncate <%= canceled_classes %>"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
+                    <div class="truncate text-[10px] <%= canceled_classes %>"><%= event[:title] %></div>
+                    <% if event[:canceled] %>
+                      <div class="text-[10px] text-red-600 font-semibold">Canceled</div>
+                    <% end %>
                   </div>
                 <% end %>
-              <% end %>
-              <% if day_events.size > 4 %>
-                <div class="text-[10px] text-gray-500 text-center mt-0.5">+<%= day_events.size - 4 %> more</div>
               <% end %>
             </div>
             <% current_date = current_date + 1.day %>

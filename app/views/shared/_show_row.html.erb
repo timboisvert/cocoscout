@@ -385,8 +385,15 @@
                 tooltip_text += " (Can't make it)" if cant_make_it
               %>
               <div class="relative">
+                <%
+                  person_link = !is_guest && assignable.is_a?(Person) ? manage_person_path(assignable) : nil
+                  click_handler = person_link ? "onclick=\"event.stopPropagation(); event.preventDefault(); window.location.href='#{person_link}'\"" : nil
+                %>
                 <% if headshot %>
-                  <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}", data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                  <div class="cursor-pointer" <%= click_handler&.html_safe %>
+                       data-controller="tooltip" data-tooltip-text="<%= tooltip_text %>">
+                    <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}" %>
+                  </div>
                 <% elsif is_guest %>
                   <div class="w-10 h-10 rounded-md bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs"
                        data-controller="tooltip"
@@ -394,9 +401,10 @@
                     <%= assignment.display_initials %>
                   </div>
                 <% else %>
-                  <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
+                  <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs cursor-pointer"
                        data-controller="tooltip"
-                       data-tooltip-text="<%= tooltip_text %>">
+                       data-tooltip-text="<%= tooltip_text %>"
+                       <%= click_handler&.html_safe %>>
                     <%= assignable.initials %>
                   </div>
                 <% end %>

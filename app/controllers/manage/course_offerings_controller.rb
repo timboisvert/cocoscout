@@ -3,7 +3,7 @@
 module Manage
   class CourseOfferingsController < Manage::ManageController
     before_action :load_course_offering, only: %i[
-      show edit update open_registration close_registration
+      show edit update destroy open_registration close_registration
       search_instructor update_instructor invite_instructor
       cancel_registration refund_registration
       enable_questionnaire disable_questionnaire send_questionnaire
@@ -217,6 +217,17 @@ module Manage
         headshot_url: nil,
         message: "Invitation sent to #{email}"
       }
+    end
+
+    def destroy
+      if @course_offering.contract_id?
+        redirect_to manage_course_offering_path(@course_offering),
+          alert: "This course is linked to a contract and cannot be deleted here."
+        return
+      end
+
+      @course_offering.destroy
+      redirect_to manage_course_offerings_path, notice: "Course deleted."
     end
 
     def add_sessions

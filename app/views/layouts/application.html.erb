@@ -89,5 +89,7 @@
 
     <%# Global modal turbo frames %>
     <%= turbo_frame_tag "contact_modal" %>
+    <%# Modals teleported here to escape overflow-hidden containers %>
+    <%= yield :modals %>
   </body>
 </html>

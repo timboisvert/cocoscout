@@ -114,7 +114,11 @@ module Manage
           title: production.name,
           path: path,
           color: color,
-          production: production
+          production: production,
+          canceled: show.canceled?,
+          hour: show.date_and_time.hour,
+          minute: show.date_and_time.min,
+          duration_hours: (show.duration_minutes || 120) / 60.0
         }
       end
 

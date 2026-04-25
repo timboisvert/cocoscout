@@ -4,37 +4,113 @@
 %>
 
 <%
-  all_reactions = message.message_reactions.includes(:user)
+  all_reactions = message.message_reactions.includes(user: { default_person: { profile_headshots: { image_attachment: :blob } } })
   reactions_by_emoji = all_reactions.group_by(&:emoji)
   reaction_counts = reactions_by_emoji.transform_values(&:count)
   user_reaction = Current.user ? message.user_reaction(Current.user) : nil
   is_manage = controller.controller_path.start_with?("manage")
 %>
 
+<%# Teleport each modal to the end of <body> to escape overflow-hidden containers %>
+<% reaction_counts.each do |reaction_type, count| %>
+  <% content_for :modals do %>
+    <%
+      is_user_reaction = user_reaction == reaction_type
+      reactors = reactions_by_emoji[reaction_type] || []
+      modal_id = "reactions-modal-#{message.id}-#{reaction_type}"
+      toggle_url = is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type)
+    %>
+    <div id="<%= modal_id %>"
+         class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+         data-controller="modal"
+         data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
+           data-action="click->modal#stopPropagation">
+
+        <%# Header %>
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600">
+              <%= MessageReaction.icon_for(reaction_type).html_safe %>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900"><%= reaction_type.capitalize %></h3>
+              <p class="text-sm text-gray-500"><%= count %> <%= "reaction".pluralize(count) %></p>
+            </div>
+          </div>
+          <button type="button"
+                  data-action="click->modal#close"
+                  class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <%# Reactor list %>
+        <div class="flex-1 overflow-y-auto">
+          <ul class="divide-y divide-gray-100">
+            <% reactors.each do |reaction| %>
+              <% person = reaction.user.default_person %>
+              <% next unless person %>
+              <li class="flex items-center gap-3 px-5 py-3">
+                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center flex-shrink-0">
+                    <span class="text-white font-medium text-sm"><%= person.initials %></span>
+                  </div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-gray-900 truncate"><%= person.name %></p>
+                </div>
+                <% if reaction.user == Current.user %>
+                  <span class="text-xs text-pink-500 font-medium flex-shrink-0">You</span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+
+        <%# Remove footer — only shown if current user reacted with this emoji %>
+        <% if is_user_reaction %>
+          <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <%= button_to toggle_url, method: :post,
+                class: "w-full text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg py-2 transition-colors cursor-pointer",
+                data: { turbo_frame: "_top" } do %>
+              Remove my <%= reaction_type %> reaction
+            <% end %>
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
 <div id="reactions_<%= message.id %>" class="flex items-center gap-1 flex-wrap" data-controller="reaction-picker" data-reaction-picker-message-id-value="<%= message.id %>">
-  <%# Existing reactions %>
+
+  <%# Existing reactions — each pill opens its modal by ID %>
   <% if reaction_counts.any? %>
-    <div class="flex items-center gap-1 flex-wrap">
-      <% reaction_counts.each do |reaction_type, count| %>
+    <div class="flex items-center gap-1 flex-wrap" data-controller="modal">
+      <% reaction_counts.each do |reaction_type, _count| %>
         <%
           is_user_reaction = user_reaction == reaction_type
-          reactors = reactions_by_emoji[reaction_type] || []
-          reactor_names = reactors.map { |r| r.user.person&.name }.compact.join(", ")
+          modal_id = "reactions-modal-#{message.id}-#{reaction_type}"
         %>
-        <span data-controller="tooltip" data-tooltip-text="<%= reactor_names %>">
-          <%= button_to is_manage ? react_manage_message_path(message, emoji: reaction_type) : react_my_message_path(message, emoji: reaction_type),
-              method: :post,
-              class: "inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer #{is_user_reaction ? 'bg-pink-100 text-pink-600 border border-pink-300' : 'bg-gray-100 text-pink-400 hover:bg-pink-50 hover:text-pink-600 border border-transparent'}",
-              data: { turbo_frame: "_top" } do %>
-            <%= MessageReaction.icon_for(reaction_type).html_safe %>
-            <span class="font-medium text-sm"><%= count %></span>
-          <% end %>
-        </span>
+        <button type="button"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer <%= is_user_reaction ? 'bg-pink-100 text-pink-600 border border-pink-300' : 'bg-gray-100 text-pink-400 hover:bg-pink-50 hover:text-pink-600 border border-transparent' %>"
+                data-action="click->modal#open"
+                data-modal-id="<%= modal_id %>">
+          <%= MessageReaction.icon_for(reaction_type).html_safe %>
+          <span class="font-medium text-sm"><%= reaction_counts[reaction_type] %></span>
+        </button>
       <% end %>
     </div>
   <% end %>
 
-  <%# Add reaction button - only show if user hasn't reacted yet %>
+  <%# Add reaction button — only show if user hasn't reacted yet %>
   <% unless user_reaction %>
     <div class="relative">
       <button
