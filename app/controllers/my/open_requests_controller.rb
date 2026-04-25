@@ -226,7 +226,7 @@ module My
                            .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
-                           .where("date_and_time <= ?", 90.days.from_now)
+                           .where("date_and_time <= ?", 120.days.from_now)
                            .where.not(productions: { production_type: "course" })
                            .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                            .distinct
@@ -243,7 +243,7 @@ module My
                                   .where(people: { id: selected_person_ids })
                                   .where.not(canceled: true)
                                   .where("date_and_time > ?", Time.current)
-                                  .where("date_and_time <= ?", 90.days.from_now)
+                                  .where("date_and_time <= ?", 120.days.from_now)
                                   .where.not(productions: { production_type: "course" })
                                   .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                   .distinct
@@ -264,7 +264,7 @@ module My
                           .where(groups: { id: selected_group_ids })
                           .where.not(canceled: true)
                           .where("date_and_time > ?", Time.current)
-                          .where("date_and_time <= ?", 90.days.from_now)
+                          .where("date_and_time <= ?", 120.days.from_now)
                           .where.not(productions: { production_type: "course" })
                           .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                           .distinct
@@ -282,7 +282,7 @@ module My
                                  .where(groups: { id: selected_group_ids })
                                  .where.not(canceled: true)
                                  .where("date_and_time > ?", Time.current)
-                                 .where("date_and_time <= ?", 90.days.from_now)
+                                 .where("date_and_time <= ?", 120.days.from_now)
                                  .where.not(productions: { production_type: "course" })
                                  .includes(:production, :location, :event_linkage, sign_up_form_instances: :sign_up_form)
                                  .distinct
