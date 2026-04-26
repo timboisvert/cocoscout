@@ -102,6 +102,7 @@ module Manage
         :ticket_revenue,
         :flat_fee,
         :other_revenue,
+        :contractor_collected,
         :expenses,
         :notes,
         :data_confirmed,

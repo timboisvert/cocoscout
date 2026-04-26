@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_124336) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_26_182912) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1766,6 +1766,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_124336) do
   end
 
   create_table "show_financials", force: :cascade do |t|
+    t.decimal "contractor_collected"
     t.datetime "created_at", null: false
     t.boolean "data_confirmed"
     t.jsonb "expense_details", default: []
