@@ -257,6 +257,10 @@ module Manage
       @show_payout.reload
       if !@show_payout.paid? && @show_payout.line_items.all?(&:paid?)
         @show_payout.mark_paid!
+      else
+        # Even if the payout was already marked paid, still attempt contract settlement
+        # in case it was missed (e.g. payout pre-dated this feature)
+        @show_payout.settle_contract_payment!(payment_method: method, notes: notes) if @show_payout.paid?
       end
 
       first_item = line_items.first

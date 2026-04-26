@@ -229,8 +229,9 @@ class Contract < ApplicationRecord
     return direct if direct
 
     settlement = draft_payment_config["revenue_settlement"] || "monthly"
-    revenue_payments = contract_payments.where(direction: "incoming").where(amount_tbd: true)
-                                        .or(contract_payments.where(direction: "incoming").where("description LIKE ?", "%Revenue Share%"))
+    # Direction-agnostic: contracts can be incoming (contractor pays us) or outgoing (we pay contractor)
+    revenue_payments = contract_payments.where(amount_tbd: true)
+                                        .or(contract_payments.where("description LIKE ?", "%Revenue Share%"))
                                         .order(:due_date)
 
     payment = case settlement
@@ -269,8 +270,7 @@ class Contract < ApplicationRecord
     case settlement
     when "per_event", "next_day", "same_day"
       # Match by positional order: sort payments by due_date, pair 1:1 with shows by date
-      revenue_payments = contract_payments.where(direction: "incoming")
-                                          .where("amount_tbd = ? OR description LIKE ?", true, "%Revenue Share%")
+      revenue_payments = contract_payments.where("amount_tbd = ? OR description LIKE ?", true, "%Revenue Share%")
                                           .order(:due_date).to_a
       payment_index = revenue_payments.index { |p| p.id == payment.id }
       show = payment_index ? all_shows[payment_index] : nil

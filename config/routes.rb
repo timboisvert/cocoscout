@@ -1052,6 +1052,7 @@ Rails.application.routes.draw do
       resources :contract_payments, only: %i[create update destroy], path: "payments" do
         member do
           post :mark_paid
+          post :flip_direction
         end
       end
       resources :space_rentals, only: %i[create update destroy], path: "rentals"

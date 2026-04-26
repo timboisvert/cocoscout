@@ -55,8 +55,8 @@ class ContractPaymentSyncService
   # For weekly/monthly settlement: aggregate all shows in the period
   def sync_period(period_method)
     # Find all revenue-share payments
+    # Direction-agnostic: revenue-share payments can be incoming or outgoing
     revenue_payments = @contract.contract_payments
-                                .where(direction: "incoming")
                                 .where("description LIKE ? OR amount_tbd = ?", "%Revenue Share%", true)
                                 .order(:due_date)
 

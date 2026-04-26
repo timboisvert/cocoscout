@@ -38,6 +38,13 @@ module Manage
       redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment marked as paid."
     end
 
+    def flip_direction
+      new_direction = @payment.direction_incoming? ? "outgoing" : "incoming"
+      @payment.update!(direction: new_direction)
+      redirect_back fallback_location: manage_contract_path(@contract),
+                    notice: "Payment direction changed to #{new_direction}."
+    end
+
     private
 
     def set_contract

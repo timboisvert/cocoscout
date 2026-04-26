@@ -61,6 +61,37 @@ class ShowPayout < ApplicationRecord
   # Mark as paid (when all line items are paid)
   def mark_paid!
     update!(status: "paid")
+    settle_contract_payment!
+  end
+
+  # Auto-settle the ContractPayment associated with this show, if one exists.
+  # For per-event contracts: always settle. For weekly/monthly: only settle when
+  # all shows in the period have been paid.
+  def settle_contract_payment!(payment_method: nil, notes: nil)
+    production = show.production
+    return unless production.type_third_party?
+
+    contract = production.contract
+    return unless contract&.revenue_share?
+
+    contract_payment = contract.find_payment_for_show(show)
+    return unless contract_payment&.status_pending?
+
+    settlement = contract.draft_payment_config["revenue_settlement"] || "monthly"
+    if %w[per_event next_day same_day].include?(settlement)
+      contract_payment.mark_paid!(paid_on: Date.current, method: payment_method, reference: notes)
+    else
+      # For period-based settlements, only settle once all shows in the period are paid
+      period_shows = contract.shows_for_payment(contract_payment)
+      all_paid = period_shows.all? do |s|
+        s.show_payout&.paid?
+      end
+      if all_paid
+        contract_payment.mark_paid!(paid_on: Date.current, method: payment_method, reference: notes)
+      end
+    end
+  rescue => e
+    Rails.logger.warn("Could not settle contract payment for show #{show.id}: #{e.message}")
   end
 
   # Mark as awaiting payout (when calculated)

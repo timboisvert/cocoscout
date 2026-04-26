@@ -208,6 +208,17 @@
             <%= render "shared/button", text: is_incoming ? "Mark Received" : "Mark Paid", variant: "primary", size: "medium", type: :submit, classes: "flex-1" %>
           </div>
         <% end %>
+
+        <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+          <span class="text-xs text-gray-400">
+            Currently: <%= is_incoming ? "they pay us (incoming)" : "we pay them (outgoing)" %> ·
+          </span>
+          <%= button_to "Switch direction",
+              flip_direction_manage_contract_contract_payment_path(contract, payment),
+              method: :post,
+              class: "text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer bg-transparent border-0 p-0",
+              data: { turbo: false } %>
+        </div>
       </div>
     </div>
   </div>
