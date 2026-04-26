@@ -16,48 +16,13 @@
 %>
 
 <% if contract&.revenue_share? %>
-  <%# Revenue Share Contract Banner %>
-  <%
-    our_pct = contract.revenue_share_percentage.to_i
-    their_pct = contract.contractor_share_percentage.to_i
-    summary = contract.revenue_share_summary
-  %>
-  <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-semibold text-pink-800">Revenue Share Contract</span>
-          <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
-            <%= our_pct %>/<%= their_pct %> Split
-          </span>
-        </div>
-        <p class="text-sm text-pink-700">
-          You keep <strong><%= our_pct %>%</strong> of ticket revenue. <strong><%= their_pct %>%</strong> goes to <%= contract.contractor_name %>.
-        </p>
-      </div>
-      <% if summary %>
-        <div class="flex gap-4 text-sm">
-          <div class="text-center">
-            <div class="font-semibold text-gray-900"><%= number_to_currency(summary[:confirmed_revenue]) %></div>
-            <div class="text-xs text-gray-500">Gross Revenue</div>
-          </div>
-          <div class="text-center">
-            <div class="font-semibold text-green-600"><%= number_to_currency(summary[:our_share]) %></div>
-            <div class="text-xs text-gray-500">Your Share</div>
-          </div>
-          <div class="text-center">
-            <div class="font-semibold text-amber-600"><%= number_to_currency(summary[:contractor_share]) %></div>
-            <div class="text-xs text-gray-500"><%= contract.contractor_name %></div>
-          </div>
-          <% if summary[:pending_count] > 0 %>
-            <div class="text-center">
-              <div class="font-semibold text-pink-600"><%= summary[:pending_count] %></div>
-              <div class="text-xs text-gray-500">Pending</div>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+  <div class="flex items-center gap-2 mb-4">
+    <span class="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-700">
+      Revenue Share · <%= contract.revenue_share_percentage.to_i %>/<%= contract.contractor_share_percentage.to_i %> Split
+    </span>
+    <span class="text-sm text-gray-500">
+      You keep <%= contract.revenue_share_percentage.to_i %>%, <%= contract.contractor_name %> gets <%= contract.contractor_share_percentage.to_i %>%
+    </span>
   </div>
 <% elsif contract&.ticket_revenue_minus_fee? %>
   <%# Ticket Revenue Minus Fee Contract Banner %>
@@ -103,7 +68,51 @@
 
 <%# Four Summary Boxes - matching in-house style %>
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <% if financial_summary[:is_ticket_revenue_minus_fee] %>
+  <% if contract&.revenue_share? %>
+    <%# Revenue share: show the actual economics, not abstract contract payment totals %>
+    <%
+      rs = contract.revenue_share_summary
+      our_pct  = contract.revenue_share_percentage.to_i
+      their_pct = contract.contractor_share_percentage.to_i
+    %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Gross Revenue</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(rs ? rs[:confirmed_revenue] : 0) %></div>
+      <div class="text-xs text-gray-500"><%= rs ? rs[:confirmed_count] : 0 %> <%= "show".pluralize(rs ? rs[:confirmed_count] : 0) %> confirmed</div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Your Share (<%= our_pct %>%)</div>
+      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(rs ? rs[:our_share] : 0) %></div>
+      <div class="text-xs text-gray-500">you keep</div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1"><%= contract.contractor_name %> (<%= their_pct %>%)</div>
+      <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(rs ? rs[:contractor_share] : 0) %></div>
+      <% paid_out = contract.contract_payments.where(status: "paid").sum(:amount) %>
+      <div class="text-xs text-gray-500">
+        <% if paid_out > 0 %>
+          <%= number_to_currency(paid_out) %> paid
+        <% else %>
+          their share
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Pending Shows</div>
+      <% pending = rs ? rs[:pending_count] : 0 %>
+      <% if pending > 0 %>
+        <div class="text-2xl font-semibold text-pink-600"><%= pending %></div>
+        <div class="text-xs text-gray-500">awaiting financials</div>
+      <% else %>
+        <div class="text-2xl font-semibold text-gray-400">0</div>
+        <div class="text-xs text-gray-500">all confirmed</div>
+      <% end %>
+    </div>
+
+  <% elsif financial_summary[:is_ticket_revenue_minus_fee] %>
     <%# Ticket Revenue Minus Fee layout %>
     <div class="bg-white rounded-lg border border-gray-200 p-5">
       <div class="text-sm text-gray-500 mb-1">Ticket Revenue</div>
