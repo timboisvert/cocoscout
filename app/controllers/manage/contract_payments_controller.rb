@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid]
+    before_action :set_payment, only: %i[update destroy mark_paid flip_direction]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
