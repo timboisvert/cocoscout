@@ -30,6 +30,8 @@ module Manage
     end
 
     def update
+      handle_cleared_sections
+
       if @show_financials.update(show_financials_params)
         # Sync to ContractPayments if this is a third-party/contract production
         if @production.type_third_party? && @production.contract&.revenue_share?
@@ -76,6 +78,21 @@ module Manage
 
     def require_manage_permission
       authorize_production_action!(:manage)
+    end
+
+    def handle_cleared_sections
+      sf_params = params[:show_financials] || {}
+
+      if sf_params[:other_revenue_details_cleared] == "1"
+        @show_financials.other_revenue_details = []
+        @show_financials.other_revenue = nil
+      end
+
+      if sf_params[:expense_items_cleared] == "1"
+        # Clear the legacy expense_details JSONB; AR records are handled by _destroy in the nested attributes
+        @show_financials.expense_details = []
+        @show_financials.expenses = nil
+      end
     end
 
     def show_financials_params

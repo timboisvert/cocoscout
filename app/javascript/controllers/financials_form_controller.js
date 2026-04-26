@@ -35,7 +35,10 @@ export default class extends Controller {
     "receiptFileName",
     "receiptFileNameText",
     "receiptExpenseItemId",
-    "receiptUploadButton"
+    "receiptUploadButton",
+    // Cleared sentinels
+    "otherRevenueClearedInput",
+    "expenseClearedInput"
   ]
 
   connect() {
@@ -111,6 +114,10 @@ export default class extends Controller {
     this.closeOtherRevenueModal()
     this.updateOtherRevenueTotal()
     this.showOtherRevenueTotalRow()
+    // Item added — reset cleared sentinel
+    if (this.hasOtherRevenueClearedInputTarget) {
+      this.otherRevenueClearedInputTarget.value = "0"
+    }
   }
 
   addOtherRevenueItemToList(description, amount) {
@@ -156,11 +163,16 @@ export default class extends Controller {
       this.updateOtherRevenueTotal()
 
       // If no items left, show simple input and hide total row
-      if (this.otherRevenueItemsTarget.querySelectorAll('[data-line-item]').length === 0) {
+      const remaining = this.otherRevenueItemsTarget.querySelectorAll('[data-line-item]').length
+      if (remaining === 0) {
         if (this.hasOtherRevenueEmptyTarget) {
           this.otherRevenueEmptyTarget.classList.remove("hidden")
         }
         this.hideOtherRevenueTotalRow()
+      }
+      // Signal to server that this section was explicitly cleared
+      if (this.hasOtherRevenueClearedInputTarget) {
+        this.otherRevenueClearedInputTarget.value = remaining === 0 ? "1" : "0"
       }
     }
   }
@@ -298,6 +310,10 @@ export default class extends Controller {
     }
 
     this.expenseItemsTarget.insertAdjacentHTML('beforeend', html)
+    // Item added — reset cleared sentinel
+    if (this.hasExpenseClearedInputTarget) {
+      this.expenseClearedInputTarget.value = "0"
+    }
   }
 
   updateExpenseItemInList(index, category, description, amount) {
@@ -368,6 +384,10 @@ export default class extends Controller {
           this.expensesEmptyTarget.classList.remove("hidden")
         }
         this.hideExpensesTotalRow()
+      }
+      // Signal to server that all items were explicitly removed
+      if (this.hasExpenseClearedInputTarget) {
+        this.expenseClearedInputTarget.value = visibleItems.length === 0 ? "1" : "0"
       }
     }
   }

@@ -34,6 +34,11 @@
 
       <!-- Form Content -->
       <%= form_with model: @show_financials, url: manage_update_money_show_financials_path(@show), method: :patch, data: { turbo: false, financials_form_target: "form" } do |form| %>
+        <%# Sentinels: JS sets these to "1" when all items are removed so the server knows to clear the field %>
+        <input type="hidden" name="show_financials[other_revenue_details_cleared]" value="0"
+               data-financials-form-target="otherRevenueClearedInput">
+        <input type="hidden" name="show_financials[expense_items_cleared]" value="0"
+               data-financials-form-target="expenseClearedInput">
 
         <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
 
