@@ -3,18 +3,6 @@
 /* ── Native app (Hotwire Native) ─────────────────────────────────────────── */
 /* The body gets data-turbo-native="true" via the native layout.
    Use [data-turbo-native] as a CSS hook for any native-specific overrides. */
-
-/* Increase tap target sizes on all interactive elements */
-[data-turbo-native] button,
-[data-turbo-native] a,
-[data-turbo-native] input[type="submit"] {
-    min-height: 44px;
-}
-
-/* Remove hover states that don't make sense on touch */
-@media (hover: none) {
-    [data-turbo-native] .hover\:bg-gray-50:hover { background-color: transparent; }
-}
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 /* Change default focus ring color to pink */

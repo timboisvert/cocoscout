@@ -24,8 +24,7 @@
           data-user-notifications-user-id-value="<%= Current.user.id %>"
         <% end %>>
 
-    <%# Safe area top padding handled by native nav bar; bottom padding for home indicator %>
-    <main class="px-4 pb-[env(safe-area-inset-bottom,8px)] overflow-x-hidden min-h-screen">
+    <main class="px-4 pt-4 pb-[env(safe-area-inset-bottom,16px)] overflow-x-hidden min-h-screen">
       <div id="flash-messages"></div>
       <%= yield %>
     </main>

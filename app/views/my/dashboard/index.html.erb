@@ -348,7 +348,11 @@
     <% end %>
     <% if @month_events.empty? %>
       <div class="text-center text-sm text-gray-500 py-8">
-        No events this month.
+        <% if @calendar_scope == "my_assignments" %>
+          You don't have any assignments this month.
+        <% else %>
+          You don't have any shows or events this month.
+        <% end %>
       </div>
     <% end %>
   </div>

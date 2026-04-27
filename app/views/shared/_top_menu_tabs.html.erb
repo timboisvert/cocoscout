@@ -6,10 +6,10 @@
 <% links = local_assigns.fetch(:links, []) %>
 
 <% if turbo_native_app? %>
-  <%# Native: use a compact segmented-style tab strip instead of the web tab bar %>
-  <div class="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
+  <%# Native: keep the tab strip — it's useful sub-navigation within a screen %>
+  <div class="flex gap-1 mb-4 overflow-x-auto">
     <% tabs.each do |tab| %>
-      <%= link_to tab[:path], class: "flex-1 text-center text-sm font-medium py-1.5 rounded-md transition-colors #{tab[:active] ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}" do %>
+      <%= link_to tab[:path], class: "whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-full transition-colors #{tab[:active] ? 'bg-pink-100 text-pink-700' : 'text-gray-500 hover:text-gray-700'}" do %>
         <%= tab[:name] %>
       <% end %>
     <% end %>
