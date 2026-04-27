@@ -5,24 +5,35 @@
 %>
 <% links = local_assigns.fetch(:links, []) %>
 
-<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4 mb-4 border-b border-gray-200">
-
-  <div class="flex items-end gap-0 coustard-regular min-w-0 -mb-px">
+<% if turbo_native_app? %>
+  <%# Native: use a compact segmented-style tab strip instead of the web tab bar %>
+  <div class="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
     <% tabs.each do |tab| %>
-      <%= link_to tab[:path], class: "px-4 py-2 text-md sm:text-xl font-medium border-b-2 transition-colors #{tab[:active] ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
+      <%= link_to tab[:path], class: "flex-1 text-center text-sm font-medium py-1.5 rounded-md transition-colors #{tab[:active] ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}" do %>
         <%= tab[:name] %>
       <% end %>
     <% end %>
   </div>
+<% else %>
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4 mb-4 border-b border-gray-200">
 
-  <% if links.any? %>
-    <div class="flex gap-2 flex-wrap flex-shrink-0 pb-2">
-      <% links.each do |link| %>
-        <%= link_to link[:path] do %>
-          <%= render "shared/button", text: link[:text], variant: link[:variant] || "primary", size: link[:size] || "small" %>
+    <div class="flex items-end gap-0 coustard-regular min-w-0 -mb-px">
+      <% tabs.each do |tab| %>
+        <%= link_to tab[:path], class: "px-4 py-2 text-md sm:text-xl font-medium border-b-2 transition-colors #{tab[:active] ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
+          <%= tab[:name] %>
         <% end %>
       <% end %>
     </div>
-  <% end %>
 
-</div>
+    <% if links.any? %>
+      <div class="flex gap-2 flex-wrap flex-shrink-0 pb-2">
+        <% links.each do |link| %>
+          <%= link_to link[:path] do %>
+            <%= render "shared/button", text: link[:text], variant: link[:variant] || "primary", size: link[:size] || "small" %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+  </div>
+<% end %>

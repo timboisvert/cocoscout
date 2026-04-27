@@ -6,6 +6,7 @@ class ApplicationController < ActionController::Base
   include ActivityTracking
 
   helper_method :turbo_native_app?
+  layout :resolve_layout
 
   before_action :track_my_dashboard
   before_action :show_my_sidebar
@@ -45,5 +46,9 @@ class ApplicationController < ActionController::Base
 
   def turbo_native_app?
     request.user_agent.to_s.include?("Turbo Native")
+  end
+
+  def resolve_layout
+    turbo_native_app? ? "native" : "application"
   end
 end

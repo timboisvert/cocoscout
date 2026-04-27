@@ -2,48 +2,25 @@
 <% links = local_assigns.fetch(:links, []) %>
 <% extra_buttons = local_assigns[:extra_buttons] %>
 
-<div class="flex flex-col sm:flex-row sm:items-top sm:justify-between gap-2 sm:gap-4 mb-4 border-b-1 border-gray-200 pb-2">
-
-  <div class="pt-1 coustard-regular min-w-0">
-
-    <% breadcrumbs.each do |name, path| %>
-      <% display_name = name.length > 40 ? "#{name[0..37]}..." : name %>
-      <% if path %>
-        <%= link_to display_name, path, class:"text-md sm:text-xl mb-1 mr-2 text-pink-500 hover:text-pink-600 underline" %>
-        <span class="text-md sm:text-xl font-medium text-gray-500 mr-2"> /</span>
-      <% else %>
-        <span class="text-md sm:text-xl mb-1 mr-2"><%= display_name %></span>
-        <span class="text-md sm:text-xl mb-1 mr-2">/</span>
-      <% end %>
-    <% end %>
-    <% display_text = text.length > 40 ? "#{text[0..37]}..." : text %>
-    <span class="text-md sm:text-xl mb-1 mr-2"><%= display_text %></span>
-
-  </div>
-
+<% if turbo_native_app? %>
+  <%# Native: title + breadcrumbs are shown by the native nav bar.
+      Only render action buttons, and only when there are some. %>
   <% if links.count > 0 || extra_buttons.present? %>
-    <div class="flex gap-2 flex-wrap flex-shrink-0">
-      <%# Extra buttons (custom HTML) come first %>
+    <div class="flex gap-2 flex-wrap mb-4">
       <%= extra_buttons %>
-
       <% links.each do |link| %>
         <%
-          # For Manage controllers, check permissions
           if controller.class.ancestors.include?(Manage::ManageController)
             requires_global_manager = link[:global_manager_required] || false
             can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
           else
-            # For non-Manage controllers (like My::ProfileController), always show links
             can_show_link = true
           end
         %>
         <% if can_show_link %>
           <%
-            # Build data hash: merge link[:data] with data_action if present
             button_data = link[:data] || {}
             button_data[:action] = link[:data_action] if link[:data_action].present?
-
-            # Determine variant: explicit variant, or derive from color, or default to primary
             button_variant = if link[:variant].present?
               link[:variant]
             elsif link[:color] == "white"
@@ -68,4 +45,64 @@
     </div>
   <% end %>
 
-</div>
+<% else %>
+  <%# Web: full breadcrumb + title + action buttons %>
+  <div class="flex flex-col sm:flex-row sm:items-top sm:justify-between gap-2 sm:gap-4 mb-4 border-b-1 border-gray-200 pb-2">
+
+    <div class="pt-1 coustard-regular min-w-0">
+      <% breadcrumbs.each do |name, path| %>
+        <% display_name = name.length > 40 ? "#{name[0..37]}..." : name %>
+        <% if path %>
+          <%= link_to display_name, path, class:"text-md sm:text-xl mb-1 mr-2 text-pink-500 hover:text-pink-600 underline" %>
+          <span class="text-md sm:text-xl font-medium text-gray-500 mr-2"> /</span>
+        <% else %>
+          <span class="text-md sm:text-xl mb-1 mr-2"><%= display_name %></span>
+          <span class="text-md sm:text-xl mb-1 mr-2">/</span>
+        <% end %>
+      <% end %>
+      <% display_text = text.length > 40 ? "#{text[0..37]}..." : text %>
+      <span class="text-md sm:text-xl mb-1 mr-2"><%= display_text %></span>
+    </div>
+
+    <% if links.count > 0 || extra_buttons.present? %>
+      <div class="flex gap-2 flex-wrap flex-shrink-0">
+        <%= extra_buttons %>
+        <% links.each do |link| %>
+          <%
+            if controller.class.ancestors.include?(Manage::ManageController)
+              requires_global_manager = link[:global_manager_required] || false
+              can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
+            else
+              can_show_link = true
+            end
+          %>
+          <% if can_show_link %>
+            <%
+              button_data = link[:data] || {}
+              button_data[:action] = link[:data_action] if link[:data_action].present?
+              button_variant = if link[:variant].present?
+                link[:variant]
+              elsif link[:color] == "white"
+                "outline"
+              else
+                "primary"
+              end
+            %>
+            <%= render partial: "shared/button", locals: {
+              text: link[:text],
+              path: link[:path],
+              icon: link[:icon],
+              variant: button_variant,
+              data: button_data,
+              size: "small",
+              method: link[:method],
+              type: link[:type] || :submit,
+              disabled: link[:disabled] || false
+            } %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+  </div>
+<% end %>
