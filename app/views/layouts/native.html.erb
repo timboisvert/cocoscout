@@ -24,39 +24,34 @@
           data-user-notifications-user-id-value="<%= Current.user.id %>"
         <% end %>>
 
-    <div id="native-loader"
-         data-turbo-permanent
-         style="display:none; position:fixed; inset:0; z-index:9999;
-                background:#f9f9f7; align-items:center; justify-content:center;">
-      <img src="/icon.png" alt="" width="80" height="80"
-           style="animation: coco-pulse 1.1s ease-in-out infinite;">
+    <div id="native-loader" data-turbo-permanent>
+      <img src="/icon.png" alt="" width="80" height="80">
     </div>
 
     <script>
       if (!window._cocoLoaderReady) {
         window._cocoLoaderReady = true;
         var _cocoShowAt = 0;
-        var _cocoHideTimer = null;
+        var _cocoTimer  = null;
 
-        window._cocoShow = function() {
-          clearTimeout(_cocoHideTimer);
+        function _cocoShow() {
+          clearTimeout(_cocoTimer);
           _cocoShowAt = Date.now();
           var el = document.getElementById("native-loader");
-          if (el) el.style.display = "flex";
-        };
+          if (el) el.classList.add("visible");
+        }
 
-        window._cocoHide = function() {
-          var minVisible = 350;
-          var wait = Math.max(0, minVisible - (Date.now() - _cocoShowAt));
-          clearTimeout(_cocoHideTimer);
-          _cocoHideTimer = setTimeout(function() {
+        function _cocoHide() {
+          var wait = Math.max(0, 400 - (Date.now() - _cocoShowAt));
+          clearTimeout(_cocoTimer);
+          _cocoTimer = setTimeout(function() {
             var el = document.getElementById("native-loader");
-            if (el) el.style.display = "none";
+            if (el) el.classList.remove("visible");
           }, wait);
-        };
+        }
 
-        document.addEventListener("turbo:visit", window._cocoShow);
-        document.addEventListener("turbo:load",  window._cocoHide);
+        document.addEventListener("turbo:visit", _cocoShow);
+        document.addEventListener("turbo:load",  _cocoHide);
       }
     </script>
 
