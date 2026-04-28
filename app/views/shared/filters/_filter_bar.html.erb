@@ -100,7 +100,7 @@ end
                 <% group[:filters].each do |filter| %>
                   <%= link_to filter[:text],
                           filter[:path],
-                          data: filter[:data] || { turbo_prefetch: false },
+                          data: (filter[:data] || {}).merge(turbo_prefetch: false, turbo_action: "replace"),
                           class: "px-3 py-1.5 rounded text-xs font-medium transition #{filter[:active] ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
                   %>
                 <% end %>
@@ -111,7 +111,7 @@ end
               <% group.each do |filter| %>
                 <% if filter[:icon_svg] %>
                   <%= link_to filter[:path],
-                          data: filter[:data_attributes] || { turbo_prefetch: false },
+                          data: (filter[:data_attributes] || {}).merge(turbo_prefetch: false, turbo_action: "replace"),
                           title: filter[:title],
                           class: "px-3 py-1 rounded-md border text-#{text_size || 'sm'} flex items-center gap-2 transition #{filter[:always_pink] || filter[:active] ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}" do %>
                     <%= filter[:icon_svg].html_safe %>
@@ -120,7 +120,7 @@ end
                 <% else %>
                   <%= link_to filter[:text],
                           filter[:path],
-                          data: filter[:data_attributes] || { turbo_prefetch: false },
+                          data: (filter[:data_attributes] || {}).merge(turbo_prefetch: false, turbo_action: "replace"),
                           title: filter[:title],
                           class: "px-3 py-1 rounded-md border text-#{text_size || 'sm'} transition #{filter[:active] ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}"
                   %>

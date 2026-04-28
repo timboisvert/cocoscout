@@ -4,8 +4,7 @@
       { "title": "Dashboard", "path": "/my", "icon": "house" },
       { "title": "Shows", "path": "/my/shows", "icon": "calendar" },
       { "title": "Messages", "path": "/my/messages", "icon": "envelope" },
-      { "title": "Requests", "path": "/my/requests", "icon": "bell" },
-      { "title": "Profile", "path": "/my/profiles", "icon": "person" }
+      { "title": "Requests", "path": "/my/requests", "icon": "bell" }
     ]
   },
   "rules": [
@@ -17,35 +16,32 @@
       }
     },
     {
-      "patterns": ["/new$", "/edit$"],
+      "patterns": ["/new$", "/edit$", "/edit/"],
       "properties": {
         "context": "modal",
         "pull_to_refresh_enabled": false
       }
     },
     {
-      "patterns": ["/my/messages/[0-9]+/reply"],
+      "patterns": [
+        "/my/messages/[0-9]+/reply",
+        "/my/direct_messages/new",
+        "/my/groups/new",
+        "/my/profiles/new"
+      ],
       "properties": {
         "context": "modal",
         "pull_to_refresh_enabled": false
       }
     },
     {
-      "patterns": ["/my/sign_ups/.*/form$", "/my/questionnaires/.*/form$"],
-      "properties": {
-        "context": "modal",
-        "pull_to_refresh_enabled": false
-      }
-    },
-    {
-      "patterns": ["/my/direct_messages/new"],
-      "properties": {
-        "context": "modal",
-        "pull_to_refresh_enabled": false
-      }
-    },
-    {
-      "patterns": ["/my/submit_audition_request/.*/form$"],
+      "patterns": [
+        "/my/sign_ups/.*/form$",
+        "/my/questionnaires/.*/form$",
+        "/my/submit_audition_request/.*/form$",
+        "/my/course_registrations/.*/entry$",
+        "/my/course_registrations/.*/register$"
+      ],
       "properties": {
         "context": "modal",
         "pull_to_refresh_enabled": false
