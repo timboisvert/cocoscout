@@ -3,7 +3,7 @@
   <head>
     <title><%= content_for(:title) || "CocoScout" %></title>
     <%# viewport-fit=cover exposes safe area insets for iPhone notch + home indicator %>
-    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5,viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
@@ -24,7 +24,7 @@
           data-user-notifications-user-id-value="<%= Current.user.id %>"
         <% end %>>
 
-    <main class="px-4 pt-4 pb-[env(safe-area-inset-bottom,16px)] overflow-x-hidden min-h-screen">
+    <main class="px-4 pt-4 pb-8 overflow-x-hidden">
       <div id="flash-messages"></div>
       <%= yield %>
     </main>
