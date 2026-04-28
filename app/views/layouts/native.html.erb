@@ -24,14 +24,6 @@
           data-user-notifications-user-id-value="<%= Current.user.id %>"
         <% end %>>
 
-    <%# data-turbo-permanent keeps this element alive when Turbo replaces the page body %>
-    <style id="coco-loader-style" data-turbo-permanent>
-      @keyframes coco-pulse {
-        0%, 100% { transform: scale(1);    opacity: 1;   }
-        50%       { transform: scale(0.88); opacity: 0.65; }
-      }
-    </style>
-
     <div id="native-loader"
          data-turbo-permanent
          style="display:none; position:fixed; inset:0; z-index:9999;
@@ -41,22 +33,30 @@
     </div>
 
     <script>
-      // Guard: only attach listeners once — Turbo re-runs scripts on each page load
       if (!window._cocoLoaderReady) {
         window._cocoLoaderReady = true;
+        var _cocoShowAt = 0;
+        var _cocoHideTimer = null;
 
-        function cocoShow() {
+        window._cocoShow = function() {
+          clearTimeout(_cocoHideTimer);
+          _cocoShowAt = Date.now();
           var el = document.getElementById("native-loader");
           if (el) el.style.display = "flex";
-        }
-        function cocoHide() {
-          var el = document.getElementById("native-loader");
-          if (el) el.style.display = "none";
-        }
+        };
 
-        document.addEventListener("turbo:visit",  cocoShow);
-        document.addEventListener("turbo:load",   cocoHide);
-        document.addEventListener("turbo:render", cocoHide);
+        window._cocoHide = function() {
+          var minVisible = 350;
+          var wait = Math.max(0, minVisible - (Date.now() - _cocoShowAt));
+          clearTimeout(_cocoHideTimer);
+          _cocoHideTimer = setTimeout(function() {
+            var el = document.getElementById("native-loader");
+            if (el) el.style.display = "none";
+          }, wait);
+        };
+
+        document.addEventListener("turbo:visit", window._cocoShow);
+        document.addEventListener("turbo:load",  window._cocoHide);
       }
     </script>
 

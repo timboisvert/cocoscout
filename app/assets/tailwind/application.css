@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 /* ── Native app (Hotwire Native) ─────────────────────────────────────────── */
-/* The body gets data-turbo-native="true" via the native layout.
-   Use [data-turbo-native] as a CSS hook for any native-specific overrides. */
+@keyframes coco-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(0.88); opacity: 0.65; }
+}
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 /* Change default focus ring color to pink */
