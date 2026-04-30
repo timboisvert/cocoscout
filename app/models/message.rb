@@ -206,10 +206,12 @@ class Message < ApplicationRecord
   end
 
   # Whether this message was sent "as the production team" (visible to team, not personal)
-  # Also true for system-generated messages with a production association
-  # Shows production logo instead of sender's headshot when true
+  # Also true for system-generated messages with a production association,
+  # or any message with no personal sender but a production context.
   def sent_as_production_team?
-    %w[production show].include?(visibility) || (system_generated? && production.present?)
+    %w[production show].include?(visibility) ||
+      (system_generated? && production.present?) ||
+      (sender.nil? && production.present?)
   end
 
   # Get recipient count

@@ -180,8 +180,8 @@ class VacancyNotificationService
                                    .compact
     end
 
-    def system_sender(production)
-      production.organization.owner
+    def system_sender(_production)
+      nil  # System vacancy messages have no personal sender — show production name instead
     end
 
     def default_host

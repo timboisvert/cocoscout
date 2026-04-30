@@ -124,7 +124,7 @@ class NotificationDeliveryService
     # @param sender [User, nil] Optional sender (defaults to org owner)
     # @return [Hash] { messages_sent: Integer, emails_sent: Integer }
     def deliver_to_team(template_key:, variables:, production:, sender: nil)
-      sender ||= production.organization.owner
+      # Leave sender as nil for system messages — production name shows instead of a person
 
       recipients = find_notifiable_team_members(production)
       return { messages_sent: 0, emails_sent: 0 } if recipients.empty?
@@ -153,14 +153,15 @@ class NotificationDeliveryService
         person = user.person
 
         # Send message if channel is :message or :both
-        if channel.in?([ :message, :both ]) && sender && person
+        if channel.in?([ :message, :both ]) && person
           message = MessageService.send_direct(
             sender: sender,
             recipient_person: person,
             subject: subject,
             body: body,
             production: production,
-            organization: production.organization
+            organization: production.organization,
+            system_generated: true
           )
           results[:messages_sent] += 1 if message
         end
