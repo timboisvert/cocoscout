@@ -47,8 +47,11 @@ class ContractCompletionJob < ApplicationJob
         completed_at: Time.current
       )
 
-      # Archive all associated productions
-      contract.productions.where(archived_at: nil).update_all(archived_at: Time.current)
+      # Archive associated productions — but never course productions,
+      # since a completed instructor contract doesn't mean the course record should disappear.
+      contract.productions.where(archived_at: nil)
+                          .where.not(production_type: "course")
+                          .update_all(archived_at: Time.current)
     end
   end
 end
