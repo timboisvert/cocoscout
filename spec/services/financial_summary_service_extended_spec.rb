@@ -124,7 +124,7 @@ RSpec.describe FinancialSummaryService, "extended tests", type: :service do
 
     before do
       # Show from this month
-      show_recent = create(:show, production: production, date_and_time: 2.days.ago, event_type: "show")
+      show_recent = create(:show, production: production, date_and_time: Time.current.beginning_of_month + 1.day, event_type: "show")
       create(:show_financials, :complete, show: show_recent, ticket_revenue: 500.0)
 
       # Show from last month
