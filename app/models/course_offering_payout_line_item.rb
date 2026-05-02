@@ -29,6 +29,21 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
     sync_to_contract_payment(user, method, notes)
   end
 
+  def formatted_amount
+    return "$0" if amount_cents.nil? || amount_cents.zero?
+    dollars = amount_cents / 100.0
+    if dollars == dollars.to_i
+      "$#{dollars.to_i}"
+    else
+      "$#{'%.2f' % dollars}"
+    end
+  end
+
+  def payee_name
+    return label if payee.nil?
+    payee.respond_to?(:name) ? payee.name : label
+  end
+
   private
 
   def sync_to_contract_payment(user, method, notes)
@@ -61,20 +76,5 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
 
     payment.description.downcase.include?(contractor_name.downcase) ||
       payment.contract.contractor_name.downcase.include?(contractor_name.downcase)
-  end
-
-  def formatted_amount
-    return "$0" if amount_cents.nil? || amount_cents.zero?
-    dollars = amount_cents / 100.0
-    if dollars == dollars.to_i
-      "$#{dollars.to_i}"
-    else
-      "$#{'%.2f' % dollars}"
-    end
-  end
-
-  def payee_name
-    return label if payee.nil?
-    payee.respond_to?(:name) ? payee.name : label
   end
 end
