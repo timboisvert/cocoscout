@@ -19,7 +19,7 @@ class ContractPayment < ApplicationRecord
   }, default: :pending, prefix: :status
 
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :amount, numericality: { greater_than: 0 }, unless: :amount_tbd?
+  validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
   validates :direction, presence: true
 

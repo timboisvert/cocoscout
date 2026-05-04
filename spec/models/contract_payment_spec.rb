@@ -21,9 +21,9 @@ RSpec.describe ContractPayment, type: :model do
       expect(payment).not_to be_valid
     end
 
-    it "requires amount > 0 when not TBD" do
+    it "allows amount of 0 when not TBD" do
       payment = build(:contract_payment, amount: 0, amount_tbd: false)
-      expect(payment).not_to be_valid
+      expect(payment).to be_valid
     end
 
     it "allows amount of 0 when TBD" do
