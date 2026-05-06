@@ -51,14 +51,40 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Repeat Pattern</label>
         <select name="recurrence_pattern"
                 class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-96"
-                data-recurring-event-target="patternSelect">
+                data-recurring-event-target="patternSelect"
+                data-action="change->recurring-event#toggleMonthlyWeekFields">
           <option value="">Select pattern</option>
           <option value="daily" <%= "selected" if @wizard_state[:recurrence_pattern] == "daily" %>>Daily</option>
           <option value="weekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "weekly" %>>Weekly (same day each week)</option>
           <option value="biweekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "biweekly" %>>Every other week</option>
           <option value="monthly_date" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_date" %>>Monthly (same date each month)</option>
-          <option value="monthly_week" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_week" %>>Monthly (same week and day)</option>
+          <option value="monthly_week" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_week" %>>Monthly (e.g. 2nd Friday)</option>
         </select>
+      </div>
+
+      <div data-recurring-event-target="monthlyWeekFields" class="<%= 'hidden' unless @wizard_state[:recurrence_pattern] == 'monthly_week' %> grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Which Week</label>
+          <select name="recurrence_week_ordinal"
+                  class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+            <option value="1" <%= "selected" if (@wizard_state[:recurrence_week_ordinal] || "1").to_s == "1" %>>First</option>
+            <option value="2" <%= "selected" if @wizard_state[:recurrence_week_ordinal].to_s == "2" %>>Second</option>
+            <option value="3" <%= "selected" if @wizard_state[:recurrence_week_ordinal].to_s == "3" %>>Third</option>
+            <option value="4" <%= "selected" if @wizard_state[:recurrence_week_ordinal].to_s == "4" %>>Fourth</option>
+            <option value="5" <%= "selected" if @wizard_state[:recurrence_week_ordinal].to_s == "5" %>>Last</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+          <select name="recurrence_weekday"
+                  class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+            <% %w[Sunday Monday Tuesday Wednesday Thursday Friday Saturday].each_with_index do |day, idx| %>
+              <option value="<%= idx %>" <%= "selected" if @wizard_state[:recurrence_weekday].to_s == idx.to_s %>>
+                <%= day %>
+              </option>
+            <% end %>
+          </select>
+        </div>
       </div>
 
       <div>

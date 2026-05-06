@@ -19,21 +19,38 @@
     {
       label: "View",
       filters: [
-        { text: "Upcoming", path: manage_production_shows_path(@production, filter: "upcoming", event_type: @event_type_filter.join(",")), active: @filter == "upcoming" },
+        { text: "Upcoming", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: @view_mode, range: @range, event_type: @event_type_filter.join(",")), active: @filter == "upcoming" },
         { text: "Past", path: manage_production_shows_path(@production, filter: "past", event_type: @event_type_filter.join(",")), active: @filter == "past" }
       ]
     },
+    @filter == "upcoming" ? { separator: true } : nil,
+    @filter == "upcoming" ? {
+      label: "Browse",
+      filters: [
+        { text: "By Month", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "by_month", event_type: @event_type_filter.join(",")), active: @view_mode == "by_month" },
+        { text: "All", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "all", range: @range, event_type: @event_type_filter.join(",")), active: @view_mode == "all" }
+      ]
+    } : nil,
+    (@filter == "upcoming" && @view_mode == "all") ? { separator: true } : nil,
+    (@filter == "upcoming" && @view_mode == "all") ? {
+      label: "Range",
+      filters: [
+        { text: "3 Months", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "all", range: "3_months", event_type: @event_type_filter.join(",")), active: @range == "3_months" },
+        { text: "6 Months", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "all", range: "6_months", event_type: @event_type_filter.join(",")), active: @range == "6_months" },
+        { text: "All Time", path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "all", range: "all_time", event_type: @event_type_filter.join(",")), active: @range == "all_time" }
+      ]
+    } : nil,
     { separator: true },
     {
       partial: "shared/filters/event_type_multiselect_filter",
       locals: {
-        path_helper: ->(event_type:, entity:, filter: nil) { manage_production_shows_path(@production, event_type: event_type, filter: filter || @filter) },
+        path_helper: ->(event_type:, entity:, filter: nil) { manage_production_shows_path(@production, event_type: event_type, filter: filter || @filter, view_mode: @view_mode, range: @range) },
         event_type_filter: @event_type_filter,
         entity_filter: [],
         filter: @filter
       }
     }
-  ] %>
+  ].compact %>
 
   <% if @shows.any? %>
     <div class="space-y-1" data-controller="linked-highlight">
@@ -72,9 +89,44 @@
         } %>
       <% end %>
     </div>
+  <% elsif @filter == "upcoming" && @view_mode == "by_month" %>
+    <div class="text-sm text-gray-500">
+      No shows or events in <%= @current_month.strftime("%B %Y") %>.
+    </div>
   <% else %>
     <div class="text-sm text-gray-500">
       You haven't scheduled any shows or events.
+    </div>
+  <% end %>
+
+  <% if @shows_capped %>
+    <div class="text-sm text-gray-500 mt-4 text-center">Showing the first 500 upcoming shows. Switch to By Month or narrow the range to see specific dates.</div>
+  <% end %>
+
+  <% if @filter == "upcoming" && @view_mode == "by_month" %>
+    <div class="flex items-center justify-between mt-6">
+      <div>
+        <% if @can_go_prev %>
+          <%= render "shared/button",
+              text: @prev_month.strftime("%B %Y"),
+              path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "by_month", month: @prev_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(",")),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-left",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
+      <div>
+        <% if @can_go_next %>
+          <%= render "shared/button",
+              text: @next_month.strftime("%B %Y"),
+              path: manage_production_shows_path(@production, filter: "upcoming", view_mode: "by_month", month: @next_month.strftime("%Y-%m-01"), event_type: @event_type_filter.join(",")),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-right",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
     </div>
   <% end %>
   </div>

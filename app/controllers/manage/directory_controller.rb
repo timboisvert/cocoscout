@@ -25,12 +25,17 @@ module Manage
       productions_receiving_shares = TalentPoolShare.pluck(:production_id)
       accessible_production_ids = Current.user.accessible_productions.pluck(:id)
 
+      # Only include pools for productions that have shows, or pools shared across productions
+      productions_with_shows_ids = Show.where(production_id: accessible_production_ids).distinct.pluck(:production_id)
+      shared_pool_ids = TalentPoolShare.pluck(:talent_pool_id).presence || [ -1 ]
+
       @talent_pools = TalentPool.joins(:production)
                                 .includes(:production, :shared_productions)
                                 .where(productions: { organization_id: Current.organization.id, id: accessible_production_ids })
                                 .where.not(production_id: productions_receiving_shares)
+                                .where("talent_pools.production_id IN (?) OR talent_pools.id IN (?)", productions_with_shows_ids.presence || [ -1 ], shared_pool_ids)
                                 .distinct
-                                .order(:name)
+                                .order("productions.name ASC")
 
       # Validate talent_pool_id if provided
       @talent_pool_id = nil unless @talent_pool_id.blank? || @talent_pools.exists?(id: @talent_pool_id)

@@ -221,9 +221,15 @@
     </div>
 
     <%# Navigation %>
-    <div class="flex justify-between pt-4 border-t border-gray-200">
+    <div class="flex justify-between items-end pt-4 border-t border-gray-200">
       <%= render "shared/button", text: "Back: Payments", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_payments_manage_contract_path(@contract) %>
-      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true, class: "inline" do %>
+      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
+        <% if @new_bookings.any? %>
+          <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mb-3">
+            <%= check_box_tag :force_overlap, "1", false, class: "h-4 w-4 rounded border-gray-300 accent-pink-500" %>
+            <span>I know there's a scheduling conflict — proceed anyway</span>
+          </label>
+        <% end %>
         <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit %>
       <% end %>
     </div>

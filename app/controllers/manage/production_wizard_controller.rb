@@ -57,7 +57,9 @@ module Manage
     end
 
     def save_casting
-      @wizard_state[:casting_source] = params[:casting_source] || "talent_pool"
+      source = params[:casting_source] || "talent_pool"
+      @wizard_state[:casting_source] = source
+      @wizard_state[:casting_enabled] = (source != "none")
       save_wizard_state
       redirect_to manage_productions_wizard_roles_path
     end
@@ -126,6 +128,7 @@ module Manage
         @wizard_state[:recurring_event_type] = params[:recurring][:event_type]
         @wizard_state[:recurring_frequency] = params[:recurring][:frequency]
         @wizard_state[:recurring_day_of_week] = params[:recurring][:day_of_week]
+        @wizard_state[:recurring_week_ordinal] = params[:recurring][:week_ordinal]
         @wizard_state[:recurring_time] = params[:recurring][:time]
         @wizard_state[:recurring_start_date] = params[:recurring][:start_date]
         @wizard_state[:recurring_count] = params[:recurring][:count].to_i
@@ -200,7 +203,7 @@ module Manage
               duration_minutes: (show_data[:duration_minutes] || show_data["duration_minutes"]).presence&.to_i,
               location_id: show_data[:location_id] || show_data["location_id"],
               is_online: show_data[:is_online] || show_data["is_online"] || false,
-              casting_enabled: true
+              casting_enabled: @wizard_state.fetch(:casting_enabled, true)
             )
           end
         end
@@ -292,6 +295,7 @@ module Manage
       event_type = recurring_params[:event_type] || "show"
       frequency = recurring_params[:frequency] || "weekly"
       day_of_week = recurring_params[:day_of_week].to_i
+      week_ordinal = recurring_params[:week_ordinal].to_i
       time_str = recurring_params[:time] || "20:00"
       start_date = Date.parse(recurring_params[:start_date]) rescue Date.current
       count = (recurring_params[:count] || 8).to_i.clamp(1, 104)
@@ -305,6 +309,13 @@ module Manage
         current_date += 1.day
       end
 
+      # For monthly with explicit week ordinal, jump to the correct week of month
+      if frequency == "monthly" && week_ordinal > 0
+        target = nth_weekday_of_month(start_date.year, start_date.month, day_of_week, week_ordinal)
+        target = nth_weekday_of_month((start_date >> 1).year, (start_date >> 1).month, day_of_week, week_ordinal) if target < start_date
+        current_date = target
+      end
+
       count.times do
         datetime = Time.zone.parse("#{current_date} #{time_str}")
         shows << {
@@ -314,22 +325,38 @@ module Manage
           is_online: false
         }
 
-        # Advance to next occurrence
         case frequency
         when "weekly"
           current_date += 1.week
         when "biweekly"
           current_date += 2.weeks
         when "monthly"
-          current_date += 1.month
-          # Adjust to same day of week in next month
-          until current_date.wday == day_of_week
-            current_date += 1.day
+          if week_ordinal > 0
+            next_month = current_date >> 1
+            current_date = nth_weekday_of_month(next_month.year, next_month.month, day_of_week, week_ordinal)
+          else
+            current_date += 1.month
+            until current_date.wday == day_of_week
+              current_date += 1.day
+            end
           end
         end
       end
 
       shows
+    end
+
+    def nth_weekday_of_month(year, month, wday, ordinal)
+      first = Date.new(year, month, 1)
+      first_occurrence = first + ((wday - first.wday + 7) % 7)
+
+      if ordinal >= 5
+        # "Last" occurrence
+        candidate = first_occurrence + 4.weeks
+        candidate.month == month ? candidate : candidate - 1.week
+      else
+        first_occurrence + (ordinal - 1).weeks
+      end
     end
   end
 end

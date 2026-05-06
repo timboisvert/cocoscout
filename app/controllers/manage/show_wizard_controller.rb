@@ -88,6 +88,8 @@ module Manage
       @wizard_state[:recurrence_end_type] = params[:recurrence_end_type]
       @wizard_state[:recurrence_start_datetime] = params[:recurrence_start_datetime]
       @wizard_state[:recurrence_custom_end_date] = params[:recurrence_custom_end_date]
+      @wizard_state[:recurrence_week_ordinal] = params[:recurrence_week_ordinal]
+      @wizard_state[:recurrence_weekday] = params[:recurrence_weekday]
 
       if @wizard_state[:event_frequency] == "single"
         if @wizard_state[:date_and_time].blank?
@@ -217,7 +219,9 @@ module Manage
         start_datetime.to_date + 3.months
       end
 
-      dates = generate_recurring_dates(start_datetime, pattern, end_date)
+      dates = generate_recurring_dates(start_datetime, pattern, end_date,
+                                       week_ordinal: @wizard_state[:recurrence_week_ordinal],
+                                       weekday: @wizard_state[:recurrence_weekday])
       created_count = 0
 
       # Generate a shared recurrence_group_id for all shows in this series
@@ -244,7 +248,16 @@ module Manage
       redirect_to manage_production_shows_path(@production), notice: "#{created_count} recurring events were successfully created"
     end
 
-    def generate_recurring_dates(start_datetime, pattern, end_date)
+    def generate_recurring_dates(start_datetime, pattern, end_date, week_ordinal: nil, weekday: nil)
+      # For monthly_week with explicit ordinal, derive first occurrence from params
+      if pattern == "monthly_week" && week_ordinal.present? && weekday.present?
+        wday = weekday.to_i
+        ordinal = week_ordinal.to_i
+        first = nth_weekday_of_month(start_datetime.year, start_datetime.month, wday, ordinal)
+        first = nth_weekday_of_month((start_datetime >> 1).year, (start_datetime >> 1).month, wday, ordinal) if first.to_date < start_datetime.to_date
+        start_datetime = first.in_time_zone.change(hour: start_datetime.hour, min: start_datetime.min)
+      end
+
       dates = [ start_datetime ]
       current = start_datetime
 
@@ -259,13 +272,18 @@ module Manage
         when "monthly_date"
           current + 1.month
         when "monthly_week"
-          # Same week and day of month
-          next_month = current + 1.month
-          week_of_month = (current.day - 1) / 7 + 1
-          first_day = next_month.beginning_of_month
-          first_weekday = first_day.beginning_of_week(:sunday) + current.wday.days
-          first_weekday += 1.week if first_weekday < first_day
-          first_weekday + (week_of_month - 1).weeks
+          if week_ordinal.present? && weekday.present?
+            next_month = current >> 1
+            nth_weekday_of_month(next_month.year, next_month.month, weekday.to_i, week_ordinal.to_i)
+              .in_time_zone.change(hour: current.hour, min: current.min)
+          else
+            next_month = current + 1.month
+            week_of_month = (current.day - 1) / 7 + 1
+            first_day = next_month.beginning_of_month
+            first_weekday = first_day.beginning_of_week(:sunday) + current.wday.days
+            first_weekday += 1.week if first_weekday < first_day
+            (first_weekday + (week_of_month - 1).weeks).in_time_zone.change(hour: current.hour, min: current.min)
+          end
         else
           current + 1.week
         end
@@ -276,6 +294,17 @@ module Manage
       end
 
       dates
+    end
+
+    def nth_weekday_of_month(year, month, wday, ordinal)
+      first = Date.new(year, month, 1)
+      first_occurrence = first + ((wday - first.wday + 7) % 7)
+      if ordinal >= 5
+        candidate = first_occurrence + 4.weeks
+        candidate.month == month ? candidate : candidate - 1.week
+      else
+        first_occurrence + (ordinal - 1).weeks
+      end
     end
 
     def set_production

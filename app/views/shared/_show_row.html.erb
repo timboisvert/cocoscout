@@ -862,7 +862,7 @@
     <div class="<%= row_classes %> relative" <%= link_data_attrs_str.html_safe %>>
       <%= content %>
       <% if can_show_vacancy %>
-        <div class="absolute right-2 bottom-3 md:bottom-auto md:top-1/2 md:-translate-y-1/2 hidden group-hover:block"
+        <div class="absolute right-2 bottom-3 md:bottom-auto md:top-1/2 md:-translate-y-1/2 block md:hidden md:group-hover:block"
              onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
           <%= render "shared/button", text: "Can't make it?", variant: "primary", size: "small" %>
         </div>

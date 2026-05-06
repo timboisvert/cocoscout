@@ -28,10 +28,27 @@
     {
       label: "View",
       filters: [
-        { text: "Upcoming", path: manage_shows_path(filter: "upcoming", event_type: @event_type_filter.join(","), production: @production_filter), active: @filter == "upcoming" },
+        { text: "Upcoming", path: manage_shows_path(filter: "upcoming", view_mode: @view_mode, range: @range, event_type: @event_type_filter.join(","), production: @production_filter), active: @filter == "upcoming" },
         { text: "Past", path: manage_shows_path(filter: "past", event_type: @event_type_filter.join(","), production: @production_filter), active: @filter == "past" }
       ]
     },
+    @filter == "upcoming" ? { separator: true } : nil,
+    @filter == "upcoming" ? {
+      label: "Browse",
+      filters: [
+        { text: "By Month", path: manage_shows_path(filter: "upcoming", view_mode: "by_month", event_type: @event_type_filter.join(","), production: @production_filter), active: @view_mode == "by_month" },
+        { text: "All", path: manage_shows_path(filter: "upcoming", view_mode: "all", range: @range, event_type: @event_type_filter.join(","), production: @production_filter), active: @view_mode == "all" }
+      ]
+    } : nil,
+    (@filter == "upcoming" && @view_mode == "all") ? { separator: true } : nil,
+    (@filter == "upcoming" && @view_mode == "all") ? {
+      label: "Range",
+      filters: [
+        { text: "3 Months", path: manage_shows_path(filter: "upcoming", view_mode: "all", range: "3_months", event_type: @event_type_filter.join(","), production: @production_filter), active: @range == "3_months" },
+        { text: "6 Months", path: manage_shows_path(filter: "upcoming", view_mode: "all", range: "6_months", event_type: @event_type_filter.join(","), production: @production_filter), active: @range == "6_months" },
+        { text: "All Time", path: manage_shows_path(filter: "upcoming", view_mode: "all", range: "all_time", event_type: @event_type_filter.join(","), production: @production_filter), active: @range == "all_time" }
+      ]
+    } : nil,
     { separator: true },
     {
       partial: "shared/filters/dropdown_filter",
@@ -44,7 +61,9 @@
           action: "change->filter-select#update",
           filter_select_param_value: "production",
           filter_select_event_type_value: @event_type_filter.join(","),
-          filter_select_filter_value: @filter
+          filter_select_filter_value: @filter,
+          filter_select_view_mode_value: @view_mode,
+          filter_select_range_value: @range
         }
       }
     },
@@ -52,13 +71,17 @@
     {
       partial: "shared/filters/event_type_multiselect_filter",
       locals: {
-        path_helper: ->(event_type:, entity:, filter: nil) { manage_shows_path(event_type: event_type, filter: filter || @filter, production: @production_filter) },
+        path_helper: ->(event_type:, entity:, filter: nil) { manage_shows_path(event_type: event_type, filter: filter || @filter, view_mode: @view_mode, range: @range, production: @production_filter) },
         event_type_filter: @event_type_filter,
         entity_filter: [],
         filter: @filter
       }
     }
-  ] %>
+  ].compact %>
+
+  <% if @shows_capped %>
+    <div class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-3">Showing the first 500 upcoming shows. Switch to By Month or narrow the range to see specific dates.</div>
+  <% end %>
 
   <% if @shows.any? %>
     <div class="space-y-1" data-controller="linked-highlight">
@@ -123,37 +146,41 @@
         } %>
       <% end %>
     </div>
-  <% else %>
+  <% elsif @view_mode == "by_month" %>
     <div class="text-sm text-gray-500">
       No shows or events in <%= @current_month.strftime("%B %Y") %>.
     </div>
+  <% else %>
+    <div class="text-sm text-gray-500">No shows or events found.</div>
   <% end %>
 
-  <!-- Month Navigation -->
-  <div class="flex items-center justify-between mt-6">
-    <div>
-      <% if @can_go_prev %>
-        <%= render "shared/button",
-            text: @prev_month.strftime("%B %Y"),
-            path: manage_shows_path(month: @prev_month.strftime("%Y-%m-01"), filter: @filter, event_type: @event_type_filter.join(","), production: @production_filter),
-            variant: "secondary",
-            size: "small",
-            icon: "chevron-left",
-            data: { turbo_prefetch: false } %>
-      <% end %>
+  <% if @view_mode == "by_month" %>
+    <!-- Month Navigation -->
+    <div class="flex items-center justify-between mt-6">
+      <div>
+        <% if @can_go_prev %>
+          <%= render "shared/button",
+              text: @prev_month.strftime("%B %Y"),
+              path: manage_shows_path(month: @prev_month.strftime("%Y-%m-01"), filter: @filter, view_mode: "by_month", event_type: @event_type_filter.join(","), production: @production_filter),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-left",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
+      <div>
+        <% if @can_go_next %>
+          <%= render "shared/button",
+              text: @next_month.strftime("%B %Y"),
+              path: manage_shows_path(month: @next_month.strftime("%Y-%m-01"), filter: @filter, view_mode: "by_month", event_type: @event_type_filter.join(","), production: @production_filter),
+              variant: "secondary",
+              size: "small",
+              icon: "chevron-right",
+              data: { turbo_prefetch: false } %>
+        <% end %>
+      </div>
     </div>
-    <div>
-      <% if @can_go_next %>
-        <%= render "shared/button",
-            text: @next_month.strftime("%B %Y"),
-            path: manage_shows_path(month: @next_month.strftime("%Y-%m-01"), filter: @filter, event_type: @event_type_filter.join(","), production: @production_filter),
-            variant: "secondary",
-            size: "small",
-            icon: "chevron-right",
-            data: { turbo_prefetch: false } %>
-      <% end %>
-    </div>
-  </div>
+  <% end %>
   </div>
 </div>
 

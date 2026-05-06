@@ -46,6 +46,24 @@
           </div>
         </div>
       </label>
+
+      <!-- No casting option -->
+      <label class="block cursor-pointer">
+        <div id="no-casting-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:casting_source] == 'none' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+          <div class="flex items-start">
+            <input type="radio" name="casting_source" value="none"
+                   <%= "checked" if @wizard_state[:casting_source] == 'none' %>
+                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <p class="font-medium text-gray-900">No Casting Needed</p>
+              <p class="text-sm text-gray-500 mt-1">
+                These shows don't need performers assigned.
+                <span class="text-gray-600 font-medium">Best for:</span> rentals, private events, or shows tracked for scheduling only.
+              </p>
+            </div>
+          </div>
+        </div>
+      </label>
     </div>
 
     <div class="mt-8 flex justify-between items-center">
@@ -59,22 +77,24 @@
 
 <script>
 (function() {
-  const talentPoolOption = document.getElementById('talent-pool-option');
-  const manualOption = document.getElementById('manual-option');
+  const options = {
+    talent_pool: document.getElementById('talent-pool-option'),
+    manual: document.getElementById('manual-option'),
+    none: document.getElementById('no-casting-option')
+  };
 
   document.querySelectorAll('input[name="casting_source"]').forEach(radio => {
     radio.addEventListener('change', function() {
-      if (this.value === 'talent_pool') {
-        talentPoolOption.classList.add('border-pink-500', 'bg-pink-50');
-        talentPoolOption.classList.remove('border-gray-200', 'bg-gray-50');
-        manualOption.classList.remove('border-pink-500', 'bg-pink-50');
-        manualOption.classList.add('border-gray-200', 'bg-gray-50');
-      } else {
-        manualOption.classList.add('border-pink-500', 'bg-pink-50');
-        manualOption.classList.remove('border-gray-200', 'bg-gray-50');
-        talentPoolOption.classList.remove('border-pink-500', 'bg-pink-50');
-        talentPoolOption.classList.add('border-gray-200', 'bg-gray-50');
-      }
+      Object.entries(options).forEach(([value, el]) => {
+        if (!el) return;
+        if (value === this.value) {
+          el.classList.add('border-pink-500', 'bg-pink-50');
+          el.classList.remove('border-gray-200', 'bg-gray-50');
+        } else {
+          el.classList.remove('border-pink-500', 'bg-pink-50');
+          el.classList.add('border-gray-200', 'bg-gray-50');
+        }
+      });
     });
   });
 })();

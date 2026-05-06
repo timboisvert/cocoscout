@@ -406,7 +406,8 @@ module Manage
             starts_at: starts_at,
             ends_at: ends_at,
             notes: booking["notes"],
-            confirmed: true
+            confirmed: true,
+            allow_overlap: params[:force_overlap] == "1"
           )
 
           # Create a show for the new rental so it appears in Shows & Events

@@ -13,6 +13,14 @@ module Manage
       @filter = params[:filter] || session[:shows_filter] || "upcoming"
       session[:shows_filter] = @filter
 
+      @view_mode = params[:view_mode] || session[:shows_view_mode] || "by_month"
+      @view_mode = "by_month" unless %w[by_month all].include?(@view_mode)
+      session[:shows_view_mode] = @view_mode
+
+      @range = params[:range] || session[:shows_range] || "3_months"
+      @range = "3_months" unless %w[3_months 6_months all_time].include?(@range)
+      session[:shows_range] = @range
+
       # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
@@ -28,36 +36,45 @@ module Manage
                        .includes(:location, :production, event_linkage: :shows)
                        .where(event_type: @event_type_filter)
 
-      # Month-based pagination
-      @current_month = if params[:month].present?
-        Date.parse(params[:month]).in_time_zone.beginning_of_month
-      else
-        Time.current.beginning_of_month
-      end
-      month_end = @current_month.end_of_month
-
-      # Find the range of months that have shows (for prev/next boundaries)
-      case @filter
-      when "past"
+      if @filter == "past"
+        @view_mode = "all"
         date_bounds = base_scope.where("shows.date_and_time <= ?", Time.current)
+        @shows = date_bounds.order(Arel.sql("shows.date_and_time DESC")).to_a
       else
         @filter = "upcoming"
-        date_bounds = base_scope.where("shows.date_and_time > ?", Time.current)
+        upcoming_scope = base_scope.where("shows.date_and_time > ?", Time.current)
+
+        if @view_mode == "by_month"
+          @current_month = begin
+            params[:month].present? ? Date.parse(params[:month]).in_time_zone.beginning_of_month : Time.current.beginning_of_month
+          rescue ArgumentError
+            Time.current.beginning_of_month
+          end
+          month_end = @current_month.end_of_month
+
+          @first_month = upcoming_scope.minimum(:date_and_time)&.in_time_zone&.beginning_of_month
+          @last_month = upcoming_scope.maximum(:date_and_time)&.in_time_zone&.beginning_of_month
+          @prev_month = @current_month - 1.month
+          @next_month = @current_month + 1.month
+          @can_go_prev = @first_month.present? && @prev_month >= @first_month
+          @can_go_next = @last_month.present? && @next_month <= @last_month
+
+          @shows = upcoming_scope
+                    .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", @current_month, month_end)
+                    .order(Arel.sql("shows.date_and_time ASC"))
+                    .to_a
+        else
+          end_time = case @range
+          when "3_months" then 3.months.from_now
+          when "6_months" then 6.months.from_now
+          end
+          scoped = end_time ? upcoming_scope.where("shows.date_and_time <= ?", end_time) : upcoming_scope
+          scoped = scoped.order(Arel.sql("shows.date_and_time ASC"))
+          limited = scoped.limit(501).to_a
+          @shows_capped = limited.size > 500
+          @shows = limited.first(500)
+        end
       end
-
-      @first_month = date_bounds.minimum(:date_and_time)&.in_time_zone&.beginning_of_month
-      @last_month = date_bounds.maximum(:date_and_time)&.in_time_zone&.beginning_of_month
-
-      @prev_month = @current_month - 1.month
-      @next_month = @current_month + 1.month
-      @can_go_prev = @first_month.present? && @prev_month >= @first_month
-      @can_go_next = @last_month.present? && @next_month <= @last_month
-
-      # Scope shows to the selected month
-      @shows = date_bounds
-                .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", @current_month, month_end)
-                .order(Arel.sql("shows.date_and_time ASC"))
-                .to_a
 
       # Load cast and vacancy data for each show
       show_ids = @shows.map(&:id)
@@ -141,6 +158,14 @@ module Manage
       @filter = params[:filter] || session[:shows_filter] || "upcoming"
       session[:shows_filter] = @filter
 
+      @view_mode = params[:view_mode] || session[:shows_view_mode] || "by_month"
+      @view_mode = "by_month" unless %w[by_month all].include?(@view_mode)
+      session[:shows_view_mode] = @view_mode
+
+      @range = params[:range] || session[:shows_range] || "3_months"
+      @range = "3_months" unless %w[3_months 6_months all_time].include?(@range)
+      session[:shows_range] = @range
+
       # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
@@ -150,16 +175,44 @@ module Manage
       # Apply event type filter
       @shows = @shows.where(event_type: @event_type_filter)
 
-      case @filter
-      when "past"
+      if @filter == "past"
+        @view_mode = "all"
         @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(Arel.sql("shows.date_and_time DESC"))
       else
         @filter = "upcoming"
-        @shows = @shows.where("shows.date_and_time > ?", Time.current).order(Arel.sql("shows.date_and_time ASC"))
+        upcoming_scope = @shows.where("shows.date_and_time > ?", Time.current).order(Arel.sql("shows.date_and_time ASC"))
+
+        if @view_mode == "by_month"
+          @current_month = begin
+            params[:month].present? ? Date.parse(params[:month]).in_time_zone.beginning_of_month : Time.current.beginning_of_month
+          rescue ArgumentError
+            Time.current.beginning_of_month
+          end
+          month_end = @current_month.end_of_month
+
+          @first_month = upcoming_scope.minimum(:date_and_time)&.in_time_zone&.beginning_of_month
+          @last_month = upcoming_scope.maximum(:date_and_time)&.in_time_zone&.beginning_of_month
+          @prev_month = @current_month - 1.month
+          @next_month = @current_month + 1.month
+          @can_go_prev = @first_month.present? && @prev_month >= @first_month
+          @can_go_next = @last_month.present? && @next_month <= @last_month
+
+          @shows = upcoming_scope.where("shows.date_and_time >= ? AND shows.date_and_time <= ?", @current_month, month_end)
+        else
+          end_time = case @range
+          when "3_months" then 3.months.from_now
+          when "6_months" then 6.months.from_now
+          end
+          scoped = end_time ? upcoming_scope.where("shows.date_and_time <= ?", end_time) : upcoming_scope
+          limited = scoped.limit(501).to_a
+          @shows_capped = limited.size > 500
+          @shows = limited.first(500)
+          @shows = @shows  # skip the normal .to_a below
+        end
       end
 
       # Load into memory to avoid multiple queries
-      @shows = @shows.to_a
+      @shows = @shows.to_a unless @shows.is_a?(Array)
 
       # Load cast and vacancy data for each show
       show_ids = @shows.map(&:id)
