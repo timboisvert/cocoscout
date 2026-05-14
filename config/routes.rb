@@ -551,7 +551,7 @@ Rails.application.routes.draw do
     delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
 
     # Sign-ups > Auditions > Cycles (new URL pattern: /manage/signups/auditions/:production_id/:id)
-    get  "/signups/auditions/:production_id/:id", to: "audition_cycles#show", as: "signups_auditions_cycle"
+    get "/signups/auditions/:production_id/:id", to: "audition_cycles#show", as: "signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id", to: "audition_cycles#update", as: "update_signups_auditions_cycle"
     delete "/signups/auditions/:production_id/:id", to: "audition_cycles#destroy", as: "destroy_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/form", to: "audition_cycles#form", as: "form_signups_auditions_cycle"
@@ -563,7 +563,7 @@ Rails.application.routes.draw do
     patch "/signups/auditions/:production_id/:id/archive", to: "audition_cycles#archive", as: "archive_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
+    get "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/update_reviewers", to: "auditions#update_reviewers", as: "update_reviewers_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/casting", to: "auditions#casting", as: "casting_signups_auditions_cycle"

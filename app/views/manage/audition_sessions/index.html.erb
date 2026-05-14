@@ -63,20 +63,30 @@
                       headshot = auditionable.respond_to?(:safe_headshot_variant) ? auditionable.safe_headshot_variant(:thumb) : nil
                       request_path = audition.audition_request_id ? manage_signups_auditions_cycle_request_path(@production, @audition_cycle, audition.audition_request_id) : nil
                       click_handler = request_path ? "event.stopPropagation(); event.preventDefault(); window.location.href='#{request_path}'" : nil
+                      status_dot_class = case audition.response_status
+                                         when :accepted then "bg-green-500"
+                                         when :pending  then "bg-yellow-400"
+                                         end
+                      tooltip_text = "#{auditionable.name} (#{audition.response_status.to_s.capitalize})"
                     %>
-                    <% if headshot %>
-                      <%= image_tag headshot,
-                            class: "w-9 h-9 rounded-md object-cover cursor-pointer",
-                            onclick: click_handler,
-                            data: { controller: "tooltip", tooltip_text: auditionable.name } %>
-                    <% else %>
-                      <div class="w-9 h-9 rounded-md bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs cursor-pointer"
-                           onclick="<%= click_handler %>"
-                           data-controller="tooltip"
-                           data-tooltip-text="<%= auditionable.name %>">
-                        <%= auditionable.respond_to?(:initials) ? auditionable.initials : auditionable.name.to_s[0..1].upcase %>
-                      </div>
-                    <% end %>
+                    <div class="relative">
+                      <% if headshot %>
+                        <%= image_tag headshot,
+                              class: "w-9 h-9 rounded-md object-cover cursor-pointer",
+                              onclick: click_handler,
+                              data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                      <% else %>
+                        <div class="w-9 h-9 rounded-md bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs cursor-pointer"
+                             onclick="<%= click_handler %>"
+                             data-controller="tooltip"
+                             data-tooltip-text="<%= tooltip_text %>">
+                          <%= auditionable.respond_to?(:initials) ? auditionable.initials : auditionable.name.to_s[0..1].upcase %>
+                        </div>
+                      <% end %>
+                      <% if status_dot_class %>
+                        <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white <%= status_dot_class %>"></span>
+                      <% end %>
+                    </div>
                   <% end %>
                 <% end %>
               </div>
