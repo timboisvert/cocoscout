@@ -5,14 +5,14 @@
     breadcrumbs: [
       ["Sign-ups", manage_signups_path],
       [@production.name, manage_signups_production_path(@production)],
-      ["Auditions", manage_signups_auditions_path(@production)],
-      ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)]
+      ["Auditions", manage_signups_auditions_path(@production)]
     ],
-    text: @audition_cycle.video_only? ? "Video Auditions" : "Open Sign-ups",
+    text: "Requests",
     links: []
   } %>
 
-  <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
+  <%= render partial: "manage/auditions/cycle_status_panel" %>
+  <%= render partial: "manage/auditions/topical_nav", locals: { current_topic: :requests } %>
 
   <% if current_user_has_role?(@production) %>
     <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -71,7 +71,7 @@
           <% requestable = audition_request.requestable %>
           <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
 
-          <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200">
+          <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-pink-400 transition-all group bg-white border-gray-200 cursor-pointer [&_*]:cursor-pointer">
             <% if current_user_has_role?(@production) %>
               <div class="flex items-center mr-3">
                 <input type="checkbox"
@@ -85,7 +85,7 @@
             <% end %>
 
             <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, audition_request),
-                class: "flex items-stretch flex-1 min-w-0",
+                class: "flex items-stretch flex-1 min-w-0 cursor-pointer",
                 data: { turbo_prefetch: false } do %>
 
               <%# Left Section: Headshot & Name (50%) %>

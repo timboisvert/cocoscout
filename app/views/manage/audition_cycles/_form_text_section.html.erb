@@ -1,0 +1,50 @@
+<%
+  # Required locals: field (Symbol — :instruction_text, :video_field_text, :success_text), title, help
+  current_value = @audition_cycle.send(field)
+  has_value = current_value.respond_to?(:body) ? current_value.body.present? : current_value.present?
+  modal_id = "edit_modal_#{field}"
+%>
+
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" data-controller="edit-modal">
+  <%= render "shared/card_header", title: title do %>
+    <button type="button" data-action="click->edit-modal#open" class="text-sm text-pink-500 hover:text-pink-600 font-medium cursor-pointer">
+      <%= has_value ? "Edit" : "Add" %>
+    </button>
+  <% end %>
+  <div class="p-5">
+    <p class="text-xs text-gray-500 mb-3"><%= help %></p>
+    <% if has_value %>
+      <div class="prose max-w-none text-sm text-gray-800 show-more">
+        <div class="show-more-content line-clamp-4 overflow-hidden">
+          <%= current_value %>
+        </div>
+        <button type="button" class="show-more-btn text-xs text-pink-500 hover:text-pink-600 font-medium mt-2 cursor-pointer hidden">Show more</button>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-400 italic">Not set</p>
+    <% end %>
+  </div>
+
+  <%# Edit Modal %>
+  <div data-edit-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->edit-modal#closeOnBackdrop keydown.esc@window->edit-modal#close">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" data-action="click->edit-modal#stopPropagation">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit <%= title %></h2>
+        <button type="button" data-action="click->edit-modal#close" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-6">
+        <%= form_with model: [:manage, @production, @audition_cycle], url: manage_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, local: true do |form| %>
+          <%= hidden_field_tag :redirect_to, "form" %>
+          <p class="text-sm text-gray-600 mb-3"><%= help %></p>
+          <%= form.rich_text_area field, class: "w-full prose max-w-none", data: { controller: "trix-no-files" } %>
+          <div class="mt-6 flex gap-2">
+            <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+            <button type="button" data-action="click->edit-modal#close" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

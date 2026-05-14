@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle,
-                  only: %i[show edit form update destroy preview create_question update_question destroy_question reorder_questions
+                  only: %i[show form update destroy preview create_question update_question destroy_question reorder_questions
                            archive delete_confirm toggle_voting]
     before_action :set_question, only: %i[update_question destroy_question]
     before_action :ensure_user_is_manager, except: %i[preview show]
@@ -51,9 +51,12 @@ module Manage
       render :new, status: :unprocessable_entity unless @audition_cycle.persisted?
     end
 
-    def edit; end
-
     def form
+      # Auto-sync availability shows BEFORE building any in-memory questions —
+      # otherwise an in-memory blank @question gets autosaved with the parent
+      # and fails validation.
+      @audition_cycle.sync_availability_shows!
+
       # Load existing question if question_id is present, otherwise create a new one
       if params[:question_id].present?
         @question = @audition_cycle.questions.find(params[:question_id])
@@ -64,9 +67,6 @@ module Manage
       end
       @questions = @audition_cycle.questions.order(:position)
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-      # Auto-sync: add new shows, remove past shows from availability selection
-      @audition_cycle.sync_availability_shows!
     end
 
     def update
@@ -82,14 +82,32 @@ module Manage
         params_to_update[:availability_show_ids] = nil if params_to_update[:availability_show_ids].empty?
       end
 
-      if @audition_cycle.update(params_to_update)
+      @audition_cycle.assign_attributes(params_to_update)
+
+      # Reviewer fields are submitted top-level (not nested under :audition_cycle)
+      if params[:reviewer_access_type].present?
+        @audition_cycle.reviewer_access_type = params[:reviewer_access_type]
+      end
+
+      if @audition_cycle.save
+        # Sync specific reviewers if reviewer_access_type was submitted
+        if params[:reviewer_access_type].present?
+          @audition_cycle.audition_reviewers.destroy_all
+          if params[:reviewer_access_type] == "specific"
+            (params[:reviewer_person_ids] || []).each do |person_id|
+              next if person_id.blank?
+              @audition_cycle.audition_reviewers.create!(person_id: person_id)
+            end
+          end
+        end
+
         # Redirect based on source
         if params[:redirect_to] == "form"
           redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, tab: params[:tab]),
                       notice: "Form saved",
                       status: :see_other
         else
-          redirect_to manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle),
+          redirect_to manage_settings_signups_auditions_cycle_path(@production, @audition_cycle),
                       notice: "Audition Settings successfully updated",
                       status: :see_other
         end
@@ -99,7 +117,7 @@ module Manage
           setup_form_variables
           render :form, status: :unprocessable_entity
         else
-          render :edit, status: :unprocessable_entity
+          render template: "manage/auditions/settings", status: :unprocessable_entity
         end
       end
     end

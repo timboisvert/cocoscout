@@ -13,7 +13,8 @@
     links: []
   } %>
 
-  <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
+  <%= render partial: "cycle_status_panel" %>
+  <%= render partial: "topical_nav", locals: { current_topic: :casting } %>
 
   <% if @audition_cycle.blank? %>
     <div class="mb-5 text-gray-500 text-sm">

@@ -60,7 +60,6 @@ class Show < ApplicationRecord
   # Payouts
   has_one :show_financials, dependent: :destroy
   has_one :show_payout, dependent: :destroy
-  has_one :show_ticketing, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 
   # Attendance tracking
@@ -115,9 +114,6 @@ class Show < ApplicationRecord
   # Calendar sync - trigger sync for affected people when show changes
   after_commit :trigger_calendar_sync, on: [ :create, :update ]
   after_destroy :trigger_calendar_sync_for_destruction
-
-  # Ticketing sync - trigger sync when show is created/updated for productions with active ticketing
-  after_commit :trigger_ticketing_sync, on: [ :create, :update ]
 
   # Contract payment sync - update revenue-share contract payments when show or its financials change
   after_commit :sync_contract_payments, on: [ :create, :update ]
@@ -905,15 +901,6 @@ class Show < ApplicationRecord
     end
 
     person_ids.to_a
-  end
-
-  def trigger_ticketing_sync
-    # Only sync if there's an active ticketing setup for this production
-    setup = production&.ticketing_setup
-    return unless setup&.status_active?
-
-    # Queue the sync job to ensure this show is properly synced to ticketing providers
-    TicketingSetupSyncJob.perform_later(setup.id)
   end
 
   def calendar_service_for(subscription)

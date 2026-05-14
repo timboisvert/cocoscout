@@ -4,7 +4,7 @@ class FeatureCredit < ApplicationRecord
   has_many :feature_credit_redemptions, dependent: :restrict_with_error
 
   validates :code, presence: true, uniqueness: { case_sensitive: false }
-  validates :feature_type, presence: true, inclusion: { in: %w[courses ticketing] }
+  validates :feature_type, presence: true, inclusion: { in: %w[courses] }
   validates :scope_type, presence: true, inclusion: { in: %w[course_offering production organization] }
   validates :coverage_type, presence: true, inclusion: { in: %w[full platform_only] }
   validates :max_uses, numericality: { greater_than: 0 }, allow_nil: true

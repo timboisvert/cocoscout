@@ -1,4 +1,4 @@
-<% review_step = @wizard_state[:allow_in_person_auditions] ? 7 : 6 %>
+<% review_step = @wizard_state[:allow_in_person_auditions] ? 8 : 7 %>
 <%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: review_step, step_name: "Review" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review your settings</h2>
   <p class="text-gray-600 mb-6">Make sure everything looks right before creating your audition cycle.</p>
@@ -116,6 +116,23 @@
           <% else %>
             <p>Voting on scheduled auditions disabled</p>
           <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Form</h3>
+        <%= link_to "Edit", manage_signups_auditions_wizard_form_starter_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% starter_count = (@wizard_state[:form_starter_questions] || []).size %>
+        <% if starter_count.zero? %>
+          <p>No questions yet — you can build the form in the Form section after creation</p>
+        <% else %>
+          <p>✓ <%= pluralize(starter_count, "question") %> ready to seed</p>
+          <p class="text-gray-500 text-xs mt-1">Add more or edit details in the Form section after the cycle is created.</p>
         <% end %>
       </div>
     </div>

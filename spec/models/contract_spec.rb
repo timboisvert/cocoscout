@@ -381,8 +381,8 @@ RSpec.describe Contract, type: :model do
     end
 
     describe "#total_incoming" do
-      it "sums all incoming payments" do
-        expect(contract.total_incoming).to eq(1500)
+      it "sums only paid incoming payments (not pending)" do
+        expect(contract.total_incoming).to eq(500)
       end
     end
 
@@ -393,8 +393,8 @@ RSpec.describe Contract, type: :model do
     end
 
     describe "#net_amount" do
-      it "calculates incoming minus outgoing" do
-        expect(contract.net_amount).to eq(1300)
+      it "calculates paid incoming minus outgoing" do
+        expect(contract.net_amount).to eq(300)
       end
     end
 

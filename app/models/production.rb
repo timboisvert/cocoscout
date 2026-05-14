@@ -25,7 +25,6 @@ class Production < ApplicationRecord
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy
-  has_many :production_ticketing_setups, dependent: :destroy
 
   # Payroll and advances
   has_one :payroll_schedule, dependent: :destroy
@@ -412,18 +411,6 @@ class Production < ApplicationRecord
 
   def contract_locked?
     governed_by_contract?
-  end
-
-  # Check if ticketing is available for this production
-  # Uses the ticketing_enabled column to opt productions in to ticketing management
-  def ticketing_enabled?
-    ticketing_enabled == true
-  end
-
-  # Returns the ticketing setup for this production (convenience method)
-  # Each production should have at most one setup
-  def ticketing_setup
-    production_ticketing_setups.first
   end
 
   # Agreement methods

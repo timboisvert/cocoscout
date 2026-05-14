@@ -9,7 +9,9 @@ module Manage
     before_action :ensure_user_is_manager, except: %i[show summary]
 
     def index
-      @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
+      @audition_sessions = @audition_cycle.audition_sessions
+                                          .includes(:location, auditions: { auditionable: { profile_headshots: { image_attachment: :blob } } })
+                                          .order(start_at: :asc)
 
       if params[:filter].present?
         cookies[:audition_request_filter] = params[:filter]

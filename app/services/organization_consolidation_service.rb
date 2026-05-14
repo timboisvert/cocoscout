@@ -49,8 +49,6 @@ class OrganizationConsolidationService
     analyze_casting_tables
     analyze_contracts_and_contractors
     analyze_agreement_templates
-    analyze_ticketing_providers
-    analyze_seating_configurations
     analyze_directory
     analyze_team_members
     analyze_messages_and_logs
@@ -79,13 +77,7 @@ class OrganizationConsolidationService
       # 5. Move agreement templates
       migrate_agreement_templates
 
-      # 6. Move ticketing providers (and their sync rules)
-      migrate_ticketing_providers
-
-      # 7. Move seating configurations (update location references after mapping)
-      migrate_seating_configurations
-
-      # 8. Move directory (people and groups)
+      # 6. Move directory (people and groups)
       migrate_directory
 
       # 9. Move team members
@@ -279,37 +271,6 @@ class OrganizationConsolidationService
       category: "Agreement Templates",
       count: count,
       action: "Will be moved to target organization"
-    }
-  end
-
-  def analyze_ticketing_providers
-    count = source_org.ticketing_providers.count
-    return unless count > 0
-
-    @analysis[:migrations] << {
-      category: "Ticketing Providers",
-      count: count,
-      action: "Will be moved to target organization"
-    }
-
-    sync_rule_count = source_org.ticket_sync_rules.count
-    if sync_rule_count > 0
-      @analysis[:migrations] << {
-        category: "Ticket Sync Rules",
-        count: sync_rule_count,
-        action: "Will be moved with their ticketing providers"
-      }
-    end
-  end
-
-  def analyze_seating_configurations
-    count = source_org.seating_configurations.count
-    return unless count > 0
-
-    @analysis[:migrations] << {
-      category: "Seating Configurations",
-      count: count,
-      action: "Will be moved to target organization (location references updated)"
     }
   end
 
@@ -570,35 +531,6 @@ class OrganizationConsolidationService
   def migrate_agreement_templates
     count = source_org.agreement_templates.update_all(organization_id: target_org.id)
     @changes_made << "Moved #{count} agreement templates" if count > 0
-  end
-
-  def migrate_ticketing_providers
-    # Sync rules reference both org and provider — move providers first, then rules follow
-    count = source_org.ticketing_providers.update_all(organization_id: target_org.id)
-    @changes_made << "Moved #{count} ticketing providers" if count > 0
-
-    rule_count = source_org.ticket_sync_rules.update_all(organization_id: target_org.id)
-    @changes_made << "Moved #{rule_count} ticket sync rules" if rule_count > 0
-  end
-
-  def migrate_seating_configurations
-    # Seating configs may reference locations — update those references using the location mapping
-    if @analysis[:location_analysis]
-      complete_mappings = {}
-      @analysis[:location_analysis][:auto_matched].each { |m| complete_mappings[m[:source_id]] = m[:target_id] }
-      location_mappings.each do |source_id, value|
-        next if value.to_s.empty?
-        complete_mappings[source_id.to_i] = value.to_i if value.to_s != "copy"
-      end
-
-      source_org.seating_configurations.where.not(location_id: nil).find_each do |config|
-        new_loc = complete_mappings[config.location_id]
-        config.update_columns(location_id: new_loc) if new_loc
-      end
-    end
-
-    count = source_org.seating_configurations.update_all(organization_id: target_org.id)
-    @changes_made << "Moved #{count} seating configurations" if count > 0
   end
 
   def migrate_directory

@@ -12,7 +12,6 @@ Rails.application.routes.draw do
   match "/500", to: "errors#internal_error", via: :all
 
   # Webhooks (external services)
-  post "/webhooks/ticketing/:provider_type/:token", to: "ticketing_webhooks#receive", as: "ticketing_webhook"
   post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
 
   # API (Hotwire Native mobile apps)
@@ -541,6 +540,10 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#save_reviewers", as: "signups_auditions_wizard_save_reviewers"
     get  "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#voting", as: "signups_auditions_wizard_voting"
     post "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#save_voting", as: "signups_auditions_wizard_save_voting"
+    get  "/signups/auditions/:production_id/wizard/form_starter", to: "audition_cycle_wizard#form_starter", as: "signups_auditions_wizard_form_starter"
+    post "/signups/auditions/:production_id/wizard/form_starter", to: "audition_cycle_wizard#save_form_starter", as: "signups_auditions_wizard_save_form_starter"
+    post "/signups/auditions/:production_id/wizard/form_starter/questions", to: "audition_cycle_wizard#add_form_question", as: "signups_auditions_wizard_add_form_question"
+    delete "/signups/auditions/:production_id/wizard/form_starter/questions/:index", to: "audition_cycle_wizard#delete_form_question", as: "signups_auditions_wizard_delete_form_question"
     get  "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#notifications", as: "signups_auditions_wizard_notifications"
     post "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#save_notifications", as: "signups_auditions_wizard_save_notifications"
     get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
@@ -549,7 +552,6 @@ Rails.application.routes.draw do
 
     # Sign-ups > Auditions > Cycles (new URL pattern: /manage/signups/auditions/:production_id/:id)
     get  "/signups/auditions/:production_id/:id", to: "audition_cycles#show", as: "signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/edit", to: "audition_cycles#edit", as: "edit_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id", to: "audition_cycles#update", as: "update_signups_auditions_cycle"
     delete "/signups/auditions/:production_id/:id", to: "audition_cycles#destroy", as: "destroy_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/form", to: "audition_cycles#form", as: "form_signups_auditions_cycle"
@@ -561,12 +563,9 @@ Rails.application.routes.draw do
     patch "/signups/auditions/:production_id/:id/archive", to: "audition_cycles#archive", as: "archive_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
-    get "/signups/auditions/:production_id/:id/prepare", to: "auditions#prepare", as: "prepare_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/update_reviewers", to: "auditions#update_reviewers", as: "update_reviewers_signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/publicize", to: "auditions#publicize", as: "publicize_signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/review", to: "auditions#review", as: "review_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations_signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/run", to: "auditions#run", as: "run_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/casting", to: "auditions#casting", as: "casting_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/casting/select", to: "auditions#casting_select", as: "casting_select_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment_signups_auditions_cycle"
@@ -574,7 +573,6 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:id/finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/schedule_auditions", to: "auditions#schedule_auditions", as: "schedule_auditions_signups_auditions_cycle"
-    get  "/signups/auditions/:production_id/:id/communicate", to: "auditions#communicate", as: "communicate_signups_auditions_cycle"
 
     # Sign-ups > Auditions > Requests
     get  "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#index", as: "signups_auditions_cycle_requests"
@@ -1170,119 +1168,6 @@ Rails.application.routes.draw do
     delete "courses/:course_offering_id/payout/line_items/:line_item_id", to: "course_offering_payouts#remove_line_item", as: "course_offering_payout_remove_line_item"
     post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
     post "courses/:course_offering_id/payout/mark_all_paid",    to: "course_offering_payouts#mark_all_paid",           as: "course_offering_payout_mark_all_paid"
-
-    # Ticketing section - org-level
-    get "ticketing", to: "ticketing#index", as: "ticketing_index"
-    post "ticketing/create_missing_listings", to: "ticketing#create_missing_listings", as: "ticketing_create_missing_listings"
-    post "ticketing/sync_all", to: "ticketing#sync_all", as: "ticketing_sync_all"
-
-    # Ticketing Setup Wizard - link provider events to shows
-    get    "ticketing/setup/start",           to: "ticketing_setup_wizard#start",           as: "ticketing_setup_wizard_start"
-    get    "ticketing/setup/production",      to: "ticketing_setup_wizard#production",      as: "ticketing_setup_wizard_production"
-    post   "ticketing/setup/production",      to: "ticketing_setup_wizard#save_production", as: "ticketing_setup_wizard_save_production"
-    get    "ticketing/setup/providers",       to: "ticketing_setup_wizard#providers",       as: "ticketing_setup_wizard_providers"
-    post   "ticketing/setup/providers",       to: "ticketing_setup_wizard#save_providers",  as: "ticketing_setup_wizard_save_providers"
-    get    "ticketing/setup/link",            to: "ticketing_setup_wizard#link_events",     as: "ticketing_setup_wizard_link_events"
-    post   "ticketing/setup/fetch",           to: "ticketing_setup_wizard#fetch_events",    as: "ticketing_setup_wizard_fetch_events"
-    post   "ticketing/setup/link",            to: "ticketing_setup_wizard#save_links",      as: "ticketing_setup_wizard_save_links"
-    post   "ticketing/setup/create",          to: "ticketing_setup_wizard#create_setup",    as: "ticketing_setup_wizard_create"
-    delete "ticketing/setup/cancel",          to: "ticketing_setup_wizard#cancel",          as: "ticketing_setup_wizard_cancel"
-
-    # Ticketing Provider Wizard (must be before :id routes)
-    get "ticketing/providers/wizard/select", to: "ticketing_provider_wizard#select_provider", as: "ticketing_provider_wizard_select"
-    get "ticketing/providers/wizard/ticket-tailor", to: "ticketing_provider_wizard#ticket_tailor_credentials", as: "ticketing_provider_wizard_ticket_tailor"
-    post "ticketing/providers/wizard/ticket-tailor", to: "ticketing_provider_wizard#save_ticket_tailor_credentials"
-    get "ticketing/providers/wizard/eventbrite", to: "ticketing_provider_wizard#eventbrite_credentials", as: "ticketing_provider_wizard_eventbrite"
-    post "ticketing/providers/wizard/eventbrite", to: "ticketing_provider_wizard#save_eventbrite_credentials"
-    get "ticketing/providers/wizard/webhooks", to: "ticketing_provider_wizard#configure_webhooks", as: "ticketing_provider_wizard_configure_webhooks"
-    post "ticketing/providers/wizard/webhooks", to: "ticketing_provider_wizard#save_webhooks"
-    get "ticketing/providers/wizard/test", to: "ticketing_provider_wizard#test_connection", as: "ticketing_provider_wizard_test_connection"
-    post "ticketing/providers/wizard/test", to: "ticketing_provider_wizard#run_test", as: "ticketing_provider_wizard_run_test"
-    get "ticketing/providers/wizard/complete", to: "ticketing_provider_wizard#complete", as: "ticketing_provider_wizard_complete"
-
-    # Ticketing Providers (integration settings)
-    get "ticketing/providers", to: "ticketing_providers#index", as: "ticketing_providers"
-    get "ticketing/providers/new", to: "ticketing_provider_wizard#select_provider", as: "new_ticketing_provider"
-    post "ticketing/providers", to: "ticketing_providers#create", as: "create_ticketing_provider"
-    get "ticketing/providers/:id", to: "ticketing_providers#show", as: "ticketing_provider"
-    get "ticketing/providers/:id/edit", to: "ticketing_providers#edit", as: "edit_ticketing_provider"
-    patch "ticketing/providers/:id", to: "ticketing_providers#update"
-    put "ticketing/providers/:id", to: "ticketing_providers#update"
-    delete "ticketing/providers/:id", to: "ticketing_providers#destroy"
-    post "ticketing/providers/:id/test_connection", to: "ticketing_providers#test_connection", as: "test_ticketing_provider"
-    post "ticketing/providers/:id/sync", to: "ticketing_providers#sync", as: "sync_ticketing_provider"
-    post "ticketing/providers/:id/sync_events", to: "ticketing_providers#sync_events", as: "sync_events_ticketing_provider"
-    post "ticketing/providers/:id/confirm_match/:event_id", to: "ticketing_providers#confirm_match", as: "confirm_match_ticketing_provider"
-    post "ticketing/providers/:id/reject_match/:event_id", to: "ticketing_providers#reject_match", as: "reject_match_ticketing_provider"
-
-    # Seating Configurations
-    get "ticketing/seating", to: "seating_configurations#index", as: "seating_configurations"
-    get "ticketing/seating/new", to: "seating_configurations#new", as: "new_seating_configuration"
-    post "ticketing/seating", to: "seating_configurations#create"
-    get "ticketing/seating/:id", to: "seating_configurations#show", as: "seating_configuration"
-    get "ticketing/seating/:id/edit", to: "seating_configurations#edit", as: "edit_seating_configuration"
-    patch "ticketing/seating/:id", to: "seating_configurations#update"
-    put "ticketing/seating/:id", to: "seating_configurations#update"
-    delete "ticketing/seating/:id", to: "seating_configurations#destroy"
-
-    # Seating Configuration Wizard
-    get "ticketing/seating/wizard/basics", to: "seating_wizard#basics", as: "seating_wizard_basics"
-    post "ticketing/seating/wizard/basics", to: "seating_wizard#save_basics"
-    get "ticketing/seating/wizard/zones", to: "seating_wizard#zones", as: "seating_wizard_zones"
-    post "ticketing/seating/wizard/zones", to: "seating_wizard#save_zones"
-    get "ticketing/seating/wizard/review", to: "seating_wizard#review", as: "seating_wizard_review"
-    post "ticketing/seating/wizard/create", to: "seating_wizard#create", as: "seating_wizard_create"
-    delete "ticketing/seating/wizard/cancel", to: "seating_wizard#cancel", as: "seating_wizard_cancel"
-
-    # Show Ticketing - link shows to ticketing
-    get "ticketing/shows", to: "show_ticketings#index", as: "show_ticketings"
-    post "ticketing/shows/:production_id/enable", to: "show_ticketings#enable_production", as: "enable_production_ticketing"
-    delete "ticketing/shows/:production_id/disable", to: "show_ticketings#disable_production", as: "disable_production_ticketing"
-    post "ticketing/shows/:production_id/sync", to: "show_ticketings#sync_production", as: "sync_production_ticketing"
-    post "ticketing/shows/:production_id/activate", to: "show_ticketings#activate_engine", as: "activate_production_ticketing"
-    post "ticketing/shows/:production_id/pause", to: "show_ticketings#pause_engine", as: "pause_production_ticketing"
-    get "ticketing/shows/:production_id", to: "show_ticketings#production", as: "production_show_ticketings"
-
-    # Show-level override routes (for engine-based ticketing)
-    post "ticketing/shows/:production_id/:show_id/exclude", to: "show_ticketings#toggle_exclude", as: "toggle_exclude_show_ticketing"
-    post "ticketing/shows/:production_id/:show_id/sync_show", to: "show_ticketings#sync_show", as: "sync_single_show_ticketing"
-    get "ticketing/shows/:production_id/:show_id/override", to: "show_ticketings#edit_override", as: "edit_override_show_ticketing"
-    patch "ticketing/shows/:production_id/:show_id/override", to: "show_ticketings#update_override"
-
-    get "ticketing/shows/:production_id/:show_id", to: "show_ticketings#show", as: "show_ticketing"
-    get "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#setup", as: "setup_show_ticketing"
-    post "ticketing/shows/:production_id/:show_id/setup", to: "show_ticketings#create_setup"
-    get "ticketing/shows/:production_id/:show_id/edit", to: "show_ticketings#edit", as: "edit_show_ticketing"
-    patch "ticketing/shows/:production_id/:show_id", to: "show_ticketings#update"
-    post "ticketing/shows/:production_id/:show_id/sync", to: "show_ticketings#sync", as: "sync_show_ticketing"
-
-    # Ticket Listings - per-provider listings for a show
-    scope "ticketing/shows/:production_id/:show_id" do
-      get "listings", to: "ticket_listings#index", as: "ticket_listings"
-      get "listings/new", to: "ticket_listings#new", as: "new_ticket_listing"
-      post "listings", to: "ticket_listings#create"
-      get "listings/:id", to: "ticket_listings#show", as: "ticket_listing"
-      get "listings/:id/edit", to: "ticket_listings#edit", as: "edit_ticket_listing"
-      patch "listings/:id", to: "ticket_listings#update"
-      delete "listings/:id", to: "ticket_listings#destroy"
-      post "listings/:id/publish", to: "ticket_listings#publish", as: "publish_ticket_listing"
-      post "listings/:id/sync", to: "ticket_listings#sync", as: "sync_ticket_listing"
-    end
-
-    # Ticket Sales overview
-    get "ticketing/sales", to: "ticket_sales#index", as: "ticket_sales"
-    get "ticketing/sales/:production_id", to: "ticket_sales#production", as: "production_ticket_sales"
-    get "ticketing/sales/:production_id/:show_id", to: "ticket_sales#show", as: "show_ticket_sales"
-
-    # Sync Rules
-    get "ticketing/sync_rules", to: "ticket_sync_rules#index", as: "ticket_sync_rules"
-    get "ticketing/sync_rules/new", to: "ticket_sync_rules#new", as: "new_ticket_sync_rule"
-    post "ticketing/sync_rules", to: "ticket_sync_rules#create"
-    get "ticketing/sync_rules/:id", to: "ticket_sync_rules#show", as: "ticket_sync_rule"
-    get "ticketing/sync_rules/:id/edit", to: "ticket_sync_rules#edit", as: "edit_ticket_sync_rule"
-    patch "ticketing/sync_rules/:id", to: "ticket_sync_rules#update"
-    delete "ticketing/sync_rules/:id", to: "ticket_sync_rules#destroy"
-    post "ticketing/sync_rules/:id/run", to: "ticket_sync_rules#run", as: "run_ticket_sync_rule"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
     # resources :email_groups, only: %i[create update destroy] (moved to communications)

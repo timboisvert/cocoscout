@@ -1,0 +1,38 @@
+<%
+  # Topical navigation for an audition cycle.
+  # Required local: current_topic — one of :form, :requests, :sessions, :casting, :reviewers, :settings
+  # Optional local: audition_cycle (defaults to @audition_cycle)
+  cycle = local_assigns[:audition_cycle] || @audition_cycle
+  is_manager = current_user_can_manage?(@production)
+  show_sessions = cycle.present? && cycle.accepts_in_person_auditions?
+
+  primary = []
+  primary << { key: :form,     label: "Form",     path: manage_form_signups_auditions_cycle_path(@production, cycle) }
+  primary << { key: :requests, label: "Requests", path: manage_signups_auditions_cycle_requests_path(@production, cycle) }
+  primary << { key: :sessions, label: "Sessions", path: manage_signups_auditions_cycle_sessions_path(@production, cycle) } if show_sessions
+  primary << { key: :casting,  label: "Casting",  path: manage_casting_signups_auditions_cycle_path(@production, cycle) } if is_manager
+%>
+
+<div class="border-b border-gray-200 mb-6">
+  <div class="flex items-center justify-between">
+    <nav class="flex flex-wrap gap-1 -mb-px" aria-label="Audition topics">
+      <% primary.each do |topic| %>
+        <% active = topic[:key] == current_topic %>
+        <%= link_to topic[:path], class: "px-4 py-3 text-sm font-medium border-b-2 transition-colors no-underline #{active ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}" do %>
+          <%= topic[:label] %>
+        <% end %>
+      <% end %>
+    </nav>
+
+    <% if is_manager %>
+      <%= link_to manage_settings_signups_auditions_cycle_path(@production, cycle),
+            class: "p-2 mb-px rounded-md text-sm transition-colors no-underline #{current_topic == :settings ? 'text-pink-600' : 'text-gray-500 hover:text-gray-900'}",
+            title: "Settings" do %>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      <% end %>
+    <% end %>
+  </div>
+</div>

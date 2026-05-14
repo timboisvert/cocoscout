@@ -20,7 +20,7 @@
                   <%= session[:duration_minutes] %> min · <%= session[:is_online] ? "Online" : (location&.name || "No location") %>
                 </p>
               </div>
-              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button type="button"
                         class="cursor-pointer"
                         data-action="click->session-wizard#openEditModal"

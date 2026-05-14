@@ -1,0 +1,198 @@
+<% content_for :title, "Audition Settings" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)]
+    ],
+    text: "Settings",
+    links: []
+  } %>
+
+  <%= render partial: "cycle_status_panel" %>
+  <%= render "topical_nav", current_topic: :settings %>
+  <%= render partial: "archived_banner" %>
+
+  <%= form_with(model: @audition_cycle, url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch) do |form| %>
+
+    <%# ===== Audition Format ===== %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Audition Format" %>
+      <div class="p-5">
+        <p class="text-sm text-gray-500 mb-4">Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.</p>
+
+        <div class="flex items-center justify-between py-3 border-b border-gray-100">
+          <div>
+            <h4 class="font-medium text-gray-900">Scheduled Sessions</h4>
+            <p class="text-sm text-gray-500">Manage in-person audition sessions</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= form.check_box :allow_in_person_auditions, class: "sr-only peer", checked: @audition_cycle.allow_in_person_auditions %>
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between py-3 border-b border-gray-100">
+          <div>
+            <h4 class="font-medium text-gray-900">Video Submissions</h4>
+            <p class="text-sm text-gray-500">Allow performers to submit video auditions</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= form.check_box :allow_video_submissions, class: "sr-only peer", checked: @audition_cycle.allow_video_submissions %>
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between py-3">
+          <div>
+            <h4 class="font-medium text-gray-900">List in Auditions Directory</h4>
+            <p class="text-sm text-gray-500">Make this audition discoverable in the public directory</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= form.check_box :listed_in_directory, class: "sr-only peer", checked: @audition_cycle.listed_in_directory %>
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <%# ===== Request Window ===== %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Request Window" %>
+      <div class="p-5">
+        <p class="text-sm text-gray-500 mb-5">When should the request window open? Optionally set a close date, or leave it open-ended.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <%= form.label :opens_at, "Open At", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 w-full", { "border-gray-400": @audition_cycle.errors[:opens_at].none?, "border-pink-500": @audition_cycle.errors[:opens_at].any? }] %>
+          </div>
+          <div data-controller="date-field-toggle">
+            <%= form.label :closes_at, "Close At (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.hidden_field :closes_at, data: { date_field_toggle_target: "hiddenField" } %>
+            <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 w-full", { "border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any? }], data: { date_field_toggle_target: "field" }, name: "" %>
+            <a href="#" class="text-sm text-pink-500 underline mt-1 inline-block" data-action="click->date-field-toggle#toggle" data-date-field-toggle-target="link"></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ===== Notifications ===== %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Notifications" %>
+      <div class="p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-medium text-gray-900">Submission Notifications</h4>
+            <p class="text-sm text-gray-500">Email the production team when someone submits an audition</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= form.check_box :notify_on_submission, class: "sr-only peer" %>
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <%# ===== Review Team (inside the same form) ===== %>
+    <%
+      reviewer_type = @audition_cycle.reviewer_access_type.presence || "managers"
+      selected_reviewer_ids = @audition_cycle.reviewer_people.pluck(:id).map(&:to_s)
+    %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-controller="reviewer-wizard">
+      <%= render "shared/card_header", title: "Review Team" %>
+      <div class="p-5 space-y-3">
+        <p class="text-sm text-gray-500">Who can view and vote on submissions and auditions.</p>
+
+        <!-- Production Team -->
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+          <label class="flex items-start cursor-pointer">
+            <input type="radio" name="reviewer_access_type" value="managers"
+                   <%= "checked" if reviewer_type == "managers" %>
+                   class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                   data-action="change->reviewer-wizard#toggleSection"
+                   data-reviewer-wizard-target="managersRadio">
+            <div class="ml-3 flex-1">
+              <p class="font-medium text-gray-900">Production Team</p>
+              <p class="text-sm text-gray-500">Only production managers and company managers can review</p>
+            </div>
+          </label>
+        </div>
+
+        <!-- Entire Talent Pool -->
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+          <label class="flex items-start cursor-pointer">
+            <input type="radio" name="reviewer_access_type" value="all"
+                   <%= "checked" if reviewer_type == "all" %>
+                   class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                   data-action="change->reviewer-wizard#toggleSection"
+                   data-reviewer-wizard-target="allRadio">
+            <div class="ml-3 flex-1">
+              <p class="font-medium text-gray-900">Everyone in the Talent Pool</p>
+              <p class="text-sm text-gray-500">All talent pool members can view and vote on submissions</p>
+            </div>
+          </label>
+        </div>
+
+        <!-- Specific People -->
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+          <label class="flex items-start cursor-pointer">
+            <input type="radio" name="reviewer_access_type" value="specific"
+                   <%= "checked" if reviewer_type == "specific" %>
+                   class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                   data-action="change->reviewer-wizard#toggleSection"
+                   data-reviewer-wizard-target="specificRadio">
+            <div class="ml-3 flex-1">
+              <p class="font-medium text-gray-900">Specific People</p>
+              <p class="text-sm text-gray-500">Choose exactly who can review</p>
+            </div>
+          </label>
+        </div>
+
+        <!-- People Selector (shown when "specific" is selected) -->
+        <div data-reviewer-wizard-target="specificSection" class="<%= 'hidden' unless reviewer_type == 'specific' %>">
+          <% if @talent_pool_people.any? %>
+            <div class="bg-white border border-gray-200 rounded-lg p-4 max-h-80 overflow-y-auto">
+              <p class="text-sm font-medium text-gray-700 mb-3">Select reviewers:</p>
+              <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                <% @talent_pool_people.each do |person| %>
+                  <% is_selected = selected_reviewer_ids.include?(person.id.to_s) %>
+                  <label class="relative cursor-pointer group">
+                    <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-1">
+                      <div class="absolute top-1 right-1 z-10">
+                        <input type="checkbox" name="reviewer_person_ids[]" value="<%= person.id %>"
+                               <%= "checked" if is_selected %>
+                               class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer">
+                      </div>
+                      <% if person.headshot&.attached? %>
+                        <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy", alt: person.name %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <div class="text-lg font-bold text-gray-500"><%= person.initials %></div>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="text-xs font-medium text-gray-900 truncate text-center" title="<%= person.name %>">
+                      <%= person.first_name %>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <div class="bg-gray-100 rounded-lg p-4 text-center">
+              <p class="text-sm text-gray-500">No people in the talent pool yet.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <%= render "shared/button", text: "Save Settings", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

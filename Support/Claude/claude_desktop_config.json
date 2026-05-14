@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "rails": {
+            "command": "/Users/tim/.rvm/rubies/ruby-3.3.1/bin/ruby",
+            "args": [
+                "/Users/tim/.rvm/gems/ruby-3.3.1/bin/rails-mcp-server"
+            ],
+            "env": {
+                "RAILS_MCP_PROJECT_ROOT": "/Users/tim/Code/CocoScout"
+            }
+        }
+    }
+}

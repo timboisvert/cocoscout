@@ -19,26 +19,6 @@ development:
     class: UpdateSignUpStatusesJob
     schedule: every minute
 
-  ticketing_provider_health_check:
-    class: TicketingProviderHealthCheckJob
-    schedule: every 15 minutes
-
-  production_ticketing_sync:
-    class: ProductionTicketingSyncJob
-    schedule: every 5 minutes
-
-  ticketing_sales_sync:
-    class: TicketingSalesSyncJob
-    schedule: every 10 minutes
-
-  ticketing_event_matcher:
-    class: TicketingEventMatcherJob
-    schedule: every 15 minutes
-
-  provider_event_sync:
-    class: ProviderEventSyncJob
-    schedule: every hour
-
   contract_completion:
     class: ContractCompletionJob
     schedule: every hour
@@ -71,26 +51,6 @@ production:
   unread_digest:
     class: UnreadDigestJob
     schedule: every 15 minutes
-
-  ticketing_provider_health_check:
-    class: TicketingProviderHealthCheckJob
-    schedule: every 15 minutes
-
-  production_ticketing_sync:
-    class: ProductionTicketingSyncJob
-    schedule: every 5 minutes
-
-  ticketing_sales_sync:
-    class: TicketingSalesSyncJob
-    schedule: every 10 minutes
-
-  ticketing_event_matcher:
-    class: TicketingEventMatcherJob
-    schedule: every 15 minutes
-
-  provider_event_sync:
-    class: ProviderEventSyncJob
-    schedule: every hour
 
   contract_completion:
     class: ContractCompletionJob

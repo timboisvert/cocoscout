@@ -39,6 +39,7 @@ class CourseOffering < ApplicationRecord
 
   before_validation :generate_short_code, on: :create
   after_create :ensure_instructor_role
+  after_commit :provision_stripe_resources_if_needed, on: %i[create update]
 
   scope :active, -> { where(status: %w[open closed]) }
   scope :accepting, -> { open }
@@ -142,6 +143,19 @@ class CourseOffering < ApplicationRecord
       role.category = "technical"
       role.quantity = 1
     end
+  end
+
+  # Safety net: any path that lands an offering in :open without Stripe set up
+  # provisions resources here. The service is idempotent and only creates what's
+  # missing, so it's safe alongside controller paths that call it explicitly.
+  def provision_stripe_resources_if_needed
+    return unless open?
+    return if stripe_price_id.present? && stripe_product_id.present?
+    return if Stripe.api_key.blank? # safety for test / non-Stripe environments
+
+    CourseOfferingStripeService.new(self).ensure_stripe_resources!
+  rescue CourseOfferingStripeService::StripeError => e
+    Rails.logger.error "[CourseOffering #{id}] Failed to provision Stripe resources: #{e.message}"
   end
 
   def format_cents(cents)

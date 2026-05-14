@@ -236,10 +236,58 @@ module Manage
       @wizard_state[:audition_voting_enabled] = params[:audition_voting_enabled] == "1"
 
       save_wizard_state
+      redirect_to manage_signups_auditions_wizard_form_starter_path(@production)
+    end
+
+    # Step 6: Form Starter (build the form's questions)
+    def form_starter
+      @wizard_state[:form_starter_questions] ||= []
+    end
+
+    def save_form_starter
+      save_wizard_state
       redirect_to manage_signups_auditions_wizard_review_path(@production)
     end
 
-    # Step 6: Review & Create
+    def add_form_question
+      text = params[:text].to_s.strip
+      if text.blank?
+        flash[:alert] = "Question text is required"
+        redirect_to manage_signups_auditions_wizard_form_starter_path(@production) and return
+      end
+
+      type_class = QuestionTypes::Base.find(params[:question_type])
+      qtype = type_class ? type_class.key : "textarea"
+
+      options = if type_class&.needs_options?
+        params[:options].to_s.split("\n").map(&:strip).reject(&:blank?)
+      else
+        []
+      end
+
+      if type_class&.needs_options? && options.empty?
+        flash[:alert] = "This question type needs at least one option"
+        redirect_to manage_signups_auditions_wizard_form_starter_path(@production) and return
+      end
+
+      @wizard_state[:form_starter_questions] ||= []
+      @wizard_state[:form_starter_questions] << {
+        text: text,
+        question_type: qtype,
+        required: params[:required] == "1",
+        options: options
+      }
+      save_wizard_state
+      redirect_to manage_signups_auditions_wizard_form_starter_path(@production), notice: "Question added"
+    end
+
+    def delete_form_question
+      @wizard_state[:form_starter_questions]&.delete_at(params[:index].to_i)
+      save_wizard_state
+      redirect_to manage_signups_auditions_wizard_form_starter_path(@production), notice: "Question removed"
+    end
+
+    # Step 7: Review & Create
     def review
       # Show summary of all settings before creating
     end
@@ -292,6 +340,20 @@ module Manage
                 start_at: Time.zone.parse(session_data[:start_at]),
                 location_id: session_data[:location_id]
               )
+            end
+          end
+
+          # Seed starter form questions
+          starter_questions = @wizard_state[:form_starter_questions] || []
+          starter_questions.each_with_index do |q, idx|
+            question = @audition_cycle.questions.create!(
+              text: q[:text] || q["text"],
+              question_type: q[:question_type] || q["question_type"],
+              required: q[:required] || q["required"] || false,
+              position: idx
+            )
+            (q[:options] || q["options"] || []).each do |opt_text|
+              question.question_options.create!(text: opt_text)
             end
           end
 

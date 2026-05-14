@@ -224,52 +224,11 @@ class SuperadminController < ApplicationController
       location_ids = organization.locations.pluck(:id)
       location_space_ids = location_ids.any? ? LocationSpace.where(location_id: location_ids).pluck(:id) : []
       show_ids = production_ids.any? ? Show.where(production_id: production_ids).pluck(:id) : []
-      ticketing_provider_ids = organization.ticketing_providers.pluck(:id)
-      seating_config_ids = organization.seating_configurations.pluck(:id)
-
-      # --- Ticketing chain (deepest first) ---
-      if show_ids.any?
-        show_ticketing_ids = ShowTicketing.where(show_id: show_ids).pluck(:id)
-        if show_ticketing_ids.any?
-          show_ticket_tier_ids = ShowTicketTier.where(show_ticketing_id: show_ticketing_ids).pluck(:id)
-          if show_ticket_tier_ids.any?
-            TicketSale.where(show_ticket_tier_id: show_ticket_tier_ids).delete_all
-            TicketOffer.where(show_ticket_tier_id: show_ticket_tier_ids).delete_all
-          end
-        end
-      end
-      if ticketing_provider_ids.any?
-        ticket_listing_ids = TicketListing.where(ticketing_provider_id: ticketing_provider_ids).pluck(:id)
-        if ticket_listing_ids.any?
-          TicketSale.where(ticket_offer_id: TicketOffer.where(ticket_listing_id: ticket_listing_ids).select(:id)).delete_all
-          TicketOffer.where(ticket_listing_id: ticket_listing_ids).delete_all
-          WebhookLog.where(ticket_listing_id: ticket_listing_ids).delete_all
-          TicketListing.where(id: ticket_listing_ids).delete_all
-        end
-        TicketingProviderSetup.where(ticketing_provider_id: ticketing_provider_ids).delete_all
-      end
-
-      # --- Remote ticketing / provider events (remote refs provider) ---
-      RemoteTicketingEvent.where(organization_id: org_id).delete_all
-      if production_ids.any?
-        RemoteTicketingEvent.where(production_ticketing_setup_id: ProductionTicketingSetup.where(production_id: production_ids).select(:id)).delete_all
-      end
-      if ticketing_provider_ids.any?
-        RemoteTicketingEvent.where(ticketing_provider_id: ticketing_provider_ids).delete_all
-      end
-      ProviderEvent.where(organization_id: org_id).delete_all
-      if ticketing_provider_ids.any?
-        ProviderEvent.where(ticketing_provider_id: ticketing_provider_ids).delete_all
-      end
 
       # --- Show-level references not handled by dependent: ---
       if show_ids.any?
         CalendarEvent.where(show_id: show_ids).delete_all if defined?(CalendarEvent)
-        ShowTicketingRule.where(show_id: show_ids).delete_all if defined?(ShowTicketingRule)
-        TicketingActivity.where(show_id: show_ids).delete_all
         Message.where(show_id: show_ids).update_all(show_id: nil)
-        RemoteTicketingEvent.where(show_id: show_ids).update_all(show_id: nil)
-        RemoteTicketingEvent.where(suggested_show_id: show_ids).update_all(suggested_show_id: nil)
       end
 
       # --- Course registrations (restrict_with_error on course_offerings) ---
@@ -278,14 +237,8 @@ class SuperadminController < ApplicationController
         CourseRegistration.where(course_offering_id: course_offering_ids).delete_all if course_offering_ids.any?
       end
 
-      # --- Seating config references ---
-      if seating_config_ids.any?
-        ProductionTicketingSetup.where(seating_configuration_id: seating_config_ids).update_all(seating_configuration_id: nil)
-      end
-
       # --- Location space references ---
       if location_space_ids.any?
-        SeatingConfiguration.where(location_space_id: location_space_ids).update_all(location_space_id: nil)
         Show.where(location_space_id: location_space_ids).update_all(location_space_id: nil)
         space_rental_ids = SpaceRental.where(location_space_id: location_space_ids).pluck(:id)
         Show.where(space_rental_id: space_rental_ids).update_all(space_rental_id: nil) if space_rental_ids.any?
@@ -299,13 +252,10 @@ class SuperadminController < ApplicationController
         SpaceRental.where(location_id: location_ids).delete_all
         AuditionSession.where(location_id: location_ids).update_all(location_id: nil)
         Show.where(location_id: location_ids).update_all(location_id: nil)
-        SeatingConfiguration.where(location_id: location_ids).update_all(location_id: nil)
-        ProductionTicketingSetup.where(default_location_id: location_ids).update_all(default_location_id: nil)
       end
 
       # --- Production references not handled by dependent: ---
       if production_ids.any?
-        TicketingActivity.where(production_id: production_ids).delete_all
         PayoutSchemeDefault.where(production_id: production_ids).delete_all
         CastingTableProduction.where(production_id: production_ids).delete_all
         CastAssignmentStage.where(production_id: production_ids).delete_all
@@ -315,7 +265,6 @@ class SuperadminController < ApplicationController
       PersonInvitation.where(organization_id: org_id).delete_all
       EmailLog.where(organization_id: org_id).delete_all
       Message.where(organization_id: org_id).destroy_all
-      ProductionTicketingSetup.where(organization_id: org_id).delete_all
 
       # --- Talent pool self-reference ---
       Organization.where(id: org_id).update_all(organization_talent_pool_id: nil)

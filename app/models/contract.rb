@@ -151,7 +151,7 @@ class Contract < ApplicationRecord
 
   # Financial summary
   def total_incoming
-    contract_payments.where(direction: "incoming").sum(:amount)
+    contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
   end
 
   def total_outgoing

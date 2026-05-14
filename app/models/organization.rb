@@ -14,10 +14,6 @@ class Organization < ApplicationRecord
   has_many :casting_tables, dependent: :destroy
   has_many :payroll_runs, dependent: :destroy
   has_many :agreement_templates, dependent: :destroy
-  has_many :ticketing_providers, dependent: :destroy
-  has_many :seating_configurations, dependent: :destroy
-  has_many :ticket_sync_rules, dependent: :destroy
-  has_many :production_ticketing_setups, through: :productions
   has_many :questionnaires, dependent: :destroy
   has_many :org_payouts, dependent: :destroy
   has_one :payroll_schedule, dependent: :destroy

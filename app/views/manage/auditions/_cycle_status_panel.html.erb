@@ -1,0 +1,75 @@
+<%
+  cycle = local_assigns[:audition_cycle] || @audition_cycle
+  return if cycle.blank?
+
+  status = cycle.timeline_status
+  status_label = status == :upcoming ? "Opens Soon" : status.to_s.titleize
+  status_color = case status
+                 when :open then "green"
+                 when :upcoming then "pink"
+                 else "gray"
+                 end
+
+  total_requests = cycle.audition_requests.active.count
+  scheduled = cycle.audition_sessions.joins(:auditions).distinct.count("auditions.auditionable_id")
+  cast_count = cycle.cast_assignment_stages.where(decision_type: :cast).count
+
+  format_label = if cycle.hybrid_auditions?
+    "Video + In-Person"
+  elsif cycle.video_only?
+    "Video Only"
+  else
+    "In-Person"
+  end
+
+  # Smart date phrase based on cycle timeline
+  fmt = ->(t) { t.strftime("%b %-d at %-l:%M %p") }
+  date_phrase = case status
+                when :upcoming
+                  "Opens #{fmt.call(cycle.opens_at)}"
+                when :open
+                  cycle.closes_at.present? ? "Closes #{fmt.call(cycle.closes_at)}" : "Open-ended"
+                when :closed
+                  cycle.closes_at.present? ? "Closed #{cycle.closes_at.strftime('%b %-d')}" : "Closed"
+                end
+
+  show_form_url = (status == :open || status == :upcoming)
+%>
+
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-4">
+  <%# Status line %>
+  <div class="flex items-center justify-between gap-3 text-sm">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-<%= status_color %>-100 text-<%= status_color %>-700">
+        <%= status_label %>
+      </span>
+      <span class="text-gray-700 font-medium"><%= format_label %></span>
+    </div>
+    <span class="text-gray-600 text-right flex-shrink-0"><%= date_phrase %></span>
+  </div>
+
+  <%# Form URL %>
+  <% if show_form_url %>
+    <div class="mt-3">
+      <%= render "shared/copy_url", url: cycle.respond_url %>
+    </div>
+  <% end %>
+
+  <%# Three metric cards %>
+  <div class="grid grid-cols-3 gap-3 mt-4">
+    <%= link_to manage_signups_auditions_cycle_requests_path(@production, cycle), class: "bg-gray-50 rounded-lg border border-gray-200 p-3 hover:border-pink-400 transition-colors no-underline" do %>
+      <div class="text-xs text-gray-500 mb-1">Requests</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= total_requests %></div>
+    <% end %>
+
+    <%= link_to manage_signups_auditions_cycle_sessions_path(@production, cycle), class: "bg-gray-50 rounded-lg border border-gray-200 p-3 hover:border-pink-400 transition-colors no-underline" do %>
+      <div class="text-xs text-gray-500 mb-1">Scheduled for an Audition</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= scheduled %><span class="text-gray-400 text-base"> of <%= total_requests %></span></div>
+    <% end %>
+
+    <%= link_to manage_casting_signups_auditions_cycle_path(@production, cycle), class: "bg-gray-50 rounded-lg border border-gray-200 p-3 hover:border-pink-400 transition-colors no-underline" do %>
+      <div class="text-xs text-gray-500 mb-1">Added to Cast</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= cast_count %></div>
+    <% end %>
+  </div>
+</div>

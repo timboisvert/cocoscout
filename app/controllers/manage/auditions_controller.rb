@@ -8,8 +8,7 @@ module Manage
                   except: %i[org_index index archive schedule_auditions add_to_session remove_from_session move_to_session]
     before_action :set_audition, only: %i[show edit update destroy cast_audition_vote]
     before_action :ensure_user_is_manager,
-                  except: %i[org_index index archive show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
-    before_action :ensure_user_has_role, only: %i[prepare publicize]
+                  except: %i[org_index index archive show casting casting_select schedule_auditions cast_audition_vote]
     before_action :ensure_audition_cycle_active, only: %i[cast_audition_vote]
 
     # GET /casting/auditions (org-wide)
@@ -60,13 +59,11 @@ module Manage
       @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc)
     end
 
-    # GET /auditions/prepare
-    def prepare
+    # GET /auditions/settings — cycle configuration (replaces /prepare and /edit)
+    def settings
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
-      @talent_pool_people = @production.effective_talent_pool.people.order(:name)
-
-      # Check for wizard in progress
       @wizard_in_progress = session[:audition_wizard].present? && session[:audition_wizard][@production.id.to_s].present?
+      @talent_pool_people = @production.effective_talent_pool&.people&.order(:name) || []
     end
 
     # PATCH /auditions/update_reviewers
@@ -84,27 +81,8 @@ module Manage
         end
       end
 
-      redirect_to manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle),
+      redirect_to manage_settings_signups_auditions_cycle_path(@production, @audition_cycle),
                   notice: "Audition review team updated successfully."
-    end
-
-    # GET /auditions/publicize - redirects to prepare (publicize section removed)
-    def publicize
-      redirect_to manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle)
-    end
-
-    # GET /auditions/review
-    def review
-      redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
-
-      # Load existing email templates for default groups
-      @invitation_accepted_group = @audition_cycle&.email_groups&.find_by(group_id: "invitation_accepted")
-      @invitation_not_accepted_group = @audition_cycle&.email_groups&.find_by(group_id: "invitation_not_accepted")
-    end
-
-    # GET /auditions/run
-    def run
-      redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
     end
 
     # GET /auditions/casting
@@ -181,8 +159,8 @@ module Manage
     def finalize_invitations
       audition_cycle = @production.audition_cycle
       audition_cycle.update(finalize_audition_invitations: params[:finalize])
-      redirect_to manage_review_signups_auditions_cycle_path(@production, audition_cycle),
-                  notice: "Audition invitations #{params[:finalize] == 'true' ? 'finalized' : 'unfin finalized'}"
+      redirect_to manage_signups_auditions_cycle_requests_path(@production, audition_cycle),
+                  notice: "Audition invitations #{params[:finalize] == 'true' ? 'finalized' : 'unfinalized'}"
     end
 
     # GET /auditions/schedule_auditions
@@ -781,7 +759,7 @@ module Manage
       notice_parts << "sent successfully" if notice_parts.any?
       notice_text = notice_parts.any? ? notice_parts.join(" and ") : "No notifications sent"
 
-      redirect_to manage_review_signups_auditions_cycle_path(@production, audition_cycle),
+      redirect_to manage_signups_auditions_cycle_requests_path(@production, audition_cycle),
                   notice: notice_text
     end
 
@@ -871,13 +849,6 @@ module Manage
 
     def redirect_to_archived_summary
       redirect_to manage_signups_auditions_cycle_path(@production, @audition_cycle)
-    end
-
-    def ensure_user_has_role
-      return if Current.user.role_for_production(@production).present?
-
-      redirect_to manage_review_signups_auditions_cycle_path(@production, @audition_cycle),
-                  alert: "You don't have permission to access this page."
     end
   end
 end

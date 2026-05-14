@@ -1,0 +1,128 @@
+<%
+  form_starter_step = @wizard_state[:allow_in_person_auditions] ? 7 : 6
+  question_types = QuestionTypes::Base.registry.values.sort_by(&:sort_order)
+  needs_options_keys = question_types.select { |t| t.needs_options? }.map(&:key)
+%>
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: form_starter_step, step_name: "Form" } do %>
+  <div data-controller="edit-modal wizard-question"
+       data-wizard-question-needs-options-keys-value="<%= needs_options_keys.to_json %>">
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Build your form</h2>
+    <p class="text-gray-600 mb-6">Add questions auditionees will answer when signing up. You can add more or edit details after the cycle is created.</p>
+
+    <%# List of pending questions %>
+    <% questions = @wizard_state[:form_starter_questions] || [] %>
+    <% if questions.any? %>
+      <div class="space-y-2 mb-4">
+        <% questions.each_with_index do |q, idx| %>
+          <%
+            text = q[:text] || q["text"]
+            qtype = q[:question_type] || q["question_type"]
+            required = q[:required] || q["required"]
+            options = q[:options] || q["options"] || []
+            type_class = QuestionTypes::Base.find(qtype)
+            type_label = type_class&.label || qtype.to_s.titleize
+          %>
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-900"><%= text %></p>
+              <p class="text-sm text-gray-500">
+                Type: <%= type_label %><%= " · Required" if required %>
+                <% if options.any? %>
+                  <span class="ml-1 text-gray-500">(Options: <%= options.join(", ") %>)</span>
+                <% end %>
+              </p>
+            </div>
+            <%= button_to manage_signups_auditions_wizard_delete_form_question_path(@production, index: idx),
+                  method: :delete,
+                  class: "inline-block",
+                  data: { turbo_confirm: "Remove this question?" } do %>
+              <%= render "shared/button", text: "Remove", variant: "ghost", size: "small", type: :button %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 border border-gray-200 border-dashed rounded-lg p-6 mb-4 text-center">
+        <p class="text-sm text-gray-500">No questions yet. Add one below, or skip this step and build the form later.</p>
+      </div>
+    <% end %>
+
+    <%# Add question button %>
+    <%= render "shared/button",
+          text: "Add Question",
+          variant: "secondary",
+          size: "medium",
+          icon: "plus",
+          type: :button,
+          data: { action: "click->edit-modal#open" } %>
+
+    <%# Add question modal %>
+    <div data-edit-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+         data-action="click->edit-modal#closeOnBackdrop keydown.esc@window->edit-modal#close">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" data-action="click->edit-modal#stopPropagation">
+        <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Add Question</h3>
+          <button type="button" data-action="click->edit-modal#close" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 py-5">
+          <%= form_with url: manage_signups_auditions_wizard_add_form_question_path(@production), method: :post, local: true do %>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Question</label>
+                <input type="text" name="text" required
+                       placeholder="e.g. What's your performance experience?"
+                       class="block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select name="question_type"
+                        data-wizard-question-target="typeSelect"
+                        data-action="change->wizard-question#typeChanged"
+                        class="block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+                  <% question_types.each do |type| %>
+                    <option value="<%= type.key %>" <%= "selected" if type.key == "textarea" %>><%= type.label %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div data-wizard-question-target="optionsSection" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
+                <textarea name="options" rows="4"
+                          placeholder="One option per line"
+                          class="block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500 font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Enter each choice on its own line.</p>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="required" value="1" class="h-4 w-4 border-gray-300 rounded accent-pink-500 cursor-pointer">
+                <span class="text-sm text-gray-700">Required</span>
+              </label>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+              <%= render "shared/button",
+                    text: "Cancel",
+                    variant: "ghost-cancel",
+                    size: "medium",
+                    type: :button,
+                    data: { action: "click->edit-modal#close" } %>
+              <%= render "shared/button", text: "Add Question", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Next button %>
+    <%= form_with url: manage_signups_auditions_wizard_save_form_starter_path(@production), method: :post, local: true do %>
+      <div class="mt-8 flex justify-between">
+        <%= link_to manage_signups_auditions_wizard_voting_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

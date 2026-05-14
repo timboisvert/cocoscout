@@ -64,7 +64,7 @@
               <% all_open_calls.each do |call_data| %>
                 <% cycle = call_data[:call] %>
                 <% production = call_data[:production] %>
-                <%= link_to manage_signups_auditions_path(production), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
+                <%= link_to manage_signups_auditions_cycle_requests_path(production, cycle), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
                   <% logo_variant = production.safe_logo_variant(:small) %>
                   <% if logo_variant %>
                     <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">

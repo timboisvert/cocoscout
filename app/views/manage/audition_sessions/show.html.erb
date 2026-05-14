@@ -6,11 +6,14 @@
       ["Sign-ups", manage_signups_path],
       [@production.name, manage_signups_production_path(@production)],
       ["Auditions", manage_signups_auditions_path(@production)],
-      ["Run Auditions", manage_run_signups_auditions_cycle_path(@production, @audition_cycle)]
+      ["Sessions", manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle)]
     ],
     text: "#{@audition_session.start_at.strftime("%b %-d, %Y at %-l:%M %p")}",
     links: []
   } %>
+
+  <%= render partial: "manage/auditions/cycle_status_panel" %>
+  <%= render partial: "manage/auditions/topical_nav", locals: { current_topic: :sessions } %>
 
   <% if current_user_has_role?(@production) %>
     <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -100,13 +103,13 @@
                   <%= truncate(requestable.name, length: 50, omission: "...") %>
                 </div>
                 <%# Acceptance status badge %>
-                <div class="mt-0.5">
+                <div class="mt-0.5" data-controller="tooltip" data-tooltip-text="<%= audition.accepted? ? 'Auditionee confirmed they will attend' : (audition.declined? ? 'Auditionee declined the slot' : 'Invitation sent — auditionee has not responded yet') %>">
                   <% if audition.accepted? %>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Confirmed</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">RSVP'd Yes</span>
                   <% elsif audition.declined? %>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Declined</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">RSVP'd No</span>
                   <% else %>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Awaiting Response</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">RSVP Pending</span>
                   <% end %>
                 </div>
               </div>

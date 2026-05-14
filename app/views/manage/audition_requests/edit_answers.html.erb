@@ -7,36 +7,37 @@
       ["Sign-ups", manage_signups_path],
       [@production.name, manage_signups_production_path(@production)],
       ["Auditions", manage_signups_auditions_path(@production)],
-      ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)],
-      [(@audition_cycle.video_only? ? "Video Auditions" : "Audition Requests"), manage_signups_auditions_cycle_requests_path(@production, @audition_cycle)],
+      ["Requests", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle)],
       [@audition_request.requestable.name, manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)]
     ],
     text: "Edit Answers",
     links: []
   } %>
 
-  <%= form_with(url: manage_update_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), method: :patch, class: "contents") do |form| %>
+  <%= turbo_frame_tag "edit_answers_frame", target: "_top" do %>
+    <%= form_with(url: manage_update_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), method: :patch, class: "contents") do |form| %>
 
-    <% if @questions.any? %>
-      <% @questions.each do |question| %>
-        <div class="my-5">
-          <label>
-            <%= question.text %>
-            <% if question.required %>
-              <span class="text-gray-500 text-sm">(required)</span>
-            <% end %>
-          </label>
+      <% if @questions.any? %>
+        <% @questions.each do |question| %>
+          <div class="my-5">
+            <label>
+              <%= question.text %>
+              <% if question.required %>
+                <span class="text-gray-500 text-sm">(required)</span>
+              <% end %>
+            </label>
 
-          <%= render_question_input(question, @answers, missing_required_questions: @missing_required_questions) %>
+            <%= render_question_input(question, @answers, missing_required_questions: @missing_required_questions) %>
 
-        </div>
+          </div>
+        <% end %>
       <% end %>
-    <% end %>
 
-    <div class="border-t border-gray-200 pt-5 mt-5">
-      <%= render "shared/button", text: "Update Answers", variant: "primary", size: "medium", type: :submit %>
-      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
-    </div>
+      <div class="border-t border-gray-200 pt-5 mt-5">
+        <%= render "shared/button", text: "Update Answers", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
+      </div>
+    <% end %>
   <% end %>
 
 </div>

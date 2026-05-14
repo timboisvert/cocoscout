@@ -1,19 +1,20 @@
 <% content_for :title, "Schedule Auditions" %>
 
-<div class="w-full mb-10" data-controller="drag-audition">
+<div class="w-full mb-10" data-controller="drag-audition location-modal audition-session-modal" data-production-id="<%= @production.id %>" data-audition-cycle-id="<%= @audition_cycle.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Sign-ups", manage_signups_path],
       [@production.name, manage_signups_production_path(@production)],
       ["Auditions", manage_signups_auditions_path(@production)],
-      ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)]
+      ["Sessions", manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle)]
     ],
     text: "Schedule Auditions",
     links: []
   } %>
 
-  <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+  <%= render partial: "cycle_status_panel" %>
+  <%= render partial: "topical_nav", locals: { current_topic: :sessions } %>
 
   <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -22,7 +23,7 @@
         <p class="text-sm text-gray-600 hidden sm:block">Drag each person from the right to a session on the left to schedule them.</p>
         <p class="text-sm text-gray-600 sm:hidden">Tap + on a session to add auditionees.</p>
       </div>
-      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: manage_review_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), variant: "primary" } %>
     </div>
   </div>
 
@@ -44,6 +45,8 @@
       </div>
     </div>
   </div>
+
+  <%= render "manage/audition_sessions/modals" %>
 
   <%# Mobile Add Modal %>
   <div data-drag-audition-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drag-audition#closeAddModal">
