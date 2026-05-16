@@ -1,0 +1,51 @@
+<%#
+  Renders the "History" tile that opens an infinite-scroll modal.
+
+  Locals:
+    person  - the Person whose history this is
+    entry   - the most-recent PersonHistoryFeed::Entry, or nil
+    modal_id - DOM id used to scope the open/close action (defaults to "history-modal-<person.id>")
+%>
+<% modal_id = local_assigns.fetch(:modal_id, "history-modal-#{person.id}") %>
+
+<div data-controller="history-modal"
+     data-history-modal-url-value="<%= history_manage_person_path(person) %>"
+     data-history-modal-modal-id-value="<%= modal_id %>">
+
+  <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-pink-400 transition-colors"
+       data-action="click->history-modal#open">
+    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">History</div>
+    <% if entry %>
+      <%= render partial: "manage/people/history_entry", locals: { entry: entry, compact: true } %>
+    <% else %>
+      <p class="text-sm text-gray-400">No activity yet</p>
+    <% end %>
+  </div>
+
+  <%# Modal — must be inside the controller scope for Stimulus targets to resolve %>
+  <div id="<%= modal_id %>"
+       class="hidden fixed inset-0 z-50 overflow-y-auto"
+       data-history-modal-target="modal"
+       data-action="click->history-modal#backdropClose">
+    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+    <div class="relative flex min-h-full items-start justify-center p-4 py-8">
+      <div class="relative w-full max-w-xl bg-white rounded-xl shadow-2xl"
+           data-action="click->history-modal#stopPropagation">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-900"><%= person.name %> &mdash; History</h3>
+          <button type="button" data-action="click->history-modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="max-h-[70vh] overflow-y-auto p-4"
+             data-history-modal-target="scroller"
+             data-action="scroll->history-modal#onScroll">
+          <div data-history-modal-target="list"></div>
+          <div data-history-modal-target="loading" class="text-center text-sm text-gray-400 py-4 hidden">Loading…</div>
+          <div data-history-modal-target="empty" class="text-center text-sm text-gray-400 py-8 hidden">No activity yet.</div>
+          <div data-history-modal-target="end" class="text-center text-xs text-gray-400 py-4 hidden">End of history</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

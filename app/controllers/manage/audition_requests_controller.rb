@@ -153,7 +153,27 @@ module Manage
           redirect_url = manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
-          format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
+          format.json do
+            votes = AuditionRequestVote.where(audition_request_id: @audition_request.id)
+                                       .includes(user: :default_person)
+                                       .order(created_at: :desc)
+                                       .to_a
+            counts = {
+              yes: votes.count { |v| v.vote == "yes" },
+              no: votes.count { |v| v.vote == "no" },
+              maybe: votes.count { |v| v.vote == "maybe" }
+            }
+            votes_html = render_to_string(partial: "manage/audition_requests/votes_list",
+                                          locals: { votes: votes },
+                                          formats: [ :html ])
+            render json: {
+              success: true,
+              vote: vote.vote,
+              comment: vote.comment,
+              counts: counts,
+              votes_html: votes_html
+            }
+          end
         end
       else
         respond_to do |format|

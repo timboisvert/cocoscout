@@ -206,6 +206,25 @@ class SlotManagementService
     end
   end
 
+  # Renames existing slots on an instance to follow the (presumably-updated) show
+  # date/time. Only meaningful for time_based slot generation; other modes are a
+  # no-op. Existing registrations stay attached to their slots by slot_id.
+  def regenerate_slots_for_instance!(instance)
+    return unless sign_up_form.slot_generation_mode == "time_based"
+
+    slots_data = build_slot_template(show: instance.show)
+    return if slots_data.empty?
+
+    existing_slots = instance.sign_up_slots.order(:position).to_a
+    ActiveRecord::Base.transaction do
+      existing_slots.each_with_index do |slot, idx|
+        template = slots_data[idx]
+        next unless template
+        slot.update!(name: template[:name])
+      end
+    end
+  end
+
   # Generate slots directly on the form (for shared_pool)
   def generate_slots_for_form!
     return if sign_up_form.sign_up_slots.any?

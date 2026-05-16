@@ -171,7 +171,7 @@
     <% end %>
 
     <%# Cast Section (show if there are assignments) %>
-    <% cast_assignments = @show.show_person_role_assignments %>
+    <% cast_assignments = @show.show_person_role_assignments.visible_to_performers %>
     <% if cast_assignments.any? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
         <div class="px-6 py-4 border-b border-gray-100">

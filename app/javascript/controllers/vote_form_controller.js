@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["comment"]
+    static targets = ["comment", "count"]
     static values = { saveUrl: String }
 
     // Get the visible comment input (handles mobile/desktop dual inputs)
@@ -22,6 +22,8 @@ export default class extends Controller {
         const comment = this.getVisibleCommentValue()
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
+        console.log('[vote-form] submitVote ->', url, { vote, comment })
+
         fetch(url, {
             method: 'POST',
             headers: {
@@ -31,13 +33,44 @@ export default class extends Controller {
             },
             body: JSON.stringify({ vote, comment })
         })
-            .then(r => r.json())
+            .then(r => {
+                console.log('[vote-form] vote response status', r.status, 'content-type', r.headers.get('content-type'))
+                return r.json()
+            })
             .then(data => {
+                console.log('[vote-form] vote response data', data)
                 if (data.success) {
                     this.updateVoteButtons(vote)
+                    this.updateCounts(data.counts)
+                    this.updateVotesList(data.votes_html)
                 }
             })
-            .catch(e => console.error('Vote failed:', e))
+            .catch(e => console.error('[vote-form] Vote failed:', e))
+    }
+
+    updateCounts(counts) {
+        if (!counts) return
+        this.countTargets.forEach(span => {
+            const key = span.dataset.voteCount
+            if (counts[key] !== undefined && counts[key] !== null) {
+                span.textContent = counts[key]
+            }
+        })
+    }
+
+    updateVotesList(html) {
+        if (typeof html !== 'string') return
+        const list = document.getElementById('votes-list')
+        const container = document.getElementById('votes-list-container')
+        if (list) list.innerHTML = html
+        if (container) {
+            // Show the container if it has any content (non-whitespace)
+            if (html.trim().length > 0) {
+                container.classList.remove('hidden')
+            } else {
+                container.classList.add('hidden')
+            }
+        }
     }
 
     updateVoteButtons(selectedVote) {
@@ -77,6 +110,9 @@ export default class extends Controller {
         const url = event.params.url
         const comment = this.getVisibleCommentValue()
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+        const btn = event.currentTarget
+
+        console.log('[vote-form] submitComment ->', url, { comment })
 
         fetch(url, {
             method: 'POST',
@@ -87,17 +123,23 @@ export default class extends Controller {
             },
             body: JSON.stringify({ comment })
         })
-            .then(r => r.json())
+            .then(r => {
+                console.log('[vote-form] response status', r.status, 'content-type', r.headers.get('content-type'))
+                return r.json()
+            })
             .then(data => {
+                console.log('[vote-form] response data', data)
+                console.log('[vote-form] votes_html length', data?.votes_html?.length)
+                console.log('[vote-form] votes-list element', document.getElementById('votes-list'))
                 if (data.success) {
-                    // Brief visual feedback on save button
-                    const btn = event.currentTarget
                     const originalText = btn.textContent
                     btn.textContent = '✓'
                     setTimeout(() => { btn.textContent = originalText }, 1500)
+                    this.updateCounts(data.counts)
+                    this.updateVotesList(data.votes_html)
                 }
             })
-            .catch(e => console.error('Comment save failed:', e))
+            .catch(e => console.error('[vote-form] Comment save failed:', e))
     }
 
     // Navigate to another page, saving comment first via fetch

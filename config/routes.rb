@@ -396,6 +396,8 @@ Rails.application.routes.draw do
     get  "/shows/:production_id/:id",      to: "shows#show", as: "show"
     get  "/shows/:production_id/:id/edit", to: "shows#edit", as: "edit_show"
     patch "/shows/:production_id/:id",     to: "shows#update", as: "update_show"
+    get "/shows/:production_id/:id/confirm_time_change", to: "shows#confirm_time_change", as: "confirm_time_change_show"
+    post "/shows/:production_id/:id/apply_time_change", to: "shows#apply_time_change", as: "apply_time_change_show"
     delete "/shows/:production_id/:id",    to: "shows#destroy"
     get "/shows/:production_id/:id/cancel", to: "shows#cancel", as: "cancel_show_form"
     patch "/shows/:production_id/:id/cancel_show", to: "shows#cancel_show", as: "cancel_show"
@@ -765,7 +767,6 @@ Rails.application.routes.draw do
 
     # Contacts - groups (new URL pattern: /manage/contacts/groups/:id)
     get  "/contacts/groups/:id", to: "groups#show", as: "contacts_group"
-    patch "/contacts/groups/:id", to: "groups#update", as: "update_contacts_group"
     delete "/contacts/groups/:id", to: "groups#destroy", as: "destroy_contacts_group"
     post "/contacts/groups/:id/add_to_cast", to: "groups#add_to_cast", as: "add_to_cast_contacts_group"
     post "/contacts/groups/:id/remove_from_cast", to: "groups#remove_from_cast", as: "remove_from_cast_contacts_group"
@@ -833,10 +834,11 @@ Rails.application.routes.draw do
         post :remove_from_organization
         patch :update_availability
         get :availability_modal
+        get :history
       end
     end
 
-    resources :groups, only: %i[show destroy update] do
+    resources :groups, only: %i[show destroy] do
       member do
         post :add_to_cast
         post :remove_from_cast

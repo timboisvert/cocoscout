@@ -1,5 +1,6 @@
-<div data-question-modal-target="modal" class="<%= @question.errors.any? ? '' : 'hidden' %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->question-modal#close">
-  <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white" data-action="click->question-modal#stopPropagation">
+<div data-question-modal-target="modal" class="<%= @question.errors.any? ? '' : 'hidden' %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50" data-action="click->question-modal#close">
+  <div class="flex min-h-full items-start justify-center p-4 py-12">
+    <div class="relative w-full max-w-2xl p-5 border shadow-lg rounded-md bg-white" data-action="click->question-modal#stopPropagation">
     <div class="flex items-center justify-between pb-3 border-b border-gray-200">
       <div>
         <h3 class="text-lg font-semibold text-gray-900" data-question-modal-target="title"><%= @question.persisted? ? 'Edit Question' : 'Add a Question' %></h3>
@@ -64,6 +65,7 @@
           <%= render "shared/button", text: (@question.persisted? ? "Update Question" : "Add Question"), variant: "primary", size: "small", type: :submit, data: { question_modal_target: "submitButton" } %>
         </div>
       <% end %>
+    </div>
     </div>
   </div>
 </div>

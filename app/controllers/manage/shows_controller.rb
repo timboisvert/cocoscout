@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series confirm_time_change apply_time_change]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -682,6 +682,21 @@ module Manage
         @show.poster.purge if update_params[:remove_poster] == "1" && @show.poster.attached?
         update_params.delete(:remove_poster)
 
+        # If the date/time is changing AND existing sign-up registrations are tied to
+        # this show, divert to a confirm screen so the manager picks how to handle them.
+        # Skip the diversion when applying a previously-confirmed change.
+        new_at = parse_param_datetime(update_params[:date_and_time])
+        time_changing = new_at && @show.date_and_time && new_at != @show.date_and_time
+        if time_changing && !params[:skip_time_change_confirm] && show_has_active_registrations?(@show)
+          session[:pending_show_time_change] = {
+            "show_id" => @show.id,
+            "new_date_and_time" => new_at.iso8601,
+            "update_params" => update_params.to_h
+          }
+          redirect_to manage_confirm_time_change_show_path(@production, @show)
+          return
+        end
+
         if @show.update(update_params)
           redirect_to manage_show_path(@production, @show),
                       notice: "#{@show.event_type.titleize} was successfully updated",
@@ -689,6 +704,66 @@ module Manage
         else
           render :edit, status: :unprocessable_entity
         end
+      end
+    end
+
+    # Shows the impact of a pending date/time change on existing sign-up registrations
+    # and lets the manager pick a strategy.
+    def confirm_time_change
+      pending = session[:pending_show_time_change]
+      if pending.blank? || pending["show_id"] != @show.id
+        redirect_to edit_manage_show_path(@production, @show), alert: "No pending time change."
+        return
+      end
+
+      @new_date_and_time = Time.zone.parse(pending["new_date_and_time"])
+      @affected_instances = active_signup_instances_for(@show)
+      @affected_registration_count = @affected_instances.sum { |i| active_registration_count(i) }
+      @uses_time_based_slots = @affected_instances.any? { |i| i.sign_up_form&.slot_generation_mode == "time_based" }
+    end
+
+    # Applies the chosen strategy: "leave" | "regenerate" | "cancel".
+    def apply_time_change
+      pending = session.delete(:pending_show_time_change)
+      if pending.blank? || pending["show_id"] != @show.id
+        redirect_to edit_manage_show_path(@production, @show), alert: "No pending time change."
+        return
+      end
+
+      strategy = params[:strategy].presence_in(%w[leave regenerate cancel]) || "leave"
+      update_params = ActionController::Parameters.new(pending["update_params"]).permit!
+
+      ActiveRecord::Base.transaction do
+        case strategy
+        when "cancel"
+          active_signup_instances_for(@show).each do |instance|
+            instance.sign_up_registrations.where.not(status: "cancelled").update_all(status: "cancelled")
+          end
+        when "regenerate", "leave"
+          # No-op pre-update; "regenerate" runs after the show saves so we have new date_and_time.
+        end
+
+        unless @show.update(update_params)
+          raise ActiveRecord::Rollback
+        end
+
+        if strategy == "regenerate"
+          active_signup_instances_for(@show).each do |instance|
+            SlotManagementService.new(instance.sign_up_form).regenerate_slots_for_instance!(instance)
+          end
+        end
+      end
+
+      if @show.errors.any?
+        redirect_to edit_manage_show_path(@production, @show), alert: @show.errors.full_messages.join(", ")
+      else
+        notice =
+          case strategy
+          when "regenerate" then "Time changed. Slot times regenerated for existing sign-ups."
+          when "cancel"     then "Time changed. Existing sign-up registrations were cancelled."
+          else                   "Time changed. Existing sign-up registrations were left in place."
+          end
+        redirect_to manage_show_path(@production, @show), notice: notice
       end
     end
 
@@ -1543,6 +1618,26 @@ module Manage
     end
 
     private
+
+    def parse_param_datetime(value)
+      return nil if value.blank?
+      return value if value.is_a?(Time) || value.is_a?(DateTime) || value.is_a?(ActiveSupport::TimeWithZone)
+      Time.zone.parse(value.to_s)
+    rescue ArgumentError
+      nil
+    end
+
+    def active_signup_instances_for(show)
+      SignUpFormInstance.where(show_id: show.id).where.not(status: "cancelled").to_a
+    end
+
+    def active_registration_count(instance)
+      instance.sign_up_registrations.where.not(status: "cancelled").count
+    end
+
+    def show_has_active_registrations?(show)
+      active_signup_instances_for(show).any? { |i| active_registration_count(i).positive? }
+    end
 
     def set_production
       if Current.organization

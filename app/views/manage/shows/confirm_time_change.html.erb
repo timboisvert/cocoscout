@@ -1,0 +1,76 @@
+<% content_for :title, "Confirm Time Change" %>
+
+<div class="w-full max-w-3xl">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [@production.name, manage_production_path(@production)],
+      ["Shows", manage_production_shows_path(@production)],
+      [@show.display_name, manage_show_path(@production, @show)]
+    ],
+    text: "Confirm time change",
+    links: []
+  } %>
+
+  <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+    <div class="flex items-start gap-3">
+      <div class="text-amber-600 mt-0.5">
+        <%= icon("alert-circle", class: "w-5 h-5") %>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-sm font-semibold text-amber-900 mb-1">This show has existing sign-up registrations</h3>
+        <p class="text-sm text-amber-800">
+          You're changing the time from
+          <strong><%= @show.date_and_time.strftime("%a %b %-d, %Y · %-l:%M %p") %></strong>
+          to
+          <strong><%= @new_date_and_time.strftime("%a %b %-d, %Y · %-l:%M %p") %></strong>.
+          There <%= @affected_registration_count == 1 ? "is" : "are" %>
+          <strong><%= pluralize(@affected_registration_count, "active registration") %></strong>
+          across <%= pluralize(@affected_instances.size, "sign-up form") %> tied to this show.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <%= form_with url: manage_apply_time_change_show_path(@production, @show), method: :post, local: true, data: { turbo: false } do %>
+    <div class="space-y-3">
+
+      <label class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors">
+        <input type="radio" name="strategy" value="leave" checked class="mt-1 accent-pink-500" />
+        <div class="flex-1">
+          <div class="font-semibold text-gray-900">Leave registrations where they are</div>
+          <div class="text-sm text-gray-600">
+            Registrations stay attached to their current slots. Slot times (e.g. "5:00 PM") don't change even though the show moved. Pick this if folks signed up for a specific time and shouldn't be shifted.
+          </div>
+        </div>
+      </label>
+
+      <% if @uses_time_based_slots %>
+        <label class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors">
+          <input type="radio" name="strategy" value="regenerate" class="mt-1 accent-pink-500" />
+          <div class="flex-1">
+            <div class="font-semibold text-gray-900">Move registrations with the show</div>
+            <div class="text-sm text-gray-600">
+              Slot names get regenerated based on the new show time. Registrations stay attached to their slot by position, so a person in the 1st slot stays in the 1st slot but the slot is now named for the new time. Time-based forms only.
+            </div>
+          </div>
+        </label>
+      <% end %>
+
+      <label class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors">
+        <input type="radio" name="strategy" value="cancel" class="mt-1 accent-pink-500" />
+        <div class="flex-1">
+          <div class="font-semibold text-gray-900">Cancel all registrations</div>
+          <div class="text-sm text-gray-600">
+            Marks all active registrations as cancelled. Useful when the new time invalidates everyone's prior commitment.
+          </div>
+        </div>
+      </label>
+
+    </div>
+
+    <div class="mt-6 flex items-center gap-3">
+      <%= link_to "Cancel time change", edit_manage_show_path(@production, @show), class: "px-4 py-2 text-sm text-gray-700 hover:text-gray-900" %>
+      <%= render "shared/button", text: "Apply time change", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

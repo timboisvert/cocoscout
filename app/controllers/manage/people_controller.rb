@@ -2,8 +2,8 @@
 
 module Manage
   class PeopleController < Manage::ManageController
-    before_action :set_person, only: %i[show update update_availability availability_modal]
-    before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal]
+    before_action :set_person, only: %i[show update update_availability availability_modal history]
+    before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal history]
 
     def show
       @profile_headshots = @person.profile_headshots.order(is_primary: :desc, position: :asc)
@@ -14,6 +14,23 @@ module Manage
       @training_credits = @person.training_credits.order(:position)
       @socials = @person.socials
       @talent_pools = @person.talent_pools.includes(:production)
+      @recent_history_entry = PersonHistoryFeed.new(@person).most_recent
+    end
+
+    # Paginated JSON feed of a person's activity (used by the History modal).
+    def history
+      before = params[:before].present? ? Time.zone.parse(params[:before]) : nil
+      limit = (params[:limit].presence || 20).to_i.clamp(1, 50)
+      entries = PersonHistoryFeed.new(@person).page(limit: limit + 1, before: before)
+      has_more = entries.size > limit
+      entries = entries.first(limit)
+
+      html = render_to_string(partial: "manage/people/history_entry",
+                              collection: entries,
+                              as: :entry,
+                              formats: [ :html ])
+      next_before = entries.last&.occurred_at&.iso8601
+      render json: { html: html, next_before: next_before, has_more: has_more }
     end
 
     def new
@@ -394,7 +411,7 @@ module Manage
     # Only allow a list of trusted parameters through.
     def person_params
       params.require(:person).permit(
-        :name, :email, :pronouns, :resume, :headshot, :producer_notes,
+        :name, :email, :pronouns, :resume, :headshot,
         socials_attributes: %i[id platform handle name _destroy]
       )
     end

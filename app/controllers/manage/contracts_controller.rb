@@ -41,6 +41,32 @@ module Manage
 
       @has_payments = @late_payments.any? || @upcoming_payments.any?
 
+      # Upcoming events across all active contracts (next 60 days): shows + space rentals.
+      # Sorted chronologically so it's easy to see what's coming up next for poster/ticketing/etc.
+      horizon = 60.days.from_now
+      window_start = Time.current.beginning_of_day
+      active_contract_ids = @active_contracts.map(&:id)
+
+      upcoming_shows = Show
+        .joins(:production)
+        .where(productions: { contract_id: active_contract_ids })
+        .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", window_start, horizon)
+        .where(canceled: [ false, nil ])
+        .includes(:production)
+        .order(:date_and_time)
+
+      upcoming_rentals = SpaceRental
+        .where(contract_id: active_contract_ids)
+        .where("starts_at >= ? AND starts_at <= ?", window_start, horizon)
+        .includes(:contract, :location)
+        .order(:starts_at)
+
+      @upcoming_events = (
+        upcoming_shows.map  { |s| { at: s.date_and_time, kind: :show,   record: s, contract: s.production&.contract } } +
+        upcoming_rentals.map { |r| { at: r.starts_at,    kind: :rental, record: r, contract: r.contract } }
+      ).sort_by { |e| e[:at] }
+      @has_upcoming_events = @upcoming_events.any?
+
       # Contract stats for this year
       year_start = Date.current.beginning_of_year
       year_end = Date.current.end_of_year

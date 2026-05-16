@@ -1,0 +1,39 @@
+<%#
+  Renders the list of cast votes with the voter's name, comment, and vote badge.
+
+  Locals:
+    votes - ActiveRecord::Relation or Array of AuditionRequestVote/AuditionVote records
+%>
+<% votes_collection = votes.respond_to?(:order) ? votes.order(created_at: :desc) : votes.sort_by { |v| v.created_at }.reverse %>
+<% if votes_collection.any? %>
+  <div class="space-y-2">
+    <% votes_collection.each do |vote| %>
+      <% voter_person = vote.user&.person %>
+      <% next unless voter_person %>
+      <div class="flex items-center gap-2">
+        <% headshot = voter_person.safe_headshot_variant(:thumb) %>
+        <% if headshot %>
+          <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600 flex-shrink-0">
+            <%= voter_person.initials %>
+          </div>
+        <% end %>
+        <div class="flex-1 min-w-0">
+          <span class="text-sm font-medium text-gray-900"><%= voter_person.name %></span>
+          <% if vote.comment.present? %>
+            <span class="text-sm text-gray-500 ml-1">&mdash; <%= vote.comment %></span>
+          <% end %>
+        </div>
+        <% vote_badge = case vote.vote
+           when "yes" then { text: "Yes", classes: "bg-green-100 text-green-700" }
+           when "no" then { text: "No", classes: "bg-red-100 text-red-700" }
+           when "maybe" then { text: "Not Sure", classes: "bg-amber-100 text-amber-700" }
+           end %>
+        <% if vote_badge %>
+          <span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 <%= vote_badge[:classes] %>"><%= vote_badge[:text] %></span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

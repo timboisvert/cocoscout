@@ -115,6 +115,7 @@ module My
       show_ids = all_shows.map(&:id)
       assignments = if show_ids.any?
         ShowPersonRoleAssignment
+          .visible_to_performers
           .where(show_id: show_ids)
           .where(
             "(assignable_type = 'Person' AND assignable_id IN (?)) OR (assignable_type = 'Group' AND assignable_id IN (?))",
@@ -276,6 +277,7 @@ module My
       end
 
       @show_person_role_assignments = @show.show_person_role_assignments
+                                           .visible_to_performers
                                            .includes(:role)
                                            .to_a
 

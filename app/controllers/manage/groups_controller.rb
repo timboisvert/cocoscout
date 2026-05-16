@@ -154,22 +154,10 @@ module Manage
       redirect_to manage_contacts_path, notice: "#{@group.name} was deleted", status: :see_other
     end
 
-    def update
-      if @group.update(group_params)
-        redirect_to manage_group_path(@group), notice: "Notes updated successfully"
-      else
-        redirect_to manage_group_path(@group), alert: "Failed to update notes"
-      end
-    end
-
     private
 
     def set_group
       @group = Group.find(params[:id])
-    end
-
-    def group_params
-      params.require(:group).permit(:producer_notes)
     end
   end
 end

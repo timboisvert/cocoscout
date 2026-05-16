@@ -16,6 +16,24 @@ class ShowPersonRoleAssignment < ApplicationRecord
   # Order assignments by position within a role
   scope :ordered, -> { order(position: :asc) }
 
+  # Assignments that are safe to show to performers / public:
+  # either the show's casting has been finalized, or this specific assignable
+  # has been individually notified as cast for this show.
+  # Used to hide in-progress / draft assignments from performer-facing UIs.
+  scope :visible_to_performers, -> {
+    joins(:show)
+      .where(<<~SQL.squish)
+        shows.casting_finalized_at IS NOT NULL
+        OR EXISTS (
+          SELECT 1 FROM show_cast_notifications scn
+          WHERE scn.show_id = show_person_role_assignments.show_id
+            AND scn.assignable_type = show_person_role_assignments.assignable_type
+            AND scn.assignable_id = show_person_role_assignments.assignable_id
+            AND scn.notification_type = 0
+        )
+      SQL
+  }
+
   # Get the person, handling polymorphic assignable
   def person
     return nil unless assignable_type == "Person"

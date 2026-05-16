@@ -239,7 +239,27 @@ module Manage
           redirect_url = manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
-          format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
+          format.json do
+            votes = AuditionVote.where(audition_id: @audition.id)
+                                .includes(user: :default_person)
+                                .order(created_at: :desc)
+                                .to_a
+            counts = {
+              yes: votes.count { |v| v.vote == "yes" },
+              no: votes.count { |v| v.vote == "no" },
+              maybe: votes.count { |v| v.vote == "maybe" }
+            }
+            votes_html = render_to_string(partial: "manage/audition_requests/votes_list",
+                                          locals: { votes: votes },
+                                          formats: [ :html ])
+            render json: {
+              success: true,
+              vote: vote.vote,
+              comment: vote.comment,
+              counts: counts,
+              votes_html: votes_html
+            }
+          end
         end
       else
         respond_to do |format|
@@ -330,7 +350,11 @@ module Manage
 
       # Also re-render the sessions list to update all dropzones
       sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list",
-                                            locals: { audition_sessions: audition_cycle.audition_sessions.includes(:location).order(start_at: :asc) })
+                                            locals: {
+                                              audition_sessions: audition_cycle.audition_sessions.includes(:location).order(start_at: :asc),
+                                              production: production,
+                                              audition_cycle: audition_cycle
+                                            })
 
       render json: { right_list_html: right_list_html, dropzone_html: dropzone_html,
                      sessions_list_html: sessions_list_html }
@@ -369,7 +393,11 @@ module Manage
 
       # Also re-render the sessions list to update all dropzones
       sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list",
-                                            locals: { audition_sessions: audition_sessions })
+                                            locals: {
+                                              audition_sessions: audition_sessions,
+                                              production: production,
+                                              audition_cycle: audition_cycle
+                                            })
 
       render json: { right_list_html: right_list_html, dropzone_html: dropzone_html,
                      sessions_list_html: sessions_list_html }
@@ -416,7 +444,11 @@ module Manage
 
       # Also re-render the sessions list to update all dropzones
       sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list",
-                                            locals: { audition_sessions: audition_sessions })
+                                            locals: {
+                                              audition_sessions: audition_sessions,
+                                              production: production,
+                                              audition_cycle: audition_cycle
+                                            })
 
       render json: { right_list_html: right_list_html, sessions_list_html: sessions_list_html }
     end

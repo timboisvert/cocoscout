@@ -1,0 +1,64 @@
+<%#
+  Renders a single PersonHistoryFeed::Entry.
+
+  Locals:
+    entry - PersonHistoryFeed::Entry struct
+    compact - boolean; if true, render a single-line preview (for the box on the page)
+%>
+<% compact = local_assigns.fetch(:compact, false) %>
+<%
+  icon_classes = case entry.kind
+                 when :audition_request              then "bg-pink-100 text-pink-600"
+                 when :audition, :audition_accepted  then "bg-purple-100 text-purple-600"
+                 when :audition_session_availability then "bg-purple-50 text-purple-500"
+                 when :sign_up                       then "bg-blue-100 text-blue-600"
+                 when :course                        then "bg-amber-100 text-amber-600"
+                 when :vacancy_created               then "bg-red-100 text-red-600"
+                 when :vacancy_filled                then "bg-green-100 text-green-600"
+                 when :cast                          then "bg-pink-500 text-white"
+                 else "bg-gray-100 text-gray-600"
+                 end
+  icon_letter = case entry.kind
+                when :audition_accepted              then "✓"
+                when :audition_session_availability  then "✓"
+                when :vacancy_created                then "✗"
+                when :vacancy_filled                 then "✓"
+                when :cast                           then "★"
+                else entry.kind.to_s[0].upcase
+                end
+%>
+
+<div class="flex items-start gap-3 <%= compact ? '' : 'py-2 border-b border-gray-100 last:border-b-0' %>">
+  <div class="w-8 h-8 rounded-lg <%= icon_classes %> flex items-center justify-center text-xs font-bold flex-shrink-0">
+    <%= icon_letter %>
+  </div>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-medium text-gray-900 truncate">
+      <% if entry.url && !compact %>
+        <%= link_to entry.title, entry.url, class: "hover:text-pink-600" %>
+      <% else %>
+        <%= entry.title %>
+      <% end %>
+    </div>
+    <% if entry.subtitle.present? %>
+      <div class="text-xs text-gray-600 truncate"><%= entry.subtitle %></div>
+    <% end %>
+    <% if entry.details.present? && !compact %>
+      <div class="text-xs text-gray-500"><%= entry.details %></div>
+    <% end %>
+    <div class="text-xs text-gray-400 mt-0.5">
+      <%= entry.occurred_at.is_a?(Time) || entry.occurred_at.is_a?(DateTime) ? entry.occurred_at.strftime("%b %-d, %Y") : entry.occurred_at.to_date.strftime("%b %-d, %Y") %>
+    </div>
+    <% if !compact && entry.answers.present? %>
+      <div class="mt-1.5 space-y-1.5 border-l-2 border-gray-200 pl-2 text-xs leading-snug">
+        <% entry.answers.each do |answer| %>
+          <% next unless answer.question %>
+          <div>
+            <div class="font-semibold text-gray-800"><%= answer.question.text %></div>
+            <div class="text-gray-600"><%= render_question_answer(answer) %></div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

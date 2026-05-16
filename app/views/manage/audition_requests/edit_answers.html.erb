@@ -15,7 +15,7 @@
   } %>
 
   <%= turbo_frame_tag "edit_answers_frame", target: "_top" do %>
-    <%= form_with(url: manage_update_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), method: :patch, class: "contents") do |form| %>
+    <%= form_with(url: manage_update_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), method: :patch, class: "contents", data: { turbo_frame: "_top" }) do |form| %>
 
       <% if @questions.any? %>
         <% @questions.each do |question| %>
