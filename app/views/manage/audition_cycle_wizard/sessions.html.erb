@@ -1,12 +1,30 @@
 <%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 3, step_name: "Audition Sessions" } do %>
-  <div data-controller="location-modal session-wizard" data-location-modal-event-type-value="audition">
+  <%
+    edit_url_template = manage_signups_auditions_wizard_update_session_path(@production, session_index: ":session_index")
+    opens_at_for_input = begin
+      Time.zone.parse(@wizard_state[:opens_at].to_s).strftime("%Y-%m-%dT%H:%M") if @wizard_state[:opens_at].present?
+    rescue ArgumentError
+      nil
+    end
+  %>
+  <div data-controller="location-modal session-wizard"
+       data-location-modal-event-type-value="audition"
+       data-session-wizard-edit-url-template-value="<%= edit_url_template %>">
     <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Set up audition sessions</h2>
     <p class="text-gray-600 mb-6">Create time slots for auditions. You can create multiple sessions automatically or add them one at a time.</p>
 
     <!-- Current Sessions List -->
     <% if @wizard_state[:audition_sessions].present? %>
       <div class="mb-6">
-        <h3 class="text-sm font-medium text-gray-700 mb-3">Scheduled Sessions (<%= @wizard_state[:audition_sessions].size %>)</h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium text-gray-700">Scheduled Sessions (<%= @wizard_state[:audition_sessions].size %>)</h3>
+          <%= button_to "Remove all",
+              manage_signups_auditions_wizard_delete_all_sessions_path(@production),
+              method: :delete,
+              class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0",
+              form_class: "inline-block",
+              data: { turbo_confirm: "Remove all #{@wizard_state[:audition_sessions].size} sessions?" } %>
+        </div>
         <div class="space-y-2">
           <% sorted_sessions = @wizard_state[:audition_sessions].each_with_index.sort_by { |s, i| Time.parse(s[:start_at]) rescue Time.current } %>
           <% sorted_sessions.each do |session, original_index| %>
@@ -22,20 +40,20 @@
               </div>
               <div class="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button type="button"
-                        class="cursor-pointer"
+                        class="text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm"
                         data-action="click->session-wizard#openEditModal"
                         data-session-index="<%= original_index %>"
                         data-session-start-at="<%= session[:start_at] %>"
                         data-session-duration="<%= session[:duration_minutes] %>"
                         data-session-location="<%= session[:location_id] %>">
-                  <%= render "shared/button", text: "Edit", variant: "ghost", size: "small", type: :button %>
+                  Edit
                 </button>
-                <%= button_to manage_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
+                <%= button_to "Remove",
+                    manage_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
                     method: :delete,
-                    class: "inline-block",
-                    data: { turbo_confirm: "Remove this session?" } do %>
-                  <%= render "shared/button", text: "Remove", variant: "ghost", size: "small", type: :button %>
-                <% end %>
+                    class: "text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
+                    form_class: "inline-block",
+                    data: { turbo_confirm: "Remove this session?" } %>
               </div>
             </div>
           <% end %>
@@ -64,7 +82,7 @@
 
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-1">Starting at</label>
-          <%= datetime_field_tag :start_at, @wizard_state[:opens_at],
+          <%= datetime_field_tag :start_at, opens_at_for_input,
               class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
         </div>
 
@@ -132,7 +150,7 @@
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
-                <%= datetime_field_tag :start_at, @wizard_state[:opens_at],
+                <%= datetime_field_tag :start_at, opens_at_for_input,
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
               </div>
               <div>

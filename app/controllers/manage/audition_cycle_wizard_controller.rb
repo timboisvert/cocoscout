@@ -100,7 +100,9 @@ module Manage
       count = params[:session_count].to_i
       duration = params[:session_duration].to_i
       start_at = params[:start_at]
-      location_id = params[:location_id]
+      is_online = ActiveModel::Type::Boolean.new.cast(params[:is_online])
+      location_id = is_online ? nil : params[:location_id]
+      online_location_info = is_online ? params[:online_location_info].presence : nil
 
       if count <= 0 || count > 20
         flash.now[:alert] = "Please enter a valid number of sessions (1-20)"
@@ -120,35 +122,57 @@ module Manage
         render :sessions, status: :unprocessable_entity and return
       end
 
-      if location_id.blank?
+      if !is_online && location_id.blank?
         flash.now[:alert] = "Please select a location"
         @locations = @production.organization.locations.order(:name)
         render :sessions, status: :unprocessable_entity and return
       end
 
-      # Generate sessions
       @wizard_state[:audition_sessions] ||= []
+      existing_start_times = @wizard_state[:audition_sessions].map { |s| s[:start_at].to_s }.to_set
       current_time = Time.zone.parse(start_at)
 
-      count.times do |i|
-        @wizard_state[:audition_sessions] << {
-          start_at: current_time.iso8601,
-          duration_minutes: duration,
-          location_id: location_id
-        }
+      added = 0
+      skipped = 0
+      count.times do |_i|
+        iso = current_time.iso8601
+        if existing_start_times.include?(iso)
+          skipped += 1
+        else
+          @wizard_state[:audition_sessions] << {
+            start_at: iso,
+            duration_minutes: duration,
+            location_id: location_id,
+            is_online: is_online,
+            online_location_info: online_location_info
+          }
+          existing_start_times << iso
+          added += 1
+        end
         current_time += duration.minutes
       end
 
       save_wizard_state
-      redirect_to manage_signups_auditions_wizard_sessions_path(@production), notice: "#{count} sessions generated"
+
+      notice =
+        if added.zero?
+          "No new sessions generated — all #{count} would have duplicated existing sessions."
+        elsif skipped.zero?
+          "#{added} sessions generated"
+        else
+          "#{added} sessions generated (#{skipped} skipped — already on the schedule)"
+        end
+      redirect_to manage_signups_auditions_wizard_sessions_path(@production), notice: notice
     end
 
     def add_session
       start_at = params[:start_at]
       duration = params[:duration_minutes].to_i
-      location_id = params[:location_id]
+      is_online = ActiveModel::Type::Boolean.new.cast(params[:is_online])
+      location_id = is_online ? nil : params[:location_id]
+      online_location_info = is_online ? params[:online_location_info].presence : nil
 
-      if start_at.blank? || duration <= 0 || location_id.blank?
+      if start_at.blank? || duration <= 0 || (!is_online && location_id.blank?)
         flash[:alert] = "Please fill in all session details"
         redirect_to manage_signups_auditions_wizard_sessions_path(@production) and return
       end
@@ -157,7 +181,9 @@ module Manage
       @wizard_state[:audition_sessions] << {
         start_at: Time.zone.parse(start_at).iso8601,
         duration_minutes: duration,
-        location_id: location_id
+        location_id: location_id,
+        is_online: is_online,
+        online_location_info: online_location_info
       }
 
       save_wizard_state
@@ -171,7 +197,19 @@ module Manage
       if session_data
         session_data[:start_at] = Time.zone.parse(params[:start_at]).iso8601 if params[:start_at].present?
         session_data[:duration_minutes] = params[:duration_minutes].to_i if params[:duration_minutes].present?
-        session_data[:location_id] = params[:location_id] if params[:location_id].present?
+        if params.key?(:is_online)
+          is_online = ActiveModel::Type::Boolean.new.cast(params[:is_online])
+          session_data[:is_online] = is_online
+          if is_online
+            session_data[:location_id] = nil
+            session_data[:online_location_info] = params[:online_location_info].presence
+          else
+            session_data[:location_id] = params[:location_id] if params[:location_id].present?
+            session_data[:online_location_info] = nil
+          end
+        elsif params[:location_id].present?
+          session_data[:location_id] = params[:location_id]
+        end
         save_wizard_state
       end
 
@@ -183,6 +221,12 @@ module Manage
       @wizard_state[:audition_sessions]&.delete_at(index)
       save_wizard_state
       redirect_to manage_signups_auditions_wizard_sessions_path(@production), notice: "Session removed"
+    end
+
+    def delete_all_sessions
+      @wizard_state[:audition_sessions] = []
+      save_wizard_state
+      redirect_to manage_signups_auditions_wizard_sessions_path(@production), notice: "All sessions removed"
     end
 
     # Step 4: Availability Requirements
@@ -387,17 +431,30 @@ module Manage
     end
 
     def load_wizard_state
-      session[:audition_wizard] ||= {}
-      session[:audition_wizard][@production.id.to_s] ||= {}
-      @wizard_state = session[:audition_wizard][@production.id.to_s].with_indifferent_access
+      @wizard_state_record = AuditionWizardState.find_or_create_by!(
+        production: @production,
+        user: Current.user
+      )
+
+      # One-time migration: if there's leftover state in the legacy session cookie
+      # and the DB row is still empty, copy it over and clear the cookie. Lets
+      # mid-wizard users keep their progress through the storage change.
+      if @wizard_state_record.state.blank? &&
+         session[:audition_wizard].is_a?(Hash) &&
+         session[:audition_wizard][@production.id.to_s].present?
+        @wizard_state_record.update!(state: session[:audition_wizard][@production.id.to_s])
+      end
+      session[:audition_wizard]&.delete(@production.id.to_s)
+
+      @wizard_state = @wizard_state_record.state.with_indifferent_access
     end
 
     def save_wizard_state
-      session[:audition_wizard][@production.id.to_s] = @wizard_state.to_h
+      @wizard_state_record.update!(state: @wizard_state.to_h)
     end
 
     def clear_wizard_state
-      session[:audition_wizard]&.delete(@production.id.to_s)
+      AuditionWizardState.where(production: @production, user: Current.user).delete_all
     end
   end
 end

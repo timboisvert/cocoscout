@@ -7,6 +7,7 @@ export default class extends Controller {
         "generateIsOnline", "generateLocationSelect", "generateOnlineInfo",
         "addIsOnline", "addLocationSelect"
     ]
+    static values = { editUrlTemplate: String }
 
     connect() {
         // Add escape key listener for modals
@@ -50,11 +51,12 @@ export default class extends Controller {
         const duration = button.dataset.sessionDuration
         const locationId = button.dataset.sessionLocation
 
-        // Populate the edit form
         if (this.hasEditStartAtTarget && startAt) {
-            // Convert ISO string to datetime-local format
+            // Convert ISO string to the value format <input type="datetime-local"> expects:
+            // YYYY-MM-DDTHH:MM in the browser's local timezone.
             const date = new Date(startAt)
-            const localDatetime = date.toISOString().slice(0, 16)
+            const pad = (n) => String(n).padStart(2, '0')
+            const localDatetime = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
             this.editStartAtTarget.value = localDatetime
         }
 
@@ -66,18 +68,13 @@ export default class extends Controller {
             this.editLocationSelectTarget.value = locationId
         }
 
-        // Update the form action URL
-        if (this.hasEditFormTarget) {
-            const baseUrl = this.editFormTarget.action.replace(/#$/, '')
-            // Find the correct path pattern and update with session_index
-            const production = window.location.pathname.match(/\/productions\/(\d+)/)?.[1]
-            if (production) {
-                this.editFormTarget.action = `/manage/audition_wizard/production/${production}/sessions/${sessionIndex}`
-            }
+        // Update the form action URL using the server-provided template.
+        // Template contains :session_index placeholder.
+        if (this.hasEditFormTarget && this.hasEditUrlTemplateValue) {
+            this.editFormTarget.action = this.editUrlTemplateValue.replace(":session_index", sessionIndex)
         }
 
         this.editModalTarget.classList.remove("hidden")
-        // Focus the modal for keyboard events
         const focusable = this.editModalTarget.querySelector('[tabindex="-1"]')
         if (focusable) focusable.focus()
     }

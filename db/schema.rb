@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -224,6 +224,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_10_120000) do
     t.index ["audition_id", "user_id"], name: "index_audition_votes_unique", unique: true
     t.index ["audition_id"], name: "index_audition_votes_on_audition_id"
     t.index ["user_id"], name: "index_audition_votes_on_user_id"
+  end
+
+  create_table "audition_wizard_states", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "production_id", null: false
+    t.jsonb "state", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["production_id", "user_id"], name: "idx_audition_wizard_states_on_production_user", unique: true
+    t.index ["production_id"], name: "index_audition_wizard_states_on_production_id"
+    t.index ["user_id"], name: "index_audition_wizard_states_on_user_id"
   end
 
   create_table "auditions", force: :cascade do |t|
@@ -2211,6 +2222,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_10_120000) do
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "audition_votes", "auditions"
   add_foreign_key "audition_votes", "users"
+  add_foreign_key "audition_wizard_states", "productions"
+  add_foreign_key "audition_wizard_states", "users"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "calendar_events", "calendar_subscriptions"
