@@ -50,9 +50,28 @@ class PersonHistoryFeed
 
   private
 
-  # Helper to apply the cursor filter and limit to a relation.
+  # Allowed sort columns. Keeping these as a constant means the column name in
+  # SQL is never derived from user input — Brakeman's SQL-injection check
+  # passes without an ignore entry, and a typo'd call raises loudly instead
+  # of silently interpolating something arbitrary.
+  ALLOWED_CURSOR_COLUMNS = [
+    "audition_requests.created_at",
+    "audition_sessions.start_at",
+    "sign_up_registrations.registered_at",
+    "course_registrations.registered_at",
+    "auditions.accepted_at",
+    "audition_session_availabilities.updated_at",
+    "COALESCE(role_vacancies.vacated_at, role_vacancies.created_at)",
+    "role_vacancies.filled_at",
+    "shows.casting_finalized_at"
+  ].freeze
+
   def scope_with_cursor(relation, column, before, limit)
-    relation = relation.where("#{column} < ?", before) if before
+    unless ALLOWED_CURSOR_COLUMNS.include?(column)
+      raise ArgumentError, "Unknown cursor column for PersonHistoryFeed: #{column.inspect}"
+    end
+
+    relation = relation.where(Arel.sql("#{column} < ?"), before) if before
     relation.order(Arel.sql("#{column} DESC")).limit(limit)
   end
 

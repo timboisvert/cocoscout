@@ -18,6 +18,18 @@ class ProfileVideo < ApplicationRecord
   before_validation :detect_video_type
   before_validation :set_default_position, on: :create
 
+  # Returns the URL only if it has an http/https scheme. Guards against
+  # legacy rows predating the format validator, which could in theory hold
+  # javascript: or data: URLs and XSS managers viewing the profile.
+  def safe_url
+    return nil if url.blank?
+
+    uri = URI.parse(url)
+    %w[http https].include?(uri.scheme) ? url : nil
+  rescue URI::InvalidURIError
+    nil
+  end
+
   # Public methods
   def embed_html
     case video_type&.to_sym

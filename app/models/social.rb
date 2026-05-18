@@ -39,6 +39,19 @@ class Social < ApplicationRecord
 
   public
 
+  # Validates that the constructed URL has an http/https scheme. The url
+  # method always builds with "https://" but `handle` is user-supplied, so
+  # this acts as a defense-in-depth gate before rendering in href.
+  def safe_url
+    raw = url
+    return nil if raw.blank?
+
+    uri = URI.parse(raw)
+    %w[http https].include?(uri.scheme) ? raw : nil
+  rescue URI::InvalidURIError
+    nil
+  end
+
   def url
     return nil if handle.blank?
 

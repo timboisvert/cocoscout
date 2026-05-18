@@ -274,7 +274,9 @@ module Manage
       # Store the user's intended destination so we can redirect back after org setup.
       # Only store specific deep-link paths — not the generic /manage landing page,
       # which would create a misleading "you were trying to do X" context.
-      if request.get?
+      # Explicitly check GET (Rails routes HEAD like GET, but request.get? is false
+      # on HEAD — being explicit makes the intent obvious and Brakeman happy).
+      if request.get? || request.head?
         if request.fullpath == manage_path || request.fullpath == "#{manage_path}/"
           session.delete(:manage_onboarding_intent)
         else
