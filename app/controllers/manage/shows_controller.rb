@@ -712,7 +712,7 @@ module Manage
     def confirm_time_change
       pending = session[:pending_show_time_change]
       if pending.blank? || pending["show_id"] != @show.id
-        redirect_to edit_manage_show_path(@production, @show), alert: "No pending time change."
+        redirect_to manage_edit_show_path(@production, @show), alert: "No pending time change."
         return
       end
 
@@ -726,7 +726,7 @@ module Manage
     def apply_time_change
       pending = session.delete(:pending_show_time_change)
       if pending.blank? || pending["show_id"] != @show.id
-        redirect_to edit_manage_show_path(@production, @show), alert: "No pending time change."
+        redirect_to manage_edit_show_path(@production, @show), alert: "No pending time change."
         return
       end
 
@@ -755,7 +755,7 @@ module Manage
       end
 
       if @show.errors.any?
-        redirect_to edit_manage_show_path(@production, @show), alert: @show.errors.full_messages.join(", ")
+        redirect_to manage_edit_show_path(@production, @show), alert: @show.errors.full_messages.join(", ")
       else
         notice =
           case strategy
