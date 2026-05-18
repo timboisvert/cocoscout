@@ -36,6 +36,40 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "235f7c39f41707453e8e8de7e2279386efc6fc0b9b97dd5be8a508da1320c306",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/groups/show.html.erb",
+      "line": 89,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to((Unresolved Model).new.safe_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"block truncate\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::GroupsController",
+          "method": "show",
+          "line": 17,
+          "file": "app/controllers/manage/groups_controller.rb",
+          "rendered": {
+            "name": "manage/groups/show",
+            "file": "app/views/manage/groups/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/groups/show"
+      },
+      "user_input": "(Unresolved Model).new.safe_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
       "fingerprint": "35b439a99ab30b078366f6df51f4c7771f758fea4b56451a6442bd5a30fe97e1",
       "check_name": "RenderInline",
@@ -339,7 +373,7 @@
       "check_name": "LinkToHref",
       "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/manage/groups/show.html.erb",
-      "line": 107,
+      "line": 109,
       "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
       "code": "link_to((Unresolved Model).new.display_name, (Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener\", :class => \"text-sm text-pink-500 hover:underline truncate\")",
       "render_path": [
