@@ -6,8 +6,9 @@ class Poster < ApplicationRecord
   belongs_to :production
 
   has_one_attached :image, dependent: :purge_later do |attachable|
-    # Force JPEG output to handle unusual formats like .jfif
-    attachable.variant :small, resize_to_limit: [ 200, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    # Posters display at 3:4 aspect (Instagram portrait, 1080x1440 source).
+    # See Show#poster for the same convention.
+    attachable.variant :small, resize_to_limit: [ 300, 400 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
   validates :name, length: { maximum: 255 }, allow_blank: true

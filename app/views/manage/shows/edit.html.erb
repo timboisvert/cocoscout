@@ -319,7 +319,9 @@
           <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
             <div class="w-full">
               <div class="mb-4 poster-image">
-                <%= image_tag url_for(@show.poster), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
+                <div class="w-full max-w-72 aspect-[3/4] rounded-lg overflow-hidden shadow border border-gray-200 bg-white">
+                  <%= image_tag url_for(@show.poster), class: "w-full h-full object-cover" %>
+                </div>
               </div>
 
               <div class="flex items-center justify-between">

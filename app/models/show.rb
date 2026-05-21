@@ -36,8 +36,10 @@ class Show < ApplicationRecord
   accepts_nested_attributes_for :show_links, allow_destroy: true
 
   has_one_attached :poster, dependent: :purge_later do |attachable|
-    # Force JPEG output to handle unusual formats like .jfif
-    attachable.variant :small, resize_to_limit: [ 200, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    # Posters display at 3:4 aspect ratio (Instagram portrait, 1080x1440 source).
+    # resize_to_limit preserves the user's uploaded aspect; the CSS container
+    # at the display site forces 3:4 via object-cover.
+    attachable.variant :small, resize_to_limit: [ 300, 400 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
   has_many :show_availabilities, dependent: :destroy

@@ -1,0 +1,88 @@
+<%#
+  Upload-poster modal. Used from _show_info_card to add a poster to either
+  this single show or the entire production.
+
+  Locals:
+    show       - the Show object
+    production - the Show's production
+    multi_show - true if production has >1 show (i.e. the "entire production"
+                 scope option is meaningful). When false we just upload to the
+                 show and hide the radio.
+%>
+<div data-poster-upload-target="modal"
+     class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto"
+     data-action="click->poster-upload#backdropClose keydown.esc@window->poster-upload#close">
+  <div class="flex min-h-full items-start justify-center p-4 py-12">
+    <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl"
+         data-action="click->poster-upload#stopPropagation">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <h3 class="text-base font-semibold text-gray-900">Upload poster</h3>
+        <button type="button" data-action="click->poster-upload#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <%= form_with url: manage_upload_poster_show_path(production, show),
+                    method: :post,
+                    multipart: true,
+                    local: true,
+                    data: { turbo: false, "poster-upload-target": "form" } do |f| %>
+        <div class="px-5 py-4 space-y-4">
+
+          <%# Preview area — frame is 3:4 (Instagram portrait), matches display. %>
+          <div data-poster-upload-target="dropzone"
+               data-action="click->poster-upload#pickFile dragover->poster-upload#dragOver dragleave->poster-upload#dragLeave drop->poster-upload#drop"
+               class="mx-auto w-[180px] aspect-[3/4] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-pink-400 hover:bg-pink-50/40 transition-colors overflow-hidden">
+            <div data-poster-upload-target="placeholder" class="flex flex-col items-center gap-2 px-3">
+              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 7.5m0 0L7.5 12m4.5-4.5V18"/></svg>
+              <div class="text-sm text-gray-700 font-medium">Choose a poster</div>
+              <div class="text-xs text-gray-500 leading-tight">JPG / PNG · best at 1080×1440 (3:4)</div>
+            </div>
+            <img data-poster-upload-target="preview" class="hidden w-full h-full object-cover" alt="Preview" />
+          </div>
+          <p class="text-xs text-gray-500 text-center -mt-2">Displayed at 3:4 — anything outside this frame will be cropped.</p>
+
+          <%= file_field_tag :file, accept: "image/jpeg,image/png,image/jpg",
+                              class: "hidden",
+                              data: { "poster-upload-target": "fileInput", action: "change->poster-upload#fileChanged" } %>
+
+          <%# Scope picker — only meaningful if the production has more than one show. %>
+          <% if multi_show %>
+            <fieldset class="space-y-2">
+              <legend class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Apply to</legend>
+              <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors">
+                <input type="radio" name="scope" value="show" checked class="mt-1 accent-pink-500" />
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-gray-900">Just this event</div>
+                  <div class="text-xs text-gray-600">Only the <%= show.event_type.to_s.titleize.presence || "event" %> on <%= show.date_and_time.strftime("%b %-d") %> uses this poster.</div>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors">
+                <input type="radio" name="scope" value="production" class="mt-1 accent-pink-500" />
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-gray-900">The whole production</div>
+                  <div class="text-xs text-gray-600">All shows under <strong><%= production.name %></strong> that don't already have their own poster.</div>
+                </div>
+              </label>
+            </fieldset>
+          <% else %>
+            <%# Production only has this one show — scope choice is meaningless. %>
+            <input type="hidden" name="scope" value="show" />
+          <% end %>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <button type="button" data-action="click->poster-upload#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+          <%= render "shared/button",
+                text: "Upload",
+                variant: "primary",
+                size: "small",
+                type: :submit,
+                data: { "poster-upload-target": "submitButton" },
+                disabled: true,
+                classes: "opacity-50 cursor-not-allowed" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -39,8 +39,9 @@ class Production < ApplicationRecord
   belongs_to :contract, optional: true
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
-    # Force JPEG output to handle unusual formats like .jfif
-    attachable.variant :small, resize_to_limit: [ 300, 200 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    # Production logos display as a square (1:1). Posters use 3:4 (Instagram
+    # portrait) — see Production#posters / Show#poster.
+    attachable.variant :small, resize_to_limit: [ 300, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
   # Rich text for production-wide notes

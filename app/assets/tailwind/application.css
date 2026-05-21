@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Font utility classes (Coustard, Inter, Caprasimo). The Google Fonts
+   stylesheet that loads the @font-face rules is linked from the layout
+   head; this just defines the .coustard-regular / .inter-regular / etc.
+   classes the views use. */
+@import "../stylesheets/fonts.css";
+
 /* ── Native app loading overlay ──────────────────────────────────────────── */
 #native-loader {
   position: fixed;

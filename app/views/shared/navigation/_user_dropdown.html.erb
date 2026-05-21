@@ -1,5 +1,8 @@
 <%# Shared user dropdown for the right side of all header bars %>
 <%# Includes impersonation banner and pink user menu %>
+<%# Suppress inside Turbo Native — the iOS app has a dedicated Account tab,
+    and the dropdown would be a redundant second entry point. %>
+<% return if respond_to?(:turbo_native_app?) && turbo_native_app? %>
 <div class="flex items-center border-l border-slate-200 h-full">
   <div class="flex items-center gap-3">
     <% if impersonating? %>

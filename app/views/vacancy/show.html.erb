@@ -15,9 +15,9 @@
       <div class="flex items-center gap-4">
         <% poster_url = safe_poster_url(@show) %>
         <% if poster_url %>
-          <%= image_tag poster_url,
-              alt: @show.production.name,
-              class: "w-16 h-24 object-cover rounded-lg" %>
+          <div class="w-16 aspect-[3/4] rounded-lg overflow-hidden border border-gray-200 bg-white flex-shrink-0">
+            <%= image_tag poster_url, alt: @show.production.name, class: "w-full h-full object-cover" %>
+          </div>
         <% end %>
         <div>
           <h2 class="font-semibold text-gray-900"><%= @show.production.name %></h2>

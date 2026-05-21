@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series confirm_time_change apply_time_change]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series confirm_time_change apply_time_change upload_poster]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -703,6 +703,40 @@ module Manage
                       status: :see_other
         else
           render :edit, status: :unprocessable_entity
+        end
+      end
+    end
+
+    # Attach a poster to either this single show or the show's production.
+    # Triggered from the Upload Poster modal on the show page.
+    def upload_poster
+      file = params[:file]
+      scope = params[:scope].presence_in(%w[show production]) || "show"
+
+      if file.blank?
+        redirect_to manage_show_path(@production, @show), alert: "Please choose an image to upload." and return
+      end
+
+      unless file.content_type.to_s.start_with?("image/")
+        redirect_to manage_show_path(@production, @show), alert: "Poster must be an image file." and return
+      end
+
+      if scope == "show"
+        @show.poster.attach(file)
+        if @show.save
+          redirect_to manage_show_path(@production, @show), notice: "Poster uploaded for this event."
+        else
+          redirect_to manage_show_path(@production, @show), alert: @show.errors.full_messages.to_sentence.presence || "Could not save poster."
+        end
+      else
+        # Create a Production-level Poster and mark it primary. Existing per-show
+        # posters are intentionally left in place — uploading a production-wide
+        # poster shouldn't surprise-wipe individual customizations.
+        poster = @production.posters.new(image: file, name: file.original_filename.to_s, is_primary: true)
+        if poster.save
+          redirect_to manage_show_path(@production, @show), notice: "Poster uploaded for the entire production."
+        else
+          redirect_to manage_show_path(@production, @show), alert: poster.errors.full_messages.to_sentence.presence || "Could not save poster."
         end
       end
     end

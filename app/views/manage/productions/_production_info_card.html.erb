@@ -3,22 +3,26 @@
   # - production: the Production object
 %>
 
-<% cache ["production_info_card_v1", production.id, production.updated_at.to_i, production.posters.maximum(:updated_at)&.to_i] do %>
+<% cache ["production_info_card_v3", production.id, production.updated_at.to_i, production.posters.maximum(:updated_at)&.to_i] do %>
 <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
   <div class="flex flex-col sm:flex-row">
-    <!-- Poster/Logo Section -->
+    <!-- Poster (3:4 portrait) / Logo (1:1 square) -->
     <div class="flex-shrink-0 bg-gray-50 flex items-center justify-center p-4">
       <% primary_poster = production.primary_poster %>
       <% logo_variant = production.safe_logo_variant(:small) %>
       <% if primary_poster %>
         <% image_variant = primary_poster.safe_image_variant(:small) %>
         <% if image_variant %>
-          <%= image_tag image_variant, alt: "#{production.name} Poster", class: "rounded shadow-sm object-contain max-h-[180px] max-w-[200px] border border-gray-200" %>
+          <div class="w-[135px] aspect-[3/4] rounded shadow-sm overflow-hidden border border-gray-200 bg-white">
+            <%= image_tag image_variant, alt: "#{production.name} Poster", class: "w-full h-full object-cover" %>
+          </div>
         <% end %>
       <% elsif logo_variant %>
-        <%= image_tag logo_variant, alt: "#{production.name} Logo", class: "rounded shadow-sm object-contain max-h-[180px] max-w-[200px] border border-gray-200" %>
+        <div class="w-[135px] aspect-square rounded shadow-sm overflow-hidden border border-gray-200 bg-white">
+          <%= image_tag logo_variant, alt: "#{production.name} Logo", class: "w-full h-full object-cover" %>
+        </div>
       <% else %>
-        <div class="w-[120px] h-[120px] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
+        <div class="w-[135px] aspect-square rounded bg-gray-200 flex items-center justify-center border border-gray-300">
           <span class="text-3xl font-bold text-gray-400"><%= production.initials %></span>
         </div>
       <% end %>

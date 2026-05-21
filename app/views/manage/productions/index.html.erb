@@ -27,12 +27,12 @@
         <%= link_to "#{edit_manage_production_path(production)}#tab-0", class: "flex flex-col items-center p-4 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
         <% logo_variant = production.safe_logo_variant(:small) %>
         <% if logo_variant %>
-            <div class="w-24 h-14 rounded flex items-center justify-center overflow-hidden mb-3">
-            <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
+            <div class="w-20 aspect-square rounded overflow-hidden border border-gray-200 bg-white mb-3">
+              <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover" %>
             </div>
         <% else %>
-            <div class="w-24 h-14 rounded bg-pink-100 flex items-center justify-center mb-3">
-            <span class="text-lg font-bold text-pink-600"><%= production.initials %></span>
+            <div class="w-20 aspect-square rounded bg-pink-100 flex items-center justify-center mb-3">
+              <span class="text-lg font-bold text-pink-600"><%= production.initials %></span>
             </div>
         <% end %>
         <span class="font-medium text-gray-900 text-center text-sm"><%= production.name %></span>

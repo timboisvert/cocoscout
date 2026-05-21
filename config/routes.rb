@@ -403,6 +403,7 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/:id/cancel_show", to: "shows#cancel_show", as: "cancel_show"
     delete "/shows/:production_id/:id/delete_show", to: "shows#delete_show", as: "delete_show"
     patch "/shows/:production_id/:id/uncancel", to: "shows#uncancel", as: "uncancel_show"
+    post  "/shows/:production_id/:id/upload_poster", to: "shows#upload_poster", as: "upload_poster_show"
     post "/shows/:production_id/:id/link_show", to: "shows#link_show", as: "link_show"
     delete "/shows/:production_id/:id/unlink_show", to: "shows#unlink_show", as: "unlink_show"
     delete "/shows/:production_id/:id/delete_linkage", to: "shows#delete_linkage", as: "delete_linkage_show"
