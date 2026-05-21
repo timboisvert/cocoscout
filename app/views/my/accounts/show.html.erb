@@ -1,0 +1,72 @@
+<% content_for :title, "Account" %>
+
+<div class="max-w-md mx-auto py-6">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%# Identity section — avatar / name / email, read-only %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-4">
+    <div class="flex items-center gap-4">
+      <% if @person&.headshot&.attached? %>
+        <%= image_tag @person.headshot, class: "w-16 h-16 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-16 h-16 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center text-xl font-bold flex-shrink-0">
+          <%= @person&.name&.split&.map(&:first)&.join&.upcase || @user.email_address[0].upcase %>
+        </div>
+      <% end %>
+      <div class="min-w-0 flex-1">
+        <div class="text-lg font-semibold text-gray-900 truncate"><%= @person&.name || @user.email_address %></div>
+        <div class="text-sm text-gray-500 truncate"><%= @user.email_address %></div>
+      </div>
+    </div>
+  </div>
+
+  <%# Sign out — clearly separated, primary action %>
+  <div class="mb-6">
+    <%= render "shared/button",
+          text: "Sign out",
+          path: signout_path,
+          variant: "primary",
+          size: "large",
+          classes: "w-full",
+          data: { turbo_prefetch: false } %>
+  </div>
+
+  <%# Notification preferences — same form as /account/notifications, posts to the same endpoint. %>
+  <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Email notifications" %>
+      <div class="p-5">
+        <p class="text-sm text-gray-600 mb-4">
+          Control which emails CocoScout sends you.
+        </p>
+
+        <div class="space-y-1">
+          <% [
+            { key: :vacancy_invitations,  title: "Open vacancy invitations", subtitle: "Get notified when you're invited to fill an open vacancy" },
+            { key: :audition_invitations, title: "Audition invitations",     subtitle: "Get notified when you're invited to audition" },
+            { key: :cast_notifications,   title: "Cast notifications",       subtitle: "Get notified when you're cast in a show" },
+            { key: :show_reminders,       title: "Show reminders",           subtitle: "Reminders the day before a show you're in" },
+            { key: :message_digest,       title: "Message digest",           subtitle: "Daily digest of unread messages" }
+          ].each do |pref| %>
+            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+              <div class="flex-1 pr-4">
+                <p class="text-sm font-medium text-gray-700"><%= pref[:title] %></p>
+                <p class="text-xs text-gray-500 mt-0.5"><%= pref[:subtitle] %></p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="hidden" name="notifications[<%= pref[:key] %>]" value="0">
+                <% checked = pref[:key] == :message_digest ? Current.user.message_digest_enabled? : Current.user.notification_enabled?(pref[:key]) %>
+                <input type="checkbox" name="notifications[<%= pref[:key] %>]" value="1" <%= 'checked' if checked %> class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-5">
+          <%= render "shared/button", text: "Save preferences", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

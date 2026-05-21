@@ -194,6 +194,9 @@ Rails.application.routes.draw do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
 
+    # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
+    get   "/account",                       to: "accounts#show",            as: "account"
+
     # Messages
     resources :messages, only: [ :index, :show ] do
       member do
@@ -445,6 +448,7 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
     get "/shows/:production_id/visual_assets/:id/edit_logo", to: "visual_assets#edit_logo", as: "edit_logo_production_visual_asset"
     patch "/shows/:production_id/visual_assets/:id/update_logo", to: "visual_assets#update_logo", as: "update_logo_production_visual_asset"
+    post "/shows/:production_id/visual_assets/promote_show_poster/:show_id", to: "visual_assets#promote_show_poster", as: "promote_show_poster_production_visual_asset"
 
     # Sign-ups - org-level (aggregates all productions)
     get  "/signups",            to: "signups#org_index", as: "signups"
@@ -874,6 +878,8 @@ Rails.application.routes.draw do
         patch :toggle_production_notification
         delete :remove_team_member
         delete :revoke_production_invite
+        # Legacy logo removal (one-way migration off of logos toward posters)
+        delete :remove_logo
         # Agreement management
         get :agreement_status
         post :send_agreement_reminders

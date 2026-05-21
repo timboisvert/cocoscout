@@ -17,16 +17,9 @@
         <%= link_to "#{manage_casting_settings_path(production)}#tab-1", class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
           <%# Left Section: Production Logo + Name %>
           <div class="w-1/2 flex items-center gap-4 pr-4">
-            <% logo_variant = production.safe_logo_variant(:small) %>
-            <% if logo_variant %>
-              <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
-                <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-              </div>
-            <% else %>
-              <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-                <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-              </div>
-            <% end %>
+            <div class="flex-shrink-0">
+              <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
+            </div>
             <span class="font-medium text-gray-900"><%= production.name %></span>
           </div>
 

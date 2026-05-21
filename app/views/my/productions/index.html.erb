@@ -16,14 +16,9 @@
         <% entities = @production_entities[production.id] || [] %>
         <%= link_to my_production_path(production), class: "p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all no-underline" do %>
           <div class="flex items-center gap-4">
-            <% logo_variant = production.safe_logo_variant(:small) %>
-            <% if logo_variant %>
-              <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-16 sm:w-[80px] object-contain rounded flex-shrink-0" %>
-            <% else %>
-              <div class="w-16 h-10 sm:w-[80px] sm:h-[50px] rounded bg-gray-100 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">
-                No logo
-              </div>
-            <% end %>
+            <div class="flex-shrink-0">
+              <%= render "shared/production_image", production: production, width: "w-16" %>
+            </div>
 
             <div class="flex-1 min-w-0">
               <div class="font-bold text-base sm:text-lg text-gray-900 truncate"><%= production.name %></div>

@@ -27,17 +27,10 @@
 
       <%# Panel 1: Production Info %>
       <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
-        <%# Production Logo or Initials %>
-        <% logo_variant = production.safe_logo_variant(:small) %>
-        <% if logo_variant %>
-          <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
-            <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
-          </div>
-        <% else %>
-          <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-            <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-          </div>
-        <% end %>
+        <%# Production image: logo → poster → initials %>
+        <div class="flex-shrink-0">
+          <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
+        </div>
 
         <%# Production Details %>
         <div class="flex-1 min-w-0">

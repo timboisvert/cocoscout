@@ -7,7 +7,10 @@
   series_panel = local_assigns.fetch(:series_panel, nil)
 %>
 
-<% cache ["show_info_card_v6", show.id, show.updated_at.to_i, compact, series_panel&.dig(:type), series_panel&.dig(:count)] do %>
+<%# Cache key includes production posters' max updated_at so uploading a
+    production-wide poster busts the show card's cache even though show.updated_at
+    doesn't change. %>
+<% cache ["show_info_card_v7", show.id, show.updated_at.to_i, show.production&.posters&.maximum(:updated_at)&.to_i, compact, series_panel&.dig(:type), series_panel&.dig(:count)] do %>
 <%
   poster_url = safe_poster_url(show)
   has_poster = poster_url && !show.canceled

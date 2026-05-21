@@ -70,6 +70,34 @@ module Manage
       redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Poster was set as primary"
     end
 
+    # Take a poster that's attached to a single Show and turn it into a
+    # production-level Poster. The new Poster reuses the same blob (no
+    # re-upload) and is marked primary. The show's own attachment is detached
+    # so the show falls back to the new production poster — keeping a
+    # single source of truth instead of two parallel images.
+    def promote_show_poster
+      show = @production.shows.find(params[:show_id])
+      unless show.poster.attached?
+        redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: "That show doesn't have a poster to promote." and return
+      end
+
+      blob = show.poster.blob
+      poster = @production.posters.new(
+        name: show.display_name.presence || show.date_and_time.strftime("%b %-d, %Y"),
+        is_primary: true
+      )
+      poster.image.attach(blob)
+
+      if poster.save
+        # Detach the show's own poster so it falls back to the new production
+        # poster (same image, same display). Avoids carrying parallel state.
+        show.poster.detach
+        redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Promoted to production poster."
+      else
+        redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: poster.errors.full_messages.to_sentence.presence || "Could not promote poster."
+      end
+    end
+
     private
 
     def set_production

@@ -98,26 +98,38 @@
 
     <!-- Tab 2: Visual Assets -->
     <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= manage_create_poster_production_visual_asset_path(@production) %>">
-      <!-- Logo Card -->
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Logo" %>
-        <div class="p-6">
-          <% logo_variant = @production.safe_logo_variant(:small) %>
-          <% if logo_variant %>
-            <%= image_tag logo_variant, class: "h-auto max-h-32" %>
-            <% if current_user_can_manage?(@production) %>
-              <div class="mt-4">
-                <%= render "shared/button", text: "Replace Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
+      <%# Legacy logo display. We no longer let users add or replace production
+          logos — productions use posters as their main image now. If a production
+          still has a legacy logo attached, we show it here (and still fall back
+          to it at render time when there's no primary poster). %>
+      <% legacy_logo_variant = @production.safe_logo_variant(:small) %>
+      <% if legacy_logo_variant %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <%= render "shared/card_header", title: "Logo (legacy)" %>
+          <div class="p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-20 aspect-square rounded overflow-hidden border border-gray-200 bg-white flex-shrink-0">
+                <%= image_tag legacy_logo_variant, class: "w-full h-full object-cover" %>
               </div>
-            <% end %>
-          <% else %>
-            <p class="text-sm text-gray-500 mb-4">No logo added.</p>
-            <% if current_user_can_manage?(@production) %>
-              <%= render "shared/button", text: "Upload Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
-            <% end %>
-          <% end %>
+              <div class="flex-1 text-sm text-gray-600">
+                We've moved to using posters as the main image for productions.
+                Your existing logo still shows where no primary poster is set —
+                add a poster below to take over, or remove the logo now if you don't need it anymore.
+                <% if current_user_can_manage?(@production) %>
+                  <div class="mt-3">
+                    <%= button_to "Remove logo",
+                          remove_logo_manage_production_path(@production),
+                          method: :delete,
+                          class: "text-sm text-pink-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0",
+                          form_class: "inline-block",
+                          data: { turbo_confirm: "Remove the logo from this production? You can't get it back without re-uploading." } %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      <% end %>
 
       <!-- Posters Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -129,7 +141,9 @@
                 <div class="bg-gray-50 rounded-lg shadow p-4 flex flex-col <%= 'ring-2 ring-pink-500' if poster.is_primary %>">
                   <% image_variant = poster.safe_image_variant(:small) %>
                   <% if image_variant %>
-                    <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2 rounded" %>
+                    <div class="w-full aspect-[3/4] rounded overflow-hidden border border-gray-200 bg-white mb-2">
+                      <%= image_tag image_variant, class: "w-full h-full object-cover" %>
+                    </div>
                   <% end %>
 
                   <div class="flex items-center gap-2 mb-2">
@@ -161,6 +175,47 @@
             <% if current_user_can_manage?(@production) %>
               <%= render "shared/button", text: "Add Poster", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openNewPosterModal" } %>
             <% end %>
+          <% end %>
+
+          <%# Show-level posters: each Show in the production may have its own
+              :poster attachment. List them (in date order) so the manager can
+              see what's being used per-show and promote any of them to the
+              production poster with one click. %>
+          <% shows_with_posters = @production.shows.includes(poster_attachment: :blob).select { |s| s.poster.attached? }.sort_by(&:date_and_time) %>
+          <% if shows_with_posters.any? %>
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <div class="flex items-baseline justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-700">Posters used by individual shows</h3>
+                <span class="text-xs text-gray-500"><%= shows_with_posters.size %> <%= "show".pluralize(shows_with_posters.size) %></span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+                <% shows_with_posters.each do |show| %>
+                  <% show_poster_variant = show.safe_poster_variant(:small) %>
+                  <div class="bg-gray-50 rounded-lg shadow p-4 flex flex-col">
+                    <% if show_poster_variant %>
+                      <div class="w-full aspect-[3/4] rounded overflow-hidden border border-gray-200 bg-white mb-2">
+                        <%= image_tag show_poster_variant, class: "w-full h-full object-cover" %>
+                      </div>
+                    <% end %>
+                    <div class="mb-2">
+                      <div class="font-semibold text-sm text-gray-900 truncate"><%= show.display_name %></div>
+                      <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a %b %-d, %Y · %-l:%M %p") %></div>
+                    </div>
+                    <% if current_user_can_manage?(@production) %>
+                      <div class="flex flex-wrap gap-2 mt-auto pt-2">
+                        <%= button_to "Use for production",
+                              manage_promote_show_poster_production_visual_asset_path(@production, show_id: show.id),
+                              method: :post,
+                              class: "text-sm text-pink-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0",
+                              form_class: "inline-block",
+                              data: { turbo_confirm: "Use this poster for the entire production? The show's own poster will be replaced by the new production poster (same image)." } %>
+                        <%= link_to "Open show", manage_show_path(@production, show), class: "text-sm text-gray-500 hover:text-gray-700 underline" %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
           <% end %>
         </div>
       </div>

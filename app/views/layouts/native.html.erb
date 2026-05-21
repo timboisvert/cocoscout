@@ -7,6 +7,13 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <%# Google Fonts — same set as application.html.erb. Without these the
+        Coustard / Inter / Caprasimo @font-face rules never load and every
+        .coustard-regular / .inter-regular falls back to system font. %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Coustard:wght@400;900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
     <%= yield :head %>
 
     <link rel="icon" href="/icon.png" type="image/png">

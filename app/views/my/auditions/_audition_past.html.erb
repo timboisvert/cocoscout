@@ -1,13 +1,10 @@
 <% production = audition.audition_request.audition_cycle.production %>
 <% has_groups = @groups.present? && @groups.any? %>
-<% cache ["audition_past_v2", audition.id, audition.updated_at.to_i, production.updated_at.to_i, has_groups, audition.accepted_at, audition.declined_at] do %>
+<% cache ["audition_past_v3", audition.id, audition.updated_at.to_i, production.updated_at.to_i, production.posters.maximum(:updated_at)&.to_i, has_groups, audition.accepted_at, audition.declined_at] do %>
 <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-center gap-4">
-    <% logo_variant = production.safe_logo_variant(:small) %>
-    <% if logo_variant %>
-        <div class="flex-shrink-0">
-            <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-[100px] object-contain rounded" %>
-        </div>
-    <% end %>
+    <div class="flex-shrink-0">
+        <%= render "shared/production_image", production: production, width: "w-20", initials_class: "text-lg" %>
+    </div>
     <div class="flex-grow text-left">
         <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
         <div class="text-sm text-gray-500 mt-1">
