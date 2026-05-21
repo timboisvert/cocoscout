@@ -106,7 +106,9 @@
   <!-- Unified Calendar -->
   <%# Wrap the calendar in a Turbo Frame so month/filter/scope nav updates
       the calendar in-place instead of triggering a full-page navigation
-      (which slides on iOS and full-reloads on desktop). %>
+      (which slides on iOS and full-reloads on desktop).
+      Day-event links inside the calendar opt out with data-turbo-frame="_top"
+      so they navigate the whole page (their targets don't have a matching frame). %>
   <%= turbo_frame_tag "dashboard_calendar" do %>
   <%
     desktop_month = @current_month
@@ -261,7 +263,7 @@
               end
               color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
             %>
-            <%= link_to event[:path], class: "block mb-1" do %>
+            <%= link_to event[:path], class: "block mb-1", data: { turbo_frame: "_top" } do %>
               <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
                 <div class="font-semibold truncate"><%= event[:time].strftime("%-I:%M%p").downcase %></div>
                 <div class="truncate text-[10px]"><%= event[:title] %></div>
@@ -339,7 +341,7 @@
                 dot_color = "bg-gray-300"
               end
             %>
-            <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors #{row_bg}" do %>
+            <%= link_to event[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors #{row_bg}", data: { turbo_frame: "_top" } do %>
               <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></div>
               <span class="text-xs text-gray-500 w-14 flex-shrink-0"><%= event[:time].strftime("%-I:%M%p").downcase %></span>
               <span class="text-sm truncate flex-1 <%= is_past ? 'text-gray-400' : 'text-gray-900' %>"><%= event[:title] %></span>
