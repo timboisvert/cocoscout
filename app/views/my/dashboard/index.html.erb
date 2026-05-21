@@ -104,6 +104,10 @@
   <% end %>
 
   <!-- Unified Calendar -->
+  <%# Wrap the calendar in a Turbo Frame so month/filter/scope nav updates
+      the calendar in-place instead of triggering a full-page navigation
+      (which slides on iOS and full-reloads on desktop). %>
+  <%= turbo_frame_tag "dashboard_calendar" do %>
   <%
     desktop_month = @current_month
     month_start_date = desktop_month.to_date.beginning_of_month
@@ -358,5 +362,6 @@
       </div>
     <% end %>
   </div>
+  <% end %>
 
 </div>
