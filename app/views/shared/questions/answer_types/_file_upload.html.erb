@@ -1,0 +1,18 @@
+<%# Renders a file_upload-type answer.
+    QuestionnaireAnswer has has_one_attached :file and supports this fully.
+    Answer (audition request) does not yet — for those we fall back to text. %>
+<% if answer.respond_to?(:file) && answer.file.attached? %>
+  <% if answer.respond_to?(:image?) && answer.image? %>
+    <%= image_tag answer.file, class: "max-w-xs rounded-lg" %>
+  <% elsif answer.respond_to?(:audio?) && answer.audio? %>
+    <audio controls class="w-full max-w-md">
+      <source src="<%= url_for(answer.file) %>" type="<%= answer.file.content_type %>">
+    </audio>
+  <% else %>
+    <%= link_to answer.file.filename.to_s, url_for(answer.file), target: "_blank", rel: "noopener noreferrer", class: "text-pink-500 hover:underline" %>
+  <% end %>
+<% elsif answer.value.present? %>
+  <span class="text-gray-700"><%= answer.value %></span>
+<% else %>
+  <span class="text-gray-400 italic">No file uploaded</span>
+<% end %>

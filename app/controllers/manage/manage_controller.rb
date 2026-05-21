@@ -4,6 +4,7 @@ module Manage
   class ManageController < ActionController::Base
     include Authentication
     include Pagy::Method
+    include SentryContext
 
     layout "application"
 

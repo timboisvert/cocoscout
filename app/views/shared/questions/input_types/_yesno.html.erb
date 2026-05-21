@@ -3,7 +3,7 @@
 <% end %>
 
 <div class="px-2 py-1">
-  <%= radio_button_tag "question[#{question.id}]", "yes", checked: (answer_value == "yes" || answer_value.blank?), class: "accent-pink-500 mr-1", required: required %>
+  <%= radio_button_tag "question[#{question.id}]", "yes", checked: (answer_value == "yes"), class: "accent-pink-500 mr-1", required: required %>
   <%= label_tag "question[#{question.id}][yes]", "Yes" %>
 </div>
 <div class="px-2 py-1">

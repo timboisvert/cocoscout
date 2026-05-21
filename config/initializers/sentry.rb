@@ -7,8 +7,12 @@ Sentry.init do |config|
   config.traces_sample_rate = 0.5
   config.profiles_sample_rate = 0.5
   config.send_default_pii = true
-  config.enable_logs = true
-  config.enabled_patches = [ :logger ]
+  # Sentry Logs product disabled: forwarding every Rails.logger call to Sentry
+  # was burning through the 5GB monthly logs budget by day ~22. Errors,
+  # breadcrumbs, and performance traces still flow normally — only the
+  # structured "Logs" tab is turned off. Rails logs still go to their usual
+  # destination.
+  config.enable_logs = false
 
   # Filter out N+1 queries from solid_cache - these are expected behavior
   # for fragment caching with a database-backed cache store

@@ -3,12 +3,24 @@
   return if cycle.blank?
 
   status = cycle.timeline_status
-  status_label = status == :upcoming ? "Opens Soon" : status.to_s.titleize
-  status_color = case status
-                 when :open then "green"
-                 when :upcoming then "pink"
-                 else "gray"
-                 end
+  # The cycle isn't actually visible to performers until form_reviewed is true,
+  # even if the timeline says "open". Treat that combination as its own state
+  # so we don't mislead managers into thinking auditionees can see the form.
+  needs_review = status == :open && !cycle.form_reviewed
+
+  if needs_review
+    status_label = "Needs Review"
+    status_color = "amber"
+  elsif status == :upcoming
+    status_label = "Opens Soon"
+    status_color = "pink"
+  elsif status == :open
+    status_label = "Open"
+    status_color = "green"
+  else
+    status_label = status.to_s.titleize
+    status_color = "gray"
+  end
 
   total_requests = cycle.audition_requests.active.count
   scheduled = cycle.audition_sessions.joins(:auditions).distinct.count("auditions.auditionable_id")
@@ -33,7 +45,7 @@
                   cycle.closes_at.present? ? "Closed #{cycle.closes_at.strftime('%b %-d')}" : "Closed"
                 end
 
-  show_form_url = (status == :open || status == :upcoming)
+  show_form_url = (status == :open || status == :upcoming) && cycle.form_reviewed
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-4">
@@ -52,6 +64,18 @@
   <% if show_form_url %>
     <div class="mt-3">
       <%= render "shared/copy_url", url: cycle.respond_url %>
+    </div>
+  <% elsif needs_review %>
+    <div class="mt-3 flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+      <%= icon("alert-circle", class: "w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5") %>
+      <div class="flex-1 text-sm text-amber-900">
+        <div class="font-medium">Not yet visible to performers</div>
+        <div class="text-xs text-amber-800 mt-0.5">
+          The audition window is open, but the form is still in draft. Go to the
+          <strong>Form</strong> tab and click <strong>Mark Ready</strong> at the bottom
+          to publish it. The link to share will appear here once it's live.
+        </div>
+      </div>
     </div>
   <% end %>
 

@@ -4,13 +4,13 @@ class ApplicationController < ActionController::Base
   include Authentication
   include Pagy::Method
   include ActivityTracking
+  include SentryContext
 
   helper_method :turbo_native_app?
   layout :resolve_layout
 
   before_action :track_my_dashboard
   before_action :show_my_sidebar
-  before_action :set_sentry_context
 
   def track_my_dashboard
     # Only track if user is on a My:: controller page (not AuthController or other base controllers)
@@ -33,15 +33,6 @@ class ApplicationController < ActionController::Base
     return if Current.user&.superadmin?
 
     redirect_to my_dashboard_path
-  end
-
-  def set_sentry_context
-    return unless defined?(Sentry) && Current.user.present?
-
-    Sentry.set_user(
-      id: Current.user.id,
-      email: Current.user.email_address
-    )
   end
 
   def turbo_native_app?

@@ -331,6 +331,45 @@ module Manage
       redirect_to manage_signups_auditions_wizard_form_starter_path(@production), notice: "Question removed"
     end
 
+    def update_form_question
+      index = params[:index].to_i
+      questions = @wizard_state[:form_starter_questions] || []
+      if questions[index].nil?
+        flash[:alert] = "Question not found"
+        redirect_to manage_signups_auditions_wizard_form_starter_path(@production) and return
+      end
+
+      text = params[:text].to_s.strip
+      if text.blank?
+        flash[:alert] = "Question text is required"
+        redirect_to manage_signups_auditions_wizard_form_starter_path(@production) and return
+      end
+
+      type_class = QuestionTypes::Base.find(params[:question_type])
+      qtype = type_class ? type_class.key : "textarea"
+
+      options = if type_class&.needs_options?
+        params[:options].to_s.split("\n").map(&:strip).reject(&:blank?)
+      else
+        []
+      end
+
+      if type_class&.needs_options? && options.empty?
+        flash[:alert] = "This question type needs at least one option"
+        redirect_to manage_signups_auditions_wizard_form_starter_path(@production) and return
+      end
+
+      questions[index] = {
+        text: text,
+        question_type: qtype,
+        required: params[:required] == "1",
+        options: options
+      }
+      @wizard_state[:form_starter_questions] = questions
+      save_wizard_state
+      redirect_to manage_signups_auditions_wizard_form_starter_path(@production), notice: "Question updated"
+    end
+
     # Step 7: Review & Create
     def review
       # Show summary of all settings before creating
@@ -340,6 +379,10 @@ module Manage
       @audition_cycle = AuditionCycle.new(
         production: @production,
         active: true,
+        # The wizard's form_starter step IS the form review — anyone who finished
+        # the wizard has explicitly designed the questions. Default to ready
+        # rather than making them click an extra "Mark Ready" button afterwards.
+        form_reviewed: true,
         allow_video_submissions: @wizard_state[:allow_video_submissions],
         allow_in_person_auditions: @wizard_state[:allow_in_person_auditions],
         listed_in_directory: @wizard_state[:listed_in_directory] != false,
@@ -387,18 +430,22 @@ module Manage
             end
           end
 
-          # Seed starter form questions
+          # Seed starter form questions.
+          # Build options on the question BEFORE saving so the
+          # validate_question_options_presence check passes for
+          # multiple-single / multiple-multiple / ranking types.
           starter_questions = @wizard_state[:form_starter_questions] || []
           starter_questions.each_with_index do |q, idx|
-            question = @audition_cycle.questions.create!(
+            question = @audition_cycle.questions.new(
               text: q[:text] || q["text"],
               question_type: q[:question_type] || q["question_type"],
               required: q[:required] || q["required"] || false,
               position: idx
             )
             (q[:options] || q["options"] || []).each do |opt_text|
-              question.question_options.create!(text: opt_text)
+              question.question_options.build(text: opt_text)
             end
+            question.save!
           end
 
           # Clear wizard state
@@ -411,6 +458,12 @@ module Manage
           render :review, status: :unprocessable_entity
         end
       end
+    rescue ActiveRecord::RecordInvalid => e
+      # Catches failures from any of the create!/save! calls above (sessions,
+      # reviewers, questions). Without this rescue the exception escapes the
+      # action and the user sees a 500 with no idea what to fix.
+      flash.now[:alert] = "Couldn't create the audition cycle: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+      render :review, status: :unprocessable_entity
     end
 
     # Cancel wizard and clear state
@@ -447,6 +500,24 @@ module Manage
       session[:audition_wizard]&.delete(@production.id.to_s)
 
       @wizard_state = @wizard_state_record.state.with_indifferent_access
+
+      # Surface wizard state on any Sentry event fired during this request so
+      # we can debug what the user had configured when something blows up.
+      sentry_context("audition_wizard", {
+        wizard_state_id: @wizard_state_record.id,
+        production_id: @production.id,
+        updated_at: @wizard_state_record.updated_at&.iso8601,
+        keys: @wizard_state.keys.sort,
+        starter_question_count: (@wizard_state[:form_starter_questions] || []).size,
+        audition_session_count: (@wizard_state[:audition_sessions] || []).size,
+        starter_questions: (@wizard_state[:form_starter_questions] || []).map { |q|
+          {
+            type: q[:question_type] || q["question_type"],
+            required: q[:required] || q["required"],
+            options_count: (q[:options] || q["options"] || []).size
+          }
+        }
+      })
     end
 
     def save_wizard_state

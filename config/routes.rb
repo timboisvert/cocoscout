@@ -537,6 +537,7 @@ Rails.application.routes.draw do
     patch "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
     delete "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
     delete "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#delete_all_sessions", as: "signups_auditions_wizard_delete_all_sessions"
+    patch  "/signups/auditions/:production_id/wizard/form_starter/:index", to: "audition_cycle_wizard#update_form_question", as: "signups_auditions_wizard_update_form_question"
     get  "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#availability", as: "signups_auditions_wizard_availability"
     post "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
     get  "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#reviewers", as: "signups_auditions_wizard_reviewers"

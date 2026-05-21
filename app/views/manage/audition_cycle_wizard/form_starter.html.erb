@@ -1,11 +1,19 @@
 <%
   form_starter_step = @wizard_state[:allow_in_person_auditions] ? 7 : 6
-  question_types = QuestionTypes::Base.registry.values.sort_by(&:sort_order)
+  # Audition request answers don't support file uploads — keep that type out of the dropdown
+  # so users don't create questions whose submissions will silently vanish.
+  question_types = QuestionTypes::Base.registry.values.sort_by(&:sort_order).reject { |t| t.key == "file_upload" }
   needs_options_keys = question_types.select { |t| t.needs_options? }.map(&:key)
 %>
 <%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: form_starter_step, step_name: "Form" } do %>
-  <div data-controller="edit-modal wizard-question"
-       data-wizard-question-needs-options-keys-value="<%= needs_options_keys.to_json %>">
+  <%
+    add_url = manage_signups_auditions_wizard_add_form_question_path(@production)
+    update_url_template = manage_signups_auditions_wizard_update_form_question_path(@production, index: ":index")
+  %>
+  <div data-controller="wizard-question"
+       data-wizard-question-needs-options-keys-value="<%= needs_options_keys.to_json %>"
+       data-wizard-question-add-url-value="<%= add_url %>"
+       data-wizard-question-update-url-template-value="<%= update_url_template %>">
     <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Build your form</h2>
     <p class="text-gray-600 mb-6">Add questions auditionees will answer when signing up. You can add more or edit details after the cycle is created.</p>
 
@@ -32,12 +40,24 @@
                 <% end %>
               </p>
             </div>
-            <%= button_to manage_signups_auditions_wizard_delete_form_question_path(@production, index: idx),
-                  method: :delete,
-                  class: "inline-block",
-                  data: { turbo_confirm: "Remove this question?" } do %>
-              <%= render "shared/button", text: "Remove", variant: "ghost", size: "small", type: :button %>
-            <% end %>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button type="button"
+                      class="text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm"
+                      data-action="click->wizard-question#openForEdit"
+                      data-question-index="<%= idx %>"
+                      data-question-text="<%= text %>"
+                      data-question-type="<%= qtype %>"
+                      data-question-required="<%= required ? 'true' : 'false' %>"
+                      data-question-options="<%= options.to_json %>">
+                Edit
+              </button>
+              <%= button_to "Remove",
+                    manage_signups_auditions_wizard_delete_form_question_path(@production, index: idx),
+                    method: :delete,
+                    class: "text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
+                    form_class: "inline-block",
+                    data: { turbo_confirm: "Remove this question?" } %>
+            </div>
           </div>
         <% end %>
       </div>
@@ -54,24 +74,27 @@
           size: "medium",
           icon: "plus",
           type: :button,
-          data: { action: "click->edit-modal#open" } %>
+          data: { action: "click->wizard-question#openForNew" } %>
 
-    <%# Add question modal %>
-    <div data-edit-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-         data-action="click->edit-modal#closeOnBackdrop keydown.esc@window->edit-modal#close">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" data-action="click->edit-modal#stopPropagation">
+    <%# Add/Edit question modal %>
+    <div data-wizard-question-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+         data-action="click->wizard-question#closeOnBackdrop keydown.esc@window->wizard-question#close">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" data-action="click->wizard-question#stopPropagation">
         <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Add Question</h3>
-          <button type="button" data-action="click->edit-modal#close" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+          <h3 class="text-lg font-semibold text-gray-900 coustard-regular" data-wizard-question-target="title">Add Question</h3>
+          <button type="button" data-action="click->wizard-question#close" class="text-gray-500 hover:text-gray-700 cursor-pointer">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
         <div class="px-6 py-5">
-          <%= form_with url: manage_signups_auditions_wizard_add_form_question_path(@production), method: :post, local: true do %>
+          <%= form_with url: add_url, method: :post, local: true, data: { "wizard-question-target": "form", action: "submit->wizard-question#validateBeforeSubmit" } do %>
+            <%# Method input lets us switch between POST (add) and PATCH (edit) without a separate form %>
+            <input type="hidden" name="_method" value="post" data-wizard-question-target="methodInput">
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Question</label>
                 <input type="text" name="text" required
+                       data-wizard-question-target="textInput"
                        placeholder="e.g. What's your performance experience?"
                        class="block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
               </div>
@@ -89,13 +112,18 @@
               <div data-wizard-question-target="optionsSection" class="hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
                 <textarea name="options" rows="4"
+                          data-wizard-question-target="optionsTextarea"
                           placeholder="One option per line"
-                          class="block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500 font-mono text-sm"></textarea>
+                          class="block w-full shadow-sm rounded-lg border px-3 py-2 focus:ring-pink-500 focus:border-pink-500 font-mono text-sm border-gray-300"></textarea>
+                <p data-wizard-question-target="optionsError" class="hidden text-sm text-pink-600 mt-1">Please enter at least one option, one per line.</p>
                 <p class="text-xs text-gray-500 mt-1">Enter each choice on its own line.</p>
               </div>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="required" value="1" class="h-4 w-4 border-gray-300 rounded accent-pink-500 cursor-pointer">
-                <span class="text-sm text-gray-700">Required</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" name="required" value="1"
+                       data-wizard-question-target="requiredCheckbox"
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                <span class="ml-3 text-sm text-gray-700">Required</span>
               </label>
             </div>
             <div class="mt-6 flex justify-end gap-2">
@@ -104,8 +132,13 @@
                     variant: "ghost-cancel",
                     size: "medium",
                     type: :button,
-                    data: { action: "click->edit-modal#close" } %>
-              <%= render "shared/button", text: "Add Question", variant: "primary", size: "medium", type: :submit %>
+                    data: { action: "click->wizard-question#close" } %>
+              <%= render "shared/button",
+                    text: "Add Question",
+                    variant: "primary",
+                    size: "medium",
+                    type: :submit,
+                    data: { "wizard-question-target": "submitButton" } %>
             </div>
           <% end %>
         </div>

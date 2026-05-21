@@ -1,0 +1,17 @@
+<%# Renders a url-type answer. Only links if the URL has an http/https scheme. %>
+<% raw_value = answer.value.to_s %>
+<%
+  safe_href = begin
+    uri = URI.parse(raw_value)
+    %w[http https].include?(uri.scheme) ? raw_value : nil
+  rescue URI::InvalidURIError
+    nil
+  end
+%>
+<% if safe_href %>
+  <%= link_to raw_value, safe_href, target: "_blank", rel: "noopener noreferrer", class: "text-pink-500 hover:underline break-all" %>
+<% elsif raw_value.present? %>
+  <span class="text-gray-700 break-all"><%= raw_value %></span>
+<% else %>
+  <span class="text-gray-400 italic">No answer</span>
+<% end %>
