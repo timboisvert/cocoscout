@@ -79,26 +79,35 @@ module Manage
 
       # For repeated mode, load instances for event navigation
       if @sign_up_form.repeated?
-        # Get all instances that are navigable: open instances OR past closed instances
-        # We want to show: past events (read-only) and currently open events
-        # Use secondary sort by instance id to ensure deterministic ordering when shows have same date/time
+        # Lightweight load — we only need show + status for the navigation list,
+        # prev/next, and right-side dropdown. The heavy slots/registrations/people
+        # preload is reserved for @current_instance below. Preloading those for
+        # every instance was making the page take 2+ seconds to render on forms
+        # with many past instances (weekly open mics, recurring rehearsals, etc.).
         @instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
-          .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
+          .includes(:show)
           .where.not(status: "cancelled")
           .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
+          .to_a
 
-        # For the right-side list, only show current and upcoming (not past closed)
         @upcoming_instances = @instances.select do |inst|
           inst.show.date_and_time > Time.current || inst.open?
         end
 
-        # Allow selecting a specific instance via params
+        # Pick the current instance from the lightweight list
         if params[:instance_id].present?
-          @current_instance = @instances.find_by(id: params[:instance_id])
+          @current_instance = @instances.find { |i| i.id.to_s == params[:instance_id].to_s }
         end
-        # Default to first open instance, or first upcoming, or just first
         @current_instance ||= @instances.find(&:open?) || @upcoming_instances.first || @instances.last
+
+        # Now do the heavy preload, but only for the one instance the page
+        # actually renders in full.
+        if @current_instance
+          @current_instance = SignUpFormInstance
+            .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
+            .find(@current_instance.id)
+        end
       elsif @sign_up_form.shared_pool?
         # For shared_pool, get the single instance (no show association)
         @current_instance = @sign_up_form.sign_up_form_instances.where(show_id: nil).first
