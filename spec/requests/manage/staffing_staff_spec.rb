@@ -44,7 +44,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
         post manage_create_staffing_staff_path, params: {
           invite_email: "NewHire@Example.com",
           invite_name: "New Hire",
-          house_role_ids: [house_role.id]
+          house_role_ids: [ house_role.id ]
         }
       }.to change(Person, :count).by(1)
         .and change(OrganizationStaffMember, :count).by(1)
@@ -66,7 +66,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect {
         post manage_create_staffing_staff_path, params: {
           invite_email: "existing@example.com",
-          house_role_ids: [house_role.id]
+          house_role_ids: [ house_role.id ]
         }
       }.to change(OrganizationStaffMember, :count).by(1)
         .and change(Person, :count).by(0)
