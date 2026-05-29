@@ -22,7 +22,7 @@
         <div>
           <h3 class="font-semibold text-pink-900 mb-1">Get Paid Faster</h3>
           <p class="text-sm text-pink-800">
-            CocoScout allows productions to pay talent directly via Venmo or Zelle.
+            CocoScout allows productions to pay talent directly via Zelle or Venmo.
             Adding your payment info here means productions can pay you quickly after shows—no
             chasing down checks or waiting for bank transfers. Your information is only shared
             with productions when they process a payout to you.
@@ -39,16 +39,16 @@
         <%= form_with url: my_payments_update_preferred_path, method: :patch, local: true do |f| %>
           <div class="flex gap-4 items-center">
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="preferred_payment_method" value="venmo"
-                     <%= @person.preferred_payment_method == "venmo" || @person.preferred_payment_method.nil? ? "checked" : "" %>
-                     class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
-              <span class="font-medium text-pink-900">Venmo</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="preferred_payment_method" value="zelle"
-                     <%= @person.preferred_payment_method == "zelle" ? "checked" : "" %>
+                     <%= @person.preferred_payment_method == "zelle" || @person.preferred_payment_method.nil? ? "checked" : "" %>
                      class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
               <span class="font-medium text-pink-900">Zelle</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="preferred_payment_method" value="venmo"
+                     <%= @person.preferred_payment_method == "venmo" ? "checked" : "" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600">
+              <span class="font-medium text-pink-900">Venmo</span>
             </label>
             <%= render "shared/button", text: "Save Preference", variant: "primary", size: "small", type: :submit %>
           </div>
@@ -58,6 +58,80 @@
 
     <!-- Payment Methods Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+      <!-- Zelle Section -->
+      <div class="bg-white rounded-lg border border-gray-200 p-6">
+        <div class="flex items-start gap-4 mb-6">
+          <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+            <!-- Zelle Logo -->
+            <svg class="w-8 h-8" viewBox="0 0 50 50" fill="none">
+              <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z" fill="#6D1ED4"/>
+              <path d="M32.5 14H19.8l-.3 3.2h8.3L17 32.5v3.5h13.2l.3-3.2h-8.8L32.5 17.5V14z" fill="white"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900 text-lg">Zelle</h3>
+            <p class="text-sm text-gray-500 mt-1">Bank-to-bank payments through Zelle</p>
+          </div>
+          <% if @person.zelle_configured? %>
+            <div class="flex items-center gap-1.5 px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+              Connected
+            </div>
+          <% end %>
+        </div>
+
+        <% if @person.zelle_configured? %>
+          <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+            <div class="text-sm text-gray-600">
+              <span class="font-medium">Current:</span> <%= @person.formatted_zelle_identifier %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Zelle Form -->
+        <%= form_with model: @person, url: my_payments_update_zelle_path, method: :patch, local: true, class: "space-y-4" do |f| %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Identifier Type</label>
+            <div class="space-y-2">
+              <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <%= f.radio_button :zelle_identifier_type, "PHONE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.zelle_identifier_type == "PHONE" %>
+                <div>
+                  <span class="text-sm font-medium text-gray-700">Phone Number</span>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <%= f.radio_button :zelle_identifier_type, "EMAIL", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.zelle_identifier_type == "EMAIL" %>
+                <div>
+                  <span class="text-sm font-medium text-gray-700">Email Address</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Your Zelle Identifier</label>
+            <%= f.text_field :zelle_identifier,
+                value: @person.zelle_identifier,
+                class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
+                placeholder: "Enter your phone or email" %>
+            <% if @person.errors[:zelle_identifier].any? %>
+              <p class="text-sm text-red-600 mt-1"><%= @person.errors[:zelle_identifier].first %></p>
+            <% end %>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <%= render "shared/button", text: @person.zelle_configured? ? "Update" : "Save", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+        <% if @person.zelle_configured? %>
+          <div class="mt-3">
+            <%= button_to my_payments_remove_zelle_path, method: :delete, data: { turbo_confirm: "Remove your Zelle information?" }, class: "inline-block" do %>
+              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
 
       <!-- Venmo Section -->
       <div class="bg-white rounded-lg border border-gray-200 p-6">
@@ -133,80 +207,6 @@
         <% if @person.venmo_configured? %>
           <div class="mt-3">
             <%= button_to my_payments_remove_venmo_path, method: :delete, data: { turbo_confirm: "Remove your Venmo information?" }, class: "inline-block" do %>
-              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-
-      <!-- Zelle Section -->
-      <div class="bg-white rounded-lg border border-gray-200 p-6">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <!-- Zelle Logo -->
-            <svg class="w-8 h-8" viewBox="0 0 50 50" fill="none">
-              <path d="M25 50c13.807 0 25-11.193 25-25S38.807 0 25 0 0 11.193 0 25s11.193 25 25 25z" fill="#6D1ED4"/>
-              <path d="M32.5 14H19.8l-.3 3.2h8.3L17 32.5v3.5h13.2l.3-3.2h-8.8L32.5 17.5V14z" fill="white"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-gray-900 text-lg">Zelle</h3>
-            <p class="text-sm text-gray-500 mt-1">Bank-to-bank payments through Zelle</p>
-          </div>
-          <% if @person.zelle_configured? %>
-            <div class="flex items-center gap-1.5 px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium">
-              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
-              Connected
-            </div>
-          <% end %>
-        </div>
-
-        <% if @person.zelle_configured? %>
-          <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
-            <div class="text-sm text-gray-600">
-              <span class="font-medium">Current:</span> <%= @person.formatted_zelle_identifier %>
-            </div>
-          </div>
-        <% end %>
-
-        <!-- Zelle Form -->
-        <%= form_with model: @person, url: my_payments_update_zelle_path, method: :patch, local: true, class: "space-y-4" do |f| %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Identifier Type</label>
-            <div class="space-y-2">
-              <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                <%= f.radio_button :zelle_identifier_type, "PHONE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.zelle_identifier_type == "PHONE" %>
-                <div>
-                  <span class="text-sm font-medium text-gray-700">Phone Number</span>
-                </div>
-              </label>
-              <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                <%= f.radio_button :zelle_identifier_type, "EMAIL", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.zelle_identifier_type == "EMAIL" %>
-                <div>
-                  <span class="text-sm font-medium text-gray-700">Email Address</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Your Zelle Identifier</label>
-            <%= f.text_field :zelle_identifier,
-                value: @person.zelle_identifier,
-                class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
-                placeholder: "Enter your phone or email" %>
-            <% if @person.errors[:zelle_identifier].any? %>
-              <p class="text-sm text-red-600 mt-1"><%= @person.errors[:zelle_identifier].first %></p>
-            <% end %>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <%= render "shared/button", text: @person.zelle_configured? ? "Update" : "Save", variant: "primary", size: "medium", type: :submit %>
-          </div>
-        <% end %>
-        <% if @person.zelle_configured? %>
-          <div class="mt-3">
-            <%= button_to my_payments_remove_zelle_path, method: :delete, data: { turbo_confirm: "Remove your Zelle information?" }, class: "inline-block" do %>
               <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
             <% end %>
           </div>

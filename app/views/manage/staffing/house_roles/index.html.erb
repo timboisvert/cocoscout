@@ -1,0 +1,169 @@
+<% content_for :title, "House Roles" %>
+
+<%
+  create_url = manage_create_staffing_house_role_path
+  # Template containing :id placeholder — the Stimulus controller substitutes
+  # in the row's role id when opening the modal in edit mode.
+  update_url_template = manage_update_staffing_house_role_path(":id")
+  locations = Current.organization.locations.order(:name)
+%>
+
+<div class="w-full mb-10"
+     data-controller="house-role-modal"
+     data-house-role-modal-create-url-value="<%= create_url %>"
+     data-house-role-modal-update-url-template-value="<%= update_url_template %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path]
+    ],
+    text: "House Roles",
+    links: []
+  } %>
+
+  <div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-gray-600">
+      Define the roles you staff for shows — bartender, FOH, tech, etc. — with default counts and offset times.
+    </p>
+    <button type="button"
+            data-action="click->house-role-modal#openForNew"
+            class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm whitespace-nowrap">
+      Add Role
+    </button>
+  </div>
+
+  <% if @house_roles.any? %>
+    <div class="space-y-2">
+      <% @house_roles.each do |role| %>
+        <div class="group bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-4 hover:border-gray-300 transition-colors">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="font-medium text-gray-900"><%= role.name %></span>
+              <% if role.archived? %>
+                <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">Archived</span>
+              <% end %>
+              <% if role.location %>
+                <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700"><%= role.location.name %></span>
+              <% end %>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">
+              Needs <%= pluralize(role.default_required_count, "person") %> by default ·
+              Starts <%= -role.default_start_offset_minutes %> min before first show ·
+              Ends <%= role.default_end_offset_minutes %> min after last show
+            </div>
+          </div>
+          <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
+          <div class="flex items-center gap-2 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+            <%= render "shared/button",
+                  text: "Edit",
+                  variant: "outline",
+                  size: "small",
+                  type: :button,
+                  data: {
+                    action: "click->house-role-modal#openForEdit",
+                    "role-id": role.id,
+                    "role-name": role.name,
+                    "role-location-id": role.location_id,
+                    "role-required-count": role.default_required_count,
+                    "role-start-offset": role.default_start_offset_minutes,
+                    "role-end-offset": role.default_end_offset_minutes
+                  } %>
+            <%= render "shared/button",
+                  text: "Remove",
+                  variant: "danger",
+                  size: "small",
+                  path: manage_destroy_staffing_house_role_path(role),
+                  method: :delete,
+                  data: { turbo_confirm: "Remove this role? Existing shifts using it will be kept." } %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
+      <p class="text-sm text-gray-600 mb-3">No house roles defined yet.</p>
+      <button type="button"
+              data-action="click->house-role-modal#openForNew"
+              class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
+        Add your first role
+      </button>
+    </div>
+  <% end %>
+
+  <%# Add/Edit House Role modal — opens in either mode from the index. %>
+  <div data-house-role-modal-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->house-role-modal#backdropClose keydown.esc@window->house-role-modal#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-xl bg-white rounded-xl shadow-2xl"
+           data-action="click->house-role-modal#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900" data-house-role-modal-target="title">Add house role</h3>
+          <button type="button" data-action="click->house-role-modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: create_url, method: :post, local: true,
+                      data: { "house-role-modal-target": "form" },
+                      scope: :house_role do |form| %>
+          <%# Method override lets one form serve both create (POST) and update (PATCH). %>
+          <input type="hidden" name="_method" value="post" data-house-role-modal-target="methodInput">
+
+          <div class="px-5 py-4 space-y-4">
+            <div>
+              <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.text_field :name, required: true, placeholder: "e.g. Bartender",
+                    data: { "house-role-modal-target": "nameInput" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <%= form.label :location_id, "Venue (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :location_id,
+                    options_from_collection_for_select(locations, :id, :name),
+                    { include_blank: "All venues" },
+                    data: { "house-role-modal-target": "locationSelect" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="text-xs text-gray-500 mt-1">Leave blank for org-wide.</p>
+            </div>
+
+            <div>
+              <%= form.label :default_required_count, "Default count per show", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.number_field :default_required_count, min: 1, step: 1, required: true, value: 1,
+                    data: { "house-role-modal-target": "requiredCount" },
+                    class: "block w-32 shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <%= form.label :default_start_offset_minutes, "Start offset (minutes)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :default_start_offset_minutes, step: 5, value: -60,
+                      data: { "house-role-modal-target": "startOffset" },
+                      class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <p class="text-xs text-gray-500 mt-1">Negative = earlier (−60 = 1 hr before first show).</p>
+              </div>
+              <div>
+                <%= form.label :default_end_offset_minutes, "End offset (minutes)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :default_end_offset_minutes, step: 5, value: 60,
+                      data: { "house-role-modal-target": "endOffset" },
+                      class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <p class="text-xs text-gray-500 mt-1">Positive = later (60 = 1 hr after last show).</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->house-role-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button",
+                  text: "Add role",
+                  variant: "primary",
+                  size: "small",
+                  type: :submit,
+                  data: { "house-role-modal-target": "submitButton" } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

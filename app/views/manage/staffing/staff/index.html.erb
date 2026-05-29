@@ -1,0 +1,223 @@
+<% content_for :title, "Staff" %>
+
+<%
+  create_url = manage_create_staffing_staff_path
+  # Template containing :id placeholder — the Stimulus controller substitutes
+  # in the row's member id when opening the modal in edit mode.
+  update_url_template = manage_update_staffing_staff_path(":id")
+%>
+
+<div class="w-full mb-10"
+     data-controller="staff-modal"
+     data-staff-modal-create-url-value="<%= create_url %>"
+     data-staff-modal-update-url-template-value="<%= update_url_template %>"
+     data-staff-modal-available-people-value="<%= @available_people_payload.to_json %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path]
+    ],
+    text: "Staff",
+    links: [
+      { text: "Add Staff", icon: "plus", data: { action: "click->staff-modal#openForNew" } }
+    ]
+  } %>
+
+  <p class="text-sm text-gray-600 mb-4">
+    Anyone here can be assigned to shifts. Check the roles they're qualified to fill.
+  </p>
+
+  <% if @staff_members.any? %>
+    <div class="space-y-2">
+      <% @staff_members.each do |member| %>
+        <% person = member.person %>
+        <% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
+        <div class="group bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-4 hover:border-gray-300 transition-colors">
+          <% if headshot %>
+            <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+              <%= person.initials %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900 truncate">
+              <%= person.name %>
+              <% if @pending_invite_emails.include?(person.email.to_s.downcase) %>
+                <span class="ml-1 align-middle inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Invited — pending</span>
+              <% end %>
+            </div>
+            <div class="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-1">
+              <% if member.house_roles.any? %>
+                <% member.house_roles.each do |role| %>
+                  <span class="px-1.5 py-0.5 rounded bg-pink-50 text-pink-700"><%= role.name %></span>
+                <% end %>
+              <% else %>
+                <span class="text-gray-400 italic">No roles assigned</span>
+              <% end %>
+            </div>
+          </div>
+          <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
+          <div class="flex items-center gap-2 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+            <%= render "shared/button",
+                  text: "Edit",
+                  variant: "outline",
+                  size: "small",
+                  type: :button,
+                  data: {
+                    action: "click->staff-modal#openForEdit",
+                    "member-id": member.id,
+                    "person-name": person.name,
+                    "person-email": person.email,
+                    "person-initials": person.initials,
+                    "person-headshot-url": (headshot ? url_for(headshot) : ""),
+                    "member-role-ids": member.house_role_ids.to_json
+                  } %>
+            <%= render "shared/button",
+                  text: "Remove",
+                  variant: "danger",
+                  size: "small",
+                  path: manage_destroy_staffing_staff_path(member),
+                  method: :delete,
+                  data: { turbo_confirm: "Remove #{person.name} from the staff list? Existing shift assignments will be kept." } %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
+      <p class="text-sm text-gray-600 mb-3">No staff added yet.</p>
+      <button type="button"
+              data-action="click->staff-modal#openForNew"
+              class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
+        Add your first staff member
+      </button>
+    </div>
+  <% end %>
+
+  <%# === Add/Edit Staff Member modal === %>
+  <div data-staff-modal-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->staff-modal#backdropClose keydown.esc@window->staff-modal#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl"
+           data-action="click->staff-modal#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900" data-staff-modal-target="title">Add staff member</h3>
+          <button type="button" data-action="click->staff-modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: create_url, method: :post, local: true,
+                      data: { "staff-modal-target": "form" } do %>
+          <input type="hidden" name="_method" value="post" data-staff-modal-target="methodInput">
+          <input type="hidden" name="person_id" data-staff-modal-target="personIdInput">
+          <%# Set instead of person_id when inviting a brand-new person. %>
+          <input type="hidden" name="invite_name" data-staff-modal-target="inviteNameInput">
+          <input type="hidden" name="invite_email" data-staff-modal-target="inviteEmailInput">
+
+          <div class="px-5 py-4 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Person</label>
+              <div data-staff-modal-target="personRow">
+                <button type="button"
+                        data-action="click->staff-modal#openPicker"
+                        class="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Click to add someone
+                </button>
+              </div>
+            </div>
+
+            <% if @house_roles.any? %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Roles they can fill</label>
+                <%# 4-column grid of clickable tiles. Visible label wraps a
+                    hidden checkbox; peer-checked styling shows selection state.
+                    The checkbox itself is what submits — Stimulus reads/writes
+                    .checked on the same roleCheckbox targets as before. %>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <% @house_roles.each do |role| %>
+                    <label class="relative cursor-pointer">
+                      <input type="checkbox" name="house_role_ids[]" value="<%= role.id %>"
+                             data-staff-modal-target="roleCheckbox"
+                             class="sr-only peer">
+                      <span class="block text-center text-xs font-medium px-2 py-3 rounded-md border bg-white text-gray-700 border-gray-200 hover:border-pink-400 peer-checked:bg-pink-500 peer-checked:text-white peer-checked:border-pink-500 peer-focus:ring-2 peer-focus:ring-pink-300 transition-colors">
+                        <%= role.name %>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+              </div>
+            <% else %>
+              <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                No house roles defined yet — add some from the Staffing → House Roles page first.
+              </div>
+            <% end %>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->staff-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button",
+                  text: "Add staff member",
+                  variant: "primary",
+                  size: "small",
+                  type: :submit,
+                  data: { "staff-modal-target": "submitButton" },
+                  disabled: true %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# === Inner picker modal === %>
+  <div data-staff-modal-target="pickerModal"
+       class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->staff-modal#pickerBackdropClose keydown.esc@window->staff-modal#closePicker">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl"
+           data-action="click->staff-modal#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">Pick a person</h3>
+          <button type="button" data-action="click->staff-modal#closePicker" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-5 py-3 border-b border-gray-100">
+          <input type="text"
+                 data-staff-modal-target="pickerSearch"
+                 data-action="input->staff-modal#pickerSearchInput"
+                 placeholder="Search by name or email…"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 text-sm">
+        </div>
+        <div class="px-3 py-2 max-h-96 overflow-y-auto" data-staff-modal-target="pickerResults">
+          <%# populated by JS %>
+        </div>
+        <div class="px-5 py-3 border-t border-gray-100">
+          <p class="text-xs text-gray-500 mb-2">Only people in your org who aren't already on the staff list show here.</p>
+          <button type="button" data-action="click->staff-modal#showInviteForm"
+                  class="text-sm text-pink-600 hover:text-pink-700 underline cursor-pointer bg-transparent border-0 p-0">
+            + Invite someone new to CocoScout
+          </button>
+          <div data-staff-modal-target="inviteForm" class="hidden mt-3 space-y-2">
+            <input type="text" data-staff-modal-target="inviteName" placeholder="Full name"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 text-sm">
+            <input type="email" data-staff-modal-target="inviteEmail" placeholder="Email address"
+                   data-action="keydown.enter->staff-modal#confirmInvite"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 text-sm">
+            <p data-staff-modal-target="inviteError" class="hidden text-[11px] text-red-600"></p>
+            <button type="button" data-action="click->staff-modal#confirmInvite"
+                    class="w-full bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-2 text-sm cursor-pointer transition-colors">
+              Use this person
+            </button>
+            <p class="text-[11px] text-gray-500">They'll get an email to set up their CocoScout account. Pick their roles next.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -93,3 +93,52 @@ select:focus {
     font-size: 0.875rem;
     line-height: 1.5;
 }
+/* Dual-handle range slider — two range inputs overlaid on the same track.
+   Track is transparent (drawn separately behind); only thumbs are interactive. */
+.dual-range-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+    margin: 0;
+    z-index: 2;
+}
+.dual-range-input::-webkit-slider-runnable-track {
+    background: transparent;
+    height: 100%;
+    border: none;
+}
+.dual-range-input::-moz-range-track {
+    background: transparent;
+    height: 100%;
+    border: none;
+}
+.dual-range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: white;
+    border: 2px solid #ec4899; /* pink-500 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    cursor: grab;
+    margin-top: 0; /* center via runnable-track height */
+}
+.dual-range-input::-webkit-slider-thumb:active { cursor: grabbing; }
+.dual-range-input::-moz-range-thumb {
+    pointer-events: auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: white;
+    border: 2px solid #ec4899;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    cursor: grab;
+}
+.dual-range-input::-moz-range-thumb:active { cursor: grabbing; }

@@ -20,6 +20,9 @@
         <% end %>
       </div>
       <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
+      <% if Current.user&.has_assigned_shifts? %>
+        <%= render "shared/nav_link", text: "My Shifts", path: my_shifts_path, active: controller_name == "shifts" %>
+      <% end %>
       <%= render "shared/nav_link", text: "My Courses", path: my_courses_path, active: controller_name == "courses" %>
       <%= render "shared/nav_link", text: "My Auditions", path: my_auditions_path, active: controller_name == "auditions" %>
       <%= render "shared/nav_link", text: "My Shoutouts", path: my_shoutouts_path, active: controller_name == "shoutouts" %>

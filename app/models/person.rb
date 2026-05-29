@@ -24,6 +24,12 @@ class Person < ApplicationRecord
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
+  # House staffing (Staffing module): shifts this person is assigned to work.
+  has_many :shift_assignments, dependent: :destroy
+  has_many :assigned_shifts, through: :shift_assignments, source: :shift
+  has_many :organization_staff_members, dependent: :destroy
+  has_many :staff_unavailabilities, dependent: :destroy
+
   has_many :role_eligibilities, as: :member, dependent: :destroy
 
   # Vacancy associations
@@ -382,12 +388,12 @@ class Person < ApplicationRecord
       priority: 2
     }
 
-    # Task 3: Set up payment info (Venmo/Zelle)
+    # Task 3: Set up payment info (Zelle/Venmo)
     tasks << {
       key: :payment,
       title: "Set up payment info",
-      description: "Add Venmo or Zelle for faster payouts",
-      completed: venmo_configured?,
+      description: "Add Zelle or Venmo for faster payouts",
+      completed: any_payment_method_configured?,
       priority: 3
     }
 
@@ -405,6 +411,22 @@ class Person < ApplicationRecord
 
   def onboarding_complete?
     onboarding_tasks.all? { |t| t[:completed] }
+  end
+
+  # True when this person belongs to at least one talent pool (direct membership).
+  def in_any_talent_pool?
+    talent_pools.exists?
+  end
+
+  # Which of the team-facing essentials this person is still missing. Drives the
+  # "complete your info" panel shown to talent-pool members on the dashboard.
+  # Returns a subset of [:contact, :headshot, :payment].
+  def pool_profile_gaps
+    gaps = []
+    gaps << :contact  if phone.blank?
+    gaps << :headshot unless profile_headshots.exists?
+    gaps << :payment  unless any_payment_method_configured?
+    gaps
   end
 
   def onboarding_progress
@@ -505,21 +527,21 @@ class Person < ApplicationRecord
   end
 
   def any_payment_method_configured?
-    venmo_configured? || zelle_configured?
+    zelle_configured? || venmo_configured?
   end
 
   def preferred_payment_info
     case preferred_payment_method
-    when "venmo"
-      { method: "venmo", identifier: formatted_venmo_identifier } if venmo_configured?
     when "zelle"
       { method: "zelle", identifier: formatted_zelle_identifier } if zelle_configured?
+    when "venmo"
+      { method: "venmo", identifier: formatted_venmo_identifier } if venmo_configured?
     else
-      # Return whichever is configured, preferring venmo
-      if venmo_configured?
-        { method: "venmo", identifier: formatted_venmo_identifier }
-      elsif zelle_configured?
+      # Return whichever is configured, preferring Zelle.
+      if zelle_configured?
         { method: "zelle", identifier: formatted_zelle_identifier }
+      elsif venmo_configured?
+        { method: "venmo", identifier: formatted_venmo_identifier }
       end
     end
   end

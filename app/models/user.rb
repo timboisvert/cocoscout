@@ -426,6 +426,13 @@ class User < ApplicationRecord
     SUPERADMIN_EMAILS.include?(email_address.to_s.downcase)
   end
 
+  # True when any of the user's active profiles is assigned to a house shift.
+  # Drives the optional "My Shifts" nav entry (Staffing module).
+  def has_assigned_shifts?
+    ShiftAssignment.where(person_id: people.active.select(:id)).exists?
+  end
+
+
   # Notification preferences - all default to true (opted in)
   NOTIFICATION_PREFERENCE_KEYS = %w[
     vacancy_invitations

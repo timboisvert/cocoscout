@@ -173,6 +173,21 @@ module Manage
       redirect_to manage_path, notice: "You do not have permission to access that page."
     end
 
+    # Gate for features still restricted to superadmins (e.g. Staffing, pre-launch).
+    def ensure_user_is_superadmin
+      return if Current.user&.superadmin?
+
+      redirect_to manage_path, notice: "That area isn't available yet."
+    end
+
+    # Gate for org owner/manager-only areas (e.g. Staffing). Superadmins always pass.
+    def ensure_org_owner_or_manager
+      return if Current.user&.superadmin?
+      return if Current.organization&.manageable_by?(Current.user)
+
+      redirect_to manage_path, notice: "You do not have permission to access that page."
+    end
+
     def track_last_dashboard
       return unless Current.user.present?
 

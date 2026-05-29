@@ -25,14 +25,9 @@
             </p>
           </div>
           <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
-            <% logo_variant = @production.safe_logo_variant(:small) %>
-            <% if logo_variant %>
-              <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-8 h-8 object-contain rounded" %>
-            <% else %>
-              <div class="w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
-                <span class="text-pink-600 font-bold text-xs"><%= @production.initials %></span>
-              </div>
-            <% end %>
+            <div class="flex-shrink-0">
+              <%= render "shared/production_image", production: @production, width: "w-8", initials_class: "text-xs" %>
+            </div>
             <div class="min-w-0">
               <p class="text-xs font-medium text-gray-900 truncate max-w-[150px]"><%= @production.name %></p>
             </div>

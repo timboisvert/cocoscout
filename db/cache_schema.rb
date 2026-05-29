@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -785,6 +785,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
     t.index ["organization_id"], name: "index_groups_organizations_on_organization_id"
   end
 
+  create_table "house_roles", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.integer "default_end_offset_minutes", default: 60, null: false
+    t.integer "default_required_count", default: 1, null: false
+    t.integer "default_start_offset_minutes", default: -60, null: false
+    t.bigint "location_id"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_house_roles_on_location_id"
+    t.index ["organization_id", "archived_at", "position"], name: "idx_house_roles_org_position"
+    t.index ["organization_id"], name: "index_house_roles_on_organization_id"
+  end
+
   create_table "location_spaces", force: :cascade do |t|
     t.integer "capacity"
     t.datetime "created_at", null: false
@@ -948,6 +964,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
     t.index ["organization_id"], name: "index_organization_roles_on_organization_id"
     t.index ["user_id", "organization_id"], name: "index_organization_roles_on_user_id_and_organization_id", unique: true
     t.index ["user_id"], name: "index_organization_roles_on_user_id"
+  end
+
+  create_table "organization_staff_members", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "person_id"], name: "idx_org_staff_members_unique", unique: true
+    t.index ["organization_id"], name: "index_organization_staff_members_on_organization_id"
+    t.index ["person_id"], name: "index_organization_staff_members_on_person_id"
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -1571,6 +1598,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "shift_assignments", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.datetime "declined_at"
+    t.datetime "notified_at"
+    t.bigint "person_id", null: false
+    t.integer "position", default: 1, null: false
+    t.bigint "shift_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_shift_assignments_on_person_id"
+    t.index ["shift_id", "person_id"], name: "idx_shift_assignments_unique", unique: true
+    t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
+  end
+
+  create_table "shifts", force: :cascade do |t|
+    t.integer "coverage_mode", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "ends_at", null: false
+    t.datetime "gap_after_acknowledged_until"
+    t.bigint "house_role_id", null: false
+    t.text "notes"
+    t.bigint "organization_id", null: false
+    t.string "renter_name"
+    t.integer "required_count", default: 1, null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "starts_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_role_id", "source_type", "source_id", "starts_at", "ends_at"], name: "idx_shifts_no_dupe", unique: true
+    t.index ["house_role_id"], name: "index_shifts_on_house_role_id"
+    t.index ["organization_id", "starts_at"], name: "index_shifts_on_organization_id_and_starts_at"
+    t.index ["organization_id"], name: "index_shifts_on_organization_id"
+    t.index ["source_type", "source_id"], name: "index_shifts_on_source_type_and_source_id"
+  end
+
   create_table "shoutouts", force: :cascade do |t|
     t.bigint "author_id", null: false
     t.text "content", null: false
@@ -2101,6 +2163,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
     t.index ["starts_at"], name: "index_space_rentals_on_starts_at"
   end
 
+  create_table "staff_role_qualifications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "house_role_id", null: false
+    t.bigint "organization_staff_member_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_role_id"], name: "index_staff_role_qualifications_on_house_role_id"
+    t.index ["organization_staff_member_id", "house_role_id"], name: "idx_staff_role_qual_unique", unique: true
+    t.index ["organization_staff_member_id"], name: "idx_staff_role_qual_member"
+  end
+
+  create_table "staff_unavailabilities", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.bigint "person_id", null: false
+    t.integer "scope", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id", "date"], name: "idx_staff_unavailabilities_unique", unique: true
+    t.index ["person_id"], name: "index_staff_unavailabilities_on_person_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "key"
@@ -2277,6 +2359,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
+  add_foreign_key "house_roles", "locations"
+  add_foreign_key "house_roles", "organizations"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
@@ -2296,6 +2380,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
   add_foreign_key "org_payouts", "users", column: "paid_by_user_id"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
+  add_foreign_key "organization_staff_members", "organizations"
+  add_foreign_key "organization_staff_members", "people"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
@@ -2349,6 +2435,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"
+  add_foreign_key "shift_assignments", "people"
+  add_foreign_key "shift_assignments", "shifts"
+  add_foreign_key "shifts", "house_roles"
+  add_foreign_key "shifts", "organizations"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"
   add_foreign_key "show_advance_waivers", "shows"
@@ -2398,6 +2488,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_18_120000) do
   add_foreign_key "space_rentals", "contracts"
   add_foreign_key "space_rentals", "location_spaces"
   add_foreign_key "space_rentals", "locations"
+  add_foreign_key "staff_role_qualifications", "house_roles"
+  add_foreign_key "staff_role_qualifications", "organization_staff_members"
+  add_foreign_key "staff_unavailabilities", "people"
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"

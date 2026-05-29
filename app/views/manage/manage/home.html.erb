@@ -65,16 +65,9 @@
                 <% cycle = call_data[:call] %>
                 <% production = call_data[:production] %>
                 <%= link_to manage_signups_auditions_cycle_requests_path(production, cycle), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
-                  <% logo_variant = production.safe_logo_variant(:small) %>
-                  <% if logo_variant %>
-                    <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">
-                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                    </div>
-                  <% else %>
-                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
-                    </div>
-                  <% end %>
+                  <div class="flex-shrink-0">
+                    <%= render "shared/production_image", production: production, width: "w-8", initials_class: "text-xs" %>
+                  </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-medium text-gray-900 text-sm truncate"><%= production.name %></div>
                     <div class="text-xs text-gray-500">
@@ -139,16 +132,9 @@
                 <% production = form_data[:production] %>
                 <% next_show = instance&.show %>
                 <%= link_to manage_signups_form_path(production, form), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors no-underline" do %>
-                  <% logo_variant = production.safe_logo_variant(:small) %>
-                  <% if logo_variant %>
-                    <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">
-                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                    </div>
-                  <% else %>
-                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
-                    </div>
-                  <% end %>
+                  <div class="flex-shrink-0">
+                    <%= render "shared/production_image", production: production, width: "w-8", initials_class: "text-xs" %>
+                  </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-medium text-gray-900 text-sm truncate"><%= form.name %></div>
                     <div class="text-xs text-gray-500">
@@ -192,16 +178,9 @@
             <div class="group flex flex-col sm:flex-row sm:items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
               <div class="sm:w-1/3 px-3 py-2">
                 <div class="flex items-center gap-3 mb-2">
-                  <% logo_variant = production.safe_logo_variant(:small) %>
-                  <% if logo_variant %>
-                    <div class="flex-shrink-0 w-8 h-5 rounded flex items-center justify-center overflow-hidden">
-                      <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                    </div>
-                  <% else %>
-                    <div class="flex-shrink-0 w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
-                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
-                    </div>
-                  <% end %>
+                  <div class="flex-shrink-0">
+                    <%= render "shared/production_image", production: production, width: "w-8", initials_class: "text-xs" %>
+                  </div>
                   <span class="font-medium text-gray-900 text-sm truncate"><%= production.name %></span>
                 </div>
                 <div class="text-sm text-gray-600">

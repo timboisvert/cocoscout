@@ -110,7 +110,7 @@ module Manage
       @unpaid_count = @line_items.reject(&:paid?).count
       @unpaid_line_items = @line_items.reject(&:paid?)
 
-      # Find people without payment info (Venmo or Zelle)
+      # Find people without payment info (Zelle or Venmo)
       @people_without_payment = @unpaid_line_items.select do |li|
         person = li.person
         !person.venmo_configured? && !person.zelle_configured?

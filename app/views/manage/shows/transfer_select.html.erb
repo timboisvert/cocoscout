@@ -58,13 +58,9 @@
                          class="w-4 h-4 accent-pink-500"
                          required>
                   <div class="flex items-center gap-3 flex-1">
-                    <% if production.logo.attached? %>
-                      <%= image_tag production.logo.variant(:small), class: "w-10 h-10 rounded-lg object-cover" %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <span class="text-gray-400 text-sm font-medium"><%= production.name.first(2).upcase %></span>
-                      </div>
-                    <% end %>
+                    <div class="flex-shrink-0">
+                      <%= render "shared/production_image", production: production, width: "w-10", initials_class: "text-sm" %>
+                    </div>
                     <div class="font-medium text-gray-900"><%= production.name %></div>
                   </div>
                 </label>

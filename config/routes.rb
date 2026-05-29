@@ -242,6 +242,17 @@ Rails.application.routes.draw do
     get   "/shows/:id",                     to: "shows#show",              as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
+    # House staffing shifts the user has been assigned to.
+    get   "/shifts",                        to: "shifts#index",             as: "shifts"
+
+    # House-staff unavailability (dates they can't work), managed from My Shifts.
+    post  "/shifts/unavailability",         to: "shifts#create_unavailability", as: "create_shift_unavailability"
+
+    # Inline profile-completion updates from the dashboard panel (talent-pool nudge).
+    patch "/profile_completion/contact",  to: "profile_completion#update_contact",  as: "profile_completion_contact"
+    patch "/profile_completion/payment",  to: "profile_completion#update_payment",  as: "profile_completion_payment"
+    patch "/profile_completion/headshot", to: "profile_completion#update_headshot", as: "profile_completion_headshot"
+
     # Open Requests (consolidated: availability + sign-ups + questionnaires)
     get   "/requests",                      to: "open_requests#index",      as: "requests"
     patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
@@ -949,6 +960,38 @@ Rails.application.routes.draw do
       # Note: Most nested routes have been moved to top-level manage routes
       # Only keeping show-specific nested resources that require production context
     end
+
+    # Staffing section - org-level house staffing (the schedule lives on the
+    # index page itself; house roles + staff are sub-areas).
+    get  "staffing",                              to: "staffing#index",                  as: "staffing_index"
+    post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
+    get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
+    get  "staffing/house_roles/new",              to: "staffing/house_roles#new",        as: "new_staffing_house_role"
+    post "staffing/house_roles",                  to: "staffing/house_roles#create",     as: "create_staffing_house_role"
+    get  "staffing/house_roles/:id/edit",         to: "staffing/house_roles#edit",       as: "edit_staffing_house_role"
+    patch  "staffing/house_roles/:id",            to: "staffing/house_roles#update",     as: "update_staffing_house_role"
+    delete "staffing/house_roles/:id",            to: "staffing/house_roles#destroy",    as: "destroy_staffing_house_role"
+
+    get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
+    get  "staffing/staff/new",                    to: "staffing/staff#new",              as: "new_staffing_staff"
+    post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
+    get  "staffing/staff/:id/edit",               to: "staffing/staff#edit",             as: "edit_staffing_staff"
+    patch  "staffing/staff/:id",                  to: "staffing/staff#update",           as: "update_staffing_staff"
+    delete "staffing/staff/:id",                  to: "staffing/staff#destroy",          as: "destroy_staffing_staff"
+
+    # Shift CRUD + assignment lives at the staffing root (no longer scoped to /schedule).
+    post   "staffing/shifts",                     to: "staffing/shifts#create",          as: "create_staffing_shift"
+    patch  "staffing/shifts/:id",                 to: "staffing/shifts#update",          as: "update_staffing_shift"
+    delete "staffing/shifts/:id",                 to: "staffing/shifts#destroy",         as: "destroy_staffing_shift"
+    post   "staffing/shifts/:id/assign",          to: "staffing/shifts#assign",          as: "assign_staffing_shift"
+    delete "staffing/shifts/:id/unassign/:person_id",
+                                                  to: "staffing/shifts#unassign",        as: "unassign_staffing_shift"
+    post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
+    post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
+    post   "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#acknowledge_gap", as: "acknowledge_gap_staffing_shift"
+    delete "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#unacknowledge_gap", as: "unacknowledge_gap_staffing_shift"
+    # Legacy /staffing/schedule URLs redirect to the new home so old bookmarks still work.
+    get    "staffing/schedule", to: redirect("/manage/staffing")
 
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"

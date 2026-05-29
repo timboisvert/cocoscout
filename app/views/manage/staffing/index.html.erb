@@ -1,0 +1,608 @@
+<% content_for :title, "Staffing" %>
+
+<%
+  days = (@week_start..@week_end).to_a
+  assign_url_template = manage_assign_staffing_shift_path(":id")
+
+  staffing_description = <<~HTML
+    <p>
+      Schedule your house staff — bartenders, FOH, tech, security — across all your shows.
+      Define the roles you need, mark who's qualified for what, then build the week's schedule
+      from your show calendar.
+    </p>
+  HTML
+
+  staffing_actions = [
+    { icon: "user-group", text: "Staff",       description: "Who can be assigned to shifts",   path: manage_staffing_staff_path },
+    { icon: "cog",        text: "House Roles", description: "Bartender, FOH, tech, security…", path: manage_staffing_house_roles_path }
+  ]
+%>
+
+<div class="w-full mb-10"
+     data-controller="shift-assign shift-edit shift-split shift-add"
+     data-shift-assign-staff-by-role-value="<%= @staff_by_role_payload.to_json %>"
+     data-shift-assign-assign-url-template-value="<%= assign_url_template %>"
+     data-shift-assign-shift-times-value="<%= @shift_times_payload.to_json %>"
+     data-shift-assign-person-busy-value="<%= @person_busy_payload.to_json %>"
+     data-shift-assign-staff-unavailability-value="<%= @staff_unavailability_payload.to_json %>"
+     data-shift-edit-update-url-template-value="<%= manage_update_staffing_shift_path(":id") %>"
+     data-shift-edit-unassign-url-template-value="<%= manage_unassign_staffing_shift_path(id: "SHIFT_ID", person_id: "PERSON_ID") %>"
+     data-shift-split-split-url-template-value="<%= manage_split_staffing_shift_path(":id") %>"
+     data-shift-add-create-url-value="<%= manage_create_staffing_shift_path %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render "shared/module_header",
+    title: "Staffing",
+    description: staffing_description,
+    actions: staffing_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-4 mt-2">
+
+  <%# === Week navigation === %>
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <div class="flex items-center gap-2">
+      <%= link_to manage_staffing_index_path(week_start: (@week_start - 7.days).to_s),
+            class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" do %>
+        ← Prev
+      <% end %>
+      <%= link_to "This week", manage_staffing_index_path,
+            class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" %>
+      <%= link_to manage_staffing_index_path(week_start: (@week_start + 7.days).to_s),
+            class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" do %>
+        Next →
+      <% end %>
+      <div class="text-base font-medium text-gray-900 px-3">
+        Week of <%= @week_start.strftime("%b %-d, %Y") %>
+      </div>
+    </div>
+    <% if @house_role_count.zero? %>
+      <%= link_to "Add house roles to begin →", manage_staffing_house_roles_path,
+            class: "text-sm text-pink-600 hover:text-pink-700 underline" %>
+    <% elsif @shifts_by_day.empty? %>
+      <%= button_to "Generate shifts for this week",
+            manage_generate_staffing_path(week_start: @week_start.to_s),
+            method: :post,
+            class: "bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
+            form_class: "inline-block",
+            data: { turbo_confirm: "Generate default shifts for every show in this week?" } %>
+    <% end %>
+  </div>
+
+  <%# === Day rows === %>
+  <div class="space-y-4">
+    <% days.each do |day| %>
+      <% day_shows  = @shows_by_day[day] || [] %>
+      <% day_shifts = @shifts_by_day[day] || [] %>
+      <% next if day_shows.empty? && day_shifts.empty? %>
+
+      <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden"
+           data-controller="day-view"
+           data-day-view-mode-value="cards">
+        <div class="flex items-stretch">
+          <%# Date column - fixed width %>
+          <div class="flex-shrink-0 w-28 sm:w-36 px-3 py-3 border-r border-gray-200 bg-gray-50">
+            <div class="text-xs font-semibold text-pink-600 uppercase"><%= day.strftime("%a") %></div>
+            <div class="text-xl font-bold text-gray-900"><%= day.strftime("%-d") %></div>
+            <div class="text-xs text-gray-500"><%= day.strftime("%b %Y") %></div>
+            <% if day == Date.current %>
+              <div class="mt-1 text-[10px] inline-block px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 font-medium">Today</div>
+            <% end %>
+            <% if day_shows.any? %>
+              <div class="mt-2 pt-2 border-t border-gray-200 text-[11px] text-gray-600 leading-tight">
+                <%= pluralize(day_shows.size, "show") %><br/>
+                <span class="text-gray-500"><%= day_shows.first.date_and_time.strftime("%-l:%M %p") %>–<%= day_shows.last.ends_at.strftime("%-l:%M %p") %></span>
+              </div>
+            <% end %>
+
+            <%# View toggle: cards · gantt-by-role · gantt-by-people. %>
+            <div class="mt-2 pt-2 border-t border-gray-200 flex items-center gap-1">
+              <button type="button" data-day-view-target="toggle" data-mode="cards"
+                      data-action="click->day-view#setMode"
+                      title="Cards view"
+                      class="w-6 h-6 rounded inline-flex items-center justify-center bg-pink-100 text-pink-700 hover:bg-pink-200 cursor-pointer">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="1.5" y="2" width="4.5" height="12" rx="1"/><rect x="10" y="2" width="4.5" height="12" rx="1"/>
+                </svg>
+              </button>
+              <button type="button" data-day-view-target="toggle" data-mode="gantt-roles"
+                      data-action="click->day-view#setMode"
+                      title="Gantt by role"
+                      class="w-6 h-6 rounded inline-flex items-center justify-center text-gray-400 hover:bg-gray-100 cursor-pointer">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  <rect x="1" y="3"  width="9"  height="2.4" rx="1"/>
+                  <rect x="4" y="6.8" width="11" height="2.4" rx="1"/>
+                  <rect x="2" y="10.6" width="7"  height="2.4" rx="1"/>
+                </svg>
+              </button>
+              <button type="button" data-day-view-target="toggle" data-mode="gantt-people"
+                      data-action="click->day-view#setMode"
+                      title="Gantt by person"
+                      class="w-6 h-6 rounded inline-flex items-center justify-center text-gray-400 hover:bg-gray-100 cursor-pointer">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="4"  r="1.6"/><rect x="6" y="3.2" width="9" height="1.6" rx="0.8"/>
+                  <circle cx="3" cy="8"  r="1.6"/><rect x="6" y="7.2" width="7" height="1.6" rx="0.8"/>
+                  <circle cx="3" cy="12" r="1.6"/><rect x="6" y="11.2" width="8" height="1.6" rx="0.8"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <%# Role columns — same-role shifts stack vertically; columns ordered by HouseRole position. %>
+          <div class="flex-1 min-w-0 p-2">
+            <%
+              # Per-role default times for "+ Add shift" — same math the generator uses, so
+              # adding a removed role back gets the identical window without re-running Generate.
+              # No-show days fall back to 5–11pm.
+              role_defaults_for_day = @house_roles.each_with_object({}) do |r, h|
+                if day_shows.any?
+                  starts_at = day_shows.first.date_and_time + r.default_start_offset_minutes.minutes
+                  ends_at   = day_shows.last.ends_at        + r.default_end_offset_minutes.minutes
+                else
+                  starts_at = day.in_time_zone.change(hour: 17)
+                  ends_at   = day.in_time_zone.change(hour: 23)
+                end
+                h[r.id.to_s] = {
+                  starts_at: starts_at.strftime("%Y-%m-%dT%H:%M"),
+                  ends_at:   ends_at.strftime("%Y-%m-%dT%H:%M")
+                }
+              end
+              day_label = day.strftime("%A, %b %-d")
+            %>
+            <% role_order = @house_roles.each_with_index.to_h { |r, i| [r.id, i] } %>
+            <% if day_shifts.any? %>
+              <% role_groups = day_shifts.group_by(&:house_role)
+                                         .sort_by { |role, _| role_order[role.id] || 9_999 } %>
+              <% same_role_starts = role_groups.to_h { |role, arr| [role.id, arr.map(&:starts_at)] } %>
+              <%# === Cards mode === %>
+              <div data-day-view-target="cards">
+              <div class="flex flex-nowrap gap-3 items-start overflow-x-auto pb-2">
+                <% role_groups.each do |role, role_shifts| %>
+                  <% sorted_role_shifts = role_shifts.sort_by(&:starts_at) %>
+                  <div class="w-56 flex-shrink-0 flex flex-col gap-2">
+                    <%# Column header — role name lifted out of each individual card. %>
+                    <div class="px-1 text-sm font-semibold text-gray-900 truncate">
+                      <%= role.name %>
+                    </div>
+                    <% sorted_role_shifts.each_with_index do |shift, shift_idx| %>
+                  <% assigned_ids = shift.shift_assignments.map(&:person_id) %>
+                  <% has_assignments = shift.shift_assignments.any? %>
+                  <% covered_by_renter = shift.coverage_mode == "covered_by_renter" %>
+                  <% not_needed = shift.coverage_mode == "not_needed" %>
+                  <%# A shift has a "next" sibling if another same-role shift on this day starts exactly when this one ends. %>
+                  <% has_mergeable_next = (same_role_starts[role.id] || []).include?(shift.ends_at) %>
+
+                  <%
+                    card_classes =
+                      if covered_by_renter then "border-blue-300 bg-blue-50"
+                      elsif not_needed then "border-gray-200 bg-gray-50"
+                      elsif shift.needs_assignment? && shift.fully_staffed? then "border-pink-300 bg-pink-50"
+                      else "border-gray-200 bg-white"
+                      end
+                  %>
+
+                  <div class="border <%= card_classes %> rounded-md overflow-hidden">
+                    <%# Time + delete row. Role name is now the column header above. %>
+                    <div class="flex items-center border-b border-black/5">
+                      <button type="button"
+                              data-action="click->shift-edit#open"
+                              data-shift-id="<%= shift.id %>"
+                              data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                              data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                              data-shift-role-name="<%= role.name %>"
+                              class="flex-1 min-w-0 px-3 py-2 text-sm text-left text-gray-900 font-medium hover:bg-black/5 cursor-pointer flex items-center justify-between gap-2">
+                        <span class="truncate"><%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
+                        <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
+                      </button>
+                      <%= button_to manage_destroy_staffing_shift_path(shift),
+                            method: :delete,
+                            class: "text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 leading-none text-xl w-8 h-8 inline-flex items-center justify-center flex-shrink-0",
+                            form_class: "inline-block leading-none",
+                            data: { turbo_confirm: "Remove this #{role.name} shift?" } do %>×<% end %>
+                    </div>
+
+                    <% if covered_by_renter %>
+                      <div class="px-3 py-2 text-sm text-blue-800">
+                        Renter: <%= shift.renter_name.presence || "covered" %>
+                      </div>
+                    <% elsif not_needed %>
+                      <div class="px-3 py-2 text-sm text-gray-500 italic">Not needed</div>
+                    <% else %>
+                      <div class="px-3 py-2 space-y-1.5">
+                        <% shift.shift_assignments.each do |a| %>
+                          <% person_headshot = a.person.safe_headshot_variant(:thumb) %>
+                          <div class="flex items-center justify-between gap-2 text-sm">
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                              <% if person_headshot %>
+                                <%= image_tag person_headshot, alt: a.person.name,
+                                      class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                              <% else %>
+                                <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[9px] flex-shrink-0">
+                                  <%= a.person.initials %>
+                                </div>
+                              <% end %>
+                              <span class="truncate text-gray-900"><%= a.person.name %></span>
+                            </div>
+                            <%= button_to manage_unassign_staffing_shift_path(shift, person_id: a.person_id),
+                                  method: :delete,
+                                  class: "text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0 leading-none flex-shrink-0 w-5 h-5 inline-flex items-center justify-center text-base",
+                                  form_class: "inline-block leading-none",
+                                  data: { turbo_confirm: "Remove #{a.person.name} from this shift?" } do %>×<% end %>
+                          </div>
+                        <% end %>
+                        <% shift.remaining_slots.times do %>
+                          <button type="button"
+                                  data-action="click->shift-assign#open"
+                                  data-shift-id="<%= shift.id %>"
+                                  data-role-id="<%= role.id %>"
+                                  data-role-name="<%= role.name %>"
+                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                                  data-assigned-ids="<%= assigned_ids.to_json %>"
+                                  class="w-full text-left text-xs px-2 py-1 rounded border border-dashed border-pink-400 text-pink-700 hover:bg-pink-100 transition-colors cursor-pointer">
+                            + Click to add a staff member
+                          </button>
+                        <% end %>
+                        <%# Over-staffing prompt: only meaningful once at least one person is on the shift. %>
+                        <% if has_assignments %>
+                          <button type="button"
+                                  data-action="click->shift-assign#open"
+                                  data-shift-id="<%= shift.id %>"
+                                  data-role-id="<%= role.id %>"
+                                  data-role-name="<%= role.name %>"
+                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                                  data-assigned-ids="<%= assigned_ids.to_json %>"
+                                  class="w-full text-left text-[11px] px-2 py-0.5 text-gray-500 hover:text-pink-600 cursor-pointer bg-transparent border-0">
+                            + Add another person
+                          </button>
+                        <% end %>
+                      </div>
+                    <% end %>
+
+                    <%# Footer: split + (conditional) merge %>
+                    <div class="px-3 py-1.5 border-t border-black/5 flex items-center justify-end gap-3 text-xs text-gray-500">
+                      <button type="button"
+                              data-action="click->shift-split#open"
+                              data-shift-id="<%= shift.id %>"
+                              data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                              data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                              data-shift-role-name="<%= role.name %>"
+                              data-shift-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                              class="hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">
+                        Split
+                      </button>
+                      <% if has_mergeable_next %>
+                        <%= button_to manage_merge_with_next_staffing_shift_path(shift),
+                              method: :post,
+                              class: "hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0",
+                              form_class: "inline-block",
+                              data: { turbo_confirm: "Merge with the next #{role.name} shift?" } do %>Merge next<% end %>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%# Gap indicator between adjacent same-role shifts. %>
+                  <% next_shift = sorted_role_shifts[shift_idx + 1] %>
+                  <% if next_shift && next_shift.starts_at > shift.ends_at %>
+                    <% gap_minutes = ((next_shift.starts_at - shift.ends_at) / 60).round %>
+                    <% acknowledged = shift.gap_after_acknowledged?(next_shift.starts_at) %>
+                    <% if acknowledged %>
+                      <div class="flex items-center justify-between gap-2 text-[11px] text-gray-500 italic px-2">
+                        <span>Gap (<%= shift.ends_at.strftime("%-l:%M") %>–<%= next_shift.starts_at.strftime("%-l:%M %p") %>) — OK</span>
+                        <%= button_to "undo",
+                              manage_unacknowledge_gap_staffing_shift_path(shift),
+                              method: :delete,
+                              class: "underline hover:text-gray-700 cursor-pointer bg-transparent border-0 p-0",
+                              form_class: "inline-block" %>
+                      </div>
+                    <% else %>
+                      <div class="flex items-center justify-between gap-2 text-[11px] bg-amber-50 border border-amber-200 text-amber-900 rounded px-2 py-1">
+                        <span>
+                          <span class="font-medium">Gap</span>
+                          <%= shift.ends_at.strftime("%-l:%M") %>–<%= next_shift.starts_at.strftime("%-l:%M %p") %>
+                          (<%= gap_minutes %>m uncovered)
+                        </span>
+                        <%= button_to "OK",
+                              manage_acknowledge_gap_staffing_shift_path(shift, next_starts_at: next_shift.starts_at.iso8601),
+                              method: :post,
+                              class: "text-amber-900 underline hover:text-amber-700 cursor-pointer bg-transparent border-0 p-0 font-medium",
+                              form_class: "inline-block" %>
+                      </div>
+                    <% end %>
+                  <% end %>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%# + Add shift — appended to the same scroller so it sits to the right of role columns. %>
+                <button type="button"
+                        data-action="click->shift-add#open"
+                        data-day-label="<%= day_label %>"
+                        data-role-defaults="<%= role_defaults_for_day.to_json %>"
+                        data-source-show-id="<%= day_shows.first&.id %>"
+                        class="w-56 flex-shrink-0 self-start text-sm px-3 py-2 rounded-md border border-dashed border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer">
+                  + Add shift
+                </button>
+              </div>
+              </div>
+
+              <%# === Gantt modes (toggled by the day-view controller). === %>
+              <div data-day-view-target="ganttRoles" class="hidden">
+                <%= render "manage/staffing/day_gantt",
+                      mode: "roles", day_shifts: day_shifts, day_shows: day_shows, role_order: role_order %>
+              </div>
+              <div data-day-view-target="ganttPeople" class="hidden">
+                <%= render "manage/staffing/day_gantt",
+                      mode: "people", day_shifts: day_shifts, day_shows: day_shows, role_order: role_order %>
+              </div>
+            <% else %>
+              <div class="flex items-center gap-3">
+                <div class="text-sm text-gray-400 italic px-2 py-2">No shifts scheduled.</div>
+                <% if @house_role_count.positive? %>
+                  <button type="button"
+                          data-action="click->shift-add#open"
+                          data-day-label="<%= day_label %>"
+                          data-role-defaults="<%= role_defaults_for_day.to_json %>"
+                          data-source-show-id="<%= day_shows.first&.id %>"
+                          class="text-sm px-3 py-1.5 rounded-md border border-dashed border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer">
+                    + Add shift
+                  </button>
+                <% end %>
+              </div>
+            <% end %>
+
+            <% if day_shows.any? %>
+              <%# Tagged as a "cards" target so it hides in the Gantt modes
+                  (where shows are drawn as their own row inside the chart). %>
+              <div data-day-view-target="cards" class="px-1 mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
+                <% day_shows.each do |show| %>
+                  <span>
+                    <span class="font-medium text-gray-700"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
+                    <%= show.production&.name %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @shows_by_day.empty? && @shifts_by_day.empty? %>
+      <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center text-sm text-gray-600">
+        <p class="mb-3">No shows or shifts in this week.</p>
+        <% if @house_role_count.zero? %>
+          <%= link_to "Set up your house roles first", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>
+        <% elsif @staff_count.zero? %>
+          <%= link_to "Add your staff", manage_staffing_staff_path, class: "text-pink-600 hover:text-pink-700 underline" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# === Assignment modal === %>
+  <div data-shift-assign-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->shift-assign#backdropClose keydown.esc@window->shift-assign#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl"
+           data-action="click->shift-assign#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900" data-shift-assign-target="title">Assign</h3>
+            <div class="text-xs text-gray-500" data-shift-assign-target="subtitle"></div>
+          </div>
+          <button type="button" data-action="click->shift-assign#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: "#", method: :post, local: true,
+                      data: { "shift-assign-target": "form" } do %>
+          <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
+        <% end %>
+
+        <div class="px-5 pt-3 flex items-center gap-2">
+          <span class="text-xs text-gray-500 mr-1">Show</span>
+          <button type="button" data-shift-assign-target="filterAll" data-action="click->shift-assign#showAll"
+                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-pink-500 text-white">Everyone</button>
+          <button type="button" data-shift-assign-target="filterAvailable" data-action="click->shift-assign#showAvailableOnly"
+                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Available only</button>
+        </div>
+
+        <div class="px-5 py-4 max-h-[60vh] overflow-y-auto" data-shift-assign-target="results">
+          <%# populated by JS %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# === Scheduling-conflict modal (shown when assigning would double-book) === %>
+  <div data-shift-assign-target="collisionModal"
+       class="hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->shift-assign#collisionBackdropClose keydown.esc@window->shift-assign#cancelCollision">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl"
+           data-action="click->shift-assign#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">Scheduling conflict</h3>
+          <button type="button" data-action="click->shift-assign#cancelCollision" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="px-5 py-4" data-shift-assign-target="collisionBody">
+          <%# populated by JS %>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <button type="button" data-action="click->shift-assign#cancelCollision" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+          <button type="button" data-action="click->shift-assign#confirmCollision"
+                  class="px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white cursor-pointer transition-colors">
+            Assign anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# === Edit time modal === %>
+  <div data-shift-edit-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->shift-edit#backdropClose keydown.esc@window->shift-edit#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-sm bg-white rounded-md shadow-2xl"
+           data-action="click->shift-edit#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900" data-shift-edit-target="title">Edit shift</h3>
+          <button type="button" data-action="click->shift-edit#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: "#", method: :patch, local: true,
+                      data: { "shift-edit-target": "form" }, scope: :shift do |f| %>
+          <div class="px-5 py-4">
+            <div class="text-xs text-gray-500 mb-2" data-shift-edit-target="dayLabel"></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Starts</label>
+                <input type="time" step="300"
+                       data-shift-edit-target="startTimeInput"
+                       data-action="input->shift-edit#syncHiddenFields"
+                       class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Ends</label>
+                <input type="time" step="300"
+                       data-shift-edit-target="endTimeInput"
+                       data-action="input->shift-edit#syncHiddenFields"
+                       class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-2">End time can roll past midnight onto the next day.</p>
+            <%# Hidden full-datetime fields submitted to the server; JS keeps them in sync with the time inputs above. %>
+            <%= f.hidden_field :starts_at, data: { "shift-edit-target": "startInput" } %>
+            <%= f.hidden_field :ends_at,   data: { "shift-edit-target": "endInput" } %>
+          </div>
+          <%# Shown only when the modal was opened by clicking a specific person. %>
+          <div data-shift-edit-target="removeSection"
+               class="hidden border-t border-gray-200 px-5 py-3 flex items-center justify-between gap-3">
+            <span class="text-xs text-gray-600">
+              Remove <span class="font-medium text-gray-900" data-shift-edit-target="removePersonName"></span> from this shift?
+            </span>
+            <button type="button"
+                    data-shift-edit-target="removeButton"
+                    data-action="click->shift-edit#removePerson"
+                    class="px-3 py-1.5 text-xs font-medium rounded border border-red-300 text-red-700 bg-white hover:bg-red-50 cursor-pointer transition-colors">
+              Remove
+            </button>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->shift-edit#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button", text: "Save time", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# === Split modal === %>
+  <div data-shift-split-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->shift-split#backdropClose keydown.esc@window->shift-split#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-md bg-white rounded-md shadow-2xl"
+           data-action="click->shift-split#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900" data-shift-split-target="title">Split shift</h3>
+            <div class="text-xs text-gray-500" data-shift-split-target="subtitle"></div>
+          </div>
+          <button type="button" data-action="click->shift-split#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: "#", method: :post, local: true,
+                      data: { "shift-split-target": "form" } do %>
+          <div class="px-5 py-4 space-y-5">
+            <%# Big +/- counter %>
+            <div class="flex items-center justify-center gap-6">
+              <button type="button" data-action="click->shift-split#decrement"
+                      class="w-10 h-10 rounded-full border border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 text-xl font-medium text-gray-700 cursor-pointer flex items-center justify-center transition-colors">
+                −
+              </button>
+              <div class="text-center min-w-[80px]">
+                <div class="text-5xl font-bold text-gray-900 tabular-nums leading-none" data-shift-split-target="countDisplay">2</div>
+                <div class="text-[11px] text-gray-500 uppercase tracking-wider mt-1">Segments</div>
+              </div>
+              <button type="button" data-action="click->shift-split#increment"
+                      class="w-10 h-10 rounded-full border border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 text-xl font-medium text-gray-700 cursor-pointer flex items-center justify-center transition-colors">
+                +
+              </button>
+            </div>
+
+            <div class="space-y-4" data-shift-split-target="segmentsContainer">
+              <%# Populated by JS — each segment is a dual-handle slider. %>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 p-2.5">
+              Existing assignments stay on segment #1. New segments start empty.
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->shift-split#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button", text: "Split", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# === Add shift modal === %>
+  <div data-shift-add-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->shift-add#backdropClose keydown.esc@window->shift-add#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-sm bg-white rounded-md shadow-2xl"
+           data-action="click->shift-add#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Add shift</h3>
+            <div class="text-xs text-gray-500" data-shift-add-target="subtitle"></div>
+          </div>
+          <button type="button" data-action="click->shift-add#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: manage_create_staffing_shift_path, method: :post, local: true,
+                      data: { "shift-add-target": "form" }, scope: :shift do |f| %>
+          <div class="px-5 py-4 space-y-2">
+            <label class="block text-xs font-medium text-gray-700">Role</label>
+            <%= f.select :house_role_id,
+                  @house_roles.map { |r| [r.name, r.id] },
+                  {},
+                  data: { "shift-add-target": "roleSelect", action: "change->shift-add#roleChanged" },
+                  class: "block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="text-[11px] text-gray-500" data-shift-add-target="timeHint"></p>
+            <%# Hidden — JS fills these in based on the role's default offsets for this day. %>
+            <%= f.hidden_field :starts_at, data: { "shift-add-target": "startInput" } %>
+            <%= f.hidden_field :ends_at,   data: { "shift-add-target": "endInput" } %>
+            <%# Anchors the shift to the day's first show so it groups on the show's
+                day even when its hours cross midnight. Blank for no-show days. %>
+            <%= f.hidden_field :source_type, data: { "shift-add-target": "sourceTypeInput" } %>
+            <%= f.hidden_field :source_id,   data: { "shift-add-target": "sourceIdInput" } %>
+            <%= f.hidden_field :required_count, value: 1 %>
+            <%= f.hidden_field :coverage_mode,  value: "needs_assignment" %>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->shift-add#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button", text: "Add shift", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>

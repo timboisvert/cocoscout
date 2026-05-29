@@ -1,0 +1,315 @@
+<%#
+  Gantt-style timeline for one day's shifts.
+  Locals:
+    mode        — "roles" or "people"
+    day_shifts  — Array<Shift> for the day (eager-loaded house_role + assignments)
+    day_shows   — Array<Show> for the day, optional (drawn as a Shows row across the top)
+    role_order  — Hash<role_id => position> for stable left-column ordering
+%>
+<% day_shows ||= [] %>
+<% if day_shifts.empty? && day_shows.empty? %>
+  <div class="text-sm text-gray-400 italic px-2 py-3">Nothing to chart.</div>
+<% else %>
+  <%
+    # Time range spans both shifts AND shows, so a show at 7pm is visible even
+    # if shifts only run 8pm–10pm. Floor earliest start to the hour, ceil latest
+    # end to the next hour.
+    starts = day_shifts.map(&:starts_at) + day_shows.map(&:date_and_time)
+    ends   = day_shifts.map(&:ends_at)   + day_shows.map(&:ends_at)
+    min_start = starts.min
+    max_end   = ends.max
+    chart_start = min_start.beginning_of_hour
+    chart_end   = max_end.beginning_of_hour == max_end ? max_end : (max_end.beginning_of_hour + 1.hour)
+    total_seconds = (chart_end - chart_start).to_f
+    total_seconds = 1.0 if total_seconds <= 0
+
+    pct = ->(t) { ((t - chart_start) / total_seconds) * 100.0 }
+    fmt_clock = ->(t) {
+      h = t.hour
+      ampm = h >= 12 ? "p" : "a"
+      h12 = h % 12
+      h12 = 12 if h12 == 0
+      "#{h12}#{ampm}"
+    }
+
+    # Hour ticks for the axis.
+    ticks = []
+    t = chart_start
+    while t <= chart_end
+      ticks << t
+      t += 1.hour
+    end
+
+    # Greedy lane-assignment for any set of items that have `.starts_at`/`.ends_at`
+    # accessors (or equivalent via getter lambdas). Returns Array<Array<item>> where
+    # each sub-array is a lane that contains non-overlapping items in time order.
+    assign_lanes = ->(items, start_of, end_of) {
+      lanes = []
+      items.sort_by { |i| start_of.call(i) }.each do |item|
+        placed = false
+        lanes.each do |lane|
+          if end_of.call(lane.last) <= start_of.call(item)
+            lane << item
+            placed = true
+            break
+          end
+        end
+        lanes << [item] unless placed
+      end
+      lanes
+    }
+
+    row_lane_height  = 36  # px per lane in role/people rows
+    row_block_height = 32  # px per block, leaving 2px top/bottom padding
+  %>
+
+  <div class="text-xs">
+    <%# Axis header — hour labels. %>
+    <div class="flex">
+      <div class="w-44 flex-shrink-0"></div>
+      <div class="flex-1 relative h-5 border-b border-gray-200">
+        <% ticks.each do |tick| %>
+          <% left = pct.call(tick) %>
+          <div class="absolute top-0 bottom-0 border-l border-gray-100"
+               style="left: <%= left %>%;"></div>
+          <div class="absolute -translate-x-1/2 text-[10px] text-gray-500 tabular-nums top-0"
+               style="left: <%= left %>%;"><%= fmt_clock.call(tick) %></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Shows row — one bar per show with its full length visible. When shows
+        overlap in time, additional lanes are added so nothing visually collides.
+        Lane assignment is a simple greedy pass: each show drops into the first
+        lane whose latest block ends at or before this show starts. %>
+    <% if day_shows.any? %>
+      <%
+        sorted_shows = day_shows.sort_by(&:date_and_time)
+        show_lanes = []
+        sorted_shows.each do |show|
+          placed = false
+          show_lanes.each do |lane|
+            if lane.last.ends_at <= show.date_and_time
+              lane << show
+              placed = true
+              break
+            end
+          end
+          show_lanes << [show] unless placed
+        end
+        lane_height = 28  # px per lane
+        block_height = 22 # px per block, leaving 3px padding top + 3 bottom
+        section_height = show_lanes.size * lane_height
+      %>
+      <div class="flex border-t border-gray-100">
+        <div class="w-44 flex-shrink-0 py-2 pr-2 text-gray-600 font-medium uppercase tracking-wide text-[10px] flex items-start">
+          <%= pluralize(sorted_shows.size, "show") %>
+        </div>
+        <div class="flex-1 relative" style="height: <%= section_height %>px;">
+          <% ticks.each do |tick| %>
+            <div class="absolute top-0 bottom-0 border-l border-gray-100"
+                 style="left: <%= pct.call(tick) %>%;"></div>
+          <% end %>
+          <% show_lanes.each_with_index do |lane, lane_idx| %>
+            <% lane.each do |show| %>
+              <%
+                show_end = show.ends_at
+                left  = pct.call(show.date_and_time)
+                width = [pct.call(show_end) - left, 1.5].max
+                top   = (lane_idx * lane_height) + ((lane_height - block_height) / 2)
+                label = show.production&.name.presence || "Show"
+              %>
+              <div class="absolute rounded border border-pink-300 bg-pink-100 text-pink-900 px-2 flex items-center gap-1.5 overflow-hidden"
+                   style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= block_height %>px;"
+                   title="<%= "#{label} · #{show.date_and_time.strftime("%-l:%M %p")}–#{show_end.strftime("%-l:%M %p")}" %>">
+                <span class="truncate text-[11px] font-medium"><%= label %></span>
+                <span class="text-[10px] text-pink-700 tabular-nums flex-shrink-0 ml-auto"><%= show.date_and_time.strftime("%-l:%M") %>–<%= show_end.strftime("%-l:%M") %></span>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if mode == "roles" %>
+      <%# === Roles down the left, time across. === %>
+      <%
+        role_groups = day_shifts.group_by(&:house_role).sort_by { |role, _| role_order[role.id] || 9_999 }
+      %>
+      <% role_groups.each do |role, shifts| %>
+        <%
+          shift_lanes = assign_lanes.call(shifts, ->(s) { s.starts_at }, ->(s) { s.ends_at })
+          role_section_height = shift_lanes.size * row_lane_height
+        %>
+        <div class="flex border-t border-gray-100">
+          <div class="w-44 flex-shrink-0 py-2 pr-2 text-gray-800 font-medium truncate"><%= role.name %></div>
+          <div class="flex-1 relative" style="height: <%= role_section_height %>px;">
+            <%# Hour gridlines. %>
+            <% ticks.each do |tick| %>
+              <div class="absolute top-0 bottom-0 border-l border-gray-100"
+                   style="left: <%= pct.call(tick) %>%;"></div>
+            <% end %>
+            <%# Shift blocks, stacked into lanes when they would otherwise overlap. %>
+            <% shift_lanes.each_with_index do |lane, lane_idx| %>
+              <% lane.each do |shift| %>
+                <%
+                  left = pct.call(shift.starts_at)
+                  width = pct.call(shift.ends_at) - left
+                  top = (lane_idx * row_lane_height) + ((row_lane_height - row_block_height) / 2)
+                  people = shift.shift_assignments.map(&:person)
+                  assigned_ids = shift.shift_assignments.map(&:person_id)
+                  time_range = "#{shift.starts_at.strftime("%-l:%M")}–#{shift.ends_at.strftime("%-l:%M %p")}"
+                  covered_by_renter = shift.coverage_mode == "covered_by_renter"
+                  not_needed = shift.coverage_mode == "not_needed"
+                  unfilled = shift.needs_assignment? && shift.remaining_slots > 0
+                  empty_unfilled = unfilled && people.empty?
+                  block_classes =
+                    if covered_by_renter then "bg-blue-50 border-blue-300 text-blue-900"
+                    elsif not_needed then "bg-gray-50 border-gray-300 text-gray-500"
+                    elsif empty_unfilled then "bg-white border-pink-400 border-dashed text-pink-700 hover:bg-pink-50"
+                    elsif unfilled then "bg-white border-pink-300 text-gray-900 hover:bg-pink-50"
+                    else "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+                    end
+                %>
+                <% if covered_by_renter || not_needed %>
+                  <div class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden"
+                       style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
+                       title="<%= time_range %>">
+                    <% if covered_by_renter %>
+                      <span class="truncate text-[11px]">Renter: <%= shift.renter_name.presence || "covered" %></span>
+                    <% else %>
+                      <span class="truncate text-[11px] italic">Not needed</span>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <%# Split block: main area clicks → edit time; trailing "+" → assign staff. %>
+                  <div class="absolute rounded border <%= block_classes %> flex items-stretch overflow-hidden transition-colors"
+                       style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
+                       title="<%= "#{role.name} · #{time_range}" %>">
+                    <button type="button"
+                            data-action="click->shift-edit#open"
+                            data-shift-id="<%= shift.id %>"
+                            data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                            data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                            data-shift-role-name="<%= role.name %>"
+                            class="flex-1 min-w-0 px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left bg-transparent border-0">
+                      <% if empty_unfilled %>
+                        <span class="truncate text-[11px] italic opacity-70">empty — click to edit time</span>
+                      <% else %>
+                        <%# Headshot + name chips. The shift-edit controller checks event.target's
+                            closest [data-person-id] to know which person was clicked, so each chip
+                            carries enough context to enable the per-person "Remove" affordance. %>
+                        <% people.first(3).each do |person| %>
+                          <% variant = person.safe_headshot_variant(:thumb) %>
+                          <span class="flex items-center gap-1 min-w-0 flex-shrink"
+                                data-person-id="<%= person.id %>"
+                                data-person-name="<%= person.name %>">
+                            <% if variant %>
+                              <%= image_tag variant, alt: person.name,
+                                    class: "w-5 h-5 rounded-lg object-cover flex-shrink-0" %>
+                            <% else %>
+                              <span class="w-5 h-5 rounded-lg bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0">
+                                <%= person.initials %>
+                              </span>
+                            <% end %>
+                            <span class="truncate text-[11px] font-medium" title="<%= person.name %>"><%= person.name %></span>
+                          </span>
+                        <% end %>
+                        <% if people.size > 3 %>
+                          <span class="text-[10px] font-medium flex-shrink-0">+<%= people.size - 3 %></span>
+                        <% end %>
+                      <% end %>
+                    </button>
+                    <button type="button"
+                            data-action="click->shift-assign#open"
+                            data-shift-id="<%= shift.id %>"
+                            data-role-id="<%= role.id %>"
+                            data-role-name="<%= role.name %>"
+                            data-time-range="<%= time_range %>"
+                            data-assigned-ids="<%= assigned_ids.to_json %>"
+                            class="flex-shrink-0 px-1.5 flex items-center justify-center border-l border-current/20 text-current/70 hover:text-current cursor-pointer bg-transparent text-[12px] leading-none"
+                            title="Add a staff member">
+                      +
+                    </button>
+                  </div>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+    <% else %>
+      <%# === People down the left, time across. === %>
+      <%
+        # Group by person across all the day's shifts.
+        people_rows = {}
+        day_shifts.each do |s|
+          s.shift_assignments.each do |a|
+            people_rows[a.person_id] ||= { person: a.person, blocks: [] }
+            people_rows[a.person_id][:blocks] << { shift: s, role: s.house_role }
+          end
+        end
+        people_rows = people_rows.values.sort_by { |row| row[:person].name.to_s }
+      %>
+      <% if people_rows.empty? %>
+        <div class="py-3 px-2 text-xs text-gray-400 italic">No people assigned yet.</div>
+      <% else %>
+        <% people_rows.each do |row| %>
+          <%
+            person = row[:person]
+            variant = person.safe_headshot_variant(:thumb)
+            block_lanes = assign_lanes.call(row[:blocks],
+                                            ->(b) { b[:shift].starts_at },
+                                            ->(b) { b[:shift].ends_at })
+            people_section_height = block_lanes.size * row_lane_height
+          %>
+          <div class="flex border-t border-gray-100">
+            <div class="w-44 flex-shrink-0 py-1.5 pr-2 flex items-start gap-2 min-w-0" style="height: <%= people_section_height %>px;">
+              <% if variant %>
+                <%= image_tag variant, alt: person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0 mt-1" %>
+              <% else %>
+                <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-700 flex-shrink-0 mt-1">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+              <span class="truncate text-gray-800 font-medium mt-1.5"><%= person.name %></span>
+            </div>
+            <div class="flex-1 relative" style="height: <%= people_section_height %>px;">
+              <% ticks.each do |tick| %>
+                <div class="absolute top-0 bottom-0 border-l border-gray-100"
+                     style="left: <%= pct.call(tick) %>%;"></div>
+              <% end %>
+              <% block_lanes.each_with_index do |lane, lane_idx| %>
+                <% lane.each do |block| %>
+                  <%
+                    s = block[:shift]
+                    r = block[:role]
+                    left = pct.call(s.starts_at)
+                    width = pct.call(s.ends_at) - left
+                    top = (lane_idx * row_lane_height) + ((row_lane_height - row_block_height) / 2)
+                  %>
+                  <%# The block carries the person context so opening the edit modal here
+                      surfaces the "Remove [person] from this shift" affordance. %>
+                  <button type="button"
+                          data-action="click->shift-edit#open"
+                          data-shift-id="<%= s.id %>"
+                          data-shift-starts-at="<%= s.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                          data-shift-ends-at="<%= s.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                          data-shift-role-name="<%= r.name %>"
+                          data-person-id="<%= person.id %>"
+                          data-person-name="<%= person.name %>"
+                          class="absolute rounded border bg-white border-gray-300 text-gray-900 hover:bg-gray-50 transition-colors px-1.5 flex items-center overflow-hidden cursor-pointer text-left"
+                          style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
+                          title="<%= r.name %> · <%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %>">
+                    <span class="truncate text-[11px] font-medium"><%= r.name %></span>
+                  </button>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

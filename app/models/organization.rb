@@ -12,6 +12,10 @@ class Organization < ApplicationRecord
   has_many :users, through: :organization_roles
   has_many :locations, dependent: :destroy
   has_many :casting_tables, dependent: :destroy
+  # Staffing module
+  has_many :house_roles, dependent: :destroy
+  has_many :organization_staff_members, dependent: :destroy
+  has_many :shifts, dependent: :destroy
   has_many :payroll_runs, dependent: :destroy
   has_many :agreement_templates, dependent: :destroy
   has_many :questionnaires, dependent: :destroy

@@ -33,7 +33,7 @@ module My
       @next_month = next_month
 
       # === Filter parameters ===
-      all_calendar_types = %w[show rehearsal meeting course audition]
+      all_calendar_types = %w[show rehearsal meeting course audition shift]
       @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : all_calendar_types
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
@@ -298,6 +298,27 @@ module My
             color: "amber"
           }
         end
+      end
+
+      # --- House staffing shifts (Staffing module) ---
+      if @event_type_filter.include?("shift") && selected_person_ids.any?
+        ShiftAssignment
+          .where(person_id: selected_person_ids)
+          .joins(:shift)
+          .where("shifts.starts_at >= ? AND shifts.starts_at <= ?", cal_start, cal_end)
+          .includes(shift: [ :house_role, :organization ])
+          .each do |a|
+            shift = a.shift
+            @calendar_events << {
+              date: shift.starts_at.to_date,
+              time: shift.starts_at,
+              title: shift.organization&.name || "Shift",
+              subtitle: shift.house_role.name,
+              path: my_shifts_path,
+              type: :shift,
+              color: "teal"
+            }
+          end
       end
 
       # Group events by date for the calendar grid
