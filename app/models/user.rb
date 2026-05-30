@@ -42,10 +42,13 @@ class User < ApplicationRecord
     message_subscriptions.active.sum(:unread_count)
   end
 
+  # Unread count for the manage sidebar — must equal the unread count derivable
+  # from the manage messages list, so we share Message.manage_inbox_for here.
   def unread_message_count_for_org(organization)
     return 0 unless organization
-    org_message_ids = Message.where(organization: organization).select(:id)
-    message_subscriptions.active.where(message_id: org_message_ids).sum(:unread_count)
+    message_subscriptions.active
+                         .where(message_id: Message.manage_inbox_for(self, organization).select(:id))
+                         .sum(:unread_count)
   end
 
   # Count of open requests needing user's attention:

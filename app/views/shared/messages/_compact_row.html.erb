@@ -1,0 +1,55 @@
+<%#
+  Gmail-style compact inbox row.
+
+  Required:
+    message: the root Message
+    summary: { participants:, count:, snippet: } from Message.thread_summaries_for
+             — preloaded in the controller so this partial does no DB queries.
+
+  Optional:
+    message_path: explicit path override (default chooses my/manage automatically)
+%>
+<%
+  is_manage_context = controller.class.name.start_with?("Manage::")
+  message_path = local_assigns[:message_path] || (is_manage_context ? manage_message_path(message) : my_message_path(message))
+
+  summary = local_assigns[:summary] || {}
+  participants = summary[:participants].presence || message.sender_name
+  thread_count = summary[:count] || 1
+  snippet = summary[:snippet].to_s
+  is_unread = summary[:is_unread]
+
+  ts = message.latest_activity_at || message.created_at
+  date_label =
+    if ts.to_date == Date.current
+      ts.strftime("%-l:%M %p")
+    elsif ts > Time.current.beginning_of_year
+      ts.strftime("%b %-d")
+    else
+      ts.strftime("%b %-d, %Y")
+    end
+%>
+
+<%= link_to message_path,
+      class: "flex items-center gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
+      data: { message_id: message.id } do %>
+  <%# Participants + thread count %>
+  <span class="flex-shrink-0 w-40 sm:w-56 flex items-baseline gap-2 min-w-0">
+    <span class="truncate text-sm <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>">
+      <%= participants %>
+    </span>
+    <% if thread_count > 1 %>
+      <span class="flex-shrink-0 text-xs text-gray-400 tabular-nums"><%= thread_count %></span>
+    <% end %>
+  </span>
+
+  <%# Subject - snippet %>
+  <span class="flex-1 min-w-0 truncate text-sm">
+    <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="font-light text-gray-400"> - <%= snippet %></span><% end %>
+  </span>
+
+  <%# Date %>
+  <span class="flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
+    <%= date_label %>
+  </span>
+<% end %>

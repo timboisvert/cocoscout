@@ -27,6 +27,15 @@ class MessageSubscription < ApplicationRecord
     end
   end
 
+  # Inverse of mark_read! — flip the thread back to "unread" so it reappears in
+  # the inbox unread filter and re-increments the sidebar badge.
+  def mark_unread!
+    transaction do
+      update!(last_read_at: nil, unread_count: [ unread_count, 1 ].max)
+      UserNotificationsChannel.broadcast_unread_count(user)
+    end
+  end
+
   # Increment unread count when a new message arrives in this thread
   # Called from Message after_create callback
   def increment_unread!

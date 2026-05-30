@@ -8,9 +8,19 @@
     message_path: The path to the message (for delete link)
     can_delete: Whether the current user can delete this message
     can_view_receipts: Whether the current user can view read receipts
-%>
 
-<% if can_delete || can_view_receipts %>
+  Optional:
+    mark_unread_path: When set, shows a "Mark as unread" option that POSTs here.
+    mute_path:        When set, shows "Mute thread" / "Unmute thread" (POST).
+    is_muted:         Pair with mute_path so we know which label to render.
+    archive_path:     When set, shows "Archive" (POST).
+%>
+<% mark_unread_path = local_assigns[:mark_unread_path] %>
+<% mute_path        = local_assigns[:mute_path] %>
+<% is_muted         = local_assigns[:is_muted] %>
+<% archive_path     = local_assigns[:archive_path] %>
+
+<% if can_delete || can_view_receipts || mark_unread_path || mute_path || archive_path %>
   <div class="relative z-10 flex-shrink-0" data-controller="dropdown modal">
     <button
       type="button"
@@ -36,6 +46,40 @@
           </svg>
           Read Receipts
         </button>
+      <% end %>
+      <% if mark_unread_path %>
+        <%= button_to mark_unread_path, method: :post, form_class: "block",
+              class: "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          Mark as unread
+        <% end %>
+      <% end %>
+      <% if mute_path %>
+        <%= button_to mute_path, method: :post, form_class: "block",
+              class: "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" do %>
+          <% if is_muted %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            </svg>
+            Unmute thread
+          <% else %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zm12 0l4-4m0 4l-4-4"/>
+            </svg>
+            Mute thread
+          <% end %>
+        <% end %>
+      <% end %>
+      <% if archive_path %>
+        <%= button_to archive_path, method: :post, form_class: "block",
+              class: "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+          </svg>
+          Archive
+        <% end %>
       <% end %>
       <% if can_delete %>
         <%= link_to message_path,

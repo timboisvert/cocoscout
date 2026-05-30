@@ -194,7 +194,30 @@
         <% end %>
       </div>
 
-      <%= render "shared/messages/message_actions_menu", message: message, message_path: message_path, can_delete: can_delete, can_view_receipts: can_view_receipts %>
+      <%
+        # Only offer "Mark as unread" / "Mute" / "Archive" on the show page.
+        # Mute + Archive routes only exist on the talent side (my namespace).
+        mark_unread_path =
+          if is_show
+            is_manage_context ? mark_unread_manage_message_path(message.root_message) : mark_unread_my_message_path(message.root_message)
+          end
+
+        if is_show && !is_manage_context
+          subscription_for_actions = (defined?(Current) && Current.user) ? Current.user.message_subscriptions.find_by(message: message.root_message) : nil
+          is_muted_thread = subscription_for_actions&.muted
+          mute_path = is_muted_thread ? unmute_my_message_path(message.root_message) : mute_my_message_path(message.root_message)
+          archive_path = archive_my_message_path(message.root_message)
+        end
+      %>
+      <%= render "shared/messages/message_actions_menu",
+            message: message,
+            message_path: message_path,
+            can_delete: can_delete,
+            can_view_receipts: can_view_receipts,
+            mark_unread_path: mark_unread_path,
+            mute_path: mute_path,
+            is_muted: is_muted_thread,
+            archive_path: archive_path %>
     </div>
   </div>
 

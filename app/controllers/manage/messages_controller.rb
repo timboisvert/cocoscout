@@ -9,41 +9,22 @@ module Manage
       @production_filter = params[:production_id]
       @order = params[:order] || "newest"
 
-      # Get all productions the user has access to
+      # Productions the user can access (for the production-filter dropdown).
       @accessible_productions = Current.user.accessible_productions
         .where(organization: Current.organization)
         .order(:name)
-      accessible_production_ids = @accessible_productions.pluck(:id)
 
-      person_ids = Current.user.people.pluck(:id)
-
-      # Managers see:
-      # 1. All production/show-scoped messages for accessible productions
-      # 2. Private messages where they're sender or recipient (their personal DMs)
-      # Excludes system-generated messages (automated notifications)
-      private_received_ids = Message.joins(:message_recipients)
-                                    .where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
-                                    .select(:id)
-
-      @messages = Message
-        .where(organization: Current.organization)
-        .where(system_generated: false)
-        .root_messages
-        .where(
-          "(messages.visibility IN (?) AND messages.production_id IN (?)) OR " +
-          "(messages.visibility = ? AND messages.sender_type = ? AND messages.sender_id = ?) OR " +
-          "(messages.visibility = ? AND messages.id IN (?))",
-          [ "production", "show" ], accessible_production_ids,
-          "private", "User", Current.user.id,
-          "private", private_received_ids
-        )
+      # Single source of truth for what belongs in this manage inbox — shared
+      # with the sidebar badge + mark-all-read so they always agree.
+      inbox = Message.manage_inbox_for(Current.user, Current.organization)
+      @messages = inbox
         .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
 
       # Apply filters
       case @filter
       when "unread"
-        unread_thread_ids = Current.user.message_subscriptions.unread.pluck(:message_id)
-        @messages = @messages.where(id: unread_thread_ids)
+        unread_subscription_message_ids = Current.user.message_subscriptions.unread.select(:message_id)
+        @messages = @messages.where(id: unread_subscription_message_ids)
       when "sent_by_me"
         @messages = @messages.where(sender: Current.user)
       end
@@ -62,11 +43,14 @@ module Manage
 
       # Apply ordering
       @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-      @pagy, @messages = pagy(@messages, limit: 10)
+      @pagy, @messages = pagy(@messages, limit: 25)
 
-      # Unread count scoped to this organization's messages
-      @unread_count = Current.user.message_subscriptions.unread
-        .where(message_id: Message.where(organization: Current.organization).select(:id)).count
+      # Bulk-load participants/count/snippet for every row on the page so the
+      # compact-row partial doesn't do per-row queries.
+      @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
+
+      # The in-page unread number must equal the sidebar badge — same scope.
+      @unread_count = Current.user.unread_message_count_for_org(Current.organization)
     end
 
     # GET /manage/messages/production/:production_id
@@ -96,7 +80,8 @@ module Manage
         )
         .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
         .order(updated_at: :desc)
-        .limit(100)
+      @pagy, @messages = pagy(@messages, limit: 25)
+      @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
 
       @hide_production_via = true  # Don't show "via" since we're already filtered by production
 
@@ -205,10 +190,33 @@ module Manage
     end
 
     def mark_all_read
+      # Same scope as the inbox list + sidebar badge so the badge actually
+      # reaches zero from this view.
+      inbox_ids = Message.manage_inbox_for(Current.user, Current.organization).select(:id)
       Current.user.message_subscriptions.active
-        .where(message_id: Message.where(organization: Current.organization).select(:id))
-        .each(&:mark_read!)
+                                        .where(message_id: inbox_ids)
+                                        .each(&:mark_read!)
       redirect_to manage_messages_path, notice: "All messages marked as read"
+    end
+
+    # Flip a thread back to "unread" — bumps the subscription's unread counter
+    # and clears the user's recipient read_at so the thread reappears in both
+    # the inbox unread filter and the sidebar badge.
+    def mark_unread
+      message = Message.find(params[:id])
+      root = message.root_message
+
+      subscription = root.message_subscriptions.find_by(user: Current.user)
+      subscription&.mark_unread!
+
+      if Current.user.people.any?
+        recipient_person = root.message_recipients
+                               .where(recipient_type: "Person", recipient_id: Current.user.people.select(:id))
+                               .first&.recipient
+        recipient_person&.then { |p| root.mark_unread_for!(p) }
+      end
+
+      redirect_to manage_messages_path, notice: "Marked as unread"
     end
 
     def show

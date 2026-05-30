@@ -55,6 +55,9 @@ class Message < ApplicationRecord
   # Callbacks for real-time updates
   after_create_commit :broadcast_to_thread
   after_create_commit :notify_subscribers, unless: :skip_notify_subscribers
+  # Bubble the thread to the top of the inbox sort by touching the root
+  # whenever a reply lands — `messages.updated_at` is the inbox sort key.
+  after_create_commit :touch_root_on_reply, if: :reply?
 
   # Scopes
   scope :root_messages, -> { where(parent_message_id: nil) }
@@ -130,6 +133,122 @@ class Message < ApplicationRecord
   scope :subscribed_by, ->(user) {
     joins(:message_subscriptions).where(message_subscriptions: { user: user, muted: false })
   }
+
+  # Build per-thread inbox row data (participants, count, snippet) for a page of
+  # root messages in O(depth) queries, not per-row. Returns
+  #   { root_id => { participants: "Casey, me", count: 3, snippet: "..." } }
+  #
+  # current_user is the viewer — their name is rendered as "me".
+  def self.thread_summaries_for(roots, current_user:)
+    return {} if roots.blank?
+
+    root_ids = roots.map(&:id)
+
+    # BFS the tree under each root in bounded query passes. Typical thread
+    # depth is 1 so this runs ~2 includes-loads regardless of page size.
+    collected = {}
+    queue = Message.where(id: root_ids).includes(:sender, :rich_text_body, :production).to_a
+    until queue.empty?
+      queue.each { |m| collected[m.id] = m }
+      child_ids = Message.where(parent_message_id: queue.map(&:id)).where.not(id: collected.keys).pluck(:id)
+      queue = child_ids.any? ? Message.where(id: child_ids).includes(:sender, :rich_text_body, :production).to_a : []
+    end
+
+    # Resolve the root for each message via the in-memory parent map.
+    root_of = {}
+    collected.each_value do |m|
+      id = m.id
+      id = collected[id].parent_message_id while collected[id]&.parent_message_id
+      root_of[m.id] = id
+    end
+
+    # Pre-resolve display names for User senders in ONE query (User#person
+    # otherwise N+1s through default_person/people fallback).
+    user_sender_ids = collected.values.select { |m| m.sender_type == "User" }.map(&:sender_id).compact.uniq
+    user_names = if user_sender_ids.any?
+      User.where(id: user_sender_ids).includes(:default_person).each_with_object({}) do |u, h|
+        h[u.id] = u.default_person&.name || u.email_address
+      end
+    else
+      {}
+    end
+
+    grouped = collected.values.group_by { |m| root_of[m.id] }
+    root_ids.each_with_object({}) do |rid, out|
+      msgs = (grouped[rid] || []).sort_by(&:created_at)
+      next if msgs.empty?
+
+      labels = []
+      seen = Set.new
+      msgs.each do |m|
+        label =
+          if m.sent_as_production_team?
+            m.production&.name || "Production Team"
+          elsif m.sender_type == "User"
+            m.sender_id == current_user&.id ? "me" : (user_names[m.sender_id] || "Unknown")
+          elsif m.sender_type == "Person"
+            # m.sender already preloaded; user_id is a column read (no query).
+            m.sender.user_id == current_user&.id ? "me" : m.sender.name
+          else
+            "CocoScout"
+          end
+        next if label.blank? || seen.include?(label)
+        seen << label
+        labels << label
+      end
+
+      latest = msgs.last
+      snippet = latest&.body&.to_plain_text.to_s.gsub(/\s+/, " ").strip.truncate(120)
+
+      out[rid] = {
+        participants: labels.join(", "),
+        count: msgs.size,
+        snippet: snippet
+      }
+    end.tap do |out|
+      # Also fold in the viewer's subscription read state in one query so the
+      # partial can show bold/unread without a per-row lookup.
+      if current_user
+        subs = current_user.message_subscriptions.where(message_id: root_ids).index_by(&:message_id)
+        out.each { |rid, summary| summary[:is_unread] = subs[rid]&.unread? }
+      end
+    end
+  end
+
+  # The set of message-thread roots that belong in a user's MANAGE inbox for an
+  # organization: org-scoped, non-system-generated, and either (a) production/show
+  # visibility for productions the user can access, (b) private messages the user
+  # sent, or (c) private messages where the user's person is a recipient.
+  #
+  # Returns a scope so it can be used either as a subquery (for counting
+  # subscriptions) or as the base list query — so the manage sidebar badge,
+  # the in-page count, the list, and "mark all read" all consume one definition.
+  # (Previously they diverged: the badge counted every subscription to any org
+  # message, while the list hid system-generated + out-of-scope ones, so the
+  # badge could never reach zero from the list.)
+  def self.manage_inbox_for(user, organization)
+    return none unless user && organization
+
+    accessible_production_ids = user.accessible_productions
+                                    .where(organization: organization)
+                                    .pluck(:id)
+    person_ids = user.people.pluck(:id)
+    private_received_ids = Message.joins(:message_recipients)
+                                  .where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
+                                  .select(:id)
+
+    where(organization: organization)
+      .where(system_generated: false)
+      .root_messages
+      .where(
+        "(messages.visibility IN (?) AND messages.production_id IN (?)) OR " \
+        "(messages.visibility = ? AND messages.sender_type = ? AND messages.sender_id = ?) OR " \
+        "(messages.visibility = ? AND messages.id IN (?))",
+        [ "production", "show" ], accessible_production_ids,
+        "private", "User", user.id,
+        "private", private_received_ids
+      )
+  end
 
   # Production-scoped messages (for manage/messages)
   scope :for_production, ->(production) {
@@ -232,6 +351,12 @@ class Message < ApplicationRecord
   # Mark as read for a specific person
   def mark_read_for!(person)
     message_recipients.find_by(recipient: person)&.mark_read!
+  end
+
+  # Inverse: clear the recipient's read state on this thread so it surfaces as
+  # unread again in their personal inbox.
+  def mark_unread_for!(person)
+    message_recipients.find_by(recipient: person)&.update!(read_at: nil)
   end
 
   # Check if unread for a specific person
@@ -411,6 +536,16 @@ class Message < ApplicationRecord
   rescue ArgumentError => e
     # Solid Cable in Rails 8.1 has upsert compatibility issues
     Rails.logger.warn("Message#broadcast_to_thread failed: #{e.message}")
+  end
+
+  # Touch the root message so the inbox sort (messages.updated_at DESC) lifts
+  # this thread when a new reply arrives. Skips silently if root no longer
+  # exists (defensive — the after_commit could fire on edge cases).
+  def touch_root_on_reply
+    root = root_message
+    root.touch if root && root.id != id
+  rescue ActiveRecord::RecordNotFound, ActiveRecord::StaleObjectError
+    # don't raise from a notification callback
   end
 
   # Notify all subscribers about the new message (increment unread counts)

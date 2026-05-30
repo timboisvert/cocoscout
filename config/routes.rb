@@ -202,6 +202,7 @@ Rails.application.routes.draw do
       member do
         post :archive
         post :mark_read
+        post :mark_unread
         post :reply
         post :mute
         post :unmute
@@ -354,6 +355,7 @@ Rails.application.routes.draw do
     resources :messages, only: [ :index, :show, :create ] do
       member do
         post :reply
+        post :mark_unread
         post "react/:emoji", action: :react, as: :react
         post :vote_poll
         post :close_poll

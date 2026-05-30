@@ -100,9 +100,9 @@
   <% end %>
 
   <% if @messages.any? %>
-    <div class="mt-4 space-y-4">
+    <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white">
       <% @messages.each do |thread| %>
-        <%= render "shared/messages/message_card", message: thread %>
+        <%= render "shared/messages/compact_row", message: thread, summary: @thread_summaries[thread.id] %>
       <% end %>
     </div>
 

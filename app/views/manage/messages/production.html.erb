@@ -95,11 +95,31 @@
   </div>
 
   <% if @messages.any? %>
-    <div class="space-y-4">
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
       <% @messages.each do |thread| %>
-        <%= render "shared/messages/message_card", message: thread, hide_production_via: true %>
+        <%= render "shared/messages/compact_row", message: thread, summary: @thread_summaries[thread.id] %>
       <% end %>
     </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          Page <%= @pagy.page %> of <%= @pagy.pages %>
+        </div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", path: production_manage_messages_path(@production, page: @pagy.previous) %>
+          <% else %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+          <% if @pagy.next %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", path: production_manage_messages_path(@production, page: @pagy.next) %>
+          <% else %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   <% else %>
     <div class="text-center py-12 bg-white rounded-lg border border-gray-200">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

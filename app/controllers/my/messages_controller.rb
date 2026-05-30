@@ -40,7 +40,8 @@ class My::MessagesController < ApplicationController
 
     # Apply ordering
     @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-    @pagy, @messages = pagy(@messages, limit: 10)
+    @pagy, @messages = pagy(@messages, limit: 25)
+    @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
     @unread_count = Current.user.unread_message_count
 
     # For production dropdown
@@ -63,7 +64,8 @@ class My::MessagesController < ApplicationController
                            .includes(:sender, :message_recipients, :child_messages, :show, :message_poll, images_attachments: :blob)
                            .order(updated_at: :desc)
 
-    @pagy, @messages = pagy(@messages, limit: 10)
+    @pagy, @messages = pagy(@messages, limit: 25)
+    @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
     @hide_production_via = true  # Don't show "via" since we're already filtered by production
   end
 
@@ -121,6 +123,25 @@ class My::MessagesController < ApplicationController
   def mark_all_read
     Current.user.message_subscriptions.active.each(&:mark_read!)
     redirect_to my_messages_path, notice: "All messages marked as read"
+  end
+
+  # Flip a thread back to "unread" — bumps the subscription's unread counter
+  # and clears the user's recipient read_at so it reappears as unread.
+  def mark_unread
+    message = Message.find(params[:id])
+    root = message.root_message
+
+    subscription = root.message_subscriptions.find_by(user: Current.user)
+    subscription&.mark_unread!
+
+    if Current.user.people.any?
+      recipient_person = root.message_recipients
+                             .where(recipient_type: "Person", recipient_id: Current.user.people.select(:id))
+                             .first&.recipient
+      recipient_person&.then { |p| root.mark_unread_for!(p) }
+    end
+
+    redirect_to my_messages_path, notice: "Marked as unread"
   end
 
   def mute
