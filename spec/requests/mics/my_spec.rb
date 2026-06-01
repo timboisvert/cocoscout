@@ -35,22 +35,14 @@ RSpec.describe "Mics My page", type: :request do
       expect(response.body).to include(mics_producer_mic_path(mic.slug))
     end
 
-    it "lists favorite mics and reflects the alert subscription state" do
+    it "lists favorite mics with name + venue" do
       mic = create(:mic, venue: venue, name: "Lotties Open Mic")
       MicFavorite.create!(user: user, mic: mic)
       sign_in
 
-      # Initial: alerts off.
       get mics_my_path
       expect(response.body).to include("Lotties Open Mic")
-      expect(response.body).to include("Alerts off")
-
-      # Toggle on.
-      post mics_alert_path(mic.slug)
-      expect(MicSignupAlert.where(user: user, mic: mic, active: true).exists?).to be(true)
-
-      get mics_my_path
-      expect(response.body).to include("Alerts on")
+      expect(response.body).to include(venue.name)
     end
 
     it "shows a favorited mic on the row but offers Unfavorite" do

@@ -7,6 +7,17 @@ module Superadmin
     before_action :require_superadmin
     before_action :hide_sidebar
 
+    # Mirrors the SuperadminController version — we render the same kind
+    # of full-bleed page and don't want the My / Manage / Account
+    # sidebars sneaking in for signed-in superadmins.
+    def hide_sidebar
+      @show_my_sidebar = false
+      @show_manage_sidebar = false
+      @show_manage_header_only = false
+      @show_group_sidebar = false
+      @show_account_sidebar = false
+    end
+
     def queue
       @pending_mics       = Mic.pending_moderation.includes(:venue).order(created_at: :desc)
       @pending_claims     = MicClaim.status_pending.includes(:mic, :claimant).order(created_at: :desc)
