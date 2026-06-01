@@ -145,9 +145,23 @@
       </div>
     </div>
 
-    <%# Next button %>
+    <%# Resume Required + Next button %>
     <%= form_with url: manage_signups_auditions_wizard_save_form_starter_path(@production), method: :post, local: true do %>
-      <div class="mt-8 flex justify-between">
+      <div class="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between">
+        <div class="flex-1 mr-4">
+          <p class="font-medium text-gray-900">Resume Required</p>
+          <p class="text-sm text-gray-500 mt-1">When off, performers without a resume can still submit. We won't block them at the profile-completion step.</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="hidden" name="resume_required" value="0">
+          <input type="checkbox" name="resume_required" value="1"
+                 <%= "checked" if @wizard_state[:resume_required] != false %>
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <div class="mt-6 flex justify-between">
         <%= link_to manage_signups_auditions_wizard_voting_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />

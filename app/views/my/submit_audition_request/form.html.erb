@@ -55,7 +55,8 @@
           entity_profile_path = is_group ? edit_group_path(entity) : edit_profile_path(entity)
 
           # Check if the selected entity (person or group) has incomplete profile
-          entity_profile_incomplete = !entity.profile_headshots.exists? || !entity.profile_resumes.exists?
+          entity_profile_incomplete = !entity.profile_headshots.exists? ||
+                                       (@audition_cycle.resume_required? && !entity.profile_resumes.exists?)
         %>
 
         <%= form_with(model: @audition_request, url: my_submit_submit_audition_request_form_path(@audition_cycle.token), method: :post, data: { turbo: false }, class: "space-y-4") do |form| %>
@@ -212,10 +213,12 @@
               <%= is_group ? "Group profile needs a few details" : "Complete your profile!" %>
             </h3>
             <p class="text-sm text-gray-700 mb-3">
+              <% required_word = @audition_cycle.resume_required? ? "needs" : "should add" %>
+              <% with_resume = @audition_cycle.resume_required? ? " and resume" : "" %>
               <% if is_group %>
-                This group needs a headshot and resume to submit an audition request. These help casting teams get to know your group better!
+                This group <%= required_word %> a headshot<%= with_resume %> to submit an audition request. These help casting teams get to know your group better!
               <% else %>
-                Adding a headshot and resume helps casting teams see your experience and increases your chances of being noticed. It only takes a minute!
+                Adding a headshot<%= with_resume %> helps casting teams see your experience and increases your chances of being noticed. It only takes a minute!
               <% end %>
             </p>
             <% if is_group %>

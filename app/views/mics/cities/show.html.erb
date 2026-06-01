@@ -1,0 +1,90 @@
+<%
+  page_title = "Open mics in #{@city}, #{@state} — Find an Open Mic"
+  description = "Every active open mic in #{@city}, #{@state}. Updated by the producers who run them."
+  mics_seo title: page_title, description: description
+
+  breadcrumbs = [
+    [ "Find a Mic", mics_home_url ],
+    [ "#{@city}, #{@state}", url_for(only_path: false) ]
+  ]
+  qp = filter_query_params
+%>
+<%= render "mics/header" %>
+
+<div class="w-full flex flex-col lg:flex-row">
+  <%= render "mics/city_sidebar", city: @city, state: @state, slug: @slug,
+              active_label: "all", cities: @other_cities %>
+
+  <main class="flex-1 min-w-0 bg-white">
+    <% if @hub && @hub.intro_markdown.present? %>
+      <section class="px-4 sm:px-8 py-6 sm:py-8 border-b border-pink-100 bg-pink-50">
+        <div class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <h1 class="coustard-regular text-3xl sm:text-4xl text-pink-900">
+              <%= @hub.name %> open mics
+            </h1>
+            <p class="mt-1 text-xs uppercase tracking-wider text-pink-700 font-bold">
+              <%= pluralize(@mics.size, "active mic") %>
+            </p>
+          </div>
+          <%= render "mics/list_map_toggle",
+                list_url: mics_with_qp(mics_city_path(@slug), qp.except(:view)),
+                map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
+                active:   @view %>
+        </div>
+        <p class="mt-3 text-sm sm:text-base text-pink-900/80 max-w-3xl whitespace-pre-line"><%= @hub.intro_markdown %></p>
+      </section>
+    <% else %>
+      <section class="px-4 sm:px-8 py-6 border-b border-gray-100 flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <h1 class="coustard-regular text-3xl text-gray-900">All upcoming</h1>
+          <p class="mt-1 text-xs uppercase tracking-wider text-gray-500 font-bold">
+            <%= pluralize(@mics.size, "active mic") %>
+          </p>
+        </div>
+        <%= render "mics/list_map_toggle",
+              list_url: mics_with_qp(mics_city_path(@slug), qp),
+              map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
+              active:   @view %>
+      </section>
+    <% end %>
+
+    <% if @view == "map" %>
+      <%= render "mics/mics_map_area", mics: @mics %>
+    <% elsif @mics.any? %>
+      <div class="divide-y divide-gray-100 border-b border-gray-100">
+        <% @mics.each do |mic| %>
+          <%= render "mics/mic_row", mic: mic %>
+        <% end %>
+      </div>
+
+      <p class="px-4 sm:px-8 py-4 text-xs text-gray-500">
+        Calendar: <a href="<%= mics_city_calendar_path(@slug) %>" class="underline text-pink-600 hover:text-pink-700">subscribe via iCal</a>.
+        Suggest a missing mic — <a href="<%= mics_submit_path %>" class="underline text-pink-600 hover:text-pink-700">submit it here</a>.
+      </p>
+    <% else %>
+      <div class="px-4 sm:px-8 py-10 text-sm text-gray-600">
+        <p>No active mics here yet.</p>
+        <p class="mt-2">
+          <% if defined?(Current) && Current.user %>
+            <a href="<%= mics_submit_path %>" class="text-pink-600 font-bold underline">Add the first one →</a>
+          <% else %>
+            <a href="<%= mics_submit_path %>" class="text-pink-600 font-bold underline">Add the first one →</a>
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+
+    <%= mics_breadcrumbs_jsonld(breadcrumbs) %>
+    <%= mics_jsonld(
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          itemListElement: @mics.first(50).each_with_index.map { |m, i|
+            { "@type": "ListItem", position: i + 1, url: mics_detail_url(m.slug), name: m.name }
+          }
+        ) %>
+
+  </main>
+</div>
+
+<%= render "mics/site_footer" %>

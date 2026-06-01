@@ -1,0 +1,20 @@
+<%
+  mics_seo title: "Suggest an edit on #{@mic.name} — Find an Open Mic",
+            description: "Suggest an edit to this mic's listing."
+%>
+
+<%= render "mics/form_shell", title: "Suggest an edit on #{@mic.name}",
+      description: "Anyone can submit. Producers approve." do %>
+  <%= form_with url: mics_create_suggestion_path(@mic.slug), method: :post do %>
+    <% unless Current.user %>
+      <%= render "mics/form_field", name: "mic_suggestion[submitter_email]", label: "Your email (for follow-up)", type: "email", required: true %>
+    <% end %>
+    <%= render "mics/form_field", name: "mic_suggestion[note]", label: "What needs to change?", type: "textarea", rows: 5, required: true,
+          placeholder: "e.g. The mic moved to Wednesdays at 8 PM as of last month." %>
+
+    <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+      <a href="<%= mics_detail_path(@mic.slug) %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>
+      <%= render "shared/button", text: "Send suggestion", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

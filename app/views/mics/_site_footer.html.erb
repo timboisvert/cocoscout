@@ -1,0 +1,72 @@
+<%# Public site footer with city voting + CocoScout attribution. %>
+<footer class="w-full bg-gray-900 text-gray-300">
+  <div class="w-full px-4 sm:px-8 py-10 sm:py-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div>
+        <div class="coustard-regular text-2xl text-white mb-2">Find a Mic</div>
+        <p class="text-sm text-gray-400">
+          The open-mic finder for the U.S. comedy scene. Listings stay current because the producers who run them keep them current.
+        </p>
+        <p class="text-xs text-gray-500 mt-3">
+          Built by
+          <a href="https://cocoscout.com" target="_blank" rel="noopener"
+             class="text-pink-400 hover:text-pink-300 font-bold underline-offset-2 hover:underline">CocoScout</a>,
+          the all-in-one tool for live-entertainment producers — casting, sign-ups, scheduling, payouts.
+          <a href="https://cocoscout.com" target="_blank" rel="noopener" class="hover:underline">cocoscout.com →</a>
+        </p>
+      </div>
+
+      <div>
+        <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Cities</div>
+        <ul class="space-y-1 text-sm">
+          <% CityHub.where(status: CityHub.statuses[:active]).order(:name).each do |hub| %>
+            <li><a href="<%= mics_city_path(hub.slug) %>" class="text-gray-300 hover:text-pink-400"><%= hub.name %>, <%= hub.state %></a></li>
+          <% end %>
+        </ul>
+        <p class="text-xs text-gray-500 mt-3">Chicago first. Vote for what's next →</p>
+      </div>
+
+      <div>
+        <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Want your city next?</div>
+        <%= form_with url: mics_city_votes_path, method: :post, class: "space-y-2" do %>
+          <div class="flex gap-2">
+            <input type="text" name="city" placeholder="City"
+                   class="flex-1 px-3 py-2 text-sm bg-gray-800 border border-gray-700 text-white placeholder:text-gray-500 focus:border-pink-400 outline-none" required>
+            <input type="text" name="state" placeholder="ST" maxlength="2"
+                   class="w-14 px-2 py-2 text-sm bg-gray-800 border border-gray-700 text-white placeholder:text-gray-500 focus:border-pink-400 outline-none uppercase" required>
+          </div>
+          <% unless Current.user %>
+            <input type="email" name="email" placeholder="Your email (so we can tell you when it's live)"
+                   class="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 text-white placeholder:text-gray-500 focus:border-pink-400 outline-none">
+          <% end %>
+          <button type="submit" class="w-full px-3 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold">
+            Vote for this city
+          </button>
+        <% end %>
+
+        <% top_votes = CityVote.tallies(limit: 5) if defined?(CityVote) %>
+        <% if top_votes&.any? %>
+          <div class="mt-4">
+            <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Top requests</div>
+            <ul class="text-xs text-gray-400 space-y-0.5">
+              <% top_votes.each do |(city, state), count| %>
+                <li class="flex items-baseline justify-between gap-2">
+                  <span><%= city %>, <%= state %></span>
+                  <span class="tabular-nums text-pink-400 font-bold"><%= count %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="mt-10 pt-6 border-t border-gray-800 text-xs text-gray-500 flex flex-wrap items-baseline justify-between gap-2">
+      <span>© <%= Date.current.year %> CocoScout. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="hover:underline">OpenStreetMap</a> contributors.</span>
+      <span>
+        <a href="https://cocoscout.com/terms" class="hover:underline">Terms</a> ·
+        <a href="https://cocoscout.com/privacy" class="hover:underline">Privacy</a>
+      </span>
+    </div>
+  </div>
+</footer>

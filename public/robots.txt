@@ -1,1 +1,19 @@
 # See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+
+User-agent: *
+Allow: /mics
+Allow: /mics/
+Disallow: /signin
+Disallow: /signup
+Disallow: /account
+Disallow: /superadmin
+Disallow: /manage
+Disallow: /my
+Disallow: /mics/producer
+Disallow: /mics/submit
+Disallow: /mics/m/*/claim
+Disallow: /mics/m/*/challenge
+Disallow: /mics/favorites
+Disallow: /mics/alerts
+
+Sitemap: https://cocoscout.com/mics/sitemap.xml

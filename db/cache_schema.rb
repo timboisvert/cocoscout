@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_120700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -132,6 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.integer "production_id", null: false
     t.boolean "require_all_audition_availability", default: false
     t.boolean "require_all_availability", default: false
+    t.boolean "resume_required", default: true, null: false
     t.string "reviewer_access_type", default: "managers", null: false
     t.text "success_text"
     t.string "token"
@@ -361,6 +362,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.index ["created_by_id"], name: "index_casting_tables_on_created_by_id"
     t.index ["finalized_by_id"], name: "index_casting_tables_on_finalized_by_id"
     t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
+  end
+
+  create_table "city_hub_memberships", force: :cascade do |t|
+    t.bigint "city_hub_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "role", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["city_hub_id", "user_id"], name: "index_city_hub_memberships_on_city_hub_id_and_user_id", unique: true
+    t.index ["city_hub_id"], name: "index_city_hub_memberships_on_city_hub_id"
+    t.index ["user_id"], name: "index_city_hub_memberships_on_user_id"
+  end
+
+  create_table "city_hubs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "default_radius_miles", default: 25, null: false
+    t.jsonb "featured_mic_ids", default: [], null: false
+    t.text "intro_markdown"
+    t.float "lat"
+    t.float "lng"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "state", null: false
+    t.integer "status", default: 0, null: false
+    t.string "timezone"
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_city_hubs_on_slug", unique: true
+  end
+
+  create_table "city_votes", force: :cascade do |t|
+    t.string "city", null: false
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.string "state", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["city", "state"], name: "index_city_votes_on_city_and_state"
+    t.index ["user_id", "city", "state"], name: "index_city_votes_on_user_id_and_city_and_state", unique: true, where: "(user_id IS NOT NULL)"
+    t.index ["user_id"], name: "index_city_votes_on_user_id"
   end
 
   create_table "content_templates", force: :cascade do |t|
@@ -932,6 +972,204 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.index ["show_id"], name: "index_messages_on_show_id"
     t.index ["visibility", "production_id"], name: "idx_messages_visibility_production"
     t.index ["visibility", "show_id"], name: "idx_messages_visibility_show"
+  end
+
+  create_table "mic_announcements", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "mic_id", null: false
+    t.boolean "notify_subscribers", default: false, null: false
+    t.datetime "posted_at", null: false
+    t.bigint "posted_by_user_id", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["mic_id", "posted_at"], name: "index_mic_announcements_on_mic_id_and_posted_at"
+    t.index ["mic_id"], name: "index_mic_announcements_on_mic_id"
+  end
+
+  create_table "mic_challenges", force: :cascade do |t|
+    t.bigint "adjudicator_user_id"
+    t.bigint "challenger_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "decided_at"
+    t.jsonb "evidence", default: {}, null: false
+    t.bigint "mic_id", null: false
+    t.text "reason"
+    t.integer "status", default: 0, null: false
+    t.bigint "target_user_id"
+    t.datetime "updated_at", null: false
+    t.index ["challenger_user_id"], name: "index_mic_challenges_on_challenger_user_id"
+    t.index ["mic_id"], name: "index_mic_challenges_on_mic_id"
+    t.index ["status"], name: "index_mic_challenges_on_status"
+  end
+
+  create_table "mic_claims", force: :cascade do |t|
+    t.bigint "adjudicator_user_id"
+    t.bigint "claimant_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "decided_at"
+    t.bigint "mic_id", null: false
+    t.jsonb "proof", default: {}, null: false
+    t.text "reason"
+    t.integer "role", default: 0, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["claimant_user_id"], name: "index_mic_claims_on_claimant_user_id"
+    t.index ["mic_id"], name: "index_mic_claims_on_mic_id"
+    t.index ["status"], name: "index_mic_claims_on_status"
+  end
+
+  create_table "mic_edits", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "editor_user_id"
+    t.string "field"
+    t.bigint "mic_id", null: false
+    t.text "new_value"
+    t.text "note"
+    t.text "old_value"
+    t.integer "source", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["editor_user_id"], name: "index_mic_edits_on_editor_user_id"
+    t.index ["mic_id"], name: "index_mic_edits_on_mic_id"
+  end
+
+  create_table "mic_favorites", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "mic_id", null: false
+    t.text "note"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["mic_id"], name: "index_mic_favorites_on_mic_id"
+    t.index ["user_id", "mic_id"], name: "index_mic_favorites_on_user_id_and_mic_id", unique: true
+  end
+
+  create_table "mic_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "label"
+    t.integer "link_type", default: 0, null: false
+    t.bigint "mic_id", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["mic_id", "link_type"], name: "index_mic_links_on_mic_id_and_link_type"
+    t.index ["mic_id"], name: "index_mic_links_on_mic_id"
+  end
+
+  create_table "mic_occurrence_statuses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_user_id"
+    t.bigint "mic_id", null: false
+    t.text "note"
+    t.date "occurs_on", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["mic_id", "occurs_on"], name: "index_mic_occurrence_statuses_on_mic_id_and_occurs_on", unique: true
+    t.index ["mic_id"], name: "index_mic_occurrence_statuses_on_mic_id"
+  end
+
+  create_table "mic_producers", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.bigint "mic_id", null: false
+    t.integer "role", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["mic_id", "user_id"], name: "index_mic_producers_on_mic_id_and_user_id", unique: true
+    t.index ["mic_id"], name: "index_mic_producers_on_mic_id"
+    t.index ["user_id"], name: "index_mic_producers_on_user_id"
+  end
+
+  create_table "mic_signup_alerts", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.jsonb "channels", default: ["email"], null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_delivered_at"
+    t.integer "lead_time_minutes", default: 5, null: false
+    t.bigint "mic_id", null: false
+    t.datetime "next_target_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["mic_id"], name: "index_mic_signup_alerts_on_mic_id"
+    t.index ["next_target_at"], name: "index_mic_signup_alerts_on_next_target_at", where: "(active = true)"
+    t.index ["user_id", "mic_id"], name: "index_mic_signup_alerts_on_user_id_and_mic_id", unique: true
+  end
+
+  create_table "mic_suggestions", force: :cascade do |t|
+    t.bigint "adjudicator_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "decided_at"
+    t.bigint "mic_id", null: false
+    t.text "note"
+    t.jsonb "payload", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.string "submitter_email"
+    t.bigint "submitter_user_id"
+    t.datetime "updated_at", null: false
+    t.index ["mic_id"], name: "index_mic_suggestions_on_mic_id"
+    t.index ["status"], name: "index_mic_suggestions_on_status"
+  end
+
+  create_table "mic_taggings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "mic_id", null: false
+    t.bigint "mic_tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["mic_id", "mic_tag_id"], name: "index_mic_taggings_on_mic_id_and_mic_tag_id", unique: true
+    t.index ["mic_id"], name: "index_mic_taggings_on_mic_id"
+    t.index ["mic_tag_id"], name: "index_mic_taggings_on_mic_tag_id"
+  end
+
+  create_table "mic_tags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_mic_tags_on_slug", unique: true
+  end
+
+  create_table "mics", force: :cascade do |t|
+    t.jsonb "accessibility", default: {}, null: false
+    t.text "blurb"
+    t.boolean "bucket_draw", default: false, null: false
+    t.date "canceled_until"
+    t.datetime "claimed_at"
+    t.integer "cost", default: 0, null: false
+    t.integer "cover_amount_cents"
+    t.datetime "created_at", null: false
+    t.integer "day_of_week"
+    t.integer "drink_minimum_amount_cents"
+    t.integer "format", default: 0, null: false
+    t.string "host_summary"
+    t.datetime "last_verified_at"
+    t.bigint "last_verified_by_user_id"
+    t.bigint "lead_producer_user_id"
+    t.integer "min_age"
+    t.string "name", null: false
+    t.boolean "pending", default: false, null: false
+    t.bigint "production_id"
+    t.date "recurrence_anchor_date"
+    t.integer "recurrence_day_of_month"
+    t.integer "recurrence_interval", default: 1, null: false
+    t.integer "recurrence_nth_week"
+    t.integer "recurrence_pattern", default: 0, null: false
+    t.string "recurrence_rule"
+    t.integer "signup_cap"
+    t.integer "signup_method"
+    t.string "signup_opens_at_text"
+    t.integer "signup_opens_offset_minutes"
+    t.string "signup_url"
+    t.string "slug", null: false
+    t.integer "spot_length_minutes"
+    t.time "starts_local_time"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "venue_id", null: false
+    t.index ["lead_producer_user_id"], name: "index_mics_on_lead_producer_user_id"
+    t.index ["pending"], name: "index_mics_on_pending", where: "(pending = true)"
+    t.index ["production_id"], name: "index_mics_on_production_id", unique: true, where: "(production_id IS NOT NULL)"
+    t.index ["slug"], name: "index_mics_on_slug", unique: true
+    t.index ["status"], name: "index_mics_on_status"
+    t.index ["venue_id"], name: "index_mics_on_venue_id"
   end
 
   create_table "org_payouts", force: :cascade do |t|
@@ -1828,6 +2066,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.string "linkage_role"
     t.bigint "location_id"
     t.bigint "location_space_id"
+    t.integer "mic_status"
     t.text "notes"
     t.string "online_location_info"
     t.integer "production_id", null: false
@@ -1843,6 +2082,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["location_space_id"], name: "index_shows_on_location_space_id"
+    t.index ["mic_status"], name: "index_shows_on_mic_status", where: "(mic_status IS NOT NULL)"
     t.index ["production_id"], name: "index_shows_on_production_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
   end
@@ -2283,6 +2523,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
     t.index ["person_id"], name: "index_users_on_person_id"
   end
 
+  create_table "venues", force: :cascade do |t|
+    t.jsonb "accessibility", default: {}, null: false
+    t.string "address1"
+    t.string "address2"
+    t.string "city", null: false
+    t.bigint "city_hub_id"
+    t.string "country", default: "US", null: false
+    t.datetime "created_at", null: false
+    t.string "geocode_error"
+    t.datetime "geocoded_at"
+    t.float "lat"
+    t.float "lng"
+    t.string "name", null: false
+    t.string "neighborhood"
+    t.string "postal_code"
+    t.string "state", null: false
+    t.string "timezone"
+    t.datetime "updated_at", null: false
+    t.integer "venue_type", default: 0, null: false
+    t.index ["city", "state"], name: "index_venues_on_city_and_state"
+    t.index ["city_hub_id"], name: "index_venues_on_city_hub_id"
+    t.index ["lat", "lng"], name: "index_venues_on_lat_and_lng"
+  end
+
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "advance_recoveries", "person_advances"
   add_foreign_key "advance_recoveries", "show_payout_line_items"
@@ -2323,6 +2587,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
   add_foreign_key "casting_tables", "organizations"
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
+  add_foreign_key "city_hub_memberships", "city_hubs"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
@@ -2375,6 +2640,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
   add_foreign_key "messages", "organizations"
   add_foreign_key "messages", "productions"
   add_foreign_key "messages", "shows"
+  add_foreign_key "mic_announcements", "mics"
+  add_foreign_key "mic_challenges", "mics"
+  add_foreign_key "mic_claims", "mics"
+  add_foreign_key "mic_edits", "mics"
+  add_foreign_key "mic_favorites", "mics"
+  add_foreign_key "mic_links", "mics"
+  add_foreign_key "mic_occurrence_statuses", "mics"
+  add_foreign_key "mic_producers", "mics"
+  add_foreign_key "mic_signup_alerts", "mics"
+  add_foreign_key "mic_suggestions", "mics"
+  add_foreign_key "mic_taggings", "mic_tags"
+  add_foreign_key "mic_taggings", "mics"
+  add_foreign_key "mics", "productions"
+  add_foreign_key "mics", "venues"
   add_foreign_key "org_payouts", "course_offerings"
   add_foreign_key "org_payouts", "organizations"
   add_foreign_key "org_payouts", "users", column: "paid_by_user_id"
@@ -2500,4 +2779,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_29_120000) do
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
+  add_foreign_key "venues", "city_hubs"
 end

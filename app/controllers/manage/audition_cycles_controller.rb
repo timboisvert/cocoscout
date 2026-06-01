@@ -184,6 +184,7 @@ module Manage
                     notice: "Question was successfully created"
       else
         @question_error = true
+        setup_form_variables
         render :form, status: :unprocessable_entity
       end
     end
@@ -194,6 +195,7 @@ module Manage
         redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true, tab: 2),
                     notice: "Question was successfully updated", status: :see_other
       else
+        setup_form_variables
         render :form, status: :unprocessable_entity
       end
     end
@@ -251,14 +253,22 @@ module Manage
     private
 
     def setup_form_variables
-      if params[:question_id].present?
-        @question = @audition_cycle.questions.find(params[:question_id])
-      else
-        @question = @audition_cycle.questions.new
-        type_class = @question.question_type_class
-        @question.question_options.build if type_class&.needs_options?
+      # Preserve @question if a caller has already loaded it (e.g. an
+      # error branch after question validation failed — we'd lose the
+      # user's submitted values + errors by reloading from the DB).
+      if @question.blank?
+        if params[:question_id].present?
+          @question = @audition_cycle.questions.find(params[:question_id])
+        else
+          @question = @audition_cycle.questions.new
+          type_class = @question.question_type_class
+          @question.question_options.build if type_class&.needs_options?
+        end
       end
       @questions = @audition_cycle.questions.order(:position)
+      # The Availability section renders @shows; the page errors out
+      # without this when we render :form from an error branch.
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
     end
 
     def set_production
@@ -281,7 +291,7 @@ module Manage
     def audition_cycle_params
       params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type,
                                              :allow_video_submissions, :allow_in_person_auditions,
-                                             :listed_in_directory,
+                                             :listed_in_directory, :resume_required,
                                              :instruction_text, :notify_on_submission,
                                              :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :include_audition_availability_section, :require_all_audition_availability, :form_reviewed, availability_show_ids: [])
     end

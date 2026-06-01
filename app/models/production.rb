@@ -5,6 +5,10 @@ class Production < ApplicationRecord
   before_destroy :delete_cast_assignment_stages
   before_destroy :delete_talent_pool_memberships
 
+  # When this Production is the canonical source of truth for an Open Mic
+  # Finder listing (post-migration), this points to the public Mic record.
+  has_one :mic, dependent: :nullify
+
   has_many :posters, dependent: :destroy
   has_many :shows, dependent: :destroy
   has_many :event_linkages, dependent: :destroy

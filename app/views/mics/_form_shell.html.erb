@@ -1,0 +1,31 @@
+<%#
+  Shared shell for mics auth forms. Locals: title, description (optional).
+  Full-bleed pink masthead → white form page → site footer. Form body
+  itself is held at max-w-3xl for readability inside the full-bleed page.
+%>
+<%= render "mics/header" %>
+
+<main class="w-full bg-white">
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-6 sm:py-10">
+      <h1 class="coustard-regular text-3xl sm:text-5xl"><%= title %></h1>
+      <% if local_assigns[:description].present? %>
+        <p class="mt-2 text-pink-100 text-sm sm:text-base max-w-3xl"><%= description %></p>
+      <% end %>
+    </div>
+  </section>
+
+  <% if flash[:alert] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+      <%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <section class="w-full px-4 sm:px-8 py-6 sm:py-10">
+    <div class="max-w-3xl">
+      <%= yield %>
+    </div>
+  </section>
+</main>
+
+<%= render "mics/site_footer" %>

@@ -1,0 +1,35 @@
+<%
+  mics_seo title: "Thanks — Suggestion received",
+            description: "We received your suggestion."
+%>
+
+<%= render "mics/form_shell", title: "Suggestion received",
+      description: "Thanks for helping keep #{@mic.name} accurate." do %>
+  <div class="space-y-5 text-sm text-gray-700">
+    <div class="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3">
+      <div class="coustard-regular text-xl text-emerald-900">Got it. ✓</div>
+      <p class="mt-1 text-emerald-900/90">
+        Your suggestion for <span class="font-bold"><%= @mic.name %></span> has been queued for review.
+      </p>
+    </div>
+
+    <div>
+      <h2 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">What happens next</h2>
+      <ul class="list-disc list-inside space-y-1">
+        <li>The producer who runs this mic sees it on their dashboard.</li>
+        <li>If no producer has claimed it yet, our team reviews it within a day or two.</li>
+        <li>Approved suggestions land on the public page immediately. Rejected ones are simply ignored.</li>
+        <% if Current.user.blank? %>
+          <li>We won't email you unless we need clarification.</li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+      <%= render "shared/button", text: "Back to #{@mic.name}", variant: "primary", size: "medium",
+            path: mics_detail_path(@mic.slug), type: :link %>
+      <%= render "shared/button", text: "See all Chicago mics", variant: "secondary", size: "medium",
+            path: mics_city_path("chicago-il"), type: :link %>
+    </div>
+  </div>
+<% end %>

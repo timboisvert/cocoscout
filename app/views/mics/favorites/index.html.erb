@@ -1,0 +1,18 @@
+<%
+  mics_seo title: "Your favorites — CocoScout Mics",
+            description: "Mics you've starred on CocoScout."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="coustard-regular text-3xl text-gray-900">Your favorites</h1>
+  <% if @favorites.any? %>
+    <div class="mt-6 border border-gray-200 rounded-xl bg-white overflow-hidden">
+      <% @favorites.each do |fav| %>
+        <%= render "mics/mic_row", mic: fav.mic %>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="mt-6 text-sm text-gray-500">Star a mic from any listing to see it here.</p>
+  <% end %>
+</main>

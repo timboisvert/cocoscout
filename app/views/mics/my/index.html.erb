@@ -1,0 +1,73 @@
+<%
+  mics_seo title: "My Mics — Find a Mic",
+            description: "The mics you run and the mics you favorite, in one place."
+%>
+<%= render "mics/header" %>
+
+<main class="w-full bg-white">
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-6 sm:py-10">
+      <h1 class="coustard-regular text-4xl sm:text-5xl">My Mics</h1>
+      <p class="mt-2 text-pink-100 text-sm sm:text-base">
+        Mics you favorite live here.<% if @managed_mics.any? %> Mics you run too.<% end %>
+      </p>
+    </div>
+  </section>
+
+  <% if flash[:notice] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm">
+      <%= flash[:notice] %>
+    </div>
+  <% end %>
+
+  <% if @managed_mics.any? %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-6">
+        <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Mics you run</div>
+        <div class="divide-y divide-gray-100 border border-gray-200">
+          <% @managed_mics.each do |mic| %>
+            <div class="px-4 sm:px-6 py-3 flex items-baseline gap-3 hover:bg-pink-50">
+              <div class="flex-1 min-w-0">
+                <%= link_to mic.name, mics_detail_path(mic.slug),
+                      class: "coustard-regular text-lg text-gray-900 hover:underline" %>
+                <div class="text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
+              </div>
+              <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+                    class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="border-b border-gray-100">
+    <div class="w-full px-4 sm:px-8 py-6">
+      <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Favorite mics</div>
+      <% if @favorite_mics.any? %>
+        <div class="divide-y divide-gray-100 border border-gray-200">
+          <% @favorite_mics.each do |mic| %>
+            <div class="px-4 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap hover:bg-pink-50">
+              <div class="flex-1 min-w-0">
+                <%= link_to mic.name, mics_detail_path(mic.slug),
+                      class: "coustard-regular text-lg text-gray-900 hover:underline" %>
+                <div class="text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <%= button_to "Unfavorite", mics_favorite_path(mic.slug), method: :post,
+                      class: "cursor-pointer px-2.5 py-1.5 text-xs text-gray-500 hover:text-red-600 underline" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="border border-gray-200 px-4 sm:px-6 py-6 text-sm text-gray-600">
+          Star a mic on any listing to see it here.
+          <%= link_to "Browse Chicago →", mics_city_path("chicago-il"), class: "ml-2 text-pink-600 font-bold underline" %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+</main>
+
+<%= render "mics/site_footer" %>

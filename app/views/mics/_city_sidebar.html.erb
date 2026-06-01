@@ -1,0 +1,116 @@
+<%#
+  Sidebar for city + bucket pages. Locals:
+    city, state, slug, active_label
+    cities (optional array of [[city, state], count])
+
+  Filter state (view, wheelchair, within) is carried through every link
+  via filter_query_params so switching pivots doesn't reset.
+%>
+<%
+  qp = filter_query_params
+  # When changing a specific filter, drop only that key from qp.
+  drop = ->(key) { qp.except(key) }
+%>
+<aside class="w-full lg:w-72 xl:w-80 shrink-0 bg-white lg:bg-pink-50/40 lg:border-r border-gray-200 lg:min-h-[calc(100vh-57px)]">
+  <div class="px-4 sm:px-6 py-5">
+    <div class="coustard-regular text-3xl text-pink-700 leading-tight">
+      <%= city %>, <%= state %>
+    </div>
+    <div class="mt-1 text-xs uppercase tracking-wider text-gray-500 font-bold">
+      Open mics
+    </div>
+  </div>
+
+  <nav class="px-4 sm:px-6 pb-3">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">When</div>
+    <ul class="space-y-px">
+      <% [
+        [ "all",       "All upcoming", mics_city_path(slug) ],
+        [ "tonight",   "Tonight",      mics_city_tonight_path(slug) ],
+        [ "tomorrow",  "Tomorrow",     mics_city_tomorrow_path(slug) ],
+        [ "this-week", "This week",    mics_city_this_week_path(slug) ]
+      ].each do |key, label, href| %>
+        <li>
+          <a href="<%= mics_with_qp(href, qp) %>"
+             class="block px-3 py-2 text-sm <%= active_label == key ? "bg-pink-500 text-white font-bold" : "text-gray-800 hover:bg-pink-100" %>">
+            <%= label %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+
+  <nav class="px-4 sm:px-6 pb-3">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Format</div>
+    <ul class="space-y-px">
+      <% [
+        [ "standup",    "Standup" ],
+        [ "music",      "Music" ],
+        [ "poetry",     "Poetry" ],
+        [ "open_stage", "Open Stage" ]
+      ].each do |key, label| %>
+        <% segment = key.tr("_", "-") %>
+        <li>
+          <a href="<%= mics_with_qp(mics_city_by_format_path(slug, segment), qp) %>"
+             class="block px-3 py-1.5 text-sm <%= active_label == key ? "bg-pink-500 text-white font-bold" : "text-gray-700 hover:bg-pink-100" %>">
+            <%= label %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+
+  <div class="px-4 sm:px-6 pb-3">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Distance</div>
+    <div class="flex flex-wrap gap-1">
+      <% [ [ nil, "Any" ], [ 1, "1 mi" ], [ 3, "3 mi" ], [ 5, "5 mi" ], [ 10, "10 mi" ], [ 25, "25 mi" ] ].each do |miles, label| %>
+        <% next_qp = miles ? drop.call(:within).merge(within: miles) : drop.call(:within) %>
+        <% is_active = (within_miles == miles) || (miles.nil? && within_miles.nil?) %>
+        <a href="<%= mics_with_qp(request.path, next_qp) %>"
+           class="px-2.5 py-1 text-xs font-bold border <%= is_active ? "bg-pink-500 text-white border-pink-600" : "bg-white text-gray-700 border-gray-300 hover:bg-pink-50 hover:border-pink-300" %>">
+          <%= label %>
+        </a>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="px-4 sm:px-6 pb-3">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Accessibility</div>
+    <% access_qp = wheelchair_filter? ? drop.call(:wheelchair) : drop.call(:wheelchair).merge(wheelchair: 1) %>
+    <a href="<%= mics_with_qp(request.path, access_qp) %>"
+       class="flex items-center gap-2 px-3 py-2 text-sm border <%= wheelchair_filter? ? "bg-pink-500 text-white border-pink-600 font-bold" : "bg-white text-gray-800 border-gray-200 hover:bg-pink-100" %>">
+      <span class="text-base leading-none">♿</span>
+      <span>Wheelchair accessible<%= " ✓" if wheelchair_filter? %></span>
+    </a>
+  </div>
+
+  <div class="px-4 sm:px-6 pb-4">
+    <a href="<%= mics_city_calendar_path(slug) %>"
+       class="block px-3 py-2 text-sm bg-gray-900 text-white hover:bg-black text-center">
+      Subscribe via iCal
+    </a>
+  </div>
+
+  <%
+    other_cities_visible = local_assigns[:cities].to_h.reject do |(c, s), _|
+      "#{c.parameterize}-#{s.downcase}" == slug
+    end
+  %>
+  <% if other_cities_visible.any? %>
+    <nav class="px-4 sm:px-6 pb-6 border-t border-gray-200 pt-4 mt-2">
+      <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Other cities</div>
+      <ul class="space-y-px max-h-72 overflow-y-auto">
+        <% other_cities_visible.first(40).each do |(c, s), count| %>
+          <% other_slug = "#{c.parameterize}-#{s.downcase}" %>
+          <li>
+            <a href="<%= mics_city_path(other_slug) %>"
+               class="flex items-baseline justify-between px-2 py-1 text-xs text-gray-700 hover:bg-pink-100">
+              <span><%= c %>, <%= s %></span>
+              <span class="text-gray-400 tabular-nums"><%= count %></span>
+            </a>
+          </li>
+        <% end %>
+      </ul>
+    </nav>
+  <% end %>
+</aside>

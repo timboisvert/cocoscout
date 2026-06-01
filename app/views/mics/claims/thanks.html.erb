@@ -1,0 +1,33 @@
+<%
+  mics_seo title: "Claim received — Find a Mic",
+            description: "Your claim has been received."
+%>
+
+<%= render "mics/form_shell", title: "Claim received",
+      description: "Thanks for stepping up to manage #{@mic.name}." do %>
+  <div class="space-y-5 text-sm text-gray-700">
+    <div class="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3">
+      <div class="coustard-regular text-xl text-emerald-900">Got it. ✓</div>
+      <p class="mt-1 text-emerald-900/90">
+        Your claim for <span class="font-bold"><%= @mic.name %></span> is in the moderation queue.
+      </p>
+    </div>
+
+    <div>
+      <h2 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">What happens next</h2>
+      <ul class="list-disc list-inside space-y-1">
+        <li>A moderator reviews the claim and the evidence you provided.</li>
+        <li>Typical turnaround is under 24 hours.</li>
+        <li>Once approved, you'll see this mic in <strong>My Mics</strong> and can edit it directly.</li>
+        <li>If we have questions, we'll email you at <strong><%= Current.user&.email_address %></strong>.</li>
+      </ul>
+    </div>
+
+    <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+      <%= render "shared/button", text: "Back to #{@mic.name}", variant: "primary", size: "medium",
+            path: mics_detail_path(@mic.slug), type: :link %>
+      <%= render "shared/button", text: "My Mics", variant: "secondary", size: "medium",
+            path: mics_my_path, type: :link %>
+    </div>
+  </div>
+<% end %>

@@ -58,7 +58,7 @@
             # Define variables used throughout the form
             profile_incomplete = Current.user.person.name == Current.user.email_address.split("@").first ||
                                 !Current.user.person.profile_headshots.exists? ||
-                                !Current.user.person.profile_resumes.exists?
+                                (@audition_cycle.resume_required? && !Current.user.person.profile_resumes.exists?)
 
             entity = Current.user.person
             entity_headshot = entity.primary_headshot

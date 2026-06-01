@@ -1,0 +1,65 @@
+<%
+  title = "#{@bucket_title} — Open mics in #{@city}, #{@state} | Find a Mic"
+  description = "#{@bucket_title} in #{@city}, #{@state}. Open mics, ordered by start time."
+  mics_seo title: title, description: description
+
+  active_label =
+    case @bucket_title
+    when "Tonight"   then "tonight"
+    when "Tomorrow"  then "tomorrow"
+    when "This week" then "this-week"
+    else
+      Mic.formats.keys.detect { |k| @bucket_title.start_with?(mics_format_label(k)) } || "all"
+    end
+
+  bucket_path =
+    case @bucket_title
+    when "Tonight"   then mics_city_tonight_path(@slug)
+    when "Tomorrow"  then mics_city_tomorrow_path(@slug)
+    when "This week" then mics_city_this_week_path(@slug)
+    else
+      fmt = Mic.formats.keys.detect { |k| @bucket_title.start_with?(mics_format_label(k)) }
+      mics_city_by_format_path(@slug, fmt.to_s.tr("_", "-"))
+    end
+
+  qp = filter_query_params
+%>
+<%= render "mics/header" %>
+
+<div class="w-full flex flex-col lg:flex-row">
+  <%= render "mics/city_sidebar", city: @city, state: @state, slug: @slug,
+              active_label: active_label, cities: @other_cities %>
+
+  <main class="flex-1 min-w-0 bg-white">
+    <section class="px-4 sm:px-8 py-6 border-b border-gray-100 flex items-baseline justify-between gap-3 flex-wrap">
+      <div>
+        <h1 class="coustard-regular text-3xl text-gray-900"><%= @bucket_title %></h1>
+        <p class="mt-1 text-xs uppercase tracking-wider text-gray-500 font-bold">
+          <%= pluralize(@mics.size, "mic") %>
+        </p>
+      </div>
+      <%= render "mics/list_map_toggle",
+            list_url: mics_with_qp(bucket_path, qp.except(:view)),
+            map_url:  mics_with_qp(bucket_path, qp.merge(view: "map")),
+            active:   @view %>
+    </section>
+
+    <% if @view == "map" %>
+      <%= render "mics/mics_map_area", mics: @mics %>
+    <% elsif @mics.any? %>
+      <div class="divide-y divide-gray-100">
+        <% @mics.each do |mic| %>
+          <%= render "mics/mic_row", mic: mic %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="px-4 sm:px-8 py-10 text-sm text-gray-600">
+        Nothing in this window yet.
+        <a href="<%= mics_city_path(@slug) %>" class="text-pink-600 underline font-bold">See all upcoming →</a>
+      </div>
+    <% end %>
+
+  </main>
+</div>
+
+<%= render "mics/site_footer" %>

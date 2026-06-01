@@ -1,0 +1,390 @@
+<%
+  mics_seo title: "Manage #{@mic.name} — Find a Mic",
+            description: "Producer dashboard for #{@mic.name}."
+%>
+<%= render "mics/header" %>
+
+<main class="w-full bg-white">
+  <%# Slim masthead. Just identity + a quick link to the public listing. %>
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-5 sm:py-7 flex items-baseline justify-between gap-3 flex-wrap">
+      <div>
+        <h1 class="coustard-regular text-3xl sm:text-4xl"><%= @mic.name %></h1>
+        <p class="mt-1 text-sm text-pink-100"><%= @mic.venue.name %> · <%= @mic.venue.neighborhood_city %></p>
+      </div>
+      <a href="<%= mics_detail_path(@mic.slug) %>"
+         class="cursor-pointer px-3 py-1.5 bg-white text-pink-700 font-bold hover:bg-pink-50 active:bg-pink-200 transition-colors duration-100">
+        View public listing →
+      </a>
+    </div>
+  </section>
+
+  <% if flash[:notice] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm">
+      <%= flash[:notice] %>
+    </div>
+  <% end %>
+  <% if flash[:alert] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+      <%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <%# Big action row. Each tile opens a modal. %>
+  <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+    <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Quick actions</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <% [
+        [ "modal-verify",     "✓",  "Verify info",        "Confirm everything is still accurate." ],
+        [ "modal-status",     "●",  "Set status",         "Online only, extra spots, running as planned." ],
+        [ "modal-announce",   "📣", "Post announcement",  "News on the mic page (+ optional alert to subscribers)." ],
+        [ "modal-cancel",     "✕",  "Cancel a date",      "Mark a specific date cancelled." ]
+      ].each do |id, icon, title, blurb| %>
+        <button type="button"
+                data-controller="mics-modal"
+                data-action="click->mics-modal#open"
+                data-mics-modal-target-id-value="<%= id %>"
+                class="cursor-pointer text-left px-4 py-4 bg-white border-2 border-gray-200 hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
+          <div class="flex items-baseline gap-2">
+            <span class="text-2xl text-pink-500"><%= icon %></span>
+            <span class="coustard-regular text-lg text-gray-900 group-hover:text-pink-700"><%= title %></span>
+          </div>
+          <div class="mt-1 text-xs text-gray-500"><%= blurb %></div>
+        </button>
+      <% end %>
+    </div>
+  </section>
+
+  <%# Sections — boxed style with pink header bar. %>
+  <div class="w-full px-4 sm:px-8 py-6 bg-pink-50">
+    <div class="w-full max-w-5xl space-y-6">
+
+      <% if @pending_suggestions.any? %>
+        <section class="bg-amber-50 border border-amber-300">
+          <header class="px-5 sm:px-6 py-3 border-b border-amber-200 bg-amber-100">
+            <h2 class="text-xs uppercase tracking-wider text-amber-800 font-bold">
+              <%= pluralize(@pending_suggestions.size, "pending suggestion") %> from the community
+            </h2>
+          </header>
+          <ul class="divide-y divide-amber-200">
+            <% @pending_suggestions.each do |s| %>
+              <li class="px-5 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap">
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs text-gray-500"><%= s.created_at.strftime("%b %-d, %-l:%M%p") %> · <%= s.submitter&.email_address || s.submitter_email %></div>
+                  <div class="text-sm text-gray-800 mt-1 whitespace-pre-line"><%= s.note %></div>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <%= button_to "Approve", mics_producer_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                        class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold" %>
+                  <%= button_to "Reject", mics_producer_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                        class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold" %>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        </section>
+      <% end %>
+
+      <%# Basic info — Name, Format, Spot length, Cap, Blurb. %>
+      <section class="bg-white border border-pink-100">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch do %>
+            <%= render "mics/form_field", name: "mic[name]", label: "Name", value: @mic.name %>
+            <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select", value: @mic.format,
+                  options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)", value: @mic.spot_length_minutes %>
+              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap (performers)", value: @mic.signup_cap %>
+            </div>
+            <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save basic info", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <%# Schedule — structured recurrence with Stimulus-driven UI. %>
+      <section class="bg-white border border-pink-100">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Schedule</h2>
+          <% if (preview = mics_schedule_label(@mic)).present? %>
+            <p class="text-xs text-gray-500 mt-1">Current: <span class="font-bold text-gray-800"><%= preview %></span></p>
+          <% end %>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
+                data: { controller: "mics-schedule-form" } do %>
+
+            <%= render "mics/form_field", name: "mic[recurrence_pattern]", label: "How often?", type: "select",
+                  value: (@mic.recurrence_pattern || "weekly"),
+                  options: [
+                    [ "Weekly",                       "weekly" ],
+                    [ "Every other week (bi-weekly)", "biweekly" ],
+                    [ "Monthly — on the Nth weekday", "monthly_nth_weekday" ],
+                    [ "Monthly — on a fixed day",     "monthly_day_of_month" ]
+                  ],
+                  data: { "mics-schedule-form-target": "pattern",
+                          action: "change->mics-schedule-form#refresh" } %>
+
+            <%# Nth-week select, shown only for monthly_nth_weekday. %>
+            <div data-mics-schedule-form-target="nthBlock"
+                 class="<%= @mic.recurrence_monthly_nth_weekday? ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which week of the month?", type: "select",
+                    value: @mic.recurrence_nth_week,
+                    options: [
+                      [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ],
+                      [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ]
+                    ] %>
+            </div>
+
+            <%# Day-of-month input, shown only for monthly_day_of_month. %>
+            <div data-mics-schedule-form-target="domBlock"
+                 class="<%= @mic.recurrence_monthly_day_of_month? ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "mic[recurrence_day_of_month]", label: "Day of month (1–31)", type: "text",
+                    value: @mic.recurrence_day_of_month,
+                    help: "If the chosen day doesn't exist in a given month (e.g. the 31st of February), that month is skipped." %>
+            </div>
+
+            <%# Day-of-week + start time apply to every pattern except day-of-month. %>
+            <div data-mics-schedule-form-target="dowBlock"
+                 class="<%= @mic.recurrence_monthly_day_of_month? ? "hidden" : "" %>">
+              <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day?", type: "select",
+                    value: @mic.day_of_week,
+                    options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
+            </div>
+
+            <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
+                  value: @mic.starts_local_time&.strftime("%H:%M") %>
+
+            <%= render "mics/form_field", name: "mic[canceled_until]", label: "Pause until (optional date)", type: "date",
+                  value: @mic.canceled_until&.iso8601,
+                  help: "Use to suspend the mic temporarily — no dates appear up to and including this." %>
+
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save schedule", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <%# Sign-up info — channel (online / in-person / both) + bucket draw + URL (only for online). %>
+      <section class="bg-white border border-pink-100">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
+                data: { controller: "mics-signup-form" } do %>
+            <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up channel", type: "select", value: @mic.signup_method,
+                  options: [ [ "— unknown —", "" ] ] + Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
+                  data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
+
+            <div data-mics-signup-form-target="urlBlock"
+                 class="<%= @mic.online_signup? ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up link (URL)", type: "url", value: @mic.signup_url,
+                    placeholder: "https://...",
+                    help: "Shown to performers as the sign-up button on the public page." %>
+            </div>
+
+            <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens", value: @mic.signup_opens_at_text,
+                  placeholder: "e.g. Walk-in 7:30 PM" %>
+
+            <label class="flex items-center gap-2 mb-4 text-sm text-gray-800">
+              <%# Hidden so unchecked posts a falsy value, not "no key" — Rails sees `0` vs `1`. %>
+              <input type="hidden" name="mic[bucket_draw]" value="0">
+              <input type="checkbox" name="mic[bucket_draw]" value="1" <%= "checked" if @mic.bucket_draw %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span>Bucket draw / random draw</span>
+            </label>
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save sign-up info", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <%# Socials — Instagram, X, TikTok, Website. %>
+      <section class="bg-white border border-pink-100">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Socials</h2>
+          <p class="text-xs text-gray-500 mt-1">Instagram, X, TikTok, or a website. Each becomes a button on the public mic page.</p>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <% existing_socials = @mic.mic_links.where(link_type: MicLink.link_types.values).ordered.to_a %>
+          <% if existing_socials.any? %>
+            <ul class="text-sm text-gray-700 space-y-1 mb-4 border border-gray-200">
+              <% existing_socials.each do |link| %>
+                <li class="flex items-baseline justify-between gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0">
+                  <span class="min-w-0 flex-1">
+                    <span class="text-xs uppercase tracking-wider text-gray-500 font-bold mr-2"><%= link.link_type.humanize %></span>
+                    <% if link.label.present? %><span class="font-bold mr-2"><%= link.label %></span><% end %>
+                    <a href="<%= link.url %>" target="_blank" rel="noopener" class="text-xs text-gray-500 hover:text-pink-600 truncate"><%= link.url %></a>
+                  </span>
+                  <%= button_to "Remove", mics_producer_remove_link_path(@mic.slug, link_id: link.id),
+                        method: :delete,
+                        class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline shrink-0" %>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+
+          <%= form_with url: mics_producer_add_link_path(@mic.slug), method: :post do %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <%= render "mics/form_field", name: "link_type", label: "Type", type: "select",
+                    options: [
+                      [ "Instagram", "instagram" ],
+                      [ "X / Twitter", "x_twitter" ],
+                      [ "TikTok",    "tiktok" ],
+                      [ "Website",   "website" ]
+                    ] %>
+              <%= render "mics/form_field", name: "url", label: "URL", type: "url", required: true,
+                    placeholder: "https://..." %>
+            </div>
+            <%= render "mics/form_field", name: "label", label: "Display label (optional)",
+                  placeholder: "e.g. @mymicig — defaults to the type if blank" %>
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Add social", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <%# People — co-producers. %>
+      <section class="bg-white border border-pink-100">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">People</h2>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <ul class="text-sm text-gray-700 space-y-1 mb-4">
+            <% @co_producers.each do |mp| %>
+              <li><span class="font-bold"><%= mp.user.email_address %></span> — <span class="text-xs text-gray-500"><%= mp.role.humanize %></span></li>
+            <% end %>
+            <% if @co_producers.empty? %>
+              <li class="text-gray-500">No co-producers yet.</li>
+            <% end %>
+          </ul>
+          <%= form_with url: mics_producer_invite_path(@mic.slug), method: :post, class: "flex flex-wrap gap-3 items-end" do %>
+            <div class="flex-1 min-w-[240px]">
+              <%= render "mics/form_field", name: "email", label: "Invite by email", type: "email", required: true,
+                    placeholder: "co-producer@example.com" %>
+            </div>
+            <div class="pb-4">
+              <%= render "shared/button", text: "Send invite", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <%# Marketing — convert to CocoScout sign-ups. %>
+  <% unless @mic.production_id %>
+    <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+      <div class="max-w-5xl">
+        <div class="border-2 border-pink-500 bg-pink-50 p-5 sm:p-7 flex flex-col md:flex-row md:items-center gap-5">
+          <div class="flex-1">
+            <div class="text-xs uppercase tracking-wider text-pink-700 font-bold">Powered by CocoScout</div>
+            <h3 class="coustard-regular text-2xl sm:text-3xl text-gray-900 mt-1">Run sign-ups, alerts, and your roster on CocoScout.</h3>
+            <p class="text-sm text-gray-700 mt-2 max-w-2xl">
+              Migrate this mic in one click. You get an easy online sign-up form with dozens of customizations, real rosters,
+              and alert delivery when sign-ups open. Performers see their slots on a performance calendar.
+            </p>
+          </div>
+          <div class="shrink-0">
+            <%= link_to mics_producer_migrate_path(@mic.slug),
+                  class: "cursor-pointer block px-6 py-3 bg-pink-500 text-white font-bold text-center hover:bg-pink-600 active:bg-pink-700 transition-colors duration-100" do %>
+              Migrate to CocoScout sign-ups →
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+</main>
+
+<%# Modals %>
+
+<%= render "mics/producer/modal", id: "modal-verify", title: "Verify info" do %>
+  <p class="text-sm text-gray-700">
+    Confirm everything on this listing is still accurate. We'll stamp the "last verified" timestamp on the public page so performers know it's fresh.
+  </p>
+  <%= form_with url: mics_producer_verify_path(@mic.slug), method: :post, class: "mt-5 flex justify-end gap-2" do %>
+    <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+            class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
+      Cancel
+    </button>
+    <%= render "shared/button", text: "Mark as verified now", variant: "primary", size: "medium", type: :submit %>
+  <% end %>
+<% end %>
+
+<%= render "mics/producer/modal", id: "modal-status", title: "Set status for a date" do %>
+  <%= form_with url: mics_producer_post_status_path(@mic.slug), method: :post, class: "space-y-4" do %>
+    <%= render "mics/form_field", name: "date", label: "Date", type: "date", value: next_upcoming_date_for(@mic) %>
+    <%= render "mics/form_field", name: "mic_status", label: "Status", type: "select",
+          options: [
+            [ "Running as planned", "running_as_planned" ],
+            [ "Online only",        "online_only" ],
+            [ "Extra spots",        "extra_spots" ],
+            [ "Cancelled",          "cancelled" ]
+          ] %>
+    <%= render "mics/form_field", name: "note", label: "Note (shown publicly, optional)" %>
+    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+      <%= render "shared/button", text: "Post status", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render "mics/producer/modal", id: "modal-announce", title: "Post an announcement" do %>
+  <p class="text-sm text-gray-600 mb-3">A short news item that shows up at the top of your mic page.</p>
+  <%= form_with url: mics_create_announcement_path(@mic.slug), method: :post, class: "space-y-4" do %>
+    <%= render "mics/form_field", name: "title", label: "Title (optional)" %>
+    <%= render "mics/form_field", name: "body", label: "Announcement", type: "textarea", rows: 5, required: true %>
+    <label class="flex items-center gap-2 text-sm text-gray-700">
+      <input type="checkbox" name="notify_subscribers" value="1"
+             class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+      <span>Notify subscribers when this goes out <span class="text-xs text-gray-400">(emails coming soon — we'll save your preference)</span></span>
+    </label>
+    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+      <%= render "shared/button", text: "Post announcement", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+
+  <% if @mic.mic_announcements.any? %>
+    <h3 class="text-xs uppercase tracking-wider text-gray-500 font-bold mt-6 mb-2">Recent</h3>
+    <ul class="space-y-2 text-sm max-h-48 overflow-y-auto">
+      <% @mic.mic_announcements.recent(5).each do |a| %>
+        <li class="border-l-2 border-pink-200 pl-3">
+          <div class="text-xs text-gray-500"><%= a.posted_at.strftime("%b %-d, %-l:%M%p") %><% if a.notify_subscribers %> · 🔔 flagged for subscriber alert<% end %></div>
+          <% if a.title.present? %><div class="font-bold"><%= a.title %></div><% end %>
+          <div class="text-gray-700 whitespace-pre-line"><%= a.body %></div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>
+
+<%= render "mics/producer/modal", id: "modal-cancel", title: "Cancel a date" do %>
+  <p class="text-sm text-gray-600 mb-3">Performers will see "Cancelled" on the public listing and on the calendar.</p>
+  <%= form_with url: mics_producer_cancel_date_path(@mic.slug), method: :post, class: "space-y-4" do %>
+    <%= render "mics/form_field", name: "date", label: "Date to cancel", type: "date", value: next_upcoming_date_for(@mic) %>
+    <%= render "mics/form_field", name: "reason", label: "Reason (shown publicly)",
+          placeholder: "e.g. Venue closed for a private event" %>
+    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+      <%= render "shared/button", text: "Cancel this date", variant: "danger", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render "mics/site_footer" %>

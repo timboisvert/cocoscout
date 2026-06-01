@@ -1,0 +1,77 @@
+<%
+  page_title = "Map — Open mics in #{@city}, #{@state} | Find an Open Mic"
+  description = "Map of every active open mic in #{@city}, #{@state}."
+  mics_seo title: page_title, description: description
+
+  geocoded = @mics.select { |m| m.venue.geocoded? }
+  ungeocoded = @mics.reject { |m| m.venue.geocoded? }
+
+  mics_data = geocoded.map do |m|
+    {
+      slug:  m.slug,
+      name:  m.name,
+      url:   mics_detail_path(m.slug),
+      venue: "#{m.venue.name} · #{m.venue.neighborhood_city}",
+      lat:   m.venue.lat,
+      lng:   m.venue.lng,
+      day:   mics_day_name(m.day_of_week),
+      time:  m.starts_local_time&.strftime("%-l:%M %p")
+    }
+  end
+
+  center = if @hub && @hub.lat && @hub.lng
+    "#{@hub.lat},#{@hub.lng}"
+  elsif geocoded.any?
+    nil
+  else
+    "41.8781,-87.6298"
+  end
+%>
+<%= render "mics/header" %>
+
+<div class="w-full flex flex-col lg:flex-row">
+  <%= render "mics/city_sidebar", city: @city, state: @state, slug: @slug,
+              active_label: "all", cities: @other_cities %>
+
+  <main class="flex-1 min-w-0 bg-white">
+    <section class="px-4 sm:px-8 py-5 border-b border-gray-100 flex items-baseline justify-between gap-3 flex-wrap">
+      <div>
+        <h1 class="coustard-regular text-3xl text-gray-900">Map</h1>
+        <p class="mt-1 text-xs uppercase tracking-wider text-gray-500 font-bold">
+          <%= pluralize(geocoded.size, "mapped mic") %><% if ungeocoded.any? %> · <%= ungeocoded.size %> awaiting geocode<% end %>
+        </p>
+      </div>
+      <%= link_to "← List view", mics_city_path(@slug), class: "text-sm text-pink-600 font-bold hover:underline" %>
+    </section>
+
+    <% if geocoded.any? %>
+      <div
+        data-controller="mics-map"
+        data-mics-map-mics-value="<%= mics_data.to_json %>"
+        <% if center.present? %>data-mics-map-center-value="<%= center %>"<% end %>
+        data-mics-map-zoom-value="11"
+        class="w-full h-[calc(100vh-180px)] min-h-[480px] bg-gray-100">
+      </div>
+    <% else %>
+      <div class="px-4 sm:px-8 py-16 text-center">
+        <p class="text-sm text-gray-600">No mics in this city have been geocoded yet.</p>
+        <p class="mt-2 text-xs text-gray-500">Geocoding runs automatically as venues are added; check back shortly.</p>
+      </div>
+    <% end %>
+
+    <% if ungeocoded.any? %>
+      <section class="px-4 sm:px-8 py-5 border-t border-gray-100">
+        <h2 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Awaiting geocode</h2>
+        <ul class="text-xs text-gray-600 space-y-0.5">
+          <% ungeocoded.first(20).each do |m| %>
+            <li><%= link_to m.name, mics_detail_path(m.slug), class: "hover:underline" %> · <%= m.venue.full_address %></li>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+
+    <footer class="px-4 sm:px-8 py-4 text-center text-xs text-gray-400">
+      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="underline">OpenStreetMap</a> contributors.
+    </footer>
+  </main>
+</div>

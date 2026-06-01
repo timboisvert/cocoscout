@@ -1,0 +1,56 @@
+<%
+  mics_seo title: "#{@hub.name} hub queue — CocoScout Mics",
+            description: "Moderation queue for the #{@hub.name} hub."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+  <h1 class="coustard-regular text-2xl text-gray-900"><%= @hub.name %> queue</h1>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending mics</h2>
+    <% if @pending_mics.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_mics.each do |mic| %>
+          <li class="px-3 py-2 text-sm flex items-baseline justify-between">
+            <span><%= mic.name %> · <span class="text-xs text-gray-500"><%= mic.venue.name %></span></span>
+            <%= link_to "Open", mics_detail_path(mic.slug), class: "text-xs text-pink-600 hover:underline" %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">Nothing pending.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending suggestions</h2>
+    <% if @pending_suggestions.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_suggestions.each do |s| %>
+          <li class="px-3 py-2 text-sm">
+            <div class="font-semibold"><%= s.mic.name %></div>
+            <div class="text-xs text-gray-600 mt-1"><%= s.note %></div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">Nothing pending.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending claims</h2>
+    <% if @pending_claims.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_claims.each do |c| %>
+          <li class="px-3 py-2 text-sm">
+            <%= c.mic.name %> — <%= c.claimant.email_address %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">Nothing pending.</p>
+    <% end %>
+  </section>
+</main>

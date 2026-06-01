@@ -1,0 +1,29 @@
+<%
+  mics_seo title: "Migrate #{@mic.name} to CocoScout — CocoScout Mics",
+            description: "Move this mic to CocoScout-powered sign-ups, calendars, and sign-up alerts."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+  <h1 class="coustard-regular text-2xl text-gray-900">Migrate <%= @mic.name %> to CocoScout</h1>
+
+  <% if @already_migrated %>
+    <p class="mt-4 text-sm text-emerald-700">This mic is already powered by CocoScout.</p>
+  <% else %>
+    <p class="mt-3 text-sm text-gray-600">
+      We'll create (or reuse) your Organization, a Production named "<%= @mic.name %>",
+      six months of weekly open-mic shows, and an active sign-up form. Your existing
+      listing stays the same — it just gets richer.
+    </p>
+    <ul class="mt-4 text-sm text-gray-700 list-disc list-inside space-y-1">
+      <li>You'll see all sign-ups in your CocoScout dashboard.</li>
+      <li>Sign-up alerts on your mic will fire automatically.</li>
+      <li>The public detail page will earn a "Powered by CocoScout" badge.</li>
+    </ul>
+    <%= form_with url: mics_producer_perform_migrate_path(@mic.slug), method: :post, class: "mt-6" do %>
+      <button type="submit" class="inline-flex px-5 py-2.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium">
+        Migrate now
+      </button>
+    <% end %>
+  <% end %>
+</main>

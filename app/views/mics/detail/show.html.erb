@@ -1,0 +1,276 @@
+<%
+  venue    = @mic.venue
+  city     = venue.city
+  state    = venue.state
+  slug     = "#{city.parameterize}-#{state.downcase}"
+  day      = mics_day_name(@mic.day_of_week)
+  title    = [ @mic.name, day && "#{day} Open Mic", venue.name && "at #{venue.name}", venue.neighborhood_city ].compact.join(" — ")
+  description = [
+    "#{@mic.name} is a #{mics_format_label(@mic.format).downcase} open mic at #{venue.name} in #{venue.neighborhood_city}.",
+    @mic.blurb.presence
+  ].compact.join(" ")
+  mics_seo title: title, description: description
+
+  breadcrumbs = [
+    [ "Find an Open Mic", mics_home_url ],
+    [ "#{city}, #{state}", mics_city_url(slug) ],
+    [ @mic.name, mics_detail_url(@mic.slug) ]
+  ]
+
+  status_badge =
+    case @mic.status
+    when "dormant" then [ "Dormant",  "bg-amber-50 text-amber-700 border-amber-200" ]
+    when "ended"   then [ "Ended",    "bg-gray-100 text-gray-600  border-gray-200" ]
+    else nil
+    end
+
+  verified_text =
+    if @mic.last_verified_at.present?
+      days = ((Time.current - @mic.last_verified_at) / 1.day).floor
+      days.zero? ? "Verified today" : "Verified #{pluralize(days, "day")} ago"
+    end
+%>
+<%= render "mics/header" %>
+
+<%# Big pink masthead. %>
+<section class="w-full bg-pink-500 text-white">
+  <div class="w-full px-4 sm:px-8 py-6 sm:py-10">
+    <nav class="text-xs text-pink-100 mb-3">
+      <%= link_to "Find an Open Mic", mics_home_path, class: "hover:text-white underline-offset-4 hover:underline" %>
+      <span class="px-1">›</span>
+      <%= link_to "#{city}, #{state}", mics_city_path(slug), class: "hover:text-white underline-offset-4 hover:underline" %>
+    </nav>
+    <h1 class="coustard-regular text-4xl sm:text-6xl leading-[1.05]"><%= @mic.name %></h1>
+    <p class="mt-3 text-pink-100 text-sm sm:text-base">
+      <%= day %> · <%= @mic.starts_local_time&.strftime("%-l:%M %p") %> · <%= venue.name %> · <%= venue.neighborhood_city %>
+    </p>
+
+    <div class="mt-4 flex items-center gap-2 flex-wrap">
+      <% if @mic.powered_by_cocoscout? %>
+        <span class="inline-flex items-center text-[11px] uppercase tracking-wider px-2 py-1 bg-gray-900 text-white font-bold">
+          Powered by CocoScout
+        </span>
+      <% end %>
+      <% if status_badge %>
+        <span class="inline-flex items-center text-[11px] uppercase tracking-wider px-2 py-1 border bg-white <%= status_badge[1] %>">
+          <%= status_badge[0] %>
+        </span>
+      <% end %>
+      <% if verified_text %>
+        <span class="text-xs text-pink-100"><%= verified_text %></span>
+      <% end %>
+    </div>
+
+    <div class="mt-5 flex flex-wrap gap-2 text-sm">
+      <% if @signup_info && @signup_info[:url].present? %>
+        <%= link_to @signup_info[:url], target: "_blank", rel: "noopener",
+              class: "cursor-pointer px-4 py-2 bg-white text-pink-700 font-bold hover:bg-pink-100 active:bg-pink-200 transition-colors duration-100" do %>
+          Sign up →
+          <% if @signup_info[:powered_by_cocoscout] %>
+            <span class="text-[10px] uppercase tracking-wider opacity-70 ml-1">on CocoScout</span>
+          <% end %>
+        <% end %>
+      <% end %>
+      <% if Current.user %>
+        <% favorited = MicFavorite.where(user_id: Current.user.id, mic_id: @mic.id).exists? %>
+        <%= button_to (favorited ? "★ Favorited" : "☆ Favorite"), mics_favorite_path(@mic.slug), method: :post,
+              class: "cursor-pointer px-3 py-1.5 font-bold transition-colors duration-100 #{favorited ? "bg-gray-900 text-white hover:bg-black active:bg-gray-700" : "bg-white text-pink-700 hover:bg-pink-100 active:bg-pink-200"}" %>
+      <% end %>
+      <% unless @mic.claimed? %>
+        <%= link_to "Claim this mic →", mics_claim_path(@mic.slug),
+              class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black" %>
+      <% end %>
+      <%= link_to "Suggest an edit", mics_suggest_path(@mic.slug),
+            class: "px-3 py-1.5 bg-pink-400 text-white font-bold hover:bg-pink-300" %>
+      <% if Current.user&.superadmin? %>
+        <%= link_to "Edit (superadmin)", mics_producer_mic_path(@mic.slug),
+              class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black" %>
+      <% end %>
+      <% if Current.user && @mic.claimed? %>
+        <%= link_to "Challenge claim", mics_challenge_path(@mic.slug),
+              class: "px-3 py-1.5 bg-pink-400 text-white font-bold hover:bg-pink-300" %>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<main class="w-full bg-white">
+  <%# "What you need to know" — full bleed strip. Only render what we know. %>
+  <%
+    fact_cells = []
+    fact_cells << [ "Format", mics_format_label(@mic.format) ]
+    if @mic.signup_method.present?
+      value = mics_signup_method_label(@mic.signup_method)
+      value += " · Bucket draw" if @mic.bucket_draw
+      fact_cells << [ "Sign-up", value ]
+    elsif @mic.bucket_draw
+      fact_cells << [ "Sign-up", "Bucket draw" ]
+    end
+    fact_cells << [ "Sign-up opens", @mic.signup_opens_at_text ]     if @mic.signup_opens_at_text.present?
+    fact_cells << [ "Start time", @mic.starts_local_time.strftime("%-l:%M %p") ] if @mic.starts_local_time.present?
+    # Cost shown only when there's an actual price; "free" is assumed default.
+    fact_cells << [ "Cost", mics_cost_label(@mic) ]                   if mics_cost_label(@mic).present? && @mic.cost != "free"
+    fact_cells << [ "Spot length", "#{@mic.spot_length_minutes} min" ] if @mic.spot_length_minutes.present?
+    fact_cells << [ "Cap", "#{@mic.signup_cap} performers" ]           if @mic.signup_cap.present?
+    fact_cells << [ "Age", "#{@mic.min_age}+" ]                        if @mic.min_age.present?
+  %>
+  <section class="border-b border-gray-100">
+    <dl class="w-full px-4 sm:px-8 py-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+      <% fact_cells.each do |label, value| %>
+        <div>
+          <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold"><%= label %></dt>
+          <dd class="mt-0.5 coustard-regular text-lg text-gray-900"><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+  </section>
+
+  <% if @mic.blurb.present? %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-6 max-w-3xl">
+        <div class="text-base text-gray-700 whitespace-pre-line"><%= @mic.blurb %></div>
+      </div>
+    </section>
+  <% end %>
+
+  <% announcements = @mic.mic_announcements.recent(5).to_a %>
+  <% if announcements.any? %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-6">
+        <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">News from the producers</h2>
+        <ul class="space-y-3 max-w-3xl">
+          <% announcements.each do |a| %>
+            <li class="border-l-4 border-pink-500 pl-4 py-1">
+              <div class="text-xs uppercase tracking-wider text-gray-500 font-bold"><%= a.posted_at.strftime("%a %b %-d, %-l:%M%p") %></div>
+              <% if a.title.present? %>
+                <div class="coustard-regular text-lg text-gray-900 mt-0.5"><%= a.title %></div>
+              <% end %>
+              <div class="text-sm text-gray-700 mt-1 whitespace-pre-line"><%= a.body %></div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </section>
+  <% end %>
+
+  <%# Socials — Instagram, X, TikTok, Website. %>
+  <% socials = @mic.mic_links.where(link_type: MicLink.link_types.values).ordered.to_a %>
+  <% if socials.any? %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-5">
+        <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">Socials</h2>
+        <div class="flex flex-wrap gap-2">
+          <% socials.each do |link| %>
+            <% icon = case link.link_type
+              when "instagram" then "📷"
+              when "tiktok"    then "♪"
+              when "x_twitter" then "𝕏"
+              when "website"   then "🌐"
+              else "↗"
+              end %>
+            <% display = link.label.presence || case link.link_type
+              when "x_twitter" then "X / Twitter"
+              else link.link_type.humanize
+              end %>
+            <a href="<%= link.url %>" target="_blank" rel="noopener"
+               class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-pink-200 hover:bg-pink-50 hover:border-pink-300 text-sm text-gray-800 transition-colors duration-100">
+              <span class="text-base leading-none"><%= icon %></span>
+              <span class="font-bold"><%= display %></span>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+<%# Sign-up channel + bucket draw + opens-at are already surfaced in the fact strip above.
+    The CTA button now lives in the masthead button row when there's a URL. %>
+
+  <%= render "mics/detail/upcoming", mic: @mic,
+        next_occurrences: @next_occurrences, upcoming_view: @upcoming_view %>
+
+  <section class="border-b border-gray-100">
+    <div class="w-full px-4 sm:px-8 py-6">
+      <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">Venue</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <%# Left: name + address + accessibility %>
+        <div class="text-sm text-gray-700">
+          <div class="coustard-regular text-2xl text-gray-900"><%= venue.name %></div>
+          <% if venue.full_address.present? %>
+            <div class="text-gray-600 mt-1"><%= venue.full_address %></div>
+          <% end %>
+          <% if venue.neighborhood.present? %>
+            <div class="text-xs text-gray-500 mt-1"><%= venue.neighborhood %></div>
+          <% end %>
+          <% access = (venue.accessibility || {}).merge(@mic.accessibility || {}) %>
+          <% if access.values.any? %>
+            <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+              <% if access["wheelchair"] %><li>♿ Wheelchair accessible</li><% end %>
+              <% if access["all_ages"] %><li>All ages</li><% end %>
+              <% if access["bar_free"] %><li>No bar / dry</li><% end %>
+              <% if access["smoke_free"] %><li>Smoke-free</li><% end %>
+              <% if access["asl"] %><li>ASL on request</li><% end %>
+            </ul>
+          <% end %>
+          <% if venue.geocoded? %>
+            <p class="mt-3 text-xs text-gray-500">
+              Open in
+              <a href="https://maps.apple.com/?ll=<%= venue.lat %>,<%= venue.lng %>&q=<%= ERB::Util.url_encode(venue.name) %>"
+                 target="_blank" rel="noopener" class="text-pink-600 font-bold hover:underline">Apple Maps</a> ·
+              <a href="https://www.google.com/maps/search/?api=1&query=<%= ERB::Util.url_encode("#{venue.name} #{venue.full_address}") %>"
+                 target="_blank" rel="noopener" class="text-pink-600 font-bold hover:underline">Google Maps</a>
+            </p>
+          <% end %>
+        </div>
+
+        <%# Right: map %>
+        <% if venue.geocoded? %>
+          <div>
+            <div
+              data-controller="mics-map"
+              data-mics-map-mics-value="<%= [ {
+                slug:  @mic.slug,
+                name:  @mic.name,
+                url:   mics_detail_path(@mic.slug),
+                venue: "#{venue.name} · #{venue.neighborhood_city}",
+                lat:   venue.lat,
+                lng:   venue.lng,
+                day:   mics_day_name(@mic.day_of_week),
+                time:  @mic.starts_local_time&.strftime("%-l:%M %p")
+              } ].to_json %>"
+              data-mics-map-center-value="<%= venue.lat %>,<%= venue.lng %>"
+              data-mics-map-zoom-value="15"
+              class="w-full h-64 md:h-full min-h-[240px] bg-gray-100 border border-gray-200">
+            </div>
+            <p class="mt-1 text-[10px] text-gray-400">
+              Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="underline">OpenStreetMap</a> contributors.
+            </p>
+          </div>
+        <% else %>
+          <div class="text-xs text-gray-400 italic">Map will appear here once the address is geocoded.</div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <% if @mic.host_summary.present? %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-6">
+        <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Hosts</h2>
+        <p class="text-sm text-gray-700"><%= @mic.host_summary %></p>
+      </div>
+    </section>
+  <% end %>
+
+  <% @next_occurrences.each do |occ| %>
+    <%= mics_jsonld(mic_event_jsonld(@mic, occ)) %>
+  <% end %>
+  <%= mics_breadcrumbs_jsonld(breadcrumbs) %>
+
+  <footer class="w-full px-4 sm:px-8 py-6 text-xs text-gray-500 flex flex-wrap items-baseline justify-between gap-2">
+    <span>Producers update directly. Community can suggest edits.</span>
+    <%= link_to "← Back to #{city}, #{state}", mics_city_path(slug), class: "text-pink-600 font-bold hover:underline" %>
+  </footer>
+</main>
+
+<%= render "mics/site_footer" %>

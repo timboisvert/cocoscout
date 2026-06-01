@@ -56,6 +56,32 @@
           title: "Success Message",
           help: "Shown after someone successfully submits the audition form." %>
 
+    <%# ===== Resume ===== %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <%= render "shared/card_header", title: "Resume" %>
+      <div class="p-5">
+        <%= form_with model: [ :manage, @production, @audition_cycle ],
+              url: manage_signups_auditions_cycle_path(@production, @audition_cycle),
+              method: :patch, local: true do |form| %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1 mr-4">
+              <div class="text-sm font-medium text-gray-900">Resume Required</div>
+              <div class="text-sm text-gray-500 mt-0.5">
+                When off, performers without a resume can still submit — the complete-your-profile nudge won't block them.
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.check_box :resume_required, class: "sr-only peer", checked: @audition_cycle.resume_required %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
     <%# ===== Availability ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" data-controller="edit-modal">
       <%= render "shared/card_header", title: "Availability Questions" do %>

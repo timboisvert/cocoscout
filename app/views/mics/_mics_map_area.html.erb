@@ -1,0 +1,44 @@
+<%#
+  Renders the Leaflet map area for a collection of mics. Falls back to
+  an "awaiting geocode" panel when nothing is geocoded.
+  Locals: mics (collection)
+%>
+<%
+  geocoded = mics.select { |m| m.venue.geocoded? }
+  ungeocoded = mics.reject { |m| m.venue.geocoded? }
+  mics_data = geocoded.map do |m|
+    {
+      slug:  m.slug,
+      name:  m.name,
+      url:   mics_detail_path(m.slug),
+      venue: "#{m.venue.name} · #{m.venue.neighborhood_city}",
+      lat:   m.venue.lat,
+      lng:   m.venue.lng,
+      day:   mics_day_name(m.day_of_week),
+      time:  m.starts_local_time&.strftime("%-l:%M %p")
+    }
+  end
+%>
+<% if geocoded.any? %>
+  <div
+    data-controller="mics-map"
+    data-mics-map-mics-value="<%= mics_data.to_json %>"
+    data-mics-map-zoom-value="11"
+    class="w-full h-[calc(100vh-180px)] min-h-[480px] bg-gray-100">
+  </div>
+<% else %>
+  <div class="px-4 sm:px-8 py-16 text-center text-sm text-gray-600">
+    <p>No mics in this view have been geocoded yet.</p>
+    <p class="mt-2 text-xs text-gray-500">Geocoding runs automatically; check back shortly.</p>
+  </div>
+<% end %>
+<% if ungeocoded.any? %>
+  <section class="px-4 sm:px-8 py-4 border-t border-gray-100">
+    <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Awaiting geocode</h2>
+    <ul class="text-xs text-gray-600 space-y-0.5">
+      <% ungeocoded.first(20).each do |m| %>
+        <li><%= link_to m.name, mics_detail_path(m.slug), class: "hover:underline" %> · <%= m.venue.full_address %></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

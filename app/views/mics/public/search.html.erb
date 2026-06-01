@@ -1,0 +1,23 @@
+<%
+  mics_seo title: "Search open mics — #{@query.presence || "CocoScout"}",
+            description: "Search every open mic on CocoScout."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="text-2xl coustard-regular text-gray-900">
+    Search<% if @query.present? %>: <span class="text-gray-600">“<%= @query %>”</span><% end %>
+  </h1>
+
+  <% if @query.blank? %>
+    <p class="mt-3 text-sm text-gray-500">Type at least two characters.</p>
+  <% elsif @results.empty? %>
+    <p class="mt-3 text-sm text-gray-500">No mics match “<%= @query %>” yet.</p>
+  <% else %>
+    <div class="mt-6 border border-gray-200 rounded-xl bg-white overflow-hidden">
+      <% @results.each do |mic| %>
+        <%= render "mics/mic_row", mic: mic %>
+      <% end %>
+    </div>
+  <% end %>
+</main>

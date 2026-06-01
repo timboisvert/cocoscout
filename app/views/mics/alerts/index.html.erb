@@ -1,0 +1,30 @@
+<%
+  mics_seo title: "Your sign-up alerts — CocoScout Mics",
+            description: "Manage your sign-up open alerts."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="coustard-regular text-3xl text-gray-900">Sign-up alerts</h1>
+  <p class="mt-2 text-sm text-gray-600">We'll email you a few minutes before sign-ups open.</p>
+
+  <% if @alerts.any? %>
+    <ul class="mt-6 divide-y divide-gray-100 border border-gray-200 rounded-xl bg-white overflow-hidden">
+      <% @alerts.each do |alert| %>
+        <li class="px-3 py-2 flex items-baseline justify-between gap-3">
+          <div>
+            <div class="font-semibold text-gray-900"><%= alert.mic.name %></div>
+            <div class="text-xs text-gray-500">
+              <%= alert.mic.venue.name %> · next ping
+              <%= alert.next_target_at ? alert.next_target_at.strftime("%a %b %-d %-l:%M%p") : "tbd" %>
+            </div>
+          </div>
+          <%= button_to "Remove", mics_alert_remove_path(alert.id), method: :delete,
+                class: "px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="mt-6 text-sm text-gray-500">You haven't set any alerts yet.</p>
+  <% end %>
+</main>

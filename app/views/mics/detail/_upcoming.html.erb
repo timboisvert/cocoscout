@@ -1,0 +1,127 @@
+<%#
+  Upcoming section for the mic detail page. Two view modes:
+   - calendar (default): horizontally scrolling row of mini month grids,
+     mic dates highlighted, status overlays for cancelled / online_only /
+     extra_spots.
+   - list: a flat list of the next ~12 dates.
+
+  Locals: mic, next_occurrences (array of hashes), upcoming_view ("calendar" | "list")
+%>
+<%
+  # Group occurrences by date for quick lookup in the calendar grid.
+  occs_by_date = next_occurrences.each_with_object({}) do |occ, h|
+    h[occ[:starts_at].to_date] = occ
+  end
+
+  # Months to render — at least 3, but as many as the next-occurrences span.
+  first_date = next_occurrences.first&.dig(:starts_at)&.to_date || Date.current
+  last_date  = next_occurrences.last&.dig(:starts_at)&.to_date  || (Date.current + 3.months)
+  month_anchor = first_date.beginning_of_month
+  months = []
+  while month_anchor <= last_date.end_of_month
+    months << month_anchor
+    month_anchor = month_anchor.next_month
+  end
+  # Pad to at least 3 months for visual rhythm.
+  while months.size < 3
+    months << months.last.next_month
+  end
+%>
+
+<section class="border-b border-gray-100">
+  <div class="w-full px-4 sm:px-8 py-6">
+    <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+      <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Upcoming</h2>
+      <div class="flex items-center gap-3">
+        <%# View toggle. Server-side; no JS. %>
+        <div class="inline-flex border border-gray-200 text-xs overflow-hidden">
+          <%= link_to "Calendar", mics_detail_path(mic.slug, view: "calendar"),
+                class: "px-3 py-1.5 font-bold #{upcoming_view == "calendar" ? "bg-pink-500 text-white" : "bg-white text-gray-700 hover:bg-pink-50"}" %>
+          <%= link_to "List", mics_detail_path(mic.slug, view: "list"),
+                class: "px-3 py-1.5 font-bold border-l border-gray-200 #{upcoming_view == "list" ? "bg-pink-500 text-white" : "bg-white text-gray-700 hover:bg-pink-50"}" %>
+        </div>
+        <a href="<%= mics_detail_calendar_path(mic.slug) %>" class="text-xs text-pink-600 font-bold hover:underline">Add to calendar →</a>
+      </div>
+    </div>
+
+    <% if next_occurrences.empty? %>
+      <p class="text-sm text-gray-500">No upcoming dates listed.</p>
+    <% elsif upcoming_view == "calendar" %>
+      <%# Horizontally scrolling row of mini months. %>
+      <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-8 px-4 sm:px-8 snap-x">
+        <% months.each do |month_start| %>
+          <div class="shrink-0 w-64 snap-start bg-white border border-gray-200">
+            <div class="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-baseline justify-between">
+              <span class="coustard-regular text-base text-gray-900"><%= month_start.strftime("%B") %></span>
+              <span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold"><%= month_start.year %></span>
+            </div>
+            <div class="grid grid-cols-7 px-2 pt-2 text-[10px] uppercase tracking-wider text-gray-400 font-bold text-center">
+              <% %w[S M T W T F S].each do |dn| %>
+                <div class="py-1"><%= dn %></div>
+              <% end %>
+            </div>
+            <div class="grid grid-cols-7 gap-px px-2 pb-2">
+              <% leading_blanks = month_start.wday %>
+              <% leading_blanks.times do %>
+                <div class="aspect-square"></div>
+              <% end %>
+              <% (month_start..month_start.end_of_month).each do |date| %>
+                <% occ = occs_by_date[date] %>
+                <%
+                  base = "aspect-square flex items-center justify-center text-xs tabular-nums"
+                  classes =
+                    if occ
+                      case occ[:mic_status]
+                      when "cancelled"   then "#{base} bg-red-500 text-white line-through font-bold"
+                      when "online_only" then "#{base} bg-amber-500 text-white font-bold"
+                      when "extra_spots" then "#{base} bg-emerald-500 text-white font-bold"
+                      else "#{base} bg-pink-500 text-white font-bold"
+                      end
+                    elsif date == Date.current
+                      "#{base} ring-1 ring-pink-300 text-gray-700"
+                    else
+                      "#{base} text-gray-400"
+                    end
+                  title = if occ
+                    parts = [ occ[:starts_at].strftime("%-l:%M %p") ]
+                    parts << occ[:mic_status].to_s.humanize if occ[:mic_status]
+                    parts.join(" · ")
+                  end
+                %>
+                <div class="<%= classes %>" <% if title %>title="<%= title %>"<% end %>>
+                  <%= date.day %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <ul class="divide-y divide-gray-100 border border-gray-200">
+        <% next_occurrences.each do |occ| %>
+          <% starts_at = occ[:starts_at] %>
+          <% chip =
+              case occ[:mic_status]
+              when "cancelled"   then [ "Cancelled",   "bg-red-50 text-red-700 border-red-200" ]
+              when "online_only" then [ "Online only", "bg-amber-50 text-amber-700 border-amber-200" ]
+              when "extra_spots" then [ "Extra spots", "bg-emerald-50 text-emerald-700 border-emerald-200" ]
+              end
+          %>
+          <li class="px-3 sm:px-4 py-2.5 flex items-baseline gap-3 text-sm">
+            <span class="tabular-nums w-28 sm:w-32 shrink-0 font-bold text-gray-900">
+              <%= starts_at.strftime("%a %b %-d") %>
+            </span>
+            <span class="tabular-nums w-20 shrink-0 text-gray-500">
+              <%= starts_at.strftime("%-l:%M%p").downcase %>
+            </span>
+            <% if chip %>
+              <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 border <%= chip[1] %>">
+                <%= chip[0] %>
+              </span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</section>

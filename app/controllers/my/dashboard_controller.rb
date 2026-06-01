@@ -322,6 +322,28 @@ module My
       end
 
       # Group events by date for the calendar grid
+      # --- Favorited open mics (from /mics finder) ---
+      # Each favorite injects its next ~12 occurrences as calendar events.
+      # Clicking goes to the public mic detail page, not to anything in /my.
+      favorite_mics = Mic.joins(:mic_favorites)
+                         .where(mic_favorites: { user_id: Current.user.id })
+                         .includes(:venue).distinct
+      favorite_mics.each do |mic|
+        mic.next_occurrences(limit: 12).each do |occ|
+          starts = occ[:starts_at]
+          @calendar_events << {
+            date: starts.to_date,
+            time: starts,
+            title: mic.name,
+            subtitle: "★ Open mic · #{mic.venue.neighborhood_city}",
+            path: "/mics/m/#{mic.slug}",
+            type: :mic_favorite,
+            color: "pink",
+            event_type: "open_mic"
+          }
+        end
+      end
+
       @events_by_date = @calendar_events.group_by { |e| e[:date] }
 
       # Group events by month for month navigation

@@ -96,6 +96,19 @@ class Show < ApplicationRecord
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
+  # Per-occurrence status for open_mic shows surfaced by the public Mics
+  # Finder. Default nil so every other event type is unaffected. Declared
+  # with an explicit `attribute` type so Rails 8.1 doesn't complain about
+  # the enum during eager-load / stale schema cache windows.
+  attribute :mic_status, :integer
+  enum :mic_status, {
+    scheduled: 0,
+    running_as_planned: 1,
+    cancelled: 2,
+    online_only: 3,
+    extra_spots: 4
+  }, prefix: :mic
+
   # Check if this event type typically generates revenue (shows, classes, workshops)
   # This can be overridden by the non_revenue_override flag on ShowFinancials
   def revenue_event?

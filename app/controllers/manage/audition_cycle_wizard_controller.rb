@@ -289,6 +289,9 @@ module Manage
     end
 
     def save_form_starter
+      if params.key?(:resume_required)
+        @wizard_state[:resume_required] = params[:resume_required] == "1"
+      end
       save_wizard_state
       redirect_to manage_signups_auditions_wizard_review_path(@production)
     end
@@ -386,6 +389,9 @@ module Manage
         allow_video_submissions: @wizard_state[:allow_video_submissions],
         allow_in_person_auditions: @wizard_state[:allow_in_person_auditions],
         listed_in_directory: @wizard_state[:listed_in_directory] != false,
+        # Default true preserves existing behavior — the producer can opt
+        # out via the toggle on the format step.
+        resume_required: @wizard_state[:resume_required] != false,
         opens_at: @wizard_state[:opens_at],
         closes_at: @wizard_state[:closes_at],
         include_availability_section: @wizard_state[:include_availability_section],

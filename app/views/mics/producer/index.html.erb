@@ -1,0 +1,30 @@
+<%
+  mics_seo title: "My producer dashboard — CocoScout Mics",
+            description: "Mics you produce on CocoScout."
+%>
+<%= render "mics/header" %>
+
+<main class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+  <h1 class="coustard-regular text-3xl text-gray-900">Mics you produce</h1>
+
+  <% if @mics.any? %>
+    <ul class="mt-6 divide-y divide-gray-100 border border-gray-200 rounded-xl bg-white overflow-hidden">
+      <% @mics.each do |mic| %>
+        <li class="px-4 py-3 flex items-baseline justify-between">
+          <div>
+            <%= link_to mic.name, mics_producer_mic_path(mic.slug), class: "font-semibold text-gray-900 hover:underline" %>
+            <div class="text-xs text-gray-500"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
+          </div>
+          <%= link_to "View public", mics_detail_path(mic.slug), class: "text-xs text-pink-600 hover:underline" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="mt-6 text-sm text-gray-500">
+      You don't manage any mics yet.
+      <%= link_to "Claim a mic", mics_home_path, class: "text-pink-600 underline" %>
+      or
+      <%= link_to "submit a new one", mics_submit_path, class: "text-pink-600 underline" %>.
+    </p>
+  <% end %>
+</main>

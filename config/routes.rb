@@ -56,6 +56,110 @@ Rails.application.routes.draw do
   get  "/join/:token", to: "organization_join#show", as: "join_organization"
   post "/join/:token", to: "organization_join#join", as: "do_join_organization"
 
+  # ------------------------------------------------------------------
+  # Open Mic Finder — public surface
+  # ------------------------------------------------------------------
+  namespace :mics, path: "mics" do
+    # Sitemaps (kept tight near the namespace start so they're easy to spot).
+    get "sitemap.xml",            to: "sitemaps#index",  as: :sitemap, defaults: { format: :xml }
+    get "sitemap-:city_slug.xml", to: "sitemaps#city",   as: :sitemap_city,
+        defaults: { format: :xml }, constraints: { city_slug: /[a-z0-9-]+/ }
+
+    # JSON API for a single mic — defined BEFORE the HTML detail route so
+    # `.json` requests don't get caught by the slug-greedy detail action.
+    get "m/:slug.json", to: "api#show_mic",  as: :api_mic,  defaults: { format: :json }, constraints: { format: :json }
+
+    # Mic detail (slug-routed; ICS export per mic).
+    get "m/:slug",              to: "detail#show",       as: :detail
+    get "m/:slug/calendar.ics", to: "detail#calendar",   as: :detail_calendar,
+        defaults: { format: :ics }
+
+    # Search.
+    get "search", to: "public#search", as: :search
+
+    # Submission flow (sign-in required).
+    get  "submit", to: "submissions#new",    as: :submit
+    post "submit", to: "submissions#create", as: :create_submission
+
+    # Claim a mic.
+    get  "m/:slug/claim",        to: "claims#new",     as: :claim
+    post "m/:slug/claim",        to: "claims#create",  as: :create_claim
+    get  "m/:slug/claim/thanks", to: "claims#thanks",  as: :claim_thanks
+
+    # Challenge a producer claim on a mic.
+    get  "m/:slug/challenge", to: "challenges#new",    as: :challenge
+    post "m/:slug/challenge", to: "challenges#create", as: :create_challenge
+
+    # Suggest edits on a mic.
+    get  "m/:slug/suggest",         to: "suggestions#new",    as: :suggest
+    post "m/:slug/suggest",         to: "suggestions#create", as: :create_suggestion
+    get  "m/:slug/suggest/thanks",  to: "suggestions#thanks", as: :suggest_thanks
+
+    # Producer dashboard.
+    get   "producer",                 to: "producer#index",          as: :producer
+    get   "producer/:slug",           to: "producer#show",           as: :producer_mic
+    patch "producer/:slug",           to: "producer#update"
+    post  "producer/:slug/verify",    to: "producer#verify",         as: :producer_verify
+    post  "producer/:slug/status",    to: "producer#post_status",    as: :producer_post_status
+    post  "producer/:slug/invite",    to: "producer#invite",         as: :producer_invite
+    post  "producer/:slug/cancel_date", to: "producer#cancel_date",  as: :producer_cancel_date
+    post  "producer/:slug/suggestions/:suggestion_id/approve", to: "producer#approve_suggestion", as: :producer_approve_suggestion
+    post  "producer/:slug/suggestions/:suggestion_id/reject",  to: "producer#reject_suggestion",  as: :producer_reject_suggestion
+    post  "producer/:slug/links",     to: "producer#add_link",       as: :producer_add_link
+    delete "producer/:slug/links/:link_id", to: "producer#remove_link", as: :producer_remove_link
+
+    # Hub editor queues + admin queue.
+    get "hubs/:slug/queue", to: "hubs#queue", as: :hub_queue, constraints: { slug: /[a-z0-9-]+/ }
+
+    # My Mics — the single signed-in landing page (managed + favorited).
+    get "my", to: "my#index", as: :my
+
+    # City votes (public, no auth required).
+    post "city_votes", to: "city_votes#create", as: :city_votes
+
+    # Mic announcements (producer posts news to mic page + subscribers).
+    post "m/:slug/announcements", to: "announcements#create",
+         as: :create_announcement
+
+    # Favorites + alerts (signed-in users).
+    get   "favorites",                          to: "favorites#index",    as: :favorites
+    post  "m/:slug/favorite",                   to: "favorites#toggle",   as: :favorite
+    get   "alerts",                             to: "alerts#index",       as: :alerts
+    post  "m/:slug/alert",                      to: "alerts#toggle",      as: :alert
+    delete "alerts/:id",                        to: "alerts#destroy",     as: :alert_remove
+
+    # Producer migration wizard.
+    get  "producer/:slug/migrate", to: "migrate#show",   as: :producer_migrate
+    post "producer/:slug/migrate", to: "migrate#create", as: :producer_perform_migrate
+
+    # JSON API (read-only). `m/:slug.json` is defined earlier so it wins
+    # over the HTML detail route.
+    get ":city_slug.json", to: "api#by_city", as: :api_city, defaults: { format: :json }, constraints: { format: :json, city_slug: /[a-z0-9-]+/ }
+    get ".json",           to: "api#index",   as: :api_index, defaults: { format: :json }, constraints: { format: :json }
+
+    # City listing pages (hub-enriched when a CityHub exists for the slug).
+    # Filter pivots live as URL segments where they buy SEO; everything else
+    # rides as query params.
+    get ":city_slug/tonight",                  to: "cities#tonight",   as: :city_tonight,
+        constraints: { city_slug: /[a-z0-9-]+/ }
+    get ":city_slug/tomorrow",                 to: "cities#tomorrow",  as: :city_tomorrow,
+        constraints: { city_slug: /[a-z0-9-]+/ }
+    get ":city_slug/this-week",                to: "cities#this_week", as: :city_this_week,
+        constraints: { city_slug: /[a-z0-9-]+/ }
+    get ":city_slug/calendar.ics",             to: "cities#calendar",  as: :city_calendar,
+        defaults: { format: :ics }, constraints: { city_slug: /[a-z0-9-]+/ }
+    get ":city_slug/map",                      to: "cities#map",       as: :city_map,
+        constraints: { city_slug: /[a-z0-9-]+/ }
+    get ":city_slug/:format_segment",          to: "cities#by_format", as: :city_by_format,
+        constraints: { city_slug: /[a-z0-9-]+/,
+                       format_segment: /standup|music|poetry|open-stage/ }
+    get ":city_slug",                          to: "cities#show",      as: :city,
+        constraints: { city_slug: /[a-z0-9-]+/ }
+  end
+
+  # Public homepage — must be outside the slug-greedy `:city_slug` route above.
+  get "/mics", to: "mics/public#index", as: :mics_home
+
   # Account
   get   "/account",                       to: "account#show",                as: "account"
   patch "/account",                       to: "account#update"
@@ -155,6 +259,17 @@ Rails.application.routes.draw do
     post   "/finances/courses/:course_offering_id/pay", to: "superadmin#finances_record_payment", as: "finances_record_payment"
     delete "/finances/payments/:id", to: "superadmin#finances_delete_payment", as: "finances_delete_payment"
     post   "/finances/payments/:id/mark_paid", to: "superadmin#finances_mark_payment_paid", as: "finances_mark_payment_paid"
+
+    # Mics Finder moderation queues.
+    get  "/mics/queue",                       to: "superadmin/mics#queue",              as: "mics_queue"
+    post "/mics/queue/:id/approve_submission", to: "superadmin/mics#approve_submission", as: "mics_approve_submission"
+    post "/mics/queue/:id/reject_submission",  to: "superadmin/mics#reject_submission",  as: "mics_reject_submission"
+    post "/mics/claims/:id/approve",           to: "superadmin/mics#approve_claim",      as: "mics_approve_claim"
+    post "/mics/claims/:id/reject",            to: "superadmin/mics#reject_claim",       as: "mics_reject_claim"
+    post "/mics/challenges/:id/resolve",       to: "superadmin/mics#resolve_challenge",  as: "mics_resolve_challenge"
+    post "/mics/suggestions/:id/approve",      to: "superadmin/mics#approve_suggestion", as: "mics_approve_suggestion"
+    post "/mics/suggestions/:id/reject",       to: "superadmin/mics#reject_suggestion",  as: "mics_reject_suggestion"
+    post "/mics/hubs/:id/promote",             to: "superadmin/mics#promote_hub",        as: "mics_promote_hub"
   end
 
   # Pilot user setup (superadmins only)

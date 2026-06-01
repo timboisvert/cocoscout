@@ -1,0 +1,59 @@
+<%
+  mics_seo title: "Submit a mic — Find an Open Mic",
+            description: "Add a new open mic to CocoScout. Anyone with an account can list a mic anywhere in the U.S."
+%>
+
+<%= render "mics/form_shell", title: "Submit a mic",
+      description: "Any city, any night. Submissions land in a moderation queue and go live within a day." do %>
+  <%= form_with url: mics_create_submission_path, method: :post do %>
+    <section class="mb-8">
+      <div class="text-xs uppercase tracking-wider text-pink-600 font-bold mb-3 pb-1 border-b border-pink-100">Venue</div>
+      <%= render "mics/form_field", name: "venue[name]",         label: "Venue name", required: true %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        <%= render "mics/form_field", name: "venue[address1]",     label: "Address" %>
+        <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood" %>
+        <%= render "mics/form_field", name: "venue[city]",         label: "City", required: true %>
+        <%= render "mics/form_field", name: "venue[state]",        label: "State (2-letter)", required: true, maxlength: 2 %>
+        <%= render "mics/form_field", name: "venue[postal_code]",  label: "ZIP" %>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <div class="text-xs uppercase tracking-wider text-pink-600 font-bold mb-3 pb-1 border-b border-pink-100">Mic</div>
+      <%= render "mics/form_field", name: "mic[name]", label: "Mic name", required: true %>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
+        <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select",
+              options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
+        <%= render "mics/form_field", name: "mic[day_of_week]", label: "Day", type: "select",
+              options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
+        <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time" %>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4" data-controller="mics-signup-form">
+        <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up channel", type: "select",
+              options: [ [ "— unknown —", "" ] ] + Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
+              data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
+        <%= render "mics/form_field", name: "mic[cost]", label: "Cost", type: "select",
+              options: Mic.costs.keys.map { |k| [ k.humanize, k ] } %>
+        <div class="sm:col-span-2 flex items-center gap-2 mb-4 text-sm text-gray-800">
+          <input type="hidden" name="mic[bucket_draw]" value="0">
+          <input type="checkbox" name="mic[bucket_draw]" value="1"
+                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span>Bucket draw / random draw</span>
+        </div>
+        <div class="sm:col-span-2 hidden" data-mics-signup-form-target="urlBlock">
+          <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up URL", type: "url",
+                placeholder: "https://..." %>
+        </div>
+      </div>
+      <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
+            placeholder: "e.g. Walk-in 7:30 PM" %>
+      <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4,
+            placeholder: "Anything performers should know — the vibe, who hosts, drink minimum, etc." %>
+    </section>
+
+    <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+      <a href="<%= mics_home_path %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>
+      <%= render "shared/button", text: "Submit for review", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

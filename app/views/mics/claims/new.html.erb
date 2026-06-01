@@ -1,0 +1,22 @@
+<%
+  mics_seo title: "Claim #{@mic.name} — Find an Open Mic",
+            description: "Producers and co-producers — claim this mic to manage it on CocoScout."
+%>
+
+<%= render "mics/form_shell", title: "Claim #{@mic.name}",
+      description: "We'll verify your relationship to #{@mic.venue.name} before granting producer rights." do %>
+  <%= form_with url: mics_create_claim_path(@mic.slug), method: :post do %>
+    <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
+          options: [ [ "Lead producer", "producer" ], [ "Co-producer", "co_producer" ] ] %>
+    <%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email for the mic", type: "email", required: true,
+          help: "If this matches the venue's published contact, we auto-approve." %>
+    <%= render "mics/form_field", name: "mic_claim[proof][evidence_url]", label: "Evidence URL", type: "url",
+          placeholder: "Instagram post, venue page, etc.", help: "Anything that backs up your claim." %>
+    <%= render "mics/form_field", name: "mic_claim[proof][note]", label: "Anything else we should know?", type: "textarea", rows: 3 %>
+
+    <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+      <a href="<%= mics_detail_path(@mic.slug) %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>
+      <%= render "shared/button", text: "Submit claim", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

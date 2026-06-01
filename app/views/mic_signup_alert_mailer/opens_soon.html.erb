@@ -1,0 +1,16 @@
+<p>Hi,</p>
+<p>
+  <strong><%= @mic.name %></strong> sign-up opens in about <%= @lead_time_minutes %> minutes
+  at <%= @mic.venue.name %> in <%= @mic.venue.neighborhood_city %>.
+</p>
+
+<% if @signup_info && @signup_info[:url].present? %>
+  <p><a href="<%= @signup_info[:url] %>">Sign up here →</a></p>
+<% elsif @signup_info && @signup_info[:opens_at_text].present? %>
+  <p><%= @signup_info[:opens_at_text] %></p>
+<% end %>
+
+<p style="margin-top:1.5em; font-size:12px; color:#888;">
+  You set this alert on CocoScout Mics. Manage at
+  <a href="<%= mics_alerts_url %>"><%= mics_alerts_url %></a>.
+</p>

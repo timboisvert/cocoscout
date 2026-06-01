@@ -1,0 +1,122 @@
+<main class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+  <h1 class="text-2xl font-bold text-gray-900">Mics moderation queue</h1>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending submissions (<%= @pending_mics.size %>)</h2>
+    <% if @pending_mics.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_mics.each do |mic| %>
+          <li class="px-3 py-2 text-sm flex items-baseline justify-between gap-3 flex-wrap">
+            <div>
+              <span class="font-semibold"><%= mic.name %></span>
+              <span class="text-xs text-gray-500">· <%= mic.venue.name %> · <%= mic.venue.city %>, <%= mic.venue.state %></span>
+            </div>
+            <div class="flex gap-2">
+              <%= link_to "View", mics_detail_path(mic.slug), class: "text-xs text-pink-600 hover:underline" %>
+              <%= button_to "Approve", mics_approve_submission_path(mic.id), method: :post,
+                    class: "px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-xs" %>
+              <%= button_to "Reject", mics_reject_submission_path(mic.id), method: :post, data: { confirm: "Reject this submission?" },
+                    class: "px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-xs" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">No pending submissions.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending claims (<%= @pending_claims.size %>)</h2>
+    <% if @pending_claims.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_claims.each do |claim| %>
+          <li class="px-3 py-2 text-sm flex items-baseline justify-between gap-3 flex-wrap">
+            <div>
+              <span class="font-semibold"><%= claim.mic.name %></span>
+              <span class="text-xs text-gray-500">· claimed by <%= claim.claimant.email_address %> · <%= claim.role.humanize %></span>
+              <% if claim.proof["evidence_url"].present? %>
+                <a href="<%= claim.proof["evidence_url"] %>" target="_blank" rel="noopener" class="text-xs text-pink-600 hover:underline ml-2">evidence</a>
+              <% end %>
+            </div>
+            <div class="flex gap-2">
+              <%= button_to "Approve", mics_approve_claim_path(claim.id), method: :post,
+                    class: "px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-xs" %>
+              <%= button_to "Reject", mics_reject_claim_path(claim.id), method: :post,
+                    class: "px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-xs" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">No pending claims.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending challenges (<%= @pending_challenges.size %>)</h2>
+    <% if @pending_challenges.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_challenges.each do |ch| %>
+          <li class="px-3 py-2 text-sm">
+            <div>
+              <span class="font-semibold"><%= ch.mic.name %></span>
+              <span class="text-xs text-gray-500">· filed by <%= ch.challenger.email_address %> · response due <%= ch.response_due_at.strftime("%b %-d, %-l:%M%p") %></span>
+            </div>
+            <div class="mt-1 text-xs text-gray-700"><%= ch.reason %></div>
+            <div class="mt-2 flex gap-2">
+              <% %w[replaced co_produce dismissed needs_info].each do |outcome| %>
+                <%= button_to outcome.humanize, mics_resolve_challenge_path(ch.id, outcome: outcome), method: :post,
+                      class: "px-2 py-1 rounded bg-gray-700 hover:bg-gray-900 text-white text-xs" %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">No pending challenges.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending suggestions (<%= @pending_suggestions.size %>)</h2>
+    <% if @pending_suggestions.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @pending_suggestions.each do |s| %>
+          <li class="px-3 py-2 text-sm flex items-baseline justify-between gap-3 flex-wrap">
+            <div>
+              <span class="font-semibold"><%= s.mic.name %></span>
+              <span class="text-xs text-gray-500">· <%= s.submitter&.email_address || s.submitter_email %></span>
+              <div class="text-xs text-gray-700 mt-1"><%= s.note %></div>
+            </div>
+            <div class="flex gap-2">
+              <%= button_to "Approve", mics_approve_suggestion_path(s.id), method: :post,
+                    class: "px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-xs" %>
+              <%= button_to "Reject", mics_reject_suggestion_path(s.id), method: :post,
+                    class: "px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-xs" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">No pending suggestions.</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Draft hubs</h2>
+    <% if @draft_hubs.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <% @draft_hubs.each do |hub| %>
+          <li class="px-3 py-2 text-sm flex items-baseline justify-between">
+            <span><%= hub.name %>, <%= hub.state %></span>
+            <%= button_to "Promote", mics_promote_hub_path(hub.id), method: :post,
+                  class: "px-2 py-1 rounded bg-pink-500 hover:bg-pink-600 text-white text-xs" %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">No draft hubs.</p>
+    <% end %>
+  </section>
+</main>
