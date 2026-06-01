@@ -83,7 +83,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -116,19 +116,19 @@
         {
           "type": "controller",
           "class": "Manage::MessagesController",
-          "method": "index",
-          "line": 69,
+          "method": "show",
+          "line": 247,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
-            "name": "manage/messages/index",
-            "file": "app/views/manage/messages/index.html.erb"
+            "name": "manage/messages/show",
+            "file": "app/views/manage/messages/show.html.erb"
           }
         },
         {
           "type": "template",
-          "name": "manage/messages/index",
-          "line": 146,
-          "file": "app/views/manage/messages/index.html.erb",
+          "name": "manage/messages/show",
+          "line": 75,
+          "file": "app/views/manage/messages/show.html.erb",
           "rendered": {
             "name": "shared/messages/_message_card",
             "file": "app/views/shared/messages/_message_card.html.erb"
@@ -137,7 +137,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 252,
+          "line": 275,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -170,19 +170,19 @@
         {
           "type": "controller",
           "class": "Manage::MessagesController",
-          "method": "index",
-          "line": 69,
+          "method": "show",
+          "line": 247,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
-            "name": "manage/messages/index",
-            "file": "app/views/manage/messages/index.html.erb"
+            "name": "manage/messages/show",
+            "file": "app/views/manage/messages/show.html.erb"
           }
         },
         {
           "type": "template",
-          "name": "manage/messages/index",
-          "line": 146,
-          "file": "app/views/manage/messages/index.html.erb",
+          "name": "manage/messages/show",
+          "line": 75,
+          "file": "app/views/manage/messages/show.html.erb",
           "rendered": {
             "name": "shared/messages/_message_card",
             "file": "app/views/shared/messages/_message_card.html.erb"
@@ -191,7 +191,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 252,
+          "line": 275,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -224,19 +224,19 @@
         {
           "type": "controller",
           "class": "Manage::MessagesController",
-          "method": "index",
-          "line": 69,
+          "method": "show",
+          "line": 247,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
-            "name": "manage/messages/index",
-            "file": "app/views/manage/messages/index.html.erb"
+            "name": "manage/messages/show",
+            "file": "app/views/manage/messages/show.html.erb"
           }
         },
         {
           "type": "template",
-          "name": "manage/messages/index",
-          "line": 146,
-          "file": "app/views/manage/messages/index.html.erb",
+          "name": "manage/messages/show",
+          "line": 75,
+          "file": "app/views/manage/messages/show.html.erb",
           "rendered": {
             "name": "shared/messages/_message_card",
             "file": "app/views/shared/messages/_message_card.html.erb"
@@ -245,7 +245,7 @@
         {
           "type": "template",
           "name": "shared/messages/_message_card",
-          "line": 252,
+          "line": 275,
           "file": "app/views/shared/messages/_message_card.html.erb",
           "rendered": {
             "name": "shared/messages/_reactions",
@@ -267,6 +267,40 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
+      "fingerprint": "47fd69e19dee80f957a5e0406fe9acbf2b4009c2c36969ba1b2f8f79a9cbb3e5",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/mics/suggestions/thanks.html.erb",
+      "line": 29,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Back to #{Mic.find_by!(:slug => params[:slug].to_s.downcase).name}\", { :variant => \"primary\", :size => \"medium\", :path => mics_detail_path(Mic.find_by!(:slug => params[:slug].to_s.downcase).slug), :type => :link })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Mics::SuggestionsController",
+          "method": "thanks",
+          "line": 29,
+          "file": "app/controllers/mics/suggestions_controller.rb",
+          "rendered": {
+            "name": "mics/suggestions/thanks",
+            "file": "app/views/mics/suggestions/thanks.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "mics/suggestions/thanks"
+      },
+      "user_input": "Mic.find_by!(:slug => params[:slug].to_s.downcase).name",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
       "fingerprint": "4ce01672189ac01678ec7ba21ff6f81cea96f29d519d824a7c0ea416956cbf3c",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
@@ -279,7 +313,7 @@
           "type": "controller",
           "class": "Manage::ProductionsController",
           "method": "agreement_status",
-          "line": 324,
+          "line": 332,
           "file": "app/controllers/manage/productions_controller.rb",
           "rendered": {
             "name": "manage/productions/agreement_status",
@@ -305,7 +339,7 @@
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
       "file": "app/views/my/productions/show.html.erb",
-      "line": 386,
+      "line": 385,
       "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
       "code": "Production.find(params[:id]).agreement_signature_for(Current.user.person).content_snapshot",
       "render_path": [
@@ -415,7 +449,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -483,7 +517,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -517,7 +551,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -551,7 +585,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
@@ -569,6 +603,29 @@
         79
       ],
       "note": "False positive: event_type is a fixed enum. text: flows through `<%= text %>` auto-escape in shared/_button."
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "d922287040858c4302986a77e901d54b2de1860e150f7b500cadebd45d399f2e",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/mics/claims_controller.rb",
+      "line": 34,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:mic_claim).permit(:role, :proof => ([:email, :role, :evidence_url, :note]))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Mics::ClaimsController",
+        "method": "claim_params"
+      },
+      "user_input": ":role",
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -619,7 +676,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "cancel",
-          "line": 904,
+          "line": 938,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/cancel",
