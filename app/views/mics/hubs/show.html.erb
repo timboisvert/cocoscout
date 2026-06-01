@@ -1,0 +1,129 @@
+<%
+  mics_seo title: "#{@hub.name} captain — Find a Mic",
+            description: "City captain dashboard for #{@hub.name}, #{@hub.state}."
+%>
+<%= render "mics/header" %>
+
+<main class="w-full bg-white">
+  <%# Hero %>
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-6 sm:py-10">
+      <div class="text-xs uppercase tracking-wider text-pink-100 font-bold mb-2">City captain</div>
+      <h1 class="coustard-regular text-3xl sm:text-5xl"><%= @hub.name %>, <%= @hub.state %></h1>
+      <p class="mt-2 text-pink-100 text-sm sm:text-base max-w-3xl">
+        You can edit every mic in <%= @hub.name %>, approve community suggestions, and adjudicate claims.
+        Same powers as a superadmin — scoped to this city.
+      </p>
+    </div>
+  </section>
+
+  <% if flash[:notice] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm"><%= flash[:notice] %></div>
+  <% end %>
+
+  <%# Stats + queue %>
+  <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <% [
+        [ "Active mics",       @active_mics.size,    "bg-white border-gray-200 text-gray-900" ],
+        [ "Unclaimed",         @unclaimed_mics.size, "bg-amber-50 border-amber-200 text-amber-900" ],
+        [ "Pending review",    @pending_mic_ct,      "bg-white border-gray-200 text-gray-900" ],
+        [ "Suggestions",       @pending_suggestion_ct, "bg-white border-gray-200 text-gray-900" ],
+        [ "Claims + challenges", (@pending_claim_ct + @pending_challenge_ct), "bg-white border-gray-200 text-gray-900" ]
+      ].each do |label, n, classes| %>
+        <div class="border px-4 py-3 <%= classes %>">
+          <div class="text-[10px] uppercase tracking-wider font-bold opacity-80"><%= label %></div>
+          <div class="text-2xl font-bold tabular-nums mt-1"><%= n %></div>
+        </div>
+      <% end %>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2 text-sm">
+      <%= link_to "Open the queue →", mics_hub_queue_path(@hub.slug),
+            class: "cursor-pointer px-4 py-2 bg-gray-900 hover:bg-black text-white font-bold" %>
+      <%= link_to "Public hub page →", mics_city_path(@hub.slug),
+            class: "px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold" %>
+    </div>
+  </section>
+
+  <%# Unclaimed mics — the captain's main job. %>
+  <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+    <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+      <div>
+        <h2 class="coustard-regular text-2xl text-gray-900">Unclaimed mics</h2>
+        <p class="text-xs text-gray-500 mt-1">Live listings with no producer attached. You own these by default — edit them, post status, or invite a runner.</p>
+      </div>
+      <span class="text-xs uppercase tracking-wider text-gray-500 font-bold"><%= pluralize(@unclaimed_mics.size, "mic") %></span>
+    </div>
+
+    <% if @unclaimed_mics.any? %>
+      <div class="divide-y divide-gray-100 border border-gray-200">
+        <% @unclaimed_mics.each do |mic| %>
+          <div class="px-4 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap hover:bg-pink-50">
+            <span class="tabular-nums w-24 shrink-0 text-xs text-gray-500">
+              <%= mic.day_of_week ? mics_day_short(mic.day_of_week) : "—" %>
+              <%= mic.starts_local_time&.strftime("%-l:%M%p")&.downcase %>
+            </span>
+            <span class="flex-1 min-w-0">
+              <%= link_to mic.name, mics_detail_path(mic.slug),
+                    class: "font-bold text-gray-900 hover:underline" %>
+              <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></span>
+            </span>
+            <div class="flex items-center gap-2 shrink-0">
+              <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+                    class: "text-xs text-pink-600 font-bold hover:underline" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="border border-gray-200 px-4 sm:px-6 py-6 text-sm text-gray-500">
+        Every active mic has a producer. Nice work.
+      </div>
+    <% end %>
+  </section>
+
+  <%# Claimed mics — read-only at a glance. %>
+  <% if @claimed_mics.any? %>
+    <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <h2 class="coustard-regular text-2xl text-gray-900">Claimed mics</h2>
+          <p class="text-xs text-gray-500 mt-1">Producers actively manage these. You can still edit them if needed.</p>
+        </div>
+        <span class="text-xs uppercase tracking-wider text-gray-500 font-bold"><%= pluralize(@claimed_mics.size, "mic") %></span>
+      </div>
+
+      <div class="divide-y divide-gray-100 border border-gray-200">
+        <% @claimed_mics.each do |mic| %>
+          <div class="px-4 sm:px-6 py-3 flex items-baseline gap-3 hover:bg-pink-50">
+            <span class="flex-1 min-w-0">
+              <%= link_to mic.name, mics_detail_path(mic.slug),
+                    class: "font-bold text-gray-900 hover:underline" %>
+              <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= pluralize(mic.mic_producers.size, "producer") %></span>
+            </span>
+            <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+                  class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <%# Recent activity %>
+  <% if @recent_edits.any? %>
+    <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+      <h2 class="coustard-regular text-2xl text-gray-900 mb-3">Recent activity</h2>
+      <ul class="text-xs text-gray-600 space-y-0.5 max-w-3xl">
+        <% @recent_edits.each do |e| %>
+          <li class="tabular-nums">
+            <%= e.created_at.strftime("%Y-%m-%d %H:%M") %> ·
+            <%= link_to e.mic.name, mics_detail_path(e.mic.slug), class: "text-pink-600 hover:underline" %> ·
+            <%= e.source %> · <%= e.field %><% if e.new_value.present? %> → <%= e.new_value.truncate(60) %><% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</main>
+
+<%= render "mics/site_footer" %>

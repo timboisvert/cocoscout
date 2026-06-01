@@ -21,7 +21,7 @@ RSpec.describe "Mics My page", type: :request do
       get mics_my_path
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include("Mics you run")
-      expect(response.body).to include("Favorite mics")
+      expect(response.body).to include("Upcoming from your favorites")
       expect(response.body).to include("Star a mic")
     end
 
@@ -35,22 +35,26 @@ RSpec.describe "Mics My page", type: :request do
       expect(response.body).to include(mics_producer_mic_path(mic.slug))
     end
 
-    it "lists favorite mics with name + venue" do
+    it "lists favorite mics with name (calendar view) and name + venue (list view)" do
       mic = create(:mic, venue: venue, name: "Lotties Open Mic")
       MicFavorite.create!(user: user, mic: mic)
       sign_in
 
-      get mics_my_path
+      get mics_my_path # default = calendar (week view)
+      expect(response.body).to include("Lotties Open Mic")
+
+      get mics_my_path(view: "list")
       expect(response.body).to include("Lotties Open Mic")
       expect(response.body).to include(venue.name)
     end
 
-    it "shows a favorited mic on the row but offers Unfavorite" do
+    it "shows a favorited mic on the list view with an Unfavorite button" do
       mic = create(:mic, venue: venue, name: "Vault Mic")
       MicFavorite.create!(user: user, mic: mic)
       sign_in
 
-      get mics_my_path
+      # Unfavorite lives on the list view (calendar view is purely visual).
+      get mics_my_path(view: "list")
       expect(response.body).to include("Vault Mic")
       expect(response.body).to include("Unfavorite")
     end

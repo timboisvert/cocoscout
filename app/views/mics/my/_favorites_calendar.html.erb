@@ -1,0 +1,67 @@
+<%#
+  Week view: seven day blocks side-by-side, one column per day. Each
+  column shows the favorite mics happening that day with their time.
+  Locals:
+    favorite_mics — unused here; kept for parity with the partial signature
+    by_date       — Hash<Date, Array of {starts_at:, mic:, mic_status:}>
+%>
+<%
+  week_offset = params[:week].to_i # 0 = this week, 1 = next week, -1 = previous
+  week_start  = Date.current.beginning_of_week(:sunday) + (week_offset.weeks)
+  week_dates  = (week_start..(week_start + 6.days)).to_a
+%>
+
+<div class="flex items-baseline justify-between gap-3 mb-3">
+  <div class="text-sm text-gray-700">
+    <span class="coustard-regular text-xl text-gray-900">
+      <%= week_start.strftime("%b %-d") %> – <%= (week_start + 6.days).strftime("%b %-d") %>
+    </span>
+  </div>
+  <div class="flex items-center gap-1 text-xs">
+    <%= link_to "‹ Prev", mics_my_path(view: "calendar", week: week_offset - 1),
+          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+    <% unless week_offset.zero? %>
+      <%= link_to "This week", mics_my_path(view: "calendar"),
+            class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+    <% end %>
+    <%= link_to "Next ›", mics_my_path(view: "calendar", week: week_offset + 1),
+          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-7 gap-2 overflow-x-auto -mx-4 sm:-mx-8 px-4 sm:px-8 min-w-0">
+  <% week_dates.each do |date| %>
+    <%
+      occs = (by_date[date] || []).sort_by { |o| o[:starts_at] }
+      is_today = (date == Date.current)
+    %>
+    <div class="min-w-[140px] bg-white border <%= is_today ? "border-pink-500 ring-1 ring-pink-300" : "border-gray-200" %>">
+      <div class="px-2 py-2 border-b <%= is_today ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-gray-50" %> text-center">
+        <div class="text-[10px] uppercase tracking-wider <%= is_today ? "text-pink-700" : "text-gray-500" %> font-bold">
+          <%= date.strftime("%a") %>
+        </div>
+        <div class="coustard-regular text-2xl <%= is_today ? "text-pink-700" : "text-gray-900" %> tabular-nums leading-none mt-1">
+          <%= date.day %>
+        </div>
+      </div>
+      <ul class="px-1.5 py-2 space-y-1.5 min-h-[120px]">
+        <% if occs.empty? %>
+          <li class="text-[10px] text-gray-400 text-center py-1">—</li>
+        <% else %>
+          <% occs.each do |occ| %>
+            <li>
+              <%= link_to mics_detail_path(occ[:mic].slug),
+                    class: "block px-2 py-1.5 bg-pink-50 hover:bg-pink-100 border-l-2 border-pink-500 cursor-pointer" do %>
+                <div class="text-[10px] tabular-nums text-pink-700 font-bold">
+                  <%= occ[:starts_at].strftime("%-l:%M%p").downcase %>
+                </div>
+                <div class="text-xs font-bold text-gray-900 leading-tight"><%= occ[:mic].name %></div>
+                <div class="text-[10px] text-gray-500 truncate"><%= occ[:mic].venue.neighborhood_city %></div>
+              <% end %>
+            </li>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

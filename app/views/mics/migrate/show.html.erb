@@ -1,29 +1,305 @@
 <%
-  mics_seo title: "Migrate #{@mic.name} to CocoScout — CocoScout Mics",
-            description: "Move this mic to CocoScout-powered sign-ups, calendars, and sign-up alerts."
+  mics_seo title: "Migrate #{@mic.name} to CocoScout — Find a Mic",
+            description: "Move this mic to CocoScout-powered sign-ups, calendars, and alerts."
 %>
 <%= render "mics/header" %>
 
-<main class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-  <h1 class="coustard-regular text-2xl text-gray-900">Migrate <%= @mic.name %> to CocoScout</h1>
+<main class="w-full bg-white">
+  <%# Hero %>
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-8 sm:py-12">
+      <div class="max-w-5xl">
+        <div class="text-xs uppercase tracking-wider text-pink-100 font-bold mb-2">Powered by CocoScout</div>
+        <h1 class="coustard-regular text-3xl sm:text-5xl leading-[1.05]">
+          Power up <%= @mic.name %> with online sign-ups.
+        </h1>
+        <p class="mt-3 text-pink-100 text-base sm:text-lg max-w-2xl">
+          One click migrates this mic to CocoScout. You get a real online sign-up form, a
+          managed roster, alert delivery when sign-ups open, and a performance calendar
+          performers can see.
+        </p>
+      </div>
+    </div>
+  </section>
 
   <% if @already_migrated %>
-    <p class="mt-4 text-sm text-emerald-700">This mic is already powered by CocoScout.</p>
+    <section class="border-b border-gray-100 bg-emerald-50">
+      <div class="w-full px-4 sm:px-8 py-6 max-w-5xl">
+        <div class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <div class="coustard-regular text-2xl text-emerald-900">Already migrated ✓</div>
+            <p class="text-sm text-emerald-900/80 mt-1">
+              <strong><%= @mic.name %></strong> is already powered by CocoScout in
+              <strong><%= @mic.production&.organization&.name %></strong>.
+            </p>
+          </div>
+          <%= link_to "Open the production →", manage_production_path(@mic.production),
+                class: "px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer" %>
+        </div>
+      </div>
+    </section>
   <% else %>
-    <p class="mt-3 text-sm text-gray-600">
-      We'll create (or reuse) your Organization, a Production named "<%= @mic.name %>",
-      six months of weekly open-mic shows, and an active sign-up form. Your existing
-      listing stays the same — it just gets richer.
-    </p>
-    <ul class="mt-4 text-sm text-gray-700 list-disc list-inside space-y-1">
-      <li>You'll see all sign-ups in your CocoScout dashboard.</li>
-      <li>Sign-up alerts on your mic will fire automatically.</li>
-      <li>The public detail page will earn a "Powered by CocoScout" badge.</li>
-    </ul>
-    <%= form_with url: mics_producer_perform_migrate_path(@mic.slug), method: :post, class: "mt-6" do %>
-      <button type="submit" class="inline-flex px-5 py-2.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium">
-        Migrate now
-      </button>
-    <% end %>
+
+    <%# Benefits — at a glance %>
+    <section class="border-b border-gray-100">
+      <div class="w-full px-4 sm:px-8 py-8 max-w-5xl">
+        <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">What you get</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <% [
+            [ "Online sign-up form", "A real, customizable sign-up form. Custom questions, instructions, time slots, caps — no more Instagram bucket links." ],
+            [ "Roster you can manage", "See who's signed up, in what order. Handle walk-ins, drops, late additions, and cap enforcement in one place." ],
+            [ "Alerts when sign-up opens", "Performers get pinged the moment the form opens — drives more turnout than a Story post." ],
+            [ "Performance calendar + history", "Performers see their upcoming slots and past sets on one calendar. You see attendance and turnout over time." ]
+          ].each do |title, body| %>
+            <div class="p-4 border border-pink-100 bg-white">
+              <div class="coustard-regular text-lg text-gray-900"><%= title %></div>
+              <p class="mt-1 text-sm text-gray-600"><%= body %></p>
+            </div>
+          <% end %>
+        </div>
+        <p class="mt-4 text-xs text-gray-500">
+          Your existing <a href="<%= mics_detail_path(@mic.slug) %>" class="text-pink-600 underline">public listing</a>
+          stays — it just gets richer. The "Sign up" button on the listing automatically points at your new CocoScout sign-up form,
+          the "Powered by CocoScout" badge appears next to the mic name, and every upcoming date is wired up so performers can sign up in one click.
+        </p>
+      </div>
+    </section>
+
+    <%# Plan — the actual migration choices %>
+    <div class="w-full px-4 sm:px-8 py-6 sm:py-8 bg-pink-50">
+      <div class="w-full max-w-5xl">
+
+        <%= form_with url: mics_producer_perform_migrate_path(@mic.slug), method: :post,
+              data: { controller: "mics-migrate-form" }, class: "space-y-6" do %>
+
+          <%# Step 1: Organization %>
+          <section class="bg-white border border-pink-100">
+            <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+              <div class="flex items-baseline justify-between gap-2">
+                <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Step 1 · Organization</h2>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Required</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                Productions on CocoScout live inside an Organization. We'll add this mic to one.
+              </p>
+            </header>
+            <div class="px-5 sm:px-6 py-5 space-y-4">
+              <% if @organizations.any? %>
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="ui_org_choice" value="existing"
+                         checked
+                         class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+                         data-mics-migrate-form-target="orgChoice"
+                         data-action="change->mics-migrate-form#refresh">
+                  <span class="flex-1">
+                    <span class="block text-sm font-bold text-gray-900">Use an organization I already manage</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">You manage <%= pluralize(@organizations.size, "organization") %>.</span>
+                  </span>
+                </label>
+
+                <div data-mics-migrate-form-target="orgExistingBlock" class="pl-7">
+                  <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Choose one</label>
+                  <select name="organization_id"
+                          data-action="change->mics-migrate-form#reloadOnOrgChange"
+                          class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                    <% @organizations.each do |o| %>
+                      <option value="<%= o.id %>" <%= "selected" if o.id == @selected_org_id %>><%= o.name %> · <%= pluralize(o.productions.count, "production") %></option>
+                    <% end %>
+                  </select>
+                </div>
+              <% end %>
+
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input type="radio" name="ui_org_choice" value="new"
+                       <%= "checked" unless @organizations.any? %>
+                       class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+                       data-mics-migrate-form-target="orgChoice"
+                       data-action="change->mics-migrate-form#refresh">
+                <span class="flex-1">
+                  <span class="block text-sm font-bold text-gray-900">Create a new organization</span>
+                  <span class="block text-xs text-gray-500 mt-0.5">Use this if you don't already produce shows on CocoScout.</span>
+                </span>
+              </label>
+
+              <div data-mics-migrate-form-target="orgNewBlock" class="pl-7 <%= "hidden" if @organizations.any? %>">
+                <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Organization name</label>
+                <input type="text" name="new_organization_name" value="<%= @default_org_name %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                <p class="mt-1 text-xs text-gray-500">You'll be set as the owner. You can rename it later.</p>
+              </div>
+            </div>
+          </section>
+
+          <%# Step 2: Production %>
+          <section class="bg-white border border-pink-100">
+            <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+              <div class="flex items-baseline justify-between gap-2">
+                <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Step 2 · Production</h2>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Required</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                A Production is a long-running show or series — like "Mustache Mic" or "Sunday Comedy at Cafe X." This is what the sign-up form attaches to.
+              </p>
+            </header>
+            <div class="px-5 sm:px-6 py-5 space-y-4">
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input type="radio" name="ui_prod_choice" value="new" checked
+                       class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+                       data-mics-migrate-form-target="prodChoice"
+                       data-action="change->mics-migrate-form#refresh">
+                <span class="flex-1">
+                  <span class="block text-sm font-bold text-gray-900">Create a new production (recommended)</span>
+                  <span class="block text-xs text-gray-500 mt-0.5">Best for a brand-new sign-up flow.</span>
+                </span>
+              </label>
+
+              <div data-mics-migrate-form-target="prodNewBlock" class="pl-7">
+                <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Production name</label>
+                <input type="text" name="production_name" value="<%= @suggested_production_name %>"
+                       class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+              </div>
+
+              <% if @productions_in_org.any? %>
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="ui_prod_choice" value="existing"
+                         class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+                         data-mics-migrate-form-target="prodChoice"
+                         data-action="change->mics-migrate-form#refresh">
+                  <span class="flex-1">
+                    <span class="block text-sm font-bold text-gray-900">Add to an existing production</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">If you already manage a series this mic belongs to.</span>
+                  </span>
+                </label>
+
+                <div data-mics-migrate-form-target="prodExistingBlock" class="hidden pl-7">
+                  <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Choose one</label>
+                  <select name="production_id"
+                          class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                    <% @productions_in_org.each do |p| %>
+                      <option value="<%= p.id %>"><%= p.name %></option>
+                    <% end %>
+                  </select>
+                  <p class="mt-1 text-xs text-gray-500">We'll add 6 months of new open-mic dates to this production.</p>
+                </div>
+              <% end %>
+            </div>
+          </section>
+
+          <%# Step 3: Starting defaults — the four highest-leverage settings.
+              These are the ones we want the producer to lock in now so the
+              first sign-up form is functional out of the gate. Everything
+              else lives in the editor on the next page. %>
+          <section class="bg-white border border-pink-100">
+            <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+              <div class="flex items-baseline justify-between gap-2">
+                <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Step 3 · Starting settings</h2>
+                <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Editable later</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                A few defaults to make the first sign-up form usable out of the gate. Everything is editable on the next screen.
+              </p>
+            </header>
+            <div class="px-5 sm:px-6 py-5 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                <label class="block text-sm">
+                  <span class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">When does sign-up open?</span>
+                  <select name="signup_opens_days_before"
+                          class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                    <% [
+                      [ "Same day as the mic", 0 ],
+                      [ "1 day before",        1 ],
+                      [ "3 days before",       3 ],
+                      [ "1 week before",       7 ],
+                      [ "2 weeks before",      14 ]
+                    ].each do |label, days| %>
+                      <option value="<%= days %>" <%= "selected" if days == 7 %>><%= label %></option>
+                    <% end %>
+                  </select>
+                  <p class="mt-1 text-xs text-gray-500">Performers who subscribe get an alert the moment it opens.</p>
+                </label>
+
+                <% if @mic.signup_cap.present? %>
+                  <label class="block text-sm">
+                    <span class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Cap (performers per night)</span>
+                    <input type="number" name="slot_count" min="1" max="100"
+                           value="<%= @mic.signup_cap %>"
+                           class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                    <p class="mt-1 text-xs text-gray-500">How many sign-up slots the form will hand out.</p>
+                  </label>
+                <% end %>
+
+                <% if @mic.spot_length_minutes.present? %>
+                  <label class="block text-sm">
+                    <span class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Spot length (minutes)</span>
+                    <input type="number" name="slot_interval_minutes" min="1" max="30"
+                           value="<%= @mic.spot_length_minutes %>"
+                           class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                    <p class="mt-1 text-xs text-gray-500">How long each performer gets on stage.</p>
+                  </label>
+                <% end %>
+
+                <label class="block text-sm sm:col-span-2">
+                  <span class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">Sign-up instructions (optional)</span>
+                  <textarea name="instruction_text" rows="3"
+                            placeholder="e.g. Be on time. 5 minutes per performer. Don't promote other shows from the stage."
+                            class="w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"><%= @mic.blurb %></textarea>
+                  <p class="mt-1 text-xs text-gray-500">Shows at the top of the sign-up form. You can rewrite later.</p>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <%# Step 4: What we'll do — the summary of everything that's about
+              to happen, shown last so the producer can confirm and submit. %>
+          <section class="bg-white border border-pink-100">
+            <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+              <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Step 4 · What we'll do</h2>
+            </header>
+            <div class="px-5 sm:px-6 py-5">
+              <ul class="text-sm text-gray-700 space-y-2">
+                <li class="flex gap-2"><span>✓</span><span>Use the Organization you chose above.</span></li>
+                <li class="flex gap-2"><span>✓</span><span>Set up the Production (new or existing).</span></li>
+                <li class="flex gap-2"><span>✓</span>
+                  <span>
+                    Generate <strong class="tabular-nums"><%= @show_count_preview %></strong> open-mic dates over the next 6 months,
+                    matching this mic's schedule.
+                    <% if @first_occurrences.any? %>
+                      <span class="block text-xs text-gray-500 mt-1">
+                        First few:
+                        <%= @first_occurrences.map { |o| o[:starts_at].strftime("%a %b %-d") }.join(" · ") %>
+                      </span>
+                    <% end %>
+                  </span>
+                </li>
+                <li class="flex gap-2"><span>✓</span><span>Create an active open-mic sign-up form attached to the production, using your Step 3 settings.</span></li>
+                <li class="flex gap-2"><span>✓</span><span>Link this Mic to the Production. Your public detail page earns the "Powered by CocoScout" badge.</span></li>
+              </ul>
+
+              <div class="mt-4 px-3 py-2 border border-pink-200 bg-pink-50 text-xs text-pink-900">
+                <strong>You'll land on the sign-up form editor right after.</strong>
+                That's where you customize custom questions, exact opening time, closing time,
+                reminders, and everything else. You can keep tweaking as long as you like —
+                performers won't see anything until you're happy with it.
+              </div>
+              <p class="mt-3 text-xs text-gray-500">
+                Nothing on your public listing breaks during migration. The "Sign up" button on the public page starts pointing at your new CocoScout form immediately.
+              </p>
+            </div>
+          </section>
+
+          <div class="flex items-center justify-between gap-3 pt-2">
+            <%= link_to "Back to mic", mics_producer_mic_path(@mic.slug),
+                  class: "text-sm text-gray-500 hover:text-gray-700 underline" %>
+            <button type="submit"
+                    class="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white font-bold transition-colors duration-100">
+              Migrate to CocoScout sign-ups
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </main>
+
+<%= render "mics/site_footer" %>

@@ -11,9 +11,34 @@ module Mics
 
     Result = Struct.new(:mic, :production, :organization, :sign_up_form, :shows, keyword_init: true)
 
-    def initialize(mic:, user:)
-      @mic  = mic
+    # Organizations this user can migrate into — owns or has a manager role.
+    def self.organizations_for(user)
+      ids = []
+      ids += Organization.where(owner_id: user.id).pluck(:id)
+      ids += OrganizationRole.where(user_id: user.id, company_role: "manager").pluck(:organization_id)
+      Organization.where(id: ids.uniq).order(:name)
+    end
+
+    def self.user_manages?(user, org)
+      return false unless user && org
+      org.owner_id == user.id ||
+        OrganizationRole.where(user_id: user.id, organization_id: org.id, company_role: "manager").exists?
+    end
+
+    # Options:
+    #   organization_id     → reuse this org (must be owned/managed by user)
+    #   new_organization_name → create a new org with this name
+    #   production_id       → reuse this production (must belong to chosen org)
+    #   production_name     → name override when creating a new production
+    def initialize(mic:, user:, organization_id: nil, new_organization_name: nil,
+                   production_id: nil, production_name: nil, signup_form_defaults: {})
+      @mic = mic
       @user = user
+      @organization_id = organization_id.presence
+      @new_organization_name = new_organization_name.presence
+      @production_id = production_id.presence
+      @production_name = production_name.presence
+      @signup_form_defaults = (signup_form_defaults || {}).to_h.symbolize_keys
     end
 
     def call
@@ -23,9 +48,9 @@ module Mics
 
       Mic.transaction do
         org           = ensure_organization
-        production    = create_production(org)
+        production    = ensure_production(org)
         shows         = generate_shows(production)
-        sign_up_form  = create_sign_up_form(production)
+        sign_up_form  = ensure_sign_up_form(production)
         @mic.update!(production_id: production.id, claimed_at: @mic.claimed_at || Time.current)
         @mic.mic_edits.create!(editor_user_id: @user.id, source: :migration,
                                 field: "production_id", new_value: production.id.to_s,
@@ -38,20 +63,42 @@ module Mics
     private
 
     def ensure_organization
-      managed = OrganizationRole.where(user: @user, company_role: "manager").first&.organization
-      return managed if managed
+      if @organization_id
+        org = Organization.find(@organization_id)
+        unless self.class.user_manages?(@user, org)
+          raise "You don't have manager access to that organization."
+        end
+        return org
+      end
 
-      Organization.create!(name: "#{@user.email_address.split("@").first.titleize} Productions", owner: @user).tap do |org|
+      name = @new_organization_name.presence || default_org_name
+      Organization.create!(name: name, owner: @user).tap do |org|
         OrganizationRole.create!(user: @user, organization: org, company_role: "manager")
       end
     end
 
-    def create_production(org)
-      org.productions.create!(
-        name: @mic.name,
-        description: @mic.blurb.presence,
-        contact_email: @user.email_address
-      )
+    def ensure_production(org)
+      if @production_id
+        production = org.productions.find_by(id: @production_id)
+        raise "That production isn't in the chosen organization." unless production
+        production
+      else
+        org.productions.create!(
+          name: @production_name.presence || @mic.name,
+          description: @mic.blurb.presence,
+          contact_email: @user.email_address
+        )
+      end
+    end
+
+    def default_org_name
+      base = @user.email_address.split("@").first.titleize
+      "#{base} Productions"
+    end
+
+    def ensure_sign_up_form(production)
+      production.sign_up_forms.detect { |f| f.active && Array(f.event_type_filter).include?("open_mic") } ||
+        create_sign_up_form(production)
     end
 
     def generate_shows(production)
@@ -78,13 +125,29 @@ module Mics
     end
 
     def create_sign_up_form(production)
-      production.sign_up_forms.create!(
+      attrs = {
         name: "#{@mic.name} sign-up",
         scope: "repeated",
         event_matching: "event_types",
         event_type_filter: [ "open_mic" ],
         active: true
-      )
+      }
+
+      # Apply the producer's Step 4 starting settings. Skip blanks so we
+      # don't clobber the column defaults with nils.
+      opens_days = @signup_form_defaults[:opens_days_before].to_s
+      attrs[:opens_days_before] = opens_days.to_i if opens_days.match?(/\A\d+\z/)
+
+      slot_count = @signup_form_defaults[:slot_count].to_s
+      attrs[:slot_count] = slot_count.to_i if slot_count.match?(/\A\d+\z/) && slot_count.to_i.positive?
+
+      slot_minutes = @signup_form_defaults[:slot_interval_minutes].to_s
+      attrs[:slot_interval_minutes] = slot_minutes.to_i if slot_minutes.match?(/\A\d+\z/) && slot_minutes.to_i.positive?
+
+      instructions = @signup_form_defaults[:instruction_text].to_s.strip
+      attrs[:instruction_text] = instructions if instructions.present?
+
+      production.sign_up_forms.create!(attrs)
     end
   end
 end

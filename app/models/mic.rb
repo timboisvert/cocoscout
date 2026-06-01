@@ -112,6 +112,18 @@ class Mic < ApplicationRecord
   def claimed?
     mic_producers.any?
   end
+
+  # Can this user edit this mic? Three paths:
+  #   1. superadmin
+  #   2. has a MicProducer row on this mic
+  #   3. is an editor (captain) of this mic's hub
+  def manageable_by?(user)
+    return false unless user
+    return true if user.respond_to?(:superadmin?) && user.superadmin?
+    return true if mic_producers.where(user_id: user.id).exists?
+    hub = venue&.city_hub
+    hub && hub.editor?(user)
+  end
   scope :in_city, ->(city, state) {
     joins(:venue).where(venues: { city: city, state: state })
   }

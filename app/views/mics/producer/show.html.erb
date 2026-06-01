@@ -44,7 +44,7 @@
                 data-controller="mics-modal"
                 data-action="click->mics-modal#open"
                 data-mics-modal-target-id-value="<%= id %>"
-                class="cursor-pointer text-left px-4 py-4 bg-white border-2 border-gray-200 hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
+                class="cursor-pointer text-left px-4 py-4 bg-white border-2 border-gray-200 rounded hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
           <div class="flex items-baseline gap-2">
             <span class="text-2xl text-pink-500"><%= icon %></span>
             <span class="coustard-regular text-lg text-gray-900 group-hover:text-pink-700"><%= title %></span>
@@ -100,6 +100,26 @@
               <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap (performers)", value: @mic.signup_cap %>
             </div>
             <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
+
+            <%# Accessibility — drives the "Wheelchair accessible" filter on
+                city pages and the ♿ badge on listings. Posted as a nested
+                hash so the controller can merge into the jsonb column. %>
+            <fieldset class="mb-4">
+              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Accessibility</legend>
+              <label class="flex items-center gap-2 text-sm text-gray-800">
+                <input type="hidden" name="mic[accessibility][wheelchair]" value="0">
+                <input type="checkbox" name="mic[accessibility][wheelchair]" value="1"
+                       <%= "checked" if (@mic.accessibility || {})["wheelchair"] %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span>♿ Wheelchair accessible</span>
+              </label>
+              <% if (@mic.venue.accessibility || {})["wheelchair"] %>
+                <p class="mt-1 text-xs text-gray-500">The venue is already marked wheelchair accessible — leaving this off won't hide the badge.</p>
+              <% else %>
+                <p class="mt-1 text-xs text-gray-500">Performers filtering for wheelchair-accessible mics will only see this one if it's checked.</p>
+              <% end %>
+            </fieldset>
+
             <div class="flex justify-end pt-2 border-t border-gray-100">
               <%= render "shared/button", text: "Save basic info", variant: "primary", size: "medium", type: :submit %>
             </div>
@@ -116,43 +136,78 @@
           <% end %>
         </header>
         <div class="px-5 sm:px-6 py-5">
+          <%
+            actual_pattern = (@mic.recurrence_pattern || "weekly")
+            primary_choice = case actual_pattern
+                             when "weekly"   then "weekly"
+                             when "biweekly" then "biweekly"
+                             else                  "monthly"
+                             end
+            monthly_kind   = actual_pattern.start_with?("monthly_") ? actual_pattern : "monthly_nth_weekday"
+          %>
           <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-schedule-form" } do %>
 
-            <%= render "mics/form_field", name: "mic[recurrence_pattern]", label: "How often?", type: "select",
-                  value: (@mic.recurrence_pattern || "weekly"),
+            <%# Hidden field that actually persists. JS writes the resolved enum value into it. %>
+            <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
+                   data-mics-schedule-form-target="hiddenPattern">
+
+            <%# Top-level: Weekly / Bi-weekly / Monthly %>
+            <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
+                  value: primary_choice,
                   options: [
-                    [ "Weekly",                       "weekly" ],
-                    [ "Every other week (bi-weekly)", "biweekly" ],
-                    [ "Monthly — on the Nth weekday", "monthly_nth_weekday" ],
-                    [ "Monthly — on a fixed day",     "monthly_day_of_month" ]
+                    [ "Weekly",            "weekly" ],
+                    [ "Every other week",  "biweekly" ],
+                    [ "Monthly",           "monthly" ]
                   ],
-                  data: { "mics-schedule-form-target": "pattern",
+                  data: { "mics-schedule-form-target": "primary",
                           action: "change->mics-schedule-form#refresh" } %>
 
-            <%# Nth-week select, shown only for monthly_nth_weekday. %>
+            <%# Bi-weekly anchor — "starting on" so we know which weeks. %>
+            <div data-mics-schedule-form-target="anchorBlock"
+                 class="<%= primary_choice == "biweekly" ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "mic[recurrence_anchor_date]",
+                    label: "Starting on", type: "date",
+                    value: @mic.recurrence_anchor_date&.iso8601,
+                    help: "Pick any known mic date. We'll bracket the right alternating weeks from there." %>
+            </div>
+
+            <%# Sub-pattern shown only for Monthly. %>
+            <div data-mics-schedule-form-target="monthlyKindBlock"
+                 class="<%= primary_choice == "monthly" ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
+                    value: monthly_kind,
+                    options: [
+                      [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
+                      [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
+                    ],
+                    data: { "mics-schedule-form-target": "monthlyKind",
+                            action: "change->mics-schedule-form#refresh" } %>
+            </div>
+
+            <%# Nth-week select — only for Monthly + nth_weekday %>
             <div data-mics-schedule-form-target="nthBlock"
-                 class="<%= @mic.recurrence_monthly_nth_weekday? ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which week of the month?", type: "select",
-                    value: @mic.recurrence_nth_week,
+                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_nth_weekday") ? "" : "hidden" %>">
+              <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which one?", type: "select",
+                    value: @mic.recurrence_nth_week || 1,
                     options: [
                       [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ],
                       [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ]
                     ] %>
             </div>
 
-            <%# Day-of-month input, shown only for monthly_day_of_month. %>
+            <%# Day-of-month input — only for Monthly + day_of_month %>
             <div data-mics-schedule-form-target="domBlock"
-                 class="<%= @mic.recurrence_monthly_day_of_month? ? "" : "hidden" %>">
+                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") ? "" : "hidden" %>">
               <%= render "mics/form_field", name: "mic[recurrence_day_of_month]", label: "Day of month (1–31)", type: "text",
                     value: @mic.recurrence_day_of_month,
-                    help: "If the chosen day doesn't exist in a given month (e.g. the 31st of February), that month is skipped." %>
+                    help: "If a month doesn't have that day (e.g. Feb 30), it gets skipped." %>
             </div>
 
-            <%# Day-of-week + start time apply to every pattern except day-of-month. %>
+            <%# Day-of-week + start time — hidden only when day-of-month is the active monthly mode. %>
             <div data-mics-schedule-form-target="dowBlock"
-                 class="<%= @mic.recurrence_monthly_day_of_month? ? "hidden" : "" %>">
-              <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day?", type: "select",
+                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") ? "hidden" : "" %>">
+              <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day of the week?", type: "select",
                     value: @mic.day_of_week,
                     options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
             </div>
@@ -179,8 +234,9 @@
         <div class="px-5 sm:px-6 py-5">
           <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-signup-form" } do %>
-            <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up channel", type: "select", value: @mic.signup_method,
-                  options: [ [ "— unknown —", "" ] ] + Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
+            <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up type", type: "select",
+                  value: (@mic.signup_method.presence || "in_person"),
+                  options: Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
                   data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
 
             <div data-mics-signup-form-target="urlBlock"
@@ -190,8 +246,10 @@
                     help: "Shown to performers as the sign-up button on the public page." %>
             </div>
 
-            <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens", value: @mic.signup_opens_at_text,
-                  placeholder: "e.g. Walk-in 7:30 PM" %>
+            <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
+                  value: @mic.signup_opens_at_text,
+                  placeholder: "e.g. 7:30 PM, or 2 weeks beforehand",
+                  help: "Whatever describes it best — a time of day (\"7:30 PM\"), a lead time (\"2 weeks before\"), or however you'd say it." %>
 
             <label class="flex items-center gap-2 mb-4 text-sm text-gray-800">
               <%# Hidden so unchecked posts a falsy value, not "no key" — Rails sees `0` vs `1`. %>
@@ -253,29 +311,63 @@
         </div>
       </section>
 
-      <%# People — co-producers. %>
+      <%# Mic runners / Producers. %>
       <section class="bg-white border border-pink-100">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">People</h2>
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Mic runners / Producers</h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Everyone listed here has equal edit rights on the mic. The lead earns the "claimed" badge on the public page.
+          </p>
         </header>
         <div class="px-5 sm:px-6 py-5">
-          <ul class="text-sm text-gray-700 space-y-1 mb-4">
-            <% @co_producers.each do |mp| %>
-              <li><span class="font-bold"><%= mp.user.email_address %></span> — <span class="text-xs text-gray-500"><%= mp.role.humanize %></span></li>
-            <% end %>
-            <% if @co_producers.empty? %>
-              <li class="text-gray-500">No co-producers yet.</li>
-            <% end %>
-          </ul>
-          <%= form_with url: mics_producer_invite_path(@mic.slug), method: :post, class: "flex flex-wrap gap-3 items-end" do %>
-            <div class="flex-1 min-w-[240px]">
-              <%= render "mics/form_field", name: "email", label: "Invite by email", type: "email", required: true,
-                    placeholder: "co-producer@example.com" %>
-            </div>
-            <div class="pb-4">
-              <%= render "shared/button", text: "Send invite", variant: "primary", size: "medium", type: :submit %>
-            </div>
+          <% if @co_producers.any? %>
+            <ul class="divide-y divide-gray-100 border border-gray-200 mb-5">
+              <% @co_producers.each do |mp| %>
+                <% is_lead = (@mic.lead_producer_user_id == mp.user_id) %>
+                <% role_label = mp.role_producer? ? "Mic runner / Producer" : mp.role.humanize %>
+                <li class="px-3 py-2 flex items-baseline gap-3 flex-wrap">
+                  <span class="flex-1 min-w-0">
+                    <span class="font-bold text-gray-900"><%= mp.user.person&.name.presence || mp.user.email_address %></span>
+                    <% if mp.user.person&.name.present? %>
+                      <span class="text-xs text-gray-500 ml-1">· <%= mp.user.email_address %></span>
+                    <% end %>
+                    <span class="text-xs text-gray-500 ml-1">· <%= role_label %></span>
+                    <% if is_lead %>
+                      <span class="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold">Lead</span>
+                    <% end %>
+                  </span>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <% if Current.user&.superadmin? %>
+                      <%= button_to impersonate_user_path, method: :post, params: { email: mp.user.email_address },
+                            class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold" do %>
+                        Impersonate
+                      <% end %>
+                    <% end %>
+                    <% unless is_lead %>
+                      <%= button_to "Make lead", mics_producer_set_lead_producer_path(@mic.slug, producer_id: mp.id), method: :post,
+                            class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold" %>
+                    <% end %>
+                    <%= button_to "Remove", mics_producer_remove_producer_path(@mic.slug, producer_id: mp.id), method: :delete,
+                          data: { turbo_confirm: "Remove #{mp.user.email_address} from #{@mic.name}?" },
+                          class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="text-sm text-gray-500 mb-5">No mic runners yet. Add the first one below.</p>
           <% end %>
+
+          <%# Add via modal. Search by email; if no match, fields for inviting appear. %>
+          <div class="flex justify-end">
+            <button type="button"
+                    data-controller="mics-modal"
+                    data-action="click->mics-modal#open"
+                    data-mics-modal-target-id-value="modal-add-producer"
+                    class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100">
+              + Add a mic runner / producer
+            </button>
+          </div>
         </div>
       </section>
 
@@ -383,6 +475,58 @@
       <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
               class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
       <%= render "shared/button", text: "Cancel this date", variant: "danger", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render "mics/producer/modal", id: "modal-add-producer", title: "Add a mic runner / producer" do %>
+  <p class="text-sm text-gray-600 mb-4">
+    Start with their email. If they're already on CocoScout we'll just add them; otherwise we'll send them an invite.
+  </p>
+  <%= form_with url: mics_producer_add_producer_path(@mic.slug), method: :post,
+        data: { controller: "user-invite-form",
+                "user-invite-form-url-value": mics_producer_lookup_path(@mic.slug),
+                "user-invite-form-scope-label-value": "this mic" },
+        class: "space-y-4" do %>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Email</label>
+      <input type="email" name="email" required
+             placeholder="person@example.com"
+             data-user-invite-form-target="email"
+             data-action="input->user-invite-form#search"
+             class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm">
+      <div data-user-invite-form-target="status" class="mt-1 text-xs"></div>
+    </div>
+
+    <div data-user-invite-form-target="newFields" class="hidden">
+      <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Name</label>
+      <input type="text" name="name"
+             placeholder="Alex Comic"
+             data-user-invite-form-target="name"
+             class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm">
+      <p class="mt-1 text-xs text-gray-500">We'll create their account and email them an invite to set a password.</p>
+    </div>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Role</label>
+      <select name="role"
+              class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm bg-white">
+        <option value="producer">Mic runner / Producer</option>
+        <option value="co_producer">Co-producer</option>
+        <option value="host">Host</option>
+      </select>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+      <button type="submit"
+              data-user-invite-form-target="submit"
+              class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100 opacity-50 cursor-not-allowed"
+              disabled>
+        Add to mic
+      </button>
     </div>
   <% end %>
 <% end %>

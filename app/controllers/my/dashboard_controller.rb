@@ -33,7 +33,7 @@ module My
       @next_month = next_month
 
       # === Filter parameters ===
-      all_calendar_types = %w[show rehearsal meeting course audition shift]
+      all_calendar_types = %w[show rehearsal meeting course audition shift mic]
       @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : all_calendar_types
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
@@ -325,22 +325,24 @@ module My
       # --- Favorited open mics (from /mics finder) ---
       # Each favorite injects its next ~12 occurrences as calendar events.
       # Clicking goes to the public mic detail page, not to anything in /my.
-      favorite_mics = Mic.joins(:mic_favorites)
-                         .where(mic_favorites: { user_id: Current.user.id })
-                         .includes(:venue).distinct
-      favorite_mics.each do |mic|
-        mic.next_occurrences(limit: 12).each do |occ|
-          starts = occ[:starts_at]
-          @calendar_events << {
-            date: starts.to_date,
-            time: starts,
-            title: mic.name,
-            subtitle: "★ Open mic · #{mic.venue.neighborhood_city}",
-            path: "/mics/m/#{mic.slug}",
-            type: :mic_favorite,
-            color: "pink",
-            event_type: "open_mic"
-          }
+      if @event_type_filter.include?("mic")
+        favorite_mics = Mic.joins(:mic_favorites)
+                           .where(mic_favorites: { user_id: Current.user.id })
+                           .includes(:venue).distinct
+        favorite_mics.each do |mic|
+          mic.next_occurrences(limit: 12).each do |occ|
+            starts = occ[:starts_at]
+            @calendar_events << {
+              date: starts.to_date,
+              time: starts,
+              title: mic.name,
+              subtitle: "Open mic · #{mic.venue.neighborhood_city}",
+              path: "/mics/m/#{mic.slug}",
+              type: :mic_favorite,
+              color: "pink",
+              event_type: "open_mic"
+            }
+          end
         end
       end
 

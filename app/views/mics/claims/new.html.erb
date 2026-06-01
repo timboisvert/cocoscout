@@ -1,15 +1,16 @@
 <%
-  mics_seo title: "Claim #{@mic.name} — Find an Open Mic",
+  mics_seo title: "Claim #{@mic.name} — Find a Mic",
             description: "Producers and co-producers — claim this mic to manage it on CocoScout."
 %>
 
 <%= render "mics/form_shell", title: "Claim #{@mic.name}",
       description: "We'll verify your relationship to #{@mic.venue.name} before granting producer rights." do %>
   <%= form_with url: mics_create_claim_path(@mic.slug), method: :post do %>
+    <%# Enum values stay producer / co_producer — labels updated for clarity. %>
     <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
-          options: [ [ "Lead producer", "producer" ], [ "Co-producer", "co_producer" ] ] %>
-    <%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email for the mic", type: "email", required: true,
-          help: "If this matches the venue's published contact, we auto-approve." %>
+          options: [ [ "Mic runner / producer", "producer" ], [ "Venue owner / rep", "co_producer" ] ] %>
+    <%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email/phone for the mic",
+          type: "text", required: true %>
     <%= render "mics/form_field", name: "mic_claim[proof][evidence_url]", label: "Evidence URL", type: "url",
           placeholder: "Instagram post, venue page, etc.", help: "Anything that backs up your claim." %>
     <%= render "mics/form_field", name: "mic_claim[proof][note]", label: "Anything else we should know?", type: "textarea", rows: 3 %>

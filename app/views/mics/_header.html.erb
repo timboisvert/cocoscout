@@ -1,10 +1,48 @@
+<%# Impersonation banner — visible across every mics page so superadmins
+    always know whose shoes they're standing in, plus the relevant roles
+    (city captain, mic runner, superadmin) so they can verify the
+    impersonation is reaching the right view. %>
+<% if impersonating? && Current.user %>
+  <%
+    cu = Current.user
+    captain_hubs = CityHub.joins(:memberships)
+                          .where(city_hub_memberships: { user_id: cu.id, role: CityHubMembership.roles[:editor] })
+                          .order(:name)
+    runs_mic_count = MicProducer.where(user_id: cu.id).count
+  %>
+  <div class="w-full bg-amber-400 text-amber-950 border-b border-amber-500">
+    <div class="w-full px-3 sm:px-6 py-2 flex items-center gap-3 flex-wrap text-sm">
+      <span class="font-bold uppercase tracking-wider text-[10px] bg-amber-950 text-amber-100 px-2 py-0.5 rounded">Impersonating</span>
+      <span class="font-bold"><%= cu.person&.name.presence || cu.email_address %></span>
+      <span class="text-xs opacity-75">· <%= cu.email_address %></span>
+
+      <% if cu.superadmin? %>
+        <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-700 text-white font-bold rounded">Superadmin</span>
+      <% end %>
+      <% captain_hubs.each do |hub| %>
+        <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-emerald-700 text-white font-bold rounded">
+          Captain · <%= hub.name %>
+        </span>
+      <% end %>
+      <% if runs_mic_count.positive? %>
+        <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-indigo-700 text-white font-bold rounded">
+          Mic runner · <%= runs_mic_count %>
+        </span>
+      <% end %>
+
+      <%= button_to "Stop impersonating", stop_impersonating_user_path, method: :post,
+            class: "ml-auto cursor-pointer px-3 py-1 bg-amber-950 hover:bg-black text-amber-100 text-xs font-bold rounded" %>
+    </div>
+  </div>
+<% end %>
+
 <%# Public Open Mic Finder header. Pink, full-bleed, single source of search. %>
 <header class="sticky top-0 z-30 bg-pink-500 text-white border-b border-pink-600 shadow-sm w-full">
   <%# Top row: wordmark + search + (desktop only) nav %>
   <div class="w-full px-3 sm:px-6 py-2.5 flex items-center gap-2 sm:gap-4">
     <a href="<%= mics_home_path %>" class="flex items-center gap-1.5 shrink-0">
       <span class="text-base sm:text-2xl coustard-regular tracking-tight whitespace-nowrap">
-        ★ Find a Mic
+        Find a Mic
       </span>
     </a>
 
@@ -25,18 +63,13 @@
     </form>
 
     <nav class="hidden md:flex items-center gap-3 text-sm shrink-0">
-      <% if Current.user&.superadmin? %>
-        <%
-          pending_total = MicSuggestion.status_pending.count +
-                          MicClaim.status_pending.count +
-                          MicChallenge.status_pending.count +
-                          Mic.pending_moderation.count
-        %>
-        <a href="<%= mics_queue_path %>" class="text-white font-bold underline-offset-4 hover:underline">
-          Queue<% if pending_total.positive? %>
-            <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-white text-pink-700 rounded"><%= pending_total %></span>
-          <% end %>
-        </a>
+      <% if Current.user && !Current.user.superadmin? %>
+        <% captain_hub = CityHubMembership.where(user_id: Current.user.id, role: CityHubMembership.roles[:editor]).joins(:city_hub).order("city_hubs.name").first&.city_hub %>
+        <% if captain_hub %>
+          <a href="<%= mics_captain_hub_path(captain_hub.slug) %>" class="text-white font-bold underline-offset-4 hover:underline">
+            <%= captain_hub.name %> Captain
+          </a>
+        <% end %>
       <% end %>
       <a href="<%= mics_submit_path %>" class="text-pink-100 hover:text-white">Submit a mic</a>
       <a href="<%= mics_my_path %>" class="text-white font-bold underline-offset-4 hover:underline">My Mics</a>
@@ -46,9 +79,6 @@
   <%# Mobile/tablet nav: secondary strip below search, always visible up to md. %>
   <nav class="md:hidden border-t border-pink-400/60 bg-pink-500">
     <div class="w-full px-3 py-1.5 flex items-center gap-4 text-xs overflow-x-auto whitespace-nowrap">
-      <% if Current.user&.superadmin? %>
-        <a href="<%= mics_queue_path %>" class="text-white font-bold underline-offset-4 hover:underline">Queue</a>
-      <% end %>
       <a href="<%= mics_submit_path %>" class="text-pink-100 hover:text-white">Submit a mic</a>
       <a href="<%= mics_my_path %>" class="ml-auto text-white font-bold underline-offset-4 hover:underline">My Mics</a>
     </div>

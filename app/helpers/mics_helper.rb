@@ -29,7 +29,7 @@ module MicsHelper
       tags << tag.meta(property: "og:description", content: description)
       tags << tag.meta(property: "og:url",         content: canonical_url)
       tags << tag.meta(property: "og:type",        content: "website")
-      tags << tag.meta(property: "og:site_name",   content: "CocoScout Mics")
+      tags << tag.meta(property: "og:site_name",   content: "Find a Mic")
       tags << tag.meta(property: "og:image",       content: og_image_url) if og_image_url
       # Twitter
       tags << tag.meta(name: "twitter:card",        content: "summary_large_image")
@@ -161,6 +161,20 @@ module MicsHelper
   def next_upcoming_date_for(mic)
     occ = mic.next_occurrences(limit: 1).first
     (occ ? occ[:starts_at].to_date : Date.current).iso8601
+  end
+
+  # Formats a `signup_opens_at_text` value (stored as "HH:MM") into the
+  # human "7:30 PM" form for public display. Falls back to the raw value
+  # if it's not a parseable time — old free-text entries still render.
+  def mics_signup_opens_label(text)
+    return nil if text.blank?
+    if text.match?(/\A\d{1,2}:\d{2}\z/)
+      Time.zone.parse(text).strftime("%-l:%M %p")
+    else
+      text
+    end
+  rescue ArgumentError, TZInfo::AmbiguousTime
+    text
   end
 
   def mics_time_label(time)

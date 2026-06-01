@@ -1,59 +1,188 @@
 <%
-  mics_seo title: "Submit a mic — Find an Open Mic",
-            description: "Add a new open mic to CocoScout. Anyone with an account can list a mic anywhere in the U.S."
+  mics_seo title: "Submit a mic — Find a Mic",
+            description: "Add a new open mic. Anyone with an account can list a mic anywhere in the U.S."
 %>
+<%= render "mics/header" %>
 
-<%= render "mics/form_shell", title: "Submit a mic",
-      description: "Any city, any night. Submissions land in a moderation queue and go live within a day." do %>
-  <%= form_with url: mics_create_submission_path, method: :post do %>
-    <section class="mb-8">
-      <div class="text-xs uppercase tracking-wider text-pink-600 font-bold mb-3 pb-1 border-b border-pink-100">Venue</div>
-      <%= render "mics/form_field", name: "venue[name]",         label: "Venue name", required: true %>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-        <%= render "mics/form_field", name: "venue[address1]",     label: "Address" %>
-        <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood" %>
-        <%= render "mics/form_field", name: "venue[city]",         label: "City", required: true %>
-        <%= render "mics/form_field", name: "venue[state]",        label: "State (2-letter)", required: true, maxlength: 2 %>
-        <%= render "mics/form_field", name: "venue[postal_code]",  label: "ZIP" %>
-      </div>
-    </section>
+<main class="w-full bg-white">
+  <section class="bg-pink-500 text-white border-b border-pink-600">
+    <div class="w-full px-4 sm:px-8 py-5 sm:py-7">
+      <h1 class="coustard-regular text-3xl sm:text-4xl">Submit a mic</h1>
+      <p class="mt-1 text-sm sm:text-base text-pink-100 max-w-3xl">
+        Any city, any night. Submissions land in a moderation queue and go live within a day.
+      </p>
+    </div>
+  </section>
 
-    <section class="mb-8">
-      <div class="text-xs uppercase tracking-wider text-pink-600 font-bold mb-3 pb-1 border-b border-pink-100">Mic</div>
-      <%= render "mics/form_field", name: "mic[name]", label: "Mic name", required: true %>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
-        <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select",
-              options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
-        <%= render "mics/form_field", name: "mic[day_of_week]", label: "Day", type: "select",
-              options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
-        <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time" %>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4" data-controller="mics-signup-form">
-        <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up channel", type: "select",
-              options: [ [ "— unknown —", "" ] ] + Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
-              data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
-        <%= render "mics/form_field", name: "mic[cost]", label: "Cost", type: "select",
-              options: Mic.costs.keys.map { |k| [ k.humanize, k ] } %>
-        <div class="sm:col-span-2 flex items-center gap-2 mb-4 text-sm text-gray-800">
-          <input type="hidden" name="mic[bucket_draw]" value="0">
-          <input type="checkbox" name="mic[bucket_draw]" value="1"
-                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-          <span>Bucket draw / random draw</span>
-        </div>
-        <div class="sm:col-span-2 hidden" data-mics-signup-form-target="urlBlock">
-          <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up URL", type: "url",
-                placeholder: "https://..." %>
-        </div>
-      </div>
-      <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
-            placeholder: "e.g. Walk-in 7:30 PM" %>
-      <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4,
-            placeholder: "Anything performers should know — the vibe, who hosts, drink minimum, etc." %>
-    </section>
-
-    <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
-      <a href="<%= mics_home_path %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>
-      <%= render "shared/button", text: "Submit for review", variant: "primary", size: "medium", type: :submit %>
+  <% if flash[:alert] %>
+    <div class="w-full px-4 sm:px-8 py-3 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+      <%= flash[:alert] %>
     </div>
   <% end %>
-<% end %>
+
+  <div class="w-full px-4 sm:px-8 py-6 bg-pink-50">
+    <div class="w-full max-w-5xl">
+      <%= form_with url: mics_create_submission_path, method: :post, class: "space-y-6" do %>
+
+        <%# Venue %>
+        <section class="bg-white border border-pink-100">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Venue</h2>
+          </header>
+          <div class="px-5 sm:px-6 py-5">
+            <%= render "mics/form_field", name: "venue[name]", label: "Venue name", required: true %>
+            <%= render "mics/form_field", name: "venue[address1]", label: "Address" %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood" %>
+              <%= render "mics/form_field", name: "venue[postal_code]",  label: "ZIP" %>
+              <%= render "mics/form_field", name: "venue[city]",  label: "City", required: true %>
+              <div class="mb-4">
+                <%= render "shared/us_state_select",
+                      name: "venue[state]", required: true, label: "State" %>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <%# Basic info %>
+        <section class="bg-white border border-pink-100">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
+          </header>
+          <div class="px-5 sm:px-6 py-5">
+            <%= render "mics/form_field", name: "mic[name]", label: "Mic name", required: true %>
+            <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select",
+                  options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)" %>
+              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap (performers)" %>
+            </div>
+            <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4,
+                  placeholder: "Anything performers should know — the vibe, who hosts, drink minimum, etc." %>
+          </div>
+        </section>
+
+        <%# Schedule %>
+        <section class="bg-white border border-pink-100">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Schedule</h2>
+          </header>
+          <div class="px-5 sm:px-6 py-5" data-controller="mics-schedule-form">
+            <input type="hidden" name="mic[recurrence_pattern]" value="weekly" data-mics-schedule-form-target="hiddenPattern">
+
+            <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
+                  value: "weekly",
+                  options: [
+                    [ "Weekly",           "weekly" ],
+                    [ "Every other week", "biweekly" ],
+                    [ "Monthly",          "monthly" ]
+                  ],
+                  data: { "mics-schedule-form-target": "primary",
+                          action: "change->mics-schedule-form#refresh" } %>
+
+            <div data-mics-schedule-form-target="anchorBlock" class="hidden">
+              <%= render "mics/form_field", name: "mic[recurrence_anchor_date]", label: "Starting on", type: "date",
+                    help: "Pick any known mic date so we know which alternating weeks." %>
+            </div>
+
+            <div data-mics-schedule-form-target="monthlyKindBlock" class="hidden">
+              <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
+                    value: "monthly_nth_weekday",
+                    options: [
+                      [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
+                      [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
+                    ],
+                    data: { "mics-schedule-form-target": "monthlyKind",
+                            action: "change->mics-schedule-form#refresh" } %>
+            </div>
+
+            <div data-mics-schedule-form-target="nthBlock" class="hidden">
+              <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which one?", type: "select",
+                    value: 1,
+                    options: [ [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ], [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ] ] %>
+            </div>
+
+            <div data-mics-schedule-form-target="domBlock" class="hidden">
+              <%= render "mics/form_field", name: "mic[recurrence_day_of_month]", label: "Day of month (1–31)",
+                    help: "If a month doesn't have that day (e.g. Feb 30), it's skipped." %>
+            </div>
+
+            <div data-mics-schedule-form-target="dowBlock">
+              <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day of the week?", type: "select",
+                    options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
+            </div>
+
+            <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time" %>
+          </div>
+        </section>
+
+        <%# Sign-up info %>
+        <section class="bg-white border border-pink-100">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
+          </header>
+          <div class="px-5 sm:px-6 py-5" data-controller="mics-signup-form">
+            <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up type", type: "select",
+                  value: "in_person",
+                  options: Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
+                  data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
+
+            <div data-mics-signup-form-target="urlBlock" class="hidden">
+              <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up link (URL)", type: "url",
+                    placeholder: "https://...",
+                    help: "Shown to performers as the sign-up button on the public page." %>
+            </div>
+
+            <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
+                  placeholder: "e.g. 7:30 PM, or 2 weeks beforehand",
+                  help: "Whatever describes it best — a time of day (\"7:30 PM\"), a lead time (\"2 weeks before\"), or however you'd say it." %>
+
+            <label class="flex items-center gap-2 mb-4 text-sm text-gray-800">
+              <input type="hidden" name="mic[bucket_draw]" value="0">
+              <input type="checkbox" name="mic[bucket_draw]" value="1"
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span>Bucket draw / random draw</span>
+            </label>
+          </div>
+        </section>
+
+        <%# Socials — optional at create time but here so you don't have to come back. %>
+        <section class="bg-white border border-pink-100">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Socials (optional)</h2>
+            <p class="text-xs text-gray-500 mt-1">Add as many as you like — each becomes a button on the public mic page.</p>
+          </header>
+          <div class="px-5 sm:px-6 py-5 space-y-3">
+            <% 3.times do |i| %>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <label class="block text-sm">
+                  <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Type</span>
+                  <select name="mic_links[<%= i %>][link_type]"
+                          class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white">
+                    <option value="">— pick one —</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="x_twitter">X / Twitter</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="website">Website</option>
+                  </select>
+                </label>
+                <label class="block text-sm sm:col-span-2">
+                  <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">URL</span>
+                  <input type="url" name="mic_links[<%= i %>][url]" placeholder="https://…"
+                         class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none">
+                </label>
+              </div>
+            <% end %>
+          </div>
+        </section>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <a href="<%= mics_home_path %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>
+          <%= render "shared/button", text: "Submit for review", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</main>
+
+<%= render "mics/site_footer" %>

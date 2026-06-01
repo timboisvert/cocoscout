@@ -12,6 +12,23 @@ module Mics
       @favorite_mics = Mic.joins(:mic_favorites)
                           .where(mic_favorites: { user_id: current_user.id })
                           .includes(:venue).distinct
+
+      @favorites_view = params[:view] == "list" ? "list" : "calendar"
+
+      # Pre-compute upcoming occurrences across every favorite. We group
+      # by date for the calendar render and keep a flat sorted list for
+      # the list render.
+      @fav_occurrences = []
+      @favorite_mics.each do |m|
+        m.next_occurrences(limit: 12).each do |occ|
+          @fav_occurrences << { date: occ[:starts_at].to_date,
+                                starts_at: occ[:starts_at],
+                                mic: m,
+                                mic_status: occ[:mic_status] }
+        end
+      end
+      @fav_occurrences.sort_by! { |o| [ o[:starts_at], o[:mic].name.to_s.downcase ] }
+      @fav_by_date = @fav_occurrences.group_by { |o| o[:date] }
     end
   end
 end

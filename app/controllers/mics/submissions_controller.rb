@@ -25,6 +25,15 @@ module Mics
         @mic.pending = true
         @mic.save!
 
+        Array(params[:mic_links]).each do |_index, attrs|
+          next if attrs.blank?
+          type = attrs[:link_type].to_s
+          url  = attrs[:url].to_s.strip
+          next if url.blank?
+          next unless MicLink.link_types.key?(type)
+          @mic.mic_links.create!(link_type: type, url: url)
+        end
+
         @mic.mic_edits.create!(
           editor_user_id: current_user&.id,
           source: MicEdit.sources[:suggestion],
@@ -47,7 +56,15 @@ module Mics
     end
 
     def mic_params
-      params.require(:mic).permit(:name, :format, :day_of_week, :starts_local_time, :signup_method, :bucket_draw, :signup_url, :signup_opens_at_text, :blurb, :spot_length_minutes, :signup_cap, :cost, :drink_minimum_amount_cents, :cover_amount_cents, :min_age, :host_summary)
+      params.require(:mic).permit(
+        :name, :format,
+        :day_of_week, :starts_local_time,
+        :recurrence_pattern, :recurrence_interval, :recurrence_nth_week,
+        :recurrence_day_of_month, :recurrence_anchor_date,
+        :signup_method, :bucket_draw, :signup_url, :signup_opens_at_text,
+        :blurb, :spot_length_minutes, :signup_cap, :cost,
+        :drink_minimum_amount_cents, :cover_amount_cents, :min_age, :host_summary
+      )
     end
   end
 end

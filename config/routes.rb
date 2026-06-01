@@ -103,13 +103,18 @@ Rails.application.routes.draw do
     post  "producer/:slug/status",    to: "producer#post_status",    as: :producer_post_status
     post  "producer/:slug/invite",    to: "producer#invite",         as: :producer_invite
     post  "producer/:slug/cancel_date", to: "producer#cancel_date",  as: :producer_cancel_date
+    get    "producer/:slug/producer_lookup", to: "producer#producer_lookup", as: :producer_lookup
+    post   "producer/:slug/producers", to: "producer#add_producer", as: :producer_add_producer
+    delete "producer/:slug/producers/:producer_id", to: "producer#remove_producer", as: :producer_remove_producer
+    post   "producer/:slug/producers/:producer_id/set_lead", to: "producer#set_lead_producer", as: :producer_set_lead_producer
     post  "producer/:slug/suggestions/:suggestion_id/approve", to: "producer#approve_suggestion", as: :producer_approve_suggestion
     post  "producer/:slug/suggestions/:suggestion_id/reject",  to: "producer#reject_suggestion",  as: :producer_reject_suggestion
     post  "producer/:slug/links",     to: "producer#add_link",       as: :producer_add_link
     delete "producer/:slug/links/:link_id", to: "producer#remove_link", as: :producer_remove_link
 
     # Hub editor queues + admin queue.
-    get "hubs/:slug/queue", to: "hubs#queue", as: :hub_queue, constraints: { slug: /[a-z0-9-]+/ }
+    get "hubs/:slug",       to: "hubs#show",  as: :captain_hub, constraints: { slug: /[a-z0-9-]+/ }
+    get "hubs/:slug/queue", to: "hubs#queue", as: :hub_queue,   constraints: { slug: /[a-z0-9-]+/ }
 
     # My Mics — the single signed-in landing page (managed + favorited).
     get "my", to: "my#index", as: :my
@@ -270,6 +275,16 @@ Rails.application.routes.draw do
     post "/mics/suggestions/:id/approve",      to: "superadmin/mics#approve_suggestion", as: "mics_approve_suggestion"
     post "/mics/suggestions/:id/reject",       to: "superadmin/mics#reject_suggestion",  as: "mics_reject_suggestion"
     post "/mics/hubs/:id/promote",             to: "superadmin/mics#promote_hub",        as: "mics_promote_hub"
+
+    # Hub (city captain) management.
+    get    "/mics/hubs",                       to: "superadmin/mics/hubs#index",   as: "mics_hubs"
+    post   "/mics/hubs",                       to: "superadmin/mics/hubs#create",  as: "create_mics_hub"
+    get    "/mics/hubs/:slug",                 to: "superadmin/mics/hubs#show",    as: "mics_hub", constraints: { slug: /[a-z0-9-]+/ }
+    patch  "/mics/hubs/:slug",                 to: "superadmin/mics/hubs#update",  constraints: { slug: /[a-z0-9-]+/ }
+    get    "/mics/hubs/:slug/editor_lookup",   to: "superadmin/mics/hubs#editor_lookup", as: "mics_hub_editor_lookup", constraints: { slug: /[a-z0-9-]+/ }
+    post   "/mics/hubs/:slug/editors",         to: "superadmin/mics/hubs#add_editor", as: "mics_hub_add_editor", constraints: { slug: /[a-z0-9-]+/ }
+    delete "/mics/hubs/:slug/editors/:user_id", to: "superadmin/mics/hubs#remove_editor", as: "mics_hub_remove_editor", constraints: { slug: /[a-z0-9-]+/ }
+    post   "/mics/hubs/:slug/rollup_venues",   to: "superadmin/mics/hubs#rollup_venues", as: "mics_hub_rollup_venues", constraints: { slug: /[a-z0-9-]+/ }
   end
 
   # Pilot user setup (superadmins only)

@@ -32,8 +32,10 @@
           <div class="flex gap-2">
             <input type="text" name="city" placeholder="City"
                    class="flex-1 px-3 py-2 text-sm bg-gray-800 border border-gray-700 text-white placeholder:text-gray-500 focus:border-pink-400 outline-none" required>
-            <input type="text" name="state" placeholder="ST" maxlength="2"
-                   class="w-14 px-2 py-2 text-sm bg-gray-800 border border-gray-700 text-white placeholder:text-gray-500 focus:border-pink-400 outline-none uppercase" required>
+            <%= render "shared/us_state_select",
+                  name: "state", required: true,
+                  label: nil, placeholder: "State",
+                  css: "w-32 px-2 py-2 text-sm bg-gray-800 border border-gray-700 text-white focus:border-pink-400 outline-none" %>
           </div>
           <% unless Current.user %>
             <input type="email" name="email" placeholder="Your email (so we can tell you when it's live)"

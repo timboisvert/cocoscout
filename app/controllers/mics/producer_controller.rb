@@ -19,13 +19,20 @@ module Mics
 
     def update
       Mic.transaction do
-        old_attrs = @mic.attributes.slice(*allowed_keys)
+        old_attrs   = @mic.attributes.slice(*allowed_keys)
+        old_access  = (@mic.accessibility || {}).dup
         @mic.assign_attributes(mic_params)
+        apply_accessibility_params!
         @mic.save!
         @mic.attributes.slice(*allowed_keys).each do |k, v|
           next if old_attrs[k].to_s == v.to_s
           @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
                                   field: k, old_value: old_attrs[k].to_s, new_value: v.to_s)
+        end
+        if (@mic.accessibility || {}) != old_access
+          @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+                                  field: "accessibility",
+                                  old_value: old_access.to_json, new_value: @mic.accessibility.to_json)
         end
       end
       redirect_to mics_producer_mic_path(@mic.slug), notice: "Saved."
@@ -83,6 +90,104 @@ module Mics
                               field: "mic_status", new_value: "#{cancel_date}=cancelled",
                               note: reason || "Producer cancelled this date")
       redirect_to mics_producer_mic_path(@mic.slug), notice: "Cancelled #{cancel_date}."
+    end
+
+    # JSON: look up a user by exact email match so the add-producer modal
+    # can tell new vs existing without a page reload.
+    def producer_lookup
+      email = params[:email].to_s.strip.downcase
+      if email.blank? || !email.match?(URI::MailTo::EMAIL_REGEXP)
+        render json: { found: false, valid: false }
+        return
+      end
+
+      user = User.find_by("LOWER(email_address) = ?", email)
+      if user
+        name = user.person&.name.presence
+        already = @mic.mic_producers.exists?(user_id: user.id)
+        render json: { found: true, valid: true, email: user.email_address, name: name, already_on_mic: already }
+      else
+        render json: { found: false, valid: true }
+      end
+    end
+
+    def add_producer
+      email = params[:email].to_s.strip.downcase
+      name  = params[:name].to_s.strip.presence
+      role  = MicProducer.roles.key?(params[:role].to_s) ? params[:role].to_s : "producer"
+
+      unless email.match?(URI::MailTo::EMAIL_REGEXP)
+        redirect_to mics_producer_mic_path(@mic.slug),
+                    alert: "Please enter a valid email."
+        return
+      end
+
+      user = User.find_by("LOWER(email_address) = ?", email)
+      invited = false
+
+      if user.blank?
+        # Create a placeholder CocoScout account so we can attach the
+        # MicProducer right away, then send the new user a password-set
+        # link via the existing reset flow.
+        user = User.create!(email_address: email, password: User.generate_secure_password)
+        user.people.create!(name: name.presence || email.split("@").first.titleize)
+        token = user.generate_token_for(:password_reset)
+        AuthMailer.password(user, token).deliver_later
+        invited = true
+      end
+
+      mp = @mic.mic_producers.find_or_initialize_by(user_id: user.id)
+      mp.role = role
+      mp.accepted_at ||= Time.current
+      mp.save!
+
+      if role == "producer" && @mic.lead_producer_user_id.blank?
+        @mic.update!(lead_producer_user_id: user.id, claimed_at: @mic.claimed_at || Time.current)
+      end
+
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.add",
+                              new_value: "#{user.email_address} as #{role.humanize}#{invited ? " (invited)" : ""}")
+
+      notice = if invited
+        "Invited #{user.email_address} to CocoScout and added them as #{role.humanize}."
+      else
+        "Added #{user.email_address} as #{role.humanize}."
+      end
+      redirect_to mics_producer_mic_path(@mic.slug), notice: notice
+    end
+
+    def remove_producer
+      mp = @mic.mic_producers.find_by(id: params[:producer_id])
+      if mp.nil?
+        redirect_to mics_producer_mic_path(@mic.slug), alert: "That producer link isn't on this mic."
+        return
+      end
+
+      user_label = mp.user.email_address
+      was_lead = (@mic.lead_producer_user_id == mp.user_id)
+      mp.destroy!
+
+      if was_lead
+        next_lead = @mic.mic_producers.order(:created_at).first
+        @mic.update!(lead_producer_user_id: next_lead&.user_id)
+      end
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.remove",
+                              new_value: user_label)
+      redirect_to mics_producer_mic_path(@mic.slug), notice: "Removed #{user_label}."
+    end
+
+    def set_lead_producer
+      mp = @mic.mic_producers.find_by(id: params[:producer_id])
+      if mp.nil?
+        redirect_to mics_producer_mic_path(@mic.slug), alert: "That producer link isn't on this mic."
+        return
+      end
+
+      @mic.update!(lead_producer_user_id: mp.user_id, claimed_at: @mic.claimed_at || Time.current)
+      mp.update!(role: :producer) unless mp.role_producer?
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.lead",
+                              new_value: mp.user.email_address)
+      redirect_to mics_producer_mic_path(@mic.slug), notice: "#{mp.user.email_address} is now the lead producer."
     end
 
     def approve_suggestion
@@ -146,9 +251,7 @@ module Mics
     end
 
     def authorized?
-      return false unless current_user
-      return true if current_user.respond_to?(:superadmin?) && current_user.superadmin?
-      @mic.mic_producers.where(user_id: current_user.id).exists?
+      @mic.manageable_by?(current_user)
     end
 
     def allowed_keys
@@ -157,6 +260,20 @@ module Mics
 
     def mic_params
       params.require(:mic).permit(*allowed_keys.map(&:to_sym))
+    end
+
+    # Only apply accessibility changes when the form actually submitted the
+    # nested hash — that way "Save basic info" doesn't wipe accessibility
+    # set elsewhere, and other section forms don't reset it either.
+    def apply_accessibility_params!
+      nested = params.dig(:mic, :accessibility)
+      return if nested.blank?
+      access = (@mic.accessibility || {}).dup
+      cast   = ActiveModel::Type::Boolean.new
+      nested.to_unsafe_h.each do |key, raw|
+        access[key.to_s] = cast.cast(raw) ? true : false
+      end
+      @mic.accessibility = access
     end
   end
 end

@@ -11,6 +11,7 @@
   value = local_assigns[:value]
   placeholder = local_assigns[:placeholder]
   options = local_assigns[:options]
+  data_attrs = local_assigns[:data] || {}
   field_id = "field_#{name.to_s.parameterize}_#{rand(99999)}"
   field_classes = "w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"
 %>
@@ -20,26 +21,18 @@
   </label>
   <% case type %>
   <% when "textarea" %>
-    <textarea id="<%= field_id %>" name="<%= name %>"
-              rows="<%= local_assigns[:rows] || 4 %>"
-              <%= "required" if required %>
-              placeholder="<%= local_assigns[:placeholder] %>"
-              class="<%= field_classes %>"><%= value %></textarea>
+    <%= text_area_tag(name, value,
+          id: field_id, rows: (local_assigns[:rows] || 4),
+          required: required, placeholder: placeholder,
+          class: field_classes, data: data_attrs) %>
   <% when "select" %>
-    <select id="<%= field_id %>" name="<%= name %>" class="<%= field_classes %>">
-      <% (options || []).each do |opt_label, opt_value| %>
-        <option value="<%= opt_value %>" <%= "selected" if value.to_s == opt_value.to_s %>>
-          <%= opt_label %>
-        </option>
-      <% end %>
-    </select>
+    <%= select_tag(name,
+          options_for_select((options || []), value),
+          id: field_id, class: field_classes, data: data_attrs) %>
   <% else %>
-    <input id="<%= field_id %>" type="<%= type %>" name="<%= name %>"
-           value="<%= value %>"
-           placeholder="<%= local_assigns[:placeholder] %>"
-           maxlength="<%= local_assigns[:maxlength] %>"
-           <%= "required" if required %>
-           class="<%= field_classes %>">
+    <%= tag.input(id: field_id, type: type, name: name, value: value,
+          placeholder: placeholder, maxlength: local_assigns[:maxlength],
+          required: required, class: field_classes, data: data_attrs) %>
   <% end %>
   <% if local_assigns[:help].present? %>
     <p class="mt-1 text-xs text-gray-500"><%= help %></p>
