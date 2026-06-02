@@ -114,7 +114,16 @@
     elsif @mic.bucket_draw
       signup_cells << [ "Sign-up type", "Bucket draw" ]
     end
+
+    # How-to-sign-up and Sign-up notes share the structured grid with
+    # Sign-up type / opens / cost. Order: type → how to sign up →
+    # opens → notes → cost. Each cell renders only when present;
+    # nothing forces empty slots.
+    if @signup_info && @signup_info[:channel_text].present?
+      signup_cells << [ "How to sign up", @signup_info[:channel_text] ]
+    end
     signup_cells << [ "Sign-up opens", mics_signup_opens_label(@mic.signup_opens_at_text) ] if @mic.signup_opens_at_text.present?
+    signup_cells << [ "Sign-up notes", @mic.signup_notes ] if @mic.signup_notes.present?
     # Cost shown only when there's an actual price; "free" is assumed default.
     signup_cells << [ "Cost", mics_cost_label(@mic) ]                            if mics_cost_label(@mic).present? && @mic.cost != "free"
   %>
@@ -134,33 +143,22 @@
       </dl>
 
       <% if signup_cells.any? %>
-        <%# Row 2: sign-up info — same 4-cell grid, even when only 1–2 cells are populated. %>
+        <%# Row 2: sign-up info — same 4-cell grid; renders every cell
+            present so How to sign up / Notes appear alongside the
+            structured fields. Wraps to a second row above 4 cells. %>
         <dl class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm pt-3 border-t border-pink-200">
-          <% 4.times do |i|
-               cell = signup_cells[i] %>
+          <% signup_cells.each do |cell| %>
             <div>
-              <% if cell %>
-                <dt class="text-[10px] uppercase tracking-wider text-pink-700 font-bold"><%= cell[0] %></dt>
-                <dd class="mt-0.5 coustard-regular text-lg text-gray-900"><%= cell[1] %></dd>
-              <% end %>
+              <dt class="text-[10px] uppercase tracking-wider text-pink-700 font-bold"><%= cell[0] %></dt>
+              <dd class="mt-0.5 coustard-regular text-lg text-gray-900 whitespace-pre-line"><%= cell[1] %></dd>
             </div>
           <% end %>
         </dl>
       <% end %>
 
-      <%# Free-text sign-up notes — house rules, comp policies, bump-in
-          offers — anything that doesn't fit a structured field. %>
-      <% if @mic.signup_notes.present? %>
-        <div class="pt-2">
-          <div class="text-[10px] uppercase tracking-wider text-pink-700 font-bold mb-1">Notes</div>
-          <p class="text-sm text-gray-900 whitespace-pre-line"><%= @mic.signup_notes %></p>
-        </div>
-      <% end %>
-
-      <%# Sign-up CTA — standalone row so the action isn't mixed in with
-          the facts. A real URL becomes a button; free-text instructions
-          (e.g. "Online through Lia Berman's FB Google Sheet post")
-          render as an instructional callout instead. %>
+      <%# Sign-up CTA — only the actual button case lives below the grid;
+          the free-text "How to sign up" channel is now one of the cells
+          above, so we no longer render it twice. %>
       <% if @signup_info && @signup_info[:url].present? %>
         <div class="pt-1">
           <%= link_to @signup_info[:url], target: "_blank", rel: "noopener",
@@ -171,11 +169,6 @@
               <span class="text-[10px] uppercase tracking-wider opacity-80 ml-1">on CocoScout</span>
             <% end %>
           <% end %>
-        </div>
-      <% elsif @signup_info && @signup_info[:channel_text].present? %>
-        <div class="pt-2">
-          <div class="text-[10px] uppercase tracking-wider text-pink-700 font-bold mb-1">How to sign up</div>
-          <p class="text-sm text-gray-900"><%= @signup_info[:channel_text] %></p>
         </div>
       <% end %>
     </div>
