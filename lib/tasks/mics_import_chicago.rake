@@ -1,20 +1,31 @@
 # frozen_string_literal: true
 
-# Import Chicagoland open mics from a CSV pulled from the public Google
-# Sheet maintained by the local comedy scene. The sheet groups mics by
-# day-of-week sections, with header rows we ignore.
+# Import Chicagoland open mics from the public Google Sheet maintained
+# by the local comedy scene. The sheet groups mics by day-of-week
+# sections, with header rows we ignore.
 #
-# Usage:
-#   bin/rails mics:import_chicago
+# Usage — fetch the live sheet directly (recommended):
+#   bin/rails mics:import_chicago SHEET_URL="https://docs.google.com/spreadsheets/d/<ID>/edit?gid=<TAB>"
+#   bin/rails mics:import_chicago SHEET_ID=<ID> GID=<TAB>
+#
+# Usage — local CSV file:
 #   bin/rails mics:import_chicago CSV=/tmp/chicago_mics.csv
+#   bin/rails mics:import_chicago                  # defaults to /tmp/chicago_mics.csv
 require "csv"
+require "net/http"
+require "uri"
 
 namespace :mics do
-  desc "Import Chicagoland mics from the community Google Sheet CSV."
+  # Fields whose changes we want to log to `mic_edits` so producers can
+  # see what the sheet did. Excludes timestamps and IDs.
+  TRACKED_FIELDS = %w[day_of_week starts_local_time signup_opens_at_text
+                       format signup_method bucket_draw cost status].freeze
+
+  desc "Import Chicagoland mics from the community Google Sheet (URL or CSV)."
   task import_chicago: :environment do
-    path = ENV["CSV"] || "/tmp/chicago_mics.csv"
+    path = resolve_csv_path
     unless File.exist?(path)
-      abort "CSV file not found at #{path}. Download the sheet to that path first."
+      abort "CSV file not found at #{path}. Provide SHEET_URL=, SHEET_ID=+GID=, or CSV=<path>."
     end
 
     days = {
@@ -23,9 +34,10 @@ namespace :mics do
     }
 
     current_day = nil
-    created = 0
-    updated = 0
-    skipped = 0
+    created   = 0
+    updated   = 0
+    preserved = 0
+    skipped   = 0
     venues_created = 0
     chicago_hub = CityHub.find_by(slug: "chicago-il")
     abort "Run mics:seed_chicago_hub first." unless chicago_hub
@@ -77,22 +89,59 @@ namespace :mics do
       venue.save!
 
       mic = Mic.find_or_initialize_by(name: mic_name, venue: venue)
-      mic.day_of_week       = current_day
-      mic.starts_local_time = parse_time(start_time)
-      mic.signup_opens_at_text = signup_notes.presence
-      mic.format            = infer_format(mic_name, signup_notes)
+      claimed = mic.persisted? && mic.mic_producers.any?
+      old_attrs = mic.attributes.slice(*TRACKED_FIELDS).dup
+
       inferred_method, bucket = infer_signup_method(signup_notes)
-      mic.signup_method     = inferred_method if inferred_method
-      mic.bucket_draw       = bucket
-      mic.cost            ||= :free
-      mic.status          ||= :active
-      mic.last_verified_at = Time.current if mic.new_record?
+      inferred_format         = infer_format(mic_name, signup_notes)
+
       if mic.new_record?
+        # First sight — sheet is authoritative for everything.
+        mic.day_of_week          = current_day
+        mic.starts_local_time    = parse_time(start_time)
+        mic.signup_opens_at_text = signup_notes.presence
+        mic.format               = inferred_format
+        mic.signup_method        = inferred_method if inferred_method
+        mic.bucket_draw          = bucket
+        mic.cost              ||= :free
+        mic.status            ||= :active
+        mic.last_verified_at    = Time.current
         created += 1
+      elsif claimed
+        # A producer (or captain) has claimed this — DON'T clobber the
+        # curated fields. Only backfill anything still blank.
+        mic.day_of_week          ||= current_day
+        mic.starts_local_time    ||= parse_time(start_time)
+        mic.signup_opens_at_text ||= signup_notes.presence
+        mic.format               ||= inferred_format
+        mic.signup_method        ||= inferred_method
+        mic.bucket_draw            = bucket if mic.bucket_draw.nil?
+        mic.cost                 ||= :free
+        mic.status               ||= :active
+        preserved += 1
       else
+        # Unclaimed existing row — the sheet still wins.
+        mic.day_of_week          = current_day
+        mic.starts_local_time    = parse_time(start_time)
+        mic.signup_opens_at_text = signup_notes.presence
+        mic.format               = inferred_format
+        mic.signup_method        = inferred_method if inferred_method
+        mic.bucket_draw          = bucket
+        mic.cost               ||= :free
+        mic.status             ||= :active
         updated += 1
       end
+
       mic.save!
+
+      # Audit any field that actually changed so the producer dashboard
+      # shows where the new value came from.
+      mic.attributes.slice(*TRACKED_FIELDS).each do |k, v|
+        next if old_attrs[k].to_s == v.to_s
+        mic.mic_edits.create!(source: :migration, field: k,
+                              old_value: old_attrs[k].to_s, new_value: v.to_s,
+                              note: "Chicago sheet import")
+      end
 
       extract_links_from_notes(mic, signup_notes)
     rescue => e
@@ -101,7 +150,7 @@ namespace :mics do
     end
 
     puts "✓ Chicago import complete."
-    puts "  mics    — created: #{created}, updated: #{updated}, skipped: #{skipped}"
+    puts "  mics    — created: #{created}, updated: #{updated}, preserved (claimed): #{preserved}, skipped: #{skipped}"
     puts "  venues  — created: #{venues_created}"
   end
 
@@ -185,5 +234,64 @@ namespace :mics do
       end
 
     [ method, bucket ]
+  end
+
+  # Returns a path to a CSV file on disk. Either the user already gave us
+  # one via CSV=..., or we derive a Google-Sheets CSV-export URL from
+  # SHEET_URL / SHEET_ID(+GID) and download it to /tmp.
+  def self.resolve_csv_path
+    return ENV["CSV"] if ENV["CSV"].present?
+
+    sheet_id, gid = extract_sheet_id_and_gid
+    if sheet_id
+      out = "/tmp/chicago_mics-#{sheet_id}-#{gid || 0}.csv"
+      download_sheet_as_csv(sheet_id, gid, out)
+      return out
+    end
+
+    "/tmp/chicago_mics.csv"
+  end
+
+  def self.extract_sheet_id_and_gid
+    if (id = ENV["SHEET_ID"]).present?
+      return [ id, ENV["GID"].presence || "0" ]
+    end
+
+    url = ENV["SHEET_URL"].to_s
+    return [ nil, nil ] if url.blank?
+
+    id_match = url.match(%r{/spreadsheets/d/([A-Za-z0-9_-]+)})
+    gid_match = url.match(/gid=([0-9]+)/)
+    return [ nil, nil ] unless id_match
+    [ id_match[1], gid_match ? gid_match[1] : "0" ]
+  end
+
+  def self.download_sheet_as_csv(sheet_id, gid, out_path)
+    export_url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&gid=#{gid || 0}"
+    puts "→ fetching #{export_url}"
+    uri = URI.parse(export_url)
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      # Sheets returns a 307 redirect to the actual CSV. Follow up to 3
+      # hops so we don't get stuck on the redirect chain.
+      req = Net::HTTP::Get.new(uri)
+      res = http.request(req)
+      hops = 0
+      while res.is_a?(Net::HTTPRedirection) && hops < 3
+        new_uri = URI.parse(res["Location"])
+        new_uri = uri.merge(new_uri) if new_uri.host.nil?
+        res = Net::HTTP.start(new_uri.host, new_uri.port, use_ssl: new_uri.scheme == "https") do |h2|
+          h2.request(Net::HTTP::Get.new(new_uri))
+        end
+        hops += 1
+      end
+      res
+    end
+
+    unless response.is_a?(Net::HTTPSuccess)
+      abort "Failed to fetch sheet (#{response.code}). Make sure the sheet is shared with anyone-with-the-link viewer access."
+    end
+
+    File.write(out_path, response.body)
+    puts "  saved #{response.body.bytesize} bytes → #{out_path}"
   end
 end

@@ -41,6 +41,23 @@ module Mics
       render :show, status: :unprocessable_content
     end
 
+    # Permanent deletion — only the people who run the site/city, not the
+    # producers themselves. Producers can leave the mic via remove_producer
+    # on their own row; that's a different action.
+    def destroy
+      unless deletable_by?(current_user)
+        head :forbidden
+        return
+      end
+
+      name = @mic.name
+      hub_slug = @mic.venue&.city_hub&.slug
+      @mic.destroy!
+
+      target = hub_slug ? mics_city_path(hub_slug) : mics_home_path
+      redirect_to target, notice: "Deleted \"#{name}\"."
+    end
+
     def verify
       @mic.update!(last_verified_at: Time.current, last_verified_by_user_id: current_user.id)
       @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
@@ -163,17 +180,37 @@ module Mics
         return
       end
 
-      user_label = mp.user.email_address
-      was_lead = (@mic.lead_producer_user_id == mp.user_id)
+      user_label    = mp.user.email_address
+      removed_self  = (mp.user_id == current_user.id)
+      was_lead      = (@mic.lead_producer_user_id == mp.user_id)
       mp.destroy!
 
       if was_lead
         next_lead = @mic.mic_producers.order(:created_at).first
         @mic.update!(lead_producer_user_id: next_lead&.user_id)
       end
+
+      # If that was the last runner, flip the mic back to unclaimed so the
+      # public detail page shows "Claim this mic" again.
+      if @mic.mic_producers.reload.empty?
+        @mic.update!(claimed_at: nil, lead_producer_user_id: nil)
+      end
+
       @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.remove",
-                              new_value: user_label)
-      redirect_to mics_producer_mic_path(@mic.slug), notice: "Removed #{user_label}."
+                              new_value: removed_self ? "#{user_label} (self)" : user_label)
+
+      notice = if removed_self
+        if @mic.mic_producers.empty?
+          "You've stepped down. #{@mic.name} is now unclaimed."
+        else
+          "You've stepped down from #{@mic.name}. The remaining runners still manage it."
+        end
+      else
+        "Removed #{user_label}."
+      end
+
+      target = removed_self ? mics_detail_path(@mic.slug) : mics_producer_mic_path(@mic.slug)
+      redirect_to target, notice: notice
     end
 
     def set_lead_producer
@@ -253,6 +290,16 @@ module Mics
     def authorized?
       @mic.manageable_by?(current_user)
     end
+
+    # Stricter than `manageable_by?` — producers shouldn't be able to
+    # delete the mic entirely. Only superadmins and city captains can.
+    def deletable_by?(user)
+      return false unless user
+      return true if user.respond_to?(:superadmin?) && user.superadmin?
+      hub = @mic.venue&.city_hub
+      hub.present? && hub.editor?(user)
+    end
+    helper_method :deletable_by?
 
     def allowed_keys
       %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_day_of_month recurrence_anchor_date canceled_until signup_method bucket_draw signup_url signup_opens_at_text blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]

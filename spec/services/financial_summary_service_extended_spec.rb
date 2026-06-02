@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe FinancialSummaryService, "extended tests", type: :service do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:organization) { create(:organization) }
   let(:production) { create(:production, organization: organization) }
 
@@ -121,6 +123,14 @@ RSpec.describe FinancialSummaryService, "extended tests", type: :service do
 
   describe "period filtering" do
     let(:service) { described_class.new(production) }
+
+    # Freeze "now" to mid-month so `beginning_of_month + 1.day` is reliably
+    # in the past. Without this, the spec fails any time it runs on the 1st
+    # of the month (the recent show would be future-dated and the service
+    # filters out anything `>= Time.current`).
+    around do |example|
+      travel_to(Time.current.beginning_of_month + 14.days + 12.hours) { example.run }
+    end
 
     before do
       # Show from this month

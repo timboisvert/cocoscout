@@ -97,8 +97,9 @@ Rails.application.routes.draw do
 
     # Producer dashboard.
     get   "producer",                 to: "producer#index",          as: :producer
-    get   "producer/:slug",           to: "producer#show",           as: :producer_mic
-    patch "producer/:slug",           to: "producer#update"
+    get "producer/:slug",           to: "producer#show",           as: :producer_mic
+    patch "producer/:slug",         to: "producer#update"
+    delete "producer/:slug",        to: "producer#destroy",        as: :producer_destroy_mic
     post  "producer/:slug/verify",    to: "producer#verify",         as: :producer_verify
     post  "producer/:slug/status",    to: "producer#post_status",    as: :producer_post_status
     post  "producer/:slug/invite",    to: "producer#invite",         as: :producer_invite
