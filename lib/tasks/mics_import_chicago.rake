@@ -42,7 +42,7 @@ namespace :mics do
     chicago_hub = CityHub.find_by(slug: "chicago-il")
     abort "Run mics:seed_chicago_hub first." unless chicago_hub
 
-    CSV.foreach(path) do |row|
+    CSV.foreach(path, encoding: "bom|utf-8") do |row|
       next if row.compact.empty?
 
       first = row[0].to_s.strip
@@ -291,7 +291,12 @@ namespace :mics do
       abort "Failed to fetch sheet (#{response.code}). Make sure the sheet is shared with anyone-with-the-link viewer access."
     end
 
-    File.write(out_path, response.body)
+    # Write in binary mode — Net::HTTP returns ASCII-8BIT bytes, and the
+    # sheet contains UTF-8 multi-byte characters (curly quotes, em
+    # dashes). Plain `File.write` would try to transcode and explode on
+    # \xC3-prefixed bytes. CSV.foreach below opens the file fresh and
+    # decodes it correctly.
+    File.binwrite(out_path, response.body)
     puts "  saved #{response.body.bytesize} bytes → #{out_path}"
   end
 end

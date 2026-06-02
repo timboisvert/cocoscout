@@ -96,7 +96,7 @@ Rails.application.routes.draw do
     get  "m/:slug/suggest/thanks",  to: "suggestions#thanks", as: :suggest_thanks
 
     # Producer dashboard.
-    get   "producer",                 to: "producer#index",          as: :producer
+    get "producer",                 to: "producer#index",          as: :producer
     get "producer/:slug",           to: "producer#show",           as: :producer_mic
     patch "producer/:slug",         to: "producer#update"
     delete "producer/:slug",        to: "producer#destroy",        as: :producer_destroy_mic
