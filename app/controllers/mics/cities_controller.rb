@@ -6,7 +6,7 @@ module Mics
   class CitiesController < BaseController
     before_action :resolve_city
 
-    helper_method :wheelchair_filter?, :within_miles, :hub_center, :filter_query_params
+    helper_method :wheelchair_filter?, :within_miles, :hub_center, :filter_query_params, :signup_filter
 
     def show
       base = apply_filters(scoped_mics).includes(:venue, :tags).to_a
@@ -71,7 +71,7 @@ module Mics
     end
 
     def map_filter_params
-      params.permit(:wheelchair, :within).to_h.compact_blank
+      params.permit(:wheelchair, :within, :signup).to_h.compact_blank
     end
 
     # Carries the current view/filter state forward as a hash you can
@@ -81,11 +81,19 @@ module Mics
       qp[:view]       = "map" if view_param == "map"
       qp[:wheelchair] = 1     if wheelchair_filter?
       qp[:within]     = within_miles if within_miles
+      qp[:signup]     = signup_filter if signup_filter
       qp
     end
 
     def wheelchair_filter?
       ActiveModel::Type::Boolean.new.cast(params[:wheelchair])
+    end
+
+    # Returns "online", "in_person", or nil. Other input is rejected so
+    # the param can't be coerced into something weird.
+    def signup_filter
+      v = params[:signup].to_s
+      %w[online in_person].include?(v) ? v : nil
     end
 
     # Permitted distance options for the sidebar filter. Empty string =
@@ -112,7 +120,19 @@ module Mics
     def apply_filters(scope)
       scope = apply_wheelchair_filter(scope)
       scope = apply_distance_filter(scope)
+      scope = apply_signup_filter(scope)
       scope
+    end
+
+    # `signup_method` enum: online (0), in_person (1), online_and_in_person (2).
+    # Filtering for "online" should match both online and online_and_in_person;
+    # filtering for "in_person" should match both in_person and online_and_in_person.
+    def apply_signup_filter(scope)
+      case signup_filter
+      when "online"    then scope.where(signup_method: %i[online online_and_in_person])
+      when "in_person" then scope.where(signup_method: %i[in_person online_and_in_person])
+      else scope
+      end
     end
 
     def apply_wheelchair_filter(scope)

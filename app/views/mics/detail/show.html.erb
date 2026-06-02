@@ -103,7 +103,7 @@
     basic_cells << [ "Format", mics_format_label(@mic.format) ]
     basic_cells << [ "Start time", @mic.starts_local_time.strftime("%-l:%M %p") ] if @mic.starts_local_time.present?
     basic_cells << [ "Spot length", "#{@mic.spot_length_minutes} min" ]           if @mic.spot_length_minutes.present?
-    basic_cells << [ "Cap", "#{@mic.signup_cap} performers" ]                     if @mic.signup_cap.present?
+    basic_cells << [ "Cap", @mic.signup_cap.to_s ]                               if @mic.signup_cap.present?
     basic_cells << [ "Age", "#{@mic.min_age}+" ]                                  if @mic.min_age.present?
 
     signup_cells = []

@@ -113,7 +113,7 @@ module Mics
           date_and_time: starts,
           event_type: :open_mic,
           recurrence_group_id: group_id,
-          duration_minutes: @mic.spot_length_minutes && @mic.signup_cap ? @mic.spot_length_minutes * @mic.signup_cap : 120,
+          duration_minutes: estimated_duration_minutes,
           # The venue is public; we don't have a Location for it. Mark
           # online so the Show validation passes — the real venue is on
           # the Mic record.
@@ -122,6 +122,18 @@ module Mics
         )
       end
       out
+    end
+
+    # `signup_cap` is now free text ("10ish", "10-15"). Pull the first
+    # integer out of it for show-duration estimation; fall back to 120 if
+    # we can't parse anything sensible.
+    def estimated_duration_minutes
+      cap_int = @mic.signup_cap.to_s.scan(/\d+/).first&.to_i
+      if @mic.spot_length_minutes && cap_int && cap_int.positive?
+        @mic.spot_length_minutes * cap_int
+      else
+        120
+      end
     end
 
     def create_sign_up_form(production)

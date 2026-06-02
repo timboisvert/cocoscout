@@ -97,7 +97,9 @@
                   options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)", value: @mic.spot_length_minutes %>
-              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap (performers)", value: @mic.signup_cap %>
+              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap", value: @mic.signup_cap,
+                    placeholder: "e.g. 10, 10ish, 10-15",
+                    help: "Free text — write whatever describes the cap. Producers often say things like \"10ish\" or \"up to 15\"." %>
             </div>
             <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
 

@@ -55,7 +55,8 @@
                   options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)" %>
-              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap (performers)" %>
+              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap",
+                    placeholder: "e.g. 10, 10ish, 10-15" %>
             </div>
             <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4,
                   placeholder: "Anything performers should know — the vibe, who hosts, drink minimum, etc." %>
