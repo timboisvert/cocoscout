@@ -22,7 +22,7 @@ namespace :mics do
                        format signup_method bucket_draw cost status].freeze
 
   desc "Import Chicagoland mics from the community Google Sheet (URL or CSV)."
-  task import_chicago: :environment do
+  task import_chicago: [ :environment, :seed_chicago_hub ] do
     path = resolve_csv_path
     unless File.exist?(path)
       abort "CSV file not found at #{path}. Provide SHEET_URL=, SHEET_ID=+GID=, or CSV=<path>."
