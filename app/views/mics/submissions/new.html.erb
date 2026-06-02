@@ -25,7 +25,7 @@
       <%= form_with url: mics_create_submission_path, method: :post, class: "space-y-6" do %>
 
         <%# Venue %>
-        <section class="bg-white border border-pink-100">
+        <section class="bg-white border border-pink-100 rounded">
           <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
             <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Venue</h2>
           </header>
@@ -45,7 +45,7 @@
         </section>
 
         <%# Basic info %>
-        <section class="bg-white border border-pink-100">
+        <section class="bg-white border border-pink-100 rounded">
           <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
             <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
           </header>
@@ -64,7 +64,7 @@
         </section>
 
         <%# Schedule %>
-        <section class="bg-white border border-pink-100">
+        <section class="bg-white border border-pink-100 rounded">
           <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
             <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Schedule</h2>
           </header>
@@ -91,6 +91,7 @@
                     value: "monthly_nth_weekday",
                     options: [
                       [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
+                      [ "Multiple weeks (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
                       [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
                     ],
                     data: { "mics-schedule-form-target": "monthlyKind",
@@ -101,6 +102,20 @@
               <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which one?", type: "select",
                     value: 1,
                     options: [ [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ], [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ] ] %>
+            </div>
+
+            <div data-mics-schedule-form-target="nthMultiBlock" class="hidden mb-4">
+              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Which weeks?</label>
+              <input type="hidden" name="mic[recurrence_nth_weeks][]" value="">
+              <div class="flex flex-wrap gap-2">
+                <% [ [ 1, "1st" ], [ 2, "2nd" ], [ 3, "3rd" ], [ 4, "4th" ], [ 5, "5th" ], [ -1, "Last" ] ].each do |val, label| %>
+                  <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border bg-white border-gray-300 text-gray-700 hover:bg-pink-50 rounded">
+                    <input type="checkbox" name="mic[recurrence_nth_weeks][]" value="<%= val %>" class="h-4 w-4 accent-pink-500">
+                    <span class="text-sm"><%= label %></span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Pick every week the mic runs. e.g. for "first and third Monday," check 1st and 3rd.</p>
             </div>
 
             <div data-mics-schedule-form-target="domBlock" class="hidden">
@@ -118,7 +133,7 @@
         </section>
 
         <%# Sign-up info %>
-        <section class="bg-white border border-pink-100">
+        <section class="bg-white border border-pink-100 rounded">
           <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
             <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
           </header>
@@ -152,7 +167,7 @@
         </section>
 
         <%# Socials — optional at create time but here so you don't have to come back. %>
-        <section class="bg-white border border-pink-100">
+        <section class="bg-white border border-pink-100 rounded">
           <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
             <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Socials (optional)</h2>
             <p class="text-xs text-gray-500 mt-1">Add as many as you like — each becomes a button on the public mic page.</p>

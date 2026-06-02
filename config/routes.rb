@@ -118,6 +118,13 @@ Rails.application.routes.draw do
     # Hub editor queues + admin queue.
     get "hubs/:slug",       to: "hubs#show",  as: :captain_hub, constraints: { slug: /[a-z0-9-]+/ }
     get "hubs/:slug/queue", to: "hubs#queue", as: :hub_queue,   constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/submissions/:id/approve", to: "hubs#approve_submission", as: :hub_approve_submission, constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/submissions/:id/reject",  to: "hubs#reject_submission",  as: :hub_reject_submission,  constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/claims/:id/approve",      to: "hubs#approve_claim",      as: :hub_approve_claim,      constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/claims/:id/reject",       to: "hubs#reject_claim",       as: :hub_reject_claim,       constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/challenges/:id/resolve",  to: "hubs#resolve_challenge",  as: :hub_resolve_challenge,  constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/suggestions/:id/approve", to: "hubs#approve_suggestion", as: :hub_approve_suggestion, constraints: { slug: /[a-z0-9-]+/ }
+    post "hubs/:slug/suggestions/:id/reject",  to: "hubs#reject_suggestion",  as: :hub_reject_suggestion,  constraints: { slug: /[a-z0-9-]+/ }
 
     # My Mics — the single signed-in landing page (managed + favorited).
     get "my", to: "my#index", as: :my
@@ -269,6 +276,7 @@ Rails.application.routes.draw do
     post   "/finances/payments/:id/mark_paid", to: "superadmin#finances_mark_payment_paid", as: "finances_mark_payment_paid"
 
     # Mics Finder moderation queues.
+    get  "/mics",                             to: "superadmin/mics#index",              as: "mics_index"
     get  "/mics/queue",                       to: "superadmin/mics#queue",              as: "mics_queue"
     post "/mics/queue/:id/approve_submission", to: "superadmin/mics#approve_submission", as: "mics_approve_submission"
     post "/mics/queue/:id/reject_submission",  to: "superadmin/mics#reject_submission",  as: "mics_reject_submission"
@@ -753,6 +761,7 @@ Rails.application.routes.draw do
     get  "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#index", as: "signups_auditions_cycle_sessions"
     get  "/signups/auditions/:production_id/:cycle_id/sessions/summary", to: "audition_sessions#summary", as: "signups_auditions_cycle_sessions_summary"
     get  "/signups/auditions/:production_id/:cycle_id/sessions/new", to: "audition_sessions#new", as: "new_signups_auditions_cycle_session"
+    post "/signups/auditions/:production_id/:cycle_id/sessions/generate", to: "audition_sessions#generate", as: "generate_signups_auditions_cycle_sessions"
     post "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#create", as: "create_signups_auditions_cycle_session"
     get  "/signups/auditions/:production_id/:cycle_id/sessions/:id", to: "audition_sessions#show", as: "signups_auditions_cycle_session"
     get  "/signups/auditions/:production_id/:cycle_id/sessions/:id/edit", to: "audition_sessions#edit", as: "edit_signups_auditions_cycle_session"

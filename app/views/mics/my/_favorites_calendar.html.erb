@@ -19,39 +19,51 @@
   </div>
   <div class="flex items-center gap-1 text-xs">
     <%= link_to "‹ Prev", mics_my_path(view: "calendar", week: week_offset - 1),
-          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold rounded" %>
     <% unless week_offset.zero? %>
       <%= link_to "This week", mics_my_path(view: "calendar"),
-            class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+            class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold rounded" %>
     <% end %>
     <%= link_to "Next ›", mics_my_path(view: "calendar", week: week_offset + 1),
-          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold" %>
+          class: "px-3 py-1.5 border border-gray-300 bg-white hover:bg-pink-50 text-gray-700 font-bold rounded" %>
   </div>
 </div>
 
-<div class="grid grid-cols-7 gap-2 overflow-x-auto -mx-4 sm:-mx-8 px-4 sm:px-8 min-w-0">
+<%# Layout switches at sm (640px): below it stacks vertically — each
+    day is a full-width row with the date strip on top of its events.
+    At sm+ it becomes the seven-column week grid. %>
+<div class="grid grid-cols-1 sm:grid-cols-7 gap-2 min-w-0">
   <% week_dates.each do |date| %>
     <%
       occs = (by_date[date] || []).sort_by { |o| o[:starts_at] }
       is_today = (date == Date.current)
     %>
-    <div class="min-w-[140px] bg-white border <%= is_today ? "border-pink-500 ring-1 ring-pink-300" : "border-gray-200" %>">
-      <div class="px-2 py-2 border-b <%= is_today ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-gray-50" %> text-center">
+    <%# Hide empty non-today days on mobile to keep the page from
+        becoming a wall of "—" placeholders. They still appear on
+        desktop so the grid stays whole-week-aligned. %>
+    <div class="<%= "hidden sm:block" if occs.empty? && !is_today %> bg-white border rounded overflow-hidden <%= is_today ? "border-pink-500 ring-1 ring-pink-300" : "border-gray-200" %>">
+      <%# Day header — centered on desktop, left-aligned with full
+          weekday name on mobile so the page reads like a date list. %>
+      <div class="px-3 sm:px-2 py-2 border-b flex sm:block items-baseline gap-2 sm:text-center <%= is_today ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-gray-50" %>">
         <div class="text-[10px] uppercase tracking-wider <%= is_today ? "text-pink-700" : "text-gray-500" %> font-bold">
-          <%= date.strftime("%a") %>
+          <span class="sm:hidden"><%= date.strftime("%A") %></span>
+          <span class="hidden sm:inline"><%= date.strftime("%a") %></span>
         </div>
-        <div class="coustard-regular text-2xl <%= is_today ? "text-pink-700" : "text-gray-900" %> tabular-nums leading-none mt-1">
+        <div class="coustard-regular text-base sm:text-2xl <%= is_today ? "text-pink-700" : "text-gray-900" %> tabular-nums leading-none sm:mt-1">
           <%= date.day %>
         </div>
+        <% if is_today %>
+          <span class="sm:hidden text-[10px] uppercase tracking-wider text-pink-700 font-bold ml-auto">Today</span>
+        <% end %>
       </div>
-      <ul class="px-1.5 py-2 space-y-1.5 min-h-[120px]">
+      <ul class="px-1.5 py-2 space-y-1.5 sm:min-h-[120px]">
         <% if occs.empty? %>
           <li class="text-[10px] text-gray-400 text-center py-1">—</li>
         <% else %>
           <% occs.each do |occ| %>
             <li>
               <%= link_to mics_detail_path(occ[:mic].slug),
-                    class: "block px-2 py-1.5 bg-pink-50 hover:bg-pink-100 border-l-2 border-pink-500 cursor-pointer" do %>
+                    class: "block px-2 py-1.5 bg-pink-50 hover:bg-pink-100 border-l-2 border-pink-500 cursor-pointer rounded" do %>
                 <div class="text-[10px] tabular-nums text-pink-700 font-bold">
                   <%= occ[:starts_at].strftime("%-l:%M%p").downcase %>
                 </div>

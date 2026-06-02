@@ -254,7 +254,7 @@
                      MicChallenge.status_pending.count +
                      Mic.pending_moderation.count
     %>
-    <%= link_to mics_queue_path, class: "block" do %>
+    <%= link_to mics_index_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
         <div class="p-4">
           <div class="flex items-center gap-3">
@@ -264,7 +264,7 @@
             <div>
               <h3 class="font-semibold text-gray-900">Mics</h3>
               <p class="text-xs text-gray-500">
-                Moderation queue<% if mics_pending.positive? %> · <span class="text-pink-600 font-bold"><%= mics_pending %> pending</span><% end %>
+                Search · admin<% if mics_pending.positive? %> · <span class="text-pink-600 font-bold"><%= mics_pending %> pending</span><% end %>
               </p>
             </div>
           </div>

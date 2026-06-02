@@ -3,7 +3,10 @@ import { Controller } from "@hotwired/stimulus"
 // Schedule form: a two-step picker.
 //
 //   primary:  weekly | biweekly | monthly
-//   if monthly → monthlyKind: monthly_nth_weekday | monthly_day_of_month
+//   if monthly → monthlyKind:
+//     monthly_nth_weekday   — one Nth weekday per month (single select)
+//     monthly_nth_weekdays  — multiple Nth weekdays per month (checkboxes)
+//     monthly_day_of_month  — a specific day-of-month integer
 //
 // We resolve to the persisted enum value and write it into the hidden
 // `mic[recurrence_pattern]` field. Inputs that don't apply to the
@@ -11,7 +14,8 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     "primary", "monthlyKind", "hiddenPattern",
-    "anchorBlock", "monthlyKindBlock", "nthBlock", "domBlock", "dowBlock"
+    "anchorBlock", "monthlyKindBlock",
+    "nthBlock", "nthMultiBlock", "domBlock", "dowBlock"
   ]
 
   connect() { this.refresh() }
@@ -24,11 +28,13 @@ export default class extends Controller {
     if (primary === "monthly") resolved = monthlyKind
     if (this.hasHiddenPatternTarget) this.hiddenPatternTarget.value = resolved
 
-    this.toggle(this.anchorBlockTarget,       primary === "biweekly")
-    this.toggle(this.monthlyKindBlockTarget,  primary === "monthly")
-    this.toggle(this.nthBlockTarget,          primary === "monthly" && monthlyKind === "monthly_nth_weekday")
-    this.toggle(this.domBlockTarget,          primary === "monthly" && monthlyKind === "monthly_day_of_month")
-    this.toggle(this.dowBlockTarget,          !(primary === "monthly" && monthlyKind === "monthly_day_of_month"))
+    const isMonthly = primary === "monthly"
+    this.toggle(this.anchorBlockTarget,      primary === "biweekly")
+    this.toggle(this.monthlyKindBlockTarget, isMonthly)
+    this.toggle(this.nthBlockTarget,         isMonthly && monthlyKind === "monthly_nth_weekday")
+    this.toggle(this.nthMultiBlockTarget,    isMonthly && monthlyKind === "monthly_nth_weekdays")
+    this.toggle(this.domBlockTarget,         isMonthly && monthlyKind === "monthly_day_of_month")
+    this.toggle(this.dowBlockTarget,         !(isMonthly && monthlyKind === "monthly_day_of_month"))
   }
 
   toggle(el, show) {

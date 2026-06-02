@@ -63,7 +63,8 @@ module Mics
         :recurrence_day_of_month, :recurrence_anchor_date,
         :signup_method, :bucket_draw, :signup_url, :signup_opens_at_text, :signup_notes,
         :blurb, :spot_length_minutes, :signup_cap, :cost,
-        :drink_minimum_amount_cents, :cover_amount_cents, :min_age, :host_summary
+        :drink_minimum_amount_cents, :cover_amount_cents, :min_age, :host_summary,
+        recurrence_nth_weeks: []
       )
     end
   end

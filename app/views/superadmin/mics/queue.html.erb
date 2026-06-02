@@ -4,7 +4,7 @@
     <%= link_to "Manage city hubs →", mics_hubs_path, class: "text-sm text-pink-600 font-bold hover:underline" %>
   </div>
 
-  <section>
+  <section id="submissions">
     <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending submissions (<%= @pending_mics.size %>)</h2>
     <% if @pending_mics.any? %>
       <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
@@ -29,7 +29,7 @@
     <% end %>
   </section>
 
-  <section>
+  <section id="claims">
     <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending claims (<%= @pending_claims.size %>)</h2>
     <% if @pending_claims.any? %>
       <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
@@ -56,7 +56,7 @@
     <% end %>
   </section>
 
-  <section>
+  <section id="challenges">
     <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending challenges (<%= @pending_challenges.size %>)</h2>
     <% if @pending_challenges.any? %>
       <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
@@ -81,7 +81,7 @@
     <% end %>
   </section>
 
-  <section>
+  <section id="suggestions">
     <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending suggestions (<%= @pending_suggestions.size %>)</h2>
     <% if @pending_suggestions.any? %>
       <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">

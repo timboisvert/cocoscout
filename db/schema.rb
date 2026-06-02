@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_02_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_103256) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1151,6 +1151,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_02_100000) do
     t.integer "recurrence_day_of_month"
     t.integer "recurrence_interval", default: 1, null: false
     t.integer "recurrence_nth_week"
+    t.jsonb "recurrence_nth_weeks", default: [], null: false
     t.integer "recurrence_pattern", default: 0, null: false
     t.string "recurrence_rule"
     t.string "signup_cap"

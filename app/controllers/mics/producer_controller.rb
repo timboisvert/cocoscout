@@ -362,11 +362,14 @@ module Mics
     end
 
     def allowed_keys
-      %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_day_of_month recurrence_anchor_date canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
     end
 
     def mic_params
-      params.require(:mic).permit(*allowed_keys.map(&:to_sym))
+      # Exclude the array column from the scalar permit list — strong
+      # params would otherwise drop the array values as un-permitted.
+      scalar_keys = allowed_keys.map(&:to_sym) - [ :recurrence_nth_weeks ]
+      params.require(:mic).permit(*scalar_keys, recurrence_nth_weeks: [])
     end
 
     # Only apply accessibility changes when the form actually submitted the

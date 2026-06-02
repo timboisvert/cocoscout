@@ -26,12 +26,12 @@
       <div class="flex items-center gap-2 flex-wrap">
         <span class="coustard-regular text-base sm:text-lg text-gray-900 truncate"><%= mic.name %></span>
         <% if mic.powered_by_cocoscout? %>
-          <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold">
+          <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">
             CocoScout
           </span>
         <% end %>
         <% if status_label %>
-          <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 border <%= status_label[1] %>">
+          <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 border rounded <%= status_label[1] %>">
             <%= status_label[0] %>
           </span>
         <% end %>

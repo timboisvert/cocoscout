@@ -5,16 +5,43 @@
 <%= render "mics/header" %>
 
 <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-  <h1 class="coustard-regular text-2xl text-gray-900"><%= @hub.name %> queue</h1>
+  <div class="flex items-baseline justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="coustard-regular text-2xl text-gray-900"><%= @hub.name %> queue</h1>
+      <p class="text-xs text-gray-500 mt-1">
+        Approve, reject, and resolve every pending action for mics in this hub.
+      </p>
+    </div>
+    <%= link_to "← Back to #{@hub.name}", mics_captain_hub_path(@hub.slug),
+          class: "text-sm text-pink-600 font-bold hover:underline" %>
+  </div>
 
-  <section>
-    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending mics</h2>
+  <% if flash[:notice] %>
+    <div class="px-3 py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm"><%= flash[:notice] %></div>
+  <% end %>
+
+  <%# Pending submissions — newly submitted mics awaiting approval. %>
+  <section id="submissions">
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">
+      Pending mic submissions (<%= @pending_mics.size %>)
+    </h2>
     <% if @pending_mics.any? %>
-      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+      <ul class="divide-y divide-gray-100 border border-gray-200 bg-white rounded overflow-hidden">
         <% @pending_mics.each do |mic| %>
-          <li class="px-3 py-2 text-sm flex items-baseline justify-between">
-            <span><%= mic.name %> · <span class="text-xs text-gray-500"><%= mic.venue.name %></span></span>
-            <%= link_to "Open", mics_detail_path(mic.slug), class: "text-xs text-pink-600 hover:underline" %>
+          <li class="px-3 py-3 flex items-baseline justify-between gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-gray-900"><%= mic.name %></div>
+              <div class="text-xs text-gray-500"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <%= link_to "Open", mics_detail_path(mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 hover:underline" %>
+              <%= button_to "Approve", mics_hub_approve_submission_path(@hub.slug, id: mic.id), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_hub_reject_submission_path(@hub.slug, id: mic.id), method: :post,
+                    data: { turbo_confirm: "Reject #{mic.name}?" },
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
           </li>
         <% end %>
       </ul>
@@ -23,29 +50,103 @@
     <% end %>
   </section>
 
-  <section>
-    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending suggestions</h2>
-    <% if @pending_suggestions.any? %>
-      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
-        <% @pending_suggestions.each do |s| %>
-          <li class="px-3 py-2 text-sm">
-            <div class="font-semibold"><%= s.mic.name %></div>
-            <div class="text-xs text-gray-600 mt-1"><%= s.note %></div>
-          </li>
-        <% end %>
-      </ul>
-    <% else %>
-      <p class="text-sm text-gray-500">Nothing pending.</p>
-    <% end %>
-  </section>
-
-  <section>
-    <h2 class="text-xs uppercase tracking-wide text-gray-500 mb-2">Pending claims</h2>
+  <%# Pending claims — producers asking to take ownership of an unclaimed mic. %>
+  <section id="claims">
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">
+      Pending claims (<%= @pending_claims.size %>)
+    </h2>
     <% if @pending_claims.any? %>
-      <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+      <ul class="divide-y divide-gray-100 border border-gray-200 bg-white rounded overflow-hidden">
         <% @pending_claims.each do |c| %>
-          <li class="px-3 py-2 text-sm">
-            <%= c.mic.name %> — <%= c.claimant.email_address %>
+          <li class="px-3 py-3 flex items-baseline justify-between gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-gray-900"><%= c.mic.name %></div>
+              <div class="text-xs text-gray-500">
+                <%= c.claimant.email_address %> · claiming <strong><%= c.role.humanize %></strong>
+              </div>
+              <% if c.note.present? %>
+                <div class="text-xs text-gray-700 mt-1 whitespace-pre-line"><%= c.note %></div>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <%= link_to "Open", mics_detail_path(c.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 hover:underline" %>
+              <%= button_to "Approve", mics_hub_approve_claim_path(@hub.slug, id: c.id), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_hub_reject_claim_path(@hub.slug, id: c.id), method: :post,
+                    data: { turbo_confirm: "Reject this claim?" },
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">Nothing pending.</p>
+    <% end %>
+  </section>
+
+  <%# Pending challenges — someone disputing the current owner. %>
+  <section id="challenges">
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">
+      Pending challenges (<%= @pending_challenges.size %>)
+    </h2>
+    <% if @pending_challenges.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 bg-white rounded overflow-hidden">
+        <% @pending_challenges.each do |ch| %>
+          <li class="px-3 py-3 flex items-baseline justify-between gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-gray-900"><%= ch.mic.name %></div>
+              <div class="text-xs text-gray-500">
+                <%= ch.challenger.email_address %> says they actually run this mic.
+              </div>
+              <% if ch.note.present? %>
+                <div class="text-xs text-gray-700 mt-1 whitespace-pre-line"><%= ch.note %></div>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <%= link_to "Open", mics_detail_path(ch.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 hover:underline" %>
+              <%= button_to "Replace owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "replaced"), method: :post,
+                    data: { turbo_confirm: "Make #{ch.challenger.email_address} the new owner of #{ch.mic.name}?" },
+                    class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Add as co-producer", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "rejected"), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm text-gray-500">Nothing pending.</p>
+    <% end %>
+  </section>
+
+  <%# Pending suggestions — community edits awaiting review. %>
+  <section id="suggestions">
+    <h2 class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">
+      Pending edit suggestions (<%= @pending_suggestions.size %>)
+    </h2>
+    <% if @pending_suggestions.any? %>
+      <ul class="divide-y divide-gray-100 border border-gray-200 bg-white rounded overflow-hidden">
+        <% @pending_suggestions.each do |s| %>
+          <li class="px-3 py-3 flex items-baseline justify-between gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-gray-900"><%= s.mic.name %></div>
+              <div class="text-xs text-gray-500">
+                <%= s.submitter&.email_address || s.submitter_email %>
+                · <%= s.created_at.strftime("%b %-d") %>
+              </div>
+              <div class="text-sm text-gray-800 mt-1 whitespace-pre-line"><%= s.note %></div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <%= link_to "Open", mics_detail_path(s.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 hover:underline" %>
+              <%= button_to "Approve", mics_hub_approve_suggestion_path(@hub.slug, id: s.id), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_hub_reject_suggestion_path(@hub.slug, id: s.id), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
           </li>
         <% end %>
       </ul>

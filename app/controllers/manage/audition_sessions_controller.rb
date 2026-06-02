@@ -88,6 +88,67 @@ module Manage
       @audition_sessions = @audition_cycle.audition_sessions
     end
 
+    # Bulk-generate N consecutive sessions starting at `start_at`, each
+    # `duration_minutes` long, sharing a single `location_id`. Mirrors the
+    # wizard's generate_sessions step but for the live cycle (real
+    # AuditionSession rows). Dupes by start_at are skipped silently.
+    def generate
+      count       = params[:session_count].to_i
+      duration    = params[:duration_minutes].to_i
+      start_at    = params[:start_at]
+      location_id = params[:location_id].presence
+      cap         = params[:maximum_auditionees].presence&.to_i
+
+      errors = []
+      errors << "Pick a number of sessions between 1 and 50." unless count.between?(1, 50)
+      errors << "Pick a duration of at least 5 minutes."       if duration < 5
+      errors << "Pick a starting date and time."               if start_at.blank?
+      errors << "Pick a location."                             if location_id.blank?
+
+      if errors.any?
+        redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
+                    alert: errors.join(" "), status: :see_other
+        return
+      end
+
+      base_time = Time.zone.parse(start_at)
+      existing_times = @audition_cycle.audition_sessions.where(start_at: base_time..(base_time + (count * duration).minutes))
+                                       .pluck(:start_at).map(&:to_i).to_set
+
+      added = 0
+      skipped = 0
+      AuditionSession.transaction do
+        count.times do |i|
+          slot_start = base_time + (i * duration).minutes
+          if existing_times.include?(slot_start.to_i)
+            skipped += 1
+            next
+          end
+          @audition_cycle.audition_sessions.create!(
+            start_at: slot_start,
+            end_at:   slot_start + duration.minutes,
+            location_id: location_id,
+            maximum_auditionees: cap
+          )
+          added += 1
+        end
+      end
+
+      notice = if added.zero?
+        "No sessions generated — all #{count} would have duplicated existing sessions."
+      elsif skipped.zero?
+        "#{added} #{added == 1 ? "session" : "sessions"} generated."
+      else
+        "#{added} generated, #{skipped} skipped (already scheduled at those times)."
+      end
+
+      redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
+                  notice: notice, status: :see_other
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
+                  alert: "Couldn't generate sessions: #{e.message}", status: :see_other
+    end
+
     private
 
     def set_audition_cycle

@@ -64,17 +64,23 @@ class Mic < ApplicationRecord
   }, prefix: :cost
 
   # Structured recurrence:
-  #  * weekly                — every week on `day_of_week`
-  #  * biweekly              — every 2 weeks on `day_of_week`,
-  #                            phased to `recurrence_anchor_date`
-  #  * monthly_nth_weekday   — every month on the Nth `day_of_week`
-  #                            (recurrence_nth_week, where -1 = last)
-  #  * monthly_day_of_month  — every month on `recurrence_day_of_month`
+  #  * weekly                 — every week on `day_of_week`
+  #  * biweekly               — every 2 weeks on `day_of_week`,
+  #                              phased to `recurrence_anchor_date`
+  #  * monthly_nth_weekday    — every month on the Nth `day_of_week`
+  #                              (recurrence_nth_week, where -1 = last)
+  #  * monthly_day_of_month   — every month on `recurrence_day_of_month`
+  #  * monthly_nth_weekdays   — every month on SEVERAL `day_of_week`
+  #                              instances per month, e.g. 1st & 3rd
+  #                              Monday. Uses `recurrence_nth_weeks`,
+  #                              a jsonb array of integers like [1, 3]
+  #                              (where -1 = last week of month).
   enum :recurrence_pattern, {
     weekly: 0,
     biweekly: 1,
     monthly_nth_weekday: 2,
-    monthly_day_of_month: 3
+    monthly_day_of_month: 3,
+    monthly_nth_weekdays: 4
   }, prefix: :recurrence
 
   validates :name, presence: true, length: { maximum: 200 }
@@ -84,6 +90,11 @@ class Mic < ApplicationRecord
   validates :day_of_week, inclusion: { in: 0..6, allow_nil: true }
 
   before_validation :assign_slug, on: :create
+  # Form posts can deliver dirty data into the recurrence fields — empty
+  # strings from a placeholder hidden input, integer-shaped strings,
+  # leftovers from a different sub-pattern. Normalize them on every save
+  # so the column is always trustworthy at read time.
+  before_save :normalize_recurrence_fields
 
   scope :active, -> { where(status: statuses[:active], pending: false) }
   scope :pending_moderation, -> { where(pending: true) }
@@ -270,6 +281,24 @@ class Mic < ApplicationRecord
         m = m.next_month
       end
       dates
+    when "monthly_nth_weekdays"
+      # Form posts include an empty placeholder so the param key is
+      # always present; strip zeros and blanks before computing.
+      weeks = Array(recurrence_nth_weeks).map(&:to_i).reject(&:zero?).uniq
+      return [] unless day_of_week && weeks.any?
+      dates = []
+      m = starting_from.beginning_of_month
+      while dates.size < limit && m <= until_date
+        # Resolve every requested nth-week in this month, then sort —
+        # since the user may have specified them out of order ([3, 1]).
+        month_dates = weeks.map { |w| nth_weekday_of_month(m, day_of_week, w) }.compact.sort
+        month_dates.each do |d|
+          break if dates.size >= limit
+          dates << d if d >= starting_from && (pause_through.blank? || d > pause_through)
+        end
+        m = m.next_month
+      end
+      dates
     else
       []
     end
@@ -323,5 +352,37 @@ class Mic < ApplicationRecord
   def day_name_short
     return nil unless day_of_week
     %w[sunday monday tuesday wednesday thursday friday saturday][day_of_week]
+  end
+
+  # Clean up the recurrence columns so they never carry stale or junk
+  # values across pattern changes. Form posts can include placeholder
+  # empties, integer-shaped strings, or values left over from a
+  # different sub-pattern; this collapses all of that into one
+  # canonical form per pattern.
+  def normalize_recurrence_fields
+    # recurrence_nth_weeks is always stored as a clean, sorted, unique
+    # array of integers in [-1, 1, 2, 3, 4, 5]. Empty + zero get dropped.
+    raw = Array(recurrence_nth_weeks).map(&:to_i)
+    cleaned = raw.uniq.reject { |n| n == 0 || n < -1 || n > 5 }.sort_by { |n| n == -1 ? 99 : n }
+    self.recurrence_nth_weeks = cleaned
+
+    # Fields that don't belong to the chosen pattern get cleared so a
+    # pattern swap doesn't leave shrapnel behind that confuses the
+    # date-computation branches.
+    case recurrence_pattern.to_s
+    when "weekly", "biweekly"
+      self.recurrence_nth_week     = nil
+      self.recurrence_nth_weeks    = []
+      self.recurrence_day_of_month = nil
+    when "monthly_nth_weekday"
+      self.recurrence_nth_weeks    = []
+      self.recurrence_day_of_month = nil
+    when "monthly_nth_weekdays"
+      self.recurrence_nth_week     = nil
+      self.recurrence_day_of_month = nil
+    when "monthly_day_of_month"
+      self.recurrence_nth_week     = nil
+      self.recurrence_nth_weeks    = []
+    end
   end
 end

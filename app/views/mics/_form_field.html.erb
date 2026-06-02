@@ -3,7 +3,7 @@
   type ("text"|"email"|"url"|"time"|"date"|"textarea"|"select"), required (bool),
   value (any), placeholder (string), help (string), options (array of [label, value]).
 
-  Inputs are pink-focused, square corners, generous size.
+  Inputs are pink-focused, rounded (matching shared/button), generous size.
 %>
 <%
   type = local_assigns[:type] || "text"
@@ -13,7 +13,7 @@
   options = local_assigns[:options]
   data_attrs = local_assigns[:data] || {}
   field_id = "field_#{name.to_s.parameterize}_#{rand(99999)}"
-  field_classes = "w-full px-3 py-2.5 border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"
+  field_classes = "w-full px-3 py-2.5 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"
 %>
 <div class="mb-4">
   <label for="<%= field_id %>" class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">

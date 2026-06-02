@@ -3,7 +3,7 @@
   pills — chunky pink pill when active, soft gray hover otherwise.
   Locals: list_url, map_url, active ("list" | "map")
 %>
-<div class="inline-flex border border-gray-300 text-sm overflow-hidden bg-white">
+<div class="inline-flex border border-gray-300 text-sm overflow-hidden bg-white rounded">
   <a href="<%= list_url %>"
      class="px-4 py-2 font-bold <%= active == "list" ? "bg-pink-500 text-white" : "text-gray-700 hover:bg-pink-50" %>">
     List

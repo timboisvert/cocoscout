@@ -74,7 +74,16 @@ namespace :mics do
       city  ||= "Chicago"
       state ||= "IL"
 
-      venue = Venue.find_or_initialize_by(name: venue_name, city: city, state: state)
+      # Match against a normalized form of the venue name so curly vs
+      # straight apostrophes, trailing whitespace, or case drift don't
+      # spawn a second venue row. Same for city.
+      norm_name = venue_name.downcase.gsub(/[‘’']/, "").gsub(/\s+/, " ").strip
+      norm_city = city.downcase.strip
+      venue = Venue.where(state: state).find do |v|
+        v.name.to_s.downcase.gsub(/[‘’']/, "").gsub(/\s+/, " ").strip == norm_name &&
+          v.city.to_s.downcase.strip == norm_city
+      end
+      venue ||= Venue.new(name: venue_name, city: city, state: state)
       venue.address1    = address1_from(address_blob)
       venue.postal_code = postal if postal.present?
       venue.timezone  ||= "America/Chicago"
@@ -88,7 +97,13 @@ namespace :mics do
       end
       venue.save!
 
-      mic = Mic.find_or_initialize_by(name: mic_name, venue: venue)
+      # Match the mic name with the same normalization as venues so
+      # casing/punctuation drift doesn't dupe.
+      norm_mic = mic_name.downcase.gsub(/[‘’']/, "").gsub(/\s+/, " ").strip
+      mic = if venue.persisted?
+        venue.mics.find { |m| m.name.to_s.downcase.gsub(/[‘’']/, "").gsub(/\s+/, " ").strip == norm_mic }
+      end
+      mic ||= Mic.new(name: mic_name, venue: venue)
       claimed = mic.persisted? && mic.mic_producers.any?
       old_attrs = mic.attributes.slice(*TRACKED_FIELDS).dup
 

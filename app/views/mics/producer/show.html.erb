@@ -75,9 +75,9 @@
                 </div>
                 <div class="flex gap-2 shrink-0">
                   <%= button_to "Approve", mics_producer_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
-                        class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold" %>
+                        class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
                   <%= button_to "Reject", mics_producer_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
-                        class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold" %>
+                        class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
                 </div>
               </li>
             <% end %>
@@ -86,7 +86,7 @@
       <% end %>
 
       <%# Basic info — Name, Format, Spot length, Cap, Blurb. %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
         </header>
@@ -132,7 +132,7 @@
       <%# Location / Venue — editable for any user who can manage the mic.
           Two flows: (1) edit the current venue in place (affects every
           mic at that venue), (2) move this mic to a different venue. %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Location</h2>
           <p class="text-xs text-gray-500 mt-1">
@@ -195,7 +195,7 @@
       </section>
 
       <%# Schedule — structured recurrence with Stimulus-driven UI. %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Schedule</h2>
           <% if (preview = mics_schedule_label(@mic)).present? %>
@@ -246,6 +246,7 @@
                     value: monthly_kind,
                     options: [
                       [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
+                      [ "Multiple weeks (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
                       [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
                     ],
                     data: { "mics-schedule-form-target": "monthlyKind",
@@ -261,6 +262,26 @@
                       [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ],
                       [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ]
                     ] %>
+            </div>
+
+            <%# Multi-nth-week checkboxes — only for Monthly + nth_weekdays %>
+            <div data-mics-schedule-form-target="nthMultiBlock"
+                 class="mb-4 <%= (primary_choice == "monthly" && monthly_kind == "monthly_nth_weekdays") ? "" : "hidden" %>">
+              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Which weeks?</label>
+              <% selected_weeks = Array(@mic.recurrence_nth_weeks).map(&:to_i) %>
+              <%# Hidden zero-value so an all-unchecked submit still posts the key. %>
+              <input type="hidden" name="mic[recurrence_nth_weeks][]" value="">
+              <div class="flex flex-wrap gap-2">
+                <% [ [ 1, "1st" ], [ 2, "2nd" ], [ 3, "3rd" ], [ 4, "4th" ], [ 5, "5th" ], [ -1, "Last" ] ].each do |val, label| %>
+                  <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded <%= selected_weeks.include?(val) ? "bg-pink-500 text-white border-pink-600 font-bold" : "bg-white border-gray-300 text-gray-700 hover:bg-pink-50" %>">
+                    <input type="checkbox" name="mic[recurrence_nth_weeks][]" value="<%= val %>"
+                           <%= "checked" if selected_weeks.include?(val) %>
+                           class="h-4 w-4 accent-pink-500">
+                    <span class="text-sm"><%= label %></span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Pick every week the mic runs. e.g. for "first and third Monday," check 1st and 3rd.</p>
             </div>
 
             <%# Day-of-month input — only for Monthly + day_of_month %>
@@ -293,7 +314,7 @@
                 <span class="text-xs text-gray-500 transition-transform group-open:rotate-90 inline-block">▶</span>
                 <span>Pause this mic temporarily</span>
                 <% if is_paused %>
-                  <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white font-bold">
+                  <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white font-bold rounded">
                     Paused until <%= paused_until.strftime("%b %-d") %>
                   </span>
                 <% end %>
@@ -313,7 +334,7 @@
       </section>
 
       <%# Sign-up info — channel (online / in-person / both) + bucket draw + URL (only for online). %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
         </header>
@@ -358,7 +379,7 @@
       </section>
 
       <%# Socials — Instagram, X, TikTok, Website. %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Socials</h2>
           <p class="text-xs text-gray-500 mt-1">Instagram, X, TikTok, or a website. Each becomes a button on the public mic page.</p>
@@ -404,7 +425,7 @@
       </section>
 
       <%# Mic runners / Producers. %>
-      <section class="bg-white border border-pink-100">
+      <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Mic runners / Producers</h2>
           <p class="text-xs text-gray-500 mt-1">
@@ -413,7 +434,7 @@
         </header>
         <div class="px-5 sm:px-6 py-5">
           <% if @co_producers.any? %>
-            <ul class="divide-y divide-gray-100 border border-gray-200 mb-5">
+            <ul class="divide-y divide-gray-100 border border-gray-200 rounded overflow-hidden mb-5">
               <% @co_producers.each do |mp| %>
                 <% is_lead = (@mic.lead_producer_user_id == mp.user_id) %>
                 <% role_label = mp.role_producer? ? "Mic runner / Producer" : mp.role.humanize %>
@@ -425,19 +446,19 @@
                     <% end %>
                     <span class="text-xs text-gray-500 ml-1">· <%= role_label %></span>
                     <% if is_lead %>
-                      <span class="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold">Lead</span>
+                      <span class="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">Lead</span>
                     <% end %>
                   </span>
                   <div class="flex items-center gap-2 shrink-0">
                     <% if Current.user&.superadmin? %>
                       <%= button_to impersonate_user_path, method: :post, params: { email: mp.user.email_address },
-                            class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold" do %>
+                            class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold rounded" do %>
                         Impersonate
                       <% end %>
                     <% end %>
                     <% unless is_lead %>
                       <%= button_to "Make lead", mics_producer_set_lead_producer_path(@mic.slug, producer_id: mp.id), method: :post,
-                            class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold" %>
+                            class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
                     <% end %>
                     <% if mp.user_id == Current.user&.id %>
                       <%# Self-row gets "Leave this mic" framing instead of
@@ -514,7 +535,7 @@
           </div>
           <%= button_to "Delete this mic", mics_producer_destroy_mic_path(@mic.slug), method: :delete,
                 data: { turbo_confirm: "Permanently delete \"#{@mic.name}\"? This can't be undone." },
-                class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0" %>
+                class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded" %>
         </div>
       </div>
     </section>

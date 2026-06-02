@@ -18,6 +18,48 @@ module Superadmin
       @show_account_sidebar = false
     end
 
+    # Master search across every Mic in the system. Filters: q (name +
+    # venue + city substring), status (active/pending/ended), claimed
+    # (yes/no), hub_id. Capped at 200 results — superadmin can narrow
+    # further with the search box.
+    def index
+      scope = Mic.includes(:venue, :mic_producers).references(:venues)
+
+      if params[:q].present?
+        q = "%#{params[:q].downcase}%"
+        scope = scope.joins(:venue).where(
+          "LOWER(mics.name) LIKE :q OR LOWER(venues.name) LIKE :q OR LOWER(venues.city) LIKE :q OR LOWER(mics.slug) LIKE :q",
+          q: q
+        )
+      end
+
+      case params[:status]
+      when "pending"   then scope = scope.where(pending: true)
+      when "ended"     then scope = scope.where(status: :ended)
+      when "active"    then scope = scope.where(status: :active, pending: false)
+      end
+
+      case params[:claimed]
+      when "yes" then scope = scope.where(id: MicProducer.select(:mic_id))
+      when "no"  then scope = scope.where.not(id: MicProducer.select(:mic_id))
+      end
+
+      if params[:hub_id].present?
+        scope = scope.joins(:venue).where(venues: { city_hub_id: params[:hub_id] })
+      end
+
+      @mics  = scope.order("mics.name ASC").limit(200)
+      @total = scope.count
+      @hubs  = CityHub.order(:name)
+
+      # Counts strip — surfaces pending workload at a glance, links into
+      # the queue page for actioning.
+      @pending_mic_count        = Mic.pending_moderation.count
+      @pending_claim_count      = MicClaim.status_pending.count
+      @pending_challenge_count  = MicChallenge.status_pending.count
+      @pending_suggestion_count = MicSuggestion.status_pending.count
+    end
+
     def queue
       @pending_mics       = Mic.pending_moderation.includes(:venue).order(created_at: :desc)
       @pending_claims     = MicClaim.status_pending.includes(:mic, :claimant).order(created_at: :desc)

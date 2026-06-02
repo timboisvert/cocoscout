@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "formContainer", "title"]
+    static targets = ["modal", "formContainer", "title", "generateModal"]
 
     connect() {
         // Listen for successful form submissions
@@ -33,8 +33,11 @@ export default class extends Controller {
 
     openEditModal(event) {
         event.preventDefault()
+        event.stopPropagation()
         const sessionId = event.currentTarget.dataset.sessionId
-        const auditionCycleId = event.currentTarget.dataset.auditionCycleId
+        // Cycle + production both live on the outer container; the
+        // session id comes off the clicked button.
+        const auditionCycleId = this.element.dataset.auditionCycleId
         const productionId = this.element.dataset.productionId
 
         // Fetch the edit session form
@@ -65,6 +68,23 @@ export default class extends Controller {
         if (event.target === this.modalTarget) {
             this.close()
         }
+        if (this.hasGenerateModalTarget && event.target === this.generateModalTarget) {
+            this.closeGenerate()
+        }
+    }
+
+    openGenerateModal(event) {
+        event.preventDefault()
+        if (!this.hasGenerateModalTarget) return
+        this.generateModalTarget.classList.remove("hidden")
+        document.body.style.overflow = "hidden"
+    }
+
+    closeGenerate(event) {
+        event?.preventDefault?.()
+        if (!this.hasGenerateModalTarget) return
+        this.generateModalTarget.classList.add("hidden")
+        document.body.style.overflow = ""
     }
 
     stopPropagation(event) {

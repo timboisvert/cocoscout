@@ -108,6 +108,11 @@ module MicsHelper
       n = mic.recurrence_nth_week
       ord = n == -1 ? "Last" : ord_for(n)
       "#{ord} #{day} of every month"
+    when "monthly_nth_weekdays"
+      weeks = Array(mic.recurrence_nth_weeks).map(&:to_i).reject(&:zero?).uniq.sort_by { |n| n == -1 ? 99 : n }
+      return nil if weeks.empty?
+      ords = weeks.map { |n| n == -1 ? "Last" : ord_for(n) }
+      "#{ords.to_sentence(two_words_connector: " & ", last_word_connector: ", & ")} #{day} of every month"
     when "monthly_day_of_month"
       "Day #{mic.recurrence_day_of_month} of every month"
     else
