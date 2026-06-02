@@ -143,6 +143,10 @@
                      class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
               <span>Bucket draw / random draw</span>
             </label>
+
+            <%= render "mics/form_field", name: "mic[signup_notes]", label: "Sign-up notes (optional)", type: "textarea", rows: 3,
+                  placeholder: "House rules, bump-in offers, drink minimums, anything that doesn't fit above.",
+                  help: "Shown publicly under sign-up info." %>
           </div>
         </section>
 

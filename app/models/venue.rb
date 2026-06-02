@@ -19,6 +19,14 @@ class Venue < ApplicationRecord
   validates :name, presence: true, length: { maximum: 200 }
   validates :city, :state, :country, presence: true
 
+  ADDRESS_FIELDS = %w[address1 address2 city state postal_code].freeze
+
+  # Whenever any address field changes, clear the prior geocode error so
+  # the after_commit hook is willing to try again. Without this, one
+  # failed lookup (e.g. "no_match" from an incomplete original import)
+  # permanently blocks future attempts on the same venue.
+  before_save :clear_geocode_state_on_address_change
+
   # On address change (or initial create with an address), enqueue a
   # geocoder job. No-op when we already have coordinates.
   after_commit :enqueue_geocode_if_needed, on: %i[create update]
@@ -41,6 +49,16 @@ class Venue < ApplicationRecord
   end
 
   private
+
+  def clear_geocode_state_on_address_change
+    return unless ADDRESS_FIELDS.any? { |f| changes.key?(f) }
+    # Address changed — invalidate any stale lat/lng AND the prior error
+    # so the next callback tries again with the new input.
+    self.geocode_error = nil
+    self.lat = nil
+    self.lng = nil
+    self.geocoded_at = nil
+  end
 
   def enqueue_geocode_if_needed
     return unless needs_geocode?

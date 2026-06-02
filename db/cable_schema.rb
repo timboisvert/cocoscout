@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_31_120700) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_092644) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1155,6 +1155,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_31_120700) do
     t.string "recurrence_rule"
     t.integer "signup_cap"
     t.integer "signup_method"
+    t.text "signup_notes"
     t.string "signup_opens_at_text"
     t.integer "signup_opens_offset_minutes"
     t.string "signup_url"
