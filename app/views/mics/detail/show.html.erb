@@ -157,7 +157,10 @@
         </div>
       <% end %>
 
-      <%# Sign-up CTA — standalone row so the action isn't mixed in with the facts. %>
+      <%# Sign-up CTA — standalone row so the action isn't mixed in with
+          the facts. A real URL becomes a button; free-text instructions
+          (e.g. "Online through Lia Berman's FB Google Sheet post")
+          render as an instructional callout instead. %>
       <% if @signup_info && @signup_info[:url].present? %>
         <div class="pt-1">
           <%= link_to @signup_info[:url], target: "_blank", rel: "noopener",
@@ -168,6 +171,11 @@
               <span class="text-[10px] uppercase tracking-wider opacity-80 ml-1">on CocoScout</span>
             <% end %>
           <% end %>
+        </div>
+      <% elsif @signup_info && @signup_info[:channel_text].present? %>
+        <div class="pt-2">
+          <div class="text-[10px] uppercase tracking-wider text-pink-700 font-bold mb-1">How to sign up</div>
+          <p class="text-sm text-gray-900"><%= @signup_info[:channel_text] %></p>
         </div>
       <% end %>
     </div>

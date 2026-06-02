@@ -129,9 +129,9 @@
                   data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
 
             <div data-mics-signup-form-target="urlBlock" class="hidden">
-              <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up link (URL)", type: "url",
-                    placeholder: "https://...",
-                    help: "Shown to performers as the sign-up button on the public page." %>
+              <%= render "mics/form_field", name: "mic[signup_url]", label: "How to sign up online",
+                    placeholder: "https://… or e.g. \"Through Lia Berman's FB Google Sheet post\"",
+                    help: "A URL becomes a \"Sign up\" button; free text gets shown as instructions instead." %>
             </div>
 
             <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",

@@ -179,15 +179,26 @@ class Mic < ApplicationRecord
       }
     elsif signup_url.present? || signup_opens_at_text.present?
       {
-        # Only surface the URL when the mic actually has an online
-        # channel — in-person mics that happen to have a URL on file
-        # (e.g. an Instagram link) shouldn't masquerade as a sign-up.
-        url: (online_signup? ? signup_url.presence : nil),
+        # `signup_url` is overloaded: it's either an actual URL OR a
+        # description of where to sign up (e.g. "Online through Lia
+        # Berman's FB Google Sheet post"). Surface them on different
+        # keys so the detail page can render a button for the link
+        # case and an instructional line for the text case. Only do
+        # either when the mic actually has an online channel.
+        url:          (online_signup? && signup_url_is_link? ? signup_url : nil),
+        channel_text: (online_signup? && !signup_url_is_link? ? signup_url.presence : nil),
         opens_at: nil,
         opens_at_text: signup_opens_at_text.presence,
         powered_by_cocoscout: false
       }
     end
+  end
+
+  # True when `signup_url` parses as an http(s) URL — i.e. something we
+  # can wire up to a "Sign up" button. Otherwise the value is treated
+  # as free-text instructions.
+  def signup_url_is_link?
+    signup_url.to_s.match?(%r{\Ahttps?://}i)
   end
 
   def to_param

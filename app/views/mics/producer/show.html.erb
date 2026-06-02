@@ -327,9 +327,9 @@
 
             <div data-mics-signup-form-target="urlBlock"
                  class="<%= @mic.online_signup? ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[signup_url]", label: "Sign-up link (URL)", type: "url", value: @mic.signup_url,
-                    placeholder: "https://...",
-                    help: "Shown to performers as the sign-up button on the public page." %>
+              <%= render "mics/form_field", name: "mic[signup_url]", label: "How to sign up online", value: @mic.signup_url,
+                    placeholder: "https://… or e.g. \"Through Lia Berman's FB Google Sheet post\"",
+                    help: "A URL becomes a \"Sign up\" button on the public page. Any other text gets shown as instructions — useful when sign-up happens via Facebook, a Google Sheet link in a post, etc." %>
             </div>
 
             <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
