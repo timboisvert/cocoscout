@@ -25,6 +25,11 @@
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="coustard-regular text-base sm:text-lg text-gray-900 truncate"><%= mic.name %></span>
+        <% if mic.paused? %>
+          <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-amber-500 text-white font-bold rounded">
+            ⏸ Paused<% if mic.canceled_until.present? && mic.canceled_until >= Date.current %> · back <%= mic.canceled_until.strftime("%b %-d") %><% end %>
+          </span>
+        <% end %>
         <% if mic.powered_by_cocoscout? %>
           <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">
             CocoScout

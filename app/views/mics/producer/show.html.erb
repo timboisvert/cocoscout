@@ -303,26 +303,38 @@
             <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
                   value: @mic.starts_local_time&.strftime("%H:%M") %>
 
-            <%# Pause-until tucked in an accordion — it's used rarely, so
-                we don't want it cluttering the day-to-day schedule fields.
-                When a pause IS active, the summary line surfaces that
-                state so a producer doesn't miss it at a glance. %>
-            <% paused_until = @mic.canceled_until %>
-            <% is_paused = paused_until.present? && paused_until >= Date.current %>
-            <details class="group border border-gray-200 bg-gray-50 mb-4" <%= "open" if is_paused %>>
+            <%# Pause state lives in its own accordion — toggled on, the
+                mic stops appearing on city listings and upcoming-week
+                feeds, but stays searchable and on favoriters' lists.
+                Optional resume date silently picks the schedule back up
+                on that date. Optional note explains what's going on. %>
+            <% currently_paused = @mic.paused? %>
+            <details class="group border border-gray-200 bg-gray-50 mb-4" <%= "open" if currently_paused %>>
               <summary class="list-none px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
                 <span class="text-xs text-gray-500 transition-transform group-open:rotate-90 inline-block">▶</span>
-                <span>Pause this mic temporarily</span>
-                <% if is_paused %>
+                <span>Pause this mic</span>
+                <% if currently_paused %>
                   <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white font-bold rounded">
-                    Paused until <%= paused_until.strftime("%b %-d") %>
+                    Paused<% if @mic.canceled_until.present? && @mic.canceled_until >= Date.current %> until <%= @mic.canceled_until.strftime("%b %-d") %><% end %>
                   </span>
                 <% end %>
               </summary>
-              <div class="px-4 py-4 border-t border-gray-200 bg-white">
-                <%= render "mics/form_field", name: "mic[canceled_until]", label: "Pause until (date)", type: "date",
+              <div class="px-4 py-4 border-t border-gray-200 bg-white space-y-4">
+                <label class="flex items-center gap-2 text-sm text-gray-800">
+                  <input type="hidden" name="mic[paused]" value="0">
+                  <input type="checkbox" name="mic[paused]" value="1" <%= "checked" if currently_paused %>
+                         class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                  <span><strong>Pause this mic.</strong> Stays searchable and visible on favorites — just doesn't show up in city listings or upcoming-week views.</span>
+                </label>
+
+                <%= render "mics/form_field", name: "mic[canceled_until]", label: "Resume on (optional)", type: "date",
                       value: @mic.canceled_until&.iso8601,
-                      help: "No dates appear on the public page up to and including this. Clear the field and re-save to resume." %>
+                      help: "Leave empty for an open-ended hiatus. When set, the regular schedule silently picks back up on that date." %>
+
+                <%= render "mics/form_field", name: "mic[pause_note]", label: "Pause message (shown on the public page)",
+                      type: "textarea", rows: 3, value: @mic.pause_note,
+                      placeholder: "e.g. On hiatus for the summer. See you in September!",
+                      help: "Performers landing on the page will see this front-and-center while the mic is paused." %>
               </div>
             </details>
 

@@ -8,7 +8,7 @@ module Mics
 
     def show
       @mics = Mic.in_hub(@hub).includes(:venue, :mic_producers).order(:name)
-      @active_mics      = @mics.select { |m| m.status_active? && !m.pending }
+      @active_mics      = @mics.select { |m| m.active? && !m.pending }
       @unclaimed_mics   = @active_mics.reject(&:claimed?)
       @claimed_mics     = @active_mics.select(&:claimed?)
       @pending_mic_ct       = Mic.pending_moderation.in_hub(@hub).count

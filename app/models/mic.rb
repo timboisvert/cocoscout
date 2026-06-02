@@ -98,6 +98,19 @@ class Mic < ApplicationRecord
 
   scope :active, -> { where(status: statuses[:active], pending: false) }
   scope :pending_moderation, -> { where(pending: true) }
+  # Paused mics still exist (search, favorites roster, direct URL) but
+  # drop out of city listings / upcoming-event surfaces. Apply
+  # `.unpaused` wherever you wouldn't want a hiatusing mic to show up.
+  scope :unpaused, -> { where(paused: false) }
+
+  # True iff the mic is paused AND not scheduled to come back within
+  # the foreseeable horizon. UI uses this to suppress the upcoming
+  # calendar entirely and show a hiatus card instead.
+  def on_hiatus?
+    return false unless paused
+    return true  if canceled_until.blank?
+    canceled_until < Date.current
+  end
   # Returns mics whose venue rolls up to the given hub (via venue.city_hub_id).
   scope :in_hub, ->(hub) {
     joins(:venue).where(venues: { city_hub_id: hub.id })
@@ -220,8 +233,13 @@ class Mic < ApplicationRecord
 
   # Computed occurrences for the next `limit` matching dates, based on
   # the structured recurrence_pattern. One-off statuses are merged in.
+  # A paused mic returns nothing unless it has a future resume date
+  # (`canceled_until`), in which case the regular schedule silently
+  # picks back up on that date — the `iterate`/branches below already
+  # treat `canceled_until` as a "skip up to and including" cutoff.
   def compute_occurrences(limit:)
     return [] unless starts_local_time.present?
+    return [] if paused && (canceled_until.blank? || canceled_until < Date.current)
     tz = venue&.timezone.presence || "America/Chicago"
     Time.use_zone(tz) do
       today = Time.zone.today
@@ -263,7 +281,7 @@ class Mic < ApplicationRecord
       m = starting_from.beginning_of_month
       while dates.size < limit && m <= until_date
         d = nth_weekday_of_month(m, day_of_week, recurrence_nth_week)
-        if d && d >= starting_from && (pause_through.blank? || d > pause_through)
+        if d && d >= starting_from && (pause_through.blank? || d >= pause_through)
           dates << d
         end
         m = m.next_month
@@ -275,7 +293,7 @@ class Mic < ApplicationRecord
       m = starting_from.beginning_of_month
       while dates.size < limit && m <= until_date
         d = day_of_month_safe(m, recurrence_day_of_month)
-        if d && d >= starting_from && (pause_through.blank? || d > pause_through)
+        if d && d >= starting_from && (pause_through.blank? || d >= pause_through)
           dates << d
         end
         m = m.next_month
@@ -294,7 +312,7 @@ class Mic < ApplicationRecord
         month_dates = weeks.map { |w| nth_weekday_of_month(m, day_of_week, w) }.compact.sort
         month_dates.each do |d|
           break if dates.size >= limit
-          dates << d if d >= starting_from && (pause_through.blank? || d > pause_through)
+          dates << d if d >= starting_from && (pause_through.blank? || d >= pause_through)
         end
         m = m.next_month
       end
@@ -330,7 +348,7 @@ class Mic < ApplicationRecord
   def iterate(cur, until_date, step_days, pause_through, limit)
     out = []
     while out.size < limit && cur <= until_date
-      out << cur if pause_through.blank? || cur > pause_through
+      out << cur if pause_through.blank? || cur >= pause_through
       cur += step_days
     end
     out

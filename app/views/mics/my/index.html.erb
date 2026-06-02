@@ -114,8 +114,15 @@
           <% @favorite_mics.each do |mic| %>
             <div class="px-4 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap hover:bg-pink-50">
               <div class="flex-1 min-w-0">
-                <%= link_to mic.name, mics_detail_path(mic.slug),
-                      class: "coustard-regular text-lg text-gray-900 hover:underline" %>
+                <span class="inline-flex items-baseline gap-2 flex-wrap">
+                  <%= link_to mic.name, mics_detail_path(mic.slug),
+                        class: "coustard-regular text-lg text-gray-900 hover:underline" %>
+                  <% if mic.paused? %>
+                    <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-amber-500 text-white font-bold rounded">
+                      ⏸ Paused<% if mic.canceled_until.present? && mic.canceled_until >= Date.current %> · back <%= mic.canceled_until.strftime("%b %-d") %><% end %>
+                    </span>
+                  <% end %>
+                </span>
                 <div class="text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
               </div>
               <%= button_to "Unfavorite", mics_favorite_path(mic.slug), method: :post,

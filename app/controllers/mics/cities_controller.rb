@@ -176,21 +176,24 @@ module Mics
 
       # Sidebar: cities with active mics, excluding hub-rolled venues.
       # Empty hash → sidebar hides the section entirely.
-      @other_cities = Mic.active.joins(:venue)
+      @other_cities = Mic.active.unpaused.joins(:venue)
                          .where(venues: { city_hub_id: nil })
                          .group("venues.city", "venues.state")
                          .order(Arel.sql("COUNT(*) DESC"))
                          .count
     end
 
-    # All active mics that belong on this listing — either rolled up via
-    # the hub, or matched on raw city/state when there's no hub.
+    # All active, *unpaused* mics that belong on this listing — either
+    # rolled up via the hub, or matched on raw city/state when there's
+    # no hub. Paused mics still exist for search + favorites but get
+    # filtered out of these public listings.
     def scoped_mics
-      if @hub
+      base = if @hub
         Mic.active.in_hub(@hub)
       else
         Mic.in_city(@city, @state).active
       end
+      base.unpaused
     end
 
     # If every venue in the given city/state belongs to the same hub,

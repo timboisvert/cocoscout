@@ -362,7 +362,7 @@ module Mics
     end
 
     def allowed_keys
-      %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
     end
 
     def mic_params

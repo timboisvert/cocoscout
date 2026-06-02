@@ -106,7 +106,7 @@
             <% claimed   = mic.mic_producers.any? %>
             <% pending   = mic.pending %>
             <% status_chip = if pending then [ "Pending", "bg-amber-100 text-amber-700" ]
-                              elsif mic.status_ended? then [ "Ended", "bg-gray-100 text-gray-500" ]
+                              elsif mic.ended? then [ "Ended", "bg-gray-100 text-gray-500" ]
                               elsif claimed then [ "Claimed", "bg-emerald-100 text-emerald-700" ]
                               else [ "Unclaimed", "bg-pink-100 text-pink-700" ]
                               end %>

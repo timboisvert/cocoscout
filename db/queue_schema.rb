@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_02_103256) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_154914) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1145,6 +1145,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_02_103256) do
     t.bigint "lead_producer_user_id"
     t.integer "min_age"
     t.string "name", null: false
+    t.text "pause_note"
+    t.boolean "paused", default: false, null: false
     t.boolean "pending", default: false, null: false
     t.bigint "production_id"
     t.date "recurrence_anchor_date"
@@ -1167,6 +1169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_02_103256) do
     t.datetime "updated_at", null: false
     t.bigint "venue_id", null: false
     t.index ["lead_producer_user_id"], name: "index_mics_on_lead_producer_user_id"
+    t.index ["paused"], name: "index_mics_on_paused"
     t.index ["pending"], name: "index_mics_on_pending", where: "(pending = true)"
     t.index ["production_id"], name: "index_mics_on_production_id", unique: true, where: "(production_id IS NOT NULL)"
     t.index ["slug"], name: "index_mics_on_slug", unique: true
