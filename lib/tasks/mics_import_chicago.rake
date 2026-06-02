@@ -267,7 +267,13 @@ namespace :mics do
   end
 
   def self.download_sheet_as_csv(sheet_id, gid, out_path)
-    export_url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&gid=#{gid || 0}"
+    # IMPORTANT: use the Visualization API (`gviz/tq?tqx=out:csv`) instead
+    # of the plain `export?format=csv` endpoint. The export endpoint
+    # dumps every row in the underlying data including ones the sheet
+    # owner has explicitly hidden — meaning entries the community has
+    # taken down still get imported. The gviz endpoint respects hidden
+    # rows the way a human viewing the sheet would.
+    export_url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/gviz/tq?tqx=out:csv&gid=#{gid || 0}"
     puts "→ fetching #{export_url}"
     uri = URI.parse(export_url)
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
