@@ -63,7 +63,8 @@ module MicsHelper
   # JSON-LD `Event` payload for one mic occurrence.
   def mic_event_jsonld(mic, occurrence)
     starts_at = occurrence[:starts_at]
-    ends_at   = mic.spot_length_minutes ? starts_at + (mic.spot_length_minutes * 60) : nil
+    spot_min  = mics_spot_length_minutes_int(mic.spot_length_minutes)
+    ends_at   = spot_min ? starts_at + (spot_min * 60) : nil
     status =
       case occurrence[:mic_status]
       when "cancelled" then "https://schema.org/EventCancelled"
@@ -200,6 +201,27 @@ module MicsHelper
   def next_upcoming_date_for(mic)
     occ = mic.next_occurrences(limit: 1).first
     (occ ? occ[:starts_at].to_date : Date.current).iso8601
+  end
+
+  # Spot length is a free-text string ("3", "3ish", "3-5 minutes"). If
+  # the producer wrote just a number, render with " min" appended. If
+  # they wrote anything else, surface their text verbatim.
+  def mics_spot_length_label(value)
+    return nil if value.blank?
+    str = value.to_s.strip
+    return nil if str.empty?
+    if str.match?(/\A\d+\z/)
+      "#{str} min"
+    else
+      str
+    end
+  end
+
+  # Same idea — pulls the leading digits out of free text so the iCal /
+  # show-duration / migration paths can keep working numerically.
+  def mics_spot_length_minutes_int(value)
+    n = value.to_s.scan(/\d+/).first
+    n&.to_i
   end
 
   # Formats a `signup_opens_at_text` value (stored as "HH:MM") into the

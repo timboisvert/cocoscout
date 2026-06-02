@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_02_154914) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_182238) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1163,7 +1163,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_02_154914) do
     t.integer "signup_opens_offset_minutes"
     t.string "signup_url"
     t.string "slug", null: false
-    t.integer "spot_length_minutes"
+    t.string "spot_length_minutes"
     t.time "starts_local_time"
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false

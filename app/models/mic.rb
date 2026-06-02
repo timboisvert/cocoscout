@@ -154,6 +154,16 @@ class Mic < ApplicationRecord
 
   # True iff this Mic is linked to a Production with an active open-mic
   # SignUpForm. Drives the "Powered by CocoScout" badge.
+  # True when this mic is already running on CocoScout in some form —
+  # either through a real production + sign-up form (the migration
+  # wizard), OR via a producer who pasted a CocoScout sign-up URL into
+  # the signup_url field manually. Used to suppress the "Migrate to
+  # CocoScout" pitch on the producer page when it would be moot.
+  def on_cocoscout?
+    return true if production_id.present?
+    signup_url.to_s.match?(%r{\Ahttps?://(www\.)?cocoscout\.com\b}i)
+  end
+
   def powered_by_cocoscout?
     return false unless production_id
     production&.sign_up_forms&.any? { |f| f.active && Array(f.event_type_filter).include?("open_mic") } || false

@@ -15,8 +15,9 @@ class MicIcsBuilder
         e.description  = mic.blurb.to_s
         e.location     = mic.venue.full_address
         e.dtstart      = Icalendar::Values::DateTime.new(occ[:starts_at])
-        if mic.spot_length_minutes
-          e.dtend = Icalendar::Values::DateTime.new(occ[:starts_at] + (mic.spot_length_minutes * 60))
+        spot_min = spot_length_int(mic.spot_length_minutes)
+        if spot_min
+          e.dtend = Icalendar::Values::DateTime.new(occ[:starts_at] + (spot_min * 60))
         end
         if occ[:mic_status] == "cancelled"
           e.status = "CANCELLED"
@@ -40,8 +41,9 @@ class MicIcsBuilder
           e.description  = mic.blurb.to_s
           e.location     = mic.venue.full_address
           e.dtstart      = Icalendar::Values::DateTime.new(occ[:starts_at])
-          if mic.spot_length_minutes
-            e.dtend = Icalendar::Values::DateTime.new(occ[:starts_at] + (mic.spot_length_minutes * 60))
+          spot_min = spot_length_int(mic.spot_length_minutes)
+          if spot_min
+            e.dtend = Icalendar::Values::DateTime.new(occ[:starts_at] + (spot_min * 60))
           end
           e.status = "CANCELLED" if occ[:mic_status] == "cancelled"
         end
@@ -51,4 +53,13 @@ class MicIcsBuilder
     cal.publish
     cal.to_ical
   end
+
+  # spot_length_minutes is free-text ("5", "3-5 minutes"). For the iCal
+  # dtend we just need the leading digit run; if there isn't one, leave
+  # dtend unset and let clients render the event as a point in time.
+  def self.spot_length_int(value)
+    n = value.to_s.scan(/\d+/).first
+    n&.to_i
+  end
+  private_class_method :spot_length_int
 end

@@ -54,7 +54,8 @@
             <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select",
                   options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)" %>
+              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length",
+                    placeholder: "e.g. 5, 3-5 minutes, 5ish" %>
               <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap",
                     placeholder: "e.g. 10, 10ish, 10-15" %>
             </div>

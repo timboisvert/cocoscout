@@ -124,13 +124,15 @@ module Mics
       out
     end
 
-    # `signup_cap` is now free text ("10ish", "10-15"). Pull the first
-    # integer out of it for show-duration estimation; fall back to 120 if
-    # we can't parse anything sensible.
+    # Both `signup_cap` and `spot_length_minutes` are free text now
+    # ("10ish", "3-5 minutes"). Pull the first integer out of each for
+    # show-duration estimation; fall back to 120 if we can't parse a
+    # sensible product.
     def estimated_duration_minutes
-      cap_int = @mic.signup_cap.to_s.scan(/\d+/).first&.to_i
-      if @mic.spot_length_minutes && cap_int && cap_int.positive?
-        @mic.spot_length_minutes * cap_int
+      cap_int  = @mic.signup_cap.to_s.scan(/\d+/).first&.to_i
+      spot_int = @mic.spot_length_minutes.to_s.scan(/\d+/).first&.to_i
+      if spot_int && spot_int.positive? && cap_int && cap_int.positive?
+        spot_int * cap_int
       else
         120
       end

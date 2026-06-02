@@ -96,7 +96,9 @@
             <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select", value: @mic.format,
                   options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length (minutes)", value: @mic.spot_length_minutes %>
+              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length", value: @mic.spot_length_minutes,
+                    placeholder: "e.g. 5, 3-5 minutes, 5ish",
+                    help: "Free text — a bare number renders as \"5 min\" on the public page; anything else (\"3-5 minutes\", \"depends\") shows verbatim." %>
               <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap", value: @mic.signup_cap,
                     placeholder: "e.g. 10, 10ish, 10-15",
                     help: "Free text — write whatever describes the cap. Producers often say things like \"10ish\" or \"up to 15\"." %>
@@ -129,71 +131,6 @@
         </div>
       </section>
 
-      <%# Location / Venue — editable for any user who can manage the mic.
-          Two flows: (1) edit the current venue in place (affects every
-          mic at that venue), (2) move this mic to a different venue. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Location</h2>
-          <p class="text-xs text-gray-500 mt-1">
-            Currently <strong><%= @mic.venue.name %></strong> · <%= @mic.venue.neighborhood_city %>.
-            <% other_count = @mic.venue.mics.where.not(id: @mic.id).count %>
-            <% if other_count.positive? %>
-              ⚠️ This venue hosts <%= pluralize(other_count, "other mic") %> — edits affect all of them. Use "Move to a different venue" if just this one is relocating.
-            <% end %>
-          </p>
-        </header>
-        <div class="px-5 sm:px-6 py-5 space-y-6">
-          <%# Edit current venue in place. %>
-          <%= form_with url: mics_producer_update_venue_path(@mic.slug), method: :patch do %>
-            <%= render "mics/form_field", name: "venue[name]", label: "Venue name", value: @mic.venue.name, required: true %>
-            <%= render "mics/form_field", name: "venue[address1]", label: "Street address", value: @mic.venue.address1 %>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood", value: @mic.venue.neighborhood %>
-              <%= render "mics/form_field", name: "venue[postal_code]", label: "ZIP", value: @mic.venue.postal_code %>
-              <%= render "mics/form_field", name: "venue[city]", label: "City", value: @mic.venue.city, required: true %>
-              <div class="mb-4">
-                <%= render "shared/us_state_select",
-                      name: "venue[state]", required: true, value: @mic.venue.state, label: "State" %>
-              </div>
-            </div>
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save location", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-
-          <%# Move to a different venue — re-points just this mic. %>
-          <details class="border border-gray-200 bg-gray-50">
-            <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100">
-              Move to a different venue
-            </summary>
-            <div class="px-4 py-4 border-t border-gray-200 bg-white">
-              <p class="text-xs text-gray-500 mb-3">
-                Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
-              </p>
-              <%= form_with url: mics_producer_move_venue_path(@mic.slug), method: :post,
-                    data: { turbo_confirm: "Move this mic to a different venue? Existing schedule + producers stay the same." } do %>
-                <%= render "mics/form_field", name: "venue_name", label: "New venue name", required: true,
-                      placeholder: "e.g. Cole's Bar" %>
-                <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                  <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
-                  <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
-                  <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
-                  <div class="mb-4">
-                    <%= render "shared/us_state_select",
-                          name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
-                  </div>
-                </div>
-                <div class="flex justify-end pt-2 border-t border-gray-100">
-                  <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
-                </div>
-              <% end %>
-            </div>
-          </details>
-        </div>
-      </section>
-
       <%# Schedule — structured recurrence with Stimulus-driven UI. %>
       <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
@@ -214,7 +151,6 @@
           %>
           <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-schedule-form" } do %>
-
             <%# Hidden field that actually persists. JS writes the resolved enum value into it. %>
             <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
                    data-mics-schedule-form-target="hiddenPattern">
@@ -390,6 +326,71 @@
         </div>
       </section>
 
+      <%# Location / Venue — editable for any user who can manage the mic.
+          Two flows: (1) edit the current venue in place (affects every
+          mic at that venue), (2) move this mic to a different venue. %>
+      <section class="bg-white border border-pink-100 rounded">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Location</h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Currently <strong><%= @mic.venue.name %></strong> · <%= @mic.venue.neighborhood_city %>.
+            <% other_count = @mic.venue.mics.where.not(id: @mic.id).count %>
+            <% if other_count.positive? %>
+              ⚠️ This venue hosts <%= pluralize(other_count, "other mic") %> — edits affect all of them. Use "Move to a different venue" if just this one is relocating.
+            <% end %>
+          </p>
+        </header>
+        <div class="px-5 sm:px-6 py-5 space-y-6">
+          <%# Edit current venue in place. %>
+          <%= form_with url: mics_producer_update_venue_path(@mic.slug), method: :patch do %>
+            <%= render "mics/form_field", name: "venue[name]", label: "Venue name", value: @mic.venue.name, required: true %>
+            <%= render "mics/form_field", name: "venue[address1]", label: "Street address", value: @mic.venue.address1 %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood", value: @mic.venue.neighborhood %>
+              <%= render "mics/form_field", name: "venue[postal_code]", label: "ZIP", value: @mic.venue.postal_code %>
+              <%= render "mics/form_field", name: "venue[city]", label: "City", value: @mic.venue.city, required: true %>
+              <div class="mb-4">
+                <%= render "shared/us_state_select",
+                      name: "venue[state]", required: true, value: @mic.venue.state, label: "State" %>
+              </div>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save location", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+
+          <%# Move to a different venue — re-points just this mic. %>
+          <details class="border border-gray-200 bg-gray-50 rounded">
+            <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100">
+              Move to a different venue
+            </summary>
+            <div class="px-4 py-4 border-t border-gray-200 bg-white">
+              <p class="text-xs text-gray-500 mb-3">
+                Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
+              </p>
+              <%= form_with url: mics_producer_move_venue_path(@mic.slug), method: :post,
+                    data: { turbo_confirm: "Move this mic to a different venue? Existing schedule + producers stay the same." } do %>
+                <%= render "mics/form_field", name: "venue_name", label: "New venue name", required: true,
+                      placeholder: "e.g. Cole's Bar" %>
+                <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                  <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
+                  <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
+                  <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
+                  <div class="mb-4">
+                    <%= render "shared/us_state_select",
+                          name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
+                  </div>
+                </div>
+                <div class="flex justify-end pt-2 border-t border-gray-100">
+                  <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
+                </div>
+              <% end %>
+            </div>
+          </details>
+        </div>
+      </section>
+
       <%# Socials — Instagram, X, TikTok, Website. %>
       <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
@@ -509,7 +510,11 @@
   </div>
 
   <%# Marketing — convert to CocoScout sign-ups. %>
-  <% unless @mic.production_id %>
+  <%# Hide the "Migrate to CocoScout sign-ups" pitch when the mic is
+      already on CocoScout in any form — either fully migrated through
+      the wizard (has a production_id) OR the producer already pasted a
+      CocoScout sign-up URL into the signup_url field. %>
+  <% unless @mic.on_cocoscout? %>
     <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
       <div class="max-w-5xl">
         <div class="border-2 border-pink-500 bg-pink-50 p-5 sm:p-7 flex flex-col md:flex-row md:items-center gap-5">
