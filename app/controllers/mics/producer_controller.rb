@@ -58,6 +58,60 @@ module Mics
       redirect_to target, notice: "Deleted \"#{name}\"."
     end
 
+    # Edit the *current* venue in place — name, street, neighborhood,
+    # city, state, ZIP. This affects every Mic at this venue, not just
+    # this one; the view warns the producer accordingly.
+    def update_venue
+      venue = @mic.venue
+      old_attrs = venue.attributes.slice(*VENUE_FIELDS)
+      venue.assign_attributes(venue_params)
+      venue.save!
+
+      venue.attributes.slice(*VENUE_FIELDS).each do |k, v|
+        next if old_attrs[k].to_s == v.to_s
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+                                field: "venue.#{k}", old_value: old_attrs[k].to_s, new_value: v.to_s)
+      end
+      redirect_to mics_producer_mic_path(@mic.slug), notice: "Venue updated."
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to mics_producer_mic_path(@mic.slug), alert: "Couldn't save venue: #{e.message}"
+    end
+
+    # Re-point this Mic at a different Venue (find existing or create
+    # new). Leaves the old Venue untouched in case other mics use it.
+    def move_venue
+      name  = params[:venue_name].to_s.strip
+      city  = params[:venue_city].to_s.strip
+      state = params[:venue_state].to_s.strip.upcase
+
+      if name.blank? || city.blank? || state.blank?
+        redirect_to mics_producer_mic_path(@mic.slug),
+                    alert: "Need at least venue name, city, and state to move the mic."
+        return
+      end
+
+      target = Venue.find_or_initialize_by(name: name, city: city, state: state)
+      if target.new_record?
+        target.address1     = params[:venue_address1].to_s.strip.presence
+        target.neighborhood = params[:venue_neighborhood].to_s.strip.presence
+        target.postal_code  = params[:venue_postal_code].to_s.strip.presence
+        target.country    ||= "US"
+        target.timezone   ||= @mic.venue&.timezone || "America/Chicago"
+        target.city_hub   ||= @mic.venue&.city_hub
+        target.save!
+      end
+
+      old_venue_id = @mic.venue_id
+      old_label    = "#{@mic.venue.name} (#{@mic.venue.neighborhood_city})"
+      @mic.update!(venue: target)
+
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+                              field: "venue_id",
+                              old_value: old_venue_id.to_s, new_value: target.id.to_s,
+                              note: "Moved from #{old_label} to #{target.name} (#{target.city}, #{target.state})")
+      redirect_to mics_producer_mic_path(@mic.slug), notice: "Moved to #{target.name}."
+    end
+
     def verify
       @mic.update!(last_verified_at: Time.current, last_verified_by_user_id: current_user.id)
       @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
@@ -300,6 +354,12 @@ module Mics
       hub.present? && hub.editor?(user)
     end
     helper_method :deletable_by?
+
+    VENUE_FIELDS = %w[name address1 neighborhood city state postal_code].freeze
+
+    def venue_params
+      params.require(:venue).permit(*VENUE_FIELDS.map(&:to_sym))
+    end
 
     def allowed_keys
       %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_day_of_month recurrence_anchor_date canceled_until signup_method bucket_draw signup_url signup_opens_at_text blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]

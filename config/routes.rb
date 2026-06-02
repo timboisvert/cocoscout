@@ -104,6 +104,8 @@ Rails.application.routes.draw do
     post  "producer/:slug/status",    to: "producer#post_status",    as: :producer_post_status
     post  "producer/:slug/invite",    to: "producer#invite",         as: :producer_invite
     post  "producer/:slug/cancel_date", to: "producer#cancel_date",  as: :producer_cancel_date
+    patch "producer/:slug/venue",       to: "producer#update_venue", as: :producer_update_venue
+    post  "producer/:slug/move_venue",  to: "producer#move_venue",   as: :producer_move_venue
     get    "producer/:slug/producer_lookup", to: "producer#producer_lookup", as: :producer_lookup
     post   "producer/:slug/producers", to: "producer#add_producer", as: :producer_add_producer
     delete "producer/:slug/producers/:producer_id", to: "producer#remove_producer", as: :producer_remove_producer
