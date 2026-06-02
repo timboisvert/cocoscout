@@ -8,69 +8,26 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
     <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
-      <!-- Left Column: Value Proposition -->
+      <!-- Left Column: Multi-persona value prop. Same partial as the
+           signin page so the framing is consistent — one account
+           across productions, auditions, and open mics. -->
       <div class="order-2 lg:order-1">
         <div class="lg:sticky lg:top-8">
           <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <div class="inline-block bg-pink-100 text-pink-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
-              FREE FOR PERFORMERS
+              FREE TO JOIN
             </div>
-            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Join as a performer</h2>
-            <p class="text-slate-600 mb-6">Your free CocoScout account gives you everything you need to audition, perform, and collaborate on shows.</p>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Create your CocoScout account</h2>
+            <p class="text-slate-600 mb-6">One free account that works across the whole platform — productions, auditions, and open mics.</p>
 
-            <!-- For Performers -->
-            <div class="mb-6">
-              <ul class="space-y-3">
-                <li class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-sm text-slate-700"><strong>Sign up for auditions</strong> with a simple form—no endless emails</span>
-                </li>
-                <li class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-sm text-slate-700"><strong>View your show schedules</strong> in one centralized place</span>
-                </li>
-                <li class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-sm text-slate-700"><strong>Connect with castmates</strong> and stay in the loop on updates</span>
-                </li>
-                <li class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-sm text-slate-700"><strong>Track your performance history</strong> across all your shows</span>
-                </li>
-              </ul>
-            </div>
-
-            <!-- Divider -->
-            <div class="my-6 border-t border-pink-200"></div>
-
-            <!-- For Producers -->
-            <div class="bg-white rounded-lg border border-slate-200 p-5">
-              <div class="flex items-start gap-3 mb-3">
-                <svg class="w-5 h-5 text-slate-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <div>
-                  <h3 class="text-base font-semibold text-slate-900 mb-1">Producing your own shows or running a festival?</h3>
-                  <p class="text-sm text-slate-600">Upgrade anytime to create productions, run auditions, coordinate casting, and manage your entire show from one place.</p>
-
-                </div>
-              </div>
-            </div>
+            <%= render "auth/persona_cards" %>
 
             <div class="mt-6 pt-6 border-t border-pink-200">
               <p class="text-sm text-slate-600 flex items-center gap-2">
                 <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                Free for performers. No credit card required.
+                Free to join. No credit card required.
               </p>
             </div>
           </div>
@@ -81,7 +38,7 @@
       <div class="order-1 lg:order-2">
         <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
           <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Create your account</h2>
-          <p class="text-sm text-slate-600 mb-6 text-center">Start collaborating on your next great show</p>
+          <p class="text-sm text-slate-600 mb-6 text-center">One account for productions, auditions, and open mics.</p>
 
           <% if @user_exists_error %>
             <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
