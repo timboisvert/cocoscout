@@ -13,7 +13,7 @@
         <p class="mt-1 text-sm text-pink-100"><%= @mic.venue.name %> · <%= @mic.venue.neighborhood_city %></p>
       </div>
       <a href="<%= mics_detail_path(@mic.slug) %>"
-         class="cursor-pointer px-3 py-1.5 bg-white text-pink-700 font-bold hover:bg-pink-50 active:bg-pink-200 transition-colors duration-100">
+         class="cursor-pointer px-3 py-1.5 bg-white text-pink-700 font-bold hover:bg-pink-50 active:bg-pink-200 transition-colors duration-100 rounded">
         View public listing →
       </a>
     </div>
@@ -523,7 +523,7 @@
           </div>
           <div class="shrink-0">
             <%= link_to mics_producer_migrate_path(@mic.slug),
-                  class: "cursor-pointer block px-6 py-3 bg-pink-500 text-white font-bold text-center hover:bg-pink-600 active:bg-pink-700 transition-colors duration-100" do %>
+                  class: "cursor-pointer block px-6 py-3 bg-pink-500 text-white font-bold text-center hover:bg-pink-600 active:bg-pink-700 transition-colors duration-100 rounded" do %>
               Migrate to CocoScout sign-ups →
             <% end %>
           </div>
