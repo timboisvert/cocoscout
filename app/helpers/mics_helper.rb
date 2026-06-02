@@ -125,6 +125,40 @@ module MicsHelper
     %w[0th 1st 2nd 3rd 4th 5th][n.to_i] || "#{n}th"
   end
 
+  # Short label describing only the recurrence's day-of-week part, with
+  # the ordinal prefix when the pattern requires it. Used in places
+  # (mic detail masthead, row hover) where the start time and venue are
+  # already shown separately and we don't want to repeat them.
+  #
+  # Examples:
+  #   weekly + Monday               → "Monday"
+  #   biweekly + Tuesday            → "Every other Tuesday"
+  #   monthly_nth_weekday 2 + Tue   → "2nd Tuesday"
+  #   monthly_nth_weekdays [1,3]+M  → "1st & 3rd Monday"
+  #   monthly_day_of_month 15       → "Day 15 of every month"
+  def mics_recurrence_day_label(mic)
+    day = mics_day_name(mic.day_of_week)
+    case mic.recurrence_pattern.to_s
+    when "biweekly"
+      day ? "Every other #{day}" : nil
+    when "monthly_nth_weekday"
+      return day unless mic.recurrence_nth_week
+      n = mic.recurrence_nth_week
+      ord = n == -1 ? "Last" : ord_for(n)
+      "#{ord} #{day}"
+    when "monthly_nth_weekdays"
+      weeks = Array(mic.recurrence_nth_weeks).map(&:to_i).reject(&:zero?).uniq
+                .sort_by { |n| n == -1 ? 99 : n }
+      return day if weeks.empty?
+      ords = weeks.map { |n| n == -1 ? "Last" : ord_for(n) }
+      "#{ords.to_sentence(two_words_connector: " & ", last_word_connector: ", & ")} #{day}"
+    when "monthly_day_of_month"
+      mic.recurrence_day_of_month ? "Day #{mic.recurrence_day_of_month} of every month" : day
+    else
+      day
+    end
+  end
+
   def mics_format_label(value)
     case value.to_s
     when "standup"    then "Standup"

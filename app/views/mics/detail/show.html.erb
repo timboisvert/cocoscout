@@ -3,7 +3,7 @@
   city     = venue.city
   state    = venue.state
   slug     = "#{city.parameterize}-#{state.downcase}"
-  day      = mics_day_name(@mic.day_of_week)
+  day      = mics_recurrence_day_label(@mic)
   title    = [ @mic.name, day && "#{day} Open Mic", venue.name && "at #{venue.name}", venue.neighborhood_city ].compact.join(" — ")
   description = [
     "#{@mic.name} is a #{mics_format_label(@mic.format).downcase} open mic at #{venue.name} in #{venue.neighborhood_city}.",
