@@ -32,7 +32,7 @@ RSpec.describe "Mics My page", type: :request do
 
       get mics_my_path
       expect(response.body).to include("Mustache Mic")
-      expect(response.body).to include(mics_producer_mic_path(mic.slug))
+      expect(response.body).to include(mics_owner_mic_path(mic.slug))
     end
 
     it "lists favorite mics with name (calendar view) and name + venue (list view)" do

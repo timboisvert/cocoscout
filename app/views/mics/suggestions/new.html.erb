@@ -4,7 +4,7 @@
 %>
 
 <%= render "mics/form_shell", title: "Suggest an edit on #{@mic.name}",
-      description: "Anyone can submit. Producers approve." do %>
+      description: "Anyone can submit. Owners approve." do %>
   <%= form_with url: mics_create_suggestion_path(@mic.slug), method: :post do %>
     <% unless Current.user %>
       <%= render "mics/form_field", name: "mic_suggestion[submitter_email]", label: "Your email (for follow-up)", type: "email", required: true %>

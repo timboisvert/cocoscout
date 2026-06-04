@@ -18,7 +18,7 @@ module Mics
       # contact email. We keep it simple — exact match only.
       if auto_approve?(@claim)
         approve_claim!(@claim)
-        redirect_to mics_producer_mic_path(@mic.slug),
+        redirect_to mics_owner_mic_path(@mic.slug),
                     notice: "Claim auto-approved — you're now the lead producer."
       else
         Mics::NotificationService.notify_claim(claim: @claim)

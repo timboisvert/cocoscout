@@ -100,25 +100,25 @@ Rails.application.routes.draw do
     post "m/:slug/suggest",         to: "suggestions#create", as: :create_suggestion
     get  "m/:slug/suggest/thanks",  to: "suggestions#thanks", as: :suggest_thanks
 
-    # Producer dashboard.
-    get "producer",                 to: "producer#index",          as: :producer
-    get "producer/:slug",           to: "producer#show",           as: :producer_mic
-    patch "producer/:slug",         to: "producer#update"
-    delete "producer/:slug",        to: "producer#destroy",        as: :producer_destroy_mic
-    post  "producer/:slug/verify",    to: "producer#verify",         as: :producer_verify
-    post  "producer/:slug/status",    to: "producer#post_status",    as: :producer_post_status
-    post  "producer/:slug/invite",    to: "producer#invite",         as: :producer_invite
-    post  "producer/:slug/cancel_date", to: "producer#cancel_date",  as: :producer_cancel_date
-    patch "producer/:slug/venue",       to: "producer#update_venue", as: :producer_update_venue
-    post  "producer/:slug/move_venue",  to: "producer#move_venue",   as: :producer_move_venue
-    get    "producer/:slug/producer_lookup", to: "producer#producer_lookup", as: :producer_lookup
-    post   "producer/:slug/producers", to: "producer#add_producer", as: :producer_add_producer
-    delete "producer/:slug/producers/:producer_id", to: "producer#remove_producer", as: :producer_remove_producer
-    post   "producer/:slug/producers/:producer_id/set_lead", to: "producer#set_lead_producer", as: :producer_set_lead_producer
-    post  "producer/:slug/suggestions/:suggestion_id/approve", to: "producer#approve_suggestion", as: :producer_approve_suggestion
-    post  "producer/:slug/suggestions/:suggestion_id/reject",  to: "producer#reject_suggestion",  as: :producer_reject_suggestion
-    post  "producer/:slug/links",     to: "producer#add_link",       as: :producer_add_link
-    delete "producer/:slug/links/:link_id", to: "producer#remove_link", as: :producer_remove_link
+    # Owner dashboard.
+    get "owner",                 to: "owner#index",          as: :owner
+    get "owner/:slug",           to: "owner#show",           as: :owner_mic
+    patch "owner/:slug",         to: "owner#update"
+    delete "owner/:slug",        to: "owner#destroy",        as: :owner_destroy_mic
+    post  "owner/:slug/verify",    to: "owner#verify",         as: :owner_verify
+    post  "owner/:slug/status",    to: "owner#post_status",    as: :owner_post_status
+    post  "owner/:slug/invite",    to: "owner#invite",         as: :owner_invite
+    post  "owner/:slug/cancel_date", to: "owner#cancel_date",  as: :owner_cancel_date
+    patch "owner/:slug/venue",       to: "owner#update_venue", as: :owner_update_venue
+    post  "owner/:slug/move_venue",  to: "owner#move_venue",   as: :owner_move_venue
+    get    "owner/:slug/owner_lookup", to: "owner#owner_lookup", as: :owner_lookup
+    post   "owner/:slug/owners", to: "owner#add_owner", as: :owner_add_owner
+    delete "owner/:slug/owners/:owner_id", to: "owner#remove_owner", as: :owner_remove_owner
+    post   "owner/:slug/owners/:owner_id/set_lead", to: "owner#set_lead_owner", as: :owner_set_lead_owner
+    post  "owner/:slug/suggestions/:suggestion_id/approve", to: "owner#approve_suggestion", as: :owner_approve_suggestion
+    post  "owner/:slug/suggestions/:suggestion_id/reject",  to: "owner#reject_suggestion",  as: :owner_reject_suggestion
+    post  "owner/:slug/links",     to: "owner#add_link",       as: :owner_add_link
+    delete "owner/:slug/links/:link_id", to: "owner#remove_link", as: :owner_remove_link
 
     # Hub editor queues + admin queue.
     get "hubs/:slug",       to: "hubs#show",  as: :captain_hub, constraints: { slug: /[a-z0-9-]+/ }
@@ -137,7 +137,7 @@ Rails.application.routes.draw do
     # City votes (public, no auth required).
     post "city_votes", to: "city_votes#create", as: :city_votes
 
-    # Mic announcements (producer posts news to mic page + subscribers).
+    # Mic announcements (owner posts news to mic page + subscribers).
     post "m/:slug/announcements", to: "announcements#create",
          as: :create_announcement
 
@@ -149,8 +149,8 @@ Rails.application.routes.draw do
     delete "alerts/:id",                        to: "alerts#destroy",     as: :alert_remove
 
     # Producer migration wizard.
-    get  "producer/:slug/migrate", to: "migrate#show",   as: :producer_migrate
-    post "producer/:slug/migrate", to: "migrate#create", as: :producer_perform_migrate
+    get  "owner/:slug/migrate", to: "migrate#show",   as: :owner_migrate
+    post "owner/:slug/migrate", to: "migrate#create", as: :owner_perform_migrate
 
     # JSON API (read-only). `m/:slug.json` is defined earlier so it wins
     # over the HTML detail route.

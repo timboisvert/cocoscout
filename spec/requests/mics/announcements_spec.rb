@@ -33,7 +33,7 @@ RSpec.describe "Mics announcements", type: :request do
       expect(a.notify_subscribers).to be(true)
       expect(a.posted_by).to eq(producer)
       expect(a.posted_at).to be_within(5.seconds).of(Time.current)
-      expect(response).to redirect_to(mics_producer_mic_path(mic.slug))
+      expect(response).to redirect_to(mics_owner_mic_path(mic.slug))
     end
 
     it "writes a MicEdit audit row" do
@@ -78,14 +78,14 @@ RSpec.describe "Mics announcements", type: :request do
       create(:mic_announcement, mic: mic, posted_by: producer,
              title: "Cancelled tonight", body: "Heater is broken, sorry!", posted_at: 1.hour.ago)
       get mics_detail_path(mic.slug)
-      expect(response.body).to include("News from the producers")
+      expect(response.body).to include("Latest News")
       expect(response.body).to include("Cancelled tonight")
       expect(response.body).to include("Heater is broken")
     end
 
     it "omits the News section when there are no announcements" do
       get mics_detail_path(mic.slug)
-      expect(response.body).not_to include("News from the producers")
+      expect(response.body).not_to include("Latest News")
     end
   end
 end

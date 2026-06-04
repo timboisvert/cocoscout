@@ -109,7 +109,7 @@
               <%= button_to "Replace owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "replaced"), method: :post,
                     data: { turbo_confirm: "Make #{ch.challenger.email_address} the new owner of #{ch.mic.name}?" },
                     class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-              <%= button_to "Add as co-producer", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
+              <%= button_to "Add as co-owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
                     class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
               <%= button_to "Reject", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "rejected"), method: :post,
                     class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>

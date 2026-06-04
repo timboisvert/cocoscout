@@ -125,7 +125,7 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
       # Producer can see their dashboard.
       delete signout_path
       post handle_signin_path, params: { email_address: user.email_address, password: "Password123!" }
-      get mics_producer_mic_path(mic.slug)
+      get mics_owner_mic_path(mic.slug)
       expect(response).to have_http_status(:ok)
     end
   end
@@ -138,7 +138,7 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
       post handle_signin_path, params: { email_address: user.email_address, password: "Password123!" }
 
       expect {
-        post mics_producer_perform_migrate_path(mic.slug)
+        post mics_owner_perform_migrate_path(mic.slug)
       }.to change { Organization.count }.by(1)
         .and change { Production.count }.by(1)
         .and change { SignUpForm.count }.by(1)

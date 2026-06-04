@@ -107,7 +107,7 @@
                 class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
         <% end %>
         <% if edit_visible %>
-          <%= link_to "Edit", mics_producer_mic_path(@mic.slug),
+          <%= link_to "Edit", mics_owner_mic_path(@mic.slug),
                 class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
         <% end %>
       </div>
@@ -345,7 +345,7 @@
               <% if will_resume %>
                 The regular schedule picks back up on <%= @mic.canceled_until.strftime("%A, %B %-d") %>.
               <% else %>
-                The producer hasn't set a return date. Check back, or favorite the mic so we can let you know when it comes back.
+                The owner hasn't set a return date. Check back, or favorite the mic so we can let you know when it comes back.
               <% end %>
             </p>
           <% end %>
@@ -456,7 +456,7 @@
     <%# Community actions — the rarely-used ones live here, framed by
         the line that explains why they exist. %>
     <div class="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-xs text-gray-500">
-      <span>Producers update directly. Community can suggest edits using the link at the top.</span>
+      <span>Owners update directly. Community can suggest edits using the link at the top.</span>
       <% if Current.user && @mic.claimed? %>
         <%= link_to "I actually run this mic →", mics_challenge_path(@mic.slug),
               class: "text-pink-600 font-bold hover:underline",

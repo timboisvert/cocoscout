@@ -1,14 +1,14 @@
 <%
   mics_seo title: "Claim #{@mic.name} — Find a Mic",
-            description: "Producers and co-producers — claim this mic to manage it on CocoScout."
+            description: "Owners and co-owners — claim this mic to manage it on CocoScout."
 %>
 
 <%= render "mics/form_shell", title: "Claim #{@mic.name}",
-      description: "We'll verify your relationship to #{@mic.venue.name} before granting producer rights." do %>
+      description: "We'll verify your relationship to #{@mic.venue.name} before granting owner rights." do %>
   <%= form_with url: mics_create_claim_path(@mic.slug), method: :post do %>
     <%# Enum values stay producer / co_producer — labels updated for clarity. %>
     <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
-          options: [ [ "Mic runner / producer", "producer" ], [ "Venue owner / rep", "co_producer" ] ] %>
+          options: [ [ "Owner", "producer" ], [ "Venue rep / co-owner", "co_producer" ] ] %>
     <%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email/phone for the mic",
           type: "text", required: true %>
     <%= render "mics/form_field", name: "mic_claim[proof][evidence_url]", label: "Evidence URL", type: "url",

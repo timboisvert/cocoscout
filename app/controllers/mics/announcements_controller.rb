@@ -22,9 +22,9 @@ module Mics
         # preserved on the record so the producer's intent is recorded.
         @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
                                 field: "announcement", new_value: announcement.title.presence || "posted")
-        redirect_to mics_producer_mic_path(@mic.slug), notice: "Announcement posted."
+        redirect_to mics_owner_mic_path(@mic.slug), notice: "Announcement posted."
       else
-        redirect_to mics_producer_mic_path(@mic.slug), alert: announcement.errors.full_messages.to_sentence
+        redirect_to mics_owner_mic_path(@mic.slug), alert: announcement.errors.full_messages.to_sentence
       end
     end
 

@@ -1,6 +1,6 @@
 <%
   mics_seo title: "Manage #{@mic.name} — Find a Mic",
-            description: "Producer dashboard for #{@mic.name}."
+            description: "Owner dashboard for #{@mic.name}."
 %>
 <%= render "mics/header" %>
 
@@ -74,9 +74,9 @@
                   <div class="text-sm text-gray-800 mt-1 whitespace-pre-line"><%= s.note %></div>
                 </div>
                 <div class="flex gap-2 shrink-0">
-                  <%= button_to "Approve", mics_producer_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                  <%= button_to "Approve", mics_owner_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
                         class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-                  <%= button_to "Reject", mics_producer_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                  <%= button_to "Reject", mics_owner_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
                         class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
                 </div>
               </li>
@@ -91,7 +91,7 @@
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
         </header>
         <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch do %>
+          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
             <%= render "mics/form_field", name: "mic[name]", label: "Name", value: @mic.name %>
             <% if deletable_by?(Current.user) %>
               <%# Slug edit is admin-only (superadmin or hub captain).
@@ -109,7 +109,7 @@
                     help: "Free text — a bare number renders as \"5 min\" on the public page; anything else (\"3-5 minutes\", \"depends\") shows verbatim." %>
               <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap", value: @mic.signup_cap,
                     placeholder: "e.g. 10, 10ish, 10-15",
-                    help: "Free text — write whatever describes the cap. Producers often say things like \"10ish\" or \"up to 15\"." %>
+                    help: "Free text — write whatever describes the cap. Owners often say things like \"10ish\" or \"up to 15\"." %>
             </div>
             <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
 
@@ -128,7 +128,7 @@
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
         </header>
         <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch do %>
+          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
             <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
             <fieldset class="mb-4">
               <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
@@ -188,7 +188,7 @@
                              end
             monthly_kind   = actual_pattern.start_with?("monthly_") ? actual_pattern : "monthly_nth_weekday"
           %>
-          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
+          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-schedule-form" } do %>
             <%# Hidden field that actually persists. JS writes the resolved enum value into it. %>
             <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
@@ -326,7 +326,7 @@
           <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
         </header>
         <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch,
+          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-signup-form" } do %>
             <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up type", type: "select",
                   value: (@mic.signup_method.presence || "in_person"),
@@ -381,7 +381,7 @@
         </header>
         <div class="px-5 sm:px-6 py-5 space-y-6">
           <%# Edit current venue in place. %>
-          <%= form_with url: mics_producer_update_venue_path(@mic.slug), method: :patch do %>
+          <%= form_with url: mics_owner_update_venue_path(@mic.slug), method: :patch do %>
             <%= render "mics/form_field", name: "venue[name]", label: "Venue name", value: @mic.venue.name, required: true %>
             <%= render "mics/form_field", name: "venue[address1]", label: "Street address", value: @mic.venue.address1 %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
@@ -407,10 +407,10 @@
               <p class="text-xs text-gray-500 mb-3">
                 Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
               </p>
-              <%= form_with url: mics_producer_move_venue_path(@mic.slug), method: :post,
+              <%= form_with url: mics_owner_move_venue_path(@mic.slug), method: :post,
                     data: { controller: "venue-finder",
                             "venue-finder-url-value": mics_venues_lookup_path,
-                            turbo_confirm: "Move this mic to a different venue? Existing schedule + producers stay the same." } do %>
+                            turbo_confirm: "Move this mic to a different venue? Existing schedule + owners stay the same." } do %>
 
                 <%= hidden_field_tag "venue_id", nil, data: { venue_finder_target: "venueIdInput" } %>
 
@@ -472,7 +472,7 @@
                     <% if link.label.present? %><span class="font-bold mr-2"><%= link.label %></span><% end %>
                     <a href="<%= link.url %>" target="_blank" rel="noopener" class="text-xs text-gray-500 hover:text-pink-600 truncate"><%= link.url %></a>
                   </span>
-                  <%= button_to "Remove", mics_producer_remove_link_path(@mic.slug, link_id: link.id),
+                  <%= button_to "Remove", mics_owner_remove_link_path(@mic.slug, link_id: link.id),
                         method: :delete,
                         class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline shrink-0" %>
                 </li>
@@ -480,7 +480,7 @@
             </ul>
           <% end %>
 
-          <%= form_with url: mics_producer_add_link_path(@mic.slug), method: :post do %>
+          <%= form_with url: mics_owner_add_link_path(@mic.slug), method: :post do %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <%= render "mics/form_field", name: "link_type", label: "Type", type: "select",
                     options: [
@@ -504,7 +504,7 @@
       <%# Mic runners / Producers. %>
       <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Mic runners / Producers</h2>
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Owners</h2>
           <p class="text-xs text-gray-500 mt-1">
             Everyone listed here has equal edit rights on the mic. The lead earns the "claimed" badge on the public page.
           </p>
@@ -514,7 +514,11 @@
             <ul class="divide-y divide-gray-100 border border-gray-200 rounded overflow-hidden mb-5">
               <% @co_producers.each do |mp| %>
                 <% is_lead = (@mic.lead_producer_user_id == mp.user_id) %>
-                <% role_label = mp.role_producer? ? "Mic runner / Producer" : mp.role.humanize %>
+                <% role_label = case mp.role
+                                when "producer"    then "Owner"
+                                when "co_producer" then "Co-owner"
+                                else mp.role.humanize
+                                end %>
                 <li class="px-3 py-2 flex items-baseline gap-3 flex-wrap">
                   <span class="flex-1 min-w-0">
                     <span class="font-bold text-gray-900"><%= mp.user.person&.name.presence || mp.user.email_address %></span>
@@ -534,18 +538,18 @@
                       <% end %>
                     <% end %>
                     <% unless is_lead %>
-                      <%= button_to "Make lead", mics_producer_set_lead_producer_path(@mic.slug, producer_id: mp.id), method: :post,
+                      <%= button_to "Make lead", mics_owner_set_lead_owner_path(@mic.slug, owner_id: mp.id), method: :post,
                             class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
                     <% end %>
                     <% if mp.user_id == Current.user&.id %>
                       <%# Self-row gets "Leave this mic" framing instead of
                           "Remove" — the action is the same, but the
                           intent and confirm copy reads correctly. %>
-                      <%= button_to "Leave this mic", mics_producer_remove_producer_path(@mic.slug, producer_id: mp.id), method: :delete,
-                            data: { turbo_confirm: "Step down as a mic runner of #{@mic.name}? If you're the last runner, the mic becomes unclaimed and anyone can claim it." },
+                      <%= button_to "Leave this mic", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
+                            data: { turbo_confirm: "Step down as an owner of #{@mic.name}? If you're the last owner, the mic becomes unclaimed and anyone can claim it." },
                             class: "cursor-pointer px-2 py-1 text-xs bg-white border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 font-bold" %>
                     <% else %>
-                      <%= button_to "Remove", mics_producer_remove_producer_path(@mic.slug, producer_id: mp.id), method: :delete,
+                      <%= button_to "Remove", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
                             data: { turbo_confirm: "Remove #{mp.user.email_address} from #{@mic.name}?" },
                             class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
                     <% end %>
@@ -554,7 +558,7 @@
               <% end %>
             </ul>
           <% else %>
-            <p class="text-sm text-gray-500 mb-5">No mic runners yet. Add the first one below.</p>
+            <p class="text-sm text-gray-500 mb-5">No owners yet. Add the first one below.</p>
           <% end %>
 
           <%# Add via modal. Search by email; if no match, fields for inviting appear. %>
@@ -564,7 +568,7 @@
                     data-action="click->mics-modal#open"
                     data-mics-modal-target-id-value="modal-add-producer"
                     class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100">
-              + Add a mic runner / producer
+              + Add an owner
             </button>
           </div>
         </div>
@@ -591,7 +595,7 @@
             </p>
           </div>
           <div class="shrink-0">
-            <%= link_to mics_producer_migrate_path(@mic.slug),
+            <%= link_to mics_owner_migrate_path(@mic.slug),
                   class: "cursor-pointer block px-6 py-3 bg-pink-500 text-white font-bold text-center hover:bg-pink-600 active:bg-pink-700 transition-colors duration-100 rounded" do %>
               Migrate to CocoScout sign-ups →
             <% end %>
@@ -611,10 +615,10 @@
           <div class="flex-1 min-w-0">
             <div class="text-xs uppercase tracking-wider text-red-700 font-bold">Danger zone</div>
             <p class="text-sm text-gray-700 mt-1">
-              Permanently delete <strong><%= @mic.name %></strong> and everything attached to it (suggestions, announcements, claims, producer links, edit history). Use this for spam or duplicate listings — not for one-off pauses (use "Pause until" on the schedule instead).
+              Permanently delete <strong><%= @mic.name %></strong> and everything attached to it (suggestions, announcements, claims, owner links, edit history). Use this for spam or duplicate listings — not for one-off pauses (use "Pause until" on the schedule instead).
             </p>
           </div>
-          <%= button_to "Delete this mic", mics_producer_destroy_mic_path(@mic.slug), method: :delete,
+          <%= button_to "Delete this mic", mics_owner_destroy_mic_path(@mic.slug), method: :delete,
                 data: { turbo_confirm: "Permanently delete \"#{@mic.name}\"? This can't be undone." },
                 class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded" %>
         </div>
@@ -626,11 +630,11 @@
 
 <%# Modals %>
 
-<%= render "mics/producer/modal", id: "modal-verify", title: "Verify info" do %>
+<%= render "mics/owner/modal", id: "modal-verify", title: "Verify info" do %>
   <p class="text-sm text-gray-700">
     Confirm everything on this listing is still accurate. We'll stamp the "last verified" timestamp on the public page so performers know it's fresh.
   </p>
-  <%= form_with url: mics_producer_verify_path(@mic.slug), method: :post, class: "mt-5 flex justify-end gap-2" do %>
+  <%= form_with url: mics_owner_verify_path(@mic.slug), method: :post, class: "mt-5 flex justify-end gap-2" do %>
     <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
             class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
       Cancel
@@ -639,8 +643,8 @@
   <% end %>
 <% end %>
 
-<%= render "mics/producer/modal", id: "modal-status", title: "Set status for a date" do %>
-  <%= form_with url: mics_producer_post_status_path(@mic.slug), method: :post, class: "space-y-4" do %>
+<%= render "mics/owner/modal", id: "modal-status", title: "Set status for a date" do %>
+  <%= form_with url: mics_owner_post_status_path(@mic.slug), method: :post, class: "space-y-4" do %>
     <%= render "mics/form_field", name: "date", label: "Date", type: "date", value: next_upcoming_date_for(@mic) %>
     <%= render "mics/form_field", name: "mic_status", label: "Status", type: "select",
           options: [
@@ -658,7 +662,7 @@
   <% end %>
 <% end %>
 
-<%= render "mics/producer/modal", id: "modal-announce", title: "Post an announcement" do %>
+<%= render "mics/owner/modal", id: "modal-announce", title: "Post an announcement" do %>
   <p class="text-sm text-gray-600 mb-3">A short news item that shows up at the top of your mic page.</p>
   <%= form_with url: mics_create_announcement_path(@mic.slug), method: :post, class: "space-y-4" do %>
     <%= render "mics/form_field", name: "title", label: "Title (optional)" %>
@@ -684,9 +688,9 @@
   <% end %>
 <% end %>
 
-<%= render "mics/producer/modal", id: "modal-cancel", title: "Cancel a date" do %>
+<%= render "mics/owner/modal", id: "modal-cancel", title: "Cancel a date" do %>
   <p class="text-sm text-gray-600 mb-3">Performers will see "Cancelled" on the public listing and on the calendar.</p>
-  <%= form_with url: mics_producer_cancel_date_path(@mic.slug), method: :post, class: "space-y-4" do %>
+  <%= form_with url: mics_owner_cancel_date_path(@mic.slug), method: :post, class: "space-y-4" do %>
     <%= render "mics/form_field", name: "date", label: "Date to cancel", type: "date", value: next_upcoming_date_for(@mic) %>
     <%= render "mics/form_field", name: "reason", label: "Reason (shown publicly)",
           placeholder: "e.g. Venue closed for a private event" %>
@@ -698,13 +702,13 @@
   <% end %>
 <% end %>
 
-<%= render "mics/producer/modal", id: "modal-add-producer", title: "Add a mic runner / producer" do %>
+<%= render "mics/owner/modal", id: "modal-add-producer", title: "Add an owner" do %>
   <p class="text-sm text-gray-600 mb-4">
     Start with their email. If they're already on CocoScout we'll just add them; otherwise we'll send them an invite.
   </p>
-  <%= form_with url: mics_producer_add_producer_path(@mic.slug), method: :post,
+  <%= form_with url: mics_owner_add_owner_path(@mic.slug), method: :post,
         data: { controller: "user-invite-form",
-                "user-invite-form-url-value": mics_producer_lookup_path(@mic.slug),
+                "user-invite-form-url-value": mics_owner_lookup_path(@mic.slug),
                 "user-invite-form-scope-label-value": "this mic" },
         class: "space-y-4" do %>
 
@@ -731,8 +735,8 @@
       <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Role</label>
       <select name="role"
               class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm bg-white">
-        <option value="producer">Mic runner / Producer</option>
-        <option value="co_producer">Co-producer</option>
+        <option value="producer">Owner</option>
+        <option value="co_producer">Co-owner</option>
         <option value="host">Host</option>
       </select>
     </div>

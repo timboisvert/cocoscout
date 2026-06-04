@@ -58,7 +58,7 @@ module Mics
       redirect_to target,
                   notice: "Migrated #{@mic.name} — #{result.shows.size} open-mic dates added. Now customize the sign-up form below — performers won't see it until you're happy with it."
     rescue => e
-      redirect_to mics_producer_migrate_path(@mic.slug), alert: "Migration failed: #{e.message}"
+      redirect_to mics_owner_migrate_path(@mic.slug), alert: "Migration failed: #{e.message}"
     end
 
     private

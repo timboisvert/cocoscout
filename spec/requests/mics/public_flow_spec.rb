@@ -7,11 +7,14 @@ RSpec.describe "Mics public flow", type: :request do
   let!(:mic)  { create(:mic, venue: venue, name: "Mustache Mic") }
 
   describe "GET /mics" do
+    let!(:hub) { create(:city_hub, :active, slug: "chicago-il", name: "Chicago", state: "IL", timezone: "America/Chicago") }
+
     it "renders the homepage with the city link" do
       get mics_home_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Find an open mic tonight")
-      expect(response.body).to include("Chicago, IL")
+      expect(response.body).to include("Chicago")
+      expect(response.body).to include(mics_city_path("chicago-il"))
     end
   end
 

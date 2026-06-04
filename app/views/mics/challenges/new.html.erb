@@ -1,10 +1,10 @@
 <%
   mics_seo title: "Challenge claim on #{@mic.name} — Find a Mic",
-            description: "File a challenge to an existing producer claim."
+            description: "File a challenge to an existing owner claim."
 %>
 
 <%= render "mics/form_shell", title: "Challenge claim on #{@mic.name}",
-      description: "The current lead producer has 72 hours to respond. A moderator will decide if no response is filed." do %>
+      description: "The current lead owner has 72 hours to respond. A moderator will decide if no response is filed." do %>
   <%= form_with url: mics_create_challenge_path(@mic.slug), method: :post do %>
     <%= render "mics/form_field", name: "mic_challenge[reason]", label: "Reason for challenge", type: "textarea", rows: 4, required: true %>
     <%= render "mics/form_field", name: "mic_challenge[evidence][url]", label: "Evidence URL", type: "url",

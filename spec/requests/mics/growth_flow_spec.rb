@@ -76,14 +76,14 @@ RSpec.describe "Mics growth flow", type: :request do
     end
 
     it "shows the migrate page" do
-      get mics_producer_migrate_path(mic.slug)
+      get mics_owner_migrate_path(mic.slug)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Migrate")
     end
 
     it "links mic to a new production end-to-end" do
       expect {
-        post mics_producer_perform_migrate_path(mic.slug)
+        post mics_owner_perform_migrate_path(mic.slug)
       }.to change { Production.count }.by(1).and change { SignUpForm.count }.by(1)
 
       mic.reload

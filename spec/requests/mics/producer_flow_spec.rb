@@ -72,7 +72,7 @@ RSpec.describe "Mics producer flow", type: :request do
     it "redirects to /mics/my (unified) and that page lists the user's mics" do
       create(:mic_producer, mic: mic, user: user)
       sign_in
-      get mics_producer_path
+      get mics_owner_path
       expect(response).to redirect_to(mics_my_path)
       follow_redirect!
       expect(response.body).to include("Beat Kitchen Mic")
@@ -80,15 +80,15 @@ RSpec.describe "Mics producer flow", type: :request do
 
     it "refuses producer/:slug for non-producers" do
       sign_in
-      get mics_producer_mic_path(mic.slug)
+      get mics_owner_mic_path(mic.slug)
       expect(response).to have_http_status(:forbidden)
     end
 
     it "allows producer to update their mic" do
       create(:mic_producer, mic: mic, user: user)
       sign_in
-      patch mics_producer_mic_path(mic.slug), params: { mic: { blurb: "Refreshed copy." } }
-      expect(response).to redirect_to(mics_producer_mic_path(mic.slug))
+      patch mics_owner_mic_path(mic.slug), params: { mic: { blurb: "Refreshed copy." } }
+      expect(response).to redirect_to(mics_owner_mic_path(mic.slug))
       expect(mic.reload.blurb).to eq("Refreshed copy.")
       expect(mic.mic_edits.where(field: "blurb").exists?).to be(true)
     end

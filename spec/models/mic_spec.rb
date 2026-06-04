@@ -8,17 +8,17 @@ RSpec.describe Mic, type: :model do
       expect(build(:mic)).to be_valid
     end
 
-    it "auto-assigns a slug derived from venue + day" do
+    it "auto-assigns a slug derived from the mic name" do
       v = create(:venue, name: "Lincoln Lodge")
-      m = create(:mic, venue: v, day_of_week: 1)
-      expect(m.slug).to eq("lincoln-lodge-monday")
+      m = create(:mic, name: "3 Blind Mice Open Mic", venue: v, day_of_week: 1)
+      expect(m.slug).to eq("3-blind-mice-open-mic")
     end
 
     it "increments the slug on collision" do
       v = create(:venue, name: "Lincoln Lodge")
-      create(:mic, venue: v, day_of_week: 1)
-      m2 = create(:mic, venue: v, day_of_week: 1)
-      expect(m2.slug).to eq("lincoln-lodge-monday-2")
+      create(:mic, name: "3 Blind Mice Open Mic", venue: v, day_of_week: 1)
+      m2 = create(:mic, name: "3 Blind Mice Open Mic", venue: v, day_of_week: 2)
+      expect(m2.slug).to eq("3-blind-mice-open-mic-2")
     end
 
     it "rejects bad slug formats" do

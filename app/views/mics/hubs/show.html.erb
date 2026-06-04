@@ -91,7 +91,7 @@
               <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
                 <%# Pending submissions aren't public yet — go to the
                     edit/preview page, never the public URL. %>
-                <%= link_to "Edit / preview", mics_producer_mic_path(mic.slug),
+                <%= link_to "Edit / preview", mics_owner_mic_path(mic.slug),
                       class: "text-xs text-pink-600 font-bold hover:underline" %>
                 <%= button_to "Approve", mics_hub_approve_submission_path(@hub.slug, id: mic.id), method: :post,
                       class: "ml-auto cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
@@ -174,7 +174,7 @@
                   <%= button_to "Replace lead", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "replaced"), method: :post,
                         data: { turbo_confirm: "Make #{ch.challenger.email_address} the new lead?" },
                         class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-                  <%= button_to "Add as co-producer", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
+                  <%= button_to "Add as co-owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
                         class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
                   <%= button_to "Reject", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "rejected"), method: :post,
                         class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
@@ -207,7 +207,7 @@
               <% end %>
               <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
                 <%= link_to "Open mic", mics_detail_path(s.mic.slug), target: "_blank", class: "text-xs text-pink-600 font-bold hover:underline" %>
-                <%= link_to "Edit", mics_producer_mic_path(s.mic.slug), class: "text-xs text-gray-700 hover:text-pink-600 underline" %>
+                <%= link_to "Edit", mics_owner_mic_path(s.mic.slug), class: "text-xs text-gray-700 hover:text-pink-600 underline" %>
                 <%= button_to "Approve", mics_hub_approve_suggestion_path(@hub.slug, id: s.id), method: :post,
                       class: "ml-auto cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
                 <%= button_to "Reject", mics_hub_reject_suggestion_path(@hub.slug, id: s.id), method: :post,
@@ -256,7 +256,7 @@
           <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
             <div>
               <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">Unclaimed mics</h2>
-              <p class="text-xs text-gray-500 mt-1">Live listings with no producer attached. You own these by default.</p>
+              <p class="text-xs text-gray-500 mt-1">Live listings with no owner attached. You own these by default.</p>
             </div>
             <span class="text-xs uppercase tracking-wider text-gray-500 font-bold"><%= pluralize(@unclaimed_mics.size, "mic") %></span>
           </div>
@@ -271,7 +271,7 @@
                   <%= link_to mic.name, mics_detail_path(mic.slug), class: "font-bold text-gray-900 hover:underline" %>
                   <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></span>
                 </span>
-                <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+                <%= link_to "Manage →", mics_owner_mic_path(mic.slug),
                       class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
               </li>
             <% end %>
@@ -284,7 +284,7 @@
           <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
             <div>
               <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">Claimed mics</h2>
-              <p class="text-xs text-gray-500 mt-1">Producers manage these. You can still edit if needed.</p>
+              <p class="text-xs text-gray-500 mt-1">Owners manage these. You can still edit if needed.</p>
             </div>
             <span class="text-xs uppercase tracking-wider text-gray-500 font-bold"><%= pluralize(@claimed_mics.size, "mic") %></span>
           </div>
@@ -295,7 +295,7 @@
                   <%= link_to mic.name, mics_detail_path(mic.slug), class: "font-bold text-gray-900 hover:underline" %>
                   <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= pluralize(mic.mic_producers.size, "producer") %></span>
                 </span>
-                <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+                <%= link_to "Manage →", mics_owner_mic_path(mic.slug),
                       class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
               </li>
             <% end %>
@@ -321,7 +321,7 @@
                               (claimed ? "bg-emerald-100 text-emerald-700" : "bg-pink-100 text-pink-700"))) %>">
                   <%= mic.pending ? "Pending" : (mic.ended? ? "Ended" : (mic.paused? ? "Paused" : (claimed ? "Claimed" : "Unclaimed"))) %>
                 </span>
-                <%= link_to "Edit →", mics_producer_mic_path(mic.slug),
+                <%= link_to "Edit →", mics_owner_mic_path(mic.slug),
                       class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
               </li>
             <% end %>

@@ -41,7 +41,7 @@
                       class: "coustard-regular text-lg text-gray-900 hover:underline" %>
                 <div class="text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= mic.venue.neighborhood_city %></div>
               </div>
-              <%= link_to "Manage →", mics_producer_mic_path(mic.slug),
+              <%= link_to "Manage →", mics_owner_mic_path(mic.slug),
                     class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
             </div>
           <% end %>
