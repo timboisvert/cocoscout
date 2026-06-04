@@ -52,7 +52,13 @@
       <div class="flex-1 min-w-0">
         <h1 class="coustard-regular text-4xl sm:text-6xl leading-[1.05]"><%= @mic.name %></h1>
         <p class="mt-3 text-pink-100 text-sm sm:text-base">
-          <%= day %> · <%= @mic.starts_local_time&.strftime("%-l:%M %p") %> · <%= venue.name %> · <%= venue.neighborhood_city %>
+          <% if @mic.recurrence_pattern.to_s == "custom_dates" && (next_occ = @next_occurrences.first) %>
+            Next: <%= next_occ[:starts_at].strftime("%a %b %-d") %>
+            · <%= next_occ[:starts_at].strftime("%-l:%M %p") %>
+            · <%= venue.name %> · <%= venue.neighborhood_city %>
+          <% else %>
+            <%= day %> · <%= mics_display_start_time(@mic) %> · <%= venue.name %> · <%= venue.neighborhood_city %>
+          <% end %>
         </p>
       </div>
 
@@ -187,7 +193,9 @@
   <%
     basic_cells = []
     basic_cells << [ "Format", mics_format_label(@mic.format) ]
-    basic_cells << [ "Start time", @mic.starts_local_time.strftime("%-l:%M %p") ] if @mic.starts_local_time.present?
+    if (display_time = mics_display_start_time(@mic)).present?
+      basic_cells << [ "Start time", display_time ]
+    end
     basic_cells << [ "Spot length", mics_spot_length_label(@mic.spot_length_minutes) ] if @mic.spot_length_minutes.present?
     basic_cells << [ "Max performers", @mic.signup_cap.to_s ]                    if @mic.signup_cap.present?
     basic_cells << [ "Age", "#{@mic.min_age}+" ]                                  if @mic.min_age.present?
@@ -425,7 +433,7 @@
                 lat:   venue.lat,
                 lng:   venue.lng,
                 day:   mics_day_name(@mic.day_of_week),
-                time:  @mic.starts_local_time&.strftime("%-l:%M %p")
+                time:  mics_display_start_time(@mic)
               } ].to_json %>"
               data-mics-map-center-value="<%= venue.lat %>,<%= venue.lng %>"
               data-mics-map-zoom-value="15"

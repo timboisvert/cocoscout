@@ -80,7 +80,8 @@ class Mic < ApplicationRecord
     biweekly: 1,
     monthly_nth_weekday: 2,
     monthly_day_of_month: 3,
-    monthly_nth_weekdays: 4
+    monthly_nth_weekdays: 4,
+    custom_dates: 5
   }, prefix: :recurrence
 
   validates :name, presence: true, length: { maximum: 200 }
@@ -255,9 +256,14 @@ class Mic < ApplicationRecord
   # picks back up on that date — the `iterate`/branches below already
   # treat `canceled_until` as a "skip up to and including" cutoff.
   def compute_occurrences(limit:)
-    return [] unless starts_local_time.present?
     return [] if paused && (canceled_until.blank? || canceled_until < Date.current)
     tz = venue&.timezone.presence || "America/Chicago"
+
+    if recurrence_pattern.to_s == "custom_dates"
+      return custom_date_occurrences(limit: limit, tz: tz)
+    end
+
+    return [] unless starts_local_time.present?
     Time.use_zone(tz) do
       today = Time.zone.today
       horizon = today + 730 # 2 years cap; cheap
@@ -276,6 +282,45 @@ class Mic < ApplicationRecord
         { starts_at: starts_at, mic_status: override&.status,
           mic_status_note: override&.note, source: :computed, show: nil }
       end.first(limit)
+    end
+  end
+
+  # Each entry in custom_dates carries its own time, so each date can
+  # have a different start. Falls back to the mic's global
+  # `starts_local_time` for legacy string entries that don't include
+  # a time of their own.
+  def custom_date_occurrences(limit:, tz:)
+    Time.use_zone(tz) do
+      now = Time.current
+      custom_date_entries.filter_map do |entry|
+        d = entry[:date]
+        t = entry[:time] || starts_local_time
+        next unless d && t
+        starts_at = Time.zone.local(d.year, d.month, d.day, t.hour, t.min)
+        next if starts_at + OCCURRENCE_GRACE < now
+        next if canceled_until.present? && d < canceled_until
+        override = mic_occurrence_statuses.find_by(occurs_on: d)
+        { starts_at: starts_at, mic_status: override&.status,
+          mic_status_note: override&.note, source: :computed, show: nil }
+      end.sort_by { |o| o[:starts_at] }.first(limit)
+    end
+  end
+
+  # Parses the `custom_dates` jsonb column into uniform {date:, time:}
+  # entries. Accepts either the new hash form ({"date"=>"2026-06-05",
+  # "time"=>"20:00"}) or a bare ISO date string (legacy/fallback).
+  public def custom_date_entries
+    Array(custom_dates).filter_map do |raw|
+      case raw
+      when Hash, ActionController::Parameters
+        h = raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : raw
+        d = (Date.parse(h["date"].to_s) rescue nil)
+        t = (Time.zone.parse("2000-01-01 #{h["time"]}") rescue nil) if h["time"].present?
+        d && { date: d, time: t }
+      when String
+        d = (Date.parse(raw) rescue nil)
+        d && { date: d, time: nil }
+      end
     end
   end
 
@@ -342,6 +387,15 @@ class Mic < ApplicationRecord
         m = m.next_month
       end
       dates
+    when "custom_dates"
+      # Free-form list of explicit dates, each with its own time.
+      # Returns just the dates here; per-entry times live on the entries
+      # and are used directly by `custom_date_occurrences`.
+      custom_date_entries
+        .map { |e| e[:date] }
+        .compact.sort.uniq
+        .select { |d| d >= starting_from && d <= until_date && (pause_through.blank? || d >= pause_through) }
+        .first(limit)
     else
       []
     end
@@ -427,6 +481,33 @@ class Mic < ApplicationRecord
     when "monthly_day_of_month"
       self.recurrence_nth_week     = nil
       self.recurrence_nth_weeks    = []
+    when "custom_dates"
+      self.day_of_week             = nil
+      self.recurrence_nth_week     = nil
+      self.recurrence_nth_weeks    = []
+      self.recurrence_day_of_month = nil
+    end
+
+    # custom_dates is a jsonb array of {date, time} hashes. Strip
+    # entries that don't parse, dedupe by (date, time), and sort. When
+    # the pattern isn't custom_dates we clear the list so a swap doesn't
+    # leave shrapnel behind.
+    if recurrence_pattern.to_s == "custom_dates"
+      cleaned = Array(custom_dates).filter_map do |raw|
+        h = case raw
+        when Hash then raw.transform_keys(&:to_s)
+        when ActionController::Parameters then raw.to_unsafe_h.transform_keys(&:to_s)
+        when String then { "date" => raw, "time" => nil }
+        end
+        next unless h
+        d = (Date.parse(h["date"].to_s).iso8601 rescue nil)
+        next unless d
+        time_str = h["time"].to_s.strip.presence
+        { "date" => d, "time" => time_str }
+      end
+      self.custom_dates = cleaned.uniq.sort_by { |e| [ e["date"], e["time"].to_s ] }
+    else
+      self.custom_dates = []
     end
   end
 end

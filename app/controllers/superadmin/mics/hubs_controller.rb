@@ -93,6 +93,11 @@ module Superadmin
         email = params[:email].to_s.strip.downcase
         name  = params[:name].to_s.strip.presence
 
+        unless ActiveModel::Type::Boolean.new.cast(params[:acknowledged_terms])
+          redirect_to mics_hub_path(@hub.slug), alert: "Confirm the captain expectations checkbox before adding."
+          return
+        end
+
         unless email.match?(URI::MailTo::EMAIL_REGEXP)
           redirect_to mics_hub_path(@hub.slug), alert: "Please enter a valid email."
           return

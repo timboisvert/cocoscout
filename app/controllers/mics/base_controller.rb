@@ -16,10 +16,21 @@ module Mics
     # dashboard sidebar even for signed-in users.
     before_action :suppress_app_chrome
 
+    # Crawlers, link unfurlers, and CLI clients with no Accept header
+    # sometimes ask for text/plain (or weirder). We only ship HTML/JSON
+    # templates here, so coerce anything we don't recognize to :html
+    # rather than 500 with a MissingTemplate.
+    before_action :coerce_to_html_format
+
     # Helpers for slug → city lookups, used by both cities & detail controllers.
     helper_method :hub_for, :city_state_from_slug
 
     private
+
+    def coerce_to_html_format
+      return if request.format.html? || request.format.json?
+      request.format = :html
+    end
 
     def suppress_app_chrome
       @show_my_sidebar = false

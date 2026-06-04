@@ -26,6 +26,18 @@
 
   <div id="queue-top" class="w-full px-4 sm:px-8 py-6">
 
+    <%# ── Captain expectations — same agreement they signed when added.
+        Collapsed by default; reminds them what the role covers. ── %>
+    <details class="mb-5 border border-gray-200 bg-gray-50 rounded">
+      <summary class="px-3 py-2 cursor-pointer text-xs uppercase tracking-wider font-bold text-gray-700 flex items-center gap-2">
+        <span>Your role as captain</span>
+        <span class="text-gray-400 text-[10px]">— expectations & what's not yours to decide</span>
+      </summary>
+      <div class="px-3 pb-3 pt-1">
+        <%= render "mics/captain_agreement", hub_name: @hub.name %>
+      </div>
+    </details>
+
     <%# ── Queue chips strip — only types with > 0 are shown. ── %>
     <%
       pending_total = @pending_mic_ct + @pending_claim_ct +

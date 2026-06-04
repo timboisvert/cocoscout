@@ -193,10 +193,18 @@
         ✕
       </button>
     </div>
-    <div class="px-5 sm:px-6 py-5 overflow-y-auto">
-      <p class="text-sm text-gray-600 mb-4">
-        Captains can edit every mic in this hub. Start with their email — if they're already on CocoScout we'll just add them; otherwise we'll send them an invite.
-      </p>
+    <div class="px-5 sm:px-6 py-5 overflow-y-auto space-y-5">
+      <%# The agreement they'll be opted into. Same copy lives on the
+          captain's hub page so they can find it later. %>
+      <details class="border border-gray-200 bg-gray-50 rounded">
+        <summary class="px-3 py-2 cursor-pointer text-xs font-bold uppercase tracking-wider text-gray-700">
+          Captain expectations & agreement
+        </summary>
+        <div class="px-3 pb-3 pt-1">
+          <%= render "mics/captain_agreement", hub_name: @hub.name %>
+        </div>
+      </details>
+
       <%= form_with url: mics_hub_add_editor_path(@hub.slug), method: :post,
             data: { controller: "user-invite-form",
                     "user-invite-form-url-value": mics_hub_editor_lookup_path(@hub.slug),
@@ -221,6 +229,14 @@
                  class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm">
           <p class="mt-1 text-xs text-gray-500">We'll create their account and email them an invite to set a password.</p>
         </div>
+
+        <label class="flex items-start gap-2 text-sm text-gray-800">
+          <input type="checkbox" name="acknowledged_terms" value="1" required
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span>
+            I've read the expectations above and confirm this person has agreed to them, including that the captain role isn't permanent and CocoScout retains the right to add or replace captains.
+          </span>
+        </label>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
           <button type="button"

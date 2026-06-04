@@ -64,10 +64,11 @@
               <% leading_blanks.times do %>
                 <div class="aspect-square"></div>
               <% end %>
+              <% show_per_cell_time = mic.recurrence_pattern.to_s == "custom_dates" %>
               <% (month_start..month_start.end_of_month).each do |date| %>
                 <% occ = occs_by_date[date] %>
                 <%
-                  base = "aspect-square flex items-center justify-center text-xs tabular-nums rounded"
+                  base = "aspect-square flex flex-col items-center justify-center leading-none tabular-nums rounded"
                   classes =
                     if occ
                       case occ[:mic_status]
@@ -85,9 +86,13 @@
                     parts << occ[:mic_status].to_s.humanize if occ[:mic_status]
                     parts.join(" · ")
                   end
+                  per_cell_time = (occ && show_per_cell_time) ? occ[:starts_at].strftime("%-l:%M%P").sub(":00", "") : nil
                 %>
                 <div class="<%= classes %>" <% if title %>title="<%= title %>"<% end %>>
-                  <%= date.day %>
+                  <span class="text-xs"><%= date.day %></span>
+                  <% if per_cell_time %>
+                    <span class="text-[9px] mt-0.5 opacity-90"><%= per_cell_time %></span>
+                  <% end %>
                 </div>
               <% end %>
             </div>

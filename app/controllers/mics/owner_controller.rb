@@ -383,7 +383,7 @@ module Mics
     end
 
     def allowed_keys
-      base = %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      base = %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date custom_dates paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
       # Slug edits are admin-only. Regular owners shouldn't be able to
       # rename the URL out from under existing inbound links.
       base += [ "slug" ] if deletable_by?(current_user)
@@ -393,8 +393,18 @@ module Mics
     def mic_params
       # Exclude the array column from the scalar permit list — strong
       # params would otherwise drop the array values as un-permitted.
-      scalar_keys = allowed_keys.map(&:to_sym) - [ :recurrence_nth_weeks ]
+      scalar_keys = allowed_keys.map(&:to_sym) - [ :recurrence_nth_weeks, :custom_dates ]
       perm = params.require(:mic).permit(*scalar_keys, recurrence_nth_weeks: [])
+
+      # Custom dates ride in as a JSON string in `mic[custom_dates_json]`
+      # (the Stimulus controller assembles it). Decode it into the array
+      # of {date, time} hashes the model expects — `normalize_recurrence_fields`
+      # will validate and sort.
+      raw_json = params.dig(:mic, :custom_dates_json)
+      if raw_json.is_a?(String)
+        decoded = JSON.parse(raw_json) rescue nil
+        perm[:custom_dates] = Array(decoded) if decoded.is_a?(Array)
+      end
       # Slug — normalize what the admin typed so we don't store dirty
       # values. Empty submitted slug is dropped so the existing slug
       # isn't overwritten with "".

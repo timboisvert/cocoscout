@@ -33,23 +33,23 @@
   <%# Big action row. Each tile opens a modal. %>
   <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
     <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Quick actions</div>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       <% [
         [ "modal-verify",     "✓",  "Verify info",        "Confirm everything is still accurate." ],
-        [ "modal-status",     "●",  "Set status",         "Online only, extra spots, running as planned." ],
-        [ "modal-announce",   "📣", "Post announcement",  "News on the mic page (+ optional alert to subscribers)." ],
+        [ "modal-status",     "●",  "Set status",         "Extra spots, cancelled, running as planned." ],
+        [ "modal-announce",   "📣", "Post announcement",  "News on the mic page." ],
         [ "modal-cancel",     "✕",  "Cancel a date",      "Mark a specific date cancelled." ]
       ].each do |id, icon, title, blurb| %>
         <button type="button"
                 data-controller="mics-modal"
                 data-action="click->mics-modal#open"
                 data-mics-modal-target-id-value="<%= id %>"
-                class="cursor-pointer text-left px-4 py-4 bg-white border-2 border-gray-200 rounded hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
+                class="cursor-pointer text-left px-3 py-2.5 sm:px-4 sm:py-4 bg-white border-2 border-gray-200 rounded hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
           <div class="flex items-baseline gap-2">
-            <span class="text-2xl text-pink-500"><%= icon %></span>
-            <span class="coustard-regular text-lg text-gray-900 group-hover:text-pink-700"><%= title %></span>
+            <span class="text-lg sm:text-2xl text-pink-500"><%= icon %></span>
+            <span class="coustard-regular text-sm sm:text-lg text-gray-900 group-hover:text-pink-700"><%= title %></span>
           </div>
-          <div class="mt-1 text-xs text-gray-500"><%= blurb %></div>
+          <div class="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-gray-500"><%= blurb %></div>
         </button>
       <% end %>
     </div>
@@ -120,56 +120,6 @@
         </div>
       </section>
 
-      <%# Accessibility & age — drives the city-page filters and the
-          ♿ badge on listings. Wheelchair level lives in the
-          `accessibility` jsonb; min_age is an integer column. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
-            <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
-            <fieldset class="mb-4">
-              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
-              <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
-              <% [
-                [ "fully",   "♿ Fully wheelchair accessible",
-                  "Can get into the building, onto the stage, and into the restrooms." ],
-                [ "partial", "♿ Partially wheelchair accessible",
-                  "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
-                [ "",        "Not wheelchair accessible / unknown",
-                  "The mic won't show up when performers filter for wheelchair access." ]
-              ].each do |val, label, desc| %>
-                <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
-                  <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
-                         <%= "checked" if (current_level.to_s == val) %>
-                         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
-                  <span class="flex-1">
-                    <span class="font-bold"><%= label %></span>
-                    <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
-                  </span>
-                </label>
-              <% end %>
-              <% venue_level = (@mic.venue.accessibility || {})["wheelchair_level"] %>
-              <% if venue_level.present? %>
-                <p class="mt-2 text-xs text-gray-500">
-                  This venue is already marked <strong><%= venue_level == "fully" ? "fully" : "partially" %> accessible</strong> at the venue level.
-                </p>
-              <% end %>
-            </fieldset>
-
-            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
-                  value: @mic.min_age.to_s,
-                  options: [ [ "All ages",  "" ], [ "21+", "21" ] ] %>
-
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save accessibility & age", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </section>
-
       <%# Schedule — structured recurrence with Stimulus-driven UI. %>
       <section class="bg-white border border-pink-100 rounded">
         <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
@@ -182,11 +132,13 @@
           <%
             actual_pattern = (@mic.recurrence_pattern || "weekly")
             primary_choice = case actual_pattern
-                             when "weekly"   then "weekly"
-                             when "biweekly" then "biweekly"
-                             else                  "monthly"
+                             when "weekly"                then "weekly"
+                             when "biweekly"              then "biweekly"
+                             when "monthly_nth_weekdays"  then "monthly_nth_weekdays"
+                             when "custom_dates"          then "custom_dates"
+                             else                              "monthly"
                              end
-            monthly_kind   = actual_pattern.start_with?("monthly_") ? actual_pattern : "monthly_nth_weekday"
+            monthly_kind   = %w[monthly_nth_weekday monthly_day_of_month].include?(actual_pattern) ? actual_pattern : "monthly_nth_weekday"
           %>
           <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch,
                 data: { controller: "mics-schedule-form" } do %>
@@ -194,13 +146,15 @@
             <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
                    data-mics-schedule-form-target="hiddenPattern">
 
-            <%# Top-level: Weekly / Bi-weekly / Monthly %>
+            <%# Top-level: cadence picker. %>
             <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
                   value: primary_choice,
                   options: [
-                    [ "Weekly",            "weekly" ],
-                    [ "Every other week",  "biweekly" ],
-                    [ "Monthly",           "monthly" ]
+                    [ "Weekly",                                    "weekly" ],
+                    [ "Every other week",                          "biweekly" ],
+                    [ "Multiple times per month (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
+                    [ "Monthly",                                   "monthly" ],
+                    [ "Custom dates (one-offs / pop-ups)",         "custom_dates" ]
                   ],
                   data: { "mics-schedule-form-target": "primary",
                           action: "change->mics-schedule-form#refresh" } %>
@@ -220,9 +174,8 @@
               <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
                     value: monthly_kind,
                     options: [
-                      [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
-                      [ "Multiple weeks (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
-                      [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
+                      [ "A specific weekday (e.g. 2nd Tuesday)",        "monthly_nth_weekday" ],
+                      [ "A specific day of the month (e.g. the 15th)",  "monthly_day_of_month" ]
                     ],
                     data: { "mics-schedule-form-target": "monthlyKind",
                             action: "change->mics-schedule-form#refresh" } %>
@@ -239,9 +192,9 @@
                     ] %>
             </div>
 
-            <%# Multi-nth-week checkboxes — only for Monthly + nth_weekdays %>
+            <%# Multi-nth-week checkboxes — for "Multiple times per month" %>
             <div data-mics-schedule-form-target="nthMultiBlock"
-                 class="mb-4 <%= (primary_choice == "monthly" && monthly_kind == "monthly_nth_weekdays") ? "" : "hidden" %>">
+                 class="mb-4 <%= primary_choice == "monthly_nth_weekdays" ? "" : "hidden" %>">
               <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Which weeks?</label>
               <% selected_weeks = Array(@mic.recurrence_nth_weeks).map(&:to_i) %>
               <%# Hidden zero-value so an all-unchecked submit still posts the key. %>
@@ -267,16 +220,45 @@
                     help: "If a month doesn't have that day (e.g. Feb 30), it gets skipped." %>
             </div>
 
-            <%# Day-of-week + start time — hidden only when day-of-month is the active monthly mode. %>
+            <%# Day-of-week + start time — hidden when day-of-month or custom_dates is active. %>
             <div data-mics-schedule-form-target="dowBlock"
-                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") ? "hidden" : "" %>">
+                 class="<%= ((primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") || primary_choice == "custom_dates") ? "hidden" : "" %>">
               <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day of the week?", type: "select",
                     value: @mic.day_of_week,
                     options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
             </div>
 
-            <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
-                  value: @mic.starts_local_time&.strftime("%H:%M") %>
+            <%# Custom dates list — only for the custom_dates pattern. JS
+                renders pills + manages hidden inputs. Each entry carries
+                its own start time so dates can differ. %>
+            <div data-mics-schedule-form-target="customDatesBlock"
+                 class="mb-4 <%= primary_choice == "custom_dates" ? "" : "hidden" %>">
+              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Dates this mic happens</label>
+              <div data-controller="mics-custom-dates"
+                   data-mics-custom-dates-initial-value='<%= Array(@mic.custom_dates).to_json %>'>
+                <input type="hidden" name="mic[custom_dates_json]"
+                       data-mics-custom-dates-target="store" value="[]">
+                <div class="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="date" data-mics-custom-dates-target="datePicker"
+                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                  <input type="time" data-mics-custom-dates-target="timePicker"
+                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                  <button type="button" data-action="click->mics-custom-dates#add"
+                          class="cursor-pointer px-3 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white font-bold rounded">
+                    + Add date
+                  </button>
+                </div>
+                <div data-mics-custom-dates-target="list" class="flex flex-wrap"></div>
+                <p data-mics-custom-dates-target="empty" class="text-xs text-gray-500 italic">No dates yet — add one above.</p>
+              </div>
+              <p class="mt-2 text-xs text-gray-500">Use this for pop-ups, mini-residencies, or any mic that doesn't repeat on a fixed cadence. Each date has its own start time.</p>
+            </div>
+
+            <div data-mics-schedule-form-target="startTimeBlock"
+                 class="<%= primary_choice == "custom_dates" ? "hidden" : "" %>">
+              <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
+                    value: @mic.starts_local_time&.strftime("%H:%M") %>
+            </div>
 
             <%# Pause state lives in its own accordion — toggled on, the
                 mic stops appearing on city listings and upcoming-week
@@ -452,6 +434,56 @@
               <% end %>
             </div>
           </details>
+        </div>
+      </section>
+
+      <%# Accessibility & age — drives the city-page filters and the
+          ♿ badge on listings. Wheelchair level lives in the
+          `accessibility` jsonb; min_age is an integer column. %>
+      <section class="bg-white border border-pink-100 rounded">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
+            <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
+            <fieldset class="mb-4">
+              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
+              <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
+              <% [
+                [ "fully",   "♿ Fully wheelchair accessible",
+                  "Can get into the building, onto the stage, and into the restrooms." ],
+                [ "partial", "♿ Partially wheelchair accessible",
+                  "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
+                [ "",        "Not wheelchair accessible / unknown",
+                  "The mic won't show up when performers filter for wheelchair access." ]
+              ].each do |val, label, desc| %>
+                <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
+                  <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
+                         <%= "checked" if (current_level.to_s == val) %>
+                         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                  <span class="flex-1">
+                    <span class="font-bold"><%= label %></span>
+                    <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
+                  </span>
+                </label>
+              <% end %>
+              <% venue_level = (@mic.venue.accessibility || {})["wheelchair_level"] %>
+              <% if venue_level.present? %>
+                <p class="mt-2 text-xs text-gray-500">
+                  This venue is already marked <strong><%= venue_level == "fully" ? "fully" : "partially" %> accessible</strong> at the venue level.
+                </p>
+              <% end %>
+            </fieldset>
+
+            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
+                  value: @mic.min_age.to_s,
+                  options: [ [ "All ages",  "" ], [ "21+", "21" ] ] %>
+
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save accessibility & age", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
         </div>
       </section>
 

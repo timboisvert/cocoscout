@@ -35,6 +35,8 @@ module Mics
         @mic = Mic.new(mic_params)
         @mic.venue   = @venue
         @mic.pending = true
+        apply_accessibility_to_mic!(@mic)
+        apply_custom_dates_to_mic!(@mic)
         @mic.save!
 
         Array(params[:mic_links]).each do |_index, attrs|
@@ -79,6 +81,23 @@ module Mics
         :drink_minimum_amount_cents, :cover_amount_cents, :min_age, :host_summary,
         recurrence_nth_weeks: []
       )
+    end
+
+    # Wheelchair level lives in a jsonb column; strong params can't permit
+    # it inline, so we apply it manually after building the Mic.
+    def apply_accessibility_to_mic!(mic)
+      level = params.dig(:mic, :accessibility, :wheelchair_level).to_s
+      return unless %w[fully partial].include?(level)
+      mic.accessibility = (mic.accessibility || {}).merge("wheelchair_level" => level)
+    end
+
+    # Custom dates ride in as a JSON string built by the Stimulus
+    # controller. Decode and let the model's normalizer validate/sort.
+    def apply_custom_dates_to_mic!(mic)
+      raw = params.dig(:mic, :custom_dates_json)
+      return unless raw.is_a?(String)
+      decoded = JSON.parse(raw) rescue nil
+      mic.custom_dates = Array(decoded) if decoded.is_a?(Array)
     end
   end
 end

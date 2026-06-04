@@ -111,9 +111,11 @@
             <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
                   value: "weekly",
                   options: [
-                    [ "Weekly",           "weekly" ],
-                    [ "Every other week", "biweekly" ],
-                    [ "Monthly",          "monthly" ]
+                    [ "Weekly",                                    "weekly" ],
+                    [ "Every other week",                          "biweekly" ],
+                    [ "Multiple times per month (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
+                    [ "Monthly",                                   "monthly" ],
+                    [ "Custom dates (one-offs / pop-ups)",         "custom_dates" ]
                   ],
                   data: { "mics-schedule-form-target": "primary",
                           action: "change->mics-schedule-form#refresh" } %>
@@ -127,8 +129,7 @@
               <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
                     value: "monthly_nth_weekday",
                     options: [
-                      [ "A specific weekday (e.g. 2nd Tuesday)", "monthly_nth_weekday" ],
-                      [ "Multiple weeks (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
+                      [ "A specific weekday (e.g. 2nd Tuesday)",       "monthly_nth_weekday" ],
                       [ "A specific day of the month (e.g. the 15th)", "monthly_day_of_month" ]
                     ],
                     data: { "mics-schedule-form-target": "monthlyKind",
@@ -165,7 +166,31 @@
                     options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
             </div>
 
-            <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time" %>
+            <div data-mics-schedule-form-target="customDatesBlock" class="hidden mb-4">
+              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Dates this mic happens</label>
+              <div data-controller="mics-custom-dates"
+                   data-mics-custom-dates-initial-value="[]">
+                <input type="hidden" name="mic[custom_dates_json]"
+                       data-mics-custom-dates-target="store" value="[]">
+                <div class="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="date" data-mics-custom-dates-target="datePicker"
+                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                  <input type="time" data-mics-custom-dates-target="timePicker"
+                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                  <button type="button" data-action="click->mics-custom-dates#add"
+                          class="cursor-pointer px-3 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white font-bold rounded">
+                    + Add date
+                  </button>
+                </div>
+                <div data-mics-custom-dates-target="list" class="flex flex-wrap"></div>
+                <p data-mics-custom-dates-target="empty" class="text-xs text-gray-500 italic">No dates yet — add one above.</p>
+              </div>
+              <p class="mt-2 text-xs text-gray-500">Use this for pop-ups or any mic that doesn't repeat on a fixed cadence. Each date gets its own start time.</p>
+            </div>
+
+            <div data-mics-schedule-form-target="startTimeBlock">
+              <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time" %>
+            </div>
           </div>
         </section>
 
@@ -200,6 +225,41 @@
             <%= render "mics/form_field", name: "mic[signup_notes]", label: "Sign-up notes (optional)", type: "textarea", rows: 3,
                   placeholder: "House rules, bump-in offers, drink minimums, anything that doesn't fit above.",
                   help: "Shown publicly under sign-up info." %>
+          </div>
+        </section>
+
+        <%# Accessibility & age %>
+        <section class="bg-white border border-pink-100 rounded">
+          <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+            <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
+          </header>
+          <div class="px-5 sm:px-6 py-5">
+            <fieldset class="mb-4">
+              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
+              <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
+              <% [
+                [ "fully",   "♿ Fully wheelchair accessible",
+                  "Can get into the building, onto the stage, and into the restrooms." ],
+                [ "partial", "♿ Partially wheelchair accessible",
+                  "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
+                [ "",        "Not wheelchair accessible / unknown",
+                  "The mic won't show up when performers filter for wheelchair access." ]
+              ].each do |val, label, desc| %>
+                <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
+                  <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
+                         <%= "checked" if val == "" %>
+                         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                  <span class="flex-1">
+                    <span class="font-bold"><%= label %></span>
+                    <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
+                  </span>
+                </label>
+              <% end %>
+            </fieldset>
+
+            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
+                  value: "",
+                  options: [ [ "All ages", "" ], [ "21+", "21" ] ] %>
           </div>
         </section>
 

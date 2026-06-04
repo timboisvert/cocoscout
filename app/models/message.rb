@@ -311,10 +311,14 @@ class Message < ApplicationRecord
 
   # Human-readable sender name
   # For production/show-scoped messages OR system-generated production messages,
-  # show "Production Team" or production name
+  # show "Production Team" or production name. System-generated direct messages
+  # (e.g. mic queue notifications) hide whichever account technically sent them
+  # so the inbox doesn't appear to be "from Andie" when it's a transactional alert.
   def sender_name
     if sent_as_production_team?
       production&.name || "Production Team"
+    elsif system_generated?
+      "Automated Notification"
     else
       case sender
       when User then sender.person&.name || sender.email_address

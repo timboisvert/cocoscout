@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_04_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1136,6 +1136,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_120000) do
     t.integer "cost", default: 0, null: false
     t.integer "cover_amount_cents"
     t.datetime "created_at", null: false
+    t.jsonb "custom_dates", default: [], null: false
     t.integer "day_of_week"
     t.integer "drink_minimum_amount_cents"
     t.integer "format", default: 0, null: false

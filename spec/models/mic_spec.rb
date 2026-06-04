@@ -43,6 +43,42 @@ RSpec.describe Mic, type: :model do
       occs = mic.next_occurrences(limit: 3)
       expect(occs.first[:starts_at].to_date).to be >= (Date.current + 60.days)
     end
+
+    it "returns explicit custom_dates in order, ignoring past dates" do
+      future_a = Date.current + 7
+      future_b = Date.current + 14
+      past     = Date.current - 1
+      mic = create(:mic, recurrence_pattern: :custom_dates,
+                          starts_local_time: "20:00",
+                          custom_dates: [ future_b.iso8601, past.iso8601, future_a.iso8601 ])
+      occs = mic.next_occurrences(limit: 5)
+      expect(occs.map { |o| o[:starts_at].to_date }).to eq([ future_a, future_b ])
+    end
+
+    it "honors per-entry times for custom_dates so each date can differ" do
+      future_a = Date.current + 7
+      future_b = Date.current + 14
+      mic = create(:mic, recurrence_pattern: :custom_dates,
+                          starts_local_time: "20:00",
+                          custom_dates: [
+                            { "date" => future_a.iso8601, "time" => "19:30" },
+                            { "date" => future_b.iso8601, "time" => "21:00" }
+                          ])
+      occs = mic.next_occurrences(limit: 5)
+      expect(occs.map { |o| [ o[:starts_at].to_date, o[:starts_at].strftime("%H:%M") ] }).to eq([
+        [ future_a, "19:30" ],
+        [ future_b, "21:00" ]
+      ])
+    end
+
+    it "falls back to starts_local_time when a custom_dates entry has no time" do
+      future = Date.current + 7
+      mic = create(:mic, recurrence_pattern: :custom_dates,
+                          starts_local_time: "20:00",
+                          custom_dates: [ { "date" => future.iso8601, "time" => nil } ])
+      occs = mic.next_occurrences(limit: 1)
+      expect(occs.first[:starts_at].strftime("%H:%M")).to eq("20:00")
+    end
   end
 
   describe "#powered_by_cocoscout?" do

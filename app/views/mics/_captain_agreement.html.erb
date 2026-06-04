@@ -1,0 +1,37 @@
+<%#
+  Captain expectations / agreement. Displayed both on the invite modal
+  (superadmin → add captain) and on the captain's own hub page so the
+  terms are always one click away. Locals:
+    hub_name (string)
+%>
+<div class="space-y-3 text-sm text-gray-700">
+  <p>
+    Thanks for stepping up to captain
+    <strong><%= hub_name %></strong>. Here's what you're signing up for —
+    and what's still up to us.
+  </p>
+
+  <div>
+    <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">What you'll do</div>
+    <ul class="list-disc list-inside space-y-1">
+      <li>Keep listings accurate — edit any mic in your hub, approve community suggestions, set statuses.</li>
+      <li>Run the queue: approve or reject submissions, claims, and challenges promptly (aim for within a few days).</li>
+      <li>Be a fair broker. Don't favor your own mics or shut out competitors. Decisions should be defensible to anyone.</li>
+      <li>Loop us in on edge cases — disputes, abuse, anything that needs a human call from CocoScout.</li>
+    </ul>
+  </div>
+
+  <div>
+    <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">What's not yours to decide</div>
+    <ul class="list-disc list-inside space-y-1">
+      <li>This role isn't permanent or exclusive. CocoScout retains the right to add additional captains, replace you, or remove the captain role entirely from this hub at any time.</li>
+      <li>You can step down whenever — just let us know.</li>
+      <li>City-level branding, hub copy, and policy stay with CocoScout.</li>
+    </ul>
+  </div>
+
+  <p class="text-xs text-gray-500">
+    Questions? Reply in CocoScout DMs or email
+    <a href="mailto:hello@cocoscout.com" class="text-pink-600 hover:underline">hello@cocoscout.com</a>.
+  </p>
+</div>

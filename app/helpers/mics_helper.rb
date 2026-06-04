@@ -14,6 +14,19 @@ module MicsHelper
     DAY_NAMES_SHORT[day.to_i] if day.present?
   end
 
+  # Formatted start time for display. Returns "Varies" for custom-dates
+  # mics where the per-entry times aren't all the same (or any are
+  # blank), so we don't mislead by surfacing only the global default.
+  def mics_display_start_time(mic)
+    if mic.recurrence_pattern.to_s == "custom_dates"
+      times = mic.custom_date_entries.map { |e| e[:time]&.strftime("%H:%M") }
+      uniq  = times.uniq
+      return "Varies" if uniq.size > 1 || uniq.include?(nil)
+      return Time.zone.parse("2000-01-01 #{uniq.first}").strftime("%-l:%M %p") if uniq.first.present?
+    end
+    mic.starts_local_time&.strftime("%-l:%M %p")
+  end
+
   # Friendly label for MicOwner / MicClaim role enums. Default humanize
   # strips the hyphen ("Co owner") — keep it for display.
   def mics_role_label(role)
@@ -111,6 +124,12 @@ module MicsHelper
   # Human-readable summary of a mic's schedule, e.g. "Every Tuesday at 8:00 PM"
   # or "1st Tuesday of every month at 8:00 PM".
   def mics_schedule_label(mic)
+    if mic.recurrence_pattern.to_s == "custom_dates"
+      count = Array(mic.custom_dates).count
+      return nil if count.zero?
+      return "#{count} scheduled #{count == 1 ? "date" : "dates"}"
+    end
+
     return nil unless mic.starts_local_time
     day = mics_day_name(mic.day_of_week)
     time = mic.starts_local_time.strftime("%-l:%M %p")
@@ -166,6 +185,9 @@ module MicsHelper
       "#{ords.to_sentence(two_words_connector: " & ", last_word_connector: ", & ")} #{day}"
     when "monthly_day_of_month"
       mic.recurrence_day_of_month ? "Day #{mic.recurrence_day_of_month} of every month" : day
+    when "custom_dates"
+      next_date = Array(mic.custom_dates).filter_map { |s| Date.parse(s.to_s) rescue nil }.sort.find { |d| d >= Date.current }
+      next_date ? next_date.strftime("%a %b %-d") : "Custom dates"
     else
       day
     end
