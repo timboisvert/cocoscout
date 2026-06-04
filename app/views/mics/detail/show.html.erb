@@ -80,24 +80,101 @@
       <% end %>
       <% if verified_text %>
         <span class="text-xs text-pink-100"><%= verified_text %></span>
+        <%# Visual separator so the verified line doesn't bump into the suggest-edit link. %>
+        <span class="text-pink-200" aria-hidden="true">·</span>
       <% end %>
+      <%# Small inline text link — opens the suggest/report modal. Sized
+          to be unobtrusive (it's lower-priority than Claim/Edit) but
+          present everywhere on the page so anyone can speak up. %>
+      <button type="button"
+              onclick="document.getElementById('modal-suggest-edit').showModal()"
+              class="cursor-pointer text-xs text-pink-100 hover:text-white underline-offset-4 hover:underline">
+        Suggest an edit / report an inaccuracy
+      </button>
     </div>
 
     <%# Primary actions — only the things people who run the mic or run
         the site need from up here. Suggest-an-edit + dispute-owner live
-        in the footer where the "community" copy already explains them. %>
-    <div class="mt-5 flex flex-wrap gap-2 text-sm">
-      <% unless @mic.claimed? %>
-        <%= link_to "Claim this mic →", mics_claim_path(@mic.slug),
-              class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
-      <% end %>
-      <% if @mic.manageable_by?(Current.user) %>
-        <%= link_to "Edit", mics_producer_mic_path(@mic.slug),
-              class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
-      <% end %>
-    </div>
+        in the footer where the "community" copy already explains them.
+        Skip the whole row (and its `mt-5` spacer) when there's nothing
+        to show — otherwise the masthead carries dead bottom padding. %>
+    <% claim_visible = !@mic.claimed? %>
+    <% edit_visible  = @mic.manageable_by?(Current.user) %>
+    <% if claim_visible || edit_visible %>
+      <div class="mt-5 flex flex-wrap gap-2 text-sm">
+        <% if claim_visible %>
+          <%= link_to "Claim this mic →", mics_claim_path(@mic.slug),
+                class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
+        <% end %>
+        <% if edit_visible %>
+          <%= link_to "Edit", mics_producer_mic_path(@mic.slug),
+                class: "px-3 py-1.5 bg-gray-900 text-white font-bold hover:bg-black rounded" %>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 </section>
+
+<%# Next-occurrence status banner — surfaces a posted status for the
+    upcoming date right under the masthead. Banner appears whenever
+    either (a) the status is non-default (cancelled / extra_spots), OR
+    (b) the producer left a note (even if the status itself is the
+    default "running_as_planned" — they wrote a heads-up for visitors).
+    Falls back to canned copy when no note was supplied. %>
+<%
+  next_occ_with_status = @next_occurrences.find do |o|
+    s = o[:mic_status]
+    note_present = o[:mic_status_note].to_s.strip.present?
+    # Non-default status always shows; default-status shows only when
+    # accompanied by a note.
+    (s.present? && s != "running_as_planned") || note_present
+  end
+%>
+<% if next_occ_with_status %>
+  <%
+    status_kind = next_occ_with_status[:mic_status].to_s
+    note        = next_occ_with_status[:mic_status_note].to_s.strip
+    starts_at   = next_occ_with_status[:starts_at]
+    is_today    = starts_at.to_date == Date.current
+    date_label  = is_today ? "Tonight" : starts_at.strftime("%A %b %-d")
+    banner = case status_kind
+    when "cancelled" then {
+      bg:    "bg-red-50 border-red-300",
+      head:  "text-red-800",
+      body:  "text-red-900",
+      label: "Cancelled",
+      desc:  "#{date_label} is off."
+    }
+    when "extra_spots" then {
+      bg:    "bg-emerald-50 border-emerald-300",
+      head:  "text-emerald-800",
+      body:  "text-emerald-900",
+      label: "Extra spots",
+      desc:  "#{date_label}: extra spots are open."
+    }
+    else {
+      bg:    "bg-pink-50 border-pink-300",
+      head:  "text-pink-800",
+      body:  "text-pink-900",
+      label: "From the host",
+      desc:  date_label
+    }
+    end
+  %>
+  <section class="w-full px-4 sm:px-8 py-3 border-b border-gray-100">
+    <div class="<%= banner[:bg] %> border rounded p-4 sm:p-5">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap mb-1">
+        <span class="text-xs uppercase tracking-wider <%= banner[:head] %> font-bold"><%= banner[:label] %></span>
+        <span class="text-xs <%= banner[:head] %> tabular-nums">
+          <%= starts_at.strftime("%a %b %-d · %-l:%M %p") %>
+        </span>
+      </div>
+      <p class="<%= banner[:body] %> text-sm sm:text-base whitespace-pre-line">
+        <%= note.presence || banner[:desc] %>
+      </p>
+    </div>
+  </section>
+<% end %>
 
 <main class="w-full bg-white">
   <%# Two stacked rows on a pink-50 background:
@@ -191,7 +268,7 @@
   <% if announcements.any? %>
     <section class="border-b border-gray-100">
       <div class="w-full px-4 sm:px-8 py-6">
-        <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">News from the producers</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">Latest News</h2>
         <ul class="space-y-3 max-w-3xl">
           <% announcements.each do |a| %>
             <li class="border-l-4 border-pink-500 pl-4 py-1">
@@ -310,7 +387,10 @@
           <% access = (venue.accessibility || {}).merge(@mic.accessibility || {}) %>
           <% if access.values.any? %>
             <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
-              <% if access["wheelchair"] %><li>♿ Wheelchair accessible</li><% end %>
+              <% case access["wheelchair_level"]
+                  when "fully"   %><li>♿ Fully wheelchair accessible</li>
+                  <% when "partial" %><li>♿ Partially wheelchair accessible (building only)</li>
+              <% end %>
               <% if access["all_ages"] %><li>All ages</li><% end %>
               <% if access["bar_free"] %><li>No bar / dry</li><% end %>
               <% if access["smoke_free"] %><li>Smoke-free</li><% end %>
@@ -376,9 +456,7 @@
     <%# Community actions — the rarely-used ones live here, framed by
         the line that explains why they exist. %>
     <div class="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-xs text-gray-500">
-      <span>Producers update directly. Community can suggest edits.</span>
-      <%= link_to "Suggest an edit", mics_suggest_path(@mic.slug),
-            class: "text-pink-600 font-bold hover:underline" %>
+      <span>Producers update directly. Community can suggest edits using the link at the top.</span>
       <% if Current.user && @mic.claimed? %>
         <%= link_to "I actually run this mic →", mics_challenge_path(@mic.slug),
               class: "text-pink-600 font-bold hover:underline",
@@ -390,5 +468,42 @@
     </div>
   </footer>
 </main>
+
+<%# Suggest-an-edit modal — opened from the small text link in the
+    masthead. POSTs to the existing #create suggestion endpoint, so
+    notifications fire and the captain/superadmins still hear about it
+    via Mics::NotificationService.notify_suggestion. %>
+<dialog id="modal-suggest-edit"
+        class="fixed inset-0 m-auto w-[min(36rem,92vw)] max-h-[85vh] p-0 rounded shadow-2xl backdrop:bg-gray-900/50 overflow-hidden">
+  <div class="flex flex-col max-h-[85vh]">
+    <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-3 border-b border-gray-100 bg-pink-500 text-white shrink-0">
+      <h3 class="text-lg sm:text-xl font-bold">Suggest an edit / report an inaccuracy</h3>
+      <button type="button"
+              onclick="this.closest('dialog').close()"
+              class="cursor-pointer px-2 py-1 text-white hover:bg-pink-600 active:bg-pink-700 text-sm leading-none">
+        ✕
+      </button>
+    </div>
+    <div class="px-5 sm:px-6 py-5 overflow-y-auto">
+      <p class="text-sm text-gray-600 mb-4">
+        Anyone can submit. <strong>Goes straight to the <%= @mic.venue&.city_hub ? "#{@mic.venue.city_hub.name} city captain" : "site admins" %></strong>. We use these to fix outdated info, flag a closed venue, or correct a wrong day/time.
+      </p>
+      <%= form_with url: mics_create_suggestion_path(@mic.slug), method: :post,
+            class: "space-y-4" do %>
+        <% unless Current.user %>
+          <%= render "mics/form_field", name: "mic_suggestion[submitter_email]", label: "Your email (so we can follow up)", type: "email", required: true %>
+        <% end %>
+        <%= render "mics/form_field", name: "mic_suggestion[note]", label: "What needs to change?", type: "textarea", rows: 5, required: true,
+              placeholder: "e.g. The mic moved to Wednesdays at 8 PM as of last month. Or: this venue is closed." %>
+        <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+          <button type="button"
+                  onclick="this.closest('dialog').close()"
+                  class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+          <%= render "shared/button", text: "Send report", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</dialog>
 
 <%= render "mics/site_footer" %>

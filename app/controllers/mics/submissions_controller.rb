@@ -12,12 +12,24 @@ module Mics
 
     def create
       ActiveRecord::Base.transaction do
-        @venue = Venue.find_or_initialize_by(
-          name: venue_params[:name],
-          city: venue_params[:city],
-          state: venue_params[:state]
-        )
-        @venue.assign_attributes(venue_params)
+        # If the venue-finder picker landed on an existing venue, the
+        # form posts its id alongside the address fields — reuse that
+        # row rather than creating a near-duplicate. Otherwise fall
+        # back to the prior find-or-initialize on name+city+state.
+        @venue =
+          if params[:venue_id].present? && (existing = Venue.find_by(id: params[:venue_id]))
+            existing
+          else
+            Venue.find_or_initialize_by(
+              name: venue_params[:name],
+              city: venue_params[:city],
+              state: venue_params[:state]
+            )
+          end
+        # Only write address fields when we created a fresh row — we
+        # never want a casual submission to overwrite shared address
+        # data on an existing venue used by other mics.
+        @venue.assign_attributes(venue_params) if @venue.new_record?
         @venue.save!
 
         @mic = Mic.new(mic_params)
@@ -43,6 +55,7 @@ module Mics
         )
       end
 
+      Mics::NotificationService.notify_submission(mic: @mic)
       redirect_to mics_detail_path(@mic.slug), notice: "Thanks! Your submission is pending review."
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message

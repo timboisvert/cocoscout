@@ -1,5 +1,7 @@
 <main class="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
   <nav class="text-xs text-gray-500 mb-2">
+    <%= link_to "Mics admin", mics_index_path, class: "hover:underline" %>
+    <span class="px-1">›</span>
     <%= link_to "City hubs", mics_hubs_path, class: "hover:underline" %>
     <span class="px-1">›</span>
     <span class="text-gray-700"><%= @hub.name %>, <%= @hub.state %></span>

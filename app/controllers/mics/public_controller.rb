@@ -7,26 +7,8 @@ module Mics
       # Active hubs (Chicago at launch).
       @active_hubs = CityHub.where(status: CityHub.statuses[:active]).order(:name)
 
-      # Cities are listed only for venues that aren't already rolled up
-      # into a hub. Forest Park, Berwyn, etc. live under the Chicago hub
-      # and should not appear as standalone cities. Paused mics are
-      # excluded everywhere so this banner stays in lockstep with the
-      # city-page counts (which also exclude paused).
-      @top_cities = Mic.active.unpaused.joins(:venue)
-                       .where(venues: { city_hub_id: nil })
-                       .group("venues.city", "venues.state")
-                       .order(Arel.sql("COUNT(*) DESC"))
-                       .limit(8)
-                       .count
-
       @total_active_mics = Mic.active.unpaused.count
-      # Distinct "places" = active hubs + non-hub cities, so the count
-      # matches what the user sees in the grid.
-      hub_states = @active_hubs.count
-      non_hub_states = Mic.active.unpaused.joins(:venue)
-                          .where(venues: { city_hub_id: nil })
-                          .distinct.count(Arel.sql("venues.city || ',' || venues.state"))
-      @total_cities = hub_states + non_hub_states
+      @total_cities = @active_hubs.count
     end
 
     def search

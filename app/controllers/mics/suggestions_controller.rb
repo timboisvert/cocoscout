@@ -18,6 +18,7 @@ module Mics
       @suggestion.status = :pending
 
       if @suggestion.save
+        Mics::NotificationService.notify_suggestion(suggestion: @suggestion)
         redirect_to mics_suggest_thanks_path(@mic.slug)
       else
         flash.now[:alert] = @suggestion.errors.full_messages.to_sentence

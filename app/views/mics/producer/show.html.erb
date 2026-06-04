@@ -93,6 +93,14 @@
         <div class="px-5 sm:px-6 py-5">
           <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch do %>
             <%= render "mics/form_field", name: "mic[name]", label: "Name", value: @mic.name %>
+            <% if deletable_by?(Current.user) %>
+              <%# Slug edit is admin-only (superadmin or hub captain).
+                  Regular producers shouldn't be able to rename the URL
+                  out from under existing inbound links. %>
+              <%= render "mics/form_field", name: "mic[slug]", label: "Slug (URL)", value: @mic.slug,
+                    placeholder: "e.g. cole-bar-monday",
+                    help: "Public URL: /mics/m/#{@mic.slug}. Lowercase letters, digits, and hyphens only — anything else gets normalized on save. Changing this breaks existing links." %>
+            <% end %>
             <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select", value: @mic.format,
                   options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
@@ -105,27 +113,58 @@
             </div>
             <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
 
-            <%# Accessibility — drives the "Wheelchair accessible" filter on
-                city pages and the ♿ badge on listings. Posted as a nested
-                hash so the controller can merge into the jsonb column. %>
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+              <%= render "shared/button", text: "Save basic info", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <%# Accessibility & age — drives the city-page filters and the
+          ♿ badge on listings. Wheelchair level lives in the
+          `accessibility` jsonb; min_age is an integer column. %>
+      <section class="bg-white border border-pink-100 rounded">
+        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
+          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
+        </header>
+        <div class="px-5 sm:px-6 py-5">
+          <%= form_with url: mics_producer_mic_path(@mic.slug), method: :patch do %>
+            <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
             <fieldset class="mb-4">
-              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Accessibility</legend>
-              <label class="flex items-center gap-2 text-sm text-gray-800">
-                <input type="hidden" name="mic[accessibility][wheelchair]" value="0">
-                <input type="checkbox" name="mic[accessibility][wheelchair]" value="1"
-                       <%= "checked" if (@mic.accessibility || {})["wheelchair"] %>
-                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-                <span>♿ Wheelchair accessible</span>
-              </label>
-              <% if (@mic.venue.accessibility || {})["wheelchair"] %>
-                <p class="mt-1 text-xs text-gray-500">The venue is already marked wheelchair accessible — leaving this off won't hide the badge.</p>
-              <% else %>
-                <p class="mt-1 text-xs text-gray-500">Performers filtering for wheelchair-accessible mics will only see this one if it's checked.</p>
+              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
+              <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
+              <% [
+                [ "fully",   "♿ Fully wheelchair accessible",
+                  "Can get into the building, onto the stage, and into the restrooms." ],
+                [ "partial", "♿ Partially wheelchair accessible",
+                  "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
+                [ "",        "Not wheelchair accessible / unknown",
+                  "The mic won't show up when performers filter for wheelchair access." ]
+              ].each do |val, label, desc| %>
+                <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
+                  <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
+                         <%= "checked" if (current_level.to_s == val) %>
+                         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                  <span class="flex-1">
+                    <span class="font-bold"><%= label %></span>
+                    <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
+                  </span>
+                </label>
+              <% end %>
+              <% venue_level = (@mic.venue.accessibility || {})["wheelchair_level"] %>
+              <% if venue_level.present? %>
+                <p class="mt-2 text-xs text-gray-500">
+                  This venue is already marked <strong><%= venue_level == "fully" ? "fully" : "partially" %> accessible</strong> at the venue level.
+                </p>
               <% end %>
             </fieldset>
 
+            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
+                  value: @mic.min_age.to_s,
+                  options: [ [ "All ages",  "" ], [ "21+", "21" ] ] %>
+
             <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save basic info", variant: "primary", size: "medium", type: :submit %>
+              <%= render "shared/button", text: "Save accessibility & age", variant: "primary", size: "medium", type: :submit %>
             </div>
           <% end %>
         </div>
@@ -369,19 +408,44 @@
                 Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
               </p>
               <%= form_with url: mics_producer_move_venue_path(@mic.slug), method: :post,
-                    data: { turbo_confirm: "Move this mic to a different venue? Existing schedule + producers stay the same." } do %>
-                <%= render "mics/form_field", name: "venue_name", label: "New venue name", required: true,
-                      placeholder: "e.g. Cole's Bar" %>
-                <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                  <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
-                  <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
-                  <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
-                  <div class="mb-4">
-                    <%= render "shared/us_state_select",
-                          name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
+                    data: { controller: "venue-finder",
+                            "venue-finder-url-value": mics_venues_lookup_path,
+                            turbo_confirm: "Move this mic to a different venue? Existing schedule + producers stay the same." } do %>
+
+                <%= hidden_field_tag "venue_id", nil, data: { venue_finder_target: "venueIdInput" } %>
+
+                <div class="mb-4">
+                  <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">New venue name <span class="text-pink-500">*</span></label>
+                  <input type="text" name="venue_name" required
+                         placeholder="e.g. Cole's Bar"
+                         data-venue-finder-target="nameInput"
+                         data-action="input->venue-finder#search"
+                         class="w-full px-3 py-2.5 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+                </div>
+
+                <div data-venue-finder-target="results" class="mb-4"></div>
+
+                <div data-venue-finder-target="selectedBanner"
+                     class="hidden mb-4 flex items-baseline justify-between gap-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded">
+                  <div class="text-xs text-emerald-800">
+                    Using existing venue: <strong data-venue-finder-target="selectedName"></strong>. We'll re-point this mic there.
+                  </div>
+                  <a href="#" data-action="click->venue-finder#resetSelection" class="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline">Use a different one</a>
+                </div>
+
+                <div data-venue-finder-target="addressFields">
+                  <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                    <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
+                    <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
+                    <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
+                    <div class="mb-4">
+                      <%= render "shared/us_state_select",
+                            name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
+                    </div>
                   </div>
                 </div>
+
                 <div class="flex justify-end pt-2 border-t border-gray-100">
                   <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
                 </div>
@@ -580,10 +644,10 @@
     <%= render "mics/form_field", name: "date", label: "Date", type: "date", value: next_upcoming_date_for(@mic) %>
     <%= render "mics/form_field", name: "mic_status", label: "Status", type: "select",
           options: [
-            [ "Running as planned", "running_as_planned" ],
-            [ "Online only",        "online_only" ],
-            [ "Extra spots",        "extra_spots" ],
-            [ "Cancelled",          "cancelled" ]
+            [ "Running as planned (heads-up only)", "running_as_planned" ],
+            [ "Extra spots",                        "extra_spots" ],
+            [ "Cancelled",                          "cancelled" ],
+            [ "(Clear any status for this date)",   "clear" ]
           ] %>
     <%= render "mics/form_field", name: "note", label: "Note (shown publicly, optional)" %>
     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -599,11 +663,6 @@
   <%= form_with url: mics_create_announcement_path(@mic.slug), method: :post, class: "space-y-4" do %>
     <%= render "mics/form_field", name: "title", label: "Title (optional)" %>
     <%= render "mics/form_field", name: "body", label: "Announcement", type: "textarea", rows: 5, required: true %>
-    <label class="flex items-center gap-2 text-sm text-gray-700">
-      <input type="checkbox" name="notify_subscribers" value="1"
-             class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-      <span>Notify subscribers when this goes out <span class="text-xs text-gray-400">(emails coming soon — we'll save your preference)</span></span>
-    </label>
     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
       <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
               class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
@@ -616,7 +675,7 @@
     <ul class="space-y-2 text-sm max-h-48 overflow-y-auto">
       <% @mic.mic_announcements.recent(5).each do |a| %>
         <li class="border-l-2 border-pink-200 pl-3">
-          <div class="text-xs text-gray-500"><%= a.posted_at.strftime("%b %-d, %-l:%M%p") %><% if a.notify_subscribers %> · 🔔 flagged for subscriber alert<% end %></div>
+          <div class="text-xs text-gray-500"><%= a.posted_at.strftime("%b %-d, %-l:%M%p") %></div>
           <% if a.title.present? %><div class="font-bold"><%= a.title %></div><% end %>
           <div class="text-gray-700 whitespace-pre-line"><%= a.body %></div>
         </li>

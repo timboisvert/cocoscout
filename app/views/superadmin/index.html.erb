@@ -272,22 +272,8 @@
       </div>
     <% end %>
 
-    <!-- Mic city hubs -->
-    <%= link_to mics_hubs_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-              <span class="text-pink-600 text-lg font-bold">🏙️</span>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Mic city hubs</h3>
-              <p class="text-xs text-gray-500"><%= pluralize(CityHub.count, "hub") %> · promote, archive, appoint captains</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
+    <%# Mic city hubs is a child of the Mics admin surface — reach it
+        from /superadmin/mics, not from here. %>
 
     <!-- Queue Monitor -->
     <%= link_to queue_monitor_path, class: "block" do %>

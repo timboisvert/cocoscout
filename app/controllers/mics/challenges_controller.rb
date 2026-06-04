@@ -15,6 +15,7 @@ module Mics
       @challenge.status = :pending
       @challenge.save!
 
+      Mics::NotificationService.notify_challenge(challenge: @challenge)
       redirect_to mics_detail_path(@mic.slug), notice: "Challenge filed. The current lead producer has 72 hours to respond."
     end
 

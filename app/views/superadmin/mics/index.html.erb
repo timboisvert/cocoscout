@@ -1,14 +1,13 @@
 <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
   <div class="flex items-baseline justify-between gap-3 flex-wrap mb-4">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Mics — search &amp; admin</h1>
+      <h1 class="text-2xl font-bold text-gray-900">Mics — admin</h1>
       <p class="text-sm text-gray-600 mt-1">
-        Every mic in the system. Pending work surfaced at the top; full table searchable below.
+        Pending work surfaced at the top; the full table is searchable below with hub, status, and recency filters.
       </p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-3">
       <%= link_to "Hubs →", mics_hubs_path, class: "text-sm text-pink-600 font-bold hover:underline" %>
-      <%= link_to "Queue →", mics_queue_path, class: "text-sm text-pink-600 font-bold hover:underline" %>
     </div>
   </div>
 
@@ -19,38 +18,300 @@
     <div class="mb-4 px-3 py-2 border border-red-200 bg-red-50 text-red-700 text-sm"><%= flash[:alert] %></div>
   <% end %>
 
-  <%# Pending workload strip — counts per queue type, each clicks
-      through to the existing queue page anchored at that section. %>
-  <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-    <% [
-      [ "Pending submissions", @pending_mic_count,        "#submissions" ],
-      [ "Pending claims",      @pending_claim_count,      "#claims" ],
-      [ "Pending challenges",  @pending_challenge_count,  "#challenges" ],
-      [ "Pending suggestions", @pending_suggestion_count, "#suggestions" ]
-    ].each do |label, count, anchor| %>
-      <%= link_to "#{mics_queue_path}#{anchor}", class: "block bg-white border border-gray-200 hover:border-pink-400 px-4 py-3 transition-colors" do %>
-        <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold"><%= label %></div>
-        <div class="text-2xl font-bold <%= count.positive? ? "text-pink-600" : "text-gray-400" %> tabular-nums mt-1">
-          <%= count %>
-        </div>
+  <%# Queue summary — when there's nothing to do this stays out of the
+      way as a single line. The rendered pending sections below only
+      include the types that actually have items, so a clear queue
+      doesn't burn vertical space on "Nothing pending" placeholders. %>
+  <%
+    pending_total = @pending_mic_count + @pending_claim_count +
+                    @pending_challenge_count + @pending_suggestion_count
+  %>
+  <% if pending_total.zero? %>
+    <div class="mb-5 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded">
+      <span>✓</span><span>Queue is clear — nothing pending.</span>
+    </div>
+  <% else %>
+    <%# Inline chip strip — only types with > 0 are shown. Each chip
+        scrolls to its section below. %>
+    <div class="mb-5 flex flex-wrap gap-2 items-center">
+      <span class="text-xs uppercase tracking-wider text-gray-500 font-bold">Needs review:</span>
+      <% [
+        [ "submissions", @pending_mic_count,        "submission" ],
+        [ "claims",      @pending_claim_count,      "claim" ],
+        [ "challenges",  @pending_challenge_count,  "challenge" ],
+        [ "suggestions", @pending_suggestion_count, "suggestion" ]
+      ].each do |anchor, count, singular| %>
+        <% next if count.zero? %>
+        <a href="#<%= anchor %>" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-pink-700 text-xs font-bold rounded">
+          <%= count %> <%= count == 1 ? singular : singular.pluralize %>
+        </a>
       <% end %>
-    <% end %>
-  </section>
+    </div>
+  <% end %>
 
-  <%# Search + filter row %>
-  <section class="bg-white border border-gray-200 mb-4">
+  <%# ──────────────── Pending submissions ──────────────── %>
+  <% if @pending_mics.any? %>
+  <section id="submissions" class="mb-8">
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">
+        Pending submissions
+        <span class="ml-2 text-xs text-gray-500"><%= @pending_mic_count %></span>
+      </h2>
+    </div>
+      <ul class="space-y-3">
+        <% @pending_mics.each do |mic| %>
+          <% submitter_edit = mic.mic_edits.find { |e| e.field == "submission" } %>
+          <% submitter = submitter_edit&.editor %>
+          <li class="bg-white border border-gray-200 rounded p-4">
+            <div class="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+              <div class="min-w-0">
+                <div class="font-bold text-gray-900"><%= mic.name %></div>
+                <div class="text-xs text-gray-500">
+                  <%= mic.venue&.name %> · <%= mic.venue&.neighborhood_city %>
+                  <% if mic.venue&.city_hub %>· <span class="text-pink-700"><%= mic.venue.city_hub.name %> hub</span><% end %>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 tabular-nums shrink-0">
+                Submitted <%= mic.created_at.strftime("%b %-d, %-l:%M%p") %>
+                <% if submitter %>· by <%= submitter.email_address %><% end %>
+              </div>
+            </div>
+
+            <%# Surface the submitted details inline so the admin can
+                decide without clicking through. %>
+            <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-700 my-3">
+              <% if mic.day_of_week %>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">When</dt>
+                  <dd><%= mics_recurrence_day_label(mic) %><% if mic.starts_local_time %> · <%= mic.starts_local_time.strftime("%-l:%M %p") %><% end %></dd>
+                </div>
+              <% end %>
+              <% if mic.format.present? %>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Format</dt>
+                  <dd><%= mics_format_label(mic.format) %></dd>
+                </div>
+              <% end %>
+              <% if mic.signup_method.present? %>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Sign-up</dt>
+                  <dd><%= mics_signup_method_label(mic.signup_method) %><%= " · Bucket draw" if mic.bucket_draw %></dd>
+                </div>
+              <% end %>
+              <% if mic.signup_opens_at_text.present? %>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Opens</dt>
+                  <dd><%= mic.signup_opens_at_text %></dd>
+                </div>
+              <% end %>
+            </dl>
+
+            <% if mic.blurb.present? %>
+              <p class="text-sm text-gray-700 whitespace-pre-line mb-3"><%= mic.blurb %></p>
+            <% end %>
+
+            <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
+              <%# No "Open public page" — submissions aren't approved
+                  yet and shouldn't have a public URL surfaced. Admin
+                  edit page is the right preview surface. %>
+              <%= link_to "Edit / preview", mics_producer_mic_path(mic.slug),
+                    class: "text-xs text-pink-600 font-bold hover:underline" %>
+              <%= button_to "Approve", mics_approve_submission_path(mic.id), method: :post,
+                    class: "ml-auto cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_reject_submission_path(mic.id), method: :post,
+                    data: { turbo_confirm: "Reject this submission?" },
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+  </section>
+  <% end %>
+
+  <%# ──────────────── Pending claims ──────────────── %>
+  <% if @pending_claims.any? %>
+  <section id="claims" class="mb-8">
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">
+        Pending claims
+        <span class="ml-2 text-xs text-gray-500"><%= @pending_claim_count %></span>
+      </h2>
+    </div>
+      <ul class="space-y-3">
+        <% @pending_claims.each do |claim| %>
+          <li class="bg-white border border-gray-200 rounded p-4">
+            <div class="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+              <div class="min-w-0">
+                <div class="font-bold text-gray-900"><%= claim.mic.name %></div>
+                <div class="text-xs text-gray-500">
+                  <%= claim.mic.venue&.name %> · <%= claim.mic.venue&.neighborhood_city %>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 tabular-nums shrink-0">
+                Filed <%= claim.created_at.strftime("%b %-d, %-l:%M%p") %>
+              </div>
+            </div>
+
+            <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 my-3">
+              <div>
+                <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Claimant</dt>
+                <dd><%= claim.claimant.email_address %></dd>
+              </div>
+              <div>
+                <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Requested role</dt>
+                <dd class="font-bold"><%= claim.role.humanize %></dd>
+              </div>
+              <% if claim.proof["evidence_url"].present? %>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Evidence</dt>
+                  <dd><a href="<%= claim.proof["evidence_url"] %>" target="_blank" rel="noopener" class="text-pink-600 hover:underline truncate inline-block max-w-full">View →</a></dd>
+                </div>
+              <% end %>
+            </dl>
+
+            <% if claim.proof["note"].present? %>
+              <p class="text-sm text-gray-800 whitespace-pre-line bg-gray-50 border border-gray-200 px-3 py-2 rounded mb-3">
+                <%= claim.proof["note"] %>
+              </p>
+            <% end %>
+
+            <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
+              <%= link_to "Open mic", mics_detail_path(claim.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 font-bold hover:underline" %>
+              <%= button_to "Approve claim", mics_approve_claim_path(claim.id), method: :post,
+                    class: "ml-auto cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_reject_claim_path(claim.id), method: :post,
+                    data: { turbo_confirm: "Reject this claim?" },
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+  </section>
+  <% end %>
+
+  <%# ──────────────── Pending challenges ──────────────── %>
+  <% if @pending_challenges.any? %>
+  <section id="challenges" class="mb-8">
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">
+        Pending challenges
+        <span class="ml-2 text-xs text-gray-500"><%= @pending_challenge_count %></span>
+      </h2>
+    </div>
+      <ul class="space-y-3">
+        <% @pending_challenges.each do |ch| %>
+          <li class="bg-white border border-gray-200 rounded p-4">
+            <div class="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+              <div class="min-w-0">
+                <div class="font-bold text-gray-900"><%= ch.mic.name %></div>
+                <div class="text-xs text-gray-500">
+                  <%= ch.mic.venue&.name %> · <%= ch.mic.venue&.neighborhood_city %>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 tabular-nums shrink-0">
+                Filed <%= ch.created_at.strftime("%b %-d, %-l:%M%p") %>
+              </div>
+            </div>
+
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700 my-3">
+              <div>
+                <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Challenger</dt>
+                <dd><%= ch.challenger.email_address %></dd>
+              </div>
+              <div>
+                <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Current lead</dt>
+                <dd><%= ch.target&.email_address || "(none — mic was unclaimed)" %></dd>
+              </div>
+            </dl>
+
+            <% if ch.reason.present? %>
+              <p class="text-sm text-gray-800 whitespace-pre-line bg-gray-50 border border-gray-200 px-3 py-2 rounded mb-3">
+                <%= ch.reason %>
+              </p>
+            <% end %>
+
+            <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
+              <%= link_to "Open mic", mics_detail_path(ch.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 font-bold hover:underline" %>
+              <span class="ml-auto flex items-center gap-1 flex-wrap">
+                <%= button_to "Replace lead", mics_resolve_challenge_path(ch.id, outcome: "replaced"), method: :post,
+                      data: { turbo_confirm: "Make #{ch.challenger.email_address} the new lead?" },
+                      class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+                <%= button_to "Add as co-producer", mics_resolve_challenge_path(ch.id, outcome: "co_produce"), method: :post,
+                      class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
+                <%= button_to "Reject", mics_resolve_challenge_path(ch.id, outcome: "rejected"), method: :post,
+                      class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+              </span>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+  </section>
+  <% end %>
+
+  <%# ──────────────── Pending suggestions ──────────────── %>
+  <% if @pending_suggestions.any? %>
+  <section id="suggestions" class="mb-10">
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold">
+        Pending suggestions
+        <span class="ml-2 text-xs text-gray-500"><%= @pending_suggestion_count %></span>
+      </h2>
+    </div>
+      <ul class="space-y-3">
+        <% @pending_suggestions.each do |s| %>
+          <li class="bg-white border border-gray-200 rounded p-4">
+            <div class="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+              <div class="min-w-0">
+                <div class="font-bold text-gray-900"><%= s.mic.name %></div>
+                <div class="text-xs text-gray-500">
+                  <%= s.mic.venue&.name %> · <%= s.mic.venue&.neighborhood_city %>
+                  · from <%= s.submitter&.email_address || s.submitter_email %>
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 tabular-nums shrink-0">
+                <%= s.created_at.strftime("%b %-d, %-l:%M%p") %>
+              </div>
+            </div>
+
+            <% if s.note.present? %>
+              <p class="text-sm text-gray-800 whitespace-pre-line bg-gray-50 border border-gray-200 px-3 py-2 rounded my-3">
+                <%= s.note %>
+              </p>
+            <% end %>
+
+            <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-gray-100">
+              <%= link_to "Open mic", mics_detail_path(s.mic.slug), target: "_blank",
+                    class: "text-xs text-pink-600 font-bold hover:underline" %>
+              <%= link_to "Edit", mics_producer_mic_path(s.mic.slug),
+                    class: "text-xs text-gray-700 hover:text-pink-600 underline" %>
+              <%= button_to "Approve", mics_approve_suggestion_path(s.id), method: :post,
+                    class: "ml-auto cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <%= button_to "Reject", mics_reject_suggestion_path(s.id), method: :post,
+                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+  </section>
+  <% end %>
+
+  <%# ──────────────── Search + filter row ──────────────── %>
+  <h2 class="text-sm uppercase tracking-wider text-gray-700 font-bold mb-3">Search all mics</h2>
+  <section class="bg-white border border-gray-200 mb-4 rounded">
     <%= form_with url: mics_index_path, method: :get, local: true, class: "px-4 sm:px-5 py-4" do %>
       <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-        <label class="block text-sm sm:col-span-5">
+        <label class="block text-sm sm:col-span-4">
           <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Search</span>
           <input type="search" name="q" value="<%= params[:q] %>"
                  placeholder="Mic name, venue, city, or slug"
-                 class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none">
+                 class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
         </label>
 
-        <label class="block text-sm sm:col-span-3">
+        <label class="block text-sm sm:col-span-2">
           <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hub</span>
-          <select name="hub_id" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white">
+          <select name="hub_id" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white rounded">
             <option value="">All hubs</option>
             <% @hubs.each do |hub| %>
               <option value="<%= hub.id %>" <%= "selected" if params[:hub_id].to_s == hub.id.to_s %>>
@@ -62,7 +323,7 @@
 
         <label class="block text-sm sm:col-span-2">
           <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Status</span>
-          <select name="status" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white">
+          <select name="status" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white rounded">
             <% [ [ nil, "Any" ], [ "active", "Active" ], [ "pending", "Pending" ], [ "ended", "Ended" ] ].each do |val, label| %>
               <option value="<%= val %>" <%= "selected" if params[:status].to_s == val.to_s %>><%= label %></option>
             <% end %>
@@ -71,25 +332,40 @@
 
         <label class="block text-sm sm:col-span-2">
           <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Claimed?</span>
-          <select name="claimed" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white">
+          <select name="claimed" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white rounded">
             <% [ [ nil, "Any" ], [ "yes", "Claimed" ], [ "no", "Unclaimed" ] ].each do |val, label| %>
               <option value="<%= val %>" <%= "selected" if params[:claimed].to_s == val.to_s %>><%= label %></option>
             <% end %>
           </select>
         </label>
+
+        <%# Recency filter — new. Surfaces "what landed since I last looked." %>
+        <label class="block text-sm sm:col-span-2">
+          <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Created</span>
+          <select name="recency" class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none bg-white rounded">
+            <% [ [ nil, "Any time" ], [ "1d", "Last 24 hours" ], [ "7d", "Last 7 days" ], [ "30d", "Last 30 days" ] ].each do |val, label| %>
+              <option value="<%= val %>" <%= "selected" if @recency == val %>><%= label %></option>
+            <% end %>
+          </select>
+        </label>
       </div>
-      <div class="mt-3 flex items-center gap-2">
-        <button type="submit" class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold">
+      <div class="mt-3 flex items-center gap-3 flex-wrap">
+        <button type="submit" class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded">
           Search
         </button>
         <%= link_to "Clear", mics_index_path, class: "text-xs text-gray-500 hover:text-pink-600 underline" %>
+        <span class="text-xs text-gray-500">Sort:</span>
+        <%= link_to "Name", mics_index_path(request.query_parameters.merge(sort: "name")),
+              class: "text-xs font-bold #{@sort == "name" ? "text-pink-600 underline" : "text-gray-500 hover:text-pink-600"}" %>
+        <%= link_to "Newest first", mics_index_path(request.query_parameters.merge(sort: "created_desc")),
+              class: "text-xs font-bold #{@sort == "created_desc" ? "text-pink-600 underline" : "text-gray-500 hover:text-pink-600"}" %>
         <span class="ml-auto text-xs text-gray-500"><%= pluralize(@total, "mic") %> matched · showing top <%= @mics.size %></span>
       </div>
     <% end %>
   </section>
 
-  <%# Results table %>
-  <section class="bg-white border border-gray-200">
+  <%# Results table — bottom of page, capped at 200 results. %>
+  <section class="bg-white border border-gray-200 rounded overflow-hidden">
     <% if @mics.any? %>
       <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200 text-left">
@@ -97,6 +373,7 @@
             <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold">Mic</th>
             <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold">Venue · City</th>
             <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold">When</th>
+            <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold">Created</th>
             <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold">Status</th>
             <th class="px-4 py-2 text-xs uppercase tracking-wider text-gray-600 font-bold text-right">Actions</th>
           </tr>
@@ -107,6 +384,7 @@
             <% pending   = mic.pending %>
             <% status_chip = if pending then [ "Pending", "bg-amber-100 text-amber-700" ]
                               elsif mic.ended? then [ "Ended", "bg-gray-100 text-gray-500" ]
+                              elsif mic.paused? then [ "Paused", "bg-amber-50 text-amber-700" ]
                               elsif claimed then [ "Claimed", "bg-emerald-100 text-emerald-700" ]
                               else [ "Unclaimed", "bg-pink-100 text-pink-700" ]
                               end %>
@@ -122,17 +400,20 @@
               <td class="px-4 py-2 align-top text-gray-700 whitespace-nowrap">
                 <%= mics_schedule_label(mic) || "—" %>
               </td>
+              <td class="px-4 py-2 align-top text-gray-700 whitespace-nowrap text-xs tabular-nums">
+                <%= mic.created_at.strftime("%b %-d, %Y") %>
+              </td>
               <td class="px-4 py-2 align-top">
-                <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 font-bold <%= status_chip[1] %>">
+                <span class="inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 font-bold rounded <%= status_chip[1] %>">
                   <%= status_chip[0] %>
                 </span>
               </td>
               <td class="px-4 py-2 align-top text-right whitespace-nowrap">
                 <%= link_to "Edit →", mics_producer_mic_path(mic.slug),
-                      class: "inline-block px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold" %>
+                      class: "inline-block px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
                 <%= button_to "Delete", mics_producer_destroy_mic_path(mic.slug), method: :delete,
                       data: { turbo_confirm: "Permanently delete \"#{mic.name}\"?" },
-                      class: "cursor-pointer ml-1 inline-block px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white font-bold align-top",
+                      class: "cursor-pointer ml-1 inline-block px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white font-bold align-top rounded",
                       form_class: "inline-block" %>
               </td>
             </tr>
@@ -141,7 +422,7 @@
       </table>
     <% else %>
       <p class="px-4 py-10 text-center text-sm text-gray-500">
-        <% if params[:q].present? || params[:hub_id].present? || params[:status].present? || params[:claimed].present? %>
+        <% if params[:q].present? || params[:hub_id].present? || params[:status].present? || params[:claimed].present? || @recency %>
           No mics match those filters.
           <%= link_to "Clear search", mics_index_path, class: "text-pink-600 underline" %>.
         <% else %>

@@ -21,6 +21,7 @@ module Mics
         redirect_to mics_producer_mic_path(@mic.slug),
                     notice: "Claim auto-approved — you're now the lead producer."
       else
+        Mics::NotificationService.notify_claim(claim: @claim)
         redirect_to mics_claim_thanks_path(@mic.slug)
       end
     end

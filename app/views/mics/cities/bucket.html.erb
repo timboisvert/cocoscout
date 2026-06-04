@@ -3,26 +3,25 @@
   description = "#{@bucket_title} in #{@city}, #{@state}. Open mics, ordered by start time."
   mics_seo title: title, description: description
 
-  active_label =
-    case @bucket_title
-    when "Tonight"   then "tonight"
-    when "Tomorrow"  then "tomorrow"
-    when "This week" then "this-week"
-    else
-      Mic.formats.keys.detect { |k| @bucket_title.start_with?(mics_format_label(k)) } || "all"
-    end
-
-  bucket_path =
-    case @bucket_title
-    when "Tonight"   then mics_city_tonight_path(@slug)
-    when "Tomorrow"  then mics_city_tomorrow_path(@slug)
-    when "This week" then mics_city_this_week_path(@slug)
-    else
-      fmt = Mic.formats.keys.detect { |k| @bucket_title.start_with?(mics_format_label(k)) }
-      mics_city_by_format_path(@slug, fmt.to_s.tr("_", "-"))
-    end
+  # Use the controller helpers as the source of truth (the title can
+  # combine axes like "Tonight · Standup mics", which broke the old
+  # title-prefix parsing).
+  active_label = active_when || active_format || "all"
 
   qp = filter_query_params
+
+  bucket_path =
+    if active_when
+      case active_when
+      when "tonight"   then mics_city_tonight_path(@slug)
+      when "tomorrow"  then mics_city_tomorrow_path(@slug)
+      when "this-week" then mics_city_this_week_path(@slug)
+      end
+    elsif active_format
+      mics_city_by_format_path(@slug, active_format.tr("_", "-"))
+    else
+      mics_city_path(@slug)
+    end
 %>
 <%= render "mics/header" %>
 

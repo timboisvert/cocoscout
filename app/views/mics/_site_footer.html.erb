@@ -63,9 +63,38 @@
       </div>
     </div>
 
-    <div class="mt-10 pt-6 border-t border-gray-800 text-xs text-gray-500 flex flex-wrap items-baseline justify-between gap-2">
+    <%# Account strip — appears only when someone's signed in. Small
+        avatar + name + email + sign-out link. Mirror the convention
+        we use elsewhere in CocoScout. %>
+    <% if Current.user %>
+      <% account_person = Current.user.person %>
+      <% headshot = account_person&.respond_to?(:safe_headshot_variant) ? account_person.safe_headshot_variant(:thumb) : nil %>
+      <div class="mt-10 pt-6 border-t border-gray-800 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+        <% if headshot %>
+          <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-gray-700 text-gray-200 font-bold text-xs flex items-center justify-center">
+            <%= account_person&.initials || Current.user.email_address.to_s[0, 2].upcase %>
+          </div>
+        <% end %>
+        <div class="min-w-0">
+          <div class="text-gray-300">
+            Signed in as <strong><%= account_person&.name.presence || Current.user.email_address %></strong>
+          </div>
+          <% if account_person&.name.present? %>
+            <div class="text-gray-500"><%= Current.user.email_address %></div>
+          <% end %>
+        </div>
+        <%= link_to "Sign out", signout_path, class: "ml-auto text-pink-400 hover:text-pink-300 font-bold underline-offset-2 hover:underline" %>
+      </div>
+    <% end %>
+
+    <div class="<%= Current.user ? "mt-6 pt-4 border-t border-gray-900" : "mt-10 pt-6 border-t border-gray-800" %> text-xs text-gray-500 flex flex-wrap items-baseline justify-between gap-2">
       <span>© <%= Date.current.year %> CocoScout. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="hover:underline">OpenStreetMap</a> contributors.</span>
       <span>
+        <% unless Current.user %>
+          <%= link_to "Sign in", signin_path, class: "hover:underline" %> ·
+        <% end %>
         <a href="https://cocoscout.com/terms" class="hover:underline">Terms</a> ·
         <a href="https://cocoscout.com/privacy" class="hover:underline">Privacy</a>
       </span>

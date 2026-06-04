@@ -80,26 +80,36 @@ module Mics
     # Re-point this Mic at a different Venue (find existing or create
     # new). Leaves the old Venue untouched in case other mics use it.
     def move_venue
-      name  = params[:venue_name].to_s.strip
-      city  = params[:venue_city].to_s.strip
-      state = params[:venue_state].to_s.strip.upcase
+      # If the find-or-add picker landed on an existing venue, the form
+      # posts its id alongside the address fields — re-point straight
+      # to that row. Otherwise fall back to find-or-initialize by
+      # name+city+state and create a fresh venue.
+      target =
+        if params[:venue_id].present? && (existing = Venue.find_by(id: params[:venue_id]))
+          existing
+        else
+          name  = params[:venue_name].to_s.strip
+          city  = params[:venue_city].to_s.strip
+          state = params[:venue_state].to_s.strip.upcase
 
-      if name.blank? || city.blank? || state.blank?
-        redirect_to mics_producer_mic_path(@mic.slug),
-                    alert: "Need at least venue name, city, and state to move the mic."
-        return
-      end
+          if name.blank? || city.blank? || state.blank?
+            redirect_to mics_producer_mic_path(@mic.slug),
+                        alert: "Need at least venue name, city, and state to move the mic."
+            return
+          end
 
-      target = Venue.find_or_initialize_by(name: name, city: city, state: state)
-      if target.new_record?
-        target.address1     = params[:venue_address1].to_s.strip.presence
-        target.neighborhood = params[:venue_neighborhood].to_s.strip.presence
-        target.postal_code  = params[:venue_postal_code].to_s.strip.presence
-        target.country    ||= "US"
-        target.timezone   ||= @mic.venue&.timezone || "America/Chicago"
-        target.city_hub   ||= @mic.venue&.city_hub
-        target.save!
-      end
+          v = Venue.find_or_initialize_by(name: name, city: city, state: state)
+          if v.new_record?
+            v.address1     = params[:venue_address1].to_s.strip.presence
+            v.neighborhood = params[:venue_neighborhood].to_s.strip.presence
+            v.postal_code  = params[:venue_postal_code].to_s.strip.presence
+            v.country    ||= "US"
+            v.timezone   ||= @mic.venue&.timezone || "America/Chicago"
+            v.city_hub   ||= @mic.venue&.city_hub
+            v.save!
+          end
+          v
+        end
 
       old_venue_id = @mic.venue_id
       old_label    = "#{@mic.venue.name} (#{@mic.venue.neighborhood_city})"
@@ -124,15 +134,25 @@ module Mics
       next_show_date = (params[:date].presence || Date.current.iso8601).to_s
       status_val     = params[:mic_status].to_s
       note           = params[:note].to_s.presence
+      clearing       = (status_val == "clear")
 
       if @mic.production_id
         show = @mic.production.shows.where(event_type: :open_mic)
                    .where("date_and_time::date = ?", next_show_date).first
-        show&.update!(mic_status: status_val)
+        show&.update!(mic_status: clearing ? nil : status_val)
       end
 
       # Source of truth for self-described mics — read by the public
       # detail page through `Mic#compute_occurrences`.
+      if clearing
+        @mic.mic_occurrence_statuses.where(occurs_on: next_show_date).destroy_all
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+                                field: "mic_status", new_value: "#{next_show_date}=cleared",
+                                note: "Cleared status for this date")
+        redirect_to mics_producer_mic_path(@mic.slug), notice: "Status cleared for #{next_show_date}."
+        return
+      end
+
       occ = @mic.mic_occurrence_statuses.find_or_initialize_by(occurs_on: next_show_date)
       occ.assign_attributes(status: status_val, note: note, created_by_user_id: current_user.id)
       occ.save!
@@ -362,14 +382,26 @@ module Mics
     end
 
     def allowed_keys
-      %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      base = %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      # Slug edits are admin-only. Regular producers shouldn't be able to
+      # rename the URL out from under existing inbound links.
+      base += [ "slug" ] if deletable_by?(current_user)
+      base
     end
 
     def mic_params
       # Exclude the array column from the scalar permit list — strong
       # params would otherwise drop the array values as un-permitted.
       scalar_keys = allowed_keys.map(&:to_sym) - [ :recurrence_nth_weeks ]
-      params.require(:mic).permit(*scalar_keys, recurrence_nth_weeks: [])
+      perm = params.require(:mic).permit(*scalar_keys, recurrence_nth_weeks: [])
+      # Slug — normalize what the admin typed so we don't store dirty
+      # values. Empty submitted slug is dropped so the existing slug
+      # isn't overwritten with "".
+      if perm[:slug].present?
+        cleaned = perm[:slug].to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/^-+|-+$/, "")
+        perm[:slug] = cleaned.presence || perm.delete(:slug)
+      end
+      perm
     end
 
     # Only apply accessibility changes when the form actually submitted the
@@ -379,9 +411,25 @@ module Mics
       nested = params.dig(:mic, :accessibility)
       return if nested.blank?
       access = (@mic.accessibility || {}).dup
-      cast   = ActiveModel::Type::Boolean.new
+      bool_cast = ActiveModel::Type::Boolean.new
+
       nested.to_unsafe_h.each do |key, raw|
-        access[key.to_s] = cast.cast(raw) ? true : false
+        k = key.to_s
+        if k == "wheelchair_level"
+          # New 3-level field — string-valued. Blank / unknown is
+          # stored as a removed key, not an empty string, so the
+          # JSON column stays tidy.
+          val = raw.to_s
+          if %w[fully partial].include?(val)
+            access[k] = val
+          else
+            access.delete(k)
+          end
+        else
+          # Legacy boolean accessibility fields (e.g. low-vision flag
+          # we might add later).
+          access[k] = bool_cast.cast(raw) ? true : false
+        end
       end
       @mic.accessibility = access
     end

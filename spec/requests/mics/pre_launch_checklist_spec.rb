@@ -83,21 +83,6 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
     end
   end
 
-  describe "ICS exports validate via the icalendar gem" do
-    it "per-mic ICS parses to a calendar with at least one event" do
-      get mics_detail_calendar_path(mic.slug)
-      cals = Icalendar::Calendar.parse(response.body)
-      expect(cals).not_to be_empty
-      expect(cals.first.events).not_to be_empty
-    end
-
-    it "city-wide ICS parses" do
-      get mics_city_calendar_path("chicago-il")
-      cals = Icalendar::Calendar.parse(response.body)
-      expect(cals).not_to be_empty
-    end
-  end
-
   describe "Nominatim attribution is rendered where venue is geocoded" do
     it "is present on the mic detail page" do
       get mics_detail_path(mic.slug)

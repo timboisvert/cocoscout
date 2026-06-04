@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Individual mic detail page + per-mic ICS export.
+# Individual mic detail page.
 module Mics
   class DetailController < BaseController
     before_action :load_mic
@@ -14,19 +14,23 @@ module Mics
       @upcoming_view = params[:view] == "list" ? "list" : "calendar"
     end
 
-    def calendar
-      send_data MicIcsBuilder.for_mic(@mic, occurrences: @mic.next_occurrences(limit: 16)),
-                type: "text/calendar",
-                disposition: "attachment",
-                filename: "#{@mic.slug}.ics"
-    end
-
     private
 
     def load_mic
       @mic = Mic.find_by!(slug: params[:slug].to_s.downcase)
+      # Pending submissions are admin-only. Superadmins, hub captains
+      # for the venue's hub, and the people listed on the mic itself
+      # may preview; everyone else gets a 404 so we don't leak a
+      # not-yet-approved listing's URL.
+      if @mic.pending && !previewable_by_admin?
+        render plain: "Not found", status: :not_found
+      end
     rescue ActiveRecord::RecordNotFound
       render plain: "Not found", status: :not_found
+    end
+
+    def previewable_by_admin?
+      Current.user && @mic.manageable_by?(Current.user)
     end
   end
 end

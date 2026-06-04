@@ -7,33 +7,62 @@ module Mics
     before_action :load_hub_and_authorize
 
     def show
-      @mics = Mic.in_hub(@hub).includes(:venue, :mic_producers).order(:name)
-      @active_mics      = @mics.select { |m| m.active? && !m.pending }
-      @unclaimed_mics   = @active_mics.reject(&:claimed?)
-      @claimed_mics     = @active_mics.select(&:claimed?)
-      @pending_mic_ct       = Mic.pending_moderation.in_hub(@hub).count
-      @pending_suggestion_ct = MicSuggestion.status_pending.joins(mic: :venue)
-                                            .where(venues: { city_hub_id: @hub.id }).count
-      @pending_claim_ct      = MicClaim.status_pending.joins(mic: :venue)
-                                       .where(venues: { city_hub_id: @hub.id }).count
-      @pending_challenge_ct  = MicChallenge.status_pending.joins(mic: :venue)
-                                           .where(venues: { city_hub_id: @hub.id }).count
+      # ── Mic list (searchable, sortable) — scoped to this hub. %>
+      scope = Mic.in_hub(@hub).includes(:venue, :mic_producers).references(:venues)
+
+      if params[:q].present?
+        q = "%#{params[:q].downcase}%"
+        scope = scope.joins(:venue).where(
+          "LOWER(mics.name) LIKE :q OR LOWER(venues.name) LIKE :q OR LOWER(venues.city) LIKE :q OR LOWER(mics.slug) LIKE :q",
+          q: q
+        )
+      end
+
+      @sort = %w[name created_desc].include?(params[:sort]) ? params[:sort] : "name"
+      scope = @sort == "created_desc" ? scope.order(created_at: :desc) : scope.order("mics.name ASC")
+
+      @mics_total = scope.count
+      @mics_all   = scope.limit(200)
+
+      # Split for the "Unclaimed / Claimed" rendering when no search is
+      # active. With a search active we just show the search results.
+      if params[:q].blank?
+        @active_mics    = @mics_all.select { |m| m.active? && !m.pending && !m.paused? }
+        @unclaimed_mics = @active_mics.reject(&:claimed?)
+        @claimed_mics   = @active_mics.select(&:claimed?)
+      end
+
+      # ── Pending queue scoped to this hub %>
+      @pending_mics = Mic.pending_moderation.in_hub(@hub)
+                          .includes(venue: :city_hub, mic_edits: :editor)
+                          .order(created_at: :desc).limit(20)
+      @pending_claims = MicClaim.status_pending.joins(mic: :venue)
+                                  .where(venues: { city_hub_id: @hub.id })
+                                  .includes(:claimant, mic: :venue)
+                                  .order(created_at: :desc).limit(20)
+      @pending_challenges = MicChallenge.status_pending.joins(mic: :venue)
+                                          .where(venues: { city_hub_id: @hub.id })
+                                          .includes(:challenger, :target, mic: :venue)
+                                          .order(created_at: :desc).limit(20)
+      @pending_suggestions = MicSuggestion.status_pending.joins(mic: :venue)
+                                            .where(venues: { city_hub_id: @hub.id })
+                                            .includes(:submitter, mic: :venue)
+                                            .order(created_at: :desc).limit(20)
+
+      @pending_mic_ct        = @pending_mics.size
+      @pending_claim_ct      = @pending_claims.size
+      @pending_challenge_ct  = @pending_challenges.size
+      @pending_suggestion_ct = @pending_suggestions.size
+
       @recent_edits = MicEdit.joins(mic: :venue).where(venues: { city_hub_id: @hub.id })
                               .order(created_at: :desc).limit(15)
     end
 
+    # The standalone queue page is folded into the captain dashboard
+    # (#show). Keep the URL alive as a permanent redirect so any
+    # in-app links / bookmarks don't break.
     def queue
-      # Use the hub rollup (venue.city_hub_id) so suburb mics show up too.
-      @pending_mics        = Mic.pending_moderation.in_hub(@hub).order(created_at: :desc)
-      @pending_suggestions = MicSuggestion.status_pending.joins(mic: :venue)
-                                          .where(venues: { city_hub_id: @hub.id })
-                                          .order(created_at: :desc)
-      @pending_claims      = MicClaim.status_pending.joins(mic: :venue)
-                                     .where(venues: { city_hub_id: @hub.id })
-                                     .order(created_at: :desc)
-      @pending_challenges  = MicChallenge.status_pending.joins(mic: :venue)
-                                         .where(venues: { city_hub_id: @hub.id })
-                                         .order(created_at: :desc)
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "submissions"), status: :moved_permanently
     end
 
     # ── Moderation actions (captain-side mirrors of the superadmin
@@ -46,7 +75,7 @@ module Mics
       mic.update!(pending: false)
       mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "pending",
                              old_value: "true", new_value: "false", note: "Approved by hub captain")
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Approved #{mic.name}."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Approved #{mic.name}."
     end
 
     def reject_submission
@@ -55,7 +84,7 @@ module Mics
       mic.update!(status: :ended, pending: false)
       mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "status",
                              new_value: "ended", note: "Rejected by hub captain: #{reason}")
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Rejected #{mic.name}."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Rejected #{mic.name}."
     end
 
     def approve_claim
@@ -72,14 +101,14 @@ module Mics
         claim.mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "claim",
                                      new_value: "approved")
       end
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Approved claim."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Approved claim."
     end
 
     def reject_claim
       claim = scoped_claim!
       claim.update!(status: :rejected, decided_at: Time.current, adjudicator: current_user,
                     reason: params[:reason])
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Rejected claim."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Rejected claim."
     end
 
     def resolve_challenge
@@ -102,7 +131,7 @@ module Mics
           end
         end
       end
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Challenge resolved (#{outcome})."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Challenge resolved (#{outcome})."
     end
 
     def approve_suggestion
@@ -111,13 +140,13 @@ module Mics
       suggestion.mic.mic_edits.create!(editor_user_id: current_user.id, source: :suggestion,
                                         field: "suggestion", new_value: "approved",
                                         note: suggestion.note.to_s)
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Suggestion approved."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Suggestion approved."
     end
 
     def reject_suggestion
       suggestion = scoped_suggestion!
       suggestion.update!(status: :rejected, decided_at: Time.current, adjudicator: current_user)
-      redirect_to mics_hub_queue_path(@hub.slug), notice: "Suggestion rejected."
+      redirect_to mics_captain_hub_path(@hub.slug, anchor: "queue-top"), notice: "Suggestion rejected."
     end
 
     private

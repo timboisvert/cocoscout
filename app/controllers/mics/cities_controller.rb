@@ -6,58 +6,29 @@ module Mics
   class CitiesController < BaseController
     before_action :resolve_city
 
-    helper_method :wheelchair_filter?, :within_miles, :hub_center, :filter_query_params, :signup_filter
+    helper_method :wheelchair_filter?, :within_miles, :hub_center, :filter_query_params,
+                  :signup_filter, :active_when, :active_format, :accessibility_filter, :age_filter,
+                  :distance_origin
+
+    # Every list action below funnels through this same pipeline. The
+    # URL action gives us a default for "when" (tonight/tomorrow/etc)
+    # or "format" (standup/music/etc) but both axes are ALSO honored
+    # from query params, so a path-based URL can carry an orthogonal
+    # filter alongside it — i.e. /chicago-il/tonight?format=music
+    # works the same as /chicago-il/standup?when=tomorrow. Filters are
+    # truly independent; no more "pick one and lose the other."
 
     def show
-      base = apply_filters(scoped_mics).includes(:venue, :tags).to_a
-      # Order by each mic's next occurrence, alphabetical only as
-      # tiebreaker. Same shape as the bucket views.
-      @mics = base.sort_by do |m|
-        occ = m.next_occurrences(limit: 1).first
-        [ occ ? occ[:starts_at] : Time.current + 100.years, m.name.to_s.downcase ]
-      end
+      @mics = filtered_sorted_mics
       @view = view_param
-      render :show
+      @bucket_title = bucket_title
+      render(active_bucket_layout? ? :bucket : :show)
     end
 
-    def tonight
-      @mics = upcoming_in_city_within(Time.current.beginning_of_day, Time.current.end_of_day)
-      @bucket_title = "Tonight"
-      @view = view_param
-      render :bucket
-    end
-
-    def tomorrow
-      tomorrow = Date.current + 1
-      @mics = upcoming_in_city_within(tomorrow.beginning_of_day, tomorrow.end_of_day)
-      @bucket_title = "Tomorrow"
-      @view = view_param
-      render :bucket
-    end
-
-    def this_week
-      @mics = upcoming_in_city_within(Time.current, 7.days.from_now)
-      @bucket_title = "This week"
-      @view = view_param
-      render :bucket
-    end
-
-    def by_format
-      fmt = params[:format_segment].to_s.tr("-", "_")
-      head :not_found and return unless Mic.formats.key?(fmt)
-      base = scoped_mics.where(format: Mic.formats[fmt])
-      @mics = apply_filters(base).includes(:venue, :tags).order(:name)
-      @bucket_title = "#{helpers.mics_format_label(fmt)} mics"
-      @view = view_param
-      render :bucket
-    end
-
-    def calendar
-      send_data MicIcsBuilder.for_city(@city, @state, mics: scoped_mics.to_a),
-                type: "text/calendar",
-                disposition: "attachment",
-                filename: "#{@slug}.ics"
-    end
+    def tonight     ; show end
+    def tomorrow    ; show end
+    def this_week   ; show end
+    def by_format   ; show end
 
     # Legacy `/map` URL — just redirect to the show page with ?view=map.
     def map
@@ -75,13 +46,17 @@ module Mics
     end
 
     # Carries the current view/filter state forward as a hash you can
-    # merge into any sidebar/toggle link URL.
+    # merge into any sidebar/toggle link URL. Every filter axis lives
+    # here so we don't drop them when the user clicks across axes.
     def filter_query_params
       qp = {}
-      qp[:view]       = "map" if view_param == "map"
-      qp[:wheelchair] = 1     if wheelchair_filter?
-      qp[:within]     = within_miles if within_miles
-      qp[:signup]     = signup_filter if signup_filter
+      qp[:view]   = "map"          if view_param == "map"
+      qp[:within] = within_miles   if within_miles
+      qp[:signup] = signup_filter  if signup_filter
+      qp[:access] = accessibility_filter if accessibility_filter
+      qp[:age]    = age_filter     if age_filter
+      qp[:when]   = active_when    if active_when && action_name == "show"
+      qp[:format] = active_format  if active_format && action_name != "by_format"
       qp
     end
 
@@ -117,11 +92,127 @@ module Mics
       end
     end
 
+    # Active "when" axis. Path takes priority (so an explicit /tonight
+    # URL is canonical); a `?when=` qp lets a non-bucket page combine
+    # axes (e.g. /chicago-il/standup?when=tonight).
+    def active_when
+      v = case action_name
+      when "tonight", "tomorrow" then action_name
+      when "this_week" then "this-week"
+      else
+        params[:when].to_s
+      end
+      %w[tonight tomorrow this-week].include?(v) ? v : nil
+    end
+
+    # Active "format" axis. Path takes priority for /by_format URLs.
+    def active_format
+      v = if action_name == "by_format"
+        params[:format_segment].to_s.tr("-", "_")
+      else
+        params[:format].to_s.tr("-", "_")
+      end
+      Mic.formats.key?(v) ? v : nil
+    end
+
+    # Accessibility levels: "fully" / "partial" / "any". Backward-
+    # compatible with the legacy `wheelchair=1` qp which just means
+    # "fully" for the purposes of filtering.
+    def accessibility_filter
+      v = params[:access].to_s
+      return v if %w[fully partial].include?(v)
+      wheelchair_filter? ? "fully" : nil
+    end
+
+    def age_filter
+      params[:age].to_s == "21" ? "21" : nil
+    end
+
+    # Distance origin — a hash {lat, lng, label, kind}. Defaults to the
+    # hub center; user can override via session (geolocation pick or a
+    # custom address geocoded server-side).
+    def distance_origin
+      sess = session[:mics_origin]
+      if sess && sess["lat"].present? && sess["lng"].present?
+        { lat: sess["lat"].to_f, lng: sess["lng"].to_f,
+          label: sess["label"].to_s, kind: sess["kind"].to_s }
+      elsif (center = hub_center)
+        { lat: center[0], lng: center[1],
+          label: @hub ? "#{@hub.name} center" : "City center",
+          kind: "city_center" }
+      end
+    end
+
+    # Filtered + sorted mic list for the canonical show + bucket views.
+    # Every filter axis is applied independently from every other one.
+    def filtered_sorted_mics
+      base = apply_filters(scoped_mics).includes(:venue, :tags).to_a
+
+      # When-bucket — narrow to the time window if one is active.
+      base = filter_by_when(base) if active_when
+
+      # Format filter is a SQL clause when it's the only thing narrowing
+      # (path-based by_format already applied it in scope); when arriving
+      # via query param we filter in Ruby on the already-fetched array
+      # so we don't double-query. Both paths converge here for safety.
+      if active_format && !base.empty?
+        fmt_int = Mic.formats[active_format]
+        base = base.select { |m| m.format == active_format || m.read_attribute(:format) == fmt_int }
+      end
+
+      # Sort by next occurrence ascending, name as tiebreaker.
+      base.sort_by do |m|
+        occ = m.next_occurrences(limit: 1).first
+        [ occ ? occ[:starts_at] : Time.current + 100.years, m.name.to_s.downcase ]
+      end
+    end
+
+    def filter_by_when(mics)
+      window =
+        case active_when
+        when "tonight"   then [ Time.current.beginning_of_day, Time.current.end_of_day ]
+        when "tomorrow"  then [ (Date.current + 1).beginning_of_day, (Date.current + 1).end_of_day ]
+        when "this-week" then [ Time.current, 7.days.from_now ]
+        end
+      return mics unless window
+      start_at, end_at = window
+      mics.select do |m|
+        occ = m.next_occurrences(limit: 1).first
+        occ && occ[:starts_at] >= start_at && occ[:starts_at] <= end_at
+      end
+    end
+
     def apply_filters(scope)
       scope = apply_wheelchair_filter(scope)
       scope = apply_distance_filter(scope)
       scope = apply_signup_filter(scope)
+      scope = apply_age_filter(scope)
       scope
+    end
+
+    def apply_age_filter(scope)
+      return scope unless age_filter == "21"
+      scope.where("mics.min_age >= ?", 21)
+    end
+
+    # Whether to render with the bucket layout (extra title strip). True
+    # when any "when" filter is active OR a format filter is active.
+    def active_bucket_layout?
+      active_when.present? || active_format.present?
+    end
+
+    def bucket_title
+      bits = []
+      if active_when
+        bits << case active_when
+        when "tonight"   then "Tonight"
+        when "tomorrow"  then "Tomorrow"
+        when "this-week" then "This week"
+        end
+      end
+      bits << "#{helpers.mics_format_label(active_format)} mics" if active_format
+      return nil if bits.empty?
+      bits.join(" · ")
     end
 
     # `signup_method` enum: online (0), in_person (1), online_and_in_person (2).
@@ -135,19 +226,28 @@ module Mics
       end
     end
 
+    # 3-level accessibility filter. "fully" only matches venues + mics
+    # explicitly marked fully accessible; "partial" matches BOTH
+    # partially-accessible AND fully-accessible (anyone needing partial
+    # access can also use a fully accessible room). Legacy `wheelchair=1`
+    # qp routes through accessibility_filter and lands as "fully".
     def apply_wheelchair_filter(scope)
-      return scope unless wheelchair_filter?
+      level = accessibility_filter
+      return scope unless level
+      levels = level == "partial" ? %w[fully partial] : [ "fully" ]
+      json_levels = levels.to_json
       scope.joins(:venue).where(
-        "(mics.accessibility @> ?::jsonb) OR (venues.accessibility @> ?::jsonb)",
-        { wheelchair: true }.to_json, { wheelchair: true }.to_json
+        "(mics.accessibility->>'wheelchair_level' = ANY (ARRAY[?])) OR " \
+        "(venues.accessibility->>'wheelchair_level' = ANY (ARRAY[?]))",
+        levels, levels
       )
     end
 
     def apply_distance_filter(scope)
       return scope unless within_miles
-      lat, lng = hub_center
-      return scope if lat.blank? || lng.blank?
-      scope.within_miles_of(lat, lng, within_miles)
+      origin = distance_origin
+      return scope unless origin
+      scope.within_miles_of(origin[:lat], origin[:lng], within_miles)
     end
 
     def resolve_city

@@ -186,7 +186,8 @@ class Mic < ApplicationRecord
                         .order(:date_and_time)
                         .limit(limit)
       shows.map do |s|
-        { starts_at: s.date_and_time, mic_status: s.mic_status, source: :show, show: s }
+        { starts_at: s.date_and_time, mic_status: s.mic_status, mic_status_note: nil,
+          source: :show, show: s }
       end
     else
       compute_occurrences(limit: limit)
@@ -241,6 +242,12 @@ class Mic < ApplicationRecord
 
   private
 
+  # Grace window applied to today's occurrence — a mic shows up as
+  # "upcoming" for this long AFTER its start time, then drops off and
+  # the next date takes its place. Covers walk-ins, late starts, and
+  # the typical open-mic block (~90 min).
+  OCCURRENCE_GRACE = 90.minutes
+
   # Computed occurrences for the next `limit` matching dates, based on
   # the structured recurrence_pattern. One-off statuses are merged in.
   # A paused mic returns nothing unless it has a future resume date
@@ -254,13 +261,21 @@ class Mic < ApplicationRecord
     Time.use_zone(tz) do
       today = Time.zone.today
       horizon = today + 730 # 2 years cap; cheap
-      dates = upcoming_dates(starting_from: today, until_date: horizon, limit: limit)
-      dates.map do |d|
+      # Fetch a small buffer over `limit` so we still hand back enough
+      # occurrences after filtering out today's already-finished slot.
+      dates = upcoming_dates(starting_from: today, until_date: horizon, limit: limit + 2)
+      now = Time.current
+      dates.filter_map do |d|
         starts_at = Time.zone.local(d.year, d.month, d.day,
                                     starts_local_time.hour, starts_local_time.min)
+        # Skip if this slot already ended (start + grace is in the past).
+        # Only today's occurrence can ever hit this branch since future
+        # dates' starts_at is always > now.
+        next if starts_at + OCCURRENCE_GRACE < now
         override = mic_occurrence_statuses.find_by(occurs_on: d)
-        { starts_at: starts_at, mic_status: override&.status, source: :computed, show: nil }
-      end
+        { starts_at: starts_at, mic_status: override&.status,
+          mic_status_note: override&.note, source: :computed, show: nil }
+      end.first(limit)
     end
   end
 
@@ -366,8 +381,9 @@ class Mic < ApplicationRecord
 
   def assign_slug
     return if slug.present?
-    base = [ venue&.name, day_name_short ].compact.map { |s| s.to_s.parameterize }.reject(&:blank?).join("-")
-    base = name.parameterize.first(60) if base.blank?
+    base = name.to_s.parameterize.first(60)
+    base = [ venue&.name, day_name_short ].compact.map { |s| s.to_s.parameterize }.reject(&:blank?).join("-") if base.blank?
+    base = "mic" if base.blank?
     candidate = base
     n = 1
     while Mic.where(slug: candidate).exists?

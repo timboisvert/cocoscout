@@ -85,25 +85,6 @@ RSpec.describe "Mics public flow", type: :request do
     end
   end
 
-  describe "GET /mics/m/:slug/calendar.ics" do
-    it "returns a valid iCalendar payload" do
-      get mics_detail_calendar_path(mic.slug)
-      expect(response).to have_http_status(:ok)
-      expect(response.media_type).to eq("text/calendar")
-      expect(response.body).to include("BEGIN:VCALENDAR")
-      expect(response.body).to include("END:VCALENDAR")
-    end
-  end
-
-  describe "GET /mics/:city_slug/calendar.ics" do
-    it "returns a city-wide iCalendar payload" do
-      get mics_city_calendar_path("chicago-il")
-      expect(response).to have_http_status(:ok)
-      expect(response.media_type).to eq("text/calendar")
-      expect(response.body).to include("BEGIN:VCALENDAR")
-    end
-  end
-
   describe "GET /mics/sitemap.xml" do
     it "renders the sitemap index" do
       get mics_sitemap_path

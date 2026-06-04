@@ -69,10 +69,8 @@ Rails.application.routes.draw do
     # `.json` requests don't get caught by the slug-greedy detail action.
     get "m/:slug.json", to: "api#show_mic",  as: :api_mic,  defaults: { format: :json }, constraints: { format: :json }
 
-    # Mic detail (slug-routed; ICS export per mic).
+    # Mic detail (slug-routed).
     get "m/:slug",              to: "detail#show",       as: :detail
-    get "m/:slug/calendar.ics", to: "detail#calendar",   as: :detail_calendar,
-        defaults: { format: :ics }
 
     # Search.
     get "search", to: "public#search", as: :search
@@ -80,6 +78,13 @@ Rails.application.routes.draw do
     # Submission flow (sign-in required).
     get  "submit", to: "submissions#new",    as: :submit
     post "submit", to: "submissions#create", as: :create_submission
+    get  "venues/lookup", to: "venues#lookup", as: :venues_lookup
+    post "venues", to: "venues#create", as: :venues_create
+
+    # Distance-origin: stores the user's chosen "search from here" point
+    # in the session so the city-page distance slider can anchor to it.
+    post "origin",       to: "origins#create",  as: :set_origin
+    post "origin/clear", to: "origins#destroy", as: :clear_origin
 
     # Claim a mic.
     get  "m/:slug/claim",        to: "claims#new",     as: :claim
@@ -161,8 +166,6 @@ Rails.application.routes.draw do
         constraints: { city_slug: /[a-z0-9-]+/ }
     get ":city_slug/this-week",                to: "cities#this_week", as: :city_this_week,
         constraints: { city_slug: /[a-z0-9-]+/ }
-    get ":city_slug/calendar.ics",             to: "cities#calendar",  as: :city_calendar,
-        defaults: { format: :ics }, constraints: { city_slug: /[a-z0-9-]+/ }
     get ":city_slug/map",                      to: "cities#map",       as: :city_map,
         constraints: { city_slug: /[a-z0-9-]+/ }
     get ":city_slug/:format_segment",          to: "cities#by_format", as: :city_by_format,

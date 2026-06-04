@@ -48,24 +48,57 @@ module Superadmin
         scope = scope.joins(:venue).where(venues: { city_hub_id: params[:hub_id] })
       end
 
-      @mics  = scope.order("mics.name ASC").limit(200)
+      # Recency filter — lets the admin slice down to "what landed
+      # since I last looked." Default is "all time" so the existing
+      # search behavior doesn't change.
+      @recency = %w[1d 7d 30d].include?(params[:recency]) ? params[:recency] : nil
+      if @recency
+        cutoff = case @recency
+        when "1d"  then 1.day.ago
+        when "7d"  then 7.days.ago
+        when "30d" then 30.days.ago
+        end
+        scope = scope.where("mics.created_at >= ?", cutoff)
+      end
+
+      sort = params[:sort].to_s
+      @sort = %w[name created_desc].include?(sort) ? sort : "name"
+      scope = @sort == "created_desc" ? scope.order(created_at: :desc) : scope.order("mics.name ASC")
+
+      @mics  = scope.limit(200)
       @total = scope.count
       @hubs  = CityHub.order(:name)
 
-      # Counts strip — surfaces pending workload at a glance, links into
-      # the queue page for actioning.
-      @pending_mic_count        = Mic.pending_moderation.count
-      @pending_claim_count      = MicClaim.status_pending.count
-      @pending_challenge_count  = MicChallenge.status_pending.count
-      @pending_suggestion_count = MicSuggestion.status_pending.count
+      # Pending workload — surfaced inline at the top of the page now
+      # that the old standalone queue is gone. Each list is loaded with
+      # the context the admin needs to act without clicking into a
+      # detail page (submitter, mic, venue, reason, etc.).
+      @pending_mics = Mic.pending_moderation
+                          .includes(venue: :city_hub, mic_edits: :editor)
+                          .order(created_at: :desc).limit(20)
+      @pending_claims = MicClaim.status_pending
+                                 .includes(:claimant, mic: :venue)
+                                 .order(created_at: :desc).limit(20)
+      @pending_challenges = MicChallenge.status_pending
+                                         .includes(:challenger, :target, mic: :venue)
+                                         .order(created_at: :desc).limit(20)
+      @pending_suggestions = MicSuggestion.status_pending
+                                           .includes(:submitter, mic: :venue)
+                                           .order(created_at: :desc).limit(20)
+
+      @pending_mic_count        = @pending_mics.size
+      @pending_claim_count      = @pending_claims.size
+      @pending_challenge_count  = @pending_challenges.size
+      @pending_suggestion_count = @pending_suggestions.size
+
+      @draft_hubs = CityHub.hub_draft.order(:name)
     end
 
+    # The standalone queue page is gone — every pending item is now
+    # surfaced on the unified index. Keep the route as a permanent
+    # redirect so any old bookmark or in-app link lands gracefully.
     def queue
-      @pending_mics       = Mic.pending_moderation.includes(:venue).order(created_at: :desc)
-      @pending_claims     = MicClaim.status_pending.includes(:mic, :claimant).order(created_at: :desc)
-      @pending_challenges = MicChallenge.status_pending.includes(:mic, :challenger).order(created_at: :desc)
-      @pending_suggestions = MicSuggestion.status_pending.includes(:mic).order(created_at: :desc)
-      @draft_hubs         = CityHub.hub_draft.order(:name)
+      redirect_to mics_index_path, status: :moved_permanently
     end
 
     def approve_submission
@@ -73,7 +106,7 @@ module Superadmin
       mic.update!(pending: false)
       mic.mic_edits.create!(editor_user_id: Current.user.id, source: :admin, field: "pending",
                              old_value: "true", new_value: "false", note: "Approved by superadmin")
-      redirect_to mics_queue_path, notice: "Approved #{mic.name}."
+      redirect_to mics_index_path(anchor: "submissions"), notice: "Approved #{mic.name}."
     end
 
     def reject_submission
@@ -82,7 +115,7 @@ module Superadmin
       mic.update!(status: :ended, pending: false)
       mic.mic_edits.create!(editor_user_id: Current.user.id, source: :admin, field: "status",
                              new_value: "ended", note: "Rejected: #{reason}")
-      redirect_to mics_queue_path, notice: "Rejected #{mic.name}."
+      redirect_to mics_index_path(anchor: "submissions"), notice: "Rejected #{mic.name}."
     end
 
     def approve_claim
@@ -99,14 +132,14 @@ module Superadmin
         claim.mic.mic_edits.create!(editor_user_id: Current.user.id, source: :admin, field: "claim",
                                      new_value: "approved")
       end
-      redirect_to mics_queue_path, notice: "Approved claim."
+      redirect_to mics_index_path(anchor: "claims"), notice: "Approved claim."
     end
 
     def reject_claim
       claim = MicClaim.find(params[:id])
       claim.update!(status: :rejected, decided_at: Time.current, adjudicator: Current.user,
                     reason: params[:reason])
-      redirect_to mics_queue_path, notice: "Rejected claim."
+      redirect_to mics_index_path(anchor: "claims"), notice: "Rejected claim."
     end
 
     def resolve_challenge
@@ -129,7 +162,7 @@ module Superadmin
           end
         end
       end
-      redirect_to mics_queue_path, notice: "Challenge resolved (#{outcome})."
+      redirect_to mics_index_path(anchor: "challenges"), notice: "Challenge resolved (#{outcome})."
     end
 
     def approve_suggestion
@@ -138,19 +171,19 @@ module Superadmin
       suggestion.mic.mic_edits.create!(editor_user_id: Current.user.id, source: :suggestion,
                                         field: "suggestion", new_value: "approved",
                                         note: suggestion.note.to_s)
-      redirect_to mics_queue_path, notice: "Suggestion approved."
+      redirect_to mics_index_path(anchor: "suggestions"), notice: "Suggestion approved."
     end
 
     def reject_suggestion
       suggestion = MicSuggestion.find(params[:id])
       suggestion.update!(status: :rejected, decided_at: Time.current, adjudicator: Current.user)
-      redirect_to mics_queue_path, notice: "Suggestion rejected."
+      redirect_to mics_index_path(anchor: "suggestions"), notice: "Suggestion rejected."
     end
 
     def promote_hub
       hub = CityHub.find(params[:id])
       hub.update!(status: :active)
-      redirect_to mics_queue_path, notice: "Promoted #{hub.name} to active."
+      redirect_to mics_index_path, notice: "Promoted #{hub.name} to active."
     end
 
     private
