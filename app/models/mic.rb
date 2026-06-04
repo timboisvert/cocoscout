@@ -15,16 +15,16 @@
 class Mic < ApplicationRecord
   belongs_to :venue
   belongs_to :production, optional: true
-  belongs_to :lead_producer, class_name: "User",
-                             foreign_key: :lead_producer_user_id, optional: true
+  belongs_to :lead_owner, class_name: "User",
+                          foreign_key: :lead_owner_user_id, optional: true
   belongs_to :last_verified_by, class_name: "User",
                                 foreign_key: :last_verified_by_user_id, optional: true
 
   has_many :mic_taggings, dependent: :destroy
   has_many :tags, through: :mic_taggings, source: :mic_tag
   has_many :mic_edits, dependent: :destroy
-  has_many :mic_producers, dependent: :destroy
-  has_many :producers, through: :mic_producers, source: :user
+  has_many :mic_owners, dependent: :destroy
+  has_many :owners, through: :mic_owners, source: :user
   has_many :mic_claims, dependent: :destroy
   has_many :mic_challenges, dependent: :destroy
   has_many :mic_suggestions, dependent: :destroy
@@ -132,19 +132,19 @@ class Mic < ApplicationRecord
     end
   }
 
-  # Has any approved producer.
+  # Has any approved owner.
   def claimed?
-    mic_producers.any?
+    mic_owners.any?
   end
 
   # Can this user edit this mic? Three paths:
   #   1. superadmin
-  #   2. has a MicProducer row on this mic
+  #   2. has a MicOwner row on this mic
   #   3. is an editor (captain) of this mic's hub
   def manageable_by?(user)
     return false unless user
     return true if user.respond_to?(:superadmin?) && user.superadmin?
-    return true if mic_producers.where(user_id: user.id).exists?
+    return true if mic_owners.where(user_id: user.id).exists?
     hub = venue&.city_hub
     hub && hub.editor?(user)
   end

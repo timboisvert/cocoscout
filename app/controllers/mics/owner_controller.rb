@@ -12,7 +12,7 @@ module Mics
 
     def show
       @next_occurrences = @mic.next_occurrences(limit: 12)
-      @co_producers = @mic.mic_producers.includes(:user)
+      @co_owners = @mic.mic_owners.includes(:user)
       @recent_edits = @mic.mic_edits.order(created_at: :desc).limit(20)
       @pending_suggestions = @mic.mic_suggestions.status_pending.order(created_at: :desc)
     end
@@ -26,11 +26,11 @@ module Mics
         @mic.save!
         @mic.attributes.slice(*allowed_keys).each do |k, v|
           next if old_attrs[k].to_s == v.to_s
-          @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+          @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                   field: k, old_value: old_attrs[k].to_s, new_value: v.to_s)
         end
         if (@mic.accessibility || {}) != old_access
-          @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+          @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                   field: "accessibility",
                                   old_value: old_access.to_json, new_value: @mic.accessibility.to_json)
         end
@@ -69,7 +69,7 @@ module Mics
 
       venue.attributes.slice(*VENUE_FIELDS).each do |k, v|
         next if old_attrs[k].to_s == v.to_s
-        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                 field: "venue.#{k}", old_value: old_attrs[k].to_s, new_value: v.to_s)
       end
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Venue updated."
@@ -115,7 +115,7 @@ module Mics
       old_label    = "#{@mic.venue.name} (#{@mic.venue.neighborhood_city})"
       @mic.update!(venue: target)
 
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                               field: "venue_id",
                               old_value: old_venue_id.to_s, new_value: target.id.to_s,
                               note: "Moved from #{old_label} to #{target.name} (#{target.city}, #{target.state})")
@@ -124,7 +124,7 @@ module Mics
 
     def verify
       @mic.update!(last_verified_at: Time.current, last_verified_by_user_id: current_user.id)
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                               field: "last_verified_at", new_value: @mic.last_verified_at.to_s,
                               note: "Owner one-click verify")
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Verified — thanks for keeping it fresh."
@@ -146,7 +146,7 @@ module Mics
       # detail page through `Mic#compute_occurrences`.
       if clearing
         @mic.mic_occurrence_statuses.where(occurs_on: next_show_date).destroy_all
-        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                 field: "mic_status", new_value: "#{next_show_date}=cleared",
                                 note: "Cleared status for this date")
         redirect_to mics_owner_mic_path(@mic.slug), notice: "Status cleared for #{next_show_date}."
@@ -157,7 +157,7 @@ module Mics
       occ.assign_attributes(status: status_val, note: note, created_by_user_id: current_user.id)
       occ.save!
 
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                               field: "mic_status", new_value: "#{next_show_date}=#{status_val}",
                               note: note || "One-off status post")
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Status posted."
@@ -177,7 +177,7 @@ module Mics
       occ.assign_attributes(status: :cancelled, note: reason, created_by_user_id: current_user.id)
       occ.save!
 
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                               field: "mic_status", new_value: "#{cancel_date}=cancelled",
                               note: reason || "Owner cancelled this date")
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Cancelled #{cancel_date}."
@@ -195,7 +195,7 @@ module Mics
       user = User.find_by("LOWER(email_address) = ?", email)
       if user
         name = user.person&.name.presence
-        already = @mic.mic_producers.exists?(user_id: user.id)
+        already = @mic.mic_owners.exists?(user_id: user.id)
         render json: { found: true, valid: true, email: user.email_address, name: name, already_on_mic: already }
       else
         render json: { found: false, valid: true }
@@ -205,7 +205,7 @@ module Mics
     def add_owner
       email = params[:email].to_s.strip.downcase
       name  = params[:name].to_s.strip.presence
-      role  = MicProducer.roles.key?(params[:role].to_s) ? params[:role].to_s : "producer"
+      role  = MicOwner.roles.key?(params[:role].to_s) ? params[:role].to_s : "owner"
 
       unless email.match?(URI::MailTo::EMAIL_REGEXP)
         redirect_to mics_owner_mic_path(@mic.slug),
@@ -218,7 +218,7 @@ module Mics
 
       if user.blank?
         # Create a placeholder CocoScout account so we can attach the
-        # MicProducer right away, then send the new user a password-set
+        # MicOwner right away, then send the new user a password-set
         # link via the existing reset flow.
         user = User.create!(email_address: email, password: User.generate_secure_password)
         user.people.create!(name: name.presence || email.split("@").first.titleize)
@@ -227,17 +227,17 @@ module Mics
         invited = true
       end
 
-      mp = @mic.mic_producers.find_or_initialize_by(user_id: user.id)
+      mp = @mic.mic_owners.find_or_initialize_by(user_id: user.id)
       mp.role = role
       mp.accepted_at ||= Time.current
       mp.save!
 
-      if role == "producer" && @mic.lead_producer_user_id.blank?
-        @mic.update!(lead_producer_user_id: user.id, claimed_at: @mic.claimed_at || Time.current)
+      if role == "owner" && @mic.lead_owner_user_id.blank?
+        @mic.update!(lead_owner_user_id: user.id, claimed_at: @mic.claimed_at || Time.current)
       end
 
       role_label = humanize_role(role)
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.add",
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "owner.add",
                               new_value: "#{user.email_address} as #{role_label}#{invited ? " (invited)" : ""}")
 
       notice = if invited
@@ -249,7 +249,7 @@ module Mics
     end
 
     def remove_owner
-      mp = @mic.mic_producers.find_by(id: params[:owner_id])
+      mp = @mic.mic_owners.find_by(id: params[:owner_id])
       if mp.nil?
         redirect_to mics_owner_mic_path(@mic.slug), alert: "That owner link isn't on this mic."
         return
@@ -257,25 +257,25 @@ module Mics
 
       user_label    = mp.user.email_address
       removed_self  = (mp.user_id == current_user.id)
-      was_lead      = (@mic.lead_producer_user_id == mp.user_id)
+      was_lead      = (@mic.lead_owner_user_id == mp.user_id)
       mp.destroy!
 
       if was_lead
-        next_lead = @mic.mic_producers.order(:created_at).first
-        @mic.update!(lead_producer_user_id: next_lead&.user_id)
+        next_lead = @mic.mic_owners.order(:created_at).first
+        @mic.update!(lead_owner_user_id: next_lead&.user_id)
       end
 
       # If that was the last owner, flip the mic back to unclaimed so the
       # public detail page shows "Claim this mic" again.
-      if @mic.mic_producers.reload.empty?
-        @mic.update!(claimed_at: nil, lead_producer_user_id: nil)
+      if @mic.mic_owners.reload.empty?
+        @mic.update!(claimed_at: nil, lead_owner_user_id: nil)
       end
 
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.remove",
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "owner.remove",
                               new_value: removed_self ? "#{user_label} (self)" : user_label)
 
       notice = if removed_self
-        if @mic.mic_producers.empty?
+        if @mic.mic_owners.empty?
           "You've stepped down. #{@mic.name} is now unclaimed."
         else
           "You've stepped down from #{@mic.name}. The remaining owners still manage it."
@@ -289,15 +289,15 @@ module Mics
     end
 
     def set_lead_owner
-      mp = @mic.mic_producers.find_by(id: params[:owner_id])
+      mp = @mic.mic_owners.find_by(id: params[:owner_id])
       if mp.nil?
         redirect_to mics_owner_mic_path(@mic.slug), alert: "That owner link isn't on this mic."
         return
       end
 
-      @mic.update!(lead_producer_user_id: mp.user_id, claimed_at: @mic.claimed_at || Time.current)
-      mp.update!(role: :producer) unless mp.role_producer?
-      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "producer.lead",
+      @mic.update!(lead_owner_user_id: mp.user_id, claimed_at: @mic.claimed_at || Time.current)
+      mp.update!(role: :owner) unless mp.role_owner?
+      @mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "owner.lead",
                               new_value: mp.user.email_address)
       redirect_to mics_owner_mic_path(@mic.slug), notice: "#{mp.user.email_address} is now the lead owner."
     end
@@ -324,7 +324,7 @@ module Mics
         label:     params[:label].to_s.strip.presence
       )
       if link.save
-        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                 field: "link.#{link.link_type}", new_value: link.url)
         redirect_to mics_owner_mic_path(@mic.slug), notice: "Link added."
       else
@@ -346,7 +346,7 @@ module Mics
       end
       user = User.find_by("LOWER(email_address) = ?", email)
       if user
-        @mic.mic_producers.find_or_create_by!(user_id: user.id) { |mp| mp.role = :co_producer; mp.accepted_at = Time.current }
+        @mic.mic_owners.find_or_create_by!(user_id: user.id) { |mp| mp.role = :co_owner; mp.accepted_at = Time.current }
         redirect_to mics_owner_mic_path(@mic.slug), notice: "Added #{user.email_address} as co-owner."
       else
         redirect_to mics_owner_mic_path(@mic.slug), notice: "We'll email #{email} an invite to join CocoScout."
@@ -437,8 +437,8 @@ module Mics
 
     def humanize_role(role)
       case role
-      when "producer"    then "Owner"
-      when "co_producer" then "Co-owner"
+      when "owner"    then "Owner"
+      when "co_owner" then "Co-owner"
       else role.humanize
       end
     end

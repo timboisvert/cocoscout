@@ -33,8 +33,14 @@
 <%= render "mics/header" %>
 
 <%# Big pink masthead. %>
+<%
+  claim_visible = !@mic.claimed?
+  edit_visible  = @mic.manageable_by?(Current.user)
+  has_actions   = claim_visible || edit_visible
+  masthead_pad  = has_actions ? "pt-6 pb-6 sm:pt-10 sm:pb-10" : "pt-6 pb-3 sm:pt-10 sm:pb-5"
+%>
 <section class="w-full bg-pink-500 text-white">
-  <div class="w-full px-4 sm:px-8 py-6 sm:py-10">
+  <div class="w-full px-4 sm:px-8 <%= masthead_pad %>">
     <nav class="text-xs text-pink-100 mb-3">
       <%= link_to "Find a Mic", mics_home_path, class: "hover:text-white underline-offset-4 hover:underline" %>
       <span class="px-1">›</span>
@@ -97,10 +103,8 @@
         the site need from up here. Suggest-an-edit + dispute-owner live
         in the footer where the "community" copy already explains them.
         Skip the whole row (and its `mt-5` spacer) when there's nothing
-        to show — otherwise the masthead carries dead bottom padding. %>
-    <% claim_visible = !@mic.claimed? %>
-    <% edit_visible  = @mic.manageable_by?(Current.user) %>
-    <% if claim_visible || edit_visible %>
+        to show; the masthead's bottom padding also shrinks (see top). %>
+    <% if has_actions %>
       <div class="mt-5 flex flex-wrap gap-2 text-sm">
         <% if claim_visible %>
           <%= link_to "Claim this mic →", mics_claim_path(@mic.slug),
@@ -185,7 +189,7 @@
     basic_cells << [ "Format", mics_format_label(@mic.format) ]
     basic_cells << [ "Start time", @mic.starts_local_time.strftime("%-l:%M %p") ] if @mic.starts_local_time.present?
     basic_cells << [ "Spot length", mics_spot_length_label(@mic.spot_length_minutes) ] if @mic.spot_length_minutes.present?
-    basic_cells << [ "Cap", @mic.signup_cap.to_s ]                               if @mic.signup_cap.present?
+    basic_cells << [ "Max performers", @mic.signup_cap.to_s ]                    if @mic.signup_cap.present?
     basic_cells << [ "Age", "#{@mic.min_age}+" ]                                  if @mic.min_age.present?
 
     signup_cells = []
@@ -458,9 +462,9 @@
     <div class="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-xs text-gray-500">
       <span>Owners update directly. Community can suggest edits using the link at the top.</span>
       <% if Current.user && @mic.claimed? %>
-        <%= link_to "I actually run this mic →", mics_challenge_path(@mic.slug),
+        <%= link_to "Claim this mic →", mics_claim_path(@mic.slug),
               class: "text-pink-600 font-bold hover:underline",
-              title: "If the wrong person claimed this mic, let us know." %>
+              title: "Already claimed by someone else? File a claim — the current lead has 72 hours to respond." %>
       <% end %>
     </div>
     <div class="text-xs">

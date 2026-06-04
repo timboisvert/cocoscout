@@ -104,7 +104,7 @@ namespace :mics do
         venue.mics.find { |m| m.name.to_s.downcase.gsub(/[‘’']/, "").gsub(/\s+/, " ").strip == norm_mic }
       end
       mic ||= Mic.new(name: mic_name, venue: venue)
-      claimed = mic.persisted? && mic.mic_producers.any?
+      claimed = mic.persisted? && mic.mic_owners.any?
       old_attrs = mic.attributes.slice(*TRACKED_FIELDS).dup
 
       inferred_method, bucket = infer_signup_method(signup_notes)

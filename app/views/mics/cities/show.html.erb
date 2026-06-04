@@ -27,10 +27,13 @@
               <%= pluralize(@mics.size, "active mic") %>
             </p>
           </div>
-          <%= render "mics/list_map_toggle",
-                list_url: mics_with_qp(mics_city_path(@slug), qp.except(:view)),
-                map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
-                active:   @view %>
+          <div class="flex items-center gap-2">
+            <%= render "mics/filters_toggle_button" %>
+            <%= render "mics/list_map_toggle",
+                  list_url: mics_with_qp(mics_city_path(@slug), qp.except(:view)),
+                  map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
+                  active:   @view %>
+          </div>
         </div>
         <p class="mt-3 text-sm sm:text-base text-pink-900/80 max-w-3xl whitespace-pre-line"><%= @hub.intro_markdown %></p>
       </section>
@@ -42,12 +45,22 @@
             <%= pluralize(@mics.size, "active mic") %>
           </p>
         </div>
-        <%= render "mics/list_map_toggle",
-              list_url: mics_with_qp(mics_city_path(@slug), qp),
-              map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
-              active:   @view %>
+        <div class="flex items-center gap-2">
+          <%= render "mics/filters_toggle_button" %>
+          <%= render "mics/list_map_toggle",
+                list_url: mics_with_qp(mics_city_path(@slug), qp),
+                map_url:  mics_with_qp(mics_city_path(@slug), qp.merge(view: "map")),
+                active:   @view %>
+        </div>
       </section>
     <% end %>
+
+    <%# Mobile-only filters — collapsed by default, toggled by the
+        Filters button above. On lg+ this is hidden; the desktop copy
+        lives in the sidebar. %>
+    <div class="lg:hidden border-b border-gray-100">
+      <%= render "mics/city_filters", id: "city-filters-mobile", slug: @slug %>
+    </div>
 
     <% if @view == "map" %>
       <%= render "mics/mics_map_area", mics: @mics %>

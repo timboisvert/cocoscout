@@ -3,20 +3,20 @@
 require "rails_helper"
 
 RSpec.describe "Mics announcements", type: :request do
-  let(:producer) { create(:user, password: "Password123!") }
+  let(:owner) { create(:user, password: "Password123!") }
   let(:other)    { create(:user, password: "Password123!") }
   let(:admin)    { create(:user, email_address: "boisvert@gmail.com", password: "Password123!") }
   let(:venue)    { create(:venue, name: "Beat Kitchen", city: "Chicago", state: "IL") }
   let!(:mic)     { create(:mic, venue: venue, name: "Beat Kitchen Mic") }
-  let!(:link)    { create(:mic_producer, mic: mic, user: producer, role: :producer) }
+  let!(:link)    { create(:mic_owner, mic: mic, user: owner, role: :owner) }
 
   def sign_in_as(u)
     post handle_signin_path, params: { email_address: u.email_address, password: "Password123!" }
   end
 
   describe "POST /mics/m/:slug/announcements" do
-    it "lets the producer post and persists the notify flag without sending email" do
-      sign_in_as(producer)
+    it "lets the owner post and persists the notify flag without sending email" do
+      sign_in_as(owner)
       ActionMailer::Base.deliveries.clear
 
       expect {
@@ -31,13 +31,13 @@ RSpec.describe "Mics announcements", type: :request do
       expect(a.title).to eq("Tonight is on")
       expect(a.body).to eq("Doors at 7, sign up at 7:30.")
       expect(a.notify_subscribers).to be(true)
-      expect(a.posted_by).to eq(producer)
+      expect(a.posted_by).to eq(owner)
       expect(a.posted_at).to be_within(5.seconds).of(Time.current)
       expect(response).to redirect_to(mics_owner_mic_path(mic.slug))
     end
 
     it "writes a MicEdit audit row" do
-      sign_in_as(producer)
+      sign_in_as(owner)
       expect {
         post mics_create_announcement_path(mic.slug), params: { body: "Quick update." }
       }.to change { MicEdit.where(field: "announcement").count }.by(1)
@@ -51,7 +51,7 @@ RSpec.describe "Mics announcements", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "allows superadmins regardless of producer status" do
+    it "allows superadmins regardless of owner status" do
       sign_in_as(admin)
       expect {
         post mics_create_announcement_path(mic.slug), params: { body: "Admin override post." }
@@ -64,7 +64,7 @@ RSpec.describe "Mics announcements", type: :request do
     end
 
     it "re-renders on validation failure (empty body)" do
-      sign_in_as(producer)
+      sign_in_as(owner)
       expect {
         post mics_create_announcement_path(mic.slug), params: { body: "" }
       }.not_to(change { MicAnnouncement.count })
@@ -75,7 +75,7 @@ RSpec.describe "Mics announcements", type: :request do
 
   describe "detail page rendering" do
     it "shows the most recent announcements" do
-      create(:mic_announcement, mic: mic, posted_by: producer,
+      create(:mic_announcement, mic: mic, posted_by: owner,
              title: "Cancelled tonight", body: "Heater is broken, sorry!", posted_at: 1.hour.ago)
       get mics_detail_path(mic.slug)
       expect(response.body).to include("Latest News")

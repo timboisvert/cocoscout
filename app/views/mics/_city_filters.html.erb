@@ -1,0 +1,203 @@
+<%#
+  Filters panel — When/Format/Distance + More filters accordion.
+  Rendered twice per city page so the panel sits next to the Filters
+  button on mobile (inside main) and stays in place on desktop
+  (inside the sidebar). Locals:
+    id (unique element id; we use it to target the toggle button)
+    slug (city slug for path-based bucket URLs)
+%>
+<%
+  qp = filter_query_params
+  drop = ->(key) { qp.except(key) }
+
+  current_when     = active_when
+  current_format   = active_format
+  current_signup   = signup_filter
+  current_access   = accessibility_filter
+  current_age      = age_filter
+  current_distance = within_miles
+
+  when_options = [
+    [ nil,         "All upcoming", mics_city_path(slug) ],
+    [ "tonight",   "Tonight",      mics_city_tonight_path(slug) ],
+    [ "tomorrow",  "Tomorrow",     mics_city_tomorrow_path(slug) ],
+    [ "this-week", "This week",    mics_city_this_week_path(slug) ]
+  ]
+  when_qp = drop.call(:when)
+
+  format_options = [
+    [ nil,         "Any format", mics_city_path(slug) ],
+    [ "standup",   "Standup",    mics_city_by_format_path(slug, "standup") ],
+    [ "music",     "Music",      mics_city_by_format_path(slug, "music") ],
+    [ "poetry",    "Poetry",     mics_city_by_format_path(slug, "poetry") ],
+    [ "open_stage","Open stage", mics_city_by_format_path(slug, "open-stage") ]
+  ]
+  format_qp = drop.call(:format)
+  format_qp = format_qp.merge(when: current_when) if current_when
+
+  distance_stops = [
+    [ nil, "Any" ],
+    [ 5,   "5 mi" ],
+    [ 10,  "10 mi" ],
+    [ 25,  "25 mi" ]
+  ]
+  current_distance_idx = distance_stops.index { |miles, _| miles == current_distance } || 0
+  current_distance_label = distance_stops[current_distance_idx][1]
+
+  has_more_filter = current_signup || current_access || current_age
+%>
+<details id="<%= id %>" data-controller="mics-mobile-collapse" class="group/filters">
+  <summary class="hidden">Filters</summary>
+
+  <%# ── When (vertical list) ── %>
+  <nav class="px-4 sm:px-6 pt-4 lg:pt-0 pb-3 border-b border-gray-200/70">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">When</div>
+    <ul class="space-y-px">
+      <% when_options.each do |val, label, href| %>
+        <% is_active = (current_when == val) %>
+        <li>
+          <a href="<%= mics_with_qp(href, when_qp) %>"
+             class="block px-3 py-2 text-sm rounded <%= is_active ? "bg-pink-500 text-white font-bold" : "text-gray-800 hover:bg-pink-100" %>">
+            <%= label %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+
+  <%# ── Format (vertical list) ── %>
+  <nav class="px-4 sm:px-6 pt-3 pb-3 border-b border-gray-200/70">
+    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Format</div>
+    <ul class="space-y-px">
+      <% format_options.each do |val, label, href| %>
+        <% is_active = (current_format == val) || (val.nil? && current_format.nil?) %>
+        <li>
+          <a href="<%= mics_with_qp(href, format_qp) %>"
+             class="block px-3 py-1.5 text-sm rounded <%= is_active ? "bg-pink-500 text-white font-bold" : "text-gray-700 hover:bg-pink-100" %>">
+            <%= label %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+
+  <%# ── Distance (slider) ── %>
+  <div class="px-4 sm:px-6 pt-3 pb-3 border-b border-gray-200/70"
+       data-controller="mics-distance-slider"
+       data-mics-distance-slider-stops-value='<%= distance_stops.map(&:first).to_json %>'
+       data-mics-distance-slider-base-url-value="<%= request.path %>"
+       data-mics-distance-slider-base-qp-value='<%= drop.call(:within).to_json %>'>
+    <div class="flex items-baseline justify-between gap-2 mb-2">
+      <span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Distance</span>
+      <span class="text-xs text-pink-600 font-bold tabular-nums" data-mics-distance-slider-target="readout"><%= current_distance_label %></span>
+    </div>
+    <input type="range" min="0" max="<%= distance_stops.size - 1 %>" step="1"
+           value="<%= current_distance_idx %>"
+           data-mics-distance-slider-target="slider"
+           data-action="input->mics-distance-slider#preview change->mics-distance-slider#commit"
+           class="w-full accent-pink-500 cursor-pointer">
+    <div class="flex justify-between text-[10px] text-gray-400 mt-1 tabular-nums">
+      <% distance_stops.each do |_miles, label| %>
+        <span><%= label %></span>
+      <% end %>
+    </div>
+
+    <div class="mt-3 text-xs text-gray-500">
+      <% origin = distance_origin %>
+      <% if origin %>
+        from
+        <button type="button"
+                onclick="document.getElementById('modal-distance-origin').showModal()"
+                class="cursor-pointer text-pink-600 font-bold hover:underline">
+          <%= origin[:label] %>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <%# ── More filters accordion ── %>
+  <div class="px-4 sm:px-6 pt-3 pb-3"
+       data-controller="mics-more-filters"
+       data-mics-more-filters-storage-key-value="mics:moreFiltersOpen"
+       data-mics-more-filters-default-open-value="<%= has_more_filter ? "true" : "false" %>">
+    <details class="group"
+             data-mics-more-filters-target="details"
+             data-action="toggle->mics-more-filters#persist">
+      <summary class="list-none cursor-pointer flex items-center gap-2 mb-2">
+        <span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">More filters</span>
+        <span class="text-gray-400 text-[10px] transition-transform group-open:rotate-90 inline-block">▶</span>
+        <% if has_more_filter %>
+          <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">Active</span>
+        <% end %>
+      </summary>
+      <div class="space-y-4">
+
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">Sign-up type</div>
+          <ul class="space-y-px">
+            <% [
+              [ nil,         "All" ],
+              [ "online",    "Online" ],
+              [ "in_person", "In person" ]
+            ].each do |val, label| %>
+              <% next_qp = val ? drop.call(:signup).merge(signup: val) : drop.call(:signup) %>
+              <% is_active = (current_signup == val) || (val.nil? && current_signup.nil?) %>
+              <li>
+                <a href="<%= mics_with_qp(request.path, next_qp) %>"
+                   class="block px-3 py-1.5 text-sm rounded <%= is_active ? "bg-pink-500 text-white font-bold" : "text-gray-700 hover:bg-pink-100" %>">
+                  <%= label %>
+                </a>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">Accessibility</div>
+          <ul class="space-y-1">
+            <% [
+              [ nil,       "Any",                     nil ],
+              [ "fully",   "Fully wheelchair accessible",
+                "Can get into the building, onto the stage, and into the restrooms." ],
+              [ "partial", "Partially wheelchair accessible",
+                "Can get into the building, but not necessarily onto the stage or into the restrooms." ]
+            ].each do |val, label, desc| %>
+              <% next_qp = val ? drop.call(:access).merge(access: val) : drop.call(:access) %>
+              <% next_qp = next_qp.except(:wheelchair) %>
+              <% is_active = (current_access == val) || (val.nil? && current_access.nil?) %>
+              <li>
+                <a href="<%= mics_with_qp(request.path, next_qp) %>"
+                   class="block px-3 py-2 text-sm rounded <%= is_active ? "bg-pink-500 text-white font-bold" : "text-gray-700 hover:bg-pink-100" %>">
+                  <%= label %>
+                  <% if desc %>
+                    <div class="text-[10px] mt-0.5 <%= is_active ? "text-pink-100" : "text-gray-500" %> leading-snug font-normal"><%= desc %></div>
+                  <% end %>
+                </a>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">Age</div>
+          <ul class="space-y-px">
+            <% [
+              [ nil,  "All ages" ],
+              [ "21", "21+" ]
+            ].each do |val, label| %>
+              <% next_qp = val ? drop.call(:age).merge(age: val) : drop.call(:age) %>
+              <% is_active = (current_age == val) || (val.nil? && current_age.nil?) %>
+              <li>
+                <a href="<%= mics_with_qp(request.path, next_qp) %>"
+                   class="block px-3 py-1.5 text-sm rounded <%= is_active ? "bg-pink-500 text-white font-bold" : "text-gray-700 hover:bg-pink-100" %>">
+                  <%= label %>
+                </a>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+
+      </div>
+    </details>
+  </div>
+</details>

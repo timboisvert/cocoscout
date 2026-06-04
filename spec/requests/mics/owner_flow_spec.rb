@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe "Mics producer flow", type: :request do
+RSpec.describe "Mics owner flow", type: :request do
   let(:user)  { create(:user, password: "Password123!") }
   let(:venue) { create(:venue, name: "Beat Kitchen", city: "Chicago", state: "IL") }
   let!(:mic)  { create(:mic, venue: venue, name: "Beat Kitchen Mic") }
@@ -56,21 +56,40 @@ RSpec.describe "Mics producer flow", type: :request do
   describe "POST /mics/m/:slug/claim" do
     before { sign_in }
 
-    it "files a pending claim" do
+    it "files a pending claim when the mic is unclaimed" do
       expect {
         post mics_create_claim_path(mic.slug), params: {
-          mic_claim: { role: "producer", proof: { email: "anyone@example.com" } }
+          mic_claim: { role: "owner", proof: { email: "anyone@example.com" } }
         }
       }.to change { MicClaim.count }.by(1)
       claim = MicClaim.last
       expect(claim.status).to eq("pending")
       expect(claim.claimant).to eq(user)
     end
+
+    it "files a challenge instead when the mic is already claimed" do
+      existing_owner = create(:user, password: "Password123!")
+      create(:mic_owner, mic: mic, user: existing_owner, role: :owner)
+      mic.update!(lead_owner_user_id: existing_owner.id, claimed_at: Time.current)
+
+      expect {
+        post mics_create_claim_path(mic.slug), params: {
+          mic_claim: { proof: { email: "me@example.com", evidence_url: "https://example.com/proof", note: "I actually run this." } }
+        }
+      }.to change { MicChallenge.count }.by(1)
+       .and change { MicClaim.count }.by(0)
+
+      challenge = MicChallenge.last
+      expect(challenge.challenger).to eq(user)
+      expect(challenge.target_user_id).to eq(existing_owner.id)
+      expect(challenge.status).to eq("pending")
+      expect(challenge.reason).to eq("I actually run this.")
+    end
   end
 
   describe "GET /mics/producer when user manages a mic" do
     it "redirects to /mics/my (unified) and that page lists the user's mics" do
-      create(:mic_producer, mic: mic, user: user)
+      create(:mic_owner, mic: mic, user: user)
       sign_in
       get mics_owner_path
       expect(response).to redirect_to(mics_my_path)
@@ -85,7 +104,7 @@ RSpec.describe "Mics producer flow", type: :request do
     end
 
     it "allows producer to update their mic" do
-      create(:mic_producer, mic: mic, user: user)
+      create(:mic_owner, mic: mic, user: user)
       sign_in
       patch mics_owner_mic_path(mic.slug), params: { mic: { blurb: "Refreshed copy." } }
       expect(response).to redirect_to(mics_owner_mic_path(mic.slug))

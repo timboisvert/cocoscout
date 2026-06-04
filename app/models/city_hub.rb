@@ -28,6 +28,7 @@ class CityHub < ApplicationRecord
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ },
                    length: { maximum: 80 }
   validates :name, :state, presence: true
+  validates :intro_markdown, length: { maximum: 175 }, allow_nil: true
 
   # Looks up the curated hub for a given city/state, if there is one.
   def self.for(city, state)

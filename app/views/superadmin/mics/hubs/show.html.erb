@@ -84,9 +84,13 @@
             <% end %>
           </select>
         </label>
-        <label class="block text-sm">
-          <span class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Intro (plain text)</span>
-          <textarea name="city_hub[intro_markdown]" rows="3"
+        <label class="block text-sm" data-controller="char-counter" data-char-counter-max-value="175">
+          <div class="flex items-baseline justify-between gap-2 mb-1">
+            <span class="text-xs uppercase tracking-wider text-gray-500 font-bold">Intro (plain text)</span>
+            <span class="text-[10px] tabular-nums" data-char-counter-target="readout"></span>
+          </div>
+          <textarea name="city_hub[intro_markdown]" rows="3" maxlength="175"
+                    data-char-counter-target="input"
                     class="w-full px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none"><%= @hub.intro_markdown %></textarea>
         </label>
         <div class="flex justify-end pt-1">
@@ -111,7 +115,8 @@
           <li class="px-4 sm:px-5 py-2.5 flex items-baseline justify-between gap-3">
             <span class="text-sm text-gray-800"><%= m.user.email_address %></span>
             <div class="flex items-center gap-3 shrink-0">
-              <%= button_to impersonate_user_path, method: :post, params: { email: m.user.email_address },
+              <%= button_to impersonate_user_path, method: :post,
+                    params: { email: m.user.email_address, return_to: mics_captain_hub_path(@hub.slug) },
                     class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold" do %>
                 Impersonate
               <% end %>

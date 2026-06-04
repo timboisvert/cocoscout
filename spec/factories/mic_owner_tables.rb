@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :mic_producer do
+  factory :mic_owner do
     association :mic
     association :user
-    role { :producer }
+    role { :owner }
     accepted_at { Time.current }
   end
 
@@ -12,7 +12,7 @@ FactoryBot.define do
     association :mic
     association :claimant, factory: :user
     status { :pending }
-    role { :producer }
+    role { :owner }
     proof { { "email" => "producer@example.com" } }
   end
 

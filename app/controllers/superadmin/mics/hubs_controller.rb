@@ -23,6 +23,8 @@ module Superadmin
 
       def index
         @hubs = CityHub.order(:state, :name)
+        @top_vote_cities = CityVote.tallies(limit: 20)
+        @total_votes = CityVote.count
       end
 
       def create
@@ -42,7 +44,7 @@ module Superadmin
         @mic_count = Mic.in_hub(@hub).count
         @active_count = Mic.active.in_hub(@hub).count
         @unclaimed_count = Mic.active.in_hub(@hub)
-                              .where.not(id: MicProducer.select(:mic_id)).count
+                              .where.not(id: MicOwner.select(:mic_id)).count
         @pending_mic_count = Mic.pending_moderation
                                 .joins(:venue).where(venues: { city_hub_id: @hub.id }).count
 

@@ -107,7 +107,7 @@
               <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length", value: @mic.spot_length_minutes,
                     placeholder: "e.g. 5, 3-5 minutes, 5ish",
                     help: "Free text — a bare number renders as \"5 min\" on the public page; anything else (\"3-5 minutes\", \"depends\") shows verbatim." %>
-              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Cap", value: @mic.signup_cap,
+              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Maximum # of performers", value: @mic.signup_cap,
                     placeholder: "e.g. 10, 10ish, 10-15",
                     help: "Free text — write whatever describes the cap. Owners often say things like \"10ish\" or \"up to 15\"." %>
             </div>
@@ -510,13 +510,13 @@
           </p>
         </header>
         <div class="px-5 sm:px-6 py-5">
-          <% if @co_producers.any? %>
+          <% if @co_owners.any? %>
             <ul class="divide-y divide-gray-100 border border-gray-200 rounded overflow-hidden mb-5">
-              <% @co_producers.each do |mp| %>
-                <% is_lead = (@mic.lead_producer_user_id == mp.user_id) %>
+              <% @co_owners.each do |mp| %>
+                <% is_lead = (@mic.lead_owner_user_id == mp.user_id) %>
                 <% role_label = case mp.role
-                                when "producer"    then "Owner"
-                                when "co_producer" then "Co-owner"
+                                when "owner"    then "Owner"
+                                when "co_owner" then "Co-owner"
                                 else mp.role.humanize
                                 end %>
                 <li class="px-3 py-2 flex items-baseline gap-3 flex-wrap">
@@ -532,7 +532,8 @@
                   </span>
                   <div class="flex items-center gap-2 shrink-0">
                     <% if Current.user&.superadmin? %>
-                      <%= button_to impersonate_user_path, method: :post, params: { email: mp.user.email_address },
+                      <%= button_to impersonate_user_path, method: :post,
+                            params: { email: mp.user.email_address, return_to: mics_my_path },
                             class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold rounded" do %>
                         Impersonate
                       <% end %>
@@ -566,7 +567,7 @@
             <button type="button"
                     data-controller="mics-modal"
                     data-action="click->mics-modal#open"
-                    data-mics-modal-target-id-value="modal-add-producer"
+                    data-mics-modal-target-id-value="modal-add-owner"
                     class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100">
               + Add an owner
             </button>
@@ -702,7 +703,7 @@
   <% end %>
 <% end %>
 
-<%= render "mics/owner/modal", id: "modal-add-producer", title: "Add an owner" do %>
+<%= render "mics/owner/modal", id: "modal-add-owner", title: "Add an owner" do %>
   <p class="text-sm text-gray-600 mb-4">
     Start with their email. If they're already on CocoScout we'll just add them; otherwise we'll send them an invite.
   </p>
@@ -735,8 +736,8 @@
       <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Role</label>
       <select name="role"
               class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm bg-white">
-        <option value="producer">Owner</option>
-        <option value="co_producer">Co-owner</option>
+        <option value="owner">Owner</option>
+        <option value="co_owner">Co-owner</option>
         <option value="host">Host</option>
       </select>
     </div>

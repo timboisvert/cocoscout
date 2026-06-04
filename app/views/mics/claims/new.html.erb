@@ -1,19 +1,30 @@
 <%
-  mics_seo title: "Claim #{@mic.name} — Find a Mic",
-            description: "Owners and co-owners — claim this mic to manage it on CocoScout."
+  is_challenge = @mic.claimed?
+  page_title   = "Claim #{@mic.name}"
+  page_desc =
+    if is_challenge
+      lead = @mic.lead_owner&.person&.name.presence || @mic.lead_owner&.email_address || "another user"
+      "#{lead} currently claims to run this mic. Filing your claim opens a 72-hour window for them to respond — a moderator decides if they don't."
+    else
+      "We'll verify your relationship to #{@mic.venue.name} before granting owner rights."
+    end
+  mics_seo title: "#{page_title} — Find a Mic",
+            description: page_desc
 %>
 
-<%= render "mics/form_shell", title: "Claim #{@mic.name}",
-      description: "We'll verify your relationship to #{@mic.venue.name} before granting owner rights." do %>
+<%= render "mics/form_shell", title: page_title,
+      description: page_desc do %>
   <%= form_with url: mics_create_claim_path(@mic.slug), method: :post do %>
-    <%# Enum values stay producer / co_producer — labels updated for clarity. %>
-    <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
-          options: [ [ "Owner", "producer" ], [ "Venue rep / co-owner", "co_producer" ] ] %>
+    <% unless is_challenge %>
+      <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
+            options: [ [ "Owner", "owner" ], [ "Venue rep / co-owner", "co_owner" ] ] %>
+    <% end %>
     <%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email/phone for the mic",
           type: "text", required: true %>
     <%= render "mics/form_field", name: "mic_claim[proof][evidence_url]", label: "Evidence URL", type: "url",
           placeholder: "Instagram post, venue page, etc.", help: "Anything that backs up your claim." %>
-    <%= render "mics/form_field", name: "mic_claim[proof][note]", label: "Anything else we should know?", type: "textarea", rows: 3 %>
+    <%= render "mics/form_field", name: "mic_claim[proof][note]", label: is_challenge ? "Why are you the right owner?" : "Anything else we should know?",
+          type: "textarea", rows: 3, required: is_challenge %>
 
     <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
       <a href="<%= mics_detail_path(@mic.slug) %>" class="text-sm text-gray-500 hover:text-gray-700 underline">Cancel</a>

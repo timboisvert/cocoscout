@@ -109,7 +109,7 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
 
     it "runs end-to-end" do
       post handle_signin_path, params: { email_address: user.email_address, password: "Password123!" }
-      post mics_create_claim_path(mic.slug), params: { mic_claim: { role: "producer", proof: { email: "no@example.com" } } }
+      post mics_create_claim_path(mic.slug), params: { mic_claim: { role: "owner", proof: { email: "no@example.com" } } }
       claim = MicClaim.last
       expect(claim.status).to eq("pending")
 
@@ -119,8 +119,8 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
       post mics_approve_claim_path(claim.id)
       claim.reload
       expect(claim.status).to eq("approved")
-      expect(MicProducer.where(mic: mic, user: user).exists?).to be(true)
-      expect(mic.reload.lead_producer_user_id).to eq(user.id)
+      expect(MicOwner.where(mic: mic, user: user).exists?).to be(true)
+      expect(mic.reload.lead_owner_user_id).to eq(user.id)
 
       # Producer can see their dashboard.
       delete signout_path
@@ -134,7 +134,7 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
     let(:user) { create(:user, password: "Password123!") }
 
     it "creates Org → Production → Shows → SignUpForm and links the mic" do
-      create(:mic_producer, mic: mic, user: user, role: :producer)
+      create(:mic_owner, mic: mic, user: user, role: :owner)
       post handle_signin_path, params: { email_address: user.email_address, password: "Password123!" }
 
       expect {

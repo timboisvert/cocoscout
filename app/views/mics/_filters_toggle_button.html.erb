@@ -1,0 +1,10 @@
+<%# Mobile-only Filters button. Toggles the `#city-filters` <details>
+    in the sidebar. Hidden on lg+ where the sidebar is always open. %>
+<button type="button"
+        onclick="(function(){var d=document.getElementById('city-filters-mobile');if(d){d.open=!d.open;if(d.open)d.scrollIntoView({block:'nearest',behavior:'smooth'});}})()"
+        class="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-pink-50 rounded">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M6 12h12M10 20h4"/>
+  </svg>
+  Filters
+</button>

@@ -392,8 +392,7 @@ class SuperadminController < ApplicationController
       session[:impersonate_user_id] = user.id
     end
 
-    # Redirect
-    redirect_to my_dashboard_path and return
+    redirect_to safe_post_impersonation_path(default: my_dashboard_path) and return
   end
 
   def stop_impersonating
@@ -413,7 +412,18 @@ class SuperadminController < ApplicationController
     # Clean up
     session.delete(:user_doing_the_impersonating)
     cookies.delete(:impersonator_user_id)
-    redirect_to my_dashboard_path
+    redirect_to safe_post_impersonation_path(default: my_dashboard_path)
+  end
+
+  # Accepts an optional `return_to` param so impersonation flows that
+  # originate from the Mics Finder can return there instead of dumping
+  # the user on the main CocoScout dashboard. Only same-host relative
+  # paths under `/mics/` are honored.
+  def safe_post_impersonation_path(default:)
+    target = params[:return_to].to_s
+    return default if target.blank?
+    return default unless target.start_with?("/mics/") || target == "/mics"
+    target
   end
 
   def change_email

@@ -50,7 +50,7 @@
     <% end %>
   </section>
 
-  <%# Pending claims — producers asking to take ownership of an unclaimed mic. %>
+  <%# Pending claims — owners asking to take ownership of an unclaimed mic. %>
   <section id="claims">
     <h2 class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">
       Pending claims (<%= @pending_claims.size %>)
@@ -62,7 +62,7 @@
             <div class="flex-1 min-w-0">
               <div class="font-bold text-gray-900"><%= c.mic.name %></div>
               <div class="text-xs text-gray-500">
-                <%= c.claimant.email_address %> · claiming <strong><%= c.role.humanize %></strong>
+                <%= c.claimant.email_address %> · claiming <strong><%= mics_role_label(c.role) %></strong>
               </div>
               <% if c.note.present? %>
                 <div class="text-xs text-gray-700 mt-1 whitespace-pre-line"><%= c.note %></div>

@@ -71,7 +71,7 @@ RSpec.describe "Mics growth flow", type: :request do
 
   describe "migration wizard" do
     before do
-      create(:mic_producer, mic: mic, user: user, role: :producer)
+      create(:mic_owner, mic: mic, user: user, role: :owner)
       sign_in
     end
 

@@ -77,4 +77,27 @@
       <p class="px-4 sm:px-5 py-6 text-sm text-gray-500">No hubs yet.</p>
     <% end %>
   </section>
+
+  <section class="bg-white border border-gray-200 mt-6">
+    <header class="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-baseline justify-between gap-2">
+      <h2 class="text-xs uppercase tracking-wider text-gray-600 font-bold">City votes</h2>
+      <span class="text-xs text-gray-500"><%= pluralize(@total_votes, "vote") %> total</span>
+    </header>
+    <% if @top_vote_cities.any? %>
+      <ul class="divide-y divide-gray-100">
+        <% @top_vote_cities.each do |(city, state), count| %>
+          <% existing = CityHub.find_by("LOWER(name) = ? AND state = ?", city.downcase, state) %>
+          <li class="px-4 sm:px-5 py-2.5 flex items-baseline gap-3 hover:bg-pink-50">
+            <span class="flex-1 min-w-0 font-bold text-gray-900 truncate"><%= city %>, <%= state %></span>
+            <% if existing %>
+              <span class="text-[10px] uppercase tracking-wider text-emerald-700 font-bold">Already a hub</span>
+            <% end %>
+            <span class="text-xs text-gray-500 tabular-nums shrink-0"><%= count %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="px-4 sm:px-5 py-6 text-sm text-gray-500">No votes yet.</p>
+    <% end %>
+  </section>
 </main>

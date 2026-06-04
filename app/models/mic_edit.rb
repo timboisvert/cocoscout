@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Audit log row for any change to a Mic — producer edit, accepted suggestion,
+# Audit log row for any change to a Mic — owner edit, accepted suggestion,
 # admin override, migration wizard, system action.
 class MicEdit < ApplicationRecord
   belongs_to :mic
@@ -8,7 +8,7 @@ class MicEdit < ApplicationRecord
                       foreign_key: :editor_user_id, optional: true
 
   enum :source, {
-    producer: 0,
+    owner: 0,
     suggestion: 1,
     admin: 2,
     migration: 3,

@@ -27,7 +27,7 @@ RSpec.describe "Mics My page", type: :request do
 
     it "lists managed mics with a Manage link" do
       mic = create(:mic, venue: venue, name: "Mustache Mic")
-      create(:mic_producer, mic: mic, user: user, role: :producer)
+      create(:mic_owner, mic: mic, user: user, role: :owner)
       sign_in
 
       get mics_my_path
@@ -61,7 +61,7 @@ RSpec.describe "Mics My page", type: :request do
 
     it "deduplicates a mic the user both runs and favorites across sections" do
       mic = create(:mic, venue: venue, name: "Dual Mic")
-      create(:mic_producer, mic: mic, user: user, role: :producer)
+      create(:mic_owner, mic: mic, user: user, role: :owner)
       MicFavorite.create!(user: user, mic: mic)
       sign_in
 

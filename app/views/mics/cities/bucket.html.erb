@@ -37,11 +37,18 @@
           <%= pluralize(@mics.size, "mic") %>
         </p>
       </div>
-      <%= render "mics/list_map_toggle",
-            list_url: mics_with_qp(bucket_path, qp.except(:view)),
-            map_url:  mics_with_qp(bucket_path, qp.merge(view: "map")),
-            active:   @view %>
+      <div class="flex items-center gap-2">
+        <%= render "mics/filters_toggle_button" %>
+        <%= render "mics/list_map_toggle",
+              list_url: mics_with_qp(bucket_path, qp.except(:view)),
+              map_url:  mics_with_qp(bucket_path, qp.merge(view: "map")),
+              active:   @view %>
+      </div>
     </section>
+
+    <div class="lg:hidden border-b border-gray-100">
+      <%= render "mics/city_filters", id: "city-filters-mobile", slug: @slug %>
+    </div>
 
     <% if @view == "map" %>
       <%= render "mics/mics_map_area", mics: @mics %>

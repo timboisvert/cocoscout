@@ -20,7 +20,7 @@ module Mics
       if announcement.save
         # Email fan-out OFF for now. The notify_subscribers flag is
         # preserved on the record so the producer's intent is recorded.
-        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :producer,
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
                                 field: "announcement", new_value: announcement.title.presence || "posted")
         redirect_to mics_owner_mic_path(@mic.slug), notice: "Announcement posted."
       else

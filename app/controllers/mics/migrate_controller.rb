@@ -73,7 +73,7 @@ module Mics
     def authorized?
       return false unless current_user
       return true if current_user.respond_to?(:superadmin?) && current_user.superadmin?
-      @mic.mic_producers.where(user_id: current_user.id, role: MicProducer.roles[:producer]).exists?
+      @mic.mic_owners.where(user_id: current_user.id, role: MicOwner.roles[:owner]).exists?
     end
   end
 end

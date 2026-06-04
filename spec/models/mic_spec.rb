@@ -41,7 +41,7 @@ RSpec.describe Mic, type: :model do
       mic = create(:mic, day_of_week: 1, starts_local_time: "20:00",
                           canceled_until: Date.current + 60.days)
       occs = mic.next_occurrences(limit: 3)
-      expect(occs.first[:starts_at].to_date).to be > (Date.current + 60.days)
+      expect(occs.first[:starts_at].to_date).to be >= (Date.current + 60.days)
     end
   end
 

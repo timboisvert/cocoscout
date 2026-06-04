@@ -8,7 +8,7 @@ module Mics
 
     def show
       # ── Mic list (searchable, sortable) — scoped to this hub. %>
-      scope = Mic.in_hub(@hub).includes(:venue, :mic_producers).references(:venues)
+      scope = Mic.in_hub(@hub).includes(:venue, :mic_owners).references(:venues)
 
       if params[:q].present?
         q = "%#{params[:q].downcase}%"
@@ -91,12 +91,12 @@ module Mics
       claim = scoped_claim!
       MicClaim.transaction do
         claim.update!(status: :approved, decided_at: Time.current, adjudicator: current_user)
-        claim.mic.mic_producers.find_or_create_by!(user_id: claim.claimant_user_id) do |mp|
+        claim.mic.mic_owners.find_or_create_by!(user_id: claim.claimant_user_id) do |mp|
           mp.role = claim.role
           mp.accepted_at = Time.current
         end
-        if claim.role_producer?
-          claim.mic.update!(lead_producer_user_id: claim.claimant_user_id, claimed_at: Time.current)
+        if claim.role_owner?
+          claim.mic.update!(lead_owner_user_id: claim.claimant_user_id, claimed_at: Time.current)
         end
         claim.mic.mic_edits.create!(editor_user_id: current_user.id, source: :admin, field: "claim",
                                      new_value: "approved")
@@ -118,15 +118,15 @@ module Mics
         challenge.update!(status: outcome, decided_at: Time.current, adjudicator: current_user)
         case outcome
         when "replaced"
-          challenge.mic.mic_producers.where(user_id: challenge.target_user_id).destroy_all if challenge.target_user_id
-          challenge.mic.mic_producers.find_or_create_by!(user_id: challenge.challenger_user_id) do |mp|
-            mp.role = :producer
+          challenge.mic.mic_owners.where(user_id: challenge.target_user_id).destroy_all if challenge.target_user_id
+          challenge.mic.mic_owners.find_or_create_by!(user_id: challenge.challenger_user_id) do |mp|
+            mp.role = :owner
             mp.accepted_at = Time.current
           end
-          challenge.mic.update!(lead_producer_user_id: challenge.challenger_user_id)
+          challenge.mic.update!(lead_owner_user_id: challenge.challenger_user_id)
         when "co_produce"
-          challenge.mic.mic_producers.find_or_create_by!(user_id: challenge.challenger_user_id) do |mp|
-            mp.role = :co_producer
+          challenge.mic.mic_owners.find_or_create_by!(user_id: challenge.challenger_user_id) do |mp|
+            mp.role = :co_owner
             mp.accepted_at = Time.current
           end
         end

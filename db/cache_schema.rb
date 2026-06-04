@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -615,7 +615,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -1067,16 +1067,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
     t.index ["mic_id"], name: "index_mic_occurrence_statuses_on_mic_id"
   end
 
-  create_table "mic_producers", force: :cascade do |t|
+  create_table "mic_owners", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.bigint "mic_id", null: false
     t.integer "role", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["mic_id", "user_id"], name: "index_mic_producers_on_mic_id_and_user_id", unique: true
-    t.index ["mic_id"], name: "index_mic_producers_on_mic_id"
-    t.index ["user_id"], name: "index_mic_producers_on_user_id"
+    t.index ["mic_id", "user_id"], name: "index_mic_owners_on_mic_id_and_user_id", unique: true
+    t.index ["mic_id"], name: "index_mic_owners_on_mic_id"
+    t.index ["user_id"], name: "index_mic_owners_on_user_id"
   end
 
   create_table "mic_signup_alerts", force: :cascade do |t|
@@ -1142,7 +1142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
     t.string "host_summary"
     t.datetime "last_verified_at"
     t.bigint "last_verified_by_user_id"
-    t.bigint "lead_producer_user_id"
+    t.bigint "lead_owner_user_id"
     t.integer "min_age"
     t.string "name", null: false
     t.text "pause_note"
@@ -1168,7 +1168,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "venue_id", null: false
-    t.index ["lead_producer_user_id"], name: "index_mics_on_lead_producer_user_id"
+    t.index ["lead_owner_user_id"], name: "index_mics_on_lead_owner_user_id"
     t.index ["paused"], name: "index_mics_on_paused"
     t.index ["pending"], name: "index_mics_on_pending", where: "(pending = true)"
     t.index ["production_id"], name: "index_mics_on_production_id", unique: true, where: "(production_id IS NOT NULL)"
@@ -2652,7 +2652,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_152847) do
   add_foreign_key "mic_favorites", "mics"
   add_foreign_key "mic_links", "mics"
   add_foreign_key "mic_occurrence_statuses", "mics"
-  add_foreign_key "mic_producers", "mics"
+  add_foreign_key "mic_owners", "mics"
   add_foreign_key "mic_signup_alerts", "mics"
   add_foreign_key "mic_suggestions", "mics"
   add_foreign_key "mic_taggings", "mic_tags"

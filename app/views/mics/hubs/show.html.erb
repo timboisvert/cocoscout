@@ -123,7 +123,7 @@
               </div>
               <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 my-3">
                 <div><dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Claimant</dt><dd><%= claim.claimant.email_address %></dd></div>
-                <div><dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Requested role</dt><dd class="font-bold"><%= claim.role.humanize %></dd></div>
+                <div><dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Requested role</dt><dd class="font-bold"><%= mics_role_label(claim.role) %></dd></div>
                 <% if claim.proof["evidence_url"].present? %>
                   <div><dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Evidence</dt><dd><a href="<%= claim.proof["evidence_url"] %>" target="_blank" rel="noopener" class="text-pink-600 hover:underline">View →</a></dd></div>
                 <% end %>
@@ -293,7 +293,7 @@
               <li class="px-4 sm:px-6 py-3 flex items-baseline gap-3 hover:bg-pink-50">
                 <span class="flex-1 min-w-0">
                   <%= link_to mic.name, mics_detail_path(mic.slug), class: "font-bold text-gray-900 hover:underline" %>
-                  <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= pluralize(mic.mic_producers.size, "producer") %></span>
+                  <span class="block text-xs text-gray-500 truncate"><%= mic.venue.name %> · <%= pluralize(mic.mic_owners.size, "owner") %></span>
                 </span>
                 <%= link_to "Manage →", mics_owner_mic_path(mic.slug),
                       class: "text-xs text-pink-600 font-bold hover:underline shrink-0" %>
@@ -308,7 +308,7 @@
         <% if @mics_all.any? %>
           <ul class="divide-y divide-gray-100">
             <% @mics_all.each do |mic| %>
-              <% claimed = mic.mic_producers.any? %>
+              <% claimed = mic.mic_owners.any? %>
               <li class="px-4 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap hover:bg-pink-50">
                 <span class="flex-1 min-w-0">
                   <%= link_to mic.name, mics_detail_path(mic.slug), class: "font-bold text-gray-900 hover:underline" %>

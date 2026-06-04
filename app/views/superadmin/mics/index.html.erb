@@ -159,7 +159,7 @@
               </div>
               <div>
                 <dt class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Requested role</dt>
-                <dd class="font-bold"><%= claim.role.humanize %></dd>
+                <dd class="font-bold"><%= mics_role_label(claim.role) %></dd>
               </div>
               <% if claim.proof["evidence_url"].present? %>
                 <div>
@@ -238,7 +238,7 @@
                 <%= button_to "Replace lead", mics_resolve_challenge_path(ch.id, outcome: "replaced"), method: :post,
                       data: { turbo_confirm: "Make #{ch.challenger.email_address} the new lead?" },
                       class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-                <%= button_to "Add as co-producer", mics_resolve_challenge_path(ch.id, outcome: "co_produce"), method: :post,
+                <%= button_to "Add as co-owner", mics_resolve_challenge_path(ch.id, outcome: "co_produce"), method: :post,
                       class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
                 <%= button_to "Reject", mics_resolve_challenge_path(ch.id, outcome: "rejected"), method: :post,
                       class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
@@ -380,7 +380,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
           <% @mics.each do |mic| %>
-            <% claimed   = mic.mic_producers.any? %>
+            <% claimed   = mic.mic_owners.any? %>
             <% pending   = mic.pending %>
             <% status_chip = if pending then [ "Pending", "bg-amber-100 text-amber-700" ]
                               elsif mic.ended? then [ "Ended", "bg-gray-100 text-gray-500" ]

@@ -14,6 +14,17 @@ module MicsHelper
     DAY_NAMES_SHORT[day.to_i] if day.present?
   end
 
+  # Friendly label for MicOwner / MicClaim role enums. Default humanize
+  # strips the hyphen ("Co owner") — keep it for display.
+  def mics_role_label(role)
+    case role.to_s
+    when "owner"    then "Owner"
+    when "co_owner" then "Co-owner"
+    when "host"     then "Host"
+    else role.to_s.humanize
+    end
+  end
+
   # Render the page's `<title>` AND `<meta name="description">` plus a full
   # OG/Twitter pack. Call from a view with `mics_seo title: "...", description: "..."`.
   def mics_seo(title:, description:, canonical_url: nil, og_image_url: nil)
