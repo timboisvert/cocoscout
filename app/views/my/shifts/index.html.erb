@@ -117,7 +117,7 @@
 
                   <%# Details %>
                   <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-900 truncate"><%= shift.house_role.name %></div>
+                    <div class="font-medium text-gray-900 truncate"><%= shift.role_label %></div>
                     <div class="text-sm text-gray-600">
                       <span class="tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
                       <% if org %>· <%= org.name %><% end %>

@@ -184,6 +184,13 @@ class Message < ApplicationRecord
         label =
           if m.sent_as_production_team?
             m.production&.name || "Production Team"
+          elsif m.system_generated?
+            # System notifications hide whichever account technically sent them
+            # (e.g. an anonymous mic suggestion falls back to a superadmin as
+            # sender). MUST mirror Message#sender_name — this is the compact-inbox
+            # copy of that logic, and forgetting it here is why system messages
+            # showed "from <some admin>" in the list while the thread said otherwise.
+            "Automated Notification"
           elsif m.sender_type == "User"
             m.sender_id == current_user&.id ? "me" : (user_names[m.sender_id] || "Unknown")
           elsif m.sender_type == "Person"

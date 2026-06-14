@@ -7,6 +7,9 @@
 class Shift < ApplicationRecord
   belongs_to :organization
   belongs_to :house_role
+  # Optional second role this shift also covers ("doubling up"), e.g. a bartender
+  # who is also the manager. One shift, one assignment, two duties.
+  belongs_to :secondary_house_role, class_name: "HouseRole", optional: true
   belongs_to :source, polymorphic: true, optional: true
 
   has_many :shift_assignments, dependent: :destroy
@@ -21,6 +24,18 @@ class Shift < ApplicationRecord
   validates :starts_at, :ends_at, presence: true
   validates :required_count, numericality: { only_integer: true, greater_than: 0 }
   validate :ends_after_starts
+  validate :secondary_role_differs_from_primary
+
+  # True when this shift covers a second role.
+  def doubled?
+    secondary_house_role_id.present?
+  end
+
+  # Display label combining both roles, e.g. "Bartender + Manager".
+  def role_label
+    return house_role.name unless doubled?
+    "#{house_role.name} + #{secondary_house_role.name}"
+  end
 
   scope :for_week, ->(date) {
     week_start = date.beginning_of_week
@@ -61,5 +76,11 @@ class Shift < ApplicationRecord
   def ends_after_starts
     return unless starts_at.present? && ends_at.present? && ends_at <= starts_at
     errors.add(:ends_at, "must be after the shift start time")
+  end
+
+  def secondary_role_differs_from_primary
+    return if secondary_house_role_id.blank?
+    return if secondary_house_role_id != house_role_id
+    errors.add(:secondary_house_role_id, "must be a different role than the primary")
   end
 end

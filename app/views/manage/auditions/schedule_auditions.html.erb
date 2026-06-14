@@ -1,6 +1,33 @@
 <% content_for :title, "Schedule Auditions" %>
 
-<div class="w-full mb-10" data-controller="drag-audition location-modal audition-session-modal" data-production-id="<%= @production.id %>" data-audition-cycle-id="<%= @audition_cycle.id %>">
+<%
+  # Payload for the assign modal: every audition request with vote counts,
+  # plus per-session availability and current assignments.
+  requests_payload = @available_people.map do |r|
+    ent = r.requestable
+    vc = r.vote_counts
+    {
+      id: r.id,
+      name: ent&.name.to_s,
+      initials: (ent.respond_to?(:initials) ? ent.initials : ent&.name.to_s[0, 2].upcase),
+      headshot: (ent ? safe_headshot_url(ent, variant: :thumb) : nil),
+      yes: vc[:yes], no: vc[:no], maybe: vc[:maybe]
+    }
+  end
+  assign_payload = {
+    requests: requests_payload,
+    availability: @session_availability,
+    inSession: @in_session_request_ids,
+    scheduledRequestIds: @scheduled_request_ids.map(&:to_s)
+  }
+%>
+
+<div class="w-full mb-10"
+     data-controller="audition-assign audition-notify"
+     data-audition-assign-payload-value="<%= assign_payload.to_json %>"
+     data-audition-assign-add-url-value="/manage/auditions/add_to_session"
+     data-audition-assign-remove-url-value="/manage/auditions/remove_from_session"
+     data-audition-notify-preview-url-value="<%= manage_notify_preview_signups_auditions_cycle_path(@production, @audition_cycle) %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -20,90 +47,191 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <p class="text-base font-semibold text-gray-700">Schedule Auditions</p>
-        <p class="text-sm text-gray-600 hidden sm:block">Drag each person from the right to a session on the left to schedule them.</p>
-        <p class="text-sm text-gray-600 sm:hidden">Tap + on a session to add auditionees.</p>
+        <p class="text-sm text-gray-600">Click <span class="font-medium">Add</span> on a session to pick auditionees. People available for that session show first, sorted by votes.</p>
       </div>
-      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: manage_signups_auditions_cycle_requests_path(@production, @audition_cycle), variant: "primary" } %>
-    </div>
-  </div>
-
-  <div class="flex gap-6">
-    <!-- Sessions on the left (smaller) -->
-    <div class="w-full lg:w-1/2">
-      <%= render partial: "sessions_list", locals: { audition_sessions: @audition_sessions, available_people: @available_people, production: @production, audition_cycle: @audition_cycle, scheduled_request_ids: @scheduled_request_ids } %>
-    </div>
-
-    <!-- Audition Requests on the right (larger) - hidden on mobile -->
-    <div class="hidden lg:block w-1/2 flex-shrink-0">
-      <div class="sticky top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
-        <%= render "shared/card_header", title: "Audition Requests" do %>
-          <p class="text-xs text-gray-500">
-            Drag each person to an audition slot to schedule them.
-          </p>
-        <% end %>
-        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, scheduled_request_ids: @scheduled_request_ids, scheduled_auditionables: @scheduled_auditionables } %>
+      <div class="flex items-center gap-3">
+        <%= link_to "Finish without notifying", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+              class: "text-sm text-gray-500 hover:text-gray-700 underline whitespace-nowrap" %>
+        <%= render partial: "shared/button", locals: {
+              text: "Review & notify", variant: "primary", type: :button,
+              data: { action: "click->audition-notify#open" } } %>
       </div>
     </div>
   </div>
 
-  <%= render "manage/audition_sessions/modals" %>
+  <% if @audition_sessions.any? %>
+    <div class="space-y-3">
+      <% @audition_sessions.each do |session| %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <%# Session header %>
+          <div class="flex items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <div class="flex-shrink-0 w-12 text-center">
+              <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+              <div class="text-xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900"><%= session.start_at.strftime("%A, %-l:%M %p") %></div>
+              <div class="text-sm text-gray-600 truncate"><%= session.location&.name || "No location" %></div>
+            </div>
+          </div>
 
-  <%# Mobile Add Modal %>
-  <div data-drag-audition-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drag-audition#closeAddModal">
-    <div class="bg-white w-full rounded-t-2xl max-h-[80vh] flex flex-col" data-action="click->drag-audition#stopPropagation">
-      <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h2 data-modal-title class="text-lg font-semibold text-gray-900">Add to Session</h2>
-        <button type="button" data-action="click->drag-audition#closeAddModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+          <%# Assigned auditionees + Add slot (swapped on add/remove). Click is
+              delegated here so it keeps working after the innerHTML is replaced. %>
+          <div data-audition-assign-target="sessionSlots" data-session-id="<%= session.id %>"
+               data-action="click->audition-assign#slotsClick">
+            <%= render "manage/auditions/session_slots", session: session, production: @production, audition_cycle: @audition_cycle %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+      <p class="text-sm text-gray-600 mb-3">No sessions to schedule yet.</p>
+      <%= link_to "Back to sessions", manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
+            class: "text-pink-600 hover:text-pink-700 underline text-sm" %>
+    </div>
+  <% end %>
+
+  <%# === Assign modal === %>
+  <div data-audition-assign-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->audition-assign#backdropClose keydown.esc@window->audition-assign#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-10">
+      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[85vh]"
+           data-action="click->audition-assign#stopPropagation">
+        <%# Header %>
+        <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Add auditionees</h3>
+            <div class="text-xs text-gray-500" data-audition-assign-target="subtitle"></div>
+          </div>
+          <button type="button" data-action="click->audition-assign#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%# Controls: search + availability + hide-scheduled %>
+        <div class="px-5 py-3 border-b border-gray-100 flex flex-col gap-3 flex-shrink-0">
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" placeholder="Search auditionees by name…"
+                   data-audition-assign-target="search"
+                   data-action="input->audition-assign#search"
+                   class="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs text-gray-500 mr-1">Availability</span>
+              <button type="button" data-audition-assign-target="filterAvailable" data-action="click->audition-assign#showAvailableOnly"
+                      class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white">Available</button>
+              <button type="button" data-audition-assign-target="filterAll" data-action="click->audition-assign#showAll"
+                      class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">Everyone</button>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+              Hide already-scheduled
+              <span class="relative inline-block w-9 h-5 flex-shrink-0">
+                <input type="checkbox" checked
+                       data-audition-assign-target="hideScheduled"
+                       data-action="change->audition-assign#toggleHideScheduled"
+                       class="sr-only peer">
+                <span class="block w-9 h-5 rounded-full bg-gray-300 peer-checked:bg-pink-500 transition-colors"></span>
+                <span class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform peer-checked:translate-x-4"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <%# Results — click delegated so JS-injected rows stay clickable. %>
+        <div class="px-5 py-4 overflow-y-auto flex-1" data-audition-assign-target="results"
+             data-action="click->audition-assign#resultsClick">
+          <%# populated by JS %>
+        </div>
       </div>
-      <div class="p-4 overflow-y-auto">
-        <p class="text-xs text-gray-500 mb-3">Tap to add to this session</p>
-        <div class="space-y-1">
-          <% @available_people.each do |request| %>
-            <%
-              auditionable = request.requestable
-              is_scheduled = (@scheduled_request_ids || Set.new).include?(request.id)
-            %>
-            <button type="button"
-              class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_scheduled ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
-              data-action="click->drag-audition#addFromModal"
-              data-audition-request-id="<%= request.id %>"
-              <%= 'disabled' if is_scheduled %>>
-              <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
-              <% if headshot_url %>
-                <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-              <% elsif auditionable.is_a?(Person) %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
-                  <%= auditionable.initials %>
+    </div>
+  </div>
+
+  <%# === Review & Notify modal === %>
+  <div data-audition-notify-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->audition-notify#backdropClose keydown.esc@window->audition-notify#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-10">
+      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[88vh]"
+           data-action="click->audition-notify#stopPropagation">
+        <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Notify auditionees</h3>
+            <div class="text-xs text-gray-500" data-audition-notify-target="summary">Reviewing who's auditioning…</div>
+          </div>
+          <button type="button" data-action="click->audition-notify#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: manage_finalize_and_notify_invitations_signups_auditions_cycle_path(@production, @audition_cycle), method: :post, local: true, class: "flex flex-col min-h-0 flex-1" do %>
+          <div data-controller="tabs" data-tabs-select-key-value="notify" class="flex flex-col min-h-0 flex-1">
+            <%# Tabs %>
+            <nav class="flex gap-1 px-5 pt-2 border-b border-gray-200 flex-shrink-0">
+              <button type="button" data-tabs-target="tab" data-index="0" data-action="click->tabs#select"
+                      class="px-4 py-2 text-sm font-medium border-b-2 -mb-px border-pink-500 text-pink-600 bg-white">
+                Getting an audition <span class="text-gray-400 font-normal" data-audition-notify-target="invitedCount"></span>
+              </button>
+              <button type="button" data-tabs-target="tab" data-index="1" data-action="click->tabs#select"
+                      class="px-4 py-2 text-sm font-medium border-b-2 -mb-px border-transparent text-gray-500 bg-gray-50">
+                Not getting an audition <span class="text-gray-400 font-normal" data-audition-notify-target="notInvitedCount"></span>
+              </button>
+            </nav>
+
+            <div class="px-5 py-4 overflow-y-auto flex-1">
+              <%# Panel: getting an audition %>
+              <div data-tabs-target="panel">
+                <div class="border border-gray-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100 mb-3" data-audition-notify-target="invitedList">
+                  <div class="px-3 py-6 text-center text-sm text-gray-400">Loading…</div>
                 </div>
-              <% else %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                  </svg>
-                </div>
-              <% end %>
-              <div class="flex-1 text-left min-w-0">
-                <div class="font-medium text-sm text-gray-900 truncate"><%= auditionable.name %></div>
-                <div class="text-xs text-gray-500">
-                  <% if is_scheduled %>
-                    Already scheduled
-                  <% else %>
-                    Ready to schedule
-                  <% end %>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Message to those auditioning</label>
+                <%= rich_text_area_tag "invited_body", @invited_default_message, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                <p class="text-[11px] text-gray-500 mt-1">Each person's audition time is added automatically. <span class="font-medium">[Name]</span> becomes their name.</p>
+
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" data-tabs-target="reviewCheckbox" data-action="change->tabs#checkAllReviewed"
+                           class="h-4 w-4 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500">
+                    <span class="text-sm text-gray-700">I've reviewed who's getting an audition and their message</span>
+                  </label>
                 </div>
               </div>
-              <% unless is_scheduled %>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              <% end %>
-            </button>
-          <% end %>
-        </div>
+
+              <%# Panel: not getting an audition %>
+              <div data-tabs-target="panel" class="hidden">
+                <div class="border border-gray-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100 mb-3" data-audition-notify-target="notInvitedList">
+                  <div class="px-3 py-6 text-center text-sm text-gray-400">Loading…</div>
+                </div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Message to those not auditioning</label>
+                <%= rich_text_area_tag "not_invited_body", @not_invited_default_message, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                <p class="text-[11px] text-gray-500 mt-1"><span class="font-medium">[Name]</span> becomes their name.</p>
+
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" data-tabs-target="reviewCheckbox" data-action="change->tabs#checkAllReviewed"
+                           class="h-4 w-4 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500">
+                    <span class="text-sm text-gray-700">I've reviewed who's not getting an audition and their message</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4" data-audition-notify-target="alreadyNotified" hidden></div>
+            </div>
+
+            <%# Footer %>
+            <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200 flex-shrink-0">
+              <button type="button" data-action="click->audition-notify#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+              <%# Revealed only once both groups are confirmed above. %>
+              <div class="hidden flex items-center gap-3" data-tabs-target="sendSection">
+                <span class="text-xs text-gray-500 hidden sm:inline">Finalizes the schedule &amp; reveals results.</span>
+                <%= render "shared/button", text: "Send & finalize", variant: "primary", size: "small", type: :submit %>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>

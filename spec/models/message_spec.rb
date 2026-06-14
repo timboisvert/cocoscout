@@ -459,4 +459,31 @@ RSpec.describe Message do
       expect(message.subscribed?(prod_manager)).to be true
     end
   end
+
+  describe ".thread_summaries_for" do
+    let(:viewer) { create(:user) }
+
+    it "labels a system-generated message as the automated sender, not its fallback account" do
+      # An anonymous mic suggestion is system_generated but stores a superadmin
+      # as the technical sender; the inbox list must not show that admin's name.
+      admin = create(:user)
+      create(:person, name: "Andy Wanacott", user: admin)
+      message = create(:message, sender: admin, system_generated: true, visibility: :personal, production: nil)
+
+      summary = Message.thread_summaries_for([ message ], current_user: viewer)
+
+      expect(summary[message.id][:participants]).to eq("Automated Notification")
+      expect(summary[message.id][:participants]).not_to include("Andy")
+    end
+
+    it "still shows a real person's name for normal messages" do
+      sender = create(:user)
+      person = create(:person, name: "Reese Real", user: sender)
+      sender.update!(default_person: person)
+      message = create(:message, sender: sender, system_generated: false, visibility: :personal)
+
+      summary = Message.thread_summaries_for([ message ], current_user: viewer)
+      expect(summary[message.id][:participants]).to eq("Reese Real")
+    end
+  end
 end

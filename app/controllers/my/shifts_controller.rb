@@ -16,9 +16,16 @@ module My
         .where(person_id: people_ids)
         .joins(:shift)
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(:person, shift: [ :house_role, :organization, :source ])
+        .includes(:person, shift: [ :house_role, :secondary_house_role, :organization, :source ])
         .order("shifts.starts_at ASC")
         .to_a
+
+      # Drafts are hidden: a shift only shows once its org has finalized that
+      # week's schedule. Keyed by (organization_id, Monday-of-week).
+      finalized_weeks = StaffingFinalization.finalized.pluck(:organization_id, :week_start).to_set
+      assignments.select! do |a|
+        finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])
+      end
 
       @rows = assignments.map { |a| { assignment: a, shift: a.shift, person: a.person } }
       @rows_by_day = @rows.group_by { |r| r[:shift].starts_at.to_date }

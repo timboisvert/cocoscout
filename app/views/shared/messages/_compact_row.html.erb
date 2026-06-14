@@ -30,11 +30,12 @@
     end
 %>
 
+<%# msg-* class hooks let the message-density controller adjust spacing/wrapping. %>
 <%= link_to message_path,
-      class: "flex items-center gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
+      class: "msg-row flex items-center gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
       data: { message_id: message.id } do %>
   <%# Participants + thread count %>
-  <span class="flex-shrink-0 w-40 sm:w-56 flex items-baseline gap-2 min-w-0">
+  <span class="msg-participants flex-shrink-0 w-40 sm:w-56 flex items-baseline gap-2 min-w-0">
     <span class="truncate text-sm <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>">
       <%= participants %>
     </span>
@@ -44,12 +45,12 @@
   </span>
 
   <%# Subject - snippet %>
-  <span class="flex-1 min-w-0 truncate text-sm">
-    <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="font-light text-gray-400"> - <%= snippet %></span><% end %>
+  <span class="msg-main flex-1 min-w-0 truncate text-sm">
+    <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="msg-sep font-light text-gray-400"> - </span><span class="msg-snippet font-light text-gray-400"><%= snippet %></span><% end %>
   </span>
 
   <%# Date %>
-  <span class="flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
+  <span class="msg-date flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
     <%= date_label %>
   </span>
 <% end %>

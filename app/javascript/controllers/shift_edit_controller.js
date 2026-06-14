@@ -14,6 +14,7 @@ export default class extends Controller {
     static targets = [
         "modal", "form", "title", "dayLabel",
         "startTimeInput", "endTimeInput", "startInput", "endInput",
+        "secondaryRoleSelect",
         "removeSection", "removeButton", "removePersonName"
     ]
     static values = {
@@ -49,6 +50,11 @@ export default class extends Controller {
         }
         if (this.hasStartTimeInputTarget) this.startTimeInputTarget.value = startTime
         if (this.hasEndTimeInputTarget) this.endTimeInputTarget.value = endTime
+
+        // Preselect the secondary ("also covers") role, if any.
+        if (this.hasSecondaryRoleSelectTarget) {
+            this.secondaryRoleSelectTarget.value = btn.dataset.shiftSecondaryRoleId || ""
+        }
 
         this.syncHiddenFields()
 

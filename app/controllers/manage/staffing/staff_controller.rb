@@ -4,12 +4,12 @@ module Manage
   module Staffing
     class StaffController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_staff_member, only: %i[update destroy]
+      before_action :set_staff_member, only: %i[update destroy invite]
 
       def index
         @staff_members = Current.organization.organization_staff_members
                                 .active
-                                .includes(:person, :house_roles)
+                                .includes(:house_roles, person: :user)
                                 .joins(:person)
                                 .order("people.name")
         @house_roles = Current.organization.house_roles.active.ordered
@@ -62,6 +62,33 @@ module Manage
       def update
         sync_role_ids(@staff_member, params[:house_role_ids])
         redirect_to manage_staffing_staff_path, notice: "Staff member updated."
+      end
+
+      # Grant an already-added staffer a CocoScout account so they can be
+      # notified. Needed for people added from the org (no account) rather than
+      # invited by email. Creates/links a user and emails an invitation.
+      def invite
+        person = @staff_member.person
+        email = person.email.to_s.strip.downcase
+
+        unless email.match?(URI::MailTo::EMAIL_REGEXP)
+          redirect_to manage_staffing_staff_path,
+                      alert: "#{person.name} has no email on file — add one before inviting them." and return
+        end
+
+        ActiveRecord::Base.transaction do
+          if person.user.nil?
+            user = User.find_by(email_address: email) ||
+                   User.create!(email_address: email, password: User.generate_secure_password)
+            person.update!(user: user)
+          end
+          invitation = PersonInvitation.create!(email: email, organization: Current.organization)
+          Manage::PersonMailer.person_invitation(invitation).deliver_later
+        end
+
+        redirect_to manage_staffing_staff_path, notice: "Invitation sent to #{person.name}. They can be notified once they set up their account."
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to manage_staffing_staff_path, alert: "Couldn't invite #{person.name}: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       def destroy

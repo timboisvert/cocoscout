@@ -16,6 +16,7 @@ class Organization < ApplicationRecord
   has_many :house_roles, dependent: :destroy
   has_many :organization_staff_members, dependent: :destroy
   has_many :shifts, dependent: :destroy
+  has_many :staffing_finalizations, dependent: :destroy
   has_many :payroll_runs, dependent: :destroy
   has_many :agreement_templates, dependent: :destroy
   has_many :questionnaires, dependent: :destroy

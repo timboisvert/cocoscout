@@ -1,6 +1,6 @@
 <% content_for :title, "#{@production.name} Messages" %>
 
-<div class="w-full" data-controller="contact-production">
+<div class="w-full" data-controller="contact-production message-density">
   <%# Production Header - artful display with logo and name %>
   <div class="bg-white border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 mb-6">
     <div class="flex items-center gap-4">
@@ -40,7 +40,7 @@
   </div>
 
   <% if @messages.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div data-message-density-target="list" class="msg-density-compact border border-gray-200 rounded-lg overflow-hidden bg-white">
       <% @messages.each do |thread| %>
         <%= render "shared/messages/compact_row", message: thread, summary: @thread_summaries[thread.id] %>
       <% end %>

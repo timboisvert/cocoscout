@@ -1,6 +1,6 @@
 <% content_for :title, "Messages" %>
 
-<div class="w-full pb-8" data-controller="inbox">
+<div class="w-full pb-8" data-controller="inbox message-density">
   <%# New messages banner - shown when new messages arrive via ActionCable %>
   <div data-inbox-target="banner" class="hidden sticky top-0 z-40 mb-4">
     <button
@@ -40,12 +40,19 @@
             }
           }.to_json : "{}"
         }
-      }
+      },
+      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0 }
     ]
   } %>
 
-  <%# Filter Bar %>
+  <%# Search + Filter Bar %>
   <%= form_with url: manage_messages_path, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+    <%# Search sits above the filter box, spanning the row. %>
+    <div class="mb-3">
+      <%= render "shared/filters/search_input",
+            placeholder: "Search messages...", value: @search, name: "q", full_width: true %>
+    </div>
+
     <%= render "shared/filters/filter_bar",
         toggle_label: "Filters",
         wrapper_data_controller: "filter-select",
@@ -60,26 +67,11 @@
           },
           { separator: true },
           {
-            partial: "manage/messages/mark_all_read_filter",
-            locals: { path: mark_all_read_manage_messages_path, disabled: @unread_count == 0 }
-          },
-          { separator: true },
-          {
-            partial: "shared/filters/dropdown_filter",
+            partial: "shared/filters/order_toggle",
             locals: {
-              label: "Order",
-              name: "order",
-              options: [
-                { value: "newest", text: "Newest First" },
-                { value: "oldest", text: "Oldest First" }
-              ],
-              selected: @order || "newest",
-              data_attributes: {
-                action: "change->filter-select#update",
-                filter_select_filter_value: @filter,
-                filter_select_q_value: @search,
-                filter_select_production_id_value: @production_filter
-              }
+              current_order: @order,
+              newest_path: manage_messages_path(order: "newest", filter: @filter, q: @search, production_id: @production_filter),
+              oldest_path: manage_messages_path(order: "oldest", filter: @filter, q: @search, production_id: @production_filter)
             }
           },
           (@accessible_productions.count > 1 ? { separator: true } : nil),
@@ -99,19 +91,13 @@
             }
           } : nil),
           { separator: true },
-          {
-            partial: "shared/filters/search_input",
-            locals: {
-              placeholder: "Search messages...",
-              value: @search,
-              name: "q"
-            }
-          }
+          { partial: "shared/filters/layout_filter" }
         ].compact
     %>
     <%# Hidden fields to preserve filters when searching %>
     <%= f.hidden_field :filter, value: @filter %>
     <%= f.hidden_field :production_id, value: @production_filter %>
+    <%= f.hidden_field :order, value: @order %>
   <% end %>
 
   <% if @messages.empty? %>
@@ -141,7 +127,7 @@
       <p class="mt-1 text-sm text-gray-500"><%= empty_message %></p>
     </div>
   <% else %>
-    <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div data-message-density-target="list" class="mt-4 msg-density-compact border border-gray-200 rounded-lg overflow-hidden bg-white">
       <% @messages.each do |message| %>
         <%= render "shared/messages/compact_row", message: message, summary: @thread_summaries[message.id] %>
       <% end %>

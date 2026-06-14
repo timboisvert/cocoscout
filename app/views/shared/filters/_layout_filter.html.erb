@@ -1,0 +1,43 @@
+<%#
+  Layout/density control for the compact inbox — a filter-bar group of icon
+  buttons (compact / cozy / comfortable) wired to the message-density Stimulus
+  controller. Client-side only (localStorage); the enclosing page must carry
+  data-controller="message-density" and a data-message-density-target="list".
+
+  Mirrors the look of the shared filter bar's icon buttons.
+%>
+<div class="flex items-center gap-2">
+  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Layout</span>
+  <div class="flex gap-1">
+    <% [
+         [ "compact",     "Compact",     "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5", "M3.75 9h16.5M3.75 15h16.5" ],
+         [ "cozy",        "Cozy",        "M3.75 7.5h16.5M3.75 16.5h16.5", nil ],
+         [ "comfortable", "Comfortable", "M3.75 6h16.5M3.75 18h16.5", nil ]
+       ].each do |mode, label, path1, path2| %>
+      <button type="button"
+              data-action="message-density#set"
+              data-mode="<%= mode %>"
+              data-message-density-target="button"
+              title="<%= label %> view"
+              class="px-3 py-2 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="<%= path1 %>" />
+          <% if path2 %><path stroke-linecap="round" stroke-linejoin="round" d="<%= path2 %>" /><% end %>
+        </svg>
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  /* Compact is the default (utilities on .msg-row). These adjust the roomier modes. */
+  .msg-density-cozy .msg-row { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+
+  .msg-density-comfortable .msg-row { padding-top: 0.875rem; padding-bottom: 0.875rem; align-items: flex-start; }
+  /* Let the subject column wrap and drop the snippet onto its own line —
+     more breathing room, but still not the full message body. */
+  .msg-density-comfortable .msg-main { white-space: normal; overflow: visible; text-overflow: clip; }
+  .msg-density-comfortable .msg-sep { display: none; }
+  .msg-density-comfortable .msg-snippet { display: block; margin-top: 0.125rem; }
+  .msg-density-comfortable .msg-participants { align-self: flex-start; }
+</style>

@@ -9,6 +9,12 @@ class HouseRole < ApplicationRecord
   has_many :staff_role_qualifications, dependent: :destroy
   has_many :qualified_staff_members, through: :staff_role_qualifications, source: :organization_staff_member
 
+  # :house     → one shift spans the whole evening (first show start → last
+  #              show end), e.g. bartender, FOH, security.
+  # :show_specific → one shift per show/rehearsal, anchored to that single
+  #              event, e.g. tech who must be tied to a particular show.
+  enum :role_type, { house: 0, show_specific: 1 }, default: :house
+
   validates :name, presence: true, length: { maximum: 100 }
   validates :default_required_count, numericality: { only_integer: true, greater_than: 0 }
 

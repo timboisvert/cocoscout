@@ -301,19 +301,24 @@ module My
       end
 
       # --- House staffing shifts (Staffing module) ---
+      # Drafts are hidden: only show a shift once its org has finalized that
+      # week's schedule (same gate as the My Shifts page).
       if @event_type_filter.include?("shift") && selected_person_ids.any?
+        finalized_weeks = StaffingFinalization.finalized.pluck(:organization_id, :week_start).to_set
         ShiftAssignment
           .where(person_id: selected_person_ids)
           .joins(:shift)
           .where("shifts.starts_at >= ? AND shifts.starts_at <= ?", cal_start, cal_end)
-          .includes(shift: [ :house_role, :organization ])
+          .includes(shift: [ :house_role, :secondary_house_role, :organization ])
           .each do |a|
             shift = a.shift
+            next unless finalized_weeks.include?([ shift.organization_id, shift.starts_at.to_date.beginning_of_week ])
+
             @calendar_events << {
               date: shift.starts_at.to_date,
               time: shift.starts_at,
               title: shift.organization&.name || "Shift",
-              subtitle: shift.house_role.name,
+              subtitle: shift.role_label,
               path: my_shifts_path,
               type: :shift,
               color: "teal"

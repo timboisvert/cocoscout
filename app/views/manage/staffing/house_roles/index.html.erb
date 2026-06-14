@@ -39,6 +39,9 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="font-medium text-gray-900"><%= role.name %></span>
+              <% if role.show_specific? %>
+                <span class="text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700">Per-show</span>
+              <% end %>
               <% if role.archived? %>
                 <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">Archived</span>
               <% end %>
@@ -48,8 +51,8 @@
             </div>
             <div class="text-xs text-gray-500 mt-1">
               Needs <%= pluralize(role.default_required_count, "person") %> by default ·
-              Starts <%= -role.default_start_offset_minutes %> min before first show ·
-              Ends <%= role.default_end_offset_minutes %> min after last show
+              Starts <%= -role.default_start_offset_minutes %> min before <%= role.show_specific? ? "the show" : "first show" %> ·
+              Ends <%= role.default_end_offset_minutes %> min after <%= role.show_specific? ? "the show" : "last show" %>
             </div>
           </div>
           <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
@@ -63,6 +66,7 @@
                     action: "click->house-role-modal#openForEdit",
                     "role-id": role.id,
                     "role-name": role.name,
+                    "role-type": role.role_type,
                     "role-location-id": role.location_id,
                     "role-required-count": role.default_required_count,
                     "role-start-offset": role.default_start_offset_minutes,
@@ -116,6 +120,20 @@
               <%= form.text_field :name, required: true, placeholder: "e.g. Bartender",
                     data: { "house-role-modal-target": "nameInput" },
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <%= form.label :role_type, "Role type", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :role_type,
+                    [ [ "House role — one shift for the whole evening", "house" ],
+                      [ "Show-specific — one shift per show/rehearsal", "show_specific" ] ],
+                    {},
+                    data: { "house-role-modal-target": "roleTypeSelect" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="text-xs text-gray-500 mt-1">
+                House roles (bartender, FOH) get one shift spanning all of a day's shows.
+                Show-specific roles (tech) get a separate shift for each show, so staff are tied to a specific one.
+              </p>
             </div>
 
             <div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -615,7 +615,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -835,6 +835,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
     t.string "name", null: false
     t.bigint "organization_id", null: false
     t.integer "position", default: 0, null: false
+    t.integer "role_type", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["location_id"], name: "index_house_roles_on_location_id"
     t.index ["organization_id", "archived_at", "position"], name: "idx_house_roles_org_position"
@@ -1866,6 +1867,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
     t.bigint "organization_id", null: false
     t.string "renter_name"
     t.integer "required_count", default: 1, null: false
+    t.bigint "secondary_house_role_id"
     t.bigint "source_id"
     t.string "source_type"
     t.datetime "starts_at", null: false
@@ -1874,6 +1876,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
     t.index ["house_role_id"], name: "index_shifts_on_house_role_id"
     t.index ["organization_id", "starts_at"], name: "index_shifts_on_organization_id_and_starts_at"
     t.index ["organization_id"], name: "index_shifts_on_organization_id"
+    t.index ["secondary_house_role_id"], name: "index_shifts_on_secondary_house_role_id"
     t.index ["source_type", "source_id"], name: "index_shifts_on_source_type_and_source_id"
   end
 
@@ -2429,6 +2432,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
     t.index ["person_id"], name: "index_staff_unavailabilities_on_person_id"
   end
 
+  create_table "staffing_finalizations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "finalized_at"
+    t.bigint "finalized_by_id"
+    t.bigint "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.date "week_start", null: false
+    t.index ["finalized_by_id"], name: "index_staffing_finalizations_on_finalized_by_id"
+    t.index ["organization_id", "week_start"], name: "index_staffing_finalizations_on_organization_id_and_week_start", unique: true
+    t.index ["organization_id"], name: "index_staffing_finalizations_on_organization_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "key"
@@ -2723,6 +2738,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
   add_foreign_key "shifts", "house_roles"
+  add_foreign_key "shifts", "house_roles", column: "secondary_house_role_id"
   add_foreign_key "shifts", "organizations"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"
@@ -2776,6 +2792,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_04_160000) do
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
   add_foreign_key "staff_unavailabilities", "people"
+  add_foreign_key "staffing_finalizations", "organizations"
+  add_foreign_key "staffing_finalizations", "users", column: "finalized_by_id"
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"

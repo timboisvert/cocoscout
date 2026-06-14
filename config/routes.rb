@@ -739,6 +739,7 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:id/finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/schedule_auditions", to: "auditions#schedule_auditions", as: "schedule_auditions_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/notify_preview", to: "auditions#notify_preview", as: "notify_preview_signups_auditions_cycle"
 
     # Sign-ups > Auditions > Requests
     get  "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#index", as: "signups_auditions_cycle_requests"
@@ -1112,6 +1113,7 @@ Rails.application.routes.draw do
     # index page itself; house roles + staff are sub-areas).
     get  "staffing",                              to: "staffing#index",                  as: "staffing_index"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
+    post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
     get  "staffing/house_roles/new",              to: "staffing/house_roles#new",        as: "new_staffing_house_role"
     post "staffing/house_roles",                  to: "staffing/house_roles#create",     as: "create_staffing_house_role"
@@ -1124,6 +1126,7 @@ Rails.application.routes.draw do
     post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
     get  "staffing/staff/:id/edit",               to: "staffing/staff#edit",             as: "edit_staffing_staff"
     patch  "staffing/staff/:id",                  to: "staffing/staff#update",           as: "update_staffing_staff"
+    post   "staffing/staff/:id/invite",           to: "staffing/staff#invite",           as: "invite_staffing_staff"
     delete "staffing/staff/:id",                  to: "staffing/staff#destroy",          as: "destroy_staffing_staff"
 
     # Shift CRUD + assignment lives at the staffing root (no longer scoped to /schedule).

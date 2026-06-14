@@ -1,0 +1,33 @@
+<%#
+  Newest/Oldest order toggle styled to match the standard filter-bar buttons
+  (same rounding, padding, and colors as a `{ filters: [...] }` group).
+
+  Locals:
+    newest_path, oldest_path: String paths
+    current_order: String ("newest" | "oldest")
+%>
+<%
+  base = "px-3 py-1.5 rounded text-xs font-medium transition inline-flex items-center"
+  active_cls = "bg-pink-500 text-white"
+  idle_cls = "bg-gray-100 text-gray-700 hover:bg-gray-200"
+  is_oldest = current_order.to_s == "oldest"
+%>
+<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Order</span>
+  <div class="flex items-center gap-1">
+  <%= link_to newest_path, title: "Newest first",
+        data: { turbo_prefetch: false, turbo_action: "replace" },
+        class: "#{base} #{is_oldest ? idle_cls : active_cls}" do %>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25" />
+    </svg>
+  <% end %>
+  <%= link_to oldest_path, title: "Oldest first",
+        data: { turbo_prefetch: false, turbo_action: "replace" },
+        class: "#{base} #{is_oldest ? active_cls : idle_cls}" do %>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25 6-3-3m0 0-3 3m3-3v6" />
+    </svg>
+  <% end %>
+  </div>
+</div>

@@ -19,12 +19,13 @@
 %>
 
 <div class="w-full mb-10"
-     data-controller="shift-assign shift-edit shift-split shift-add"
+     data-controller="shift-assign shift-edit shift-split shift-add staffing-generate staffing-finalize"
      data-shift-assign-staff-by-role-value="<%= @staff_by_role_payload.to_json %>"
      data-shift-assign-assign-url-template-value="<%= assign_url_template %>"
      data-shift-assign-shift-times-value="<%= @shift_times_payload.to_json %>"
      data-shift-assign-person-busy-value="<%= @person_busy_payload.to_json %>"
      data-shift-assign-staff-unavailability-value="<%= @staff_unavailability_payload.to_json %>"
+     data-shift-assign-cast-by-day-value="<%= @cast_by_day_payload.to_json %>"
      data-shift-edit-update-url-template-value="<%= manage_update_staffing_shift_path(":id") %>"
      data-shift-edit-unassign-url-template-value="<%= manage_unassign_staffing_shift_path(id: "SHIFT_ID", person_id: "PERSON_ID") %>"
      data-shift-split-split-url-template-value="<%= manage_split_staffing_shift_path(":id") %>"
@@ -56,18 +57,49 @@
         Week of <%= @week_start.strftime("%b %-d, %Y") %>
       </div>
     </div>
-    <% if @house_role_count.zero? %>
-      <%= link_to "Add house roles to begin →", manage_staffing_house_roles_path,
-            class: "text-sm text-pink-600 hover:text-pink-700 underline" %>
-    <% elsif @shifts_by_day.empty? %>
-      <%= button_to "Generate shifts for this week",
-            manage_generate_staffing_path(week_start: @week_start.to_s),
-            method: :post,
-            class: "bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
-            form_class: "inline-block",
-            data: { turbo_confirm: "Generate default shifts for every show in this week?" } %>
-    <% end %>
+    <div class="flex items-center gap-2 flex-wrap">
+      <% if @house_role_count.zero? %>
+        <%= link_to "Add house roles to begin →", manage_staffing_house_roles_path,
+              class: "text-sm text-pink-600 hover:text-pink-700 underline" %>
+      <% elsif @shows_by_day.any? %>
+        <button type="button"
+                data-action="staffing-generate#open"
+                class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center gap-1.5 font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+          Generate shifts
+        </button>
+      <% end %>
+
+      <%# Finalize & notify — only meaningful once there are shifts this week. %>
+      <% if @shifts_by_day.any? %>
+        <% if @week_finalized %>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium"
+                title="Finalized <%= @finalization.finalized_at.strftime("%b %-d at %-l:%M %p") %><%= " by #{@finalization.finalized_by.email_address}" if @finalization.finalized_by %>">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>
+            Finalized
+          </span>
+          <button type="button" data-action="staffing-finalize#open"
+                  class="text-sm text-gray-600 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 px-1">
+            Re-notify
+          </button>
+        <% else %>
+          <button type="button" data-action="staffing-finalize#open"
+                  class="bg-green-600 hover:bg-green-700 text-white inline-flex items-center justify-center gap-1.5 font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            Finalize &amp; notify
+          </button>
+        <% end %>
+      <% end %>
+    </div>
   </div>
+
+  <%# Draft banner — staff can't see this week until it's finalized. %>
+  <% if @shifts_by_day.any? && !@week_finalized %>
+    <div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>
+      <span><span class="font-medium">Draft schedule.</span> Staff can't see their assignments for this week until you finalize it.</span>
+    </div>
+  <% end %>
 
   <%# === Day rows === %>
   <div class="space-y-4">
@@ -136,8 +168,12 @@
               # No-show days fall back to 5–11pm.
               role_defaults_for_day = @house_roles.each_with_object({}) do |r, h|
                 if day_shows.any?
+                  # Show-specific roles anchor to a single show (default: the
+                  # first), so their default window is that one show's start→end.
+                  # House roles span the whole evening (first start → last end).
+                  end_anchor = r.show_specific? ? day_shows.first : day_shows.last
                   starts_at = day_shows.first.date_and_time + r.default_start_offset_minutes.minutes
-                  ends_at   = day_shows.last.ends_at        + r.default_end_offset_minutes.minutes
+                  ends_at   = end_anchor.ends_at            + r.default_end_offset_minutes.minutes
                 else
                   starts_at = day.in_time_zone.change(hour: 17)
                   ends_at   = day.in_time_zone.change(hour: 23)
@@ -190,9 +226,14 @@
                               data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                               data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                               data-shift-role-name="<%= role.name %>"
+                              data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
                               class="flex-1 min-w-0 px-3 py-2 text-sm text-left text-gray-900 font-medium hover:bg-black/5 cursor-pointer flex items-center justify-between gap-2">
                         <span class="truncate"><%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
-                        <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
+                        <% if shift.doubled? %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium flex-shrink-0 truncate" title="Also covering <%= shift.secondary_house_role.name %>">+ <%= shift.secondary_house_role.name %></span>
+                        <% else %>
+                          <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
+                        <% end %>
                       </button>
                       <%= button_to manage_destroy_staffing_shift_path(shift),
                             method: :delete,
@@ -200,6 +241,15 @@
                             form_class: "inline-block leading-none",
                             data: { turbo_confirm: "Remove this #{role.name} shift?" } do %>×<% end %>
                     </div>
+
+                    <%# Show-specific shifts name the show they're tied to. %>
+                    <% if role.show_specific? && shift.source.is_a?(::Show) %>
+                      <div class="px-3 py-1 bg-purple-50 border-b border-purple-100 text-[11px] text-purple-800 truncate"
+                           title="<%= shift.source.production&.name %> · <%= shift.source.date_and_time.strftime("%-l:%M %p") %>">
+                        <span class="font-medium"><%= shift.source.production&.name %></span>
+                        <span class="text-purple-500"><%= shift.source.date_and_time.strftime("%-l:%M %p") %></span>
+                      </div>
+                    <% end %>
 
                     <% if covered_by_renter %>
                       <div class="px-3 py-2 text-sm text-blue-800">
@@ -353,11 +403,38 @@
             <% if day_shows.any? %>
               <%# Tagged as a "cards" target so it hides in the Gantt modes
                   (where shows are drawn as their own row inside the chart). %>
-              <div data-day-view-target="cards" class="px-1 mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
+              <div data-day-view-target="cards" class="px-1 mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
                 <% day_shows.each do |show| %>
-                  <span>
+                  <% cast = @show_cast[show.id] || [] %>
+                  <%# Hover the chip to reveal that show's cast — most staff also
+                      perform, so this is a quick double-check before assigning. %>
+                  <span class="relative group/cast inline-flex items-center gap-1 cursor-default">
                     <span class="font-medium text-gray-700"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
                     <%= show.production&.name %>
+                    <% if cast.any? %>
+                      <span class="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-purple-100 text-purple-700 text-[9px] font-semibold"><%= cast.size %></span>
+                    <% end %>
+                    <%# Hover popover with the cast list. %>
+                    <span class="invisible opacity-0 group-hover/cast:visible group-hover/cast:opacity-100 transition-opacity absolute z-50 left-0 top-full mt-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
+                      <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 px-1">
+                        Cast · <%= show.production&.name %>
+                      </span>
+                      <% if cast.any? %>
+                        <% cast.sort_by { |p| p.name.to_s }.each do |person| %>
+                          <span class="flex items-center gap-2 px-1 py-0.5">
+                            <% v = person.safe_headshot_variant(:thumb) %>
+                            <% if v %>
+                              <%= image_tag v, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                            <% else %>
+                              <span class="w-5 h-5 rounded bg-gray-200 text-gray-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0"><%= person.initials %></span>
+                            <% end %>
+                            <span class="text-xs text-gray-800 truncate"><%= person.name %></span>
+                          </span>
+                        <% end %>
+                      <% else %>
+                        <span class="block text-xs text-gray-400 italic px-1 py-0.5">No cast assigned</span>
+                      <% end %>
+                    </span>
                   </span>
                 <% end %>
               </div>
@@ -480,6 +557,18 @@
               </div>
             </div>
             <p class="text-[11px] text-gray-500 mt-2">End time can roll past midnight onto the next day.</p>
+
+            <%# Double-up: this one shift also covers a second role. %>
+            <div class="mt-4">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Also covers (optional)</label>
+              <%= f.select :secondary_house_role_id,
+                    @house_roles.map { |r| [ r.name, r.id ] },
+                    { include_blank: "— Just one role —" },
+                    data: { "shift-edit-target": "secondaryRoleSelect" },
+                    class: "block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="text-[11px] text-gray-500 mt-1">Use when one person works two roles this shift (e.g. bartender who's also managing).</p>
+            </div>
+
             <%# Hidden full-datetime fields submitted to the server; JS keeps them in sync with the time inputs above. %>
             <%= f.hidden_field :starts_at, data: { "shift-edit-target": "startInput" } %>
             <%= f.hidden_field :ends_at,   data: { "shift-edit-target": "endInput" } %>
@@ -599,6 +688,145 @@
           <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
             <button type="button" data-action="click->shift-add#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
             <%= render "shared/button", text: "Add shift", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# === Generate shifts modal (pick which shows to staff) === %>
+  <div data-staffing-generate-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->staffing-generate#backdropClose keydown.esc@window->staffing-generate#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl"
+           data-action="click->staffing-generate#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Generate shifts</h3>
+            <div class="text-xs text-gray-500">Week of <%= @week_start.strftime("%b %-d, %Y") %></div>
+          </div>
+          <button type="button" data-action="click->staffing-generate#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: manage_generate_staffing_path(week_start: @week_start.to_s), method: :post, local: true do %>
+          <div class="px-5 py-4">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm text-gray-600">Pick the shows to staff. Default offsets for each role apply.</p>
+              <div class="flex items-center gap-2 text-xs">
+                <button type="button" data-action="staffing-generate#selectAll" class="text-pink-600 hover:text-pink-700 underline cursor-pointer">All</button>
+                <span class="text-gray-300">·</span>
+                <button type="button" data-action="staffing-generate#selectNone" class="text-gray-500 hover:text-gray-700 underline cursor-pointer">None</button>
+              </div>
+            </div>
+
+            <div class="space-y-4 max-h-[50vh] overflow-y-auto">
+              <% @shows_by_day.keys.sort.each do |day| %>
+                <div>
+                  <div class="text-xs font-semibold text-gray-500 uppercase mb-1"><%= day.strftime("%A, %b %-d") %></div>
+                  <div class="space-y-1">
+                    <% (@shows_by_day[day] || []).sort_by(&:date_and_time).each do |show| %>
+                      <label class="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" name="show_ids[]" value="<%= show.id %>" checked
+                               data-staffing-generate-target="showCheckbox"
+                               class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                        <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
+                        <span class="text-sm text-gray-600 truncate"><%= show.production&.name %></span>
+                        <% if show.event_type != "show" %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 capitalize"><%= show.event_type %></span>
+                        <% end %>
+                      </label>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-3">Existing shifts are kept — generating again only fills in what's missing.</p>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->staffing-generate#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button", text: "Generate", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# === Finalize & notify modal === %>
+  <div data-staffing-finalize-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->staffing-finalize#backdropClose keydown.esc@window->staffing-finalize#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-xl bg-white rounded-xl shadow-2xl"
+           data-action="click->staffing-finalize#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Finalize &amp; notify</h3>
+            <div class="text-xs text-gray-500">Week of <%= @week_start.strftime("%b %-d, %Y") %></div>
+          </div>
+          <button type="button" data-action="click->staffing-finalize#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: manage_finalize_staffing_path(week_start: @week_start.to_s), method: :post, local: true do %>
+          <div class="px-5 py-4 space-y-4">
+            <%# Who's being notified. %>
+            <div>
+              <div class="text-xs font-semibold text-gray-500 uppercase mb-2">
+                Notifying <%= pluralize(@finalize_recipients.count { |r| r[:notifiable] }, "staff member") %>
+              </div>
+              <% if @finalize_recipients.any? %>
+                <div class="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-44 overflow-y-auto">
+                  <% @finalize_recipients.each do |r| %>
+                    <div class="flex items-center gap-2.5 px-3 py-2">
+                      <% v = r[:person].safe_headshot_variant(:thumb) %>
+                      <% if v %>
+                        <%= image_tag v, alt: r[:person].name, class: "w-7 h-7 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <span class="w-7 h-7 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0"><%= r[:person].initials %></span>
+                      <% end %>
+                      <span class="text-sm <%= r[:notifiable] ? "text-gray-900" : "text-gray-400" %> flex-1 min-w-0 truncate"><%= r[:person].name %></span>
+                      <span class="text-xs text-gray-500 flex-shrink-0"><%= pluralize(r[:shift_count], "shift") %></span>
+                      <% unless r[:notifiable] %>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 flex-shrink-0" title="No CocoScout login — can't be notified. Invite them from the Staff page.">won't be notified</span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+                <% if @finalize_recipients.any? { |r| !r[:notifiable] } %>
+                  <p class="text-[11px] text-amber-700 mt-2">
+                    Some staff have no CocoScout account, so they won't get this notification.
+                    <%= link_to "Invite them from the Staff page", manage_staffing_staff_path, class: "underline hover:text-amber-800" %>.
+                  </p>
+                <% end %>
+              <% else %>
+                <p class="text-sm text-gray-500 italic">No staff are assigned this week yet. Finalizing will mark the week ready, but no one will be notified.</p>
+              <% end %>
+            </div>
+
+            <%# Editable message template. Each person additionally receives their
+                own shift list + a My Shifts link appended automatically. %>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Subject</label>
+              <input type="text" name="subject" value="<%= default_finalize_subject %>"
+                     class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Message</label>
+              <textarea name="message" rows="3"
+                        class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500"><%= default_finalize_intro %></textarea>
+              <p class="text-[11px] text-gray-500 mt-1">
+                Sent from CocoScout as an automated notification. Each person's own list of shifts and a link to their
+                <strong>My Shifts</strong> page are added automatically below your message.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" data-action="click->staffing-finalize#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <%= render "shared/button", text: "Finalize & send", variant: "primary", size: "small", type: :submit %>
           </div>
         <% end %>
       </div>

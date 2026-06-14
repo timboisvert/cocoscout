@@ -166,7 +166,9 @@ module Manage
     # GET /auditions/schedule_auditions
     def schedule_auditions
       @audition_cycle = AuditionCycle.find(params[:id])
-      @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
+      @audition_sessions = @audition_cycle.audition_sessions
+        .includes(:location, auditions: :auditionable)
+        .order(start_at: :asc)
 
       # Show all sign-ups ordered by yes vote count descending
       @available_people = @audition_cycle.audition_requests
@@ -180,6 +182,78 @@ module Manage
         :auditionable_type, :auditionable_id
       ).to_set
       @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: @audition_cycle.id }).pluck(:audition_request_id).uniq
+
+      # Per-session availability the assign modal uses to group/order auditionees.
+      # AuditionSessionAvailability is keyed by the auditionable (the request's
+      # requestable), so map it back to the request id for the modal payload.
+      request_by_entity = @available_people.index_by { |r| "#{r.requestable_type}_#{r.requestable_id}" }
+      @session_availability = Hash.new { |h, k| h[k] = {} }
+      AuditionSessionAvailability
+        .where(audition_session_id: @audition_sessions.map(&:id))
+        .find_each do |a|
+          req = request_by_entity["#{a.available_entity_type}_#{a.available_entity_id}"]
+          next unless req
+          @session_availability[a.audition_session_id.to_s][req.id.to_s] = a.status
+        end
+
+      # Which audition_requests are already in each session (to mark "Added").
+      @in_session_request_ids = @audition_sessions.each_with_object({}) do |s, h|
+        h[s.id.to_s] = s.auditions.map(&:audition_request_id).compact.map(&:to_s)
+      end
+
+      # Default messages for the Review & Notify modal (manager can edit them).
+      # "[Name]" is replaced per-recipient when sending.
+      @invited_default_message = default_message_html(
+        "audition_invitation",
+        "<div>Hi [Name],</div><div><br></div><div>Great news — you've been scheduled for an audition for #{ERB::Util.html_escape(@production.name)}. We look forward to seeing you!</div>"
+      )
+      @not_invited_default_message = default_message_html(
+        "audition_not_invited",
+        "<div>Hi [Name],</div><div><br></div><div>Thank you so much for your interest in #{ERB::Util.html_escape(@production.name)}. After careful consideration, we won't be moving forward with an audition at this time. We truly appreciate you and hope to see you audition with us again.</div>"
+      )
+    end
+
+    # GET /auditions/:id/notify_preview — who's getting an audition vs not,
+    # for the Review & Notify modal on the schedule page (computed fresh, since
+    # scheduling changes client-side after page load).
+    def notify_preview
+      @audition_cycle = AuditionCycle.find(params[:id])
+      sessions = @audition_cycle.audition_sessions.includes(auditions: :auditionable).order(:start_at)
+
+      session_labels = Hash.new { |h, k| h[k] = [] }
+      sessions.each do |s|
+        label = s.start_at.strftime("%a, %b %-d at %-l:%M %p")
+        s.auditions.each { |a| session_labels["#{a.auditionable_type}_#{a.auditionable_id}"] << label }
+      end
+      scheduled_keys = session_labels.keys.to_set
+
+      invited = []
+      not_invited = []
+      @audition_cycle.audition_requests.includes(:requestable).each do |req|
+        ent = req.requestable
+        next unless ent
+        variant = ent.respond_to?(:safe_headshot_variant) ? ent.safe_headshot_variant(:thumb) : nil
+        entry = {
+          name: ent.name,
+          initials: (ent.respond_to?(:initials) ? ent.initials : ent.name.to_s[0, 2].upcase),
+          headshot: (variant ? helpers.url_for(variant) : nil),
+          notified: req.invitation_notification_sent_at.present?
+        }
+        if scheduled_keys.include?("#{req.requestable_type}_#{req.requestable_id}")
+          entry[:sessions] = session_labels["#{req.requestable_type}_#{req.requestable_id}"].uniq
+          invited << entry
+        else
+          not_invited << entry
+        end
+      end
+
+      render json: {
+        invited: invited.sort_by { |e| e[:name].to_s },
+        not_invited: not_invited.sort_by { |e| e[:name].to_s },
+        invited_count: invited.size,
+        not_invited_count: not_invited.size,
+        already_notified_count: (invited + not_invited).count { |e| e[:notified] }
+      }
     end
 
     # GET /auditions/1
@@ -326,6 +400,16 @@ module Manage
       production = audition_session.production
       audition_cycle = audition_request.audition_cycle
 
+      # New click-to-add UI only needs this session's slots — skip the heavy
+      # legacy drag partials (right_list / sessions_list / dropzone).
+      if params[:ui] == "v2"
+        render json: {
+          session_id: audition_session.id,
+          session_slots_html: session_slots_html_for(audition_session, audition_cycle),
+          scheduled_request_ids: scheduled_request_ids_for(audition_cycle)
+        } and return
+      end
+
       # Show all sign-ups ordered by yes vote count descending
       available_people = audition_cycle.audition_requests
         .includes(:requestable, :audition_request_votes)
@@ -357,7 +441,10 @@ module Manage
                                             })
 
       render json: { right_list_html: right_list_html, dropzone_html: dropzone_html,
-                     sessions_list_html: sessions_list_html }
+                     sessions_list_html: sessions_list_html,
+                     session_id: audition_session.id,
+                     session_slots_html: session_slots_html_for(audition_session, audition_cycle),
+                     scheduled_request_ids: scheduled_request_ids }
     end
 
     def remove_from_session
@@ -369,6 +456,14 @@ module Manage
       # Get the production and audition_cycle
       production = audition_session.production
       audition_cycle = audition.audition_request.audition_cycle
+
+      if params[:ui] == "v2"
+        render json: {
+          session_id: audition_session.id,
+          session_slots_html: session_slots_html_for(audition_session, audition_cycle),
+          scheduled_request_ids: scheduled_request_ids_for(audition_cycle)
+        } and return
+      end
 
       # Show all sign-ups ordered by yes vote count descending
       available_people = audition_cycle.audition_requests
@@ -400,7 +495,10 @@ module Manage
                                             })
 
       render json: { right_list_html: right_list_html, dropzone_html: dropzone_html,
-                     sessions_list_html: sessions_list_html }
+                     sessions_list_html: sessions_list_html,
+                     session_id: audition_session.id,
+                     session_slots_html: session_slots_html_for(audition_session, audition_cycle),
+                     scheduled_request_ids: scheduled_request_ids }
     end
 
     def move_to_session
@@ -666,6 +764,17 @@ module Manage
                                               .map { |type, id| [ type, id ] }
                                               .to_set
 
+      # Manager-edited messages from the Review & Notify modal (plain text).
+      # When present, they override the templates. [Name] is personalized per
+      # recipient, and invited people get their session time(s) appended.
+      invited_body_custom = params[:invited_body].presence
+      not_invited_body_custom = params[:not_invited_body].presence
+      session_details = audition_cycle.audition_sessions.includes(:auditions).order(:start_at)
+        .each_with_object(Hash.new { |h, k| h[k] = [] }) do |s, acc|
+          label = s.start_at.strftime("%A, %b %-d at %-l:%M %p")
+          s.auditions.each { |a| acc[[ a.auditionable_type, a.auditionable_id ]] << label }
+        end
+
       # Process requests that:
       # 1. Haven't been notified yet (invitation_notification_sent_at is nil), OR
       # 2. Have been notified but their scheduling status has changed (e.g., they were added to schedule)
@@ -716,11 +825,12 @@ module Manage
         is_scheduled = scheduled_auditionables.include?([ requestable.class.name, requestable.id ])
 
         if is_scheduled
-          # Requestable is scheduled for an audition - let the service render the template with audition details
-          email_body = nil
+          # Invited: use the manager's edited message if provided, else let the
+          # service render the template (which injects audition details).
+          email_body = invited_body_custom
         else
-          # Requestable is not scheduled - send rejection
-          email_body = generate_default_not_invited_email(requestable, @production)
+          # Not invited: manager's edited message, else the default template.
+          email_body = not_invited_body_custom.presence || generate_default_not_invited_email(requestable, @production)
         end
 
         # Get recipients (single person for Person, multiple members for Group)
@@ -739,20 +849,27 @@ module Manage
           # Check if user has audition invitation notifications enabled
           next if recipient.user.present? && !recipient.user.notification_enabled?(:audition_invitations)
 
-          # Replace [Name] placeholder with actual name (for rejections with custom body)
+          # Replace [Name] placeholder with actual name.
           personalized_body = email_body&.gsub("[Name]", recipient.name)
 
           if is_scheduled
-            invitation_notifications << {
-              person: recipient,
-              body: nil # Let service render template with audition details
-            }
+            # The manager's message is rich-text HTML. Append this person's
+            # session time(s) as HTML; otherwise let the service render the
+            # template (body: nil).
+            body =
+              if personalized_body.present?
+                details = session_details[[ requestable.class.name, requestable.id ]].uniq
+                if details.any?
+                  items = details.map { |d| "<li>#{ERB::Util.html_escape(d)}</li>" }.join
+                  personalized_body + "<p><strong>Your audition time#{details.size == 1 ? "" : "s"}:</strong></p><ul>#{items}</ul>"
+                else
+                  personalized_body
+                end
+              end
+            invitation_notifications << { person: recipient, body: body }
           else
             next unless personalized_body.present?
-            not_invited_notifications << {
-              person: recipient,
-              body: personalized_body
-            }
+            not_invited_notifications << { person: recipient, body: personalized_body }
           end
         end
 
@@ -796,6 +913,32 @@ module Manage
     end
 
     private
+
+    # Re-renders one session's assigned-auditionee slots after an add/remove,
+    # for the click-to-add scheduling UI (audition-assign controller swaps it in).
+    def session_slots_html_for(session, audition_cycle)
+      session.auditions.reload
+      render_to_string(
+        partial: "manage/auditions/session_slots",
+        formats: [ :html ],
+        locals: { session: session, production: session.production, audition_cycle: audition_cycle }
+      )
+    end
+
+    # HTML default for an editable rich-text notify message; falls back
+    # gracefully if the content template isn't present.
+    def default_message_html(key, fallback_html)
+      return fallback_html unless ContentTemplateService.exists?(key)
+      ContentTemplateService.render_body(key, { recipient_name: "[Name]", production_name: @production.name }).presence || fallback_html
+    rescue StandardError
+      fallback_html
+    end
+
+    def scheduled_request_ids_for(audition_cycle)
+      Audition.joins(:audition_session)
+              .where(audition_session: { audition_cycle_id: audition_cycle.id })
+              .distinct.pluck(:audition_request_id)
+    end
 
     def ensure_audition_cycle_active
       unless @audition_cycle.active

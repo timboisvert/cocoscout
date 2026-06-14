@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = [
         "modal", "form", "title", "submitButton", "methodInput",
-        "nameInput", "locationSelect", "requiredCount",
+        "nameInput", "roleTypeSelect", "locationSelect", "requiredCount",
         "startOffset", "endOffset"
     ]
     static values = {
@@ -31,6 +31,7 @@ export default class extends Controller {
         const id = btn.dataset.roleId
 
         if (this.hasNameInputTarget)   this.nameInputTarget.value   = btn.dataset.roleName || ""
+        if (this.hasRoleTypeSelectTarget) this.roleTypeSelectTarget.value = btn.dataset.roleType || "house"
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = btn.dataset.roleLocationId || ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = btn.dataset.roleRequiredCount || ""
         if (this.hasStartOffsetTarget)   this.startOffsetTarget.value   = btn.dataset.roleStartOffset || ""
@@ -70,6 +71,7 @@ export default class extends Controller {
 
     resetForm() {
         if (this.hasNameInputTarget)     this.nameInputTarget.value = ""
+        if (this.hasRoleTypeSelectTarget) this.roleTypeSelectTarget.value = "house"
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = "1"
         if (this.hasStartOffsetTarget)   this.startOffsetTarget.value = "-60"

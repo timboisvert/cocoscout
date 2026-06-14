@@ -43,8 +43,12 @@
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 truncate">
               <%= person.name %>
-              <% if @pending_invite_emails.include?(person.email.to_s.downcase) %>
-                <span class="ml-1 align-middle inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Invited — pending</span>
+              <% if person.user.nil? %>
+                <span class="ml-1 align-middle inline-flex items-center px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium"
+                      title="This person has no CocoScout login, so they can't be notified when you finalize a schedule. They can still be scheduled.">No account</span>
+              <% elsif @pending_invite_emails.include?(person.email.to_s.downcase) %>
+                <span class="ml-1 align-middle inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium"
+                      title="Invited — they have a login but haven't set up their account yet. They'll still receive notifications in their inbox.">Invited — pending</span>
               <% end %>
             </div>
             <div class="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-1">
@@ -59,6 +63,19 @@
           </div>
           <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
           <div class="flex items-center gap-2 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+            <% if person.user.nil? %>
+              <% if person.email.present? %>
+                <%= render "shared/button",
+                      text: "Invite",
+                      variant: "primary",
+                      size: "small",
+                      path: manage_invite_staffing_staff_path(member),
+                      method: :post,
+                      data: { turbo_confirm: "Email #{person.name} an invite to set up a CocoScout account so they can be notified?" } %>
+              <% else %>
+                <span class="text-[11px] text-gray-400 italic px-1" title="Add an email to this person before you can invite them.">No email on file</span>
+              <% end %>
+            <% end %>
             <%= render "shared/button",
                   text: "Edit",
                   variant: "outline",

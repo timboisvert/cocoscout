@@ -132,14 +132,21 @@
     <% end %>
 
     <% if mode == "roles" %>
-      <%# === Roles down the left, time across. === %>
+      <%# === Roles down the left, time across. A doubled shift also echoes into
+          its secondary role's row (block[:secondary] = true) so both covered
+          roles show a line; the echo is read-only (edit happens on the primary). === %>
       <%
-        role_groups = day_shifts.group_by(&:house_role).sort_by { |role, _| role_order[role.id] || 9_999 }
+        role_blocks = Hash.new { |h, k| h[k] = [] }
+        day_shifts.each do |s|
+          role_blocks[s.house_role] << { shift: s, secondary: false }
+          role_blocks[s.secondary_house_role] << { shift: s, secondary: true } if s.secondary_house_role_id
+        end
+        role_groups = role_blocks.sort_by { |role, _| role_order[role.id] || 9_999 }
       %>
-      <% role_groups.each do |role, shifts| %>
+      <% role_groups.each do |role, blocks| %>
         <%
-          shift_lanes = assign_lanes.call(shifts, ->(s) { s.starts_at }, ->(s) { s.ends_at })
-          role_section_height = shift_lanes.size * row_lane_height
+          block_lanes = assign_lanes.call(blocks, ->(b) { b[:shift].starts_at }, ->(b) { b[:shift].ends_at })
+          role_section_height = block_lanes.size * row_lane_height
         %>
         <div class="flex border-t border-gray-100">
           <div class="w-44 flex-shrink-0 py-2 pr-2 text-gray-800 font-medium truncate"><%= role.name %></div>
@@ -150,28 +157,51 @@
                    style="left: <%= pct.call(tick) %>%;"></div>
             <% end %>
             <%# Shift blocks, stacked into lanes when they would otherwise overlap. %>
-            <% shift_lanes.each_with_index do |lane, lane_idx| %>
-              <% lane.each do |shift| %>
+            <% block_lanes.each_with_index do |lane, lane_idx| %>
+              <% lane.each do |block| %>
                 <%
+                  shift = block[:shift]
+                  is_secondary = block[:secondary]
                   left = pct.call(shift.starts_at)
                   width = pct.call(shift.ends_at) - left
                   top = (lane_idx * row_lane_height) + ((row_lane_height - row_block_height) / 2)
                   people = shift.shift_assignments.map(&:person)
                   assigned_ids = shift.shift_assignments.map(&:person_id)
-                  time_range = "#{shift.starts_at.strftime("%-l:%M")}–#{shift.ends_at.strftime("%-l:%M %p")}"
+                  time_range = "#{shift.starts_at.strftime("%-l:%M %p")}–#{shift.ends_at.strftime("%-l:%M %p")}"
                   covered_by_renter = shift.coverage_mode == "covered_by_renter"
                   not_needed = shift.coverage_mode == "not_needed"
                   unfilled = shift.needs_assignment? && shift.remaining_slots > 0
                   empty_unfilled = unfilled && people.empty?
                   block_classes =
-                    if covered_by_renter then "bg-blue-50 border-blue-300 text-blue-900"
+                    if is_secondary then "bg-indigo-50 border-indigo-300 text-indigo-900 hover:bg-indigo-100"
+                    elsif covered_by_renter then "bg-blue-50 border-blue-300 text-blue-900"
                     elsif not_needed then "bg-gray-50 border-gray-300 text-gray-500"
                     elsif empty_unfilled then "bg-white border-pink-400 border-dashed text-pink-700 hover:bg-pink-50"
                     elsif unfilled then "bg-white border-pink-300 text-gray-900 hover:bg-pink-50"
                     else "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
                     end
                 %>
-                <% if covered_by_renter || not_needed %>
+                <% if is_secondary %>
+                  <%# Echo of a doubled shift in its secondary role's row. Clicking
+                      opens the same shift's editor; no separate assign button. %>
+                  <button type="button"
+                          data-action="click->shift-edit#open"
+                          data-shift-id="<%= shift.id %>"
+                          data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                          data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                          data-shift-role-name="<%= shift.house_role.name %>"
+                          data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
+                          class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left transition-colors"
+                          style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
+                          title="Also covering <%= role.name %> (primary: <%= shift.house_role.name %>) · <%= time_range %>">
+                    <span class="text-[9px] px-1 rounded bg-indigo-200 text-indigo-800 font-semibold flex-shrink-0">also</span>
+                    <% if people.any? %>
+                      <span class="truncate text-[11px] font-medium"><%= people.map(&:name).join(", ") %></span>
+                    <% else %>
+                      <span class="truncate text-[11px] italic opacity-70">unassigned</span>
+                    <% end %>
+                  </button>
+                <% elsif covered_by_renter || not_needed %>
                   <div class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden"
                        style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
                        title="<%= time_range %>">
@@ -192,6 +222,7 @@
                             data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-role-name="<%= role.name %>"
+                            data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
                             class="flex-1 min-w-0 px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left bg-transparent border-0">
                       <% if empty_unfilled %>
                         <span class="truncate text-[11px] italic opacity-70">empty — click to edit time</span>
@@ -297,12 +328,13 @@
                           data-shift-starts-at="<%= s.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-ends-at="<%= s.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-role-name="<%= r.name %>"
+                          data-shift-secondary-role-id="<%= s.secondary_house_role_id %>"
                           data-person-id="<%= person.id %>"
                           data-person-name="<%= person.name %>"
                           class="absolute rounded border bg-white border-gray-300 text-gray-900 hover:bg-gray-50 transition-colors px-1.5 flex items-center overflow-hidden cursor-pointer text-left"
                           style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
-                          title="<%= r.name %> · <%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %>">
-                    <span class="truncate text-[11px] font-medium"><%= r.name %></span>
+                          title="<%= s.role_label %> · <%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %>">
+                    <span class="truncate text-[11px] font-medium"><%= s.role_label %></span>
                   </button>
                 <% end %>
               <% end %>

@@ -1,6 +1,6 @@
 <% content_for :title, "My Messages" %>
 
-<div class="w-full pb-8" data-controller="inbox contact-production">
+<div class="w-full pb-8" data-controller="inbox contact-production message-density">
   <%# New messages banner - shown when new messages arrive via ActionCable %>
   <div data-inbox-target="banner" class="hidden sticky top-0 z-40 mb-4">
     <button
@@ -35,8 +35,14 @@
     </div>
   <% end %>
 
-  <%# Filter Bar %>
+  <%# Search + Filter Bar %>
   <%= form_with url: my_messages_path, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+    <%# Search sits above the filter box, spanning the row. %>
+    <div class="mb-3">
+      <%= render "shared/filters/search_input",
+            placeholder: "Search messages...", value: @search, name: "q", full_width: true %>
+    </div>
+
     <%= render "shared/filters/filter_bar",
         toggle_label: "Filters",
         wrapper_data_controller: "filter-select",
@@ -50,21 +56,11 @@
           },
           { separator: true },
           {
-            partial: "shared/filters/dropdown_filter",
+            partial: "shared/filters/order_toggle",
             locals: {
-              label: "Order",
-              name: "order",
-              options: [
-                { value: "newest", text: "Newest First" },
-                { value: "oldest", text: "Oldest First" }
-              ],
-              selected: @order || "newest",
-              data_attributes: {
-                action: "change->filter-select#update",
-                filter_select_filter_value: @filter,
-                filter_select_q_value: @search,
-                filter_select_production_id_value: @production_filter
-              }
+              current_order: @order,
+              newest_path: my_messages_path(order: "newest", filter: @filter, q: @search, production_id: @production_filter),
+              oldest_path: my_messages_path(order: "oldest", filter: @filter, q: @search, production_id: @production_filter)
             }
           },
           (@user_productions.any? ? { separator: true } : nil),
@@ -84,23 +80,17 @@
             }
           } : nil),
           { separator: true },
-          {
-            partial: "shared/filters/search_input",
-            locals: {
-              placeholder: "Search messages...",
-              value: @search,
-              name: "q"
-            }
-          }
+          { partial: "shared/filters/layout_filter" }
         ].compact
     %>
     <%# Hidden fields to preserve filters when searching %>
     <%= f.hidden_field :filter, value: @filter %>
     <%= f.hidden_field :production_id, value: @production_filter %>
+    <%= f.hidden_field :order, value: @order %>
   <% end %>
 
   <% if @messages.any? %>
-    <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div data-message-density-target="list" class="mt-4 msg-density-compact border border-gray-200 rounded-lg overflow-hidden bg-white">
       <% @messages.each do |thread| %>
         <%= render "shared/messages/compact_row", message: thread, summary: @thread_summaries[thread.id] %>
       <% end %>
