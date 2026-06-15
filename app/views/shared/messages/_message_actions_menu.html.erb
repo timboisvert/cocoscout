@@ -19,8 +19,9 @@
 <% mute_path        = local_assigns[:mute_path] %>
 <% is_muted         = local_assigns[:is_muted] %>
 <% archive_path     = local_assigns[:archive_path] %>
+<% unarchive_path   = local_assigns[:unarchive_path] %>
 
-<% if can_delete || can_view_receipts || mark_unread_path || mute_path || archive_path %>
+<% if can_delete || can_view_receipts || mark_unread_path || mute_path || archive_path || unarchive_path %>
   <div class="relative z-10 flex-shrink-0" data-controller="dropdown modal">
     <button
       type="button"
@@ -79,6 +80,15 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
           </svg>
           Archive
+        <% end %>
+      <% end %>
+      <% if unarchive_path %>
+        <%= button_to unarchive_path, method: :post, form_class: "block",
+              class: "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-7 4l-2 2m0 0l-2-2m2 2V9"/>
+          </svg>
+          Unarchive
         <% end %>
       <% end %>
       <% if can_delete %>

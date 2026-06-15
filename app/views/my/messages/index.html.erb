@@ -51,7 +51,8 @@
             label: "Show",
             filters: [
               { text: "All", path: my_messages_path(q: @search, production_id: @production_filter, order: @order), active: @filter == "all" },
-              { text: "Unread", path: my_messages_path(filter: "unread", q: @search, production_id: @production_filter, order: @order), active: @filter == "unread" }
+              { text: "Unread", path: my_messages_path(filter: "unread", q: @search, production_id: @production_filter, order: @order), active: @filter == "unread" },
+              { text: "Archived", path: my_messages_path(filter: "archived", q: @search, production_id: @production_filter, order: @order), active: @filter == "archived" }
             ]
           },
           { separator: true },

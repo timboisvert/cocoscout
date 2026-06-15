@@ -1,0 +1,27 @@
+<%= form_with model: @document,
+      url: (@document.persisted? ? manage_production_document_path(@production, @document) : manage_production_documents_path(@production)),
+      method: (@document.persisted? ? :patch : :post) do |f| %>
+  <% if @document.errors.any? %>
+    <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <%= @document.errors.full_messages.to_sentence %>
+    </div>
+  <% end %>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div class="px-6 pt-6 pb-2 border-b border-gray-100">
+      <%= f.text_field :title, required: true, placeholder: "Untitled document",
+            class: "block w-full text-3xl coustard-regular text-gray-900 border-0 px-0 py-1 focus:ring-0 placeholder:text-gray-300" %>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-xs text-gray-500 mb-2">Paste straight from a Google Doc, Word, or PDF — formatting (headings, bold, lists, links) comes through.</p>
+      <%# Full-page feel: the editor fills the remaining space. %>
+      <%= f.rich_text_area :body, class: "min-h-[60vh]" %>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-end gap-3 mt-4">
+    <%= link_to "Cancel", manage_production_documents_path(@production),
+          class: "px-4 py-2 text-sm text-gray-600 hover:text-gray-900" %>
+    <%= render "shared/button", text: "Save document", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

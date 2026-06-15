@@ -1,0 +1,29 @@
+<% content_for :title, "Edit document" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [@production.name, edit_manage_production_path(@production)],
+      [ "Documents", manage_production_documents_path(@production) ]
+    ],
+    text: @document.title.presence || "Untitled document",
+    links: []
+  } %>
+
+  <div class="flex items-center justify-end mb-3">
+    <button type="button"
+            data-controller="modal" data-action="click->modal#open"
+            data-modal-id="sharing-modal-<%= @document.id %>"
+            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white hover:border-gray-400 cursor-pointer">
+      <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
+      <span class="text-gray-700">Sharing:</span>
+      <span class="text-gray-900 font-medium"><%= @document.audience_summary %></span>
+    </button>
+  </div>
+
+  <%= render "form" %>
+
+  <%= render "sharing_modal", document: @document, production: @production,
+        talent_pools: @talent_pools, candidate_people: @candidate_people %>
+</div>

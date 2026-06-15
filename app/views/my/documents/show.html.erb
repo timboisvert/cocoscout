@@ -1,0 +1,18 @@
+<% content_for :title, @document.title %>
+
+<div class="w-full">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [ "My Documents", my_documents_path ]
+    ],
+    text: @document.title,
+    links: []
+  } %>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-6">
+    <div class="text-xs text-gray-500 mb-4"><%= @document.production&.name %></div>
+    <div class="prose prose-sm max-w-none">
+      <%= @document.body %>
+    </div>
+  </div>
+</div>

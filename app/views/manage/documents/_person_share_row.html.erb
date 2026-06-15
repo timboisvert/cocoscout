@@ -1,0 +1,12 @@
+<%# locals: person, permission %>
+<div class="flex items-center justify-between gap-2" data-person-id="<%= person.id %>">
+  <span class="text-sm text-gray-800 truncate"><%= person.name %></span>
+  <div class="flex items-center gap-1.5 flex-shrink-0">
+    <select name="people[<%= person.id %>]" class="text-xs border-gray-300 rounded py-1 focus:ring-pink-500 focus:border-pink-500">
+      <option value="read"  <%= "selected" if permission.to_s != "write" %>>Can view</option>
+      <option value="write" <%= "selected" if permission.to_s == "write" %>>Can edit</option>
+    </select>
+    <button type="button" data-action="document-audience#remove"
+            class="w-5 h-5 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer">&times;</button>
+  </div>
+</div>

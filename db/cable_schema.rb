@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -643,6 +643,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
 
+  create_table "document_shares", force: :cascade do |t|
+    t.bigint "audience_id"
+    t.string "audience_type", null: false
+    t.datetime "created_at", null: false
+    t.integer "permission", default: 0, null: false
+    t.bigint "production_document_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audience_type", "audience_id"], name: "index_document_shares_on_audience_type_and_audience_id"
+    t.index ["production_document_id"], name: "index_document_shares_on_production_document_id"
+  end
+
   create_table "email_batches", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "mailer_action"
@@ -939,6 +950,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
   end
 
   create_table "message_subscriptions", force: :cascade do |t|
+    t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "last_read_at"
     t.bigint "message_id", null: false
@@ -948,6 +960,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
     t.bigint "user_id", null: false
     t.index ["message_id", "muted"], name: "index_message_subscriptions_on_message_id_and_muted"
     t.index ["message_id"], name: "index_message_subscriptions_on_message_id"
+    t.index ["user_id", "archived_at"], name: "index_message_subscriptions_on_user_id_and_archived_at"
     t.index ["user_id", "message_id"], name: "index_message_subscriptions_on_user_id_and_message_id", unique: true
     t.index ["user_id", "unread_count"], name: "index_message_subscriptions_on_user_id_and_unread_count"
     t.index ["user_id"], name: "index_message_subscriptions_on_user_id"
@@ -1467,6 +1480,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
     t.datetime "updated_at", null: false
     t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "(is_primary = true)"
     t.index ["production_id"], name: "index_posters_on_production_id"
+  end
+
+  create_table "production_documents", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "production_id", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "position"], name: "index_production_documents_on_production_id_and_position"
+    t.index ["production_id"], name: "index_production_documents_on_production_id"
   end
 
   create_table "production_expense_allocations", force: :cascade do |t|
@@ -2631,6 +2654,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
   add_foreign_key "course_registrations", "users"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "device_tokens", "users"
+  add_foreign_key "document_shares", "production_documents"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
@@ -2708,6 +2732,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_140000) do
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "person_invitations", "talent_pools"
   add_foreign_key "posters", "productions"
+  add_foreign_key "production_documents", "productions"
   add_foreign_key "production_expense_allocations", "production_expenses"
   add_foreign_key "production_expense_allocations", "shows"
   add_foreign_key "production_expenses", "productions"

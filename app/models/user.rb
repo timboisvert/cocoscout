@@ -38,8 +38,9 @@ class User < ApplicationRecord
   end
 
   def unread_message_count
-    # Sum unread counts across all active subscriptions (optimized via counter cache)
-    message_subscriptions.active.sum(:unread_count)
+    # Sum unread counts across all active, non-archived subscriptions
+    # (optimized via counter cache)
+    message_subscriptions.active.not_archived.sum(:unread_count)
   end
 
   # Unread count for the manage sidebar — must equal the unread count derivable
@@ -202,7 +203,13 @@ class User < ApplicationRecord
 
   # Get root messages for threads user is subscribed to
   def subscribed_message_threads
-    Message.where(id: message_subscriptions.active.pluck(:message_id))
+    Message.where(id: message_subscriptions.active.not_archived.pluck(:message_id))
+  end
+
+  # Threads this user has archived (subscription-level). Used by the inbox's
+  # "Archived" filter.
+  def archived_message_threads
+    Message.where(id: message_subscriptions.active.archived.pluck(:message_id))
   end
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }

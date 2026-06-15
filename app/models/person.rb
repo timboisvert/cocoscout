@@ -681,4 +681,26 @@ class Person < ApplicationRecord
 
     production.agreement_signed_by?(self)
   end
+
+  public
+
+  # Precomputed audience membership used to resolve document visibility in one
+  # query (see ProductionDocument.visible_to_person).
+  def document_audience_context
+    group_ids = groups.pluck(:id)
+    pool_ids = TalentPoolMembership.where(
+      "(member_type = 'Person' AND member_id = :pid) OR (member_type = 'Group' AND member_id IN (:gids))",
+      pid: id, gids: group_ids.presence || [ 0 ]
+    ).distinct.pluck(:talent_pool_id)
+
+    team_production_ids = user ? ProductionPermission.where(user_id: user.id).pluck(:production_id) : []
+
+    { pool_ids: pool_ids, team_production_ids: team_production_ids }
+  end
+
+  # All production documents this person is allowed to see (distinct; the caller
+  # decides ordering/eager-loading so a DISTINCT+ORDER BY pluck doesn't clash).
+  def accessible_production_documents
+    ProductionDocument.visible_to_person(self, document_audience_context)
+  end
 end

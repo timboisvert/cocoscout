@@ -6,9 +6,12 @@ class MessageSubscription < ApplicationRecord
 
   scope :active, -> { where(muted: false) }
   scope :muted, -> { where(muted: true) }
+  scope :not_archived, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
 
-  # Optimized scope using counter cache column
-  scope :unread, -> { active.where("unread_count > 0") }
+  # Optimized scope using counter cache column. Archived threads don't count
+  # toward unread (they've been set aside).
+  scope :unread, -> { active.not_archived.where("unread_count > 0") }
 
   def mute!
     update!(muted: true)
@@ -16,6 +19,18 @@ class MessageSubscription < ApplicationRecord
 
   def unmute!
     update!(muted: false)
+  end
+
+  def archive!
+    update!(archived_at: Time.current) if archived_at.nil?
+  end
+
+  def unarchive!
+    update!(archived_at: nil)
+  end
+
+  def archived?
+    archived_at.present?
   end
 
   def mark_read!

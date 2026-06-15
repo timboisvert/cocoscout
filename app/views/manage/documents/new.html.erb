@@ -1,0 +1,14 @@
+<% content_for :title, "New document" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [@production.name, edit_manage_production_path(@production)],
+      [ "Documents", manage_production_documents_path(@production) ]
+    ],
+    text: "New document",
+    links: []
+  } %>
+
+  <%= render "form" %>
+</div>

@@ -48,8 +48,11 @@ class Production < ApplicationRecord
     attachable.variant :small, resize_to_limit: [ 300, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
   end
 
-  # Rich text for production-wide notes
+  # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes
+
+  # Rich-text documents & handbooks for this production.
+  has_many :documents, class_name: "ProductionDocument", dependent: :destroy
 
   normalizes :contact_email, with: ->(e) { e.strip.downcase }
 

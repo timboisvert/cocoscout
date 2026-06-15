@@ -345,6 +345,7 @@ Rails.application.routes.draw do
     resources :messages, only: [ :index, :show ] do
       member do
         post :archive
+        post :unarchive
         post :mark_read
         post :mark_unread
         post :reply
@@ -366,6 +367,10 @@ Rails.application.routes.draw do
     resources :profiles, only: [ :index, :new, :create ]
 
     # Productions
+    # Documents shared with this person across productions/talent pools.
+    get    "/documents",                    to: "documents#index",          as: "documents"
+    get    "/documents/:id",                to: "documents#show",           as: "document"
+
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
     get    "/productions/:id/agreement",    to: "productions#agreement",    as: "production_agreement"
@@ -1042,6 +1047,11 @@ Rails.application.routes.draw do
         # Agreement management
         get :agreement_status
         post :send_agreement_reminders
+      end
+
+      # Production documents & handbooks (rich text, per-audience sharing)
+      resources :documents do
+        member { patch :share }
       end
 
       resources :visual_assets, only: [ :index ] do

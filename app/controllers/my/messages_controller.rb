@@ -16,8 +16,9 @@ class My::MessagesController < ApplicationController
     # Base query - show root messages for threads user is subscribed to
     # Note: system-generated messages (automated notifications) ARE shown here
     # because talent needs to see their sign-up confirmations, casting notices, etc.
-    @messages = Current.user.subscribed_message_threads
-                           .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
+    base_threads = @filter == "archived" ? Current.user.archived_message_threads : Current.user.subscribed_message_threads
+    @messages = base_threads
+                  .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
 
     # Apply filters
     case @filter
@@ -109,13 +110,28 @@ class My::MessagesController < ApplicationController
     @message = Message.find(params[:id])
     @root_message = @message.root_message
 
-    # Archive for this user's person
+    # Archive at the subscription level — that's what the inbox is built from.
+    Current.user.message_subscriptions.find_by(message: @root_message)&.archive!
+    # Keep the recipient-level flag in sync for any per-recipient views.
+    @root_message.archive_for!(Current.user.person) if Current.user.person
+
+    respond_to do |format|
+      format.html { redirect_back_or_to my_messages_path, notice: "Message archived" }
+      format.turbo_stream
+    end
+  end
+
+  def unarchive
+    @message = Message.find(params[:id])
+    @root_message = @message.root_message
+
+    Current.user.message_subscriptions.find_by(message: @root_message)&.unarchive!
     if Current.user.person
-      @root_message.archive_for!(Current.user.person)
+      @root_message.message_recipients.find_by(recipient: Current.user.person)&.unarchive!
     end
 
     respond_to do |format|
-      format.html { redirect_to my_messages_path, notice: "Message archived" }
+      format.html { redirect_back_or_to my_messages_path(filter: "archived"), notice: "Message unarchived" }
       format.turbo_stream
     end
   end

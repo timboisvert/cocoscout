@@ -1,0 +1,92 @@
+<%#
+  Sharing/permissions modal for one document.
+  Locals: document, production, talent_pools, candidate_people
+  Trigger with: data-controller="modal" data-action="click->modal#open"
+                data-modal-id="sharing-modal-<document.id>"
+%>
+<% selected_people = Person.where(id: document.person_share_ids).to_a %>
+<div id="sharing-modal-<%= document.id %>"
+     class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200">
+      <div>
+        <h3 class="text-base font-semibold text-gray-900">Share &ldquo;<%= document.title %>&rdquo;</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Choose who can see this and whether they can edit it.</p>
+      </div>
+      <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <%= form_with url: share_manage_production_document_path(production, document), method: :patch, local: true do %>
+      <div class="px-5 py-4 space-y-5"
+           data-controller="document-audience"
+           data-document-audience-candidates-value="<%= (candidate_people || []).map { |p| { id: p.id, name: p.name, initials: p.initials } }.to_json %>">
+        <%# Row template cloned by the controller when a person is added. %>
+        <template data-document-audience-target="rowTemplate"><%= render "manage/documents/person_share_row", person: Struct.new(:id, :name).new("__ID__", "__NAME__"), permission: "read" %></template>
+
+        <%# Production team %>
+        <div class="flex items-center justify-between gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="team_enabled" value="1" <%= "checked" if document.shared_with_team? %>
+                   class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <span class="text-sm font-medium text-gray-700">Production team</span>
+          </label>
+          <select name="team_permission" class="text-xs border-gray-300 rounded py-1 focus:ring-pink-500 focus:border-pink-500">
+            <option value="write" <%= "selected" if document.team_permission != "read" %>>Can edit</option>
+            <option value="read"  <%= "selected" if document.team_permission == "read" %>>Can view</option>
+          </select>
+        </div>
+
+        <%# Talent pools %>
+        <% if talent_pools.present? && talent_pools.any? %>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Talent pools</div>
+            <div class="space-y-1.5">
+              <% talent_pools.each do |pool| %>
+                <% on = document.talent_pool_share_ids.include?(pool.id) %>
+                <div class="flex items-center justify-between gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer min-w-0">
+                    <input type="checkbox" name="talent_pools[<%= pool.id %>][enabled]" value="1" <%= "checked" if on %>
+                           class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                    <span class="text-sm text-gray-700 truncate"><%= pool.name %></span>
+                  </label>
+                  <select name="talent_pools[<%= pool.id %>][permission]" class="text-xs border-gray-300 rounded py-1 focus:ring-pink-500 focus:border-pink-500 flex-shrink-0">
+                    <option value="read"  <%= "selected" if document.pool_permission(pool.id) != "write" %>>Can view</option>
+                    <option value="write" <%= "selected" if document.pool_permission(pool.id) == "write" %>>Can edit</option>
+                  </select>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Specific people %>
+        <div>
+          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Specific people</div>
+          <div data-document-audience-target="chips" class="space-y-1.5 mb-2 empty:hidden">
+            <% selected_people.each do |p| %>
+              <%= render "manage/documents/person_share_row", person: p, permission: (document.person_permission(p.id) || "read") %>
+            <% end %>
+          </div>
+          <div class="relative">
+            <input type="text" data-document-audience-target="search" data-action="input->document-audience#search focus->document-audience#search"
+                   placeholder="Search people to add…" autocomplete="off"
+                   class="block w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+            <div data-document-audience-target="results"
+                 class="hidden absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg"></div>
+          </div>
+          <p class="text-[11px] text-gray-500 mt-1">People connected to this production (cast &amp; talent pools).</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+        <%= render "shared/button", text: "Save sharing", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

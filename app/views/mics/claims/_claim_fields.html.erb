@@ -1,0 +1,14 @@
+<%#
+  Shared claim form fields (used by the full claim page and the modal on the
+  mic detail page). Locals: mic, is_challenge
+%>
+<% unless is_challenge %>
+  <%= render "mics/form_field", name: "mic_claim[role]", label: "Your role", type: "select",
+        options: [ [ "Owner", "owner" ], [ "Venue rep / co-owner", "co_owner" ] ] %>
+<% end %>
+<%= render "mics/form_field", name: "mic_claim[proof][email]", label: "Best contact email/phone for the mic",
+      type: "text", required: true %>
+<%= render "mics/form_field", name: "mic_claim[proof][evidence_url]", label: "Evidence URL", type: "url",
+      placeholder: "Instagram post, venue page, etc.", help: "Anything that backs up your claim." %>
+<%= render "mics/form_field", name: "mic_claim[proof][note]", label: is_challenge ? "Why are you the right owner?" : "Anything else we should know?",
+      type: "textarea", rows: 3, required: is_challenge %>

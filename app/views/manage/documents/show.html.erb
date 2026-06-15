@@ -1,0 +1,24 @@
+<% content_for :title, @document.title %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [@production.name, edit_manage_production_path(@production)],
+      [ "Documents", manage_production_documents_path(@production) ]
+    ],
+    text: @document.title,
+    links: [
+      { text: "Edit", icon: "pencil", path: edit_manage_production_document_path(@production, @document) }
+    ]
+  } %>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-6">
+    <div class="flex items-center gap-2 flex-wrap mb-4 text-xs text-gray-500">
+      <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">Shared with: <%= @document.audience_summary %></span>
+    </div>
+    <div class="prose prose-sm max-w-none">
+      <%= @document.body %>
+    </div>
+  </div>
+</div>
