@@ -7,7 +7,8 @@ module Manage
       before_action :set_shift, only: %i[update destroy assign unassign split merge_with_next acknowledge_gap unacknowledge_gap]
 
       def create
-        @shift = Current.organization.shifts.new(shift_params)
+        attrs = shift_params
+        @shift = Current.organization.shifts.new(sanitize_roles(attrs, attrs[:house_role_id]))
         if @shift.save
           flash[:notice] = "Shift added."
         else
@@ -17,7 +18,7 @@ module Manage
       end
 
       def update
-        if @shift.update(shift_params)
+        if @shift.update(sanitize_roles(shift_params, @shift.house_role_id))
           flash[:notice] = "Shift updated."
         else
           flash[:alert] = "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
@@ -167,6 +168,15 @@ module Manage
           :coverage_mode, :renter_name, :notes, :source_type, :source_id,
           additional_role_ids: []
         )
+      end
+
+      # Clean the "also covers" set: ints, no blanks, no dups, and never the
+      # primary role itself (the UI disables it; this is the server backstop).
+      def sanitize_roles(attrs, primary_id)
+        return attrs unless attrs.key?(:additional_role_ids)
+        ids = Array(attrs[:additional_role_ids]).map(&:to_s).reject(&:blank?).map(&:to_i).uniq
+        ids.delete(primary_id.to_i) if primary_id
+        attrs.merge(additional_role_ids: ids)
       end
 
       # Coerce the segments param into [{ starts_at: Time, ends_at: Time }, ...].

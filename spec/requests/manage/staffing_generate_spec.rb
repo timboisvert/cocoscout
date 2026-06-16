@@ -96,32 +96,34 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
     end
   end
 
-  describe "doubling up a shift (secondary role)" do
+  describe "doubling up a shift (extra roles)" do
     let(:primary) { create(:house_role, organization: org, name: "Bartender") }
     let(:secondary) { create(:house_role, organization: org, name: "Manager") }
+    let(:third) { create(:house_role, organization: org, name: "Security") }
     let!(:shift) { create(:shift, organization: org, house_role: primary) }
 
-    it "sets a secondary role via update" do
-      patch manage_update_staffing_shift_path(shift), params: { shift: { secondary_house_role_id: secondary.id } }
-      expect(shift.reload.secondary_house_role).to eq(secondary)
+    it "sets multiple extra roles via update" do
+      patch manage_update_staffing_shift_path(shift), params: { shift: { additional_role_ids: [ secondary.id, third.id ] } }
+      shift.reload
+      expect(shift.additional_roles).to contain_exactly(secondary, third)
       expect(shift).to be_doubled
-      expect(shift.role_label).to eq("Bartender + Manager")
+      expect(shift.role_label).to eq("Bartender + Manager + Security")
     end
 
-    it "rejects a secondary role equal to the primary" do
-      patch manage_update_staffing_shift_path(shift), params: { shift: { secondary_house_role_id: primary.id } }
-      expect(shift.reload.secondary_house_role_id).to be_nil
-      expect(flash[:alert]).to be_present
+    it "ignores an extra role equal to the primary (silently dropped)" do
+      patch manage_update_staffing_shift_path(shift), params: { shift: { additional_role_ids: [ primary.id ] } }
+      expect(shift.reload.additional_roles).to be_empty
     end
 
-    it "renders the combined role badge on the schedule" do
-      shift.update!(secondary_house_role: secondary)
+    it "renders the extra roles on the schedule card" do
+      shift.update!(additional_role_ids: [ secondary.id ])
       get manage_staffing_index_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
-      expect(response.body).to include("+ Manager")
+      expect(response.body).to include("Also covers")
+      expect(response.body).to include("Manager")
     end
 
-    it "echoes the doubled shift into the secondary role's Gantt row" do
-      shift.update!(secondary_house_role: secondary)
+    it "echoes the doubled shift into the extra role's Gantt row" do
+      shift.update!(additional_role_ids: [ secondary.id ])
       get manage_staffing_index_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
       # The secondary-row echo block carries this title.
       expect(response.body).to include("Also covering Manager")

@@ -66,7 +66,7 @@ RSpec.describe "Staff shift visibility", type: :request do
     end
 
     it "shows a doubled-up shift with the combined role label" do
-      my_shift.update!(secondary_house_role: bartender)
+      my_shift.update!(additional_role_ids: [ bartender.id ])
       get my_shifts_path
       expect(response.body).to include("FrontOfHouseRole + BartenderRole")
     end
