@@ -1,6 +1,7 @@
 <%
   mics_seo title: "Manage #{@mic.name} — Find a Mic",
             description: "Owner dashboard for #{@mic.name}."
+  show_danger = deletable_by?(Current.user)
 %>
 <%= render "mics/header" %>
 
@@ -30,105 +31,122 @@
     </div>
   <% end %>
 
-  <%# Big action row. Each tile opens a modal. %>
-  <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
-    <div class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Quick actions</div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+  <%# Compact quick actions — each opens a modal. Small chips, not big tiles. %>
+  <section class="w-full px-4 sm:px-8 py-4 border-b border-gray-100">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold mr-1">Quick actions</span>
       <% [
-        [ "modal-verify",     "✓",  "Verify info",        "Confirm everything is still accurate." ],
-        [ "modal-status",     "●",  "Set status",         "Extra spots, cancelled, running as planned." ],
-        [ "modal-announce",   "📣", "Post announcement",  "News on the mic page." ],
-        [ "modal-cancel",     "✕",  "Cancel a date",      "Mark a specific date cancelled." ]
-      ].each do |id, icon, title, blurb| %>
+        [ "modal-verify",   "✓",  "Verify info" ],
+        [ "modal-announce", "📣", "Post announcement" ],
+        [ "modal-cancel",   "✕",  "Cancel a date" ]
+      ].each do |id, icon, title| %>
         <button type="button"
                 data-controller="mics-modal"
                 data-action="click->mics-modal#open"
                 data-mics-modal-target-id-value="<%= id %>"
-                class="cursor-pointer text-left px-3 py-2.5 sm:px-4 sm:py-4 bg-white border-2 border-gray-200 rounded hover:border-pink-400 hover:bg-pink-50 active:bg-pink-100 transition-colors duration-100 group">
-          <div class="flex items-baseline gap-2">
-            <span class="text-lg sm:text-2xl text-pink-500"><%= icon %></span>
-            <span class="coustard-regular text-sm sm:text-lg text-gray-900 group-hover:text-pink-700"><%= title %></span>
-          </div>
-          <div class="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-gray-500"><%= blurb %></div>
+                class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700 hover:border-pink-400 hover:bg-pink-50 hover:text-pink-700 transition-colors duration-100">
+          <span class="text-pink-500"><%= icon %></span>
+          <span><%= title %></span>
         </button>
       <% end %>
     </div>
   </section>
 
-  <%# Sections — boxed style with pink header bar. %>
-  <div class="w-full px-4 sm:px-8 py-6 bg-pink-50">
-    <div class="w-full max-w-5xl space-y-6">
+  <%# Community suggestions surfaced above the editor. %>
+  <% if @pending_suggestions.any? %>
+    <section class="w-full px-4 sm:px-8 py-4 bg-amber-50 border-b border-amber-200">
+      <div class="max-w-5xl border border-amber-300 bg-white rounded">
+        <header class="px-5 sm:px-6 py-3 border-b border-amber-200 bg-amber-100">
+          <h2 class="text-xs uppercase tracking-wider text-amber-800 font-bold">
+            <%= pluralize(@pending_suggestions.size, "pending suggestion") %> from the community
+          </h2>
+        </header>
+        <ul class="divide-y divide-amber-200">
+          <% @pending_suggestions.each do |s| %>
+            <li class="px-5 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap">
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-gray-500"><%= s.created_at.strftime("%b %-d, %-l:%M%p") %> · <%= s.submitter&.email_address || s.submitter_email %></div>
+                <div class="text-sm text-gray-800 mt-1 whitespace-pre-line"><%= s.note %></div>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <%= button_to "Approve", mics_owner_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                      class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+                <%= button_to "Reject", mics_owner_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
+                      class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </section>
+  <% end %>
 
-      <% if @pending_suggestions.any? %>
-        <section class="bg-amber-50 border border-amber-300">
-          <header class="px-5 sm:px-6 py-3 border-b border-amber-200 bg-amber-100">
-            <h2 class="text-xs uppercase tracking-wider text-amber-800 font-bold">
-              <%= pluralize(@pending_suggestions.size, "pending suggestion") %> from the community
-            </h2>
-          </header>
-          <ul class="divide-y divide-amber-200">
-            <% @pending_suggestions.each do |s| %>
-              <li class="px-5 sm:px-6 py-3 flex items-baseline gap-3 flex-wrap">
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-gray-500"><%= s.created_at.strftime("%b %-d, %-l:%M%p") %> · <%= s.submitter&.email_address || s.submitter_email %></div>
-                  <div class="text-sm text-gray-800 mt-1 whitespace-pre-line"><%= s.note %></div>
-                </div>
-                <div class="flex gap-2 shrink-0">
-                  <%= button_to "Approve", mics_owner_approve_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
-                        class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-                  <%= button_to "Reject", mics_owner_reject_suggestion_path(@mic.slug, suggestion_id: s.id), method: :post,
-                        class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
-                </div>
-              </li>
-            <% end %>
-          </ul>
+  <%# ===== Tabbed editor =====
+      Field tabs (Basics → Access & age) all live in ONE form and are saved
+      together by the single Save bar at the bottom. Socials, Owners and the
+      Danger zone are their own panels with their own actions. %>
+  <div class="w-full px-4 sm:px-8 py-6 bg-pink-50" data-controller="tabs">
+    <div class="w-full max-w-5xl">
+
+      <%
+        tabs = [ "Basics", "Schedule", "Sign-ups", "Location", "Access & age", "Socials", "Owners" ]
+        tabs << "Danger zone" if show_danger
+      %>
+
+      <%# Mobile: a dropdown so no one misses the off-screen tabs. %>
+      <div class="sm:hidden mb-3">
+        <label class="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Section</label>
+        <select data-tabs-target="menu" data-action="change->tabs#selectMenu"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded bg-white text-sm font-bold text-gray-800 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none">
+          <% tabs.each_with_index do |label, i| %>
+            <option value="<%= i %>"><%= label %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <%# Desktop: horizontal tab bar. %>
+      <nav class="hidden sm:flex gap-1 overflow-x-auto border-b border-pink-200 mb-0">
+        <% tabs.each_with_index do |label, i| %>
+          <button type="button" data-tabs-target="tab" data-index="<%= i %>"
+                  data-action="click->tabs#select"
+                  class="cursor-pointer whitespace-nowrap px-4 py-2.5 text-sm font-bold border-b-2 rounded-t
+                         <%= i.zero? ? "border-pink-500 text-pink-600 bg-white" : "border-transparent text-gray-500 bg-gray-50 hover:text-pink-600" %>">
+            <%= label %>
+          </button>
+        <% end %>
+      </nav>
+
+      <%# The single form wrapping all field tabs. %>
+      <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch, id: "mic-edit-form" do %>
+
+        <%# --- Tab 0: Basics --- %>
+        <section data-tabs-target="panel" class="bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+          <%= render "mics/form_field", name: "mic[name]", label: "Name", value: @mic.name %>
+          <% if show_danger %>
+            <%= render "mics/form_field", name: "mic[slug]", label: "Slug (URL)", value: @mic.slug,
+                  placeholder: "e.g. cole-bar-monday",
+                  help: "Public URL: /mics/m/#{@mic.slug}. Lowercase letters, digits, and hyphens only — anything else gets normalized on save. Changing this breaks existing links." %>
+          <% end %>
+          <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select", value: @mic.format,
+                options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length", value: @mic.spot_length_minutes,
+                  placeholder: "e.g. 5, 3-5 minutes, 5ish",
+                  help: "Free text — a bare number renders as \"5 min\" on the public page; anything else (\"3-5 minutes\", \"depends\") shows verbatim." %>
+            <%= render "mics/form_field", name: "mic[signup_cap]", label: "Maximum # of performers", value: @mic.signup_cap,
+                  placeholder: "e.g. 10, 10ish, 10-15",
+                  help: "Free text — write whatever describes the cap. Owners often say things like \"10ish\" or \"up to 15\"." %>
+          </div>
+          <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
         </section>
-      <% end %>
 
-      <%# Basic info — Name, Format, Spot length, Cap, Blurb. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Basic info</h2>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
-            <%= render "mics/form_field", name: "mic[name]", label: "Name", value: @mic.name %>
-            <% if deletable_by?(Current.user) %>
-              <%# Slug edit is admin-only (superadmin or hub captain).
-                  Regular producers shouldn't be able to rename the URL
-                  out from under existing inbound links. %>
-              <%= render "mics/form_field", name: "mic[slug]", label: "Slug (URL)", value: @mic.slug,
-                    placeholder: "e.g. cole-bar-monday",
-                    help: "Public URL: /mics/m/#{@mic.slug}. Lowercase letters, digits, and hyphens only — anything else gets normalized on save. Changing this breaks existing links." %>
-            <% end %>
-            <%= render "mics/form_field", name: "mic[format]", label: "Format", type: "select", value: @mic.format,
-                  options: Mic.formats.keys.map { |k| [ mics_format_label(k), k ] } %>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "mic[spot_length_minutes]", label: "Spot length", value: @mic.spot_length_minutes,
-                    placeholder: "e.g. 5, 3-5 minutes, 5ish",
-                    help: "Free text — a bare number renders as \"5 min\" on the public page; anything else (\"3-5 minutes\", \"depends\") shows verbatim." %>
-              <%= render "mics/form_field", name: "mic[signup_cap]", label: "Maximum # of performers", value: @mic.signup_cap,
-                    placeholder: "e.g. 10, 10ish, 10-15",
-                    help: "Free text — write whatever describes the cap. Owners often say things like \"10ish\" or \"up to 15\"." %>
-            </div>
-            <%= render "mics/form_field", name: "mic[blurb]", label: "Blurb", type: "textarea", rows: 4, value: @mic.blurb %>
-
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save basic info", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </section>
-
-      <%# Schedule — structured recurrence with Stimulus-driven UI. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Schedule</h2>
+        <%# --- Tab 1: Schedule --- %>
+        <section data-tabs-target="panel"
+                 data-controller="mics-schedule-form"
+                 class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
           <% if (preview = mics_schedule_label(@mic)).present? %>
-            <p class="text-xs text-gray-500 mt-1">Current: <span class="font-bold text-gray-800"><%= preview %></span></p>
+            <p class="text-xs text-gray-500 mb-4">Current: <span class="font-bold text-gray-800"><%= preview %></span></p>
           <% end %>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
           <%
             actual_pattern = (@mic.recurrence_pattern || "weekly")
             primary_choice = case actual_pattern
@@ -140,483 +158,362 @@
                              end
             monthly_kind   = %w[monthly_nth_weekday monthly_day_of_month].include?(actual_pattern) ? actual_pattern : "monthly_nth_weekday"
           %>
-          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch,
-                data: { controller: "mics-schedule-form" } do %>
-            <%# Hidden field that actually persists. JS writes the resolved enum value into it. %>
-            <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
-                   data-mics-schedule-form-target="hiddenPattern">
+          <input type="hidden" name="mic[recurrence_pattern]" value="<%= actual_pattern %>"
+                 data-mics-schedule-form-target="hiddenPattern">
 
-            <%# Top-level: cadence picker. %>
-            <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
-                  value: primary_choice,
+          <%= render "mics/form_field", name: "ui_primary_pattern", label: "How often?", type: "select",
+                value: primary_choice,
+                options: [
+                  [ "Weekly",                                    "weekly" ],
+                  [ "Every other week",                          "biweekly" ],
+                  [ "Multiple times per month (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
+                  [ "Monthly",                                   "monthly" ],
+                  [ "Custom dates (one-offs / pop-ups)",         "custom_dates" ]
+                ],
+                data: { "mics-schedule-form-target": "primary",
+                        action: "change->mics-schedule-form#refresh" } %>
+
+          <div data-mics-schedule-form-target="anchorBlock" class="<%= primary_choice == "biweekly" ? "" : "hidden" %>">
+            <%= render "mics/form_field", name: "mic[recurrence_anchor_date]", label: "Starting on", type: "date",
+                  value: @mic.recurrence_anchor_date&.iso8601,
+                  help: "Pick any known mic date. We'll bracket the right alternating weeks from there." %>
+          </div>
+
+          <div data-mics-schedule-form-target="monthlyKindBlock" class="<%= primary_choice == "monthly" ? "" : "hidden" %>">
+            <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
+                  value: monthly_kind,
                   options: [
-                    [ "Weekly",                                    "weekly" ],
-                    [ "Every other week",                          "biweekly" ],
-                    [ "Multiple times per month (e.g. 1st & 3rd Monday)", "monthly_nth_weekdays" ],
-                    [ "Monthly",                                   "monthly" ],
-                    [ "Custom dates (one-offs / pop-ups)",         "custom_dates" ]
+                    [ "A specific weekday (e.g. 2nd Tuesday)",        "monthly_nth_weekday" ],
+                    [ "A specific day of the month (e.g. the 15th)",  "monthly_day_of_month" ]
                   ],
-                  data: { "mics-schedule-form-target": "primary",
+                  data: { "mics-schedule-form-target": "monthlyKind",
                           action: "change->mics-schedule-form#refresh" } %>
+          </div>
 
-            <%# Bi-weekly anchor — "starting on" so we know which weeks. %>
-            <div data-mics-schedule-form-target="anchorBlock"
-                 class="<%= primary_choice == "biweekly" ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[recurrence_anchor_date]",
-                    label: "Starting on", type: "date",
-                    value: @mic.recurrence_anchor_date&.iso8601,
-                    help: "Pick any known mic date. We'll bracket the right alternating weeks from there." %>
-            </div>
+          <div data-mics-schedule-form-target="nthBlock"
+               class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_nth_weekday") ? "" : "hidden" %>">
+            <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which one?", type: "select",
+                  value: @mic.recurrence_nth_week || 1,
+                  options: [ [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ], [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ] ] %>
+          </div>
 
-            <%# Sub-pattern shown only for Monthly. %>
-            <div data-mics-schedule-form-target="monthlyKindBlock"
-                 class="<%= primary_choice == "monthly" ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "ui_monthly_kind", label: "Monthly on…", type: "select",
-                    value: monthly_kind,
-                    options: [
-                      [ "A specific weekday (e.g. 2nd Tuesday)",        "monthly_nth_weekday" ],
-                      [ "A specific day of the month (e.g. the 15th)",  "monthly_day_of_month" ]
-                    ],
-                    data: { "mics-schedule-form-target": "monthlyKind",
-                            action: "change->mics-schedule-form#refresh" } %>
-            </div>
-
-            <%# Nth-week select — only for Monthly + nth_weekday %>
-            <div data-mics-schedule-form-target="nthBlock"
-                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_nth_weekday") ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[recurrence_nth_week]", label: "Which one?", type: "select",
-                    value: @mic.recurrence_nth_week || 1,
-                    options: [
-                      [ "1st", 1 ], [ "2nd", 2 ], [ "3rd", 3 ],
-                      [ "4th", 4 ], [ "5th", 5 ], [ "Last", -1 ]
-                    ] %>
-            </div>
-
-            <%# Multi-nth-week checkboxes — for "Multiple times per month" %>
-            <div data-mics-schedule-form-target="nthMultiBlock"
-                 class="mb-4 <%= primary_choice == "monthly_nth_weekdays" ? "" : "hidden" %>">
-              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Which weeks?</label>
-              <% selected_weeks = Array(@mic.recurrence_nth_weeks).map(&:to_i) %>
-              <%# Hidden zero-value so an all-unchecked submit still posts the key. %>
-              <input type="hidden" name="mic[recurrence_nth_weeks][]" value="">
-              <div class="flex flex-wrap gap-2">
-                <% [ [ 1, "1st" ], [ 2, "2nd" ], [ 3, "3rd" ], [ 4, "4th" ], [ 5, "5th" ], [ -1, "Last" ] ].each do |val, label| %>
-                  <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded <%= selected_weeks.include?(val) ? "bg-pink-500 text-white border-pink-600 font-bold" : "bg-white border-gray-300 text-gray-700 hover:bg-pink-50" %>">
-                    <input type="checkbox" name="mic[recurrence_nth_weeks][]" value="<%= val %>"
-                           <%= "checked" if selected_weeks.include?(val) %>
-                           class="h-4 w-4 accent-pink-500">
-                    <span class="text-sm"><%= label %></span>
-                  </label>
-                <% end %>
-              </div>
-              <p class="mt-1 text-xs text-gray-500">Pick every week the mic runs. e.g. for "first and third Monday," check 1st and 3rd.</p>
-            </div>
-
-            <%# Day-of-month input — only for Monthly + day_of_month %>
-            <div data-mics-schedule-form-target="domBlock"
-                 class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[recurrence_day_of_month]", label: "Day of month (1–31)", type: "text",
-                    value: @mic.recurrence_day_of_month,
-                    help: "If a month doesn't have that day (e.g. Feb 30), it gets skipped." %>
-            </div>
-
-            <%# Day-of-week + start time — hidden when day-of-month or custom_dates is active. %>
-            <div data-mics-schedule-form-target="dowBlock"
-                 class="<%= ((primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") || primary_choice == "custom_dates") ? "hidden" : "" %>">
-              <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day of the week?", type: "select",
-                    value: @mic.day_of_week,
-                    options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
-            </div>
-
-            <%# Custom dates list — only for the custom_dates pattern. JS
-                renders pills + manages hidden inputs. Each entry carries
-                its own start time so dates can differ. %>
-            <div data-mics-schedule-form-target="customDatesBlock"
-                 class="mb-4 <%= primary_choice == "custom_dates" ? "" : "hidden" %>">
-              <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Dates this mic happens</label>
-              <div data-controller="mics-custom-dates"
-                   data-mics-custom-dates-initial-value='<%= Array(@mic.custom_dates).to_json %>'>
-                <input type="hidden" name="mic[custom_dates_json]"
-                       data-mics-custom-dates-target="store" value="[]">
-                <div class="flex flex-wrap gap-2 items-end mb-3">
-                  <input type="date" data-mics-custom-dates-target="datePicker"
-                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
-                  <input type="time" data-mics-custom-dates-target="timePicker"
-                         class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
-                  <button type="button" data-action="click->mics-custom-dates#add"
-                          class="cursor-pointer px-3 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white font-bold rounded">
-                    + Add date
-                  </button>
-                </div>
-                <div data-mics-custom-dates-target="list" class="flex flex-wrap"></div>
-                <p data-mics-custom-dates-target="empty" class="text-xs text-gray-500 italic">No dates yet — add one above.</p>
-              </div>
-              <p class="mt-2 text-xs text-gray-500">Use this for pop-ups, mini-residencies, or any mic that doesn't repeat on a fixed cadence. Each date has its own start time.</p>
-            </div>
-
-            <div data-mics-schedule-form-target="startTimeBlock"
-                 class="<%= primary_choice == "custom_dates" ? "hidden" : "" %>">
-              <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
-                    value: @mic.starts_local_time&.strftime("%H:%M") %>
-            </div>
-
-            <%# Pause state lives in its own accordion — toggled on, the
-                mic stops appearing on city listings and upcoming-week
-                feeds, but stays searchable and on favoriters' lists.
-                Optional resume date silently picks the schedule back up
-                on that date. Optional note explains what's going on. %>
-            <% currently_paused = @mic.paused? %>
-            <details class="group border border-gray-200 bg-gray-50 mb-4" <%= "open" if currently_paused %>>
-              <summary class="list-none px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                <span class="text-xs text-gray-500 transition-transform group-open:rotate-90 inline-block">▶</span>
-                <span>Pause this mic</span>
-                <% if currently_paused %>
-                  <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white font-bold rounded">
-                    Paused<% if @mic.canceled_until.present? && @mic.canceled_until >= Date.current %> until <%= @mic.canceled_until.strftime("%b %-d") %><% end %>
-                  </span>
-                <% end %>
-              </summary>
-              <div class="px-4 py-4 border-t border-gray-200 bg-white space-y-4">
-                <label class="flex items-center gap-2 text-sm text-gray-800">
-                  <input type="hidden" name="mic[paused]" value="0">
-                  <input type="checkbox" name="mic[paused]" value="1" <%= "checked" if currently_paused %>
-                         class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-                  <span><strong>Pause this mic.</strong> Stays searchable and visible on favorites — just doesn't show up in city listings or upcoming-week views.</span>
+          <div data-mics-schedule-form-target="nthMultiBlock"
+               class="mb-4 <%= primary_choice == "monthly_nth_weekdays" ? "" : "hidden" %>">
+            <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Which weeks?</label>
+            <% selected_weeks = Array(@mic.recurrence_nth_weeks).map(&:to_i) %>
+            <input type="hidden" name="mic[recurrence_nth_weeks][]" value="">
+            <div class="flex flex-wrap gap-2">
+              <% [ [ 1, "1st" ], [ 2, "2nd" ], [ 3, "3rd" ], [ 4, "4th" ], [ 5, "5th" ], [ -1, "Last" ] ].each do |val, label| %>
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded <%= selected_weeks.include?(val) ? "bg-pink-500 text-white border-pink-600 font-bold" : "bg-white border-gray-300 text-gray-700 hover:bg-pink-50" %>">
+                  <input type="checkbox" name="mic[recurrence_nth_weeks][]" value="<%= val %>"
+                         <%= "checked" if selected_weeks.include?(val) %>
+                         class="h-4 w-4 accent-pink-500">
+                  <span class="text-sm"><%= label %></span>
                 </label>
+              <% end %>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">Pick every week the mic runs. e.g. for "first and third Monday," check 1st and 3rd.</p>
+          </div>
 
-                <%= render "mics/form_field", name: "mic[canceled_until]", label: "Resume on (optional)", type: "date",
-                      value: @mic.canceled_until&.iso8601,
-                      help: "Leave empty for an open-ended hiatus. When set, the regular schedule silently picks back up on that date." %>
+          <div data-mics-schedule-form-target="domBlock"
+               class="<%= (primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") ? "" : "hidden" %>">
+            <%= render "mics/form_field", name: "mic[recurrence_day_of_month]", label: "Day of month (1–31)", type: "text",
+                  value: @mic.recurrence_day_of_month,
+                  help: "If a month doesn't have that day (e.g. Feb 30), it gets skipped." %>
+          </div>
 
-                <%= render "mics/form_field", name: "mic[pause_note]", label: "Pause message (shown on the public page)",
-                      type: "textarea", rows: 3, value: @mic.pause_note,
-                      placeholder: "e.g. On hiatus for the summer. See you in September!",
-                      help: "Performers landing on the page will see this front-and-center while the mic is paused." %>
+          <div data-mics-schedule-form-target="dowBlock"
+               class="<%= ((primary_choice == "monthly" && monthly_kind == "monthly_day_of_month") || primary_choice == "custom_dates") ? "hidden" : "" %>">
+            <%= render "mics/form_field", name: "mic[day_of_week]", label: "Which day of the week?", type: "select",
+                  value: @mic.day_of_week,
+                  options: (0..6).map { |i| [ mics_day_name(i), i ] } %>
+          </div>
+
+          <div data-mics-schedule-form-target="customDatesBlock"
+               class="mb-4 <%= primary_choice == "custom_dates" ? "" : "hidden" %>">
+            <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Dates this mic happens</label>
+            <div data-controller="mics-custom-dates"
+                 data-mics-custom-dates-initial-value='<%= Array(@mic.custom_dates).to_json %>'>
+              <input type="hidden" name="mic[custom_dates_json]" data-mics-custom-dates-target="store" value="[]">
+              <div class="flex flex-wrap gap-2 items-end mb-3">
+                <input type="date" data-mics-custom-dates-target="datePicker"
+                       class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                <input type="time" data-mics-custom-dates-target="timePicker"
+                       class="px-3 py-2 text-sm border border-gray-300 focus:border-pink-500 outline-none rounded">
+                <button type="button" data-action="click->mics-custom-dates#add"
+                        class="cursor-pointer px-3 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white font-bold rounded">
+                  + Add date
+                </button>
               </div>
-            </details>
-
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save schedule", variant: "primary", size: "medium", type: :submit %>
+              <div data-mics-custom-dates-target="list" class="flex flex-wrap"></div>
+              <p data-mics-custom-dates-target="empty" class="text-xs text-gray-500 italic">No dates yet — add one above.</p>
             </div>
-          <% end %>
-        </div>
-      </section>
+            <p class="mt-2 text-xs text-gray-500">Use this for pop-ups, mini-residencies, or any mic that doesn't repeat on a fixed cadence. Each date has its own start time.</p>
+          </div>
 
-      <%# Sign-up info — channel (online / in-person / both) + bucket draw + URL (only for online). %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Sign-up info</h2>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch,
-                data: { controller: "mics-signup-form" } do %>
-            <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up type", type: "select",
-                  value: (@mic.signup_method.presence || "in_person"),
-                  options: Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
-                  data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
+          <div data-mics-schedule-form-target="startTimeBlock" class="<%= primary_choice == "custom_dates" ? "hidden" : "" %>">
+            <%= render "mics/form_field", name: "mic[starts_local_time]", label: "Start time", type: "time",
+                  value: @mic.starts_local_time&.strftime("%H:%M") %>
+          </div>
 
-            <div data-mics-signup-form-target="urlBlock"
-                 class="<%= @mic.online_signup? ? "" : "hidden" %>">
-              <%= render "mics/form_field", name: "mic[signup_url]", label: "How to sign up online", value: @mic.signup_url,
-                    placeholder: "https://… or e.g. \"Through Lia Berman's FB Google Sheet post\"",
-                    help: "A URL becomes a \"Sign up\" button on the public page. Any other text gets shown as instructions — useful when sign-up happens via Facebook, a Google Sheet link in a post, etc." %>
+          <% currently_paused = @mic.paused? %>
+          <details class="group border border-gray-200 bg-gray-50 mb-2" <%= "open" if currently_paused %>>
+            <summary class="list-none px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+              <span class="text-xs text-gray-500 transition-transform group-open:rotate-90 inline-block">▶</span>
+              <span>Pause this mic</span>
+              <% if currently_paused %>
+                <span class="ml-auto inline-flex items-center text-[10px] uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white font-bold rounded">
+                  Paused<% if @mic.canceled_until.present? && @mic.canceled_until >= Date.current %> until <%= @mic.canceled_until.strftime("%b %-d") %><% end %>
+                </span>
+              <% end %>
+            </summary>
+            <div class="px-4 py-4 border-t border-gray-200 bg-white space-y-4">
+              <label class="flex items-center gap-2 text-sm text-gray-800">
+                <input type="hidden" name="mic[paused]" value="0">
+                <input type="checkbox" name="mic[paused]" value="1" <%= "checked" if currently_paused %>
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span><strong>Pause this mic.</strong> Stays searchable and visible on favorites — just doesn't show up in city listings or upcoming-week views.</span>
+              </label>
+              <%= render "mics/form_field", name: "mic[canceled_until]", label: "Resume on (optional)", type: "date",
+                    value: @mic.canceled_until&.iso8601,
+                    help: "Leave empty for an open-ended hiatus. When set, the regular schedule silently picks back up on that date." %>
+              <%= render "mics/form_field", name: "mic[pause_note]", label: "Pause message (shown on the public page)",
+                    type: "textarea", rows: 3, value: @mic.pause_note,
+                    placeholder: "e.g. On hiatus for the summer. See you in September!",
+                    help: "Performers landing on the page will see this front-and-center while the mic is paused." %>
             </div>
+          </details>
+        </section>
 
-            <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
-                  value: @mic.signup_opens_at_text,
-                  placeholder: "e.g. 7:30 PM, or 2 weeks beforehand",
-                  help: "Whatever describes it best — a time of day (\"7:30 PM\"), a lead time (\"2 weeks before\"), or however you'd say it." %>
+        <%# --- Tab 2: Sign-ups --- %>
+        <section data-tabs-target="panel"
+                 data-controller="mics-signup-form"
+                 class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+          <%= render "mics/form_field", name: "mic[signup_method]", label: "Sign-up type", type: "select",
+                value: (@mic.signup_method.presence || "in_person"),
+                options: Mic.signup_methods.keys.map { |k| [ mics_signup_method_label(k), k ] },
+                data: { "mics-signup-form-target": "channel", action: "change->mics-signup-form#refresh" } %>
 
-            <label class="flex items-center gap-2 mb-4 text-sm text-gray-800">
-              <%# Hidden so unchecked posts a falsy value, not "no key" — Rails sees `0` vs `1`. %>
-              <input type="hidden" name="mic[bucket_draw]" value="0">
-              <input type="checkbox" name="mic[bucket_draw]" value="1" <%= "checked" if @mic.bucket_draw %>
-                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-              <span>Bucket draw / random draw</span>
-            </label>
+          <div data-mics-signup-form-target="urlBlock" class="<%= @mic.online_signup? ? "" : "hidden" %>">
+            <%= render "mics/form_field", name: "mic[signup_url]", label: "How to sign up online", value: @mic.signup_url,
+                  placeholder: "https://… or e.g. \"Through Lia Berman's FB Google Sheet post\"",
+                  help: "A URL becomes a \"Sign up\" button on the public page. Any other text gets shown as instructions — useful when sign-up happens via Facebook, a Google Sheet link in a post, etc." %>
+          </div>
 
-            <%= render "mics/form_field", name: "mic[signup_notes]", label: "Sign-up notes", type: "textarea", rows: 3,
-                  value: @mic.signup_notes,
-                  placeholder: "e.g. Spend $30 at the bar to get bumped in any time. Late drops handled at the door.",
-                  help: "Anything that doesn't fit the structured fields — house rules, comp policies, bump-in offers, drink minimums. Shown publicly under sign-up info." %>
+          <%= render "mics/form_field", name: "mic[signup_opens_at_text]", label: "When sign-up opens",
+                value: @mic.signup_opens_at_text,
+                placeholder: "e.g. 7:30 PM, or 2 weeks beforehand",
+                help: "Whatever describes it best — a time of day (\"7:30 PM\"), a lead time (\"2 weeks before\"), or however you'd say it." %>
 
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save sign-up info", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </section>
+          <label class="flex items-center gap-2 mb-4 text-sm text-gray-800">
+            <input type="hidden" name="mic[bucket_draw]" value="0">
+            <input type="checkbox" name="mic[bucket_draw]" value="1" <%= "checked" if @mic.bucket_draw %>
+                   class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <span>Bucket draw / random draw</span>
+          </label>
 
-      <%# Location / Venue — editable for any user who can manage the mic.
-          Two flows: (1) edit the current venue in place (affects every
-          mic at that venue), (2) move this mic to a different venue. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Location</h2>
-          <p class="text-xs text-gray-500 mt-1">
+          <%= render "mics/form_field", name: "mic[signup_notes]", label: "Sign-up notes", type: "textarea", rows: 3,
+                value: @mic.signup_notes,
+                placeholder: "e.g. Spend $30 at the bar to get bumped in any time. Late drops handled at the door.",
+                help: "Anything that doesn't fit the structured fields — house rules, comp policies, bump-in offers, drink minimums. Shown publicly under sign-up info." %>
+        </section>
+
+        <%# --- Tab 3: Location (in-place venue edit; "move" lives in a modal) --- %>
+        <section data-tabs-target="panel" class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+          <p class="text-xs text-gray-500 mb-4">
             Currently <strong><%= @mic.venue.name %></strong> · <%= @mic.venue.neighborhood_city %>.
             <% other_count = @mic.venue.mics.where.not(id: @mic.id).count %>
             <% if other_count.positive? %>
               ⚠️ This venue hosts <%= pluralize(other_count, "other mic") %> — edits affect all of them. Use "Move to a different venue" if just this one is relocating.
             <% end %>
           </p>
-        </header>
-        <div class="px-5 sm:px-6 py-5 space-y-6">
-          <%# Edit current venue in place. %>
-          <%= form_with url: mics_owner_update_venue_path(@mic.slug), method: :patch do %>
-            <%= render "mics/form_field", name: "venue[name]", label: "Venue name", value: @mic.venue.name, required: true %>
-            <%= render "mics/form_field", name: "venue[address1]", label: "Street address", value: @mic.venue.address1 %>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood", value: @mic.venue.neighborhood %>
-              <%= render "mics/form_field", name: "venue[postal_code]", label: "ZIP", value: @mic.venue.postal_code %>
-              <%= render "mics/form_field", name: "venue[city]", label: "City", value: @mic.venue.city, required: true %>
-              <div class="mb-4">
-                <%= render "shared/us_state_select",
-                      name: "venue[state]", required: true, value: @mic.venue.state, label: "State" %>
-              </div>
+
+          <%= render "mics/form_field", name: "venue[name]", label: "Venue name", value: @mic.venue.name, required: true %>
+          <%= render "mics/form_field", name: "venue[address1]", label: "Street address", value: @mic.venue.address1 %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <%= render "mics/form_field", name: "venue[neighborhood]", label: "Neighborhood", value: @mic.venue.neighborhood %>
+            <%= render "mics/form_field", name: "venue[postal_code]", label: "ZIP", value: @mic.venue.postal_code %>
+            <%= render "mics/form_field", name: "venue[city]", label: "City", value: @mic.venue.city, required: true %>
+            <div class="mb-4">
+              <%= render "shared/us_state_select", name: "venue[state]", required: true, value: @mic.venue.state, label: "State" %>
             </div>
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save location", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
+          </div>
 
-          <%# Move to a different venue — re-points just this mic. %>
-          <details class="border border-gray-200 bg-gray-50 rounded">
-            <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-gray-700 hover:bg-gray-100">
-              Move to a different venue
-            </summary>
-            <div class="px-4 py-4 border-t border-gray-200 bg-white">
-              <p class="text-xs text-gray-500 mb-3">
-                Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
-              </p>
-              <%= form_with url: mics_owner_move_venue_path(@mic.slug), method: :post,
-                    data: { controller: "venue-finder",
-                            "venue-finder-url-value": mics_venues_lookup_path,
-                            turbo_confirm: "Move this mic to a different venue? Existing schedule + owners stay the same." } do %>
-
-                <%= hidden_field_tag "venue_id", nil, data: { venue_finder_target: "venueIdInput" } %>
-
-                <div class="mb-4">
-                  <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">New venue name <span class="text-pink-500">*</span></label>
-                  <input type="text" name="venue_name" required
-                         placeholder="e.g. Cole's Bar"
-                         data-venue-finder-target="nameInput"
-                         data-action="input->venue-finder#search"
-                         class="w-full px-3 py-2.5 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
-                </div>
-
-                <div data-venue-finder-target="results" class="mb-4"></div>
-
-                <div data-venue-finder-target="selectedBanner"
-                     class="hidden mb-4 flex items-baseline justify-between gap-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded">
-                  <div class="text-xs text-emerald-800">
-                    Using existing venue: <strong data-venue-finder-target="selectedName"></strong>. We'll re-point this mic there.
-                  </div>
-                  <a href="#" data-action="click->venue-finder#resetSelection" class="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline">Use a different one</a>
-                </div>
-
-                <div data-venue-finder-target="addressFields">
-                  <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                    <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
-                    <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
-                    <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
-                    <div class="mb-4">
-                      <%= render "shared/us_state_select",
-                            name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="flex justify-end pt-2 border-t border-gray-100">
-                  <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
-                </div>
-              <% end %>
-            </div>
-          </details>
-        </div>
-      </section>
-
-      <%# Accessibility & age — drives the city-page filters and the
-          ♿ badge on listings. Wheelchair level lives in the
-          `accessibility` jsonb; min_age is an integer column. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Accessibility & age</h2>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <%= form_with url: mics_owner_mic_path(@mic.slug), method: :patch do %>
-            <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
-            <fieldset class="mb-4">
-              <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
-              <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
-              <% [
-                [ "fully",   "♿ Fully wheelchair accessible",
-                  "Can get into the building, onto the stage, and into the restrooms." ],
-                [ "partial", "♿ Partially wheelchair accessible",
-                  "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
-                [ "",        "Not wheelchair accessible / unknown",
-                  "The mic won't show up when performers filter for wheelchair access." ]
-              ].each do |val, label, desc| %>
-                <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
-                  <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
-                         <%= "checked" if (current_level.to_s == val) %>
-                         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
-                  <span class="flex-1">
-                    <span class="font-bold"><%= label %></span>
-                    <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
-                  </span>
-                </label>
-              <% end %>
-              <% venue_level = (@mic.venue.accessibility || {})["wheelchair_level"] %>
-              <% if venue_level.present? %>
-                <p class="mt-2 text-xs text-gray-500">
-                  This venue is already marked <strong><%= venue_level == "fully" ? "fully" : "partially" %> accessible</strong> at the venue level.
-                </p>
-              <% end %>
-            </fieldset>
-
-            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
-                  value: @mic.min_age.to_s,
-                  options: [ [ "All ages",  "" ], [ "21+", "21" ] ] %>
-
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Save accessibility & age", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </section>
-
-      <%# Socials — Instagram, X, TikTok, Website. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Socials</h2>
-          <p class="text-xs text-gray-500 mt-1">Instagram, X, TikTok, or a website. Each becomes a button on the public mic page.</p>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <% existing_socials = @mic.mic_links.where(link_type: MicLink.link_types.values).ordered.to_a %>
-          <% if existing_socials.any? %>
-            <ul class="text-sm text-gray-700 space-y-1 mb-4 border border-gray-200">
-              <% existing_socials.each do |link| %>
-                <li class="flex items-baseline justify-between gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0">
-                  <span class="min-w-0 flex-1">
-                    <span class="text-xs uppercase tracking-wider text-gray-500 font-bold mr-2"><%= link.link_type.humanize %></span>
-                    <% if link.label.present? %><span class="font-bold mr-2"><%= link.label %></span><% end %>
-                    <a href="<%= link.url %>" target="_blank" rel="noopener" class="text-xs text-gray-500 hover:text-pink-600 truncate"><%= link.url %></a>
-                  </span>
-                  <%= button_to "Remove", mics_owner_remove_link_path(@mic.slug, link_id: link.id),
-                        method: :delete,
-                        class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline shrink-0" %>
-                </li>
-              <% end %>
-            </ul>
-          <% end %>
-
-          <%= form_with url: mics_owner_add_link_path(@mic.slug), method: :post do %>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-              <%= render "mics/form_field", name: "link_type", label: "Type", type: "select",
-                    options: [
-                      [ "Instagram", "instagram" ],
-                      [ "X / Twitter", "x_twitter" ],
-                      [ "TikTok",    "tiktok" ],
-                      [ "Website",   "website" ]
-                    ] %>
-              <%= render "mics/form_field", name: "url", label: "URL", type: "url", required: true,
-                    placeholder: "https://..." %>
-            </div>
-            <%= render "mics/form_field", name: "label", label: "Display label (optional)",
-                  placeholder: "e.g. @mymicig — defaults to the type if blank" %>
-            <div class="flex justify-end pt-2 border-t border-gray-100">
-              <%= render "shared/button", text: "Add social", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </section>
-
-      <%# Mic runners / Producers. %>
-      <section class="bg-white border border-pink-100 rounded">
-        <header class="px-5 sm:px-6 py-3 border-b border-pink-100 bg-pink-50">
-          <h2 class="text-xs uppercase tracking-wider text-pink-700 font-bold">Owners</h2>
-          <p class="text-xs text-gray-500 mt-1">
-            Everyone listed here has equal edit rights on the mic. The lead earns the "claimed" badge on the public page.
-          </p>
-        </header>
-        <div class="px-5 sm:px-6 py-5">
-          <% if @co_owners.any? %>
-            <ul class="divide-y divide-gray-100 border border-gray-200 rounded overflow-hidden mb-5">
-              <% @co_owners.each do |mp| %>
-                <% is_lead = (@mic.lead_owner_user_id == mp.user_id) %>
-                <% role_label = case mp.role
-                                when "owner"    then "Owner"
-                                when "co_owner" then "Co-owner"
-                                else mp.role.humanize
-                                end %>
-                <li class="px-3 py-2 flex items-baseline gap-3 flex-wrap">
-                  <span class="flex-1 min-w-0">
-                    <span class="font-bold text-gray-900"><%= mp.user.person&.name.presence || mp.user.email_address %></span>
-                    <% if mp.user.person&.name.present? %>
-                      <span class="text-xs text-gray-500 ml-1">· <%= mp.user.email_address %></span>
-                    <% end %>
-                    <span class="text-xs text-gray-500 ml-1">· <%= role_label %></span>
-                    <% if is_lead %>
-                      <span class="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">Lead</span>
-                    <% end %>
-                  </span>
-                  <div class="flex items-center gap-2 shrink-0">
-                    <% if Current.user&.superadmin? %>
-                      <%= button_to impersonate_user_path, method: :post,
-                            params: { email: mp.user.email_address, return_to: mics_my_path },
-                            class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold rounded" do %>
-                        Impersonate
-                      <% end %>
-                    <% end %>
-                    <% unless is_lead %>
-                      <%= button_to "Make lead", mics_owner_set_lead_owner_path(@mic.slug, owner_id: mp.id), method: :post,
-                            class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
-                    <% end %>
-                    <% if mp.user_id == Current.user&.id %>
-                      <%# Self-row gets "Leave this mic" framing instead of
-                          "Remove" — the action is the same, but the
-                          intent and confirm copy reads correctly. %>
-                      <%= button_to "Leave this mic", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
-                            data: { turbo_confirm: "Step down as an owner of #{@mic.name}? If you're the last owner, the mic becomes unclaimed and anyone can claim it." },
-                            class: "cursor-pointer px-2 py-1 text-xs bg-white border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 font-bold" %>
-                    <% else %>
-                      <%= button_to "Remove", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
-                            data: { turbo_confirm: "Remove #{mp.user.email_address} from #{@mic.name}?" },
-                            class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
-                    <% end %>
-                  </div>
-                </li>
-              <% end %>
-            </ul>
-          <% else %>
-            <p class="text-sm text-gray-500 mb-5">No owners yet. Add the first one below.</p>
-          <% end %>
-
-          <%# Add via modal. Search by email; if no match, fields for inviting appear. %>
-          <div class="flex justify-end">
+          <div class="pt-2 border-t border-gray-100">
             <button type="button"
-                    data-controller="mics-modal"
-                    data-action="click->mics-modal#open"
-                    data-mics-modal-target-id-value="modal-add-owner"
-                    class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100">
-              + Add an owner
+                    data-controller="mics-modal" data-action="click->mics-modal#open"
+                    data-mics-modal-target-id-value="modal-move-venue"
+                    class="cursor-pointer text-sm text-pink-600 hover:text-pink-700 font-bold underline">
+              Move this mic to a different venue →
             </button>
           </div>
+        </section>
+
+        <%# --- Tab 4: Access & age --- %>
+        <section data-tabs-target="panel" class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+          <% current_level = (@mic.accessibility || {})["wheelchair_level"] %>
+          <fieldset class="mb-5">
+            <legend class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Wheelchair accessibility</legend>
+            <input type="hidden" name="mic[accessibility][wheelchair_level]" value="">
+            <% [
+              [ "fully",   "♿ Fully wheelchair accessible",
+                "Can get into the building, onto the stage, and into the restrooms." ],
+              [ "partial", "♿ Partially wheelchair accessible",
+                "Can get into the building, but not necessarily onto the stage or into the restrooms." ],
+              [ "",        "Not wheelchair accessible / unknown",
+                "The mic won't show up when performers filter for wheelchair access." ]
+            ].each do |val, label, desc| %>
+              <label class="flex items-start gap-2 text-sm text-gray-800 py-1.5">
+                <input type="radio" name="mic[accessibility][wheelchair_level]" value="<%= val %>"
+                       <%= "checked" if (current_level.to_s == val) %>
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span class="flex-1">
+                  <span class="font-bold"><%= label %></span>
+                  <span class="block text-xs text-gray-500 leading-snug"><%= desc %></span>
+                </span>
+              </label>
+            <% end %>
+            <% venue_level = (@mic.venue.accessibility || {})["wheelchair_level"] %>
+            <% if venue_level.present? %>
+              <p class="mt-2 text-xs text-gray-500">
+                This venue is already marked <strong><%= venue_level == "fully" ? "fully" : "partially" %> accessible</strong> at the venue level.
+              </p>
+            <% end %>
+          </fieldset>
+
+          <%= render "mics/form_field", name: "mic[age_choice]", label: "Age requirement", type: "select",
+                value: @mic.age_choice,
+                options: [ [ "Unknown (not specified)", "unknown" ], [ "All ages", "all_ages" ], [ "21+", "21" ] ],
+                help: "\"Unknown\" hides the age on listings until someone confirms it." %>
+        </section>
+
+      <% end %>
+
+      <%# --- Tab 5: Socials (own forms) --- %>
+      <section data-tabs-target="panel" class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+        <p class="text-xs text-gray-500 mb-4">Instagram, X, TikTok, or a website. Each becomes a button on the public mic page.</p>
+        <% existing_socials = @mic.mic_links.where(link_type: MicLink.link_types.values).ordered.to_a %>
+        <% if existing_socials.any? %>
+          <ul class="text-sm text-gray-700 space-y-1 mb-4 border border-gray-200">
+            <% existing_socials.each do |link| %>
+              <li class="flex items-baseline justify-between gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0">
+                <span class="min-w-0 flex-1">
+                  <span class="text-xs uppercase tracking-wider text-gray-500 font-bold mr-2"><%= link.link_type.humanize %></span>
+                  <% if link.label.present? %><span class="font-bold mr-2"><%= link.label %></span><% end %>
+                  <a href="<%= link.url %>" target="_blank" rel="noopener" class="text-xs text-gray-500 hover:text-pink-600 truncate"><%= link.url %></a>
+                </span>
+                <%= button_to "Remove", mics_owner_remove_link_path(@mic.slug, link_id: link.id), method: :delete,
+                      class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline shrink-0" %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+
+        <%= form_with url: mics_owner_add_link_path(@mic.slug), method: :post do %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <%= render "mics/form_field", name: "link_type", label: "Type", type: "select",
+                  options: [ [ "Instagram", "instagram" ], [ "X / Twitter", "x_twitter" ], [ "TikTok", "tiktok" ], [ "Website", "website" ] ] %>
+            <%= render "mics/form_field", name: "url", label: "URL", type: "url", required: true, placeholder: "https://..." %>
+          </div>
+          <%= render "mics/form_field", name: "label", label: "Display label (optional)",
+                placeholder: "e.g. @mymicig — defaults to the type if blank" %>
+          <div class="flex justify-end pt-2 border-t border-gray-100">
+            <%= render "shared/button", text: "Add social", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </section>
+
+      <%# --- Tab 6: Owners (own actions) --- %>
+      <section data-tabs-target="panel" class="hidden bg-white border border-pink-100 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+        <p class="text-xs text-gray-500 mb-4">
+          Everyone listed here has equal edit rights on the mic. The lead earns the "claimed" badge on the public page.
+        </p>
+        <% if @co_owners.any? %>
+          <ul class="divide-y divide-gray-100 border border-gray-200 rounded overflow-hidden mb-5">
+            <% @co_owners.each do |mp| %>
+              <% is_lead = (@mic.lead_owner_user_id == mp.user_id) %>
+              <% role_label = mics_role_label(mp.role) %>
+              <li class="px-3 py-2 flex items-baseline gap-3 flex-wrap">
+                <span class="flex-1 min-w-0">
+                  <span class="font-bold text-gray-900"><%= mp.user.person&.name.presence || mp.user.email_address %></span>
+                  <% if mp.user.person&.name.present? %>
+                    <span class="text-xs text-gray-500 ml-1">· <%= mp.user.email_address %></span>
+                  <% end %>
+                  <span class="text-xs text-gray-500 ml-1">· <%= role_label %></span>
+                  <% if is_lead %>
+                    <span class="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-pink-500 text-white font-bold rounded">Lead</span>
+                  <% end %>
+                </span>
+                <div class="flex items-center gap-2 shrink-0">
+                  <% if Current.user&.superadmin? %>
+                    <%= button_to impersonate_user_path, method: :post,
+                          params: { email: mp.user.email_address, return_to: mics_my_path },
+                          class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold rounded" do %>
+                      Impersonate
+                    <% end %>
+                  <% end %>
+                  <% unless is_lead %>
+                    <%= button_to "Make lead", mics_owner_set_lead_owner_path(@mic.slug, owner_id: mp.id), method: :post,
+                          class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
+                  <% end %>
+                  <% if mp.user_id == Current.user&.id %>
+                    <%= button_to "Leave this mic", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
+                          data: { turbo_confirm: "Step down as an owner of #{@mic.name}? If you're the last owner, the mic becomes unclaimed and anyone can claim it." },
+                          class: "cursor-pointer px-2 py-1 text-xs bg-white border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 font-bold" %>
+                  <% else %>
+                    <%= button_to "Remove", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
+                          data: { turbo_confirm: "Remove #{mp.user.email_address} from #{@mic.name}?" },
+                          class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
+                  <% end %>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-sm text-gray-500 mb-5">No owners yet. Add the first one below.</p>
+        <% end %>
+
+        <div class="flex justify-end">
+          <button type="button"
+                  data-controller="mics-modal" data-action="click->mics-modal#open"
+                  data-mics-modal-target-id-value="modal-add-owner"
+                  class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100 rounded">
+            + Add an owner
+          </button>
         </div>
       </section>
 
+      <%# --- Tab 7: Danger zone (only when deletable) --- %>
+      <% if show_danger %>
+        <section data-tabs-target="panel" class="hidden bg-white border border-red-200 rounded sm:rounded-t-none sm:border-t-0 px-5 sm:px-6 py-6">
+          <div class="border border-red-300 bg-red-50 px-5 py-4 flex items-baseline justify-between gap-3 flex-wrap rounded">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs uppercase tracking-wider text-red-700 font-bold">Danger zone</div>
+              <p class="text-sm text-gray-700 mt-1">
+                Permanently delete <strong><%= @mic.name %></strong> and everything attached to it (suggestions, announcements, claims, owner links, edit history). Use this for spam or duplicate listings — not for one-off pauses (use "Pause this mic" on the Schedule tab instead).
+              </p>
+            </div>
+            <%= button_to "Delete this mic", mics_owner_destroy_mic_path(@mic.slug), method: :delete,
+                  data: { turbo_confirm: "Permanently delete \"#{@mic.name}\"? This can't be undone." },
+                  class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded" %>
+          </div>
+        </section>
+      <% end %>
+
+      <%# Single save bar — submits the field-tab form (Basics → Access & age). %>
+      <div class="sticky bottom-0 mt-4 flex items-center justify-between gap-3 bg-white/95 backdrop-blur border border-gray-200 rounded px-4 py-3 shadow-sm">
+        <span class="text-xs text-gray-500">Saves Basics, Schedule, Sign-ups, Location, and Access &amp; age together. Socials &amp; owners update on their own.</span>
+        <button type="submit" form="mic-edit-form"
+                class="cursor-pointer px-5 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white font-bold text-sm rounded transition-colors duration-100">
+          Save changes
+        </button>
+      </div>
     </div>
   </div>
 
-  <%# Marketing — convert to CocoScout sign-ups. %>
-  <%# Hide the "Migrate to CocoScout sign-ups" pitch when the mic is
-      already on CocoScout in any form — either fully migrated through
-      the wizard (has a production_id) OR the producer already pasted a
-      CocoScout sign-up URL into the signup_url field. %>
+  <%# Marketing — convert to CocoScout sign-ups. Sits below the tabbed editor. %>
   <% unless @mic.on_cocoscout? %>
-    <section class="w-full px-4 sm:px-8 py-6 border-b border-gray-100">
+    <section class="w-full px-4 sm:px-8 py-6 border-t border-gray-100">
       <div class="max-w-5xl">
         <div class="border-2 border-pink-500 bg-pink-50 p-5 sm:p-7 flex flex-col md:flex-row md:items-center gap-5">
           <div class="flex-1">
@@ -637,31 +534,9 @@
       </div>
     </section>
   <% end %>
-
-  <%# Danger zone — only superadmins and city captains can delete the
-      whole mic. Producers can leave their producer role above; that's
-      a different action with different consequences. %>
-  <% if deletable_by?(Current.user) %>
-    <section class="w-full px-4 sm:px-8 py-6 border-t border-red-100 bg-red-50">
-      <div class="w-full max-w-5xl">
-        <div class="border border-red-300 bg-white px-5 py-4 flex items-baseline justify-between gap-3 flex-wrap rounded">
-          <div class="flex-1 min-w-0">
-            <div class="text-xs uppercase tracking-wider text-red-700 font-bold">Danger zone</div>
-            <p class="text-sm text-gray-700 mt-1">
-              Permanently delete <strong><%= @mic.name %></strong> and everything attached to it (suggestions, announcements, claims, owner links, edit history). Use this for spam or duplicate listings — not for one-off pauses (use "Pause until" on the schedule instead).
-            </p>
-          </div>
-          <%= button_to "Delete this mic", mics_owner_destroy_mic_path(@mic.slug), method: :delete,
-                data: { turbo_confirm: "Permanently delete \"#{@mic.name}\"? This can't be undone." },
-                class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded" %>
-        </div>
-      </div>
-    </section>
-  <% end %>
-
 </main>
 
-<%# Modals %>
+<%# ===== Modals ===== %>
 
 <%= render "mics/owner/modal", id: "modal-verify", title: "Verify info" do %>
   <p class="text-sm text-gray-700">
@@ -673,25 +548,6 @@
       Cancel
     </button>
     <%= render "shared/button", text: "Mark as verified now", variant: "primary", size: "medium", type: :submit %>
-  <% end %>
-<% end %>
-
-<%= render "mics/owner/modal", id: "modal-status", title: "Set status for a date" do %>
-  <%= form_with url: mics_owner_post_status_path(@mic.slug), method: :post, class: "space-y-4" do %>
-    <%= render "mics/form_field", name: "date", label: "Date", type: "date", value: next_upcoming_date_for(@mic) %>
-    <%= render "mics/form_field", name: "mic_status", label: "Status", type: "select",
-          options: [
-            [ "Running as planned (heads-up only)", "running_as_planned" ],
-            [ "Extra spots",                        "extra_spots" ],
-            [ "Cancelled",                          "cancelled" ],
-            [ "(Clear any status for this date)",   "clear" ]
-          ] %>
-    <%= render "mics/form_field", name: "note", label: "Note (shown publicly, optional)" %>
-    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
-      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
-              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-      <%= render "shared/button", text: "Post status", variant: "primary", size: "medium", type: :submit %>
-    </div>
   <% end %>
 <% end %>
 
@@ -735,6 +591,54 @@
   <% end %>
 <% end %>
 
+<%= render "mics/owner/modal", id: "modal-move-venue", title: "Move to a different venue" do %>
+  <p class="text-sm text-gray-600 mb-4">
+    Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
+  </p>
+  <%= form_with url: mics_owner_move_venue_path(@mic.slug), method: :post,
+        data: { controller: "venue-finder",
+                "venue-finder-url-value": mics_venues_lookup_path,
+                turbo_confirm: "Move this mic to a different venue? Existing schedule + owners stay the same." } do %>
+
+    <%= hidden_field_tag "venue_id", nil, data: { venue_finder_target: "venueIdInput" } %>
+
+    <div class="mb-4">
+      <label class="block text-xs uppercase tracking-wider text-gray-600 font-bold mb-1">New venue name <span class="text-pink-500">*</span></label>
+      <input type="text" name="venue_name" required placeholder="e.g. Cole's Bar"
+             data-venue-finder-target="nameInput" data-action="input->venue-finder#search"
+             class="w-full px-3 py-2.5 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+    </div>
+
+    <div data-venue-finder-target="results" class="mb-4"></div>
+
+    <div data-venue-finder-target="selectedBanner"
+         class="hidden mb-4 flex items-baseline justify-between gap-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded">
+      <div class="text-xs text-emerald-800">
+        Using existing venue: <strong data-venue-finder-target="selectedName"></strong>. We'll re-point this mic there.
+      </div>
+      <a href="#" data-action="click->venue-finder#resetSelection" class="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline">Use a different one</a>
+    </div>
+
+    <div data-venue-finder-target="addressFields">
+      <%= render "mics/form_field", name: "venue_address1", label: "Street address" %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        <%= render "mics/form_field", name: "venue_neighborhood", label: "Neighborhood" %>
+        <%= render "mics/form_field", name: "venue_postal_code", label: "ZIP" %>
+        <%= render "mics/form_field", name: "venue_city", label: "City", required: true %>
+        <div class="mb-4">
+          <%= render "shared/us_state_select", name: "venue_state", required: true, value: @mic.venue.state, label: "State" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+      <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
+              class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+      <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
 <%= render "mics/owner/modal", id: "modal-add-owner", title: "Add an owner" do %>
   <p class="text-sm text-gray-600 mb-4">
     Start with their email. If they're already on CocoScout we'll just add them; otherwise we'll send them an invite.
@@ -747,18 +651,15 @@
 
     <div>
       <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Email</label>
-      <input type="email" name="email" required
-             placeholder="person@example.com"
-             data-user-invite-form-target="email"
-             data-action="input->user-invite-form#search"
+      <input type="email" name="email" required placeholder="person@example.com"
+             data-user-invite-form-target="email" data-action="input->user-invite-form#search"
              class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm">
       <div data-user-invite-form-target="status" class="mt-1 text-xs"></div>
     </div>
 
     <div data-user-invite-form-target="newFields" class="hidden">
       <label class="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Name</label>
-      <input type="text" name="name"
-             placeholder="Alex Comic"
+      <input type="text" name="name" placeholder="Alex Comic"
              data-user-invite-form-target="name"
              class="w-full px-3 py-2 border border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none text-sm">
       <p class="mt-1 text-xs text-gray-500">We'll create their account and email them an invite to set a password.</p>
@@ -777,8 +678,7 @@
     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
       <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
               class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-      <button type="submit"
-              data-user-invite-form-target="submit"
+      <button type="submit" data-user-invite-form-target="submit"
               class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white text-sm font-bold transition-colors duration-100 opacity-50 cursor-not-allowed"
               disabled>
         Add to mic

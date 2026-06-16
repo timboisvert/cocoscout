@@ -17,7 +17,7 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :secondary_house_role, :source, shift_assignments: :person)
+        .includes(:house_role, :additional_roles, :source, shift_assignments: :person)
         .ordered
         .to_a
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
@@ -154,7 +154,7 @@ module Manage
 
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :secondary_house_role, :source, shift_assignments: :person)
+        .includes(:house_role, :additional_roles, :source, shift_assignments: :person)
         .ordered
         .to_a
 

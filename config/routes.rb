@@ -1153,6 +1153,13 @@ Rails.application.routes.draw do
     # Legacy /staffing/schedule URLs redirect to the new home so old bookmarks still work.
     get    "staffing/schedule", to: redirect("/manage/staffing")
 
+    # Org-level Documents hub — every document the manager can edit, across all
+    # of their productions. Create-new here picks a production first; show/edit
+    # then live under the production-scoped documents controller.
+    get  "documents",     to: "org_documents#index",  as: "org_documents"
+    get  "documents/new", to: "org_documents#new",    as: "new_org_document"
+    post "documents",     to: "org_documents#create", as: "org_documents_create"
+
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
     post "money/refresh", to: "money#refresh", as: "refresh_money"

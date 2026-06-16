@@ -27,6 +27,29 @@ module MicsHelper
     mic.starts_local_time&.strftime("%-l:%M %p")
   end
 
+  # Wheelchair badge for listings: a blue chair when fully accessible, an
+  # amber chair when only partially accessible, nothing when unknown.
+  # `size:` controls the glyph size class.
+  def mics_wheelchair_icon(mic, size: "text-sm")
+    level = mic.wheelchair_level
+    return nil unless level
+    color = level == "fully" ? "text-blue-600" : "text-amber-500"
+    title = level == "fully" ? "Fully wheelchair accessible" : "Partially wheelchair accessible"
+    tag.span("♿", class: "#{color} #{size}", title: title,
+             aria: { label: title }, role: "img")
+  end
+
+  # Combined accessibility + age chip text for a listing row. Renders the
+  # wheelchair icon (when known) and the age label (only when not unknown).
+  # Returns nil when there's nothing to show.
+  def mics_listing_access_age(mic, size: "text-sm")
+    icon = mics_wheelchair_icon(mic, size: size)
+    age  = mic.age_label
+    return nil if icon.nil? && age.blank?
+
+    safe_join([ icon, (age.present? ? tag.span(age, class: "text-xs text-gray-500") : nil) ].compact, " ")
+  end
+
   # Friendly label for MicOwner / MicClaim role enums. Default humanize
   # strips the hyphen ("Co owner") — keep it for display.
   def mics_role_label(role)

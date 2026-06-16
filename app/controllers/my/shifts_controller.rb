@@ -16,7 +16,7 @@ module My
         .where(person_id: people_ids)
         .joins(:shift)
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(:person, shift: [ :house_role, :secondary_house_role, :organization, :source ])
+        .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source ])
         .order("shifts.starts_at ASC")
         .to_a
 

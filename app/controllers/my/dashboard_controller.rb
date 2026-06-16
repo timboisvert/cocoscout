@@ -309,7 +309,7 @@ module My
           .where(person_id: selected_person_ids)
           .joins(:shift)
           .where("shifts.starts_at >= ? AND shifts.starts_at <= ?", cal_start, cal_end)
-          .includes(shift: [ :house_role, :secondary_house_role, :organization ])
+          .includes(shift: [ :house_role, :additional_roles, :organization ])
           .each do |a|
             shift = a.shift
             next unless finalized_weeks.include?([ shift.organization_id, shift.starts_at.to_date.beginning_of_week ])

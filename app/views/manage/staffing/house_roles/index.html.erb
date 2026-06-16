@@ -1,4 +1,4 @@
-<% content_for :title, "House Roles" %>
+<% content_for :title, "Staffing Roles" %>
 
 <%
   create_url = manage_create_staffing_house_role_path
@@ -17,13 +17,13 @@
     breadcrumbs: [
       ["Staffing", manage_staffing_index_path]
     ],
-    text: "House Roles",
+    text: "Roles",
     links: []
   } %>
 
   <div class="flex items-center justify-between mb-4">
     <p class="text-sm text-gray-600">
-      Define the roles you staff for shows — bartender, FOH, tech, etc. — with default counts and offset times.
+      Define all the roles you staff for shows — bartender, FOH, tech, security, etc. Each can be a house role (one shift for the whole evening) or a per-show role.
     </p>
     <button type="button"
             data-action="click->house-role-modal#openForNew"
@@ -85,7 +85,7 @@
     </div>
   <% else %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-      <p class="text-sm text-gray-600 mb-3">No house roles defined yet.</p>
+      <p class="text-sm text-gray-600 mb-3">No staffing roles defined yet.</p>
       <button type="button"
               data-action="click->house-role-modal#openForNew"
               class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
@@ -102,7 +102,7 @@
       <div class="relative w-full max-w-xl bg-white rounded-xl shadow-2xl"
            data-action="click->house-role-modal#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900" data-house-role-modal-target="title">Add house role</h3>
+          <h3 class="text-base font-semibold text-gray-900" data-house-role-modal-target="title">Add role</h3>
           <button type="button" data-action="click->house-role-modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>

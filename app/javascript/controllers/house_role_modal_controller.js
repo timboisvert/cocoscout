@@ -20,7 +20,7 @@ export default class extends Controller {
             this.formTarget.action = this.createUrlValue
         }
         if (this.hasMethodInputTarget) this.methodInputTarget.value = "post"
-        if (this.hasTitleTarget) this.titleTarget.textContent = "Add house role"
+        if (this.hasTitleTarget) this.titleTarget.textContent = "Add role"
         this.setSubmitText("Add role")
         this.show()
     }
@@ -41,7 +41,7 @@ export default class extends Controller {
             this.formTarget.action = this.updateUrlTemplateValue.replace(":id", id)
         }
         if (this.hasMethodInputTarget) this.methodInputTarget.value = "patch"
-        if (this.hasTitleTarget) this.titleTarget.textContent = "Edit house role"
+        if (this.hasTitleTarget) this.titleTarget.textContent = "Edit role"
         this.setSubmitText("Save changes")
         this.show()
     }

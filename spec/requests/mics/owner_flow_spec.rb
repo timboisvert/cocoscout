@@ -103,6 +103,21 @@ RSpec.describe "Mics owner flow", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
+    it "renders the tabbed editor for a producer" do
+      create(:mic_owner, mic: mic, user: user)
+      sign_in
+      get mics_owner_mic_path(mic.slug)
+      expect(response).to have_http_status(:ok)
+      # Tab labels + the single save bar are present; the retired
+      # "Set status" quick action is gone.
+      expect(response.body).to include("Access &amp; age")
+      expect(response.body).to include("Save changes")
+      expect(response.body).to include('id="mic-edit-form"')
+      expect(response.body).not_to include("Set status")
+      # Mobile gets a dropdown alternative to the scroll-tabs.
+      expect(response.body).to include("tabs#selectMenu")
+    end
+
     it "allows producer to update their mic" do
       create(:mic_owner, mic: mic, user: user)
       sign_in
@@ -110,6 +125,29 @@ RSpec.describe "Mics owner flow", type: :request do
       expect(response).to redirect_to(mics_owner_mic_path(mic.slug))
       expect(mic.reload.blurb).to eq("Refreshed copy.")
       expect(mic.mic_edits.where(field: "blurb").exists?).to be(true)
+    end
+
+    it "saves mic fields, age, and venue together in one submit (tabbed editor)" do
+      create(:mic_owner, mic: mic, user: user)
+      sign_in
+      patch mics_owner_mic_path(mic.slug), params: {
+        mic:   { blurb: "Combined save.", age_choice: "21" },
+        venue: { name: "Beat Kitchen (Back Room)", city: "Chicago", state: "IL" }
+      }
+      expect(response).to redirect_to(mics_owner_mic_path(mic.slug))
+      mic.reload
+      expect(mic.blurb).to eq("Combined save.")
+      expect(mic.age_requirement).to eq("minimum")
+      expect(mic.min_age).to eq(21)
+      expect(venue.reload.name).to eq("Beat Kitchen (Back Room)")
+    end
+
+    it "stores an explicit all-ages choice distinctly from unknown" do
+      create(:mic_owner, mic: mic, user: user)
+      sign_in
+      patch mics_owner_mic_path(mic.slug), params: { mic: { age_choice: "all_ages" } }
+      expect(mic.reload.age_requirement).to eq("all_ages")
+      expect(mic.min_age).to be_nil
     end
   end
 

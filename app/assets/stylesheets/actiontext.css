@@ -761,3 +761,63 @@ trix-editor .attachment__metadata .attachment__size {
 trix-toolbar .trix-button--icon-attach {
   display: none !important;
 }
+/* ── Generic editor headings ────────────────────────────────────────────────
+   Tailwind's preflight strips heading sizes, which made the Trix heading
+   button look like it "did nothing". Give every editor visible headings. */
+trix-editor h1 { font-size: 1.6rem; font-weight: 700; line-height: 1.25; margin: 0.6em 0 0.3em; color: #111827; }
+trix-editor h2 { font-size: 1.3rem; font-weight: 700; line-height: 1.3;  margin: 0.6em 0 0.3em; color: #111827; }
+trix-editor h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.35; margin: 0.5em 0 0.25em; color: #1f2937; }
+
+/* ── WYSIWYG document typography ─────────────────────────────────────────────
+   The editor (.document-editor trix-editor) and the rendered view
+   (.document-render) share the exact same type scale, spacing and colors so
+   what you type is what you see. Keep these two selector lists in lockstep. */
+.document-editor trix-editor,
+.document-render {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: #374151;
+}
+.document-editor trix-editor h1, .document-render h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.25; margin: 1.1em 0 0.45em; color: #111827; }
+.document-editor trix-editor h2, .document-render h2 { font-size: 1.45rem;  font-weight: 700; line-height: 1.3;  margin: 1.1em 0 0.4em;  color: #111827; }
+.document-editor trix-editor h3, .document-render h3 { font-size: 1.2rem;   font-weight: 600; line-height: 1.4;  margin: 0.9em 0 0.35em; color: #1f2937; }
+.document-render h1:first-child, .document-render h2:first-child, .document-render h3:first-child { margin-top: 0; }
+.document-editor trix-editor h1, .document-editor trix-editor h2, .document-editor trix-editor h3,
+.document-render h1, .document-render h2, .document-render h3 { scroll-margin-top: 1rem; }
+
+.document-editor trix-editor p, .document-render p { margin: 0 0 0.85em; }
+.document-editor trix-editor p:last-child, .document-render p:last-child { margin-bottom: 0; }
+.document-editor trix-editor ul, .document-render ul { list-style: disc; padding-left: 1.5em; margin: 0.6em 0; }
+.document-editor trix-editor ol, .document-render ol { list-style: decimal; padding-left: 1.5em; margin: 0.6em 0; }
+.document-editor trix-editor li, .document-render li { margin: 0.3em 0; }
+.document-editor trix-editor strong, .document-render strong { font-weight: 600; }
+.document-editor trix-editor a, .document-render a { color: #db2777; text-decoration: underline; }
+.document-editor trix-editor a:hover, .document-render a:hover { color: #be185d; }
+.document-editor trix-editor blockquote, .document-render blockquote {
+  border-left: 3px solid #f9a8d4; margin: 0.7em 0; padding: 0.5em 0.75em;
+  color: #6b7280; background: #fdf2f8; border-radius: 0 0.25rem 0.25rem 0;
+}
+.document-editor trix-editor pre, .document-render pre {
+  background: #f3f4f6; padding: 0.75em; border-radius: 0.375rem; overflow-x: auto;
+  font-family: ui-monospace, monospace; font-size: 0.9em;
+}
+
+/* ── Full-page document editor chrome (scoped to .document-editor) ──────────
+   Strip the boxed look so the toolbar + content read as one full page. */
+.document-editor trix-toolbar {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+.document-editor trix-toolbar .trix-button-row { padding: 0.25rem 0; overflow-x: visible; flex-wrap: wrap; }
+.document-editor trix-editor {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  min-height: 100%;
+  background: transparent;
+  box-shadow: none;
+}
+.document-editor trix-editor:focus { box-shadow: none; border-color: transparent; }

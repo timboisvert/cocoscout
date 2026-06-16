@@ -14,7 +14,7 @@ export default class extends Controller {
     static targets = [
         "modal", "form", "title", "dayLabel",
         "startTimeInput", "endTimeInput", "startInput", "endInput",
-        "secondaryRoleSelect",
+        "additionalRoleCheckbox",
         "removeSection", "removeButton", "removePersonName"
     ]
     static values = {
@@ -51,9 +51,20 @@ export default class extends Controller {
         if (this.hasStartTimeInputTarget) this.startTimeInputTarget.value = startTime
         if (this.hasEndTimeInputTarget) this.endTimeInputTarget.value = endTime
 
-        // Preselect the secondary ("also covers") role, if any.
-        if (this.hasSecondaryRoleSelectTarget) {
-            this.secondaryRoleSelectTarget.value = btn.dataset.shiftSecondaryRoleId || ""
+        // Preselect the "also covers" roles, if any (JSON array of role ids),
+        // and disable the shift's own primary role so it can't double itself.
+        if (this.hasAdditionalRoleCheckboxTarget) {
+            let ids = []
+            try { ids = JSON.parse(btn.dataset.shiftAdditionalRoleIds || "[]") } catch (e) { ids = [] }
+            const idSet = new Set(ids.map(String))
+            const primaryId = btn.dataset.shiftHouseRoleId ? String(btn.dataset.shiftHouseRoleId) : null
+            this.additionalRoleCheckboxTargets.forEach(cb => {
+                const isPrimary = primaryId && String(cb.value) === primaryId
+                cb.disabled = !!isPrimary
+                cb.checked = !isPrimary && idSet.has(String(cb.value))
+                const label = cb.closest("label")
+                if (label) label.classList.toggle("opacity-40", !!isPrimary)
+            })
         }
 
         this.syncHiddenFields()

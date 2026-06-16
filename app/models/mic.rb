@@ -47,6 +47,19 @@ class Mic < ApplicationRecord
     open_stage: 3
   }, prefix: :format
 
+  # Age policy. `unknown` is the default — we simply don't know, so nothing is
+  # shown or claimed on the listing. `all_ages` and `minimum` (uses `min_age`)
+  # are explicit owner-provided answers.
+  # Explicit attribute type so the enum doesn't depend on a fresh schema-cache
+  # lookup at class-load (a running dev server that connected before the
+  # migration would otherwise raise "Undeclared attribute type for enum").
+  attribute :age_requirement, :integer, default: 0
+  enum :age_requirement, {
+    unknown: 0,
+    all_ages: 1,
+    minimum: 2
+  }, prefix: :age, default: :unknown
+
   # Sign-up channel: online (form/lottery), in person (sign a sheet,
   # walk up), or both. `bucket_draw` is independent — any of these can
   # also be a bucket-draw.
@@ -148,6 +161,47 @@ class Mic < ApplicationRecord
     return true if mic_owners.where(user_id: user.id).exists?
     hub = venue&.city_hub
     hub && hub.editor?(user)
+  end
+
+  # ----- Age -----
+  # The single value the edit/submission select binds to ("unknown" |
+  # "all_ages" | a number like "21"). Setting it keeps min_age in sync.
+  def age_choice
+    case age_requirement
+    when "all_ages" then "all_ages"
+    when "minimum"  then (min_age.presence || 21).to_s
+    else "unknown"
+    end
+  end
+
+  def age_choice=(value)
+    case value.to_s
+    when "all_ages"
+      self.age_requirement = :all_ages
+      self.min_age = nil
+    when "", "unknown"
+      self.age_requirement = :unknown
+      self.min_age = nil
+    else
+      self.age_requirement = :minimum
+      self.min_age = value.to_i
+    end
+  end
+
+  # Short label for listings/detail — nil when unknown (so we show nothing).
+  def age_label
+    case age_requirement
+    when "all_ages" then "All ages"
+    when "minimum"  then "#{min_age.presence || 21}+"
+    end
+  end
+
+  # ----- Accessibility -----
+  # Effective wheelchair level for this mic, falling back to the venue's.
+  # Returns "fully", "partial", or nil.
+  def wheelchair_level
+    (accessibility || {})["wheelchair_level"].presence ||
+      (venue&.accessibility || {})["wheelchair_level"].presence
   end
   scope :in_city, ->(city, state) {
     joins(:venue).where(venues: { city: city, state: state })

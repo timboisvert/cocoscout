@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_15_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1143,6 +1143,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
 
   create_table "mics", force: :cascade do |t|
     t.jsonb "accessibility", default: {}, null: false
+    t.integer "age_requirement", default: 0, null: false
     t.text "blurb"
     t.boolean "bucket_draw", default: false, null: false
     t.date "canceled_until"
@@ -1183,6 +1184,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "venue_id", null: false
+    t.index ["age_requirement"], name: "index_mics_on_age_requirement"
     t.index ["lead_owner_user_id"], name: "index_mics_on_lead_owner_user_id"
     t.index ["paused"], name: "index_mics_on_paused"
     t.index ["pending"], name: "index_mics_on_pending", where: "(pending = true)"
@@ -1866,6 +1868,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "shift_additional_roles", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "house_role_id", null: false
+    t.bigint "shift_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_role_id"], name: "index_shift_additional_roles_on_house_role_id"
+    t.index ["shift_id", "house_role_id"], name: "idx_shift_additional_roles_unique", unique: true
+    t.index ["shift_id"], name: "index_shift_additional_roles_on_shift_id"
+  end
+
   create_table "shift_assignments", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -1890,7 +1902,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
     t.bigint "organization_id", null: false
     t.string "renter_name"
     t.integer "required_count", default: 1, null: false
-    t.bigint "secondary_house_role_id"
     t.bigint "source_id"
     t.string "source_type"
     t.datetime "starts_at", null: false
@@ -1899,7 +1910,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
     t.index ["house_role_id"], name: "index_shifts_on_house_role_id"
     t.index ["organization_id", "starts_at"], name: "index_shifts_on_organization_id_and_starts_at"
     t.index ["organization_id"], name: "index_shifts_on_organization_id"
-    t.index ["secondary_house_role_id"], name: "index_shifts_on_secondary_house_role_id"
     t.index ["source_type", "source_id"], name: "index_shifts_on_source_type_and_source_id"
   end
 
@@ -2760,10 +2770,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_160000) do
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"
+  add_foreign_key "shift_additional_roles", "house_roles"
+  add_foreign_key "shift_additional_roles", "shifts"
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
   add_foreign_key "shifts", "house_roles"
-  add_foreign_key "shifts", "house_roles", column: "secondary_house_role_id"
   add_foreign_key "shifts", "organizations"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"

@@ -163,8 +163,9 @@ module Manage
 
       def shift_params
         params.require(:shift).permit(
-          :house_role_id, :secondary_house_role_id, :starts_at, :ends_at, :required_count,
-          :coverage_mode, :renter_name, :notes, :source_type, :source_id
+          :house_role_id, :starts_at, :ends_at, :required_count,
+          :coverage_mode, :renter_name, :notes, :source_type, :source_id,
+          additional_role_ids: []
         )
       end
 

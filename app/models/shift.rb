@@ -7,10 +7,12 @@
 class Shift < ApplicationRecord
   belongs_to :organization
   belongs_to :house_role
-  # Optional second role this shift also covers ("doubling up"), e.g. a bartender
-  # who is also the manager. One shift, one assignment, two duties.
-  belongs_to :secondary_house_role, class_name: "HouseRole", optional: true
   belongs_to :source, polymorphic: true, optional: true
+
+  # Extra roles this one shift also covers ("doubling up"), e.g. a bartender who
+  # is also the manager and house staff. One shift, one assignment, many duties.
+  has_many :shift_additional_roles, dependent: :destroy
+  has_many :additional_roles, through: :shift_additional_roles, source: :house_role
 
   has_many :shift_assignments, dependent: :destroy
   has_many :assigned_people, through: :shift_assignments, source: :person
@@ -24,17 +26,20 @@ class Shift < ApplicationRecord
   validates :starts_at, :ends_at, presence: true
   validates :required_count, numericality: { only_integer: true, greater_than: 0 }
   validate :ends_after_starts
-  validate :secondary_role_differs_from_primary
 
-  # True when this shift covers a second role.
+  # True when this shift covers more than one role.
   def doubled?
-    secondary_house_role_id.present?
+    additional_roles.any?
   end
 
-  # Display label combining both roles, e.g. "Bartender + Manager".
+  # Names of every role this shift covers, primary first.
+  def all_role_names
+    [ house_role.name ] + additional_roles.map(&:name)
+  end
+
+  # Display label combining all roles, e.g. "Bartender + Manager + Security".
   def role_label
-    return house_role.name unless doubled?
-    "#{house_role.name} + #{secondary_house_role.name}"
+    all_role_names.join(" + ")
   end
 
   scope :for_week, ->(date) {
@@ -76,11 +81,5 @@ class Shift < ApplicationRecord
   def ends_after_starts
     return unless starts_at.present? && ends_at.present? && ends_at <= starts_at
     errors.add(:ends_at, "must be after the shift start time")
-  end
-
-  def secondary_role_differs_from_primary
-    return if secondary_house_role_id.blank?
-    return if secondary_house_role_id != house_role_id
-    errors.add(:secondary_house_role_id, "must be a different role than the primary")
   end
 end

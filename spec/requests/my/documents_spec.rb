@@ -36,4 +36,22 @@ RSpec.describe "My::Documents", type: :request do
     get my_document_path(hidden)
     expect(response).to redirect_to(my_documents_path)
   end
+
+  # A producer is on the production team via their org role, so a team-shared
+  # document they create in /manage must also surface in /my/documents.
+  it "shows team-shared documents to a producer (org-level manager)" do
+    org = create(:organization, owner: user)
+    create(:organization_role, :manager, user: user, organization: org)
+    producer_production = create(:production, organization: org)
+    team_doc = producer_production.documents.create!(title: "Staff Onboarding", body: "<div>welcome</div>")
+    team_doc.apply_default_sharing! # team + write, by default
+
+    get my_documents_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Staff Onboarding")
+
+    get my_document_path(team_doc)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("welcome")
+  end
 end

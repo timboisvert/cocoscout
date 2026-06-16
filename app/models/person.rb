@@ -693,9 +693,22 @@ class Person < ApplicationRecord
       pid: id, gids: group_ids.presence || [ 0 ]
     ).distinct.pluck(:talent_pool_id)
 
-    team_production_ids = user ? ProductionPermission.where(user_id: user.id).pluck(:production_id) : []
+    { pool_ids: pool_ids, team_production_ids: team_production_ids_for_user }
+  end
 
-    { pool_ids: pool_ids, team_production_ids: team_production_ids }
+  # Productions where this person's user is on the production team (a manager or
+  # viewer) — via a per-production permission OR an org-wide role. Mirrors the
+  # access checks used on the manage side so a document shared with the
+  # "production team" is visible in both /manage and /my for the same people.
+  def team_production_ids_for_user
+    return [] unless user
+
+    ids = ProductionPermission.where(user_id: user.id, role: %w[manager viewer]).pluck(:production_id)
+
+    org_ids = OrganizationRole.where(user_id: user.id, company_role: %w[manager viewer]).pluck(:organization_id)
+    ids += Production.where(organization_id: org_ids).pluck(:id) if org_ids.any?
+
+    ids.uniq
   end
 
   # All production documents this person is allowed to see (distinct; the caller

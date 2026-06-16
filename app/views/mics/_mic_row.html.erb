@@ -5,8 +5,7 @@
   status = next_occ && next_occ[:mic_status]
   status_label =
     case status
-    when "cancelled"   then [ "Cancelled",   "bg-red-50 text-red-700 border-red-200" ]
-    when "extra_spots" then [ "Extra spots", "bg-emerald-50 text-emerald-700 border-emerald-200" ]
+    when "cancelled" then [ "Cancelled", "bg-red-50 text-red-700 border-red-200" ]
     else nil
     end
 %>
@@ -41,7 +40,7 @@
         <% end %>
       </div>
       <div class="text-xs text-gray-500 truncate mt-0.5">
-        <%= mic.venue.name %> · <%= mic.venue.neighborhood_city %><% access_level = (mic.accessibility || {})["wheelchair_level"] || (mic.venue.accessibility || {})["wheelchair_level"] %><% if access_level == "fully" %> · ♿<% elsif access_level == "partial" %> · ♿<sup>±</sup><% end %>
+        <%= mic.venue.name %> · <%= mic.venue.neighborhood_city %><% meta = mics_listing_access_age(mic) %><% if meta %> · <%= meta %><% end %>
       </div>
     </div>
     <div class="text-[11px] uppercase tracking-wider text-gray-500 font-bold hidden sm:block shrink-0">

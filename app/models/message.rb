@@ -55,6 +55,9 @@ class Message < ApplicationRecord
   # Callbacks for real-time updates
   after_create_commit :broadcast_to_thread
   after_create_commit :notify_subscribers, unless: :skip_notify_subscribers
+  # Detect links to production documents in the body and attach them as regards
+  # so the message renders a document preview card (like shows).
+  after_create_commit :attach_linked_documents
   # Bubble the thread to the top of the inbox sort by touching the root
   # whenever a reply lands — `messages.updated_at` is the inbox sort key.
   after_create_commit :touch_root_on_reply, if: :reply?
@@ -299,6 +302,25 @@ class Message < ApplicationRecord
   # Get all regardable objects for this message
   def regardables
     message_regards.includes(:regardable).map(&:regardable).compact
+  end
+
+  # ProductionDocuments this message regards (links pasted into the body).
+  def document_regards
+    message_regards.includes(:regardable).map(&:regardable).select { |r| r.is_a?(ProductionDocument) }
+  end
+
+  # Scan the body for links to production documents and attach each as a regard.
+  # Matches the real document show URLs (manage + my namespaces) only, so it
+  # won't collide with other ".../documents/:id" routes (e.g. contract documents).
+  def attach_linked_documents
+    html = body&.to_s
+    return if html.blank? || !html.include?("documents/")
+
+    ids = html.scan(%r{(?:productions/\d+|/my)/documents/(\d+)}).flatten.map(&:to_i).uniq
+    return if ids.empty?
+
+    docs = ProductionDocument.where(id: ids)
+    add_regards(*docs) if docs.any?
   end
 
   def reply?

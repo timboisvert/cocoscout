@@ -257,9 +257,9 @@
               <% end %>
             </fieldset>
 
-            <%= render "mics/form_field", name: "mic[min_age]", label: "Age requirement", type: "select",
-                  value: "",
-                  options: [ [ "All ages", "" ], [ "21+", "21" ] ] %>
+            <%= render "mics/form_field", name: "mic[age_choice]", label: "Age requirement", type: "select",
+                  value: "unknown",
+                  options: [ [ "Unknown", "unknown" ], [ "All ages", "all_ages" ], [ "21+", "21" ] ] %>
           </div>
         </section>
 

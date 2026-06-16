@@ -1,6 +1,6 @@
 <% content_for :title, @document.title %>
 
-<div class="w-full">
+<div class="w-full" data-controller="document-toc">
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       [ "My Documents", my_documents_path ]
@@ -9,10 +9,19 @@
     links: []
   } %>
 
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
-    <div class="text-xs text-gray-500 mb-4"><%= @document.production&.name %></div>
-    <div class="prose prose-sm max-w-none">
-      <%= @document.body %>
-    </div>
+  <%# Reader view — a pinned contents rail on the left; the document scrolls. %>
+  <div class="lg:flex lg:gap-8 lg:h-[calc(100vh-10rem)]">
+    <aside class="hidden lg:block lg:w-60 flex-shrink-0 overflow-y-auto py-2" data-document-toc-target="wrapper">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Contents</div>
+      <nav data-document-toc-target="toc" class="space-y-0.5 text-sm border-l border-gray-200 pl-3"></nav>
+    </aside>
+
+    <article class="flex-1 min-w-0 lg:overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-sm px-8 sm:px-12 py-10 min-h-[70vh] lg:min-h-0">
+      <h1 class="text-4xl coustard-regular text-gray-900 mb-2"><%= @document.title %></h1>
+      <div class="text-xs text-gray-500 mb-8"><%= @document.production&.name %></div>
+      <div class="document-render max-w-3xl" data-document-toc-target="content">
+        <%= @document.body %>
+      </div>
+    </article>
   </div>
 </div>

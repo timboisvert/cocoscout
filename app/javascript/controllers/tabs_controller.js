@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection"]
+    static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection", "menu"]
     static values = { initialTab: { type: Number, default: 0 }, selectKey: String }
 
     connect() {
@@ -82,7 +82,18 @@ export default class extends Controller {
         history.replaceState(null, '', `#tab-${idx}`);
     }
 
+    // Mobile dropdown alternative to the tab strip (change event).
+    selectMenu(e) {
+        const idx = parseInt(e.target.value, 10);
+        if (isNaN(idx)) return;
+        this.show(idx);
+        if (this.hasHiddenFieldTarget) this.hiddenFieldTarget.value = idx;
+        history.replaceState(null, '', `#tab-${idx}`);
+    }
+
     show(idx) {
+        // Keep the mobile dropdown in sync when tabs change via any path.
+        if (this.hasMenuTarget) this.menuTarget.value = String(idx);
         this.tabTargets.forEach((tab, i) => {
             if (i === idx) {
                 tab.classList.add("border-pink-500", "text-pink-600", "bg-white");

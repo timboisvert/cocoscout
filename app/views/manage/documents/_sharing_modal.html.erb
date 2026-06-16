@@ -1,10 +1,43 @@
 <%#
-  Sharing/permissions modal for one document.
-  Locals: document, production, talent_pools, candidate_people
+  Sharing/permissions modal for one document — a single unified access list
+  (Google-Docs style). Add the production team, a talent pool, or specific
+  people from one search box; each entry gets a Can view / Can edit control.
+  Locals: document, production, talent_pool_options, candidate_people
+    talent_pool_options: [{ id:, pool:, name:, subtitle: }] (already named for
+    the production / organization / shared-pool case by the controller)
   Trigger with: data-controller="modal" data-action="click->modal#open"
                 data-modal-id="sharing-modal-<document.id>"
 %>
-<% selected_people = Person.where(id: document.person_share_ids).to_a %>
+<%
+  pool_options        = talent_pool_options || []
+  pool_options_by_id  = pool_options.index_by { |o| o[:id] }
+  selected_pool_ids   = document.talent_pool_share_ids
+  selected_person_ids = document.person_share_ids
+  selected_people     = Person.where(id: selected_person_ids).index_by(&:id)
+
+  # Fallback naming for a pool already shared with but no longer an offered
+  # option (e.g. the org switched talent-pool modes since it was shared).
+  pool_label = ->(pid) do
+    opt = pool_options_by_id[pid]
+    name = opt ? opt[:name] : (TalentPool.find_by(id: pid)&.name || "Talent pool")
+    [ name, (opt ? opt[:subtitle] : "Talent pool") ]
+  end
+
+  # Candidate pool for the "Add" search: everything not already on the list.
+  candidates = []
+  unless document.shared_with_team?
+    candidates << { key: "team", kind: "team", id: "", name: "Everyone on the production team",
+                    subtitle: "Production team", initials: "" }
+  end
+  pool_options.reject { |o| selected_pool_ids.include?(o[:id]) }.each do |opt|
+    candidates << { key: "pool-#{opt[:id]}", kind: "talent_pool", id: opt[:id], name: opt[:name],
+                    subtitle: opt[:subtitle], initials: "" }
+  end
+  (candidate_people || []).reject { |p| selected_person_ids.include?(p.id) }.each do |person|
+    candidates << { key: "person-#{person.id}", kind: "person", id: person.id, name: person.name,
+                    subtitle: "", initials: person.initials }
+  end
+%>
 <div id="sharing-modal-<%= document.id %>"
      class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
      data-controller="modal"
@@ -14,7 +47,7 @@
     <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200">
       <div>
         <h3 class="text-base font-semibold text-gray-900">Share &ldquo;<%= document.title %>&rdquo;</h3>
-        <p class="text-xs text-gray-500 mt-0.5">Choose who can see this and whether they can edit it.</p>
+        <p class="text-xs text-gray-500 mt-0.5">Add the production team, a talent pool, or specific people.</p>
       </div>
       <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -22,65 +55,46 @@
     </div>
 
     <%= form_with url: share_manage_production_document_path(production, document), method: :patch, local: true do %>
-      <div class="px-5 py-4 space-y-5"
+      <div class="px-5 py-4"
            data-controller="document-audience"
-           data-document-audience-candidates-value="<%= (candidate_people || []).map { |p| { id: p.id, name: p.name, initials: p.initials } }.to_json %>">
-        <%# Row template cloned by the controller when a person is added. %>
-        <template data-document-audience-target="rowTemplate"><%= render "manage/documents/person_share_row", person: Struct.new(:id, :name).new("__ID__", "__NAME__"), permission: "read" %></template>
+           data-document-audience-candidates-value="<%= candidates.to_json %>">
 
-        <%# Production team %>
-        <div class="flex items-center justify-between gap-3">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" name="team_enabled" value="1" <%= "checked" if document.shared_with_team? %>
-                   class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-            <span class="text-sm font-medium text-gray-700">Production team</span>
-          </label>
-          <select name="team_permission" class="text-xs border-gray-300 rounded py-1 focus:ring-pink-500 focus:border-pink-500">
-            <option value="write" <%= "selected" if document.team_permission != "read" %>>Can edit</option>
-            <option value="read"  <%= "selected" if document.team_permission == "read" %>>Can view</option>
-          </select>
+        <%# Row templates the controller clones when something is added. %>
+        <template data-document-audience-target="teamTemplate"><%= render "manage/documents/share_row", kind: "team", id: "", name: "Everyone on the production team", subtitle: "Production team", initials: "", permission: "write", share_key: "team" %></template>
+        <template data-document-audience-target="poolTemplate"><%= render "manage/documents/share_row", kind: "talent_pool", id: "__ID__", name: "__NAME__", subtitle: "Talent pool", initials: "", permission: "read", share_key: "pool-__ID__" %></template>
+        <template data-document-audience-target="personTemplate"><%= render "manage/documents/share_row", kind: "person", id: "__ID__", name: "__NAME__", subtitle: "", initials: "__INIT__", permission: "read", share_key: "person-__ID__" %></template>
+
+        <%# Add box %>
+        <div class="relative mb-3">
+          <input type="text" data-document-audience-target="search"
+                 data-action="input->document-audience#search focus->document-audience#search"
+                 placeholder="Add people, a talent pool, or the whole team…" autocomplete="off"
+                 class="block w-full text-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-pink-500 focus:border-pink-500">
+          <div data-document-audience-target="results"
+               class="hidden absolute z-20 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg"></div>
         </div>
 
-        <%# Talent pools %>
-        <% if talent_pools.present? && talent_pools.any? %>
-          <div>
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Talent pools</div>
-            <div class="space-y-1.5">
-              <% talent_pools.each do |pool| %>
-                <% on = document.talent_pool_share_ids.include?(pool.id) %>
-                <div class="flex items-center justify-between gap-3">
-                  <label class="flex items-center gap-2 cursor-pointer min-w-0">
-                    <input type="checkbox" name="talent_pools[<%= pool.id %>][enabled]" value="1" <%= "checked" if on %>
-                           class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-                    <span class="text-sm text-gray-700 truncate"><%= pool.name %></span>
-                  </label>
-                  <select name="talent_pools[<%= pool.id %>][permission]" class="text-xs border-gray-300 rounded py-1 focus:ring-pink-500 focus:border-pink-500 flex-shrink-0">
-                    <option value="read"  <%= "selected" if document.pool_permission(pool.id) != "write" %>>Can view</option>
-                    <option value="write" <%= "selected" if document.pool_permission(pool.id) == "write" %>>Can edit</option>
-                  </select>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-
-        <%# Specific people %>
-        <div>
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Specific people</div>
-          <div data-document-audience-target="chips" class="space-y-1.5 mb-2 empty:hidden">
-            <% selected_people.each do |p| %>
-              <%= render "manage/documents/person_share_row", person: p, permission: (document.person_permission(p.id) || "read") %>
-            <% end %>
-          </div>
-          <div class="relative">
-            <input type="text" data-document-audience-target="search" data-action="input->document-audience#search focus->document-audience#search"
-                   placeholder="Search people to add…" autocomplete="off"
-                   class="block w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
-            <div data-document-audience-target="results"
-                 class="hidden absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg"></div>
-          </div>
-          <p class="text-[11px] text-gray-500 mt-1">People connected to this production (cast &amp; talent pools).</p>
+        <%# Unified access list %>
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Who has access</div>
+        <div data-document-audience-target="rows" class="divide-y divide-gray-100">
+          <% if document.shared_with_team? %>
+            <%= render "manage/documents/share_row", kind: "team", id: "", name: "Everyone on the production team",
+                  subtitle: "Production team", initials: "", permission: (document.team_permission || "write"), share_key: "team" %>
+          <% end %>
+          <% selected_pool_ids.each do |pid| %>
+            <% pool_name, pool_subtitle = pool_label.call(pid) %>
+            <%= render "manage/documents/share_row", kind: "talent_pool", id: pid, name: pool_name,
+                  subtitle: pool_subtitle, initials: "", permission: (document.pool_permission(pid) || "read"), share_key: "pool-#{pid}" %>
+          <% end %>
+          <% selected_person_ids.each do |person_id| %>
+            <% person = selected_people[person_id] %>
+            <%= render "manage/documents/share_row", kind: "person", id: person_id, name: (person&.name || "Someone"),
+                  subtitle: "", initials: (person&.initials || "?"), permission: (document.person_permission(person_id) || "read"), share_key: "person-#{person_id}" %>
+          <% end %>
         </div>
+        <p data-document-audience-target="empty" class="text-sm text-gray-400 py-3 <%= "hidden" if document.shares.any? %>">
+          No one has access yet. Add someone above.
+        </p>
       </div>
 
       <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">

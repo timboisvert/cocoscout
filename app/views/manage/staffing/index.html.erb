@@ -14,7 +14,7 @@
 
   staffing_actions = [
     { icon: "user-group", text: "Staff",       description: "Who can be assigned to shifts",   path: manage_staffing_staff_path },
-    { icon: "cog",        text: "House Roles", description: "Bartender, FOH, tech, security…", path: manage_staffing_house_roles_path }
+    { icon: "cog",        text: "Roles",       description: "Bartender, FOH, tech, security…", path: manage_staffing_house_roles_path }
   ]
 %>
 
@@ -59,7 +59,7 @@
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <% if @house_role_count.zero? %>
-        <%= link_to "Add house roles to begin →", manage_staffing_house_roles_path,
+        <%= link_to "Add staffing roles to begin →", manage_staffing_house_roles_path,
               class: "text-sm text-pink-600 hover:text-pink-700 underline" %>
       <% elsif @shows_by_day.any? %>
         <button type="button"
@@ -226,14 +226,11 @@
                               data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                               data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                               data-shift-role-name="<%= role.name %>"
-                              data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
+                              data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>"
+                              data-shift-house-role-id="<%= shift.house_role_id %>"
                               class="flex-1 min-w-0 px-3 py-2 text-sm text-left text-gray-900 font-medium hover:bg-black/5 cursor-pointer flex items-center justify-between gap-2">
                         <span class="truncate"><%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
-                        <% if shift.doubled? %>
-                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium flex-shrink-0 truncate" title="Also covering <%= shift.secondary_house_role.name %>">+ <%= shift.secondary_house_role.name %></span>
-                        <% else %>
-                          <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
-                        <% end %>
+                        <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
                       </button>
                       <%= button_to manage_destroy_staffing_shift_path(shift),
                             method: :delete,
@@ -303,6 +300,27 @@
                                   data-assigned-ids="<%= assigned_ids.to_json %>"
                                   class="w-full text-left text-[11px] px-2 py-0.5 text-gray-500 hover:text-pink-600 cursor-pointer bg-transparent border-0">
                             + Add another person
+                          </button>
+                        <% end %>
+
+                        <%# Other roles this same shift/person also covers. Click to
+                            edit the set in the shift modal. %>
+                        <% if shift.additional_roles.any? %>
+                          <button type="button"
+                                  data-action="click->shift-edit#open"
+                                  data-shift-id="<%= shift.id %>"
+                                  data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                                  data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                                  data-shift-role-name="<%= role.name %>"
+                                  data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>"
+                              data-shift-house-role-id="<%= shift.house_role_id %>"
+                                  class="w-full text-left mt-1 pt-1.5 border-t border-black/5 cursor-pointer bg-transparent border-x-0 border-b-0 hover:bg-black/5 rounded-b px-1">
+                            <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-0.5">Also covers</span>
+                            <div class="flex flex-wrap gap-1">
+                              <% shift.additional_roles.each do |extra| %>
+                                <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium"><%= extra.name %></span>
+                              <% end %>
+                            </div>
                           </button>
                         <% end %>
                       </div>
@@ -414,8 +432,10 @@
                     <% if cast.any? %>
                       <span class="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-purple-100 text-purple-700 text-[9px] font-semibold"><%= cast.size %></span>
                     <% end %>
-                    <%# Hover popover with the cast list. %>
-                    <span class="invisible opacity-0 group-hover/cast:visible group-hover/cast:opacity-100 transition-opacity absolute z-50 left-0 top-full mt-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
+                    <%# Hover popover with the cast list. Opens upward (bottom-full)
+                        so the day card's overflow-hidden doesn't clip it — the
+                        cast row sits at the bottom of the card. %>
+                    <span class="invisible opacity-0 group-hover/cast:visible group-hover/cast:opacity-100 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
                       <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 px-1">
                         Cast · <%= show.production&.name %>
                       </span>
@@ -448,7 +468,7 @@
       <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center text-sm text-gray-600">
         <p class="mb-3">No shows or shifts in this week.</p>
         <% if @house_role_count.zero? %>
-          <%= link_to "Set up your house roles first", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>
+          <%= link_to "Set up your staffing roles first", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>
         <% elsif @staff_count.zero? %>
           <%= link_to "Add your staff", manage_staffing_staff_path, class: "text-pink-600 hover:text-pink-700 underline" %>
         <% end %>
@@ -558,15 +578,22 @@
             </div>
             <p class="text-[11px] text-gray-500 mt-2">End time can roll past midnight onto the next day.</p>
 
-            <%# Double-up: this one shift also covers a second role. %>
+            <%# Double-up: this one shift can also cover any number of other roles. %>
             <div class="mt-4">
               <label class="block text-xs font-medium text-gray-700 mb-1">Also covers (optional)</label>
-              <%= f.select :secondary_house_role_id,
-                    @house_roles.map { |r| [ r.name, r.id ] },
-                    { include_blank: "— Just one role —" },
-                    data: { "shift-edit-target": "secondaryRoleSelect" },
-                    class: "block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
-              <p class="text-[11px] text-gray-500 mt-1">Use when one person works two roles this shift (e.g. bartender who's also managing).</p>
+              <%# Empty value so unchecking every box still submits the key and clears the set. %>
+              <input type="hidden" name="shift[additional_role_ids][]" value="">
+              <div class="space-y-1 max-h-48 overflow-y-auto rounded border border-gray-200 p-2">
+                <% @house_roles.each do |r| %>
+                  <label class="flex items-center gap-2 text-sm text-gray-800 px-1 py-0.5 rounded hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" name="shift[additional_role_ids][]" value="<%= r.id %>"
+                           data-shift-edit-target="additionalRoleCheckbox" data-role-id="<%= r.id %>"
+                           class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                    <span class="truncate"><%= r.name %></span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="text-[11px] text-gray-500 mt-1">Check every extra role this person works this shift (e.g. a bartender who's also managing and on security).</p>
             </div>
 
             <%# Hidden full-datetime fields submitted to the server; JS keeps them in sync with the time inputs above. %>

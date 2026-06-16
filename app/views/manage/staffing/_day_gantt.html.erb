@@ -139,7 +139,7 @@
         role_blocks = Hash.new { |h, k| h[k] = [] }
         day_shifts.each do |s|
           role_blocks[s.house_role] << { shift: s, secondary: false }
-          role_blocks[s.secondary_house_role] << { shift: s, secondary: true } if s.secondary_house_role_id
+          s.additional_roles.each { |extra| role_blocks[extra] << { shift: s, secondary: true } }
         end
         role_groups = role_blocks.sort_by { |role, _| role_order[role.id] || 9_999 }
       %>
@@ -190,7 +190,7 @@
                           data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-role-name="<%= shift.house_role.name %>"
-                          data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
+                          data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>" data-shift-house-role-id="<%= shift.house_role_id %>"
                           class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left transition-colors"
                           style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
                           title="Also covering <%= role.name %> (primary: <%= shift.house_role.name %>) · <%= time_range %>">
@@ -222,7 +222,7 @@
                             data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-role-name="<%= role.name %>"
-                            data-shift-secondary-role-id="<%= shift.secondary_house_role_id %>"
+                            data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>" data-shift-house-role-id="<%= shift.house_role_id %>"
                             class="flex-1 min-w-0 px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left bg-transparent border-0">
                       <% if empty_unfilled %>
                         <span class="truncate text-[11px] italic opacity-70">empty — click to edit time</span>
@@ -328,7 +328,7 @@
                           data-shift-starts-at="<%= s.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-ends-at="<%= s.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-role-name="<%= r.name %>"
-                          data-shift-secondary-role-id="<%= s.secondary_house_role_id %>"
+                          data-shift-additional-role-ids="<%= s.additional_role_ids.to_json %>" data-shift-house-role-id="<%= s.house_role_id %>"
                           data-person-id="<%= person.id %>"
                           data-person-name="<%= person.name %>"
                           class="absolute rounded border bg-white border-gray-300 text-gray-900 hover:bg-gray-50 transition-colors px-1.5 flex items-center overflow-hidden cursor-pointer text-left"

@@ -34,6 +34,9 @@ module Mics
                                   field: "accessibility",
                                   old_value: old_access.to_json, new_value: @mic.accessibility.to_json)
         end
+        # The tabbed editor saves everything in one submit, so venue fields
+        # (when present) ride along with the mic update.
+        apply_venue_params!
       end
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Saved."
     rescue ActiveRecord::RecordInvalid => e
@@ -62,16 +65,7 @@ module Mics
     # city, state, ZIP. This affects every Mic at this venue, not just
     # this one; the view warns the owner accordingly.
     def update_venue
-      venue = @mic.venue
-      old_attrs = venue.attributes.slice(*VENUE_FIELDS)
-      venue.assign_attributes(venue_params)
-      venue.save!
-
-      venue.attributes.slice(*VENUE_FIELDS).each do |k, v|
-        next if old_attrs[k].to_s == v.to_s
-        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
-                                field: "venue.#{k}", old_value: old_attrs[k].to_s, new_value: v.to_s)
-      end
+      apply_venue_params!
       redirect_to mics_owner_mic_path(@mic.slug), notice: "Venue updated."
     rescue ActiveRecord::RecordInvalid => e
       redirect_to mics_owner_mic_path(@mic.slug), alert: "Couldn't save venue: #{e.message}"
@@ -382,8 +376,25 @@ module Mics
       params.require(:venue).permit(*VENUE_FIELDS.map(&:to_sym))
     end
 
+    # Edit the current venue in place + log the changed fields. No-op when the
+    # submit didn't include venue fields (so a mic-only save leaves it alone).
+    def apply_venue_params!
+      return if params[:venue].blank?
+
+      venue = @mic.venue
+      old_attrs = venue.attributes.slice(*VENUE_FIELDS)
+      venue.assign_attributes(venue_params)
+      venue.save!
+
+      venue.attributes.slice(*VENUE_FIELDS).each do |k, v|
+        next if old_attrs[k].to_s == v.to_s
+        @mic.mic_edits.create!(editor_user_id: current_user.id, source: :owner,
+                                field: "venue.#{k}", old_value: old_attrs[k].to_s, new_value: v.to_s)
+      end
+    end
+
     def allowed_keys
-      base = %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date custom_dates paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age host_summary]
+      base = %w[name format day_of_week starts_local_time recurrence_pattern recurrence_interval recurrence_nth_week recurrence_nth_weeks recurrence_day_of_month recurrence_anchor_date custom_dates paused pause_note canceled_until signup_method bucket_draw signup_url signup_opens_at_text signup_notes blurb spot_length_minutes signup_cap cost drink_minimum_amount_cents cover_amount_cents min_age age_requirement host_summary]
       # Slug edits are admin-only. Regular owners shouldn't be able to
       # rename the URL out from under existing inbound links.
       base += [ "slug" ] if deletable_by?(current_user)
@@ -394,7 +405,9 @@ module Mics
       # Exclude the array column from the scalar permit list — strong
       # params would otherwise drop the array values as un-permitted.
       scalar_keys = allowed_keys.map(&:to_sym) - [ :recurrence_nth_weeks, :custom_dates ]
-      perm = params.require(:mic).permit(*scalar_keys, recurrence_nth_weeks: [])
+      # `age_choice` is a virtual setter on the model (keeps age_requirement +
+      # min_age in sync) — permit it alongside the real columns.
+      perm = params.require(:mic).permit(*scalar_keys, :age_choice, recurrence_nth_weeks: [])
 
       # Custom dates ride in as a JSON string in `mic[custom_dates_json]`
       # (the Stimulus controller assembles it). Decode it into the array
