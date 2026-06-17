@@ -1,235 +1,224 @@
-<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-slate-50">
-  <!-- Header -->
-  <header class="w-full bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <%= image_tag "/icon.png", alt: "CocoScout logomark", class: "h-10 w-10" %>
-          <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
-        </div>
-        <div class="flex items-center gap-2 sm:gap-4">
-          <%= link_to "For Performers", performers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
-          <%= link_to "For Producers", producers_path, class: "hidden sm:inline text-sm text-slate-600 hover:text-pink-500 transition" %>
-          <%= render "shared/button", text: "Sign In", path: signin_path, variant: "ghost", size: "small" %>
-          <%= render "shared/button", text: "Sign Up Free", path: signup_path, variant: "primary", size: "small" %>
-        </div>
-      </div>
-    </div>
-  </header>
+<% content_for :title, "CocoScout — Run the show. Or find your next stage." %>
+
+<div class="min-h-screen bg-[#f9f9f7]">
+  <%= render "shared/marketing/header" %>
 
   <main class="flex flex-col min-w-full">
-    <!-- Hero Section -->
-    <section class="w-full px-6 py-16 sm:py-24">
-      <div class="max-w-7xl mx-auto">
-        <div class="text-center">
-          <div class="mb-8 flex justify-center">
-            <%= image_tag "/icon.png", alt: "CocoScout logo", class: "h-24 w-24 sm:h-32 sm:w-32 drop-shadow-lg" %>
+    <%# ===== Hero: two equal audiences ===== %>
+    <section class="w-full px-6 pt-14 pb-10 sm:pt-20 sm:pb-14 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-6xl mx-auto text-center">
+        <div class="mb-6 flex justify-center">
+          <%= image_tag "/icon.png", alt: "CocoScout", class: "h-16 w-16 sm:h-20 sm:w-20 drop-shadow" %>
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-5 coustard-regular leading-tight">
+          Run the show.<br class="sm:hidden"> Or find your next stage.
+        </h1>
+        <p class="text-lg sm:text-xl max-w-3xl mx-auto text-slate-600 leading-relaxed">
+          CocoScout is the operating platform for people who run shows, theaters, courses, and open mics —
+          and the home base for the performers who bring them to life.
+        </p>
+      </div>
+
+      <%# Two doors %>
+      <div class="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto mt-12">
+        <%= link_to producers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-7 sm:p-8 shadow-md hover:shadow-xl hover:border-pink-400 transition-all text-left" do %>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center">
+              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I run shows</h2>
           </div>
+          <p class="text-slate-600 mb-4">Productions, theaters, courses, open mics. Casting, sign-ups, scheduling, payouts, and your whole team — in one platform.</p>
+          <div class="flex items-center gap-2 text-pink-500 font-semibold">
+            <span>Explore the producer platform</span>
+            <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </div>
+        <% end %>
 
-          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 coustard-regular leading-tight">
-            Where performers and<br>productions connect.
-          </h1>
+        <%= link_to performers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-7 sm:p-8 shadow-md hover:shadow-xl hover:border-pink-400 transition-all text-left" do %>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center">
+              <svg class="w-6 h-6 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I perform</h2>
+          </div>
+          <p class="text-slate-600 mb-4">Find open mics, auditions, and courses. Track your schedule, share availability, get cast, and get paid — free.</p>
+          <div class="flex items-center gap-4 text-pink-500 font-semibold">
+            <span class="inline-flex items-center gap-2">See what performers get
+              <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </section>
 
-          <p class="text-lg sm:text-xl max-w-3xl mx-auto text-slate-600 mb-12 leading-relaxed">
-            One platform for auditions, casting, scheduling, and communication—from the first callback to the final bow.
-          </p>
+    <%# ===== Producer operating platform ===== %>
+    <section class="w-full bg-white border-t border-slate-100 px-6 py-16 sm:py-20">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-2xl mb-10">
+          <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">For producers</span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">The operating platform for live entertainment.</h2>
+          <p class="text-lg text-slate-600">If you run shows, a theater, a class, or a weekly open mic, CocoScout replaces the spreadsheets, group texts, and email chains with one place to run all of it.</p>
+        </div>
 
-          <!-- Audience Selector Cards -->
-          <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            <!-- Performer Card -->
-            <%= link_to performers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
-              <div class="flex items-center gap-4 mb-4">
-                <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
-                  <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
-                  </svg>
+        <div class="grid lg:grid-cols-2 gap-10 items-center">
+          <div class="rounded-2xl shadow-2xl overflow-hidden border border-slate-200 bg-slate-50">
+            <%= image_tag "screenshots/casting/1-casting-table.png", alt: "CocoScout casting table", class: "w-full" %>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+            <% [
+              ["Auditions", "Custom forms, video submissions, callbacks"],
+              ["Casting", "Drag-and-drop tables with conflict detection"],
+              ["Sign-ups", "One-off or recurring, with attendance"],
+              ["Scheduling", "Rehearsals, call lists, calendar sync"],
+              ["Courses", "Offerings, sessions, registrations"],
+              ["Staffing", "House roles, shifts, and crew"],
+              ["Money", "Payouts, financials, contracts"],
+              ["Documents & contacts", "Handbooks, talent pools, directory"]
+            ].each do |title, blurb| %>
+              <div class="flex items-start gap-3">
+                <span class="mt-1 w-5 h-5 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                </span>
+                <div>
+                  <div class="font-semibold text-slate-900 coustard-regular"><%= title %></div>
+                  <div class="text-sm text-slate-600"><%= blurb %></div>
                 </div>
-                <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I'm a Performer</h2>
-              </div>
-              <p class="text-slate-600 mb-4">Build your profile, submit to auditions, track your schedule, and get discovered by production teams.</p>
-              <div class="flex items-center gap-2 text-pink-500 font-semibold">
-                <span>Free for performers</span>
-                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
               </div>
             <% end %>
-
-            <!-- Producer Card -->
-            <%= link_to producers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
-              <div class="flex items-center gap-4 mb-4">
-                <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
-                  <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                  </svg>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I Run Productions</h2>
-              </div>
-              <p class="text-slate-600 mb-4">Manage auditions, cast your shows, coordinate schedules, and keep your entire team on the same page.</p>
-              <div class="flex items-center gap-2 text-pink-500 font-semibold">
-                <span>Learn more</span>
-                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-            <% end %>
           </div>
+        </div>
+
+        <div class="mt-10 flex flex-col sm:flex-row gap-3">
+          <%= render "shared/button", text: "Explore the producer platform", path: producers_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Start free", path: signup_path, variant: "outline", size: "large" %>
         </div>
       </div>
     </section>
 
-    <!-- Quick Features Overview -->
-    <section class="w-full bg-white border-t border-slate-100">
-      <div class="max-w-6xl mx-auto px-6 py-16">
-        <div class="text-center mb-12">
-          <h2 class="text-3xl font-bold text-slate-900 mb-3 coustard-regular">Everything you need</h2>
-          <p class="text-lg text-slate-600">From auditions to final bow, CocoScout keeps your production organized and your team connected.</p>
+    <%# ===== Performer toolkit (discover, then manage) ===== %>
+    <section class="w-full bg-[#f9f9f7] border-t border-slate-100 px-6 py-16 sm:py-20">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-2xl mb-12">
+          <span class="text-pink-500 font-bold text-sm uppercase tracking-wide">For performers &amp; comics</span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mt-2 mb-4 coustard-regular">Find the stage. Manage the rest.</h2>
+          <p class="text-lg text-slate-600">
+            Running five-minute sets at open mics or auditioning for the mainstage — CocoScout helps you find
+            where to perform, then keeps every commitment, conflict, and payment in one place. Always free.
+          </p>
         </div>
 
-        <div class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+        <%# Step 1 — discovery %>
+        <div class="flex items-center gap-3 mb-5">
+          <span class="w-7 h-7 rounded-full bg-pink-500 text-white text-sm font-bold flex items-center justify-center">1</span>
+          <h3 class="text-xl font-bold text-slate-900 coustard-regular">Find where to perform</h3>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-5">
+          <%= link_to mics_home_path, class: "group bg-white rounded-2xl border-2 border-pink-200 p-6 hover:border-pink-400 hover:shadow-lg transition-all flex flex-col" do %>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-11 h-11 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
+              </span>
+              <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 font-bold">Find a Mic</span>
             </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Auditions</h3>
-            <p class="text-sm text-slate-600">Submit and review with ease</p>
+            <h4 class="text-xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 mb-1.5">Open mics</h4>
+            <p class="text-sm text-slate-600 mb-4 flex-1">Browse every active open mic by city on Find a Mic. Favorite your regulars and get an alert the moment sign-ups open.</p>
+            <span class="inline-flex items-center gap-1.5 text-pink-600 font-semibold text-sm">Browse on findamic.com
+              <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+          <% end %>
+          <div class="bg-white rounded-2xl border border-slate-200 p-6">
+            <span class="w-11 h-11 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73"/></svg>
+            </span>
+            <h4 class="text-xl font-bold text-slate-900 coustard-regular mb-1.5">Auditions</h4>
+            <p class="text-sm text-slate-600">Discover open calls, submit with your headshots and reels in one click, and track each one from submission to callback.</p>
           </div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-6">
+            <span class="w-11 h-11 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"/></svg>
+            </span>
+            <h4 class="text-xl font-bold text-slate-900 coustard-regular mb-1.5">Courses</h4>
+            <p class="text-sm text-slate-600">Find classes and workshops, register in a tap, and keep every session on your calendar automatically.</p>
+          </div>
+        </div>
 
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+        <%# Step 2 — manage %>
+        <div class="flex items-center gap-3 mt-12 mb-5">
+          <span class="w-7 h-7 rounded-full bg-pink-500 text-white text-sm font-bold flex items-center justify-center">2</span>
+          <h3 class="text-xl font-bold text-slate-900 coustard-regular">Then manage it all in one place</h3>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <%
+            performer_tools = [
+              [ "Your calendar", "Shows, rehearsals, auditions, mics, and classes in one view — synced to your phone.",
+                "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" ],
+              [ "Availability", "Submit your conflicts once; every team you're on sees exactly when you're free.",
+                "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" ],
+              [ "Get paid", "Add Venmo or Zelle once and get paid directly, with a full history of every payout.",
+                "M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" ],
+              [ "Messages", "Stay in the loop with every cast and team — no more scattered group texts.",
+                "M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" ],
+              [ "Documents", "Sign agreements and grab handbooks, scripts, and tax forms whenever you need them.",
+                "M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" ],
+              [ "Profile & credits", "Keep headshots, reels, skills, and credits in one profile producers actually see.",
+                "M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" ]
+            ]
+          %>
+          <% performer_tools.each do |title, blurb, icon| %>
+            <div class="flex items-start gap-3 bg-white rounded-xl border border-slate-200 p-4">
+              <span class="w-9 h-9 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="<%= icon %>"/></svg>
+              </span>
+              <div>
+                <div class="font-semibold text-slate-900 coustard-regular"><%= title %></div>
+                <div class="text-sm text-slate-600 leading-snug"><%= blurb %></div>
+              </div>
             </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Casting</h3>
-            <p class="text-sm text-slate-600">Drag, drop, done</p>
-          </div>
+          <% end %>
+        </div>
 
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Scheduling</h3>
-            <p class="text-sm text-slate-600">One calendar, every event</p>
-          </div>
+        <div class="mt-10 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-3">
+          <%= render "shared/button", text: "Create your free profile", path: signup_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Find an open mic", path: mics_home_path, variant: "outline", size: "large" %>
+          <%= link_to "See everything performers get →", performers_path, class: "text-pink-600 font-semibold hover:text-pink-700 sm:ml-1" %>
+        </div>
+      </div>
+    </section>
 
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Messaging</h3>
-            <p class="text-sm text-slate-600">Keep everyone in the loop</p>
-          </div>
+    <%# ===== Find a Mic band ===== %>
+    <section class="w-full bg-pink-500 text-white px-6 py-14">
+      <div class="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center gap-6 md:gap-10">
+        <div class="flex-1">
+          <div class="text-xs uppercase tracking-wider text-pink-100 font-bold mb-1">findamic.com</div>
+          <h2 class="text-3xl sm:text-4xl coustard-regular mb-2">Looking for an open mic tonight?</h2>
+          <p class="text-pink-50 max-w-2xl">Find a Mic is our open-mic finder — every active mic, kept current by the people who run them. It's its own site, powered by the same free CocoScout account.</p>
+        </div>
+        <div class="shrink-0">
+          <%= link_to mics_home_path,
+                class: "inline-flex items-center gap-2 px-6 py-3 bg-white text-pink-700 font-bold rounded-lg hover:bg-pink-50 transition-colors" do %>
+            Browse open mics
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          <% end %>
+        </div>
+      </div>
+    </section>
 
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Payments</h3>
-            <p class="text-sm text-slate-600">Pay performers directly</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Accounting</h3>
-            <p class="text-sm text-slate-600">Track revenue & expenses</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Profiles</h3>
-            <p class="text-sm text-slate-600">Showcase your talent</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Sign-ups</h3>
-            <p class="text-sm text-slate-600">Attendance tracking made easy</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Availability</h3>
-            <p class="text-sm text-slate-600">Conflicts at a glance</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Talent Pools</h3>
-            <p class="text-sm text-slate-600">Organize your roster</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Shoutouts</h3>
-            <p class="text-sm text-slate-600">Celebrate your team</p>
-          </div>
-
-          <div class="text-center p-6">
-            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Contracts</h3>
-            <p class="text-sm text-slate-600">Third-party licensing</p>
-          </div>
+    <%# ===== One account ===== %>
+    <section class="w-full bg-white px-6 py-16 border-t border-slate-100">
+      <div class="max-w-3xl mx-auto text-center">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 coustard-regular">One free account, the whole ecosystem.</h2>
+        <p class="text-lg text-slate-600 mb-8">
+          The same login favorites mics and gets sign-up alerts on Find a Mic, submits to auditions and gets you cast on CocoScout,
+          and — when you're ready — runs your own shows, classes, or mics as a producer.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= render "shared/button", text: "Sign Up Free", path: signup_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Sign In", path: signin_path, variant: "secondary", size: "large" %>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer class="w-full border-t border-slate-200 bg-white">
-    <div class="max-w-7xl mx-auto px-6 py-8">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-500">
-        <p>
-          A <a href="https://cocorunseverything.com" target="_blank" rel="noopener" class="underline caprasimo-regular hover:text-pink-500 transition">Coco Runs Everything</a> Production
-        </p>
-        <div class="flex items-center gap-4">
-          <%= link_to "Terms", terms_path, class: "hover:text-pink-500 transition" %>
-          <%= link_to "Privacy", privacy_path, class: "hover:text-pink-500 transition" %>
-          <a href="https://instagram.com/cocoscout" target="_blank" rel="noopener" aria-label="CocoScout on Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-pink-500 hover:border-pink-500 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="5" ry="5" />
-              <path d="M16.5 7.5h.01" />
-              <path d="M7 12a5 5 0 1 0 10 0a5 5 0 0 0-10 0" />
-            </svg>
-          </a>
-        </div>
-      </div>
-    </div>
-  </footer>
+  <%= render "shared/marketing/footer" %>
 </div>

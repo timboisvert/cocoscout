@@ -8,12 +8,17 @@
           The open-mic finder for the U.S. comedy scene. Listings stay current because the owners who run them keep them current.
         </p>
         <p class="text-xs text-gray-500 mt-3">
-          Built by
-          <a href="https://cocoscout.com" target="_blank" rel="noopener"
-             class="text-pink-400 hover:text-pink-300 font-bold underline-offset-2 hover:underline">CocoScout</a>,
-          the all-in-one tool for live-entertainment producers — casting, sign-ups, scheduling, payouts.
-          <a href="https://cocoscout.com" target="_blank" rel="noopener" class="hover:underline">cocoscout.com →</a>
+          Your free CocoScout account powers favorites and sign-up alerts here — and your auditions, courses, and producer tools on CocoScout.
         </p>
+        <%# Bridge to the producer platform without losing the Find a Mic identity. %>
+        <div class="mt-4 rounded-lg border border-gray-800 bg-gray-800/40 p-3">
+          <div class="text-xs text-gray-300 font-bold mb-1">Run a mic, show, or theater?</div>
+          <p class="text-xs text-gray-500 mb-2">CocoScout is the operating platform for producers — casting, sign-ups, scheduling, payouts.</p>
+          <a href="https://cocoscout.com/for-producers" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1 text-pink-400 hover:text-pink-300 font-bold text-xs underline-offset-2 hover:underline">
+            Explore CocoScout for producers →
+          </a>
+        </div>
       </div>
 
       <div>
@@ -94,6 +99,7 @@
       <span>
         <% unless Current.user %>
           <%= link_to "Sign in", signin_path, class: "hover:underline" %> ·
+          <%= link_to "Sign up free", signup_path, class: "text-pink-400 hover:text-pink-300 font-bold hover:underline" %> ·
         <% end %>
         <a href="https://cocoscout.com/terms" class="hover:underline">Terms</a> ·
         <a href="https://cocoscout.com/privacy" class="hover:underline">Privacy</a>
