@@ -51,8 +51,12 @@ class Production < ApplicationRecord
   # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes
 
-  # Rich-text documents & handbooks for this production.
+  # Rich-text documents & handbooks. `documents` are the ones this production
+  # *owns* (its primary); `applied_documents` is everything that applies to it,
+  # including shared documents whose home is a different production.
   has_many :documents, class_name: "ProductionDocument", dependent: :destroy
+  has_many :document_productions, dependent: :destroy
+  has_many :applied_documents, through: :document_productions, source: :production_document
 
   normalizes :contact_email, with: ->(e) { e.strip.downcase }
 

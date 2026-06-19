@@ -88,32 +88,40 @@ module Manage
         shows = shows.select { |s| selected_ids.include?(s.id) }
       end
       shows_by_day = shows.group_by { |s| s.date_and_time.to_date }
+      # Optional explicit shift windows (set in the Generate modal when a day's
+      # shows have a 2h+ gap). When present for a day, house roles use these
+      # windows verbatim instead of one all-evening shift — so a split evening
+      # becomes a shift tied to the earlier shows and one tied to the later ones.
+      segments_by_date = parse_split_segments(params[:split_segments])
       created = 0
       skipped = 0
 
-      shows_by_day.each do |_day, day_shows|
+      shows_by_day.each do |day, day_shows|
         sorted = day_shows.sort_by(&:date_and_time)
         first_show = sorted.first
         last_show = sorted.last
+        day_segments = segments_by_date[day]
 
         roles.each do |role|
-          # Each role generates against a set of (start, end, source) anchors:
-          # house roles get ONE anchor spanning first-show-start → last-show-end;
-          # show-specific roles get one anchor PER show on the day.
+          start_off = role.default_start_offset_minutes.minutes
+          end_off   = role.default_end_offset_minutes.minutes
+
+          # Anchors carry FINAL times (offsets already applied for the normal
+          # case). House roles get one all-evening anchor — or, when the manager
+          # split the evening, one per chosen window. Show-specific roles always
+          # get one anchor per show.
           anchors =
             if role.show_specific?
-              sorted.map { |show| [ show.date_and_time, show.ends_at, show ] }
+              sorted.map { |show| [ show.date_and_time + start_off, show.ends_at + end_off, show ] }
+            elsif day_segments.any?
+              day_segments.map { |seg_start, seg_end| [ seg_start, seg_end, first_show ] }
             else
-              [ [ first_show.date_and_time, last_show.ends_at, first_show ] ]
+              [ [ first_show.date_and_time + start_off, last_show.ends_at + end_off, first_show ] ]
             end
 
-          anchors.each do |show_start, show_end, source_show|
+          anchors.each do |starts_at, ends_at, source_show|
             # Venue-scoped roles only staff shows at their venue.
             next if role.location_id.present? && source_show.location_id != role.location_id
-
-            # The end offset is "minutes after the show ends," not after it starts.
-            starts_at = show_start + role.default_start_offset_minutes.minutes
-            ends_at   = show_end   + role.default_end_offset_minutes.minutes
             next if ends_at <= starts_at
 
             shift = Current.organization.shifts.new(
@@ -255,6 +263,19 @@ module Manage
       Date.parse(value.to_s).beginning_of_week
     rescue ArgumentError, TypeError
       Date.current.beginning_of_week
+    end
+
+    # The Generate modal's split windows → { Date => [[start, end], ...] }.
+    def parse_split_segments(raw)
+      result = Hash.new { |h, k| h[k] = [] }
+      Array(raw).each do |seg|
+        seg = seg.respond_to?(:to_unsafe_h) ? seg.to_unsafe_h : seg
+        s = Time.zone.parse(seg["starts_at"].to_s) rescue nil
+        e = Time.zone.parse(seg["ends_at"].to_s) rescue nil
+        next unless s && e && e > s
+        result[s.to_date] << [ s, e ]
+      end
+      result
     end
 
     def shows_in_range(range)

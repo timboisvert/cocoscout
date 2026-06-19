@@ -2,12 +2,15 @@
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%# Last breadcrumb is the document itself, so the mobile back arrow returns
+      to the document view (not the documents index). %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       [@production.name, edit_manage_production_path(@production)],
-      [ "Documents", manage_production_documents_path(@production) ]
+      [ "Documents", manage_production_documents_path(@production) ],
+      [ (@document.title.presence || "Untitled document").truncate(30), manage_production_document_path(@production, @document) ]
     ],
-    text: @document.title.presence || "Untitled document",
+    text: "Edit",
     links: []
   } %>
 
@@ -15,4 +18,7 @@
 
   <%= render "sharing_modal", document: @document, production: @production,
         talent_pool_options: @talent_pool_options, candidate_people: @candidate_people %>
+
+  <%= render "productions_modal", document: @document, production: @production,
+        attachable_productions: @attachable_productions %>
 </div>

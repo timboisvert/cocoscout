@@ -2,46 +2,59 @@
 
 module Manage
   # Org-level Documents hub: every document the current user can edit across the
-  # productions they manage, plus a create-new flow that picks a production first.
-  # Viewing/editing a specific document happens under Manage::DocumentsController.
+  # productions they manage, plus a create-new flow that picks the production(s)
+  # a document applies to. Viewing/editing a specific document happens under
+  # Manage::DocumentsController.
   class OrgDocumentsController < Manage::ManageController
     before_action :load_managed_productions
 
     def index
-      docs = ProductionDocument.where(production_id: @managed_productions.map(&:id))
-                               .includes(:production, :shares).ordered
-      @documents_by_production = docs.group_by(&:production)
+      ids = @managed_productions.map(&:id)
+      @documents = ProductionDocument
+                     .joins(:document_productions)
+                     .where(document_productions: { production_id: ids })
+                     .includes(:production, :productions, :shares)
+                     .distinct
+                     .order(updated_at: :desc)
     end
 
     def new
       @document = ProductionDocument.new
+      @selected_production_ids = Array(params[:production_id]).map(&:to_i)
     end
 
     def create
-      production = @managed_productions.find { |p| p.id.to_s == params[:production_id].to_s }
-      unless production
-        redirect_to manage_new_org_document_path, alert: "Choose a production for this document."
+      chosen = chosen_productions
+      if chosen.empty?
+        redirect_to manage_new_org_document_path, alert: "Pick at least one production for this document."
         return
       end
 
-      @document = production.documents.new(document_params)
-      @document.position = (production.documents.maximum(:position) || 0) + 1
+      primary = chosen.first
+      @document = primary.documents.new(document_params)
+      @document.position = (primary.documents.maximum(:position) || 0) + 1
       if @document.save
-        @document.apply_default_sharing!
-        redirect_to edit_manage_production_document_path(production, @document), notice: "Document created."
+        @document.set_productions!(chosen.map(&:id))
+        @document.apply_default_sharing! # production team · can edit, by default
+        redirect_to edit_manage_production_document_path(primary, @document), notice: "Document created."
       else
-        @production_id = production.id
+        @selected_production_ids = chosen.map(&:id)
         render :new, status: :unprocessable_entity
       end
     end
 
     private
 
-    # Productions in this org the user can manage (and therefore edit docs in).
+    # Productions in this org the user can manage (and therefore add docs to).
     def load_managed_productions
       @managed_productions = Current.organization.productions.active
                                     .select { |p| Current.user.manager_for_production?(p) }
                                     .sort_by { |p| p.name.to_s.downcase }
+    end
+
+    def chosen_productions
+      ids = Array(params[:production_ids]).map(&:to_s)
+      @managed_productions.select { |p| ids.include?(p.id.to_s) }
     end
 
     def document_params

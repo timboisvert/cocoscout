@@ -66,9 +66,10 @@ module Manage
         render :event_type, status: :unprocessable_entity and return
       end
 
-      # Set defaults based on event type
+      # Set defaults based on event type. Call time defaults to OFF in the
+      # wizard — the manager opts in with the toggle on the schedule step.
       @wizard_state[:casting_enabled] = EventTypes.casting_enabled_default(@wizard_state[:event_type])
-      @wizard_state[:call_time_enabled] = EventTypes.call_time_enabled_default(@wizard_state[:event_type])
+      @wizard_state[:call_time_enabled] = false
 
       save_wizard_state
       redirect_to manage_shows_wizard_schedule_path(@production)
@@ -90,6 +91,9 @@ module Manage
       @wizard_state[:recurrence_custom_end_date] = params[:recurrence_custom_end_date]
       @wizard_state[:recurrence_week_ordinal] = params[:recurrence_week_ordinal]
       @wizard_state[:recurrence_weekday] = params[:recurrence_weekday]
+      # Optional cast call time, as minutes before each event's start.
+      @wizard_state[:call_time_enabled] = params[:call_time_enabled].present?
+      @wizard_state[:call_time_offset_minutes] = (params[:call_time_offset_minutes].presence || 60).to_i
 
       if @wizard_state[:event_frequency] == "single"
         if @wizard_state[:date_and_time].blank?
@@ -176,6 +180,15 @@ module Manage
 
     private
 
+    # Call time for a created show: `offset` minutes before its start, or nil
+    # when the manager didn't enable a separate call time.
+    def wizard_call_time(date_and_time)
+      return nil unless @wizard_state[:call_time_enabled]
+      base = date_and_time.is_a?(String) ? (Time.zone.parse(date_and_time) rescue nil) : date_and_time
+      return nil unless base
+      base - (@wizard_state[:call_time_offset_minutes].presence || 60).to_i.minutes
+    end
+
     def create_single_event
       @show = @production.shows.new(
         event_type: @wizard_state[:event_type],
@@ -186,7 +199,9 @@ module Manage
         online_location_info: @wizard_state[:online_location_info],
         secondary_name: @wizard_state[:secondary_name],
         casting_enabled: @wizard_state[:casting_enabled],
-        public_profile_visible: @wizard_state[:public_profile_visible]
+        public_profile_visible: @wizard_state[:public_profile_visible],
+        call_time_enabled: @wizard_state[:call_time_enabled] || false,
+        call_time: wizard_call_time(@wizard_state[:date_and_time])
       )
 
       if @show.save
@@ -239,7 +254,9 @@ module Manage
           casting_enabled: @wizard_state[:casting_enabled],
           public_profile_visible: @wizard_state[:public_profile_visible],
           recurrence_group_id: recurrence_group_id,
-          recurrence_pattern: pattern
+          recurrence_pattern: pattern,
+          call_time_enabled: @wizard_state[:call_time_enabled] || false,
+          call_time: wizard_call_time(date)
         )
         created_count += 1 if show.save
       end

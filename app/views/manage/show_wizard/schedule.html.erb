@@ -14,25 +14,27 @@
     </div>
 
     <!-- Single Event Fields -->
-    <div data-recurring-event-target="singleFields" class="<%= 'hidden' if @wizard_state[:event_frequency] == 'recurring' %> space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
-        <input type="datetime-local"
-               name="date_and_time"
-               value="<%= @wizard_state[:date_and_time].is_a?(String) ? @wizard_state[:date_and_time] : @wizard_state[:date_and_time]&.strftime('%Y-%m-%dT%H:%M') %>"
-               class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
-      </div>
+    <div data-recurring-event-target="singleFields" class="<%= 'hidden' if @wizard_state[:event_frequency] == 'recurring' %>">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
+          <input type="datetime-local"
+                 name="date_and_time"
+                 value="<%= @wizard_state[:date_and_time].is_a?(String) ? @wizard_state[:date_and_time] : @wizard_state[:date_and_time]&.strftime('%Y-%m-%dT%H:%M') %>"
+                 class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+        </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-        <select name="duration_minutes" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
-          <option value="30" <%= 'selected' if @wizard_state[:duration_minutes] == 30 %>>30 minutes</option>
-          <option value="60" <%= 'selected' if @wizard_state[:duration_minutes] == 60 %>>1 hour</option>
-          <option value="90" <%= 'selected' if @wizard_state[:duration_minutes] == 90 %>>1.5 hours</option>
-          <% (2..24).each do |hrs| %>
-            <option value="<%= hrs * 60 %>" <%= 'selected' if @wizard_state[:duration_minutes] == hrs * 60 || (@wizard_state[:duration_minutes].nil? && hrs == 2) %>><%= hrs %> hours</option>
-          <% end %>
-        </select>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+          <select name="duration_minutes" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-48">
+            <option value="30" <%= 'selected' if @wizard_state[:duration_minutes] == 30 %>>30 minutes</option>
+            <option value="60" <%= 'selected' if @wizard_state[:duration_minutes] == 60 %>>1 hour</option>
+            <option value="90" <%= 'selected' if @wizard_state[:duration_minutes] == 90 %>>1.5 hours</option>
+            <% (2..24).each do |hrs| %>
+              <option value="<%= hrs * 60 %>" <%= 'selected' if @wizard_state[:duration_minutes] == hrs * 60 || (@wizard_state[:duration_minutes].nil? && hrs == 2) %>><%= hrs %> hours</option>
+            <% end %>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -107,6 +109,30 @@
                name="recurrence_custom_end_date"
                value="<%= @wizard_state[:recurrence_custom_end_date] %>"
                class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+      </div>
+    </div>
+
+    <!-- Cast call time — applies to single & recurring events -->
+    <div class="mt-6 pt-6 border-t border-gray-200" data-controller="wizard-call-time">
+      <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+        <span class="relative">
+          <input type="checkbox" name="call_time_enabled" value="1" <%= "checked" if @wizard_state[:call_time_enabled] %>
+                 data-wizard-call-time-target="toggle" data-action="change->wizard-call-time#sync"
+                 class="sr-only peer">
+          <span class="block w-11 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-pink-500"></span>
+          <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+        </span>
+        <span class="text-sm font-medium text-gray-700">Set an earlier call time</span>
+      </label>
+      <div data-wizard-call-time-target="fields" class="mt-3 <%= "hidden" unless @wizard_state[:call_time_enabled] %>">
+        <label class="block text-sm text-gray-600 mb-1">How long before the event should cast arrive?</label>
+        <% offset = (@wizard_state[:call_time_offset_minutes] || 60).to_i %>
+        <select name="call_time_offset_minutes" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+          <% [ [ 30, "30 minutes" ], [ 45, "45 minutes" ], [ 60, "1 hour" ], [ 90, "1.5 hours" ], [ 120, "2 hours" ] ].each do |m, l| %>
+            <option value="<%= m %>" <%= "selected" if offset == m %>><%= l %> before</option>
+          <% end %>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">Defaults to 1 hour before. Applies to every event you create here.</p>
       </div>
     </div>
 

@@ -71,6 +71,69 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
       expect(shift.ends_at).to eq(early_show.ends_at)
     end
 
+    context "proactive split into shift windows (2h+ gap between shows)" do
+      let(:gap_day) { week_start + 2 }
+      # 6–7pm and 10–11pm → a 3h gap from 7pm to 10pm.
+      let!(:s1) { create(:show, production: production, date_and_time: gap_day.in_time_zone.change(hour: 18), duration_minutes: 60) }
+      let!(:s2) { create(:show, production: production, date_and_time: gap_day.in_time_zone.change(hour: 22), duration_minutes: 60) }
+      let(:seg1_start) { gap_day.in_time_zone.change(hour: 17) }            # 5pm
+      let(:seg1_end)   { gap_day.in_time_zone.change(hour: 20) }            # 8pm
+      let(:seg2_start) { gap_day.in_time_zone.change(hour: 21) }            # 9pm
+      let(:seg2_end)   { gap_day.in_time_zone.change(hour: 23, min: 59) }   # ~midnight
+
+      def windows
+        [ { starts_at: seg1_start.iso8601, ends_at: seg1_end.iso8601 },
+          { starts_at: seg2_start.iso8601, ends_at: seg2_end.iso8601 } ]
+      end
+
+      it "creates one house shift per window, verbatim (offsets not re-applied)" do
+        # Non-zero offsets to prove the chosen windows are used as-is.
+        role = create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: -60, default_end_offset_minutes: 60)
+
+        post manage_generate_staffing_path(week_start: week_start.to_s), params: {
+          show_ids: [ s1.id, s2.id ], split_segments: windows
+        }
+
+        shifts = Shift.where(house_role: role).order(:starts_at).to_a
+        expect(shifts.size).to eq(2)
+        expect(shifts[0].starts_at).to eq(seg1_start)
+        expect(shifts[0].ends_at).to eq(seg1_end)
+        expect(shifts[1].starts_at).to eq(seg2_start)
+        expect(shifts[1].ends_at).to eq(seg2_end)
+      end
+
+      it "applies the windows to every selected house role" do
+        r1 = create(:house_role, organization: org, name: "Bartender", role_type: :house)
+        r2 = create(:house_role, organization: org, name: "Security", role_type: :house)
+
+        post manage_generate_staffing_path(week_start: week_start.to_s), params: {
+          show_ids: [ s1.id, s2.id ], split_segments: windows
+        }
+
+        expect(Shift.where(house_role: r1).count).to eq(2)
+        expect(Shift.where(house_role: r2).count).to eq(2)
+      end
+
+      it "leaves the shift unsplit (one all-evening shift) when no windows are provided" do
+        role = create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: 0, default_end_offset_minutes: 0)
+        post manage_generate_staffing_path(week_start: week_start.to_s), params: { show_ids: [ s1.id, s2.id ] }
+        shifts = Shift.where(house_role: role).to_a
+        expect(shifts.size).to eq(1)
+        expect(shifts[0].starts_at).to eq(s1.date_and_time)
+        expect(shifts[0].ends_at).to eq(s2.ends_at)
+      end
+
+      it "does not apply windows to show-specific roles (still one per show)" do
+        role = create(:house_role, organization: org, role_type: :show_specific, default_start_offset_minutes: 0, default_end_offset_minutes: 0)
+        post manage_generate_staffing_path(week_start: week_start.to_s), params: {
+          show_ids: [ s1.id, s2.id ], split_segments: windows
+        }
+        shifts = Shift.where(house_role: role)
+        expect(shifts.count).to eq(2)
+        expect(shifts.map(&:source)).to contain_exactly(s1, s2)
+      end
+    end
+
     it "scopes a show-specific role to its venue" do
       other_location = create(:location)
       role = create(:house_role, organization: org, role_type: :show_specific, location: early_show.location)

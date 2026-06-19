@@ -92,25 +92,31 @@ export default class extends Controller {
         this.headingButtons.forEach(b => b.classList.toggle("trix-active", ed.attributeIsActive(b.dataset.headingLevel)))
     }
 
-    // Rebuild the live table of contents from the editor's headings.
+    // Rebuild the live table of contents from the editor's headings. Populates
+    // every toc target (desktop rail + mobile collapsible).
     buildToc() {
         if (!this.hasTocTarget) return
         const headings = Array.from(this.editorEl.querySelectorAll("h1, h2, h3"))
             .filter(h => h.textContent.trim().length)
 
-        this.tocTarget.replaceChildren()
-        if (this.hasTocEmptyTarget) this.tocEmptyTarget.classList.toggle("hidden", headings.length > 0)
-        if (!headings.length) return
+        this.tocEmptyTargets.forEach(el => el.classList.toggle("hidden", headings.length > 0))
 
-        headings.forEach(h => {
-            const level = h.tagName === "H1" ? 1 : h.tagName === "H2" ? 2 : 3
-            const a = document.createElement("a")
-            a.href = "#"
-            a.textContent = h.textContent.trim()
-            a.className = "block py-1 text-gray-600 hover:text-pink-600 truncate cursor-pointer " +
-                (level === 1 ? "font-medium" : level === 2 ? "pl-3" : "pl-6 text-gray-500")
-            a.addEventListener("click", (e) => { e.preventDefault(); h.scrollIntoView({ behavior: "smooth", block: "center" }) })
-            this.tocTarget.appendChild(a)
+        this.tocTargets.forEach(nav => {
+            nav.replaceChildren()
+            headings.forEach(h => {
+                const level = h.tagName === "H1" ? 1 : h.tagName === "H2" ? 2 : 3
+                const a = document.createElement("a")
+                a.href = "#"
+                a.textContent = h.textContent.trim()
+                a.className = "block py-1 text-gray-600 hover:text-pink-600 truncate cursor-pointer " +
+                    (level === 1 ? "font-medium" : level === 2 ? "pl-3" : "pl-6 text-gray-500")
+                a.addEventListener("click", (e) => {
+                    e.preventDefault()
+                    h.scrollIntoView({ behavior: "smooth", block: "center" })
+                    nav.closest("details")?.removeAttribute("open") // close mobile menu
+                })
+                nav.appendChild(a)
+            })
         })
     }
 }

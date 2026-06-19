@@ -5,6 +5,8 @@
   Locals: document, production, talent_pool_options, candidate_people
     talent_pool_options: [{ id:, pool:, name:, subtitle: }] (already named for
     the production / organization / shared-pool case by the controller)
+  This is purely about VISIBILITY (who can see/edit). Which productions the
+  document belongs to is managed separately in the Productions modal.
   Trigger with: data-controller="modal" data-action="click->modal#open"
                 data-modal-id="sharing-modal-<document.id>"
 %>

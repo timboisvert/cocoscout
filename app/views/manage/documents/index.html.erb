@@ -8,7 +8,7 @@
     ],
     text: "Documents",
     links: [
-      { text: "New document", icon: "plus", path: new_manage_production_document_path(@production) }
+      { text: "New document", icon: "plus", path: manage_new_org_document_path(production_id: @production.id) }
     ]
   } %>
 
@@ -22,10 +22,14 @@
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 group-hover:text-pink-600 truncate"><%= doc.title %></div>
-            <div class="text-xs text-gray-500 mt-0.5">
+            <div class="text-xs text-gray-500 mt-0.5 truncate">
               Shared with: <%= doc.audience_summary %> · Updated <%= doc.updated_at.strftime("%b %-d, %Y") %>
+              <% if doc.productions.size > 1 %>· Also applies to <%= doc.productions.size - 1 %> other <%= "production".pluralize(doc.productions.size - 1) %><% end %>
             </div>
           </div>
+          <% if doc.productions.size > 1 %>
+            <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold flex-shrink-0">Shared</span>
+          <% end %>
           <svg class="w-5 h-5 text-gray-300 group-hover:text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         <% end %>
       <% end %>
@@ -33,7 +37,7 @@
   <% else %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
       <p class="text-sm text-gray-600 mb-3">No documents yet. Create a performer handbook or any document your team needs.</p>
-      <%= link_to new_manage_production_document_path(@production) do %>
+      <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
         <%= render "shared/button", text: "Create your first document", variant: "primary", size: "medium" %>
       <% end %>
     </div>

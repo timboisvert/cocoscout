@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_17_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -641,6 +641,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_130000) do
     t.bigint "user_id", null: false
     t.index ["token", "platform"], name: "index_device_tokens_on_token_and_platform", unique: true
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
+  end
+
+  create_table "document_productions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "production_document_id", null: false
+    t.bigint "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_document_id", "production_id"], name: "idx_document_productions_unique", unique: true
+    t.index ["production_document_id"], name: "index_document_productions_on_production_document_id"
+    t.index ["production_id"], name: "index_document_productions_on_production_id"
   end
 
   create_table "document_shares", force: :cascade do |t|
@@ -2664,6 +2674,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_130000) do
   add_foreign_key "course_registrations", "users"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "device_tokens", "users"
+  add_foreign_key "document_productions", "production_documents"
+  add_foreign_key "document_productions", "productions"
   add_foreign_key "document_shares", "production_documents"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"

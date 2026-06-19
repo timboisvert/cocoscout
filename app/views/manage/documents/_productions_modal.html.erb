@@ -1,0 +1,59 @@
+<%#
+  "Which productions does this document belong to?" — ownership, separate from
+  sharing/visibility. Attaching a production gives its production team access too
+  (team sharing matches any attached production).
+  Locals: document, production, attachable_productions
+  Trigger with: data-controller="modal" data-action="click->modal#open"
+                data-modal-id="productions-modal-<document.id>"
+%>
+<%
+  applied_ids = document.applies_to_production_ids
+  # Always include currently-attached productions so they can't be dropped just
+  # because they're outside the manager's list.
+  modal_productions = ((attachable_productions || []) + document.productions.to_a)
+                        .uniq.sort_by { |p| p.name.to_s.downcase }
+%>
+<div id="productions-modal-<%= document.id %>"
+     class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200">
+      <div>
+        <h3 class="text-base font-semibold text-gray-900">Which productions does this belong to?</h3>
+        <p class="text-xs text-gray-500 mt-0.5">One document can belong to several productions — edit it once, all of them stay in sync.</p>
+      </div>
+      <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <%= form_with url: productions_manage_production_document_path(production, document), method: :patch, local: true do %>
+      <div class="px-5 py-4">
+        <%# Empty value so unchecking everything still submits the key; the server
+            keeps the document attached to at least its home production. %>
+        <input type="hidden" name="production_ids[]" value="">
+        <div class="space-y-1 max-h-64 overflow-y-auto rounded-lg border border-gray-200 p-2">
+          <% modal_productions.each do |prod| %>
+            <label class="flex items-center gap-2 text-sm text-gray-800 px-1.5 py-1 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" name="production_ids[]" value="<%= prod.id %>"
+                     <%= "checked" if applied_ids.include?(prod.id) %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span class="truncate"><%= prod.name %></span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-2">
+          Attaching a production also gives its production team access (if this document is shared with the team).
+          Manage exactly who can see it under <span class="font-medium">Sharing</span>.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+        <%= render "shared/button", text: "Save productions", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

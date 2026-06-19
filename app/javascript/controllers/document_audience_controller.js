@@ -60,9 +60,14 @@ export default class extends Controller {
         if (row) this.rowsTarget.appendChild(row)
 
         this.searchTarget.value = ""
-        this.resultsTarget.classList.add("hidden")
         this.refreshEmpty()
-        this.searchTarget.focus()
+        // Close the dropdown after a pick. (Don't refocus the input — the
+        // input's focus->search action would immediately reopen it.)
+        this.hideResults()
+    }
+
+    hideResults() {
+        this.resultsTarget.classList.add("hidden")
     }
 
     remove(event) {
@@ -76,9 +81,14 @@ export default class extends Controller {
         this.emptyTarget.classList.toggle("hidden", !!has)
     }
 
-    // Hide the dropdown when clicking elsewhere.
+    // Close the dropdown on any click that isn't the search box or a result —
+    // including clicks elsewhere inside the modal (the access list, headings),
+    // so it's always dismissable.
     clickOutside(event) {
-        if (!this.element.contains(event.target)) this.resultsTarget.classList.add("hidden")
+        const t = event.target
+        if (t === this.searchTarget) return
+        if (this.hasResultsTarget && this.resultsTarget.contains(t)) return
+        this.hideResults()
     }
 
     connect() { this._outside = this.clickOutside.bind(this); document.addEventListener("click", this._outside) }

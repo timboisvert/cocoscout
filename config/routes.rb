@@ -1049,9 +1049,14 @@ Rails.application.routes.draw do
         post :send_agreement_reminders
       end
 
-      # Production documents & handbooks (rich text, per-audience sharing)
+      # Production documents & handbooks (rich text, per-audience sharing).
+      # `share` = who can see it (visibility); `productions` = which productions
+      # it belongs to (ownership) — two separate concerns.
       resources :documents do
-        member { patch :share }
+        member do
+          patch :share
+          patch :productions
+        end
       end
 
       resources :visual_assets, only: [ :index ] do

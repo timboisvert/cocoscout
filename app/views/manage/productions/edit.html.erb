@@ -290,13 +290,13 @@
 
     <!-- Tab 3: Documents -->
     <div data-tabs-target="panel" class="hidden">
-      <% production_documents = @production.documents.includes(:shares).ordered %>
+      <% production_documents = @production.applied_documents.includes(:shares).ordered %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%= render "shared/card_header", title: "Documents" do %>
           <%= link_to manage_production_documents_path(@production) do %>
             <%= render "shared/button", text: "All documents", variant: "primary", size: "small" %>
           <% end %>
-          <%= link_to new_manage_production_document_path(@production) do %>
+          <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
             <%= render "shared/button", text: "New document", variant: "primary", size: "small", icon: "plus" %>
           <% end %>
         <% end %>
@@ -310,6 +310,9 @@
                     <div class="font-medium text-gray-900 truncate"><%= doc.title %></div>
                     <div class="text-xs text-gray-500 mt-0.5">Shared with: <%= doc.audience_summary %></div>
                   </div>
+                  <% if doc.productions.size > 1 %>
+                    <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold flex-shrink-0" title="Applies to <%= doc.applies_to_summary %>">Shared</span>
+                  <% end %>
                   <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 <% end %>
               <% end %>
@@ -317,7 +320,7 @@
           <% else %>
             <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
               <p class="text-sm text-gray-600 mb-3">No documents yet. Create a performer handbook or any document your team needs.</p>
-              <%= link_to new_manage_production_document_path(@production) do %>
+              <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
                 <%= render "shared/button", text: "Create your first document", variant: "primary", size: "small" %>
               <% end %>
             </div>

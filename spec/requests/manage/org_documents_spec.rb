@@ -30,7 +30,7 @@ RSpec.describe "Manage::OrgDocuments", type: :request do
   it "creates a document in the chosen production and redirects to its editor" do
     expect {
       post manage_org_documents_path, params: {
-        production_id: production.id,
+        production_ids: [ production.id ],
         production_document: { title: "Created From Hub" }
       }
     }.to change(ProductionDocument, :count).by(1)
@@ -39,6 +39,18 @@ RSpec.describe "Manage::OrgDocuments", type: :request do
     expect(doc.production).to eq(production)
     expect(doc.shared_with_team?).to be(true)
     expect(response).to redirect_to(edit_manage_production_document_path(production, doc))
+  end
+
+  it "creates one document that applies to several productions" do
+    other = create(:production, organization: org, name: "Rising Stars")
+    post manage_org_documents_path, params: {
+      production_ids: [ production.id, other.id ],
+      production_document: { title: "Performer Handbook" }
+    }
+    doc = ProductionDocument.last
+    expect(doc.productions).to contain_exactly(production, other)
+    expect(production.applied_documents).to include(doc)
+    expect(other.applied_documents).to include(doc)
   end
 
   it "re-renders new when no production is chosen" do

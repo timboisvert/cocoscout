@@ -11,6 +11,35 @@ RSpec.describe "Manage::Documents", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  describe "permissions: only managers can change sharing/ownership" do
+    let(:viewer) { create(:user, password: password) }
+    let!(:viewer_role) { create(:organization_role, user: viewer, organization: org) } # company_role: viewer
+    let!(:doc) { production.documents.create!(title: "Handbook", body: "<div>x</div>").tap(&:apply_default_sharing!) }
+
+    before do
+      # Re-sign-in as the viewer (replaces the owner session from the outer before).
+      post handle_signin_path, params: { email_address: viewer.email_address, password: password }
+    end
+
+    it "lets a viewer read the document" do
+      get manage_production_document_path(production, doc)
+      expect(response).to have_http_status(:ok)
+      # ...but the Sharing control isn't offered to them.
+      expect(response.body).not_to include("sharing-modal-#{doc.id}")
+    end
+
+    it "blocks a viewer from changing sharing" do
+      patch share_manage_production_document_path(production, doc), params: { team_enabled: "1", team_permission: "read" }
+      expect(doc.reload.team_permission).to eq("write") # unchanged
+    end
+
+    it "blocks a viewer from changing which productions it belongs to" do
+      other = create(:production, organization: org, name: "Rising Stars")
+      patch productions_manage_production_document_path(production, doc), params: { production_ids: [ production.id, other.id ] }
+      expect(doc.reload.productions).to contain_exactly(production)
+    end
+  end
+
   it "creates a document shared with the production team (write) by default" do
     expect {
       post manage_production_documents_path(production), params: {
@@ -41,6 +70,32 @@ RSpec.describe "Manage::Documents", type: :request do
     expect(doc.team_permission).to eq("read")
     expect(doc.pool_permission(pool.id)).to eq("write")
     expect(doc.person_share_ids).to include(extra.id)
+  end
+
+  it "updates which productions a document belongs to via the productions action" do
+    other = create(:production, organization: org, name: "Rising Stars")
+    doc = production.documents.create!(title: "Handbook", body: "<div>x</div>")
+    doc.apply_default_sharing!
+
+    patch productions_manage_production_document_path(production, doc), params: {
+      production_ids: [ "", production.id.to_s, other.id.to_s ]
+    }
+
+    expect(doc.reload.productions).to contain_exactly(production, other)
+    # The shared doc is now reachable from the other production too.
+    expect(other.applied_documents).to include(doc)
+  end
+
+  it "ignores productions the manager doesn't manage (but keeps attached ones)" do
+    outside_org = create(:organization)
+    outside = create(:production, organization: outside_org, name: "Not Mine")
+    doc = production.documents.create!(title: "Handbook", body: "<div>x</div>")
+
+    patch productions_manage_production_document_path(production, doc), params: {
+      production_ids: [ "", production.id.to_s, outside.id.to_s ]
+    }
+
+    expect(doc.reload.productions).to contain_exactly(production) # outside dropped
   end
 
   it "lists, shows, edits, and deletes" do
