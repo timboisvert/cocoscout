@@ -108,6 +108,9 @@ RSpec.describe "Manage::Documents", type: :request do
     get manage_production_document_path(production, doc)
     expect(response.body).to include("Be kind")
     expect(response.body).to include("sharing-modal-#{doc.id}") # share modal lives on the view page
+    # Delete is a confirmation modal, not a browser confirm.
+    expect(response.body).to include("delete-modal-#{doc.id}")
+    expect(response.body).not_to include("turbo_confirm")
 
     get edit_manage_production_document_path(production, doc)
     expect(response).to have_http_status(:ok)

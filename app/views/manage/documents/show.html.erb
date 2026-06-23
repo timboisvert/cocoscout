@@ -12,8 +12,8 @@
       { text: "Sharing", icon: "share", variant: "secondary", type: :button,
         data: { controller: "modal", action: "click->modal#open", "modal-id": "sharing-modal-#{@document.id}" } },
       { text: "Edit", icon: "pencil", variant: "secondary", path: edit_manage_production_document_path(@production, @document) },
-      { text: "Delete", icon: "trash", variant: "secondary", path: manage_production_document_path(@production, @document),
-        method: :delete, data: { turbo_confirm: "Delete \"#{@document.title}\"? This can't be undone." } }
+      { text: "Delete", icon: "trash", variant: "secondary", type: :button,
+        data: { controller: "modal", action: "click->modal#open", "modal-id": "delete-modal-#{@document.id}" } }
     ]
   } %>
 
@@ -50,5 +50,6 @@
   <% if current_user_can_manage?(@production) %>
     <%= render "sharing_modal", document: @document, production: @production,
           talent_pool_options: @talent_pool_options, candidate_people: @candidate_people %>
+    <%= render "delete_modal", document: @document, production: @production %>
   <% end %>
 </div>

@@ -54,4 +54,29 @@ RSpec.describe "My::Documents", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("welcome")
   end
+
+  context "manager viewing a document they manage from /my" do
+    let(:org) { create(:organization, owner: user) }
+    let!(:org_role) { create(:organization_role, :manager, user: user, organization: org) }
+    let(:managed_production) { create(:production, organization: org) }
+    let!(:managed_doc) do
+      managed_production.documents.create!(title: "Managed Doc", body: "<div>hi</div>").tap(&:apply_default_sharing!)
+    end
+
+    it "exposes Edit (to the manage route), Sharing, and Delete-with-confirmation" do
+      get my_document_path(managed_doc)
+      expect(response).to have_http_status(:ok)
+      # Edit links to the manage edit page — no "my" edit route.
+      expect(response.body).to include(edit_manage_production_document_path(managed_production, managed_doc))
+      # Sharing + Delete open modals (no browser confirm).
+      expect(response.body).to include("sharing-modal-#{managed_doc.id}")
+      expect(response.body).to include("delete-modal-#{managed_doc.id}")
+    end
+  end
+
+  it "does not show management actions to a non-manager reader" do
+    get my_document_path(document)
+    expect(response.body).not_to include("delete-modal-#{document.id}")
+    expect(response.body).not_to include("sharing-modal-#{document.id}")
+  end
 end

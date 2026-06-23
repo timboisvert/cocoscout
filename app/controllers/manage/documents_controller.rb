@@ -5,6 +5,8 @@ module Manage
   # (read/write). New documents default to the production team with write access;
   # sharing is then adjusted via the Sharing modal.
   class DocumentsController < Manage::ManageController
+    include DocumentAudienceOptions
+
     before_action :set_production
     before_action :check_production_access
     before_action :ensure_user_is_manager, except: %i[index show]
@@ -90,45 +92,7 @@ module Manage
                                        .select { |p| Current.user.manager_for_production?(p) }
                                        .sort_by { |p| p.name.to_s.downcase }
 
-      source_productions = if @document&.persisted?
-        @document.productions.to_a.presence || [ @production ]
-      else
-        [ @production ]
-      end
-
-      @talent_pool_options = source_productions.flat_map { |p| talent_pool_options_for(p) }.uniq { |o| o[:id] }
-
-      people = []
-      source_productions.each { |p| people.concat(p.cast_people.to_a) if p.respond_to?(:cast_people) }
-      @talent_pool_options.each { |opt| people.concat(opt[:pool].members.select { |m| m.is_a?(Person) }) }
-      @candidate_people = people.uniq.sort_by { |p| p.name.to_s }
-    end
-
-    # The single talent pool worth offering for a given production, named for its
-    # kind. Returns [] when there's nothing meaningful to share with:
-    #   - org-wide pool  → only when the org runs a single shared pool
-    #   - shared pool    → when this production borrows another's pool
-    #   - own pool       → otherwise, but hidden when it has no members yet
-    def talent_pool_options_for(production)
-      org = production.organization
-
-      if org.talent_pool_single? && org.organization_talent_pool.present?
-        pool = org.organization_talent_pool
-        return [ { id: pool.id, pool: pool, name: "#{org.name} Talent Pool",
-                   subtitle: "Organization talent pool" } ]
-      end
-
-      if production.uses_shared_pool?
-        pool = production.effective_talent_pool
-        names = pool.all_productions.order(:name).pluck(:name)
-        return [ { id: pool.id, pool: pool, name: "Shared Talent Pool",
-                   subtitle: names.join(" · ") } ]
-      end
-
-      pool = production.talent_pool
-      return [] unless pool && pool.talent_pool_memberships.exists?
-
-      [ { id: pool.id, pool: pool, name: "#{production.name} Talent Pool", subtitle: "Talent pool" } ]
+      @talent_pool_options, @candidate_people = document_audience_options(@document, @production)
     end
 
     def set_production
