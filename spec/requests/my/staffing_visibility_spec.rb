@@ -74,7 +74,9 @@ RSpec.describe "Staff shift visibility", type: :request do
 
   describe "Talent dashboard calendar" do
     it "shows my finalized shift and not a coworker's" do
-      get my_dashboard_path(scope: "my_assignments")
+      # Target the shift's month — the calendar renders one month at a time, and
+      # next week can fall in the next month depending on today's date.
+      get my_dashboard_path(scope: "my_assignments", month: my_shift.starts_at.strftime("%Y-%m-%d"))
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("FrontOfHouseRole")
       expect(response.body).not_to include("BartenderRole")
@@ -87,7 +89,7 @@ RSpec.describe "Staff shift visibility", type: :request do
                          ends_at: (draft_week + 1).in_time_zone.change(hour: 23))
       create(:shift_assignment, shift: s, person: my_person)
 
-      get my_dashboard_path(scope: "my_assignments")
+      get my_dashboard_path(scope: "my_assignments", month: s.starts_at.strftime("%Y-%m-%d"))
       expect(response.body).not_to include("DraftCalRole")
     end
   end

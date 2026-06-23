@@ -91,14 +91,16 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
     before { sign_in(staff_user) }
 
     it "hides draft shifts from the dashboard calendar" do
-      get my_dashboard_path(scope: "my_assignments")
+      # Target the shift's month — the calendar renders one month at a time, and
+      # next week can fall in the next month depending on today's date.
+      get my_dashboard_path(scope: "my_assignments", month: shift.starts_at.strftime("%Y-%m-%d"))
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include(role.name)
     end
 
     it "shows shifts on the dashboard calendar once finalized" do
       create(:staffing_finalization, organization: org, week_start: week_start, finalized_at: Time.current)
-      get my_dashboard_path(scope: "my_assignments")
+      get my_dashboard_path(scope: "my_assignments", month: shift.starts_at.strftime("%Y-%m-%d"))
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(role.name)
     end
