@@ -437,9 +437,20 @@ class User < ApplicationRecord
   end
 
   # True when any of the user's active profiles is assigned to a house shift.
-  # Drives the optional "My Shifts" nav entry (Staffing module).
   def has_assigned_shifts?
     ShiftAssignment.where(person_id: people.active.select(:id)).exists?
+  end
+
+  # True when any of the user's active profiles is on an org's house staff.
+  def on_staff?
+    OrganizationStaffMember.active.where(person_id: people.active.select(:id)).exists?
+  end
+
+  # Drives the "My Shifts" nav entry (Staffing module). Anyone on staff sees it
+  # so they can set their availability — even before they're assigned anything.
+  # Also covers a stray assignment for someone since removed from staff.
+  def shows_my_shifts?
+    on_staff? || has_assigned_shifts?
   end
 
 

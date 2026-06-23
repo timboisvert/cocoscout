@@ -440,16 +440,17 @@
                   <% cast = @show_cast[show.id] || [] %>
                   <%# Hover the chip to reveal that show's cast — most staff also
                       perform, so this is a quick double-check before assigning. %>
-                  <span class="relative group/cast inline-flex items-center gap-1 cursor-default">
+                  <span class="relative inline-flex items-center gap-1 cursor-default" data-controller="cast-popover">
                     <span class="font-medium text-gray-700"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
                     <%= show.production&.name %>
                     <% if cast.any? %>
                       <span class="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-purple-100 text-purple-700 text-[9px] font-semibold"><%= cast.size %></span>
                     <% end %>
-                    <%# Hover popover with the cast list. Opens upward (bottom-full)
-                        so the day card's overflow-hidden doesn't clip it — the
-                        cast row sits at the bottom of the card. %>
-                    <span class="invisible opacity-0 group-hover/cast:visible group-hover/cast:opacity-100 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
+                    <%# Hover popover with the cast list. The cast-popover controller
+                        promotes this to position:fixed on hover so the day card's
+                        overflow-hidden can't clip it against the top of the day. %>
+                    <span data-cast-popover-target="panel"
+                          class="invisible opacity-0 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
                       <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 px-1">
                         Cast · <%= show.production&.name %>
                       </span>

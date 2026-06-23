@@ -20,7 +20,7 @@
         <% end %>
       </div>
       <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
-      <% if Current.user&.has_assigned_shifts? %>
+      <% if Current.user&.shows_my_shifts? %>
         <%= render "shared/nav_link", text: "My Shifts", path: my_shifts_path, active: controller_name == "shifts" %>
       <% end %>
       <%= render "shared/nav_link", text: "My Courses", path: my_courses_path, active: controller_name == "courses" %>
