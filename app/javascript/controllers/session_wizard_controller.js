@@ -61,7 +61,16 @@ export default class extends Controller {
         }
 
         if (this.hasEditDurationTarget && duration) {
-            this.editDurationTarget.value = duration
+            const mins = parseInt(duration, 10)
+            this.editDurationTarget.value = mins
+            // Reflect the value in the hours/minutes selects of the duration_field component
+            const container = this.editDurationTarget.closest('[data-controller~="duration-field"]')
+            if (container) {
+                const hoursSelect = container.querySelector('[data-duration-field-target="hours"]')
+                const minutesSelect = container.querySelector('[data-duration-field-target="minutes"]')
+                if (hoursSelect) hoursSelect.value = Math.floor(mins / 60)
+                if (minutesSelect) minutesSelect.value = mins % 60
+            }
         }
 
         if (this.hasEditLocationSelectTarget && locationId) {

@@ -80,6 +80,18 @@ class Production < ApplicationRecord
   scope :archived, -> { where.not(archived_at: nil) }
   scope :courses, -> { where(production_type: "course") }
 
+  # Canonical intent-named scopes for production type.
+  # Prefer these over inline production_type filters so the rules live in one place.
+  # See docs/production_listing_audit.md
+  #
+  # castable     – productions we run casting/auditions/sign-ups/talent pools for (in-house only)
+  # schedulable  – productions that have shows/events we manage (in-house + third-party, never courses)
+  # non_contract – productions we own outright, not governed by a contract (in-house + course);
+  #                e.g. payroll/advances we run ourselves, or shows that can be transferred between productions
+  scope :castable, -> { where(production_type: "in_house") }
+  scope :schedulable, -> { where.not(production_type: "course") }
+  scope :non_contract, -> { where.not(production_type: "third_party") }
+
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :public_key, uniqueness: true, allow_nil: true
@@ -415,6 +427,12 @@ class Production < ApplicationRecord
   # Contract-related helpers
   def third_party?
     type_third_party?
+  end
+
+  # True when we run casting/auditions/sign-ups/talent pools for this production.
+  # Mirrors Production.castable. See docs/production_listing_audit.md
+  def castable?
+    type_in_house?
   end
 
   def governed_by_contract?

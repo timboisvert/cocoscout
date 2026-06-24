@@ -1,0 +1,72 @@
+<%#
+  Duration Field - hours + minutes selectors (15-minute increments)
+
+  Renders two <select> controls (hours and minutes) that write a combined
+  value into a single hidden field. Replaces single "duration" dropdowns across
+  the app so durations read as "2 hours 30 minutes".
+
+  Required (one of):
+    - name: hidden field name attribute (e.g. "show[duration_minutes]" or "duration_minutes").
+            May be omitted when the value is only read client-side.
+
+  Optional:
+    - value:      current duration, in the configured unit (Integer/Float or nil)
+    - unit:       :minutes (default) — hidden field holds total minutes (e.g. 150)
+                  :hours            — hidden field holds decimal hours   (e.g. 2.5)
+    - max_hours:  highest hour option (default 12)
+    - field_id:   id for the hidden input
+    - required:   whether the hidden field is required (default false)
+    - data_field: value for a data-field attribute on the hidden input (JS template editors)
+    - change_action: Stimulus data-action string added to the hidden input (fired on sync)
+    - total_attrs: extra hash of attributes for the hidden input (e.g. Stimulus targets)
+%>
+<%
+  unit        = (local_assigns[:unit] || :minutes).to_sym
+  raw_value   = local_assigns[:value]
+  total_mins  = unit == :hours ? (raw_value.to_f * 60).round : raw_value.to_i
+  max_hours   = local_assigns[:max_hours] || 12
+  required    = local_assigns[:required] || false
+  cur_hours   = total_mins / 60
+  cur_mins    = total_mins % 60
+  # Snap stored minutes to the nearest 15-min increment for display
+  cur_mins    = [ 0, 15, 30, 45 ].min_by { |m| (m - cur_mins).abs }
+  select_cls  = "shadow-sm rounded-lg border border-gray-400 px-3 py-2"
+
+  # Hidden value is expressed in the configured unit. For :hours, format as a
+  # trimmed decimal (2 -> "2", 2.5 -> "2.5") to match the existing data shape.
+  if unit == :hours
+    hours_decimal = (total_mins / 60.0).round(2)
+    hidden_value = hours_decimal == hours_decimal.to_i ? hours_decimal.to_i.to_s : hours_decimal.to_s
+  else
+    hidden_value = total_mins
+  end
+
+  hidden_attrs = {
+    type: "hidden",
+    value: hidden_value,
+    data: { "duration-field-target": "total" }
+  }
+  hidden_attrs[:name] = local_assigns[:name] if local_assigns[:name].present?
+  hidden_attrs[:id] = local_assigns[:field_id] if local_assigns[:field_id].present?
+  hidden_attrs[:required] = true if required
+  hidden_attrs[:data][:field] = local_assigns[:data_field] if local_assigns[:data_field].present?
+  hidden_attrs[:data][:action] = local_assigns[:change_action] if local_assigns[:change_action].present?
+  hidden_attrs.deep_merge!(local_assigns[:total_attrs]) if local_assigns[:total_attrs].present?
+%>
+<div class="flex items-center gap-2" data-controller="duration-field" data-duration-field-unit-value="<%= unit %>">
+  <select data-duration-field-target="hours" data-action="change->duration-field#sync" class="<%= select_cls %>">
+    <% (0..max_hours).each do |h| %>
+      <option value="<%= h %>" <%= "selected" if h == cur_hours %>><%= h %></option>
+    <% end %>
+  </select>
+  <span class="text-sm text-gray-600">hr</span>
+
+  <select data-duration-field-target="minutes" data-action="change->duration-field#sync" class="<%= select_cls %>">
+    <% [ 0, 15, 30, 45 ].each do |m| %>
+      <option value="<%= m %>" <%= "selected" if m == cur_mins %>><%= m %></option>
+    <% end %>
+  </select>
+  <span class="text-sm text-gray-600">min</span>
+
+  <%= tag.input(**hidden_attrs) %>
+</div>

@@ -534,7 +534,7 @@
                     <p class="text-xs text-gray-500">
                       <%= show.date_and_time.strftime("%-I:%M %p") %>
                       <% if show.duration_minutes.present? %>
-                        &middot; <%= show.duration_minutes %> min
+                        &middot; <%= format_duration(show.duration_minutes) %>
                       <% end %>
                       <% if show.location.present? %>
                         &middot; <%= show.location.name %>
@@ -609,20 +609,12 @@
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
-                      <select data-field="duration"
-                              data-action="change->course-sessions#inputChanged"
-                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                        <option value="30">30 minutes</option>
-                        <option value="60" selected>1 hour</option>
-                        <option value="90">1 hour 30 minutes</option>
-                        <option value="120">2 hours</option>
-                        <option value="180">3 hours</option>
-                        <option value="240">4 hours</option>
-                        <option value="300">5 hours</option>
-                        <option value="360">6 hours</option>
-                        <option value="420">7 hours</option>
-                        <option value="480">8 hours</option>
-                      </select>
+                      <%= render "shared/duration_field",
+                          name: "session_duration",
+                          value: 60,
+                          max_hours: 8,
+                          data_field: "duration",
+                          change_action: "change->course-sessions#inputChanged" %>
                     </div>
                   </div>
                 </div>
@@ -680,20 +672,12 @@
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
-                      <select data-field="duration"
-                              data-action="change->course-sessions#inputChanged"
-                              class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                        <option value="30">30 minutes</option>
-                        <option value="60" selected>1 hour</option>
-                        <option value="90">1 hour 30 minutes</option>
-                        <option value="120">2 hours</option>
-                        <option value="180">3 hours</option>
-                        <option value="240">4 hours</option>
-                        <option value="300">5 hours</option>
-                        <option value="360">6 hours</option>
-                        <option value="420">7 hours</option>
-                        <option value="480">8 hours</option>
-                      </select>
+                      <%= render "shared/duration_field",
+                          name: "session_duration",
+                          value: 60,
+                          max_hours: 8,
+                          data_field: "duration",
+                          change_action: "change->course-sessions#inputChanged" %>
                     </div>
                   </div>
                   <div class="grid grid-cols-2 gap-3">

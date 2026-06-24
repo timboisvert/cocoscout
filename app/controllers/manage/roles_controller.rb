@@ -10,7 +10,7 @@ module Manage
     # Org-level roles index (moved from org_roles_controller)
     def org_index
       # Exclude third-party productions (no casting/roles), filtered by user access
-      @productions = Current.user.accessible_productions.type_in_house
+      @productions = Current.user.accessible_productions.castable
                              .includes(:roles)
                              .order(:name)
     end

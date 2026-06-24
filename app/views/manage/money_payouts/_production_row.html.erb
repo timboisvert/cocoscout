@@ -1,18 +1,10 @@
 <%#
-  Money Payouts Production Row - Three Panel Layout
+  Money Payouts Production Row — delegates chrome to shared/_production_row.
+  Required: summary (Hash with production payout data)
+  Optional: link_path (defaults to this production's payouts)
 
-  Required:
-    - summary: Hash with production payout summary data
-
-  Optional:
-    - link_path: Path to navigate to when clicking (defaults to payouts for this production)
-
-  Panels:
-    1. Production name and basic info
-    2. Awaiting Payout
-    3. Total Paid
+  Panels: Awaiting Payout, Total Paid, Advances
 %>
-
 <%
   production = summary[:production]
   awaiting_payout = summary[:awaiting_payout_amount] || 0
@@ -21,66 +13,30 @@
   paid_count = summary[:paid_count] || 0
   outstanding_advances = summary[:outstanding_advances] || 0
   total_advances = summary[:total_advances] || 0
-  row_link_path = local_assigns[:link_path] || manage_money_production_payouts_path(production)
+
+  panels = [
+    if awaiting_payout > 0
+      { label: "Awaiting Payout", value: number_to_currency(awaiting_payout), value_class: "text-sm font-medium text-pink-600", sub: "#{awaiting_count} #{'show'.pluralize(awaiting_count)}" }
+    else
+      { label: "Awaiting Payout", value: "$0.00", value_class: "text-sm text-gray-400" }
+    end,
+    if paid_amount > 0
+      { label: "Total Paid", value: number_to_currency(paid_amount), value_class: "text-sm font-medium text-green-600", sub: "#{paid_count} #{'show'.pluralize(paid_count)}" }
+    else
+      { label: "Total Paid", value: "$0.00", value_class: "text-sm text-gray-400" }
+    end,
+    if total_advances > 0
+      { label: "Advances", value: number_to_currency(total_advances), value_class: "text-sm font-medium text-gray-900",
+        sub: outstanding_advances > 0 ? "#{number_to_currency(outstanding_advances)} outstanding" : "All settled",
+        sub_class: outstanding_advances > 0 ? "text-xs text-amber-600" : "text-xs text-green-600" }
+    else
+      { label: "Advances", value: "$0.00", value_class: "text-sm text-gray-400" }
+    end
+  ]
 %>
 
-<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
-  <%= link_to row_link_path, class: "block" do %>
-    <div class="flex flex-col lg:flex-row lg:items-stretch">
-
-      <%# Panel 1: Production Info %>
-      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
-        <%# Production image: logo → poster → initials %>
-        <div class="flex-shrink-0">
-          <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
-        </div>
-
-        <%# Production Details %>
-        <div class="flex-1 min-w-0">
-          <div class="font-medium text-gray-900"><%= production.name %></div>
-          <div class="text-sm text-gray-600">
-            <%= summary[:revenue_shows] %> revenue <%= "event".pluralize(summary[:revenue_shows]) %>
-          </div>
-        </div>
-      </div>
-
-      <%# Panel 2: Awaiting Payout %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Awaiting Payout</div>
-        <% if awaiting_payout > 0 %>
-          <div class="text-sm font-medium text-pink-600"><%= number_to_currency(awaiting_payout) %></div>
-          <div class="text-xs text-gray-500"><%= awaiting_count %> <%= "show".pluralize(awaiting_count) %></div>
-        <% else %>
-          <div class="text-sm text-gray-400">$0.00</div>
-        <% end %>
-      </div>
-
-      <%# Panel 3: Total Paid %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Total Paid</div>
-        <% if paid_amount > 0 %>
-          <div class="text-sm font-medium text-green-600"><%= number_to_currency(paid_amount) %></div>
-          <div class="text-xs text-gray-500"><%= paid_count %> <%= "show".pluralize(paid_count) %></div>
-        <% else %>
-          <div class="text-sm text-gray-400">$0.00</div>
-        <% end %>
-      </div>
-
-      <%# Panel 4: Advances %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Advances</div>
-        <% if total_advances > 0 %>
-          <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_advances) %></div>
-          <% if outstanding_advances > 0 %>
-            <div class="text-xs text-amber-600"><%= number_to_currency(outstanding_advances) %> outstanding</div>
-          <% else %>
-            <div class="text-xs text-green-600">All settled</div>
-          <% end %>
-        <% else %>
-          <div class="text-sm text-gray-400">$0.00</div>
-        <% end %>
-      </div>
-
-    </div>
-  <% end %>
-</div>
+<%= render "shared/production_row",
+  production: production,
+  link_path: local_assigns[:link_path] || manage_money_production_payouts_path(production),
+  subtitle: "#{summary[:revenue_shows]} revenue #{'event'.pluralize(summary[:revenue_shows])}",
+  panels: panels %>

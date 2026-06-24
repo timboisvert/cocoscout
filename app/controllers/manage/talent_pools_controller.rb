@@ -24,13 +24,13 @@ module Manage
       end
 
       # For the switch modal previews (filtered by user access)
-      @productions = Current.user.accessible_productions.type_in_house.order(:name)
+      @productions = Current.user.accessible_productions.castable.order(:name)
     end
 
     # Show confirmation modal for switching to single mode
     def org_switch_to_single_confirm
       @organization = Current.organization
-      @productions = @organization.productions.type_in_house.order(:name)
+      @productions = @organization.productions.castable.order(:name)
       @all_members = @organization.all_talent_pool_members
 
       render :org_switch_to_single_confirm
@@ -49,7 +49,7 @@ module Manage
         case strategy
         when "merge_all"
           # Merge all members from all production pools
-          @organization.productions.type_in_house.each do |prod|
+          @organization.productions.castable.each do |prod|
             prod.talent_pool.people.each do |person|
               org_pool.people << person unless org_pool.people.exists?(person.id)
             end
@@ -77,7 +77,7 @@ module Manage
 
         # Link all productions to the org pool via TalentPoolShare
         # so existing queries find members for all productions' shows
-        @organization.productions.type_in_house.each do |prod|
+        @organization.productions.castable.each do |prod|
           next if prod.id == org_pool.production_id
           TalentPoolShare.find_or_create_by!(production: prod, talent_pool: org_pool)
         end
@@ -89,7 +89,7 @@ module Manage
     # Show confirmation modal for switching to per-production mode
     def org_switch_to_per_production_confirm
       @organization = Current.organization
-      @productions = @organization.productions.type_in_house.order(:name)
+      @productions = @organization.productions.castable.order(:name)
       @org_pool = @organization.organization_talent_pool
 
       # Calculate what each production's pool currently has
@@ -122,7 +122,7 @@ module Manage
         when "copy_all"
           # Copy org pool members to all production pools
           if org_pool
-            @organization.productions.type_in_house.each do |prod|
+            @organization.productions.castable.each do |prod|
               pool = prod.talent_pool
               org_pool.people.each do |person|
                 pool.people << person unless pool.people.exists?(person.id)
@@ -476,7 +476,7 @@ module Manage
     end
 
     def load_per_production_pools
-      productions = Current.user.accessible_productions.type_in_house
+      productions = Current.user.accessible_productions.castable
                            .includes(:talent_pools)
                            .order(:name)
 

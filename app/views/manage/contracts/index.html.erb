@@ -52,112 +52,35 @@
     </div>
   </div>
 
-  <%# Upcoming Events - shows and space rentals across all active contracts %>
-  <% if @has_upcoming_events %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Upcoming Events (next 60 days)" %>
-      <div class="p-4 space-y-1.5">
-        <% @upcoming_events.each do |event| %>
-          <%
-            record = event[:record]
-            contract = event[:contract]
-            at = event[:at]
-            days_until = (at.to_date - Date.current).to_i
-            soon = days_until <= 14
-            if event[:kind] == :show
-              title = record.respond_to?(:display_name) ? record.display_name : record.name
-              subtitle = record.production&.name
-              link_path = record.production ? manage_show_path(record.production, record) : nil
-              kind_label = "Show"
-            else
-              title = record.location&.name || "Space rental"
-              subtitle = contract&.contractor_name
-              link_path = manage_contract_path(contract) if contract
-              kind_label = "Rental"
-            end
-          %>
-          <% wrapper_classes = "flex items-center gap-3 px-3 py-2 rounded-lg border #{soon ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200 hover:border-gray-300'}" %>
-          <% if link_path %>
-            <%= link_to link_path, class: "block no-underline #{soon ? '' : 'hover:no-underline'}" do %>
-              <div class="<%= wrapper_classes %>">
-                <div class="flex-shrink-0 w-14 text-center">
-                  <div class="text-xs font-semibold text-pink-600 uppercase"><%= at.strftime("%b") %></div>
-                  <div class="text-2xl font-bold text-gray-900"><%= at.strftime("%-d") %></div>
-                  <div class="text-xs text-gray-500"><%= at.strftime("%a") %></div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-[10px] font-semibold uppercase tracking-wide <%= soon ? 'text-amber-700' : 'text-gray-500' %>"><%= kind_label %></span>
-                    <span class="font-medium text-gray-900 truncate"><%= title %></span>
-                  </div>
-                  <% if subtitle.present? %>
-                    <div class="text-sm text-gray-600 truncate"><%= subtitle %></div>
-                  <% end %>
-                  <div class="text-xs text-gray-500"><%= at.strftime("%-l:%M %p") %></div>
-                </div>
-                <div class="flex-shrink-0 text-right">
-                  <% if days_until == 0 %>
-                    <span class="text-xs font-medium text-amber-700">Today</span>
-                  <% elsif days_until == 1 %>
-                    <span class="text-xs font-medium text-amber-700">Tomorrow</span>
-                  <% else %>
-                    <span class="text-xs <%= soon ? 'font-medium text-amber-700' : 'text-gray-500' %>">in <%= days_until %>d</span>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="<%= wrapper_classes %>">
-              <div class="flex-shrink-0 w-14 text-center">
-                <div class="text-xs font-semibold text-pink-600 uppercase"><%= at.strftime("%b") %></div>
-                <div class="text-2xl font-bold text-gray-900"><%= at.strftime("%-d") %></div>
-                <div class="text-xs text-gray-500"><%= at.strftime("%a") %></div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[10px] font-semibold uppercase tracking-wide <%= soon ? 'text-amber-700' : 'text-gray-500' %>"><%= kind_label %></span>
-                  <span class="font-medium text-gray-900 truncate"><%= title %></span>
-                </div>
-                <% if subtitle.present? %>
-                  <div class="text-sm text-gray-600 truncate"><%= subtitle %></div>
-                <% end %>
-                <div class="text-xs text-gray-500"><%= at.strftime("%-l:%M %p") %></div>
-              </div>
-              <div class="flex-shrink-0 text-right">
-                <% if days_until == 0 %>
-                  <span class="text-xs font-medium text-amber-700">Today</span>
-                <% elsif days_until == 1 %>
-                  <span class="text-xs font-medium text-amber-700">Tomorrow</span>
-                <% else %>
-                  <span class="text-xs <%= soon ? 'font-medium text-amber-700' : 'text-gray-500' %>">in <%= days_until %>d</span>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
+  <%# Persistent warning for any overdue payments (they may sit in a past month) %>
+  <% if @late_payments_count > 0 %>
+    <div class="flex items-center gap-2 px-4 py-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+      <%= icon("alert-circle", class: "w-4 h-4 flex-shrink-0") %>
+      <span>
+        <strong><%= pluralize(@late_payments_count, "payment") %></strong> overdue. Late payments are marked in red on the calendar — use the month arrows to find them.
+      </span>
     </div>
   <% end %>
 
-  <%# Payments Card - only show if there are late or upcoming payments %>
-  <% if @has_payments %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Late and Upcoming Payments" %>
-      <div class="p-4 space-y-2">
-        <%# Late payments first %>
-        <% @late_payments.each do |payment| %>
-          <%= render "contract_payment_row", payment: payment %>
-        <% end %>
-
-        <%# Then upcoming payments %>
-        <% @upcoming_payments.each do |payment| %>
-          <%= render "contract_payment_row", payment: payment %>
-        <% end %>
-      </div>
-    </div>
+  <%# Unified calendar: payments + shows + rentals, month by month %>
+  <% calendar_legend = capture do %>
+    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-green-300"></span> Payment in</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-300"></span> Payment out</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-pink-300"></span> Show</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-300"></span> Rental</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-500"></span> Late</span>
   <% end %>
+  <%= render "shared/month_calendar",
+    current_month: @current_month,
+    prev_month: @prev_month,
+    next_month: @next_month,
+    items_by_date: @calendar_items_by_date,
+    item_partial: "manage/contracts/calendar_item",
+    month_link: ->(m) { manage_contracts_path(month: m.strftime("%Y-%m-01")) },
+    today_link: manage_contracts_path,
+    legend: calendar_legend %>
 
-  <%# Contracts with Tabs %>
+  <%# Active contracts list, below the upcoming-stuff calendar %>
   <% if @sorted_contracts.any? %>
     <div data-controller="tabs">
       <nav class="flex space-x-2 border-b border-gray-200 mb-4">

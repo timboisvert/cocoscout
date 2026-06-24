@@ -1,0 +1,76 @@
+<%#
+  Shared Production Row — the canonical card used across the money / payouts /
+  advances / sign-ups list pages. Renders the common chrome (card, click target,
+  production image + name, and a set of right-hand stat panels with consistent
+  borders and rounding). Context-specific panel data is passed in via `panels:`.
+
+  Required:
+    - production: Production
+    - link_path:  path the whole row links to
+    - panels:     Array of panel hashes (1–3), each:
+        {
+          label:       String   — small uppercase heading
+          value:       String   — primary line (already formatted, e.g. currency)
+          value_class: String   — optional, default "text-sm font-medium text-gray-900"
+          sub:         String   — optional secondary line
+          sub_class:   String   — optional, default "text-xs text-gray-500"
+        }
+
+  Optional:
+    - badge:      { text:, color: } shown next to the name (color: pink/green/amber/red/gray/blue)
+    - subtitle:   String shown under the name
+    - info_width: Tailwind width for the info panel (default "flex-1"; e.g. "lg:w-1/2")
+%>
+<%
+  panels      = local_assigns[:panels] || []
+  info_width  = local_assigns[:info_width] || "flex-1"
+  badge       = local_assigns[:badge]
+  subtitle    = local_assigns[:subtitle]
+
+  badge_colors = {
+    "pink"  => "bg-pink-100 text-pink-700",
+    "green" => "bg-green-100 text-green-700",
+    "amber" => "bg-amber-100 text-amber-700",
+    "red"   => "bg-red-100 text-red-700",
+    "gray"  => "bg-gray-100 text-gray-700",
+    "blue"  => "bg-blue-100 text-blue-700"
+  }
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+  <%= link_to link_path, class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+
+      <%# Panel 1: Production info %>
+      <div class="<%= info_width %> flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+        <div class="flex-shrink-0">
+          <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-gray-900"><%= production.name %></span>
+            <% if badge %>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= badge_colors[badge[:color].to_s] || badge_colors['pink'] %>"><%= badge[:text] %></span>
+            <% end %>
+          </div>
+          <% if subtitle.present? %>
+            <div class="text-sm text-gray-600"><%= subtitle %></div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Right-hand stat panels %>
+      <% panels.each_with_index do |panel, i| %>
+        <% last = i == panels.size - 1 %>
+        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center <%= 'rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none' if last %>">
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1"><%= panel[:label] %></div>
+          <div class="<%= panel[:value_class] || 'text-sm font-medium text-gray-900' %>"><%= panel[:value] %></div>
+          <% if panel[:sub].present? %>
+            <div class="<%= panel[:sub_class] || 'text-xs text-gray-500' %>"><%= panel[:sub] %></div>
+          <% end %>
+        </div>
+      <% end %>
+
+    </div>
+  <% end %>
+</div>

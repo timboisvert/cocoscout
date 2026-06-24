@@ -1,0 +1,61 @@
+<%#
+  A single pill in the contracts calendar.
+  Local: item — hash with :type (:payment | :show | :rental), :record, :contract, etc.
+%>
+<%
+  record   = item[:record]
+  contract = item[:contract]
+%>
+<% case item[:type] %>
+<% when :payment %>
+  <%
+    late = item[:late]
+    incoming = item[:incoming]
+    label = (contract&.production_name.presence || contract&.contractor_name).to_s
+    amount = if record.amount_tbd? && record.amount.to_f == 0
+      "TBD"
+    else
+      number_to_currency(record.amount, precision: 0)
+    end
+    classes = if late
+      "bg-red-500 text-white border-red-600 hover:bg-red-600"
+    elsif incoming
+      "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+    else
+      "bg-red-100 text-red-800 border-red-300 hover:bg-red-200"
+    end
+  %>
+  <%= link_to (contract ? manage_contract_path(contract) : "#"), class: "block mb-1" do %>
+    <div class="text-xs px-1.5 py-1 rounded border <%= classes %> transition-colors">
+      <div class="flex items-center justify-between gap-1">
+        <span class="font-semibold"><%= incoming ? "+" : "−" %><%= amount %></span>
+        <% if late %><span class="text-[9px] font-bold uppercase">Late</span><% end %>
+      </div>
+      <div class="truncate text-[10px]"><%= label.presence || "Payment" %></div>
+    </div>
+  <% end %>
+
+<% when :show %>
+  <%
+    title = record.respond_to?(:display_name) ? record.display_name : record.name
+    path = record.production ? manage_show_path(record.production, record) : "#"
+  %>
+  <%= link_to path, class: "block mb-1" do %>
+    <div class="text-xs px-1.5 py-1 rounded border bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200 transition-colors">
+      <div class="font-semibold"><%= item[:at].strftime("%-l:%M%p").downcase %></div>
+      <div class="truncate text-[10px]"><%= title %></div>
+    </div>
+  <% end %>
+
+<% when :rental %>
+  <%
+    title = record.location&.name || "Space rental"
+    path = contract ? manage_contract_path(contract) : "#"
+  %>
+  <%= link_to path, class: "block mb-1" do %>
+    <div class="text-xs px-1.5 py-1 rounded border bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 transition-colors">
+      <div class="font-semibold"><%= item[:at].strftime("%-l:%M%p").downcase %></div>
+      <div class="truncate text-[10px]"><%= title %></div>
+    </div>
+  <% end %>
+<% end %>

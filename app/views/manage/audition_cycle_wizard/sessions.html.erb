@@ -35,7 +35,7 @@
                   <%= Time.parse(session[:start_at]).strftime("%b %-d, %Y at %-I:%M %p") %>
                 </p>
                 <p class="text-sm text-gray-500">
-                  <%= session[:duration_minutes] %> min · <%= session[:is_online] ? "Online" : (location&.name || "No location") %>
+                  <%= format_duration(session[:duration_minutes]) %> · <%= session[:is_online] ? "Online" : (location&.name || "No location") %>
                 </p>
               </div>
               <div class="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -74,9 +74,8 @@
                 class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Duration each (minutes)</label>
-            <%= number_field_tag :session_duration, 30, min: 5, step: 5,
-                class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Duration each</label>
+            <%= render "shared/duration_field", name: "session_duration", value: 30, max_hours: 4 %>
           </div>
         </div>
 
@@ -154,9 +153,8 @@
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                <%= number_field_tag :duration_minutes, 30, min: 5, step: 5,
-                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                <%= render "shared/duration_field", name: "duration_minutes", value: 30, max_hours: 4 %>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
@@ -193,10 +191,12 @@
                     data: { "session-wizard-target": "editStartAt" } %>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                <%= number_field_tag :duration_minutes, 30, min: 5, step: 5,
-                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
-                    data: { "session-wizard-target": "editDuration" } %>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                <%= render "shared/duration_field",
+                    name: "duration_minutes",
+                    value: 30,
+                    max_hours: 4,
+                    total_attrs: { data: { "session-wizard-target": "editDuration" } } %>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>

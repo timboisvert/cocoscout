@@ -1,72 +1,52 @@
 <%#
-  Sign-ups Production Row - Three Panel Layout
+  Sign-ups Production Row — delegates chrome to shared/_production_row.
+  Required: summary (Hash with production sign-up/audition data)
 
-  Required:
-    - summary: Hash with production summary data
-
-  Panels:
-    1. Production logo and name (50%)
-    2. Active Sign-up Forms (25%)
-    3. Auditions status (25%)
+  Panels: Active Sign-up Forms, Auditions status
 %>
-
 <%
   production = summary[:production]
   active_forms_count = summary[:active_sign_up_forms_count] || 0
   audition_cycle = summary[:active_audition_cycle]
-  has_active_audition = audition_cycle.present?
   audition_timeline_status = audition_cycle&.timeline_status
   audition_requests_count = summary[:audition_requests_count] || 0
-  row_link_path = manage_signups_production_path(production)
+
+  panels = []
+  panels << {
+    label: "Active Sign-up Forms",
+    value: active_forms_count,
+    value_class: active_forms_count > 0 ? "text-sm font-medium text-green-600" : "text-sm text-gray-400"
+  }
+
+  auditions_panel = { label: "Auditions" }
+  if audition_cycle.present?
+    case audition_timeline_status
+    when :open
+      auditions_panel[:value] = "Open"
+      auditions_panel[:value_class] = "text-sm font-medium text-green-600"
+      if audition_requests_count > 0
+        auditions_panel[:sub] = "#{audition_requests_count} pending"
+        auditions_panel[:sub_class] = "text-xs text-pink-600"
+      end
+    when :upcoming
+      auditions_panel[:value] = "Upcoming"
+      auditions_panel[:value_class] = "text-sm font-medium text-amber-600"
+      auditions_panel[:sub] = "Opens #{audition_cycle.opens_at.strftime('%b %-d')}"
+    when :closed
+      auditions_panel[:value] = "Closed"
+      auditions_panel[:value_class] = "text-sm font-medium text-gray-500"
+      auditions_panel[:sub] = "Closed #{audition_cycle.closes_at.strftime('%b %-d')}"
+      auditions_panel[:sub_class] = "text-xs text-gray-400"
+    end
+  else
+    auditions_panel[:value] = "None"
+    auditions_panel[:value_class] = "text-sm text-gray-400"
+  end
+  panels << auditions_panel
 %>
 
-<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
-  <%= link_to row_link_path, class: "block" do %>
-    <div class="flex flex-col lg:flex-row lg:items-stretch">
-
-      <%# Panel 1: Production Info (50%) %>
-      <div class="w-full lg:w-1/2 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
-        <%# Production image: logo → poster → initials %>
-        <div class="flex-shrink-0">
-          <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
-        </div>
-
-        <%# Production Name %>
-        <div class="font-medium text-gray-900"><%= production.name %></div>
-      </div>
-
-      <%# Panel 2: Active Sign-up Forms (25%) %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Active Sign-up Forms</div>
-        <% if active_forms_count > 0 %>
-          <div class="text-sm font-medium text-green-600"><%= active_forms_count %></div>
-        <% else %>
-          <div class="text-sm text-gray-400">0</div>
-        <% end %>
-      </div>
-
-      <%# Panel 3: Auditions (25%) %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Auditions</div>
-        <% if has_active_audition %>
-          <% case audition_timeline_status %>
-          <% when :open %>
-            <div class="text-sm font-medium text-green-600">Open</div>
-            <% if audition_requests_count > 0 %>
-              <div class="text-xs text-pink-600"><%= audition_requests_count %> pending</div>
-            <% end %>
-          <% when :upcoming %>
-            <div class="text-sm font-medium text-amber-600">Upcoming</div>
-            <div class="text-xs text-gray-500">Opens <%= audition_cycle.opens_at.strftime("%b %-d") %></div>
-          <% when :closed %>
-            <div class="text-sm font-medium text-gray-500">Closed</div>
-            <div class="text-xs text-gray-400">Closed <%= audition_cycle.closes_at.strftime("%b %-d") %></div>
-          <% end %>
-        <% else %>
-          <div class="text-sm text-gray-400">None</div>
-        <% end %>
-      </div>
-
-    </div>
-  <% end %>
-</div>
+<%= render "shared/production_row",
+  production: production,
+  link_path: manage_signups_production_path(production),
+  info_width: "lg:w-1/2",
+  panels: panels %>

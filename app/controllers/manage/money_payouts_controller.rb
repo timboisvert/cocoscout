@@ -159,7 +159,7 @@ module Manage
 
     def load_all_productions
       # Show all productions the user has access to (excludes courses which use different scheduling)
-      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
+      @productions = Current.user.accessible_productions.schedulable.order(:name)
       all_summaries = @productions.map { |p| build_payout_summary(p) }
 
       # Organization-wide stats (always computed from all productions)

@@ -24,10 +24,7 @@ export default class extends Controller {
             datetimeInput.value = defaultValues.datetime
         }
 
-        const durationSelect = item.querySelector('[data-field="duration"]')
-        if (durationSelect && defaultValues.duration) {
-            durationSelect.value = defaultValues.duration
-        }
+        this._setDurationField(item, parseInt(defaultValues.duration))
 
         this.sessionsListTarget.appendChild(item)
         this.sessions.push({ type: "single", index })
@@ -44,10 +41,7 @@ export default class extends Controller {
 
         // Set default duration
         const defaultValues = this._smartDefaults()
-        const durationSelect = item.querySelector('[data-field="duration"]')
-        if (durationSelect && defaultValues.duration) {
-            durationSelect.value = defaultValues.duration
-        }
+        this._setDurationField(item, parseInt(defaultValues.duration))
 
         this.sessionsListTarget.appendChild(item)
         this.sessions.push({ type: "recurring", index })
@@ -157,5 +151,19 @@ export default class extends Controller {
         })
 
         this.rulesJsonTarget.value = JSON.stringify(rules)
+    }
+
+    // Sets the hours/minutes selects and hidden total for a duration_field component
+    // within the given session item. Works on detached (cloned) nodes before insertion.
+    _setDurationField(item, minutes) {
+        if (!minutes || isNaN(minutes)) minutes = 60
+        const hours = Math.floor(minutes / 60)
+        const mins = minutes % 60
+        const hoursSelect = item.querySelector('[data-duration-field-target="hours"]')
+        const minutesSelect = item.querySelector('[data-duration-field-target="minutes"]')
+        const total = item.querySelector('[data-field="duration"]')
+        if (hoursSelect) hoursSelect.value = hours
+        if (minutesSelect) minutesSelect.value = mins
+        if (total) total.value = minutes
     }
 }

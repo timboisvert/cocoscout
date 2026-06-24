@@ -23,7 +23,7 @@ module Manage
       session[:casting_hide_canceled] = @hide_canceled
 
       # Get all in-house productions the user has access to (exclude third-party)
-      @productions = Current.user.accessible_productions.type_in_house.order(:name)
+      @productions = Current.user.accessible_productions.castable.order(:name)
 
       # Handle production filter
       @production_filter = params[:production].presence

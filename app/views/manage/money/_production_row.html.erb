@@ -1,169 +1,111 @@
 <%#
-  Money Production Row - Four Panel Layout
+  Money Production Row — delegates chrome to shared/_production_row.
+  Required: summary (Hash with production financial data)
+  Optional: link_path (defaults to this production's financials)
 
-  Required:
-    - summary: Hash with production summary data
-
-  Optional:
-    - link_path: Path to navigate to when clicking (defaults to financials)
-
-  Panels (in-house):
-    1. Production name and basic info
-    2. Gross Revenue
-    3. Direct Costs
-    4. Gross Profit
-
-  Panels (third-party):
-    1. Production name and basic info
-    2. Contract Revenue (received)
-    3. Pending Payments
-    4. Status indicator
+  In-house panels:     Gross Revenue, Direct Costs, Gross Profit
+  Third-party panels:  Contract Revenue, Revenue/Pending, Status/Your Share
 %>
-
 <%
   production = summary[:production]
   is_third_party = summary[:is_third_party]
   gross_revenue = summary[:gross_revenue] || 0
-  row_link_path = local_assigns[:link_path] || manage_money_production_financials_path(production)
+
+  if is_third_party
+    is_revenue_share = summary[:is_revenue_share]
+    is_ticket_revenue_minus_fee = summary[:is_ticket_revenue_minus_fee]
+    is_share_based = is_revenue_share || is_ticket_revenue_minus_fee
+    our_share = summary[:our_share]
+    their_share = summary[:their_share]
+    flat_fee_amount = summary[:flat_fee_amount]
+    confirmed_count = summary[:confirmed_show_count] || 0
+    pending_show_count = summary[:pending_show_count] || 0
+
+    # Panel 1: contract revenue terms
+    revenue_panel =
+      if is_revenue_share
+        { label: "Revenue Share", value: "#{our_share}/#{their_share} Split", sub: "You keep #{our_share}%", sub_class: "text-[10px] text-gray-500" }
+      elsif is_ticket_revenue_minus_fee
+        { label: "Flat Fee", value: number_to_currency(flat_fee_amount), sub: "You keep from ticket revenue", sub_class: "text-[10px] text-gray-500" }
+      else
+        { label: "Contract Revenue", value: number_to_currency(gross_revenue) }
+      end
+
+    # Panel 2: ticket revenue (share-based) or pending payments (flat)
+    if is_share_based
+      ticket_panel = { label: "Ticket Revenue" }
+      if gross_revenue > 0
+        ticket_panel[:value] = number_to_currency(gross_revenue)
+        sub = "#{confirmed_count} #{'show'.pluralize(confirmed_count)} confirmed"
+        sub += " &middot; #{pending_show_count} pending" if pending_show_count > 0
+        ticket_panel[:sub] = sub.html_safe
+        ticket_panel[:sub_class] = "text-[10px] text-gray-500"
+      elsif confirmed_count > 0
+        ticket_panel[:value] = number_to_currency(0)
+        ticket_panel[:value_class] = "text-sm text-gray-900"
+        ticket_panel[:sub] = "#{confirmed_count} shows, no revenue"
+        ticket_panel[:sub_class] = "text-[10px] text-gray-500"
+      elsif pending_show_count > 0
+        ticket_panel[:value] = "Awaiting data"
+        ticket_panel[:value_class] = "text-sm text-gray-400"
+        ticket_panel[:sub] = "#{pending_show_count} #{'show'.pluralize(pending_show_count)} pending"
+        ticket_panel[:sub_class] = "text-[10px] text-gray-500"
+      else
+        ticket_panel[:value] = "No shows yet"
+        ticket_panel[:value_class] = "text-sm text-gray-400"
+      end
+      revenue2_panel = ticket_panel
+    else
+      pending_amount = summary[:pending_amount] || 0
+      revenue2_panel =
+        if pending_amount > 0
+          { label: "Pending", value: number_to_currency(pending_amount), value_class: "text-sm font-medium text-amber-600" }
+        else
+          { label: "Pending", value: "$0.00", value_class: "text-sm text-gray-400" }
+        end
+    end
+
+    # Panel 3: your share (share-based with revenue) or status
+    if is_share_based && gross_revenue > 0
+      status_panel = { label: "You Keep", value: number_to_currency(summary[:net_income]), value_class: "text-sm font-medium text-green-600" }
+    else
+      overdue_count = summary[:overdue_count] || 0
+      pending_count = summary[:pending_count] || 0
+      status_panel =
+        if overdue_count > 0
+          { label: "Status", value: "#{overdue_count} overdue", value_class: "text-sm font-medium text-red-600" }
+        elsif pending_count > 0
+          { label: "Status", value: "#{pending_count} pending", value_class: "text-sm font-medium text-amber-600" }
+        else
+          { label: "Status", value: "All received", value_class: "text-sm font-medium text-green-600" }
+        end
+    end
+
+    panels = [ revenue_panel, revenue2_panel, status_panel ]
+    badge = { text: "Contract", color: "pink" }
+    subtitle = "#{summary[:total_shows]} #{'event'.pluralize(summary[:total_shows])}"
+  else
+    production_expenses = summary[:production_expenses] || 0
+    cost_of_shows = (summary[:show_expenses] || 0) + production_expenses + (summary[:total_payouts] || 0)
+    gross_profit = gross_revenue - cost_of_shows
+
+    panels = [
+      { label: "Gross Revenue", value: number_to_currency(gross_revenue) },
+      if cost_of_shows > 0
+        { label: "Direct Costs", value: number_to_currency(cost_of_shows), value_class: "text-sm font-medium text-red-600" }
+      else
+        { label: "Direct Costs", value: "$0.00", value_class: "text-sm text-gray-400" }
+      end,
+      { label: "Gross Profit", value: number_to_currency(gross_profit), value_class: "text-sm font-medium #{gross_profit >= 0 ? 'text-green-600' : 'text-red-600'}" }
+    ]
+    badge = nil
+    subtitle = "#{summary[:revenue_shows]} revenue #{'event'.pluralize(summary[:revenue_shows])}"
+  end
 %>
 
-<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
-  <%= link_to row_link_path, class: "block" do %>
-    <div class="flex flex-col lg:flex-row lg:items-stretch">
-
-      <%# Panel 1: Production Info %>
-      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
-        <%# Production image: logo → poster → initials %>
-        <div class="flex-shrink-0">
-          <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
-        </div>
-
-        <%# Production Details %>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="font-medium text-gray-900"><%= production.name %></span>
-            <% if is_third_party %>
-              <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">Contract</span>
-            <% end %>
-          </div>
-          <div class="text-sm text-gray-600">
-            <% if is_third_party %>
-              <%= summary[:total_shows] %> <%= "event".pluralize(summary[:total_shows]) %>
-            <% else %>
-              <%= summary[:revenue_shows] %> revenue <%= "event".pluralize(summary[:revenue_shows]) %>
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <% if is_third_party %>
-        <%# Check for special contract types %>
-        <% is_revenue_share = summary[:is_revenue_share] %>
-        <% is_ticket_revenue_minus_fee = summary[:is_ticket_revenue_minus_fee] %>
-        <% our_share = summary[:our_share] %>
-        <% their_share = summary[:their_share] %>
-        <% flat_fee_amount = summary[:flat_fee_amount] %>
-        <% confirmed_count = summary[:confirmed_show_count] || 0 %>
-        <% pending_show_count = summary[:pending_show_count] || 0 %>
-
-        <%# Third-party: Contract Revenue %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <% if is_revenue_share %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Revenue Share</div>
-            <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Split</div>
-            <div class="text-[10px] text-gray-500">You keep <%= our_share %>%</div>
-          <% elsif is_ticket_revenue_minus_fee %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Flat Fee</div>
-            <div class="text-sm font-medium text-gray-900"><%= number_to_currency(flat_fee_amount) %></div>
-            <div class="text-[10px] text-gray-500">You keep from ticket revenue</div>
-          <% else %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Contract Revenue</div>
-            <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
-          <% end %>
-        </div>
-
-        <%# Third-party: Revenue / Received %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <% if is_revenue_share || is_ticket_revenue_minus_fee %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Ticket Revenue</div>
-            <% if gross_revenue > 0 %>
-              <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
-              <div class="text-[10px] text-gray-500">
-                <%= confirmed_count %> <%= "show".pluralize(confirmed_count) %> confirmed
-                <% if pending_show_count > 0 %>
-                  &middot; <%= pending_show_count %> pending
-                <% end %>
-              </div>
-            <% elsif confirmed_count > 0 %>
-              <div class="text-sm text-gray-900"><%= number_to_currency(0) %></div>
-              <div class="text-[10px] text-gray-500"><%= confirmed_count %> shows, no revenue</div>
-            <% elsif pending_show_count > 0 %>
-              <div class="text-sm text-gray-400">Awaiting data</div>
-              <div class="text-[10px] text-gray-500"><%= pending_show_count %> <%= "show".pluralize(pending_show_count) %> pending</div>
-            <% else %>
-              <div class="text-sm text-gray-400">No shows yet</div>
-            <% end %>
-          <% else %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Pending</div>
-            <% pending_amount = summary[:pending_amount] || 0 %>
-            <% if pending_amount > 0 %>
-              <div class="text-sm font-medium text-amber-600"><%= number_to_currency(pending_amount) %></div>
-            <% else %>
-              <div class="text-sm text-gray-400">$0.00</div>
-            <% end %>
-          <% end %>
-        </div>
-
-        <%# Third-party: Status / Your Share %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-          <% if (is_revenue_share || is_ticket_revenue_minus_fee) && gross_revenue > 0 %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">You Keep</div>
-            <div class="text-sm font-medium text-green-600"><%= number_to_currency(summary[:net_income]) %></div>
-          <% else %>
-            <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Status</div>
-            <% overdue_count = summary[:overdue_count] || 0 %>
-            <% pending_count = summary[:pending_count] || 0 %>
-            <% if overdue_count > 0 %>
-              <div class="text-sm font-medium text-red-600"><%= overdue_count %> overdue</div>
-            <% elsif pending_count > 0 %>
-              <div class="text-sm font-medium text-amber-600"><%= pending_count %> pending</div>
-            <% else %>
-              <div class="text-sm font-medium text-green-600">All received</div>
-            <% end %>
-          <% end %>
-        </div>
-
-      <% else %>
-        <%# In-house: Gross Revenue %>
-        <%
-          production_expenses = summary[:production_expenses] || 0
-          cost_of_shows = (summary[:show_expenses] || 0) + production_expenses + (summary[:total_payouts] || 0)
-          gross_profit = gross_revenue - cost_of_shows
-        %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Revenue</div>
-          <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
-        </div>
-
-        <%# In-house: Direct Costs %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Direct Costs</div>
-          <% if cost_of_shows > 0 %>
-            <div class="text-sm font-medium text-red-600"><%= number_to_currency(cost_of_shows) %></div>
-          <% else %>
-            <div class="text-sm text-gray-400">$0.00</div>
-          <% end %>
-        </div>
-
-        <%# In-house: Gross Profit %>
-        <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Profit</div>
-          <div class="text-sm font-medium <%= gross_profit >= 0 ? 'text-green-600' : 'text-red-600' %>">
-            <%= number_to_currency(gross_profit) %>
-          </div>
-        </div>
-      <% end %>
-
-    </div>
-  <% end %>
-</div>
+<%= render "shared/production_row",
+  production: production,
+  link_path: local_assigns[:link_path] || manage_money_production_financials_path(production),
+  badge: badge,
+  subtitle: subtitle,
+  panels: panels %>

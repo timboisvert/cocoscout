@@ -124,7 +124,7 @@
                 <span class="font-medium"><%= @selected_shows.count %> session<%= @selected_shows.count == 1 ? '' : 's' %></span>
                 <ul class="mt-1 space-y-0.5 text-xs text-gray-500">
                   <% @selected_shows.first(5).each do |show| %>
-                    <li><%= show.date_and_time.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= show.duration_minutes %> min)</li>
+                    <li><%= show.date_and_time.strftime("%a, %b %-d, %Y at %-I:%M %p") %> (<%= format_duration(show.duration_minutes) %>)</li>
                   <% end %>
                   <% if @selected_shows.count > 5 %>
                     <li>...and <%= @selected_shows.count - 5 %> more</li>
@@ -154,7 +154,7 @@
                     <% single_rules.first(5).each do |rule| %>
                       <% dt = DateTime.parse(rule[:datetime] || rule["datetime"]) rescue nil %>
                       <% dur = (rule[:duration_minutes] || rule["duration_minutes"] || rule[:duration] || rule["duration"])&.to_i || 60 %>
-                      <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= dur %> min)</li>
+                      <li><%= dt&.strftime("%a, %b %-d, %Y at %-I:%M %p") || "Invalid date" %> (<%= format_duration(dur) %>)</li>
                     <% end %>
                     <% if total_single > 5 %>
                       <li>...and <%= total_single - 5 %> more</li>
@@ -173,7 +173,7 @@
                     <% start_d = rule[:start_date] || rule["start_date"] %>
                     <% end_d = rule[:end_date] || rule["end_date"] %>
                     <p class="text-xs text-gray-500 mt-0.5">
-                      <%= freq %> on <%= day %><%= "s" if day.present? %> at <%= time %> (<%= dur %> min)
+                      <%= freq %> on <%= day %><%= "s" if day.present? %> at <%= time %> (<%= format_duration(dur) %>)
                       <% if start_d.present? && end_d.present? %>
                         <br>From <%= Date.parse(start_d).strftime("%b %-d, %Y") rescue start_d %> to <%= Date.parse(end_d).strftime("%b %-d, %Y") rescue end_d %>
                       <% end %>

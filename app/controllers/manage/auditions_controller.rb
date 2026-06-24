@@ -16,7 +16,7 @@ module Manage
       @filter = params[:filter] # 'in_person' or 'video'
 
       # Get in-house productions the user has access to (exclude third-party)
-      @productions = Current.user.accessible_productions.type_in_house.includes(:audition_cycles).order(:name)
+      @productions = Current.user.accessible_productions.castable.includes(:audition_cycles).order(:name)
 
       # Get all active audition cycles across all productions
       @all_active_cycles = AuditionCycle.where(production: @productions, active: true)

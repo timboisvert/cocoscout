@@ -14,7 +14,7 @@ module Manage
 
       # Get productions the user has access to (exclude courses from main list)
       all_productions = Current.user.accessible_productions
-        .where.not(production_type: "course")
+        .schedulable
         .includes(:logo_attachment, :contract)
         .order(:name)
 
@@ -52,7 +52,7 @@ module Manage
 
       # Courses (separate collapsed section)
       @courses = Current.user.accessible_productions
-        .where(production_type: "course")
+        .courses
         .includes(:logo_attachment, :contract)
         .order(:name)
       @course_summaries = Rails.cache.fetch("#{cache_key}_courses", expires_in: 15.minutes) do

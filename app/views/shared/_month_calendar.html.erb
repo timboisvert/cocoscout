@@ -1,0 +1,152 @@
+<%#
+  Shared month calendar — header with prev/next/Today nav, a desktop 7-col day
+  grid, and a mobile day list. Per-item rendering is delegated to a caller-supplied
+  partial so each surface controls how its events/payments/etc. look.
+
+  This is the canonical calendar; new calendars should render this rather than
+  hand-rolling another month grid. See docs/production_listing_audit.md note on
+  duplicated UI.
+
+  Required locals:
+    - current_month: Time (any time within the displayed month)
+    - month_link:    lambda(Time) => path, used to build prev/next month links
+    - items_by_date: Hash{ Date => [item, ...] }
+    - item_partial:  String partial path; rendered once per item with local `item:`
+
+  Optional locals:
+    - prev_month / next_month: Time (default: current_month -/+ 1 month)
+    - can_go_prev / can_go_next: Boolean (default true)
+    - today_link:  path for the "Today" pill (default: month_link.(Time.current))
+    - start_from_current_week: Boolean — when viewing the current month, start the
+        grid at the current week instead of the 1st (default false)
+    - dim_past: Boolean — fade past days (default false)
+    - min_cell:   CSS min-height class for day cells (default "min-h-[88px]")
+    - empty_text: Mobile message when the month has no items
+%>
+<%
+  current_month = local_assigns[:current_month]
+  month_link    = local_assigns[:month_link]
+  items_by_date = local_assigns[:items_by_date] || {}
+  item_partial  = local_assigns[:item_partial]
+
+  prev_month = local_assigns[:prev_month] || (current_month - 1.month)
+  next_month = local_assigns[:next_month] || (current_month + 1.month)
+  can_go_prev = local_assigns.fetch(:can_go_prev, true)
+  can_go_next = local_assigns.fetch(:can_go_next, true)
+  today_link  = local_assigns[:today_link] || month_link.call(Time.current)
+  dim_past    = local_assigns.fetch(:dim_past, false)
+  min_cell    = local_assigns[:min_cell] || "min-h-[88px]"
+  empty_text  = local_assigns[:empty_text] || "Nothing scheduled this month."
+
+  month_start_date = current_month.to_date
+  month_end_date   = current_month.end_of_month.to_date
+  is_current_month = month_start_date == Date.current.beginning_of_month
+  current_week_sunday = Date.current.beginning_of_week(:sunday)
+  cal_start_date = if local_assigns.fetch(:start_from_current_week, false) && is_current_month && current_week_sunday > month_start_date
+    current_week_sunday
+  else
+    month_start_date
+  end
+%>
+
+<div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+  <%# Header with month navigation %>
+  <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+    <div>
+      <% if can_go_prev %>
+        <%= link_to month_link.call(prev_month), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+          <%= prev_month.strftime("%b") %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <h2 class="text-lg font-bold text-gray-900"><%= current_month.strftime("%B %Y") %></h2>
+      <% unless is_current_month %>
+        <%= link_to "Today", today_link, class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
+      <% end %>
+    </div>
+
+    <div>
+      <% if can_go_next %>
+        <%= link_to month_link.call(next_month), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+          <%= next_month.strftime("%b") %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Optional legend slot %>
+  <% if local_assigns[:legend] %>
+    <div class="flex flex-wrap items-center gap-4 px-4 py-2 border-b border-gray-100 text-xs text-gray-500">
+      <%= local_assigns[:legend] %>
+    </div>
+  <% end %>
+
+  <%# Desktop grid %>
+  <div class="hidden md:block p-4">
+    <div class="grid grid-cols-7 gap-1 mb-1">
+      <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day_name| %>
+        <div class="text-center text-xs font-semibold text-gray-500 py-1"><%= day_name %></div>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-7 gap-1">
+      <% cal_start_date.wday.times do %>
+        <div class="border border-gray-100 bg-gray-50 <%= min_cell %> p-1"></div>
+      <% end %>
+
+      <% current_date = cal_start_date %>
+      <% while current_date <= month_end_date %>
+        <% day_items = items_by_date[current_date] || [] %>
+        <% is_today = current_date == Date.current %>
+        <% is_past = dim_past && current_date < Date.current %>
+        <div class="border border-gray-200 <%= min_cell %> p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+          <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>"><%= current_date.day %></div>
+          <% day_items.each do |item| %>
+            <%= render item_partial, item: item, is_past: is_past %>
+          <% end %>
+        </div>
+        <% current_date += 1.day %>
+      <% end %>
+
+      <% remaining_cells = (7 - (month_end_date + 1.day).wday) % 7 %>
+      <% remaining_cells.times do %>
+        <div class="border border-gray-100 bg-gray-50 <%= min_cell %> p-1"></div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Mobile list: only days that have items %>
+  <div class="md:hidden p-4 space-y-3">
+    <% any_items = false %>
+    <% mobile_start = is_current_month ? Date.current : month_start_date %>
+    <% current_date = mobile_start %>
+    <% while current_date <= month_end_date %>
+      <% day_items = items_by_date[current_date] || [] %>
+      <% if day_items.any? %>
+        <% any_items = true %>
+        <div>
+          <div class="text-xs font-semibold text-gray-500 mb-1 <%= 'text-pink-600' if current_date == Date.current %>">
+            <%= current_date.strftime("%a, %b %-d") %>
+          </div>
+          <div class="space-y-1">
+            <% day_items.each do |item| %>
+              <%= render item_partial, item: item, is_past: false %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% current_date += 1.day %>
+    <% end %>
+    <% unless any_items %>
+      <div class="text-sm text-gray-400 text-center py-4"><%= empty_text %></div>
+    <% end %>
+  </div>
+</div>

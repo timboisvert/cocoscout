@@ -166,7 +166,7 @@ export default class extends Controller {
 
             // Copy duration
             if (durationSelect && lastDuration) {
-                durationSelect.value = lastDuration
+                this.setDurationField(durationSelect, lastDuration)
             }
 
             // Copy date/time + 1 day
@@ -370,7 +370,7 @@ export default class extends Controller {
 
         if (locationSelect && data.location_id) locationSelect.value = data.location_id
         if (startsAtInput && data.starts_at) startsAtInput.value = data.starts_at
-        if (durationSelect && data.duration) durationSelect.value = data.duration
+        if (durationSelect && data.duration) this.setDurationField(durationSelect, data.duration)
         if (notesInput && data.notes) notesInput.value = data.notes
 
         this.bookingsListTarget.appendChild(clone)
@@ -660,5 +660,20 @@ export default class extends Controller {
                 spaceSelect.appendChild(opt)
             })
         }
+    }
+
+    // Sets a duration_field component (decimal-hours unit) from an hours value,
+    // updating both the hidden field and the hours/minutes selects.
+    setDurationField(hiddenInput, hoursValue) {
+        if (!hiddenInput) return
+        const v = parseFloat(hoursValue)
+        if (isNaN(v)) return
+        hiddenInput.value = hoursValue
+        const wrapper = hiddenInput.closest('[data-controller~="duration-field"]')
+        if (!wrapper) return
+        const hoursSelect = wrapper.querySelector('[data-duration-field-target="hours"]')
+        const minutesSelect = wrapper.querySelector('[data-duration-field-target="minutes"]')
+        if (hoursSelect) hoursSelect.value = Math.floor(v)
+        if (minutesSelect) minutesSelect.value = Math.round((v % 1) * 60)
     }
 }

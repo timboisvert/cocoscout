@@ -20,52 +20,85 @@ module Manage
         @draft_contracts.where(contract_start_date: nil).order(:created_at).to_a
       )
 
-      # Late payments (overdue)
-      @late_payments = ContractPayment
+      active_contract_ids = @active_contracts.map(&:id)
+
+      # Month navigation for the unified calendar. Past months stay reachable so
+      # overdue payments and earlier events are never hidden.
+      @current_month = if params[:month].present?
+        Date.parse(params[:month]).in_time_zone.beginning_of_month
+      else
+        Time.current.beginning_of_month
+      end
+      @prev_month = @current_month - 1.month
+      @next_month = @current_month + 1.month
+      @can_go_prev = true
+      @can_go_next = true
+
+      month_start = @current_month.to_date
+      month_end = @current_month.end_of_month.to_date
+      window_start = month_start.beginning_of_day
+      window_end = month_end.end_of_day
+
+      # Unified calendar items: payments (both directions) + shows + space rentals,
+      # bucketed by date. Each renders differently in the cell; late payments are flagged.
+      @calendar_items_by_date = Hash.new { |h, k| h[k] = [] }
+
+      ContractPayment
         .joins(:contract)
         .includes(:contract)
+        .where(contracts: { organization_id: Current.organization.id, status: "active" })
+        .where(due_date: month_start..month_end)
+        .find_each do |payment|
+          @calendar_items_by_date[payment.due_date] << {
+            type: :payment,
+            sort_key: [ 0, payment.due_date.to_time ],
+            record: payment,
+            contract: payment.contract,
+            late: payment.overdue?,
+            incoming: payment.direction_incoming?
+          }
+        end
+
+      Show
+        .joins(:production)
+        .where(productions: { contract_id: active_contract_ids })
+        .where(date_and_time: window_start..window_end)
+        .where(canceled: [ false, nil ])
+        .includes(:production)
+        .find_each do |show|
+          @calendar_items_by_date[show.date_and_time.to_date] << {
+            type: :show,
+            sort_key: [ 1, show.date_and_time ],
+            at: show.date_and_time,
+            record: show,
+            contract: show.production&.contract
+          }
+        end
+
+      SpaceRental
+        .where(contract_id: active_contract_ids)
+        .where(starts_at: window_start..window_end)
+        .includes(:contract, :location)
+        .find_each do |rental|
+          @calendar_items_by_date[rental.starts_at.to_date] << {
+            type: :rental,
+            sort_key: [ 1, rental.starts_at ],
+            at: rental.starts_at,
+            record: rental,
+            contract: rental.contract
+          }
+        end
+
+      @calendar_items_by_date.each_value { |items| items.sort_by! { |i| i[:sort_key] } }
+
+      # Count of overdue payments across all months (may fall outside the visible
+      # month) so we can surface a persistent late-payments warning.
+      @late_payments_count = ContractPayment
+        .joins(:contract)
         .where(contracts: { organization_id: Current.organization.id, status: "active" })
         .where(status: "pending")
         .where("due_date < ?", Date.current)
-        .order(:due_date)
-
-      # Upcoming payments (not overdue, due within 7 days)
-      @upcoming_payments = ContractPayment
-        .joins(:contract)
-        .includes(:contract)
-        .where(contracts: { organization_id: Current.organization.id, status: "active" })
-        .where(status: "pending")
-        .where("due_date >= ?", Date.current)
-        .where("due_date <= ?", 7.days.from_now)
-        .order(:due_date)
-
-      @has_payments = @late_payments.any? || @upcoming_payments.any?
-
-      # Upcoming events across all active contracts (next 60 days): shows + space rentals.
-      # Sorted chronologically so it's easy to see what's coming up next for poster/ticketing/etc.
-      horizon = 60.days.from_now
-      window_start = Time.current.beginning_of_day
-      active_contract_ids = @active_contracts.map(&:id)
-
-      upcoming_shows = Show
-        .joins(:production)
-        .where(productions: { contract_id: active_contract_ids })
-        .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", window_start, horizon)
-        .where(canceled: [ false, nil ])
-        .includes(:production)
-        .order(:date_and_time)
-
-      upcoming_rentals = SpaceRental
-        .where(contract_id: active_contract_ids)
-        .where("starts_at >= ? AND starts_at <= ?", window_start, horizon)
-        .includes(:contract, :location)
-        .order(:starts_at)
-
-      @upcoming_events = (
-        upcoming_shows.map  { |s| { at: s.date_and_time, kind: :show,   record: s, contract: s.production&.contract } } +
-        upcoming_rentals.map { |r| { at: r.starts_at,    kind: :rental, record: r, contract: r.contract } }
-      ).sort_by { |e| e[:at] }
-      @has_upcoming_events = @upcoming_events.any?
+        .count
 
       # Contract stats for this year
       year_start = Date.current.beginning_of_year

@@ -9,7 +9,7 @@ module Manage
     # GET /signups (org-wide)
     def org_index
       # Get in-house productions the user has access to (exclude third-party)
-      @productions = Current.user.accessible_productions.type_in_house.includes(:audition_cycles, :sign_up_forms).order(:name)
+      @productions = Current.user.accessible_productions.castable.includes(:audition_cycles, :sign_up_forms).order(:name)
 
       # Aggregate sign-up forms and audition cycles across all productions
       @all_sign_up_forms = SignUpForm.where(production: @productions).not_archived.includes(:production, :sign_up_form_instances, :sign_up_slots)

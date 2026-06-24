@@ -23,7 +23,7 @@ module My
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
-      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: people_ids }).where.not(production_type: "course").distinct
+      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: people_ids }).schedulable.distinct
 
       # Check if user is a cast member of any productions (for showing filter bar even when filtered results are empty)
       @has_any_productions = @productions.any? || @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }

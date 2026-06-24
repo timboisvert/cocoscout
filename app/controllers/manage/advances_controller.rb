@@ -176,7 +176,7 @@ module Manage
 
     def load_org_advances
       # Load non-third-party productions the user has access to
-      @productions = Current.user.accessible_productions.where.not(production_type: "third_party").order(:name)
+      @productions = Current.user.accessible_productions.non_contract.order(:name)
 
       # Build summary for each production
       @production_summaries = @productions.map do |production|

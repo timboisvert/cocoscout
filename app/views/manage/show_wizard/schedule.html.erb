@@ -26,14 +26,10 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-          <select name="duration_minutes" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-48">
-            <option value="30" <%= 'selected' if @wizard_state[:duration_minutes] == 30 %>>30 minutes</option>
-            <option value="60" <%= 'selected' if @wizard_state[:duration_minutes] == 60 %>>1 hour</option>
-            <option value="90" <%= 'selected' if @wizard_state[:duration_minutes] == 90 %>>1.5 hours</option>
-            <% (2..24).each do |hrs| %>
-              <option value="<%= hrs * 60 %>" <%= 'selected' if @wizard_state[:duration_minutes] == hrs * 60 || (@wizard_state[:duration_minutes].nil? && hrs == 2) %>><%= hrs %> hours</option>
-            <% end %>
-          </select>
+          <%= render "shared/duration_field",
+              name: "duration_minutes",
+              value: @wizard_state[:duration_minutes] || Show::DEFAULT_DURATION_MINUTES,
+              max_hours: 24 %>
         </div>
       </div>
     </div>

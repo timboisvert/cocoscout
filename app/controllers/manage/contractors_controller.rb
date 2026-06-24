@@ -5,12 +5,33 @@ module Manage
     before_action :set_contractor, only: [ :show, :edit, :update, :destroy ]
 
     def index
-      @contractors = Current.organization.contractors
-        .includes(:contracts)
-        .alphabetical
+      @query = params[:q].to_s.strip
+      @filter = params[:filter].presence || "all"
 
-      @contractors_with_active = @contractors.select { |c| c.active_contracts.any? }
-      @contractors_without_active = @contractors.reject { |c| c.active_contracts.any? }
+      scope = Current.organization.contractors.includes(:contracts).alphabetical
+      scope = scope.where("LOWER(name) LIKE ?", "%#{@query.downcase}%") if @query.present?
+      all_contractors = scope.to_a
+
+      with_active = all_contractors.select { |c| c.active_contracts.any? }
+      without_active = all_contractors - with_active
+
+      # Counts (respect the search, ignore the status filter) for the filter chips
+      @total_count = all_contractors.size
+      @active_count = with_active.size
+      @inactive_count = without_active.size
+
+      @contractors = all_contractors
+      case @filter
+      when "active"
+        @contractors_with_active = with_active
+        @contractors_without_active = []
+      when "inactive"
+        @contractors_with_active = []
+        @contractors_without_active = without_active
+      else
+        @contractors_with_active = with_active
+        @contractors_without_active = without_active
+      end
     end
 
     def show

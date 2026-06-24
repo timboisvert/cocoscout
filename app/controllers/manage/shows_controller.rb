@@ -25,7 +25,7 @@ module Manage
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
       # Get productions the user has access to (exclude courses — they use session scheduling)
-      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
+      @productions = Current.user.accessible_productions.schedulable.order(:name)
 
       # Handle production filter
       @production_filter = params[:production].presence
@@ -135,7 +135,7 @@ module Manage
       session[:shows_filter] = @filter
 
       # Get productions the user has access to (exclude courses — they use session scheduling)
-      @productions = Current.user.accessible_productions.where.not(production_type: "course").order(:name)
+      @productions = Current.user.accessible_productions.schedulable.order(:name)
 
       # Get shows across all productions, eager load location and production
       @shows = Show.where(production: @productions)
@@ -1190,7 +1190,7 @@ module Manage
       @available_productions = Current.user.accessible_productions
                                        .where.not(id: @production.id)
                                        .where(organization: Current.organization)
-                                       .where.not(production_type: :third_party)
+                                       .non_contract
                                        .order(:name)
 
       if @available_productions.empty?

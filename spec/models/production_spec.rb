@@ -137,4 +137,36 @@ RSpec.describe Production, type: :model do
       expect { production.destroy }.to change { Role.count }.by(-1)
     end
   end
+
+  describe 'production_type scopes' do
+    let!(:in_house)    { create(:production, production_type: :in_house) }
+    let!(:third_party) { create(:production, production_type: :third_party) }
+    let!(:course)      { create(:production, production_type: :course) }
+
+    describe '.castable' do
+      it 'returns only in-house productions (never contract shows or courses)' do
+        expect(Production.castable).to contain_exactly(in_house)
+      end
+    end
+
+    describe '.schedulable' do
+      it 'returns in-house and third-party, but not courses' do
+        expect(Production.schedulable).to contain_exactly(in_house, third_party)
+      end
+    end
+
+    describe '.non_contract' do
+      it 'returns in-house and courses, but not third-party contract productions' do
+        expect(Production.non_contract).to contain_exactly(in_house, course)
+      end
+    end
+
+    describe '#castable?' do
+      it 'is true only for in-house productions' do
+        expect(in_house.castable?).to be true
+        expect(third_party.castable?).to be false
+        expect(course.castable?).to be false
+      end
+    end
+  end
 end
