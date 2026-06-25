@@ -127,16 +127,19 @@ class AuditionNotificationService
                                person:, talent_pool:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_added_to_cast"
 
-      # Use custom content if provided, otherwise render from template
+      template_vars = {
+        recipient_name: person.first_name || person.name,
+        production_name: production.name,
+        talent_pool_name: talent_pool&.name
+      }
+
+      # Use custom content if provided, otherwise render from template.
+      # Custom content still contains {{variable}} placeholders and must be interpolated.
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name, talent_pool_name: talent_pool&.name })
-        body = custom_body.presence || render_template_body(template_key, person, production, talent_pool)
+        subject = custom_subject.present? ? ContentTemplate.interpolate(custom_subject, template_vars) : ContentTemplateService.render_subject(template_key, template_vars)
+        body = custom_body.present? ? ContentTemplate.interpolate(custom_body, template_vars) : render_template_body(template_key, person, production, talent_pool)
       else
-        rendered = ContentTemplateService.render(template_key, {
-          recipient_name: person.first_name || person.name,
-          production_name: production.name,
-          talent_pool_name: talent_pool&.name
-        })
+        rendered = ContentTemplateService.render(template_key, template_vars)
         subject = rendered[:subject]
         body = rendered[:body]
       end
@@ -159,15 +162,18 @@ class AuditionNotificationService
                                     person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_not_cast"
 
-      # Use custom content if provided, otherwise render from template
+      template_vars = {
+        recipient_name: person.first_name || person.name,
+        production_name: production.name
+      }
+
+      # Use custom content if provided, otherwise render from template.
+      # Custom content still contains {{variable}} placeholders and must be interpolated.
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name })
-        body = custom_body.presence || render_template_body(template_key, person, production)
+        subject = custom_subject.present? ? ContentTemplate.interpolate(custom_subject, template_vars) : ContentTemplateService.render_subject(template_key, template_vars)
+        body = custom_body.present? ? ContentTemplate.interpolate(custom_body, template_vars) : render_template_body(template_key, person, production)
       else
-        rendered = ContentTemplateService.render(template_key, {
-          recipient_name: person.first_name || person.name,
-          production_name: production.name
-        })
+        rendered = ContentTemplateService.render(template_key, template_vars)
         subject = rendered[:subject]
         body = rendered[:body]
       end
@@ -219,10 +225,12 @@ class AuditionNotificationService
         audition_url: audition ? Rails.application.routes.url_helpers.my_audition_url(audition, **default_url_options) : nil
       }
 
-      # Use custom content if provided, otherwise render from template
+      # Use custom content if provided, otherwise render from template.
+      # Custom content still contains {{variable}} placeholders, so it must be
+      # interpolated with template_vars — otherwise date/time/location/url show raw.
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, template_vars)
-        body = custom_body.presence || render_template_body(template_key, person, production, nil, audition_cycle)
+        subject = custom_subject.present? ? ContentTemplate.interpolate(custom_subject, template_vars) : ContentTemplateService.render_subject(template_key, template_vars)
+        body = custom_body.present? ? ContentTemplate.interpolate(custom_body, template_vars) : render_template_body(template_key, person, production, nil, audition_cycle)
       else
         rendered = ContentTemplateService.render(template_key, template_vars)
         subject = rendered[:subject]
@@ -248,15 +256,18 @@ class AuditionNotificationService
                                       person:, custom_body:, custom_subject: nil, email_batch:)
       template_key = "audition_not_invited"
 
-      # Use custom content if provided, otherwise render from template
+      template_vars = {
+        recipient_name: person.first_name || person.name,
+        production_name: production.name
+      }
+
+      # Use custom content if provided, otherwise render from template.
+      # Custom content still contains {{variable}} placeholders and must be interpolated.
       if custom_body.present? || custom_subject.present?
-        subject = custom_subject.presence || ContentTemplateService.render_subject(template_key, { production_name: production.name, recipient_name: person.first_name || person.name })
-        body = custom_body.presence || render_template_body(template_key, person, production)
+        subject = custom_subject.present? ? ContentTemplate.interpolate(custom_subject, template_vars) : ContentTemplateService.render_subject(template_key, template_vars)
+        body = custom_body.present? ? ContentTemplate.interpolate(custom_body, template_vars) : render_template_body(template_key, person, production)
       else
-        rendered = ContentTemplateService.render(template_key, {
-          recipient_name: person.first_name || person.name,
-          production_name: production.name
-        })
+        rendered = ContentTemplateService.render(template_key, template_vars)
         subject = rendered[:subject]
         body = rendered[:body]
       end

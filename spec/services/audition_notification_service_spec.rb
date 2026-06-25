@@ -213,6 +213,44 @@ RSpec.describe AuditionNotificationService do
       end
     end
 
+    # Regression: a custom invitation body keeps its {{placeholders}}, and they
+    # must be interpolated before sending. Previously the custom-body path skipped
+    # interpolation, so recipients saw literal {{audition_date}} etc. and a dead
+    # "Confirm Your Audition" link.
+    context "with a custom body containing placeholders" do
+      let(:location) { create(:location, organization: organization, name: "Studio A") }
+      let(:audition_session) do
+        create(:audition_session, audition_cycle: audition_cycle, location: location,
+               start_at: Time.zone.local(2026, 6, 27, 12, 30))
+      end
+      let(:audition_request) { create(:audition_request, audition_cycle: audition_cycle, requestable: person) }
+      let!(:audition) do
+        create(:audition, auditionable: person, audition_request: audition_request, audition_session: audition_session)
+      end
+
+      it "interpolates date/time/location/url into the sent message body" do
+        custom_body = "Date: {{audition_date}}, Time: {{audition_time}}, " \
+                      "Location: {{audition_location}}, " \
+                      '<a href="{{audition_url}}">Confirm Your Audition</a>'
+
+        described_class.send_audition_invitations(
+          production: production,
+          audition_cycle: audition_cycle,
+          sender: sender,
+          invitations: [ { person: person, body: custom_body } ],
+          not_invited: []
+        )
+
+        body = Message.order(:created_at).last.body.to_s
+
+        expect(body).not_to include("{{")
+        expect(body).to include("Studio A")
+        expect(body).to include("12:30")
+        expect(body).to include("June 27, 2026")
+        expect(body).to match(%r{auditions/\d+}) # confirm link got a real URL
+      end
+    end
+
     context "with email channel template (ignored - service is message-only)" do
       before do
         ContentTemplate.find_by(key: "audition_invitation").update!(channel: "email")

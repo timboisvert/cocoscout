@@ -39,16 +39,49 @@ module Manage
       window_start = month_start.beginning_of_day
       window_end = month_end.end_of_day
 
-      # Unified calendar items: payments (both directions) + shows + space rentals,
-      # bucketed by date. Each renders differently in the cell; late payments are flagged.
+      # Unified calendar items: space rentals (when the space is booked) + payments
+      # (when money is due), bucketed by date. We intentionally do NOT plot the
+      # Shows tied to a booking — each contract booking is a SpaceRental with a
+      # linked Show, so plotting both double-listed every booking.
+      #
+      # When a payment is due on the same day as a rental for the same contract, we
+      # fold it onto the rental card instead of adding a separate payment pill.
       @calendar_items_by_date = Hash.new { |h, k| h[k] = [] }
 
-      ContractPayment
+      payments = ContractPayment
         .joins(:contract)
         .includes(:contract)
         .where(contracts: { organization_id: Current.organization.id, status: "active" })
         .where(due_date: month_start..month_end)
-        .find_each do |payment|
+        .to_a
+
+      # Group payments by [contract_id, date] so rentals can claim same-day payments.
+      payments_by_contract_date = payments.group_by { |p| [ p.contract_id, p.due_date ] }
+      claimed_keys = Set.new
+
+      SpaceRental
+        .where(contract_id: active_contract_ids)
+        .where(starts_at: window_start..window_end)
+        .includes(:contract, :location)
+        .find_each do |rental|
+          key = [ rental.contract_id, rental.starts_at.to_date ]
+          # Only the first rental for a contract+date claims that day's payments,
+          # so an amount is never shown twice.
+          rental_payments = claimed_keys.add?(key) ? (payments_by_contract_date[key] || []) : []
+          @calendar_items_by_date[rental.starts_at.to_date] << {
+            type: :rental,
+            sort_key: [ 1, rental.starts_at ],
+            at: rental.starts_at,
+            record: rental,
+            contract: rental.contract,
+            payments: rental_payments
+          }
+        end
+
+      # Remaining payments (no rental on the same contract+day) render on their own.
+      payments_by_contract_date.each do |key, pmts|
+        next if claimed_keys.include?(key)
+        pmts.each do |payment|
           @calendar_items_by_date[payment.due_date] << {
             type: :payment,
             sort_key: [ 0, payment.due_date.to_time ],
@@ -58,36 +91,7 @@ module Manage
             incoming: payment.direction_incoming?
           }
         end
-
-      Show
-        .joins(:production)
-        .where(productions: { contract_id: active_contract_ids })
-        .where(date_and_time: window_start..window_end)
-        .where(canceled: [ false, nil ])
-        .includes(:production)
-        .find_each do |show|
-          @calendar_items_by_date[show.date_and_time.to_date] << {
-            type: :show,
-            sort_key: [ 1, show.date_and_time ],
-            at: show.date_and_time,
-            record: show,
-            contract: show.production&.contract
-          }
-        end
-
-      SpaceRental
-        .where(contract_id: active_contract_ids)
-        .where(starts_at: window_start..window_end)
-        .includes(:contract, :location)
-        .find_each do |rental|
-          @calendar_items_by_date[rental.starts_at.to_date] << {
-            type: :rental,
-            sort_key: [ 1, rental.starts_at ],
-            at: rental.starts_at,
-            record: rental,
-            contract: rental.contract
-          }
-        end
+      end
 
       @calendar_items_by_date.each_value { |items| items.sort_by! { |i| i[:sort_key] } }
 

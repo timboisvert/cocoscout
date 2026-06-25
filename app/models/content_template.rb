@@ -120,9 +120,12 @@ class ContentTemplate < ApplicationRecord
     email? || both?
   end
 
-  # Interpolate variables in the format {{variable_name}}
-  # Also handles mustache-style conditionals: {{#var}}content{{/var}}
-  def interpolate(text, variables)
+  # Interpolate variables in the format {{variable_name}}, also handling
+  # mustache-style conditionals: {{#var}}content{{/var}}.
+  #
+  # Exposed at the class level so user-customized content (message bodies/subjects
+  # that aren't a stored template's own body) gets the same substitution.
+  def self.interpolate(text, variables)
     return text if text.blank?
 
     result = text.dup
@@ -130,7 +133,6 @@ class ContentTemplate < ApplicationRecord
     # First handle conditional blocks: {{#var}}content{{/var}}
     # If the variable is present and not blank, show the content; otherwise remove the block
     variables.each do |key, value|
-      # Match {{#key}}...{{/key}} blocks
       result.gsub!(/\{\{##{Regexp.escape(key.to_s)}\}\}(.+?)\{\{\/#{Regexp.escape(key.to_s)}\}\}/m) do |_match|
         value.present? ? $1 : ""
       end
@@ -144,6 +146,10 @@ class ContentTemplate < ApplicationRecord
       result.gsub!(/\{\{\s*#{Regexp.escape(key.to_s)}\s*\}\}/, value.to_s)
     end
     result
+  end
+
+  def interpolate(text, variables)
+    self.class.interpolate(text, variables)
   end
 
   # Convert plain text with newlines to HTML

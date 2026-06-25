@@ -142,6 +142,33 @@ RSpec.describe ContentTemplate, type: :model do
     end
   end
 
+  describe ".interpolate" do
+    # Guards against the recurring bug where user-customized notification bodies
+    # were sent with {{placeholders}} intact (date/time/location/url not filled,
+    # confirm link dead). Custom content must go through the same substitution.
+    it "interpolates arbitrary text not tied to a stored template" do
+      body = "Date: {{audition_date}}, Time: {{audition_time}}, " \
+             'Location: {{audition_location}}, <a href="{{audition_url}}">Confirm</a>'
+
+      result = ContentTemplate.interpolate(body, {
+        audition_date: "Saturday, June 27, 2026",
+        audition_time: "12:30 PM",
+        audition_location: "Studio A",
+        audition_url: "https://cocoscout.com/my/auditions/123"
+      })
+
+      expect(result).to eq(
+        "Date: Saturday, June 27, 2026, Time: 12:30 PM, " \
+        'Location: Studio A, <a href="https://cocoscout.com/my/auditions/123">Confirm</a>'
+      )
+      expect(result).not_to include("{{")
+    end
+
+    it "returns blank text unchanged" do
+      expect(ContentTemplate.interpolate("", { foo: "bar" })).to eq("")
+    end
+  end
+
   describe "#variable_names" do
     it "extracts variable names from subject and body" do
       template = build(:content_template,
