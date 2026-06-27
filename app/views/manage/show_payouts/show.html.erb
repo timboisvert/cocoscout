@@ -27,7 +27,9 @@
   # Check for missing cast (non-guest people in show who aren't in payout)
   non_guest_assignments = @show.show_person_role_assignments.where.not(assignable_id: nil)
   current_cast_ids = non_guest_assignments.pluck(:assignable_id).compact
-  payout_payee_ids = @show_payout.line_items.where(payee_type: "Person").where(is_guest: false).pluck(:payee_id)
+  # Exclude individual allocations (e.g. producer/director percentages) — those payees
+  # are paid via the payout scheme and are not expected to be in the show's cast.
+  payout_payee_ids = @show_payout.line_items.where(payee_type: "Person").where(is_guest: false).where.not(is_individual_allocation: true).pluck(:payee_id)
   missing_cast_count = (current_cast_ids - payout_payee_ids).size
   has_missing_cast = is_calculated && missing_cast_count > 0
 
