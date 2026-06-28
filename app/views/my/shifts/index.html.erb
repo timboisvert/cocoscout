@@ -10,6 +10,18 @@
     links: []
   } %>
 
+  <%# === Tabs: my own shifts vs. the whole staff schedule === %>
+  <div class="border-b border-gray-200 mb-6">
+    <nav class="flex gap-6 -mb-px">
+      <% tab_base = "inline-flex items-center px-1 py-2.5 border-b-2 text-sm font-medium transition-colors" %>
+      <%= link_to "My Shifts", my_shifts_path,
+            class: "#{tab_base} #{@tab == 'mine' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "All Staff", my_shifts_path(tab: "all_staff"),
+            class: "#{tab_base} #{@tab == 'all_staff' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+    </nav>
+  </div>
+
+  <% if @tab == "mine" %>
   <%# === Availability summary + editor === %>
   <div data-controller="unavailability"
        data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
@@ -150,6 +162,26 @@
     </div>
   <% else %>
     <p class="text-gray-500 text-sm">You don't have any upcoming shifts.</p>
+  <% end %>
+
+  <% else %>
+    <%# === All Staff tab: full schedule calendar === %>
+    <% if @staff_org_ids.any? %>
+      <p class="text-sm text-gray-500 mb-4">Everyone's shifts for finalized weeks, this week onward. Yours are highlighted.</p>
+
+      <%= render "shared/month_calendar",
+            current_month: @cal_month,
+            month_link: ->(t) { my_shifts_path(tab: "all_staff", month: t.strftime("%Y-%m-01")) },
+            items_by_date: @shifts_by_date,
+            item_partial: "my/shifts/all_staff_shift",
+            start_from_current_week: true,
+            dim_past: true,
+            can_go_prev: @cal_month > Date.current.beginning_of_month,
+            min_cell: "min-h-[110px]",
+            empty_text: "No staff shifts scheduled this month." %>
+    <% else %>
+      <p class="text-gray-500 text-sm">You're not listed on any organization's house staff yet.</p>
+    <% end %>
   <% end %>
 
 </div>

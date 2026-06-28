@@ -170,7 +170,8 @@ module Manage
       @documents = @contract.contract_documents.recent
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @productions = @contract.productions.includes(:shows)
-      @services = @contract.draft_services
+      @ticketing = @contract.draft_ticketing
+      @tech = @contract.draft_tech
     end
 
     def new

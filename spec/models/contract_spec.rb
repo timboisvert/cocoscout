@@ -257,7 +257,8 @@ RSpec.describe Contract, type: :model do
         "payments" => [ { "amount" => 500 } ],
         "payment_structure" => "per_hour",
         "payment_config" => { "hourly_rate" => 50 },
-        "services" => [ { "name" => "Sound" } ]
+        "ticketing" => { "tiers" => [ { "name" => "General", "price" => 25.0 } ] },
+        "tech" => { "provider" => "us", "hourly_rate" => 25.0, "hours" => 2.0 }
       })
     end
 
@@ -316,14 +317,25 @@ RSpec.describe Contract, type: :model do
       end
     end
 
-    describe "#draft_services" do
-      it "returns services from draft_data" do
-        expect(contract.draft_services).to eq([ { "name" => "Sound" } ])
+    describe "#draft_ticketing" do
+      it "returns ticketing from draft_data" do
+        expect(contract.draft_ticketing).to eq({ "tiers" => [ { "name" => "General", "price" => 25.0 } ] })
       end
 
-      it "returns empty array when not set" do
+      it "returns empty hash when not set" do
         contract.update!(draft_data: {})
-        expect(contract.draft_services).to eq([])
+        expect(contract.draft_ticketing).to eq({})
+      end
+    end
+
+    describe "#draft_tech" do
+      it "returns tech from draft_data" do
+        expect(contract.draft_tech).to eq({ "provider" => "us", "hourly_rate" => 25.0, "hours" => 2.0 })
+      end
+
+      it "returns empty hash when not set" do
+        contract.update!(draft_data: {})
+        expect(contract.draft_tech).to eq({})
       end
     end
 

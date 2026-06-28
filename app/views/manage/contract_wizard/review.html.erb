@@ -112,23 +112,57 @@
       <% end %>
     </div>
 
-    <%# Services %>
-    <% if @contract.draft_services.any? %>
+    <%# Ticketing %>
+    <% ticketing = @contract.draft_ticketing %>
+    <% tiers = ticketing["tiers"] || [] %>
+    <% discount = ticketing["discount"] || {} %>
+    <% if tiers.any? || discount["code"].present? %>
       <div class="border border-gray-200 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="font-medium text-gray-900">Services (<%= @contract.draft_services.count %>)</h3>
-          <%= link_to manage_services_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          <h3 class="font-medium text-gray-900">Ticketing</h3>
+          <%= link_to manage_ticketing_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
             Edit
           <% end %>
         </div>
         <ul class="space-y-1 text-sm text-gray-700">
-          <% @contract.draft_services.each do |service| %>
-            <li class="flex items-center gap-2">
-              <%= icon("check", class: "w-4 h-4 text-green-500") %>
-              <%= service["name"] %>
+          <% tiers.each do |tier| %>
+            <li class="flex items-center justify-between">
+              <span><%= tier["name"] %></span>
+              <span class="font-medium"><%= number_to_currency(tier["price"]) %></span>
             </li>
           <% end %>
         </ul>
+        <% if discount["code"].present? %>
+          <p class="text-sm text-gray-600 mt-2">
+            Discount <span class="font-medium"><%= discount["code"] %></span>:
+            <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>
+            <%= discount["applies_to"] == "specific" ? "(#{(discount["tier_names"] || []).join(", ")})" : "(all tickets)" %>
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Tech %>
+    <% tech = @contract.draft_tech %>
+    <% if tech["provider"].present? %>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-medium text-gray-900">Tech</h3>
+          <%= link_to manage_tech_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+            Edit
+          <% end %>
+        </div>
+        <% if tech["provider"] == "us" %>
+          <p class="text-sm text-gray-700">
+            We provide tech: <span class="font-medium"><%= tech["hours"] %> hr × <%= number_to_currency(tech["hourly_rate"]) %>
+            = <%= number_to_currency(tech["hours"].to_f * tech["hourly_rate"].to_f) %></span>
+          </p>
+          <p class="text-sm text-gray-600 mt-1">
+            <%= tech["payment_method"] == "from_cut" ? "Taken out of their cut" : "Paid in cash" %>
+          </p>
+        <% else %>
+          <p class="text-sm text-gray-700">Contractor provides their own tech.</p>
+        <% end %>
       </div>
     <% end %>
 

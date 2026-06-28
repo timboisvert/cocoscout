@@ -59,8 +59,7 @@
           is_third_party = @production.type_third_party?
 
           if is_third_party
-            # For third-party: show rental and services
-            services = @contract_services || []
+            # For third-party: show rental info
           else
             # For in-house: show cast summary
             assignments = @assignments_by_show[show.id] || []
@@ -84,8 +83,7 @@
           show_linked: true,
           show_location: true,
           right_panel: is_third_party ? :rental_services : :cast_summary,
-          cast_summary: is_third_party ? nil : cast_summary,
-          services: is_third_party ? services : nil
+          cast_summary: is_third_party ? nil : cast_summary
         } %>
       <% end %>
     </div>

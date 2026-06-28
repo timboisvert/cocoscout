@@ -1,0 +1,26 @@
+<%#
+  One staff shift inside the "All Staff" month calendar cell.
+  Locals: item (a Shift), is_past (Boolean). Reads @my_person_ids / @multi_org.
+%>
+<%
+  shift = item
+  is_past = local_assigns[:is_past]
+  people = shift.shift_assignments.map(&:person)
+  mine = people.any? { |p| @my_person_ids.include?(p.id) }
+%>
+<div class="mb-1 rounded px-1.5 py-1 text-[11px] leading-tight <%= mine ? "bg-pink-100 border border-pink-300" : "bg-gray-100" %> <%= "opacity-60" if is_past %>">
+  <div class="font-semibold tabular-nums text-gray-900">
+    <%= shift.starts_at.strftime("%-l:%M").downcase %>–<%= shift.ends_at.strftime("%-l:%M%P") %>
+  </div>
+  <div class="text-gray-700 truncate"><%= shift.role_label %></div>
+  <% if people.any? %>
+    <div class="text-gray-600 truncate">
+      <%= people.map { |p| @my_person_ids.include?(p.id) ? "#{p.name} (you)" : p.name }.join(", ") %>
+    </div>
+  <% else %>
+    <div class="text-amber-600 font-medium">Unassigned</div>
+  <% end %>
+  <% if @multi_org %>
+    <div class="text-[10px] text-gray-400 truncate"><%= shift.organization.name %></div>
+  <% end %>
+</div>

@@ -90,8 +90,7 @@
           is_third_party = show.production.type_third_party?
 
           if is_third_party
-            # For third-party: show rental and services
-            services = show.production.contract&.draft_services || []
+            # For third-party: show rental info
             cast_summary = nil
           elsif show.casting_enabled?
             # For in-house with casting enabled: show cast summary with roles and sign-ups
@@ -106,7 +105,6 @@
               cant_make_it_by_assignment: cant_make_it,
               sign_up_registrations: sign_up_regs
             }
-            services = nil
           else
             # Casting disabled: still show sign-ups but no roles
             sign_up_regs = @sign_up_registrations_by_show[show.id] || []
@@ -120,7 +118,6 @@
             else
               cast_summary = nil
             end
-            services = nil
           end
 
           # Determine right panel type
@@ -141,8 +138,7 @@
           show_location: true,
           show_production: true,
           right_panel: right_panel_type,
-          cast_summary: cast_summary,
-          services: services
+          cast_summary: cast_summary
         } %>
       <% end %>
     </div>

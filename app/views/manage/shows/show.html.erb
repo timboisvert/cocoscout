@@ -161,15 +161,6 @@
                 <div class="p-4">
                   <div class="mb-3">
                     <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
-                    <% if @production.contract.draft_services.any? %>
-                      <div class="flex flex-wrap gap-1 mt-2">
-                        <% @production.contract.draft_services.each do |service| %>
-                          <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                            <%= service.is_a?(Hash) ? (service["name"] || service[:name]) : service %>
-                          </span>
-                        <% end %>
-                      </div>
-                    <% end %>
                   </div>
                   <div class="flex flex-wrap gap-2 items-center">
                     <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small" %>

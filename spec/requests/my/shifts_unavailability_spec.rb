@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe "My::Shifts unavailability", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user, password: "Password123!") }
   let!(:person) { create(:person, user: user) }
 
@@ -70,6 +72,62 @@ RSpec.describe "My::Shifts unavailability", type: :request do
       get my_shifts_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("evening_shifts")
+    end
+  end
+
+  describe "GET /my/shifts?tab=all_staff" do
+    around { |ex| travel_to(Time.zone.local(2026, 6, 17, 12, 0)) { ex.run } }
+
+    let(:organization) { create(:organization) }
+    let(:house_role) { create(:house_role, organization: organization, name: "Bartender") }
+    let(:coworker) { create(:person, name: "Casey Coworker") }
+
+    before do
+      # Both the current user and a coworker are house staff at the same org.
+      create(:organization_staff_member, organization: organization, person: person)
+      create(:organization_staff_member, organization: organization, person: coworker)
+      create(:staffing_finalization, organization: organization, week_start: Date.current.beginning_of_week)
+    end
+
+    def staff_shift_for(assignee)
+      shift = create(:shift, organization: organization, house_role: house_role,
+                     starts_at: Time.current.change(hour: 18), ends_at: Time.current.change(hour: 22))
+      create(:shift_assignment, shift: shift, person: assignee)
+      shift
+    end
+
+    it "shows other staff members' shifts in the same org" do
+      staff_shift_for(coworker)
+      get my_shifts_path(tab: "all_staff")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Casey Coworker")
+      expect(response.body).to include("Bartender")
+    end
+
+    it "hides shifts for weeks that haven't been finalized" do
+      StaffingFinalization.delete_all
+      staff_shift_for(coworker)
+      get my_shifts_path(tab: "all_staff")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Casey Coworker")
+    end
+
+    it "does not show shifts from orgs the user is not staff at" do
+      other_org = create(:organization)
+      other_role = create(:house_role, organization: other_org, name: "Stagehand")
+      outsider = create(:person, name: "Outsider Olivia")
+      create(:organization_staff_member, organization: other_org, person: outsider)
+      create(:staffing_finalization, organization: other_org, week_start: Date.current.beginning_of_week)
+      shift = create(:shift, organization: other_org, house_role: other_role,
+                     starts_at: Time.current.change(hour: 18), ends_at: Time.current.change(hour: 22))
+      create(:shift_assignment, shift: shift, person: outsider)
+
+      get my_shifts_path(tab: "all_staff")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Outsider Olivia")
     end
   end
 end

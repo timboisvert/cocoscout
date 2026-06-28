@@ -24,9 +24,6 @@
   our_share = payment_config["revenue_our_share"].to_i if is_revenue_share
   their_share = payment_config["revenue_their_share"].to_i if is_revenue_share
 
-  # Get services from draft or actual data
-  services = contract.draft_services.presence || []
-
   # Check if there are space bookings
   bookings_count = contract.space_rentals.count.positive? ? contract.space_rentals.count : contract.draft_bookings.count
   has_space_rental = bookings_count > 0
@@ -88,18 +85,6 @@
           <div class="text-xs text-gray-500"><%= pluralize(bookings_count, "booking") %></div>
         <% else %>
           <div class="text-sm text-gray-400">—</div>
-        <% end %>
-        <% if services.any? %>
-          <div class="flex flex-wrap gap-1 mt-1.5">
-            <% services.first(3).each do |service| %>
-              <span class="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                <%= service["name"] %>
-              </span>
-            <% end %>
-            <% if services.size > 3 %>
-              <span class="text-[10px] text-gray-400">+<%= services.size - 3 %></span>
-            <% end %>
-          </div>
         <% end %>
       </div>
 

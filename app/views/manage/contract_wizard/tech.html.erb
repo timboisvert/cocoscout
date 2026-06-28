@@ -1,0 +1,81 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Tech" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Tech</h2>
+  <p class="text-gray-600 mb-6">Who is providing the tech for these events?</p>
+
+  <%
+    provider = @existing_tech["provider"] || "them"
+    payment_method = @existing_tech["payment_method"] || "cash"
+  %>
+
+  <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+    <div data-controller="contract-tech">
+      <%# Provider choice %>
+      <div class="space-y-3 mb-6">
+        <label class="flex items-start p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+          <input type="radio" name="tech_provider" value="them" <%= "checked" if provider != "us" %>
+                 data-action="change->contract-tech#toggle"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <div class="text-sm font-medium text-gray-900">They provide their own tech</div>
+            <div class="text-xs text-gray-500">The contractor brings their own technician.</div>
+          </div>
+        </label>
+
+        <label class="flex items-start p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+          <input type="radio" name="tech_provider" value="us" <%= "checked" if provider == "us" %>
+                 data-action="change->contract-tech#toggle"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <div class="text-sm font-medium text-gray-900">We provide the tech</div>
+            <div class="text-xs text-gray-500">We supply a technician and charge for it.</div>
+          </div>
+        </label>
+      </div>
+
+      <%# Charge details (only when we provide) %>
+      <div data-contract-tech-target="charges" class="bg-gray-50 rounded-lg p-4 mb-6 <%= "hidden" if provider != "us" %>">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Charge Details</h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Hourly rate</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <input type="number" step="0.01" min="0" name="tech_hourly_rate"
+                     value="<%= @existing_tech["hourly_rate"] %>" placeholder="0.00"
+                     class="w-full pl-6 border-gray-300 rounded-lg text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Hours</label>
+            <input type="number" step="0.25" min="0" name="tech_hours"
+                   value="<%= @existing_tech["hours"] %>" placeholder="0"
+                   class="w-full border-gray-300 rounded-lg text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">How is this paid?</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="tech_payment_method" value="cash" <%= "checked" if payment_method != "from_cut" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-900">Paid in cash</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="tech_payment_method" value="from_cut" <%= "checked" if payment_method == "from_cut" %>
+                     class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <span class="text-sm text-gray-900">Taken out of their cut</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <%# Navigation %>
+      <div class="flex justify-between">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_ticketing_contract_wizard_path(@contract) %>
+        <%= render "shared/button", text: "Next: Payments", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

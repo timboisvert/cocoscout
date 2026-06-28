@@ -22,10 +22,11 @@
           steps = [
             { num: 2, display: 1, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
             { num: 3, display: 2, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
-            { num: 4, display: 3, name: "Services", path: defined?(@contract) && @contract.persisted? ? manage_services_contract_wizard_path(@contract) : nil },
-            { num: 5, display: 4, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 6, display: 5, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 7, display: 6, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 4, display: 3, name: "Ticketing", path: defined?(@contract) && @contract.persisted? ? manage_ticketing_contract_wizard_path(@contract) : nil },
+            { num: 5, display: 4, name: "Tech", path: defined?(@contract) && @contract.persisted? ? manage_tech_contract_wizard_path(@contract) : nil },
+            { num: 6, display: 5, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 7, display: 6, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
+            { num: 8, display: 7, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
           ]
         %>
         <% steps.each_with_index do |step, index| %>

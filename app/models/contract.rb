@@ -113,8 +113,12 @@ class Contract < ApplicationRecord
     draft_data["payment_config"] || {}
   end
 
-  def draft_services
-    draft_data["services"] || []
+  def draft_ticketing
+    draft_data["ticketing"] || {}
+  end
+
+  def draft_tech
+    draft_data["tech"] || {}
   end
 
   def update_draft_step(step_name, data)

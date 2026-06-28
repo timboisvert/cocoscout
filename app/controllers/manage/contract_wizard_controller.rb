@@ -129,25 +129,50 @@ module Manage
       bookings = generate_bookings_from_rules(rules)
       @contract.update_draft_step(:bookings, bookings)
       @contract.update_column(:wizard_step, [ 4, @contract.wizard_step ].max)
-      redirect_to manage_services_contract_wizard_path(@contract)
+      redirect_to manage_ticketing_contract_wizard_path(@contract)
     end
 
-    # Step 4: Services included
-    def services
+    # Step 4: Ticketing (tiers/prices + discount code)
+    def ticketing
       @step = 4
-      @existing_services = @contract.draft_services
+      @existing_ticketing = @contract.draft_ticketing
     end
 
-    def save_services
-      services_data = params[:services].present? ? JSON.parse(params[:services]) : []
-      @contract.update_draft_step(:services, services_data)
+    def save_ticketing
+      ticketing_data = params[:ticketing].present? ? JSON.parse(params[:ticketing]) : {}
+      @contract.update_draft_step(:ticketing, ticketing_data)
       @contract.update_column(:wizard_step, [ 5, @contract.wizard_step ].max)
+      redirect_to manage_tech_contract_wizard_path(@contract)
+    end
+
+    # Step 5: Tech (we provide vs they provide, hourly rate, payment method)
+    def tech
+      @step = 5
+      @existing_tech = @contract.draft_tech
+    end
+
+    def save_tech
+      provider = params[:tech_provider].presence || "them"
+
+      tech_data = if provider == "us"
+        {
+          "provider" => "us",
+          "hourly_rate" => params[:tech_hourly_rate].presence&.to_f,
+          "hours" => params[:tech_hours].presence&.to_f,
+          "payment_method" => params[:tech_payment_method].presence || "cash"
+        }
+      else
+        { "provider" => "them" }
+      end
+
+      @contract.update_draft_step(:tech, tech_data)
+      @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
       redirect_to manage_payments_contract_wizard_path(@contract)
     end
 
-    # Step 5: Payment schedule
+    # Step 6: Payment schedule
     def payments
-      @step = 5
+      @step = 6
       @existing_payments = @contract.draft_payments
       @existing_payment_structure = @contract.draft_payment_structure
       @existing_payment_config = @contract.draft_payment_config
@@ -174,13 +199,13 @@ module Manage
         end
       end
 
-      @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
+      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
       redirect_to manage_documents_contract_wizard_path(@contract)
     end
 
-    # Step 6: Document upload
+    # Step 7: Document upload
     def documents
-      @step = 6
+      @step = 7
       @documents = @contract.contract_documents.recent
     end
 
@@ -201,7 +226,7 @@ module Manage
         end
       end
 
-      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
+      @contract.update_column(:wizard_step, [ 8, @contract.wizard_step ].max)
       redirect_to manage_review_contract_wizard_path(@contract)
     end
 
@@ -211,9 +236,9 @@ module Manage
       redirect_to manage_documents_contract_wizard_path(@contract), notice: "Document deleted."
     end
 
-    # Step 7: Review and activate
+    # Step 8: Review and activate
     def review
-      @step = 7
+      @step = 8
       @valid_for_activation = @contract.valid_for_activation?
       @validation_errors = @contract.errors.full_messages unless @valid_for_activation
     end
@@ -265,10 +290,11 @@ module Manage
       case step
       when 1, 2 then manage_bookings_contract_wizard_path(@contract)
       when 3 then manage_schedule_preview_contract_wizard_path(@contract)
-      when 4 then manage_services_contract_wizard_path(@contract)
-      when 5 then manage_payments_contract_wizard_path(@contract)
-      when 6 then manage_documents_contract_wizard_path(@contract)
-      when 7 then manage_review_contract_wizard_path(@contract)
+      when 4 then manage_ticketing_contract_wizard_path(@contract)
+      when 5 then manage_tech_contract_wizard_path(@contract)
+      when 6 then manage_payments_contract_wizard_path(@contract)
+      when 7 then manage_documents_contract_wizard_path(@contract)
+      when 8 then manage_review_contract_wizard_path(@contract)
       else manage_bookings_contract_wizard_path(@contract)
       end
     end

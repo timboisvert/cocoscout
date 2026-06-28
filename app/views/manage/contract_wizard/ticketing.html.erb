@@ -1,0 +1,93 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Ticketing" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Ticketing</h2>
+  <p class="text-gray-600 mb-6">Set the ticket tiers and prices, and any discount code (optional).</p>
+
+  <%
+    discount = @existing_ticketing["discount"] || {}
+    applies_to = discount["applies_to"] || "all"
+  %>
+
+  <div data-controller="contract-ticketing" data-contract-ticketing-existing-value="<%= @existing_ticketing.to_json %>">
+    <%# Ticket tiers %>
+    <div class="mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Ticket Tiers</h3>
+
+      <div class="bg-gray-50 rounded-lg p-4 mb-3">
+        <div class="flex gap-2">
+          <input type="text" data-contract-ticketing-target="tierName" placeholder="Tier name (e.g. General)" class="flex-1 border-gray-300 rounded-lg text-sm">
+          <div class="relative w-32">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+            <input type="number" step="0.01" min="0" data-contract-ticketing-target="tierPrice" placeholder="0.00" class="w-full pl-6 border-gray-300 rounded-lg text-sm">
+          </div>
+          <%= render "shared/button", text: "Add", variant: "secondary", size: "small", type: :button, data: { action: "click->contract-ticketing#addTier" } %>
+        </div>
+      </div>
+
+      <div data-contract-ticketing-target="list"></div>
+    </div>
+
+    <%# Discount code %>
+    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Discount Code (optional)</h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Code</label>
+          <input type="text" data-contract-ticketing-target="discountCode"
+                 data-action="input->contract-ticketing#serialize"
+                 value="<%= discount["code"] %>" placeholder="e.g. FRIENDS"
+                 class="w-full border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Amount off</label>
+          <input type="number" step="0.01" min="0" data-contract-ticketing-target="discountAmount"
+                 data-action="input->contract-ticketing#serialize"
+                 value="<%= discount["amount"] %>" placeholder="0"
+                 class="w-full border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Type</label>
+          <select data-contract-ticketing-target="discountType"
+                  data-action="change->contract-ticketing#serialize"
+                  class="w-full border-gray-300 rounded-lg text-sm">
+            <option value="fixed" <%= "selected" if discount["amount_type"] == "fixed" %>>$ off</option>
+            <option value="percent" <%= "selected" if discount["amount_type"] == "percent" %>>% off</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-2">
+        <label class="block text-xs text-gray-500 mb-1">Applies to</label>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2">
+            <input type="radio" name="discount_applies_to" value="all" <%= "checked" if applies_to != "specific" %>
+                   data-action="change->contract-ticketing#toggleAppliesTo"
+                   class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <span class="text-sm text-gray-900">All tickets</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="discount_applies_to" value="specific" <%= "checked" if applies_to == "specific" %>
+                   data-action="change->contract-ticketing#toggleAppliesTo"
+                   class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <span class="text-sm text-gray-900">Certain tiers only</span>
+          </label>
+        </div>
+      </div>
+
+      <div data-contract-ticketing-target="specificTiersWrapper" class="hidden mt-2 pl-1">
+        <label class="block text-xs text-gray-500 mb-1">Which tiers?</label>
+        <div data-contract-ticketing-target="specificTiers"></div>
+      </div>
+    </div>
+
+    <%# Navigation %>
+    <%= form_with url: manage_ticketing_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+      <input type="hidden" name="ticketing" data-contract-ticketing-target="ticketingJson" value="<%= @existing_ticketing.to_json %>">
+
+      <div class="flex justify-between">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_schedule_preview_contract_wizard_path(@contract) %>
+        <%= render "shared/button", text: "Next: Tech", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

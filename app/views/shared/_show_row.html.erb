@@ -505,15 +505,6 @@
       <% if rental %>
         <div class="text-[10px] text-gray-400 uppercase tracking-wide">Space Rental: <%= rental.space_name %></div>
         <div class="text-sm text-gray-700"><%= rental.starts_at.strftime("%l:%M %p").strip %> – <%= rental.ends_at.strftime("%l:%M %p").strip %></div>
-        <% if local_assigns[:services].present? && local_assigns[:services].any? %>
-          <div class="flex flex-wrap gap-1 mt-1">
-            <% local_assigns[:services].each do |service| %>
-              <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                <%= service.is_a?(Hash) ? (service["name"] || service[:name]) : service %>
-              </span>
-            <% end %>
-          </div>
-        <% end %>
       <% else %>
         <span class="text-sm text-gray-400">Third-party rental</span>
       <% end %>
