@@ -16,30 +16,7 @@
   <div class="max-w-4xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Review all events after your changes are applied.</p>
 
-    <%# Progress Steps - 4 steps %>
-    <div class="flex items-center gap-4 mb-8">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-pink-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-sm font-semibold">2</div>
-        <span class="text-sm font-medium text-gray-900">Review Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">3</div>
-        <span class="text-sm font-medium text-gray-500">Payments</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">4</div>
-        <span class="text-sm font-medium text-gray-500">Confirm</span>
-      </div>
-    </div>
+    <%= render "manage/contracts/amend_steps", current: 2 %>
 
     <%# Event Changes Summary (Pink!) %>
     <% if @rentals_to_remove.any? || @new_bookings.any? %>

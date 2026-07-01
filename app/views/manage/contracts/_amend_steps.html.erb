@@ -1,0 +1,21 @@
+<%#
+  Amend-flow progress indicator. Local: current (1-5).
+  Completed steps show a green check, the current step is pink, future steps gray.
+%>
+<% steps = [ "Events", "Review Events", "Payments", "Details", "Confirm" ] %>
+<div class="flex items-center gap-4 mb-8">
+  <% steps.each_with_index do |name, i| %>
+    <% n = i + 1 %>
+    <% state = n < current ? :done : (n == current ? :current : :future) %>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold
+                  <%= state == :done ? "bg-green-500 text-white" : (state == :current ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-500") %>">
+        <% if state == :done %><%= icon("check", class: "w-4 h-4") %><% else %><%= n %><% end %>
+      </div>
+      <span class="text-sm font-medium <%= state == :current ? "text-gray-900" : "text-gray-500" %>"><%= name %></span>
+    </div>
+    <% unless n == steps.size %>
+      <div class="flex-1 h-0.5 <%= n < current ? "bg-green-500" : "bg-gray-200" %>"></div>
+    <% end %>
+  <% end %>
+</div>

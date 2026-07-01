@@ -1269,6 +1269,8 @@ Rails.application.routes.draw do
         get "amend/events", action: :amend_events, as: :amend_events
         get "amend/payments", action: :amend_payments, as: :amend_payments
         post "amend/payments", action: :save_amend_payments, as: :save_amend_payments
+        get "amend/ticketing_tech", action: :amend_ticketing_tech, as: :amend_ticketing_tech
+        post "amend/ticketing_tech", action: :save_amend_ticketing_tech, as: :save_amend_ticketing_tech
         get "amend/review", action: :amend_review, as: :amend_review
         post "amend/apply", action: :apply_amendments, as: :apply_amendments
       end

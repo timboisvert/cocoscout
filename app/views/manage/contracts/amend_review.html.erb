@@ -16,34 +16,7 @@
   <div class="max-w-4xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Review and confirm your changes before applying.</p>
 
-    <%# Progress Steps - 4 steps %>
-    <div class="flex items-center gap-4 mb-8">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-green-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Review Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-green-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Payments</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-pink-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-sm font-semibold">4</div>
-        <span class="text-sm font-medium text-gray-900">Confirm</span>
-      </div>
-    </div>
+    <%= render "manage/contracts/amend_steps", current: 5 %>
 
   <% if @has_changes %>
     <%# Events Changes %>
@@ -197,6 +170,72 @@
       </div>
     </div>
 
+    <%# Production Name Change %>
+    <% if @production_name_changed %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-700">Production Name Change</h3>
+        </div>
+        <div class="p-4 flex items-center gap-3 text-sm">
+          <span class="text-gray-500 line-through"><%= @contract.production_name.presence || "(unnamed)" %></span>
+          <%= icon("arrow-right", class: "w-4 h-4 text-gray-400") %>
+          <span class="font-medium text-gray-900"><%= @new_production_name %></span>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Ticketing & Tech Changes %>
+    <% if @ticketing_changed || @tech_changed %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-700">Ticketing &amp; Tech Changes</h3>
+        </div>
+        <div class="p-4 space-y-4">
+          <% if @ticketing_changed %>
+            <% tiers = @new_ticketing["tiers"] || [] %>
+            <% discount = @new_ticketing["discount"] || {} %>
+            <div>
+              <h4 class="text-sm font-medium text-gray-900 mb-2">New ticketing</h4>
+              <% if tiers.any? %>
+                <ul class="space-y-1 text-sm text-gray-700">
+                  <% tiers.each do |tier| %>
+                    <li class="flex items-center justify-between">
+                      <span><%= tier["name"] %></span>
+                      <span class="font-medium"><%= number_to_currency(tier["price"]) %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% else %>
+                <p class="text-sm text-gray-500">No ticket tiers.</p>
+              <% end %>
+              <% if discount["code"].present? %>
+                <p class="text-sm text-gray-600 mt-2">
+                  Discount <span class="font-medium"><%= discount["code"] %></span>:
+                  <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>
+                  <%= discount["applies_to"] == "specific" ? "(#{(discount["tier_names"] || []).join(", ")})" : "(all tickets)" %>
+                </p>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @tech_changed %>
+            <div>
+              <h4 class="text-sm font-medium text-gray-900 mb-2">New tech</h4>
+              <% if @new_tech["provider"] == "us" %>
+                <p class="text-sm text-gray-700">
+                  We provide tech: <span class="font-medium"><%= @new_tech["hours"] %> hr × <%= number_to_currency(@new_tech["hourly_rate"]) %>
+                  = <%= number_to_currency(@new_tech["hours"].to_f * @new_tech["hourly_rate"].to_f) %></span>
+                  · <%= @new_tech["payment_method"] == "from_cut" ? "taken out of their cut" : "paid in cash" %>
+                </p>
+              <% else %>
+                <p class="text-sm text-gray-700">Contractor provides their own tech.</p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
     <%# Summary %>
     <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
       <h3 class="text-sm font-semibold text-pink-800 mb-2">Amendment Summary</h3>
@@ -217,12 +256,24 @@
             <% if @removed_payment_ids.empty? && @new_payments.empty? %>No changes<% end %>
           </span>
         </div>
+        <div>
+          <span class="text-pink-700">Production name:</span>
+          <span class="font-medium text-pink-900"><%= @production_name_changed ? "Updated" : "No changes" %></span>
+        </div>
+        <div>
+          <span class="text-pink-700">Ticketing:</span>
+          <span class="font-medium text-pink-900"><%= @ticketing_changed ? "Updated" : "No changes" %></span>
+        </div>
+        <div>
+          <span class="text-pink-700">Tech:</span>
+          <span class="font-medium text-pink-900"><%= @tech_changed ? "Updated" : "No changes" %></span>
+        </div>
       </div>
     </div>
 
     <%# Navigation %>
     <div class="flex justify-between items-end pt-4 border-t border-gray-200">
-      <%= render "shared/button", text: "Back: Payments", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_payments_manage_contract_path(@contract) %>
+      <%= render "shared/button", text: "Back: Details", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
       <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
         <% if @new_bookings.any? %>
           <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mb-3">

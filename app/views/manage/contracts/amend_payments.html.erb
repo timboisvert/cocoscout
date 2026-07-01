@@ -14,32 +14,7 @@
   } %>
 
   <div class="max-w-4xl mx-auto mt-6">
-    <%# Progress Steps - 4 steps %>
-    <div class="flex items-center gap-4 mb-8">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-green-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-          <%= icon("check", class: "w-4 h-4") %>
-        </div>
-        <span class="text-sm font-medium text-gray-500">Review Events</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-pink-500"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-sm font-semibold">3</div>
-        <span class="text-sm font-medium text-gray-900">Payments</span>
-      </div>
-      <div class="flex-1 h-0.5 bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-semibold">4</div>
-        <span class="text-sm font-medium text-gray-500">Confirm</span>
-      </div>
-    </div>
+    <%= render "manage/contracts/amend_steps", current: 3 %>
 
     <%# Existing Payments - Allow removal of pending payments %>
     <%
@@ -514,7 +489,7 @@
 
           <div class="flex justify-between pt-4 border-t border-gray-200">
             <%= render "shared/button", text: "Back: Review Events", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_events_manage_contract_path(@contract) %>
-            <%= render "shared/button", text: "Next: Confirm", variant: "primary", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Next: Details", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>
@@ -536,7 +511,7 @@
       <%= form_with url: save_amend_payments_manage_contract_path(@contract), method: :post, local: true, id: "amend-payments-form" do |form| %>
         <div class="flex justify-between pt-4 border-t border-gray-200">
           <%= render "shared/button", text: "Back: Review Events", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_events_manage_contract_path(@contract) %>
-          <%= render "shared/button", text: "Next: Confirm", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Next: Details", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
     <% end %>

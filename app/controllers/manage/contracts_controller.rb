@@ -414,6 +414,41 @@ module Manage
         "removed_payment_ids" => removed_payment_ids
       ))
 
+      redirect_to amend_ticketing_tech_manage_contract_path(@contract)
+    end
+
+    # Step 4: Amend Ticketing & Tech. Unlike bookings/payments these are plain
+    # config on draft_data (no records to create), so we stage the edited values
+    # in amend_data and write them straight to draft_data on apply.
+    def amend_ticketing_tech
+      @amend_data = @contract.amend_data
+      @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
+      @tech = @amend_data["tech"] || @contract.draft_tech
+      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.productions.first&.name
+    end
+
+    def save_amend_ticketing_tech
+      ticketing_data = params[:ticketing].present? ? (JSON.parse(params[:ticketing]) rescue {}) : {}
+
+      provider = params[:tech_provider].presence || "them"
+      tech_data = if provider == "us"
+        {
+          "provider" => "us",
+          "hourly_rate" => params[:tech_hourly_rate].presence&.to_f,
+          "hours" => params[:tech_hours].presence&.to_f,
+          "payment_method" => params[:tech_payment_method].presence || "cash"
+        }
+      else
+        { "provider" => "them" }
+      end
+
+      existing_amend = @contract.amend_data
+      @contract.update_amend_data(existing_amend.merge(
+        "production_name" => params[:production_name].to_s.strip,
+        "ticketing" => ticketing_data,
+        "tech" => tech_data
+      ))
+
       redirect_to amend_review_manage_contract_path(@contract)
     end
 
@@ -436,7 +471,20 @@ module Manage
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
       @payments_to_remove = @existing_payments.select { |p| @removed_payment_ids.include?(p.id) }
 
-      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @new_payments.any? || @removed_payment_ids.any?
+      # Ticketing & tech: staged values (present only if the user visited that step),
+      # compared against the contract's current values for the change summary.
+      @ticketing_changed = @amend_data.key?("ticketing") && @amend_data["ticketing"] != @contract.draft_ticketing
+      @tech_changed = @amend_data.key?("tech") && @amend_data["tech"] != @contract.draft_tech
+      @new_ticketing = @amend_data["ticketing"] if @ticketing_changed
+      @new_tech = @amend_data["tech"] if @tech_changed
+
+      # Production name change (blank means "no change" — we never wipe the name).
+      staged_name = @amend_data["production_name"].to_s.strip
+      @production_name_changed = staged_name.present? && staged_name != @contract.production_name.to_s
+      @new_production_name = staged_name if @production_name_changed
+
+      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @new_payments.any? ||
+                     @removed_payment_ids.any? || @ticketing_changed || @tech_changed || @production_name_changed
     end
 
     def apply_amendments
@@ -446,7 +494,20 @@ module Manage
       new_payments = @amend_data["new_payments"] || []
       removed_payment_ids = @amend_data["removed_payment_ids"] || []
 
+      staged_production_name = @amend_data["production_name"].to_s.strip
+
       success = @contract.transaction do
+        # Ticketing & tech are plain config — write staged values straight through.
+        @contract.update_draft_step(:ticketing, @amend_data["ticketing"]) if @amend_data.key?("ticketing")
+        @contract.update_draft_step(:tech, @amend_data["tech"]) if @amend_data.key?("tech")
+
+        # Rename the contract's production and propagate to the linked Production
+        # record(s) so the contract and the show stay in sync.
+        if staged_production_name.present? && staged_production_name != @contract.production_name.to_s
+          @contract.update!(production_name: staged_production_name)
+          @contract.productions.each { |p| p.update!(name: staged_production_name) }
+        end
+
         # Remove rentals and their associated shows
         if removed_rental_ids.any?
           Show.where(space_rental_id: removed_rental_ids).destroy_all
