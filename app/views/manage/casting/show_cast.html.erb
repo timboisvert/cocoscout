@@ -64,19 +64,12 @@
       <%# Row 2: Progress bar with inline linkage sync %>
       <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="flex flex-col lg:flex-row lg:items-stretch">
-          <%# Left: Progress bar (flexible) %>
+          <%# Left: cast progress. Label text is kept in sync by drop-role#updateProgressBar. %>
           <div class="flex-1 px-4 py-3 flex items-center">
-            <div class="flex-1">
-              <div class="flex items-center justify-between mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="mb-2">
                 <span id="progress-label" class="text-sm font-semibold text-gray-900">
-                  <% if fully_cast %>
-                    100% cast
-                  <% else %>
-                    <%= filled_slots %> of <%= total_slots %> slots filled
-                  <% end %>
-                </span>
-                <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
-                  <%= filled_slots %>/<%= total_slots %>
+                  <% if fully_cast %>This show is 100% cast<% else %><%= filled_slots %> of <%= total_slots %> roles have been cast<% end %>
                 </span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-2">
@@ -85,46 +78,17 @@
             </div>
           </div>
 
-          <%# Right: Fixed-width panel with Contact Cast button %>
-          <%
-            # Get unique cast members from current assignments
-            cast_member_ids = @assignments.map(&:assignable_id).uniq
-            cast_members = Person.where(id: cast_member_ids)
-          %>
-          <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center"
-               <% if filled_slots > 0 %>
-               data-controller="compose-message"
-               data-compose-message-recipient-type-value="show_cast"
-               data-compose-message-recipient-id-value="<%= @show.id %>"
-               data-compose-message-recipient-name-value="<%= @show.display_name %> Cast"
-               data-compose-message-cast-members-value="<%= cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>"
-               <% end %>>
-            <% if filled_slots > 0 %>
-              <%= render "shared/button",
-                text: "Contact Cast",
-                variant: "primary",
-                size: "small",
-                type: :button,
-                data: { action: "click->compose-message#open" } %>
-            <% else %>
-              <%= render "shared/button",
-                text: "Contact Cast",
-                variant: "secondary",
-                size: "small",
-                type: :button,
-                disabled: true %>
-            <% end %>
+          <%# Right: its own segment with a divider, matching the roles bar above.
+              The partial supplies the segment styling so the empty state (no one cast)
+              renders no visible panel. State-driven: Notify / Finalize / Contact Cast. %>
+          <div id="notify-section-wrapper" class="flex-shrink-0 flex">
+            <%= render "manage/casting/notify_modal",
+                show: @show,
+                production: @production,
+                can_finalize: can_finalize,
+                cast_email_draft: @cast_email_draft,
+                removed_email_draft: @removed_email_draft %>
           </div>
-        </div>
-
-        <%# Finalize section - shown when fully cast AND (not linked OR in sync) %>
-        <div id="finalize-section-wrapper" class="<%= can_finalize ? '' : 'hidden' %>">
-          <%= render "manage/casting/finalize_section",
-              show: @show,
-              production: @production,
-              linked_shows: is_linked ? @linked_shows : [],
-              cast_email_draft: @cast_email_draft,
-              removed_email_draft: @removed_email_draft %>
         </div>
       </div>
     <% elsif @show.use_custom_roles? && @roles.empty? %>

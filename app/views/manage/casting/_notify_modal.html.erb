@@ -1,0 +1,193 @@
+<%#
+  Right-side action for the casting status bar, plus its Finalize & Notify modal.
+  Rendered into #notify-section-wrapper (and re-rendered over AJAX after cast changes).
+
+  Shows exactly one contextual control by state:
+    - no one cast            -> nothing
+    - someone still to notify -> "Partially Finalize & Notify" / "Finalize & Notify" (opens modal)
+    - everyone notified       -> "Contact Cast" (opens compose-message modal)
+
+  Notifying the last non-guest member finalizes (locks) the show server-side.
+
+  Locals: show, production, can_finalize, cast_email_draft, removed_email_draft.
+%>
+<%
+  progress = show.casting_progress
+  filled_slots = progress[:filled]
+  total_slots = progress[:total]
+  fully_cast = total_slots.positive? && filled_slots == total_slots
+  can_finalize = local_assigns.fetch(:can_finalize, fully_cast)
+
+  notified_keys = show.notified_assignable_keys
+  notifiable = show.show_person_role_assignments.reject(&:guest?).select(&:assignable)
+  unnotified_assignments = notifiable.reject { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
+  removed_members = show.removed_cast_members
+  has_removed = removed_members.any?
+  has_work = unnotified_assignments.any? || has_removed
+
+  modal_id = "notify-modal-#{show.id}"
+  trigger_text = fully_cast ? "Finalize & Notify" : "Partially Finalize & Notify"
+%>
+
+<% if filled_slots.zero? %>
+  <%# Scenario 1: no one cast — no action. %>
+
+<% elsif has_work %>
+  <%# Scenarios 2 & 3: someone still needs notifying — open the modal. %>
+  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-center w-full" data-controller="modal">
+    <%= render "shared/button",
+          text: trigger_text, variant: "primary", size: "small", type: :button,
+          data: { action: "click->modal#open", modal_id: modal_id } %>
+
+    <div id="<%= modal_id %>"
+         class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+         data-action="click->modal#closeOnBackdrop">
+      <div class="flex min-h-full items-start justify-center p-4 py-10">
+        <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl text-left" data-action="click->modal#stopPropagation">
+          <%# Header %>
+          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+            <div>
+              <h3 class="text-base font-semibold text-gray-900">Finalize &amp; Notify</h3>
+              <p class="text-xs text-gray-500">
+                <%= notified_keys.size %> of <%= notifiable.size %> notified<%= fully_cast ? " · fully cast" : " · #{filled_slots} of #{total_slots} cast" %>
+              </p>
+            </div>
+            <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          </div>
+
+          <%= form_with url: manage_casting_show_notify_path(production, show.id), method: :post, class: "px-5 py-4 space-y-4" do |f| %>
+            <% unless fully_cast %>
+              <p class="text-sm text-gray-600">
+                This show isn't fully cast yet. Choose who to notify now — they'll see their role while you finish casting the rest.
+              </p>
+            <% end %>
+
+            <div data-controller="tabs">
+              <% if has_removed %>
+                <div class="border-b border-gray-200 mb-4">
+                  <nav class="flex gap-4" aria-label="Tabs">
+                    <button type="button" class="py-2 px-1 text-sm font-medium border-b-2 border-pink-500 text-pink-600 cursor-pointer"
+                            data-tabs-target="tab" data-action="click->tabs#select" data-index="0">
+                      Notify Cast
+                      <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-pink-100 text-pink-600"><%= unnotified_assignments.size %></span>
+                    </button>
+                    <button type="button" class="py-2 px-1 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
+                            data-tabs-target="tab" data-action="click->tabs#select" data-index="1">
+                      Removed
+                      <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600"><%= removed_members.size %></span>
+                    </button>
+                  </nav>
+                </div>
+              <% end %>
+
+              <%# ---- Cast tab ---- %>
+              <div data-tabs-target="panel">
+                <% if unnotified_assignments.any? %>
+                  <div class="mb-3">
+                    <p class="text-xs font-medium text-gray-700 mb-2">Who to notify (uncheck anyone you're not ready to tell):</p>
+                    <div class="space-y-1.5">
+                      <% unnotified_assignments.each do |assignment| %>
+                        <% member = assignment.assignable %>
+                        <% next unless member %>
+                        <label class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400">
+                          <input type="checkbox" name="assignable_keys[]" value="<%= assignment.assignable_type %>:<%= assignment.assignable_id %>" checked
+                                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                          <% headshot_variant = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                          <% else %>
+                            <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= member.name.first.upcase %></div>
+                          <% end %>
+                          <span class="text-sm text-gray-800"><%= member.name %></span>
+                          <span class="text-xs text-gray-400 ml-auto"><%= assignment.role&.name %></span>
+                        </label>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%= fields_for :cast_email_draft, cast_email_draft do |cast_form| %>
+                    <div class="space-y-3">
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                        <%= cast_form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Subject..." %>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                        <%= cast_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                        <p class="mt-1 text-xs text-gray-500">Variables like <code class="bg-gray-100 px-1 rounded">{{role_name}}</code>, <code class="bg-gray-100 px-1 rounded">{{shows_list}}</code>, and <code class="bg-gray-100 px-1 rounded">{{production_name}}</code> are personalized per cast member.</p>
+                      </div>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <p class="text-sm text-gray-500 italic">Everyone currently cast has already been notified.</p>
+                <% end %>
+              </div>
+
+              <%# ---- Removed tab ---- %>
+              <% if has_removed %>
+                <div data-tabs-target="panel" class="hidden">
+                  <div class="mb-3">
+                    <p class="text-xs font-medium text-gray-700 mb-2">Send a "no longer cast" notice to:</p>
+                    <div class="space-y-1.5">
+                      <% removed_members.each do |member| %>
+                        <% next unless member %>
+                        <label class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400">
+                          <input type="checkbox" name="removed_keys[]" value="<%= member.class.name %>:<%= member.id %>" checked
+                                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                          <% headshot_variant = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                          <% else %>
+                            <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= member.name.first.upcase %></div>
+                          <% end %>
+                          <span class="text-sm text-gray-800"><%= member.name %></span>
+                        </label>
+                      <% end %>
+                    </div>
+                  </div>
+                  <%= fields_for :removed_email_draft, removed_email_draft do |removed_form| %>
+                    <div class="space-y-3">
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                        <%= removed_form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Subject..." %>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                        <%= removed_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+
+            <% if fully_cast && can_finalize %>
+              <p class="text-xs text-gray-500">Notifying everyone still on the list will finalize and lock the cast (you can reopen later).</p>
+            <% end %>
+
+            <%# Footer %>
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200">
+              <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Notify Selected", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<% else %>
+  <%# Scenario 4 (edge): everyone notified but not locked — offer Contact Cast. %>
+  <%
+    cast_member_ids = show.show_person_role_assignments.map(&:assignable_id).compact.uniq
+    cast_members = Person.where(id: cast_member_ids)
+  %>
+  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-center w-full"
+       data-controller="compose-message"
+       data-compose-message-recipient-type-value="show_cast"
+       data-compose-message-recipient-id-value="<%= show.id %>"
+       data-compose-message-recipient-name-value="<%= show.display_name %> Cast"
+       data-compose-message-cast-members-value="<%= cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : '' } }.to_json %>">
+    <%= render "shared/button", text: "Contact Cast", variant: "primary", size: "small", type: :button, data: { action: "click->compose-message#open" } %>
+  </div>
+<% end %>

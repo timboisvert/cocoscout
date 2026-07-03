@@ -638,7 +638,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             })
             .catch(error => {
                 console.error('Error assigning person:', error);
@@ -718,7 +718,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             })
             .catch(error => {
                 console.error('Error assigning guest:', error);
@@ -768,7 +768,7 @@ export default class extends Controller {
                     this.updateLinkageSyncSection(data.linkage_sync_html);
                 }
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             })
             .catch(error => {
                 console.error('Error assigning guest:', error);
@@ -841,7 +841,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             })
             .catch(error => {
                 console.error('Error assigning guest:', error);
@@ -898,7 +898,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 
@@ -1117,7 +1117,7 @@ export default class extends Controller {
 
         // Update progress bar and finalize section
         this.updateProgressBar(data.progress);
-        this.updateFinalizeSection(data.finalize_section_html);
+        this.updateFinalizeSection(data.notify_modal_html);
     }
 
     // Show the replace modal for full roles
@@ -1318,7 +1318,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 
@@ -1388,7 +1388,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 
@@ -1427,7 +1427,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 
@@ -1514,7 +1514,7 @@ export default class extends Controller {
                     this.updateLinkageSyncSection(data.linkage_sync_html);
                 }
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 
@@ -1558,15 +1558,12 @@ export default class extends Controller {
 
     // Update the finalize section with fresh HTML from the server
     // If finalizeSectionHtml is provided, show it. If null/undefined, hide the section.
-    updateFinalizeSection(finalizeSectionHtml) {
-        const finalizeWrapper = document.getElementById('finalize-section-wrapper');
-        if (finalizeWrapper) {
-            if (finalizeSectionHtml) {
-                finalizeWrapper.innerHTML = finalizeSectionHtml;
-                finalizeWrapper.classList.remove('hidden');
-            } else {
-                finalizeWrapper.classList.add('hidden');
-            }
+    updateFinalizeSection(notifyModalHtml) {
+        const wrapper = document.getElementById('notify-section-wrapper');
+        if (wrapper && typeof notifyModalHtml === 'string') {
+            // Replace the trigger + modal so notify counts, the who-to-notify
+            // checklist, and the finalize option stay in sync after cast changes.
+            wrapper.innerHTML = notifyModalHtml;
         }
     }
 
@@ -1624,7 +1621,7 @@ export default class extends Controller {
 
                 // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
-                this.updateFinalizeSection(data.finalize_section_html);
+                this.updateFinalizeSection(data.notify_modal_html);
             });
     }
 }

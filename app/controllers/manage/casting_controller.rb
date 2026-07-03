@@ -6,7 +6,7 @@ module Manage
     before_action :check_production_access, except: [ :org_index ]
     before_action :check_not_third_party, except: [ :org_index ]
     before_action :set_show,
-                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
+                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked]
 
     # Org-level casting index (moved from org_casting_controller)
     def org_index
@@ -294,8 +294,8 @@ module Manage
       # Load sign-up registrations if this show has a linked sign-up form
       @sign_up_registrations = @show.sign_up_registrations.includes(person: { profile_headshots: { image_attachment: :blob } }).to_a
 
-      # Create email drafts for finalization section
-      if @show.fully_cast? && !@show.casting_finalized?
+      # Email drafts for the Finalize & Notify modal (available at any cast completeness).
+      unless @show.casting_finalized?
         @cast_email_draft = EmailDraft.new(
           title: default_cast_email_subject,
           body: default_cast_email_body
@@ -444,20 +444,17 @@ module Manage
         )
       end
 
-      # Render finalize section if fully cast AND (not linked OR in sync)
-      finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)
 
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
+      notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
+        notify_modal_html: notify_modal_html,
+        can_finalize: can_finalize,
         progress: {
           assignment_count: progress[:filled],
           role_count: progress[:total],
@@ -552,19 +549,17 @@ module Manage
         )
       end
 
-      finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)
 
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
+      notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
+        notify_modal_html: notify_modal_html,
+        can_finalize: can_finalize,
         progress: {
           assignment_count: progress[:filled],
           role_count: progress[:total],
@@ -638,20 +633,17 @@ module Manage
         )
       end
 
-      # Render finalize section if fully cast AND (not linked OR in sync)
-      finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)
 
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
+      notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
+        notify_modal_html: notify_modal_html,
+        can_finalize: can_finalize,
         assignable_type: removed_assignable_type,
         assignable_id: removed_assignable_id,
         person_id: removed_assignable_id, # Backward compatibility
@@ -744,20 +736,17 @@ module Manage
         )
       end
 
-      # Render finalize section if fully cast AND (not linked OR in sync)
-      finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)
 
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
+      notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
+        notify_modal_html: notify_modal_html,
+        can_finalize: can_finalize,
         progress: {
           assignment_count: progress[:filled],
           role_count: progress[:total],
@@ -856,102 +845,17 @@ module Manage
       removed_subject = removed_draft_params[:title].presence || default_removed_email_subject
       removed_body = removed_draft_params[:body].to_s.presence || default_removed_email_body
 
-      # Collect all unique assignables across all shows to finalize
-      # Each person should only get ONE email listing ALL their assignments across linked shows
-      cast_notifications_by_person = {}  # person => [{show:, role:, assignable:}, ...]
-      removed_notifications_by_person = {} # person => [{show:, role:, assignable:}, ...]
+      # Notify everyone still unnotified (and anyone removed since last notice),
+      # then lock each show below.
+      deliver_cast_notifications(
+        shows_to_finalize,
+        cast_subject: cast_subject, cast_body: cast_body,
+        removed_subject: removed_subject, removed_body: removed_body
+      )
 
-      # First pass to count recipients for batch creation
+      # Close open vacancies and mark casting finalized for each show.
       shows_to_finalize.each do |show|
-        # Get current cast members who need notification
-        unnotified_assignments = show.unnotified_cast_members
-        unnotified_assignments.each do |a|
-          next unless a.role  # Skip orphaned assignments
-          next if a.guest?    # Skip guest assignments (no person to notify)
-          next unless a.assignable  # Skip if assignable was deleted
-
-          # For groups, get all members; for people, just the person
-          recipients = a.assignable.is_a?(Group) ? a.assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ a.assignable ]
-
-          recipients.each do |person|
-            next unless person&.email.present?
-            cast_notifications_by_person[person] ||= []
-            cast_notifications_by_person[person] << { show: show, role: a.role, assignable: a.assignable }
-          end
-        end
-
-        # Get removed cast members who need notification
-        removed_members = show.removed_cast_members
-        removed_members.each do |assignable|
-          next unless assignable  # Skip nil assignables
-          prev_notification = show.show_cast_notifications
-                                  .cast_notifications
-                                  .where(assignable: assignable)
-                                  .order(notified_at: :desc)
-                                  .first
-          next unless prev_notification&.role
-
-          recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
-
-          recipients.each do |person|
-            next unless person&.email.present?
-            removed_notifications_by_person[person] ||= []
-            removed_notifications_by_person[person] << { show: show, role: prev_notification.role, assignable: assignable }
-          end
-        end
-      end
-
-      # Create email batch if sending to multiple recipients
-      total_recipients = cast_notifications_by_person.size + removed_notifications_by_person.size
-      email_batch = nil
-      if total_recipients > 1
-        email_batch = EmailBatch.create!(
-          user: Current.user,
-          subject: cast_subject,
-          recipient_count: total_recipients,
-          sent_at: Time.current
-        )
-      end
-
-      # Send consolidated emails for cast members
-      cast_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast, email_batch_id: email_batch&.id)
-      end
-
-      # Send consolidated emails for removed members
-      removed_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed, email_batch_id: email_batch&.id)
-      end
-
-      # Finalize all shows and record notifications
-      shows_to_finalize.each do |show|
-        # Close any open vacancies
         show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
-
-        # Record notifications for current cast members
-        show.unnotified_cast_members.each do |a|
-          next unless a.role
-          next if a.guest? # Guests don't have assignable records
-          show.show_cast_notifications.find_or_initialize_by(
-            assignable: a.assignable,
-            role: a.role
-          ).update!(
-            notification_type: :cast,
-            notified_at: Time.current,
-            email_body: cast_body
-          )
-        end
-
-        # Remove notification records for people who are no longer in the cast
-        # This prevents them from showing up as "removed" again after reopening
-        show.removed_cast_members.each do |assignable|
-          show.show_cast_notifications.where(
-            assignable: assignable,
-            notification_type: :cast
-          ).destroy_all
-        end
-
-        # Mark casting as finalized
         show.finalize_casting!
       end
 
@@ -963,6 +867,50 @@ module Manage
         redirect_to manage_casting_show_cast_path(@production, @show),
                     notice: "Casting finalized and notifications sent!"
       end
+    end
+
+    # Notify a chosen subset of the cast without finalizing (locking) the whole show.
+    # A performer can see their assignment once notified, so this lets managers tell
+    # already-cast people while other roles are still being filled.
+    def notify_cast
+      cast_keys = parse_assignable_keys(params[:assignable_keys])
+      removed_keys = parse_assignable_keys(params[:removed_keys])
+
+      if cast_keys.empty? && removed_keys.empty?
+        redirect_to manage_casting_show_cast_path(@production, @show),
+                    alert: "Select at least one cast member to notify."
+        return
+      end
+
+      cast_draft_params = params[:cast_email_draft] || {}
+      removed_draft_params = params[:removed_email_draft] || {}
+      cast_subject = cast_draft_params[:title].presence || default_cast_email_subject
+      cast_body = cast_draft_params[:body].to_s.presence || default_cast_email_body
+      removed_subject = removed_draft_params[:title].presence || default_removed_email_subject
+      removed_body = removed_draft_params[:body].to_s.presence || default_removed_email_body
+
+      result = deliver_cast_notifications(
+        [ @show ],
+        cast_subject: cast_subject, cast_body: cast_body,
+        removed_subject: removed_subject, removed_body: removed_body,
+        cast_keys: cast_keys, removed_keys: removed_keys
+      )
+
+      # Notifying the last person locks the show: once every (non-guest) cast
+      # member has been notified and the show is fully cast, finalize it.
+      locked = autolock_if_complete!(
+        cast_subject: cast_subject, cast_body: cast_body,
+        removed_subject: removed_subject, removed_body: removed_body
+      )
+
+      notified = result[:cast_count]
+      removed = result[:removed_count]
+      parts = []
+      parts << "notified #{notified} cast member#{'s' unless notified == 1}" if notified.positive?
+      parts << "sent #{removed} removal notice#{'s' unless removed == 1}" if removed.positive?
+      notice = parts.any? ? "Cast #{parts.join(' and ')}." : "No notifications were sent."
+      notice += " Everyone's been notified — casting is now finalized." if locked
+      redirect_to manage_casting_show_cast_path(@production, @show), notice: notice
     end
 
     def reopen_casting
@@ -1076,19 +1024,17 @@ module Manage
         )
       end
 
-      finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)
 
-      if can_finalize
-        finalize_section_html = render_finalize_section_html(linked_shows)
-      end
+      notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
-        finalize_section_html: finalize_section_html,
+        notify_modal_html: notify_modal_html,
+        can_finalize: can_finalize,
         progress: {
           assignment_count: progress[:filled],
           role_count: progress[:total],
@@ -1306,11 +1252,132 @@ module Manage
       result
     end
 
-    def render_finalize_section_html(linked_shows = nil)
+    # True when every non-guest cast member on the show has a cast notification.
+    # Guests can't be notified, so they don't block "fully notified".
+    def all_notifiable_notified?(show)
+      notified = show.notified_assignable_keys
+      notifiable = show.show_person_role_assignments.reject(&:guest?)
+      notifiable.any? && notifiable.all? { |a| notified.include?([ a.assignable_type, a.assignable_id ]) }
+    end
+
+    # Lock the show once it's fully cast and everyone (non-guest) is notified.
+    # For linked events, only locks when in sync, and finalizes the group together
+    # (notifying any still-unnotified members on the linked shows first).
+    # Returns true if it locked.
+    def autolock_if_complete!(cast_subject:, cast_body:, removed_subject:, removed_body:)
+      return false unless @show.fully_cast? && all_notifiable_notified?(@show)
+
+      shows_to_lock = [ @show ]
+      if @show.linked?
+        linked = @show.linked_shows.to_a
+        return false unless build_linkage_sync_info(@show, linked)[:all_in_sync]
+        shows_to_lock += linked.reject(&:casting_finalized?)
+      end
+
+      # Notify anyone still unnotified across the group (e.g. linked siblings), then lock.
+      deliver_cast_notifications(
+        shows_to_lock,
+        cast_subject: cast_subject, cast_body: cast_body,
+        removed_subject: removed_subject, removed_body: removed_body
+      )
+      shows_to_lock.each do |s|
+        s.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
+        s.finalize_casting!
+      end
+      true
+    end
+
+    # Parse ["Person:48", "Group:3"] request params into a Set of [type, id] keys.
+    def parse_assignable_keys(raw)
+      Array(raw).filter_map do |key|
+        type, id = key.to_s.split(":", 2)
+        next if type.blank? || id.blank?
+        [ type, id.to_i ]
+      end.to_set
+    end
+
+    # Send cast/removed notifications for the given shows and record them, WITHOUT
+    # finalizing (locking) any show. Shared by finalize_casting (all members) and
+    # notify_cast (a chosen subset). When cast_keys/removed_keys are given, only
+    # those [type, id] assignables are notified; nil means "everyone applicable".
+    # Returns { cast_count:, removed_count: } (number of people emailed).
+    def deliver_cast_notifications(shows, cast_subject:, cast_body:, removed_subject:, removed_body:, cast_keys: nil, removed_keys: nil)
+      recipients_for = lambda do |assignable|
+        assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
+      end
+
+      cast_notifications_by_person = {}
+      removed_notifications_by_person = {}
+
+      shows.each do |show|
+        show.unnotified_cast_members.each do |a|
+          next unless a.role
+          next if a.guest?
+          next unless a.assignable
+          next if cast_keys && !cast_keys.include?([ a.assignable_type, a.assignable_id ])
+
+          recipients_for.call(a.assignable).each do |person|
+            next unless person&.email.present?
+            (cast_notifications_by_person[person] ||= []) << { show: show, role: a.role, assignable: a.assignable }
+          end
+        end
+
+        show.removed_cast_members.each do |assignable|
+          next unless assignable
+          next if removed_keys && !removed_keys.include?([ assignable.class.name, assignable.id ])
+
+          prev_notification = show.show_cast_notifications.cast_notifications
+                                  .where(assignable: assignable).order(notified_at: :desc).first
+          next unless prev_notification&.role
+
+          recipients_for.call(assignable).each do |person|
+            next unless person&.email.present?
+            (removed_notifications_by_person[person] ||= []) << { show: show, role: prev_notification.role, assignable: assignable }
+          end
+        end
+      end
+
+      # Batch multiple recipients so they're tracked/grouped together.
+      total_recipients = cast_notifications_by_person.size + removed_notifications_by_person.size
+      email_batch = nil
+      if total_recipients > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user, subject: cast_subject, recipient_count: total_recipients, sent_at: Time.current
+        )
+      end
+
+      cast_notifications_by_person.each do |person, assignments|
+        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast, email_batch_id: email_batch&.id)
+      end
+      removed_notifications_by_person.each do |person, assignments|
+        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed, email_batch_id: email_batch&.id)
+      end
+
+      # Record notification state (mirrors the recipient filtering above).
+      shows.each do |show|
+        show.unnotified_cast_members.each do |a|
+          next unless a.role
+          next if a.guest?
+          next if cast_keys && !cast_keys.include?([ a.assignable_type, a.assignable_id ])
+
+          show.show_cast_notifications.find_or_initialize_by(assignable: a.assignable, role: a.role)
+              .update!(notification_type: :cast, notified_at: Time.current, email_body: cast_body)
+        end
+
+        show.removed_cast_members.each do |assignable|
+          next if removed_keys && !removed_keys.include?([ assignable.class.name, assignable.id ])
+          show.show_cast_notifications.where(assignable: assignable, notification_type: :cast).destroy_all
+        end
+      end
+
+      { cast_count: cast_notifications_by_person.size, removed_count: removed_notifications_by_person.size }
+    end
+
+    def render_notify_modal_html(linked_shows = nil, can_finalize: nil)
       # Set @linked_shows so email methods can use it
       @linked_shows = linked_shows || []
+      can_finalize = @show.fully_cast? if can_finalize.nil?
 
-      # Create email drafts for the finalize section
       cast_email_draft = EmailDraft.new(
         title: default_cast_email_subject,
         body: default_cast_email_body
@@ -1321,11 +1388,12 @@ module Manage
       )
 
       render_to_string(
-        partial: "manage/casting/finalize_section",
+        partial: "manage/casting/notify_modal",
         locals: {
           show: @show,
           production: @production,
           linked_shows: @linked_shows,
+          can_finalize: can_finalize,
           cast_email_draft: cast_email_draft,
           removed_email_draft: removed_email_draft
         }

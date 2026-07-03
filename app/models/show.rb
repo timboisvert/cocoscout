@@ -340,6 +340,14 @@ class Show < ApplicationRecord
     end.compact
   end
 
+  # Set of [assignable_type, assignable_id] that have been notified as cast for
+  # this show. Used to show per-person "notified" status on the casting board.
+  def notified_assignable_keys
+    show_cast_notifications.cast_notifications
+                           .pluck(:assignable_type, :assignable_id)
+                           .to_set
+  end
+
   # Get current cast members who haven't been notified yet
   def unnotified_cast_members
     # Get all assignables from current cast

@@ -895,6 +895,7 @@ Rails.application.routes.draw do
     post "/casting/:production_id/:show_id/replace_assignment", to: "casting#replace_assignment", as: "casting_show_replace_assignment"
     post "/casting/:production_id/:show_id/create_vacancy", to: "casting#create_vacancy", as: "casting_show_create_vacancy"
     post "/casting/:production_id/:show_id/finalize", to: "casting#finalize_casting", as: "casting_show_finalize"
+    post "/casting/:production_id/:show_id/notify", to: "casting#notify_cast", as: "casting_show_notify"
     patch "/casting/:production_id/:show_id/reopen", to: "casting#reopen_casting", as: "casting_show_reopen"
     post "/casting/:production_id/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "casting_show_copy_to_linked"
 
