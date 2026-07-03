@@ -79,6 +79,13 @@ module Manage
         .group(:show_id)
         .maximum(:updated_at)
 
+      # Precompute the set of notified (cast) assignables per show, so the cast card
+      # can show how many are still un-notified even when a show is fully cast.
+      @notified_keys_by_show = Hash.new { |h, k| h[k] = Set.new }
+      ShowCastNotification.cast_notifications.where(show_id: show_ids)
+                          .pluck(:show_id, :assignable_type, :assignable_id)
+                          .each { |sid, type, id| @notified_keys_by_show[sid] << [ type, id ] }
+
       # Precompute max role updated_at per show for custom roles
       @roles_max_updated_at_by_show = {}
       @shows.each do |show|
@@ -170,6 +177,13 @@ module Manage
         .where(show_id: show_ids)
         .group(:show_id)
         .maximum(:updated_at)
+
+      # Precompute the set of notified (cast) assignables per show, so the cast card
+      # can show how many are still un-notified even when a show is fully cast.
+      @notified_keys_by_show = Hash.new { |h, k| h[k] = Set.new }
+      ShowCastNotification.cast_notifications.where(show_id: show_ids)
+                          .pluck(:show_id, :assignable_type, :assignable_id)
+                          .each { |sid, type, id| @notified_keys_by_show[sid] << [ type, id ] }
 
       # Precompute max role updated_at per show for custom roles
       @roles_max_updated_at_by_show = {}

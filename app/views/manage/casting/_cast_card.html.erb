@@ -26,6 +26,13 @@
   percentage = total_slots > 0 ? (cast_count.to_f / total_slots * 100).round : 0
   fully_cast = percentage == 100
 
+  # Notification status: guests can't be notified, so only count non-guest members.
+  non_guest_assignments = show.show_person_role_assignments.reject(&:guest?)
+  notified_keys = @notified_keys_by_show ? @notified_keys_by_show[show.id] : show.notified_assignable_keys
+  notifiable_count = non_guest_assignments.size
+  notified_count = non_guest_assignments.count { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
+  unnotified_count = notifiable_count - notified_count
+
   # Use precomputed timestamps if available, otherwise query (for backward compatibility)
   assignments_max = if @assignments_max_updated_at_by_show
     @assignments_max_updated_at_by_show[show.id]
@@ -55,7 +62,7 @@
 
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v13",
+    "cast_card_v14",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
@@ -66,6 +73,8 @@
     open_vacancies_key,
     sign_up_regs_key,
     is_canceled,
+    notified_count,
+    notifiable_count,
     title.presence || "default"
   ]
 %>
@@ -132,11 +141,16 @@
         <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1">
           <div class="h-full rounded-full <%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %>" style="width: <%= percentage %>%"></div>
         </div>
-        <div class="text-xs <%= fully_cast ? 'text-green-600' : 'text-gray-500' %> mb-2">
-          <% if fully_cast %>
-            Fully cast
-          <% else %>
-            <%= cast_count %>/<%= total_slots %> slots filled
+        <div class="text-xs mb-2">
+          <span class="<%= fully_cast ? 'text-green-600' : 'text-gray-500' %>">
+            <% if fully_cast %>Fully cast<% else %><%= cast_count %>/<%= total_slots %> slots filled<% end %>
+          </span>
+          <% if notifiable_count.positive? %>
+            <% if unnotified_count.positive? %>
+              <span class="text-amber-600 font-medium">· <%= unnotified_count %> not notified</span>
+            <% else %>
+              <span class="text-green-600">· all notified</span>
+            <% end %>
           <% end %>
         </div>
 

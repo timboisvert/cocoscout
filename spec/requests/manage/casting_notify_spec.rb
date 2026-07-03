@@ -120,6 +120,33 @@ RSpec.describe "Manage::Casting per-individual notify", type: :request do
     end
   end
 
+  describe "casting index shows notification status per show" do
+    it "shows how many are not notified even when fully cast" do
+      # Fully cast the show (fill the 5th role), notify only 2 of the 5.
+      fifth = create(:person)
+      create(:show_person_role_assignment, show: show, role: roles.last, assignable: fifth)
+      post manage_casting_show_notify_path(production, show), params: {
+        assignable_keys: [ "Person:#{cast[0].id}", "Person:#{cast[1].id}" ], cast_email_draft: { title: "Hi", body: "x" }
+      }
+      expect(show.reload.casting_finalized?).to be(false)
+
+      get manage_casting_production_path(production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Fully cast")
+      expect(response.body).to include("3 not notified")
+    end
+
+    it "shows 'all notified' once everyone has been notified" do
+      keys = cast.map { |p| "Person:#{p.id}" }
+      # Only 4 of 5 roles cast; notify all 4 -> partially cast but all-notified.
+      post manage_casting_show_notify_path(production, show), params: {
+        assignable_keys: keys, cast_email_draft: { title: "Hi", body: "x" }
+      }
+      get manage_casting_production_path(production)
+      expect(response.body).to include("all notified")
+    end
+  end
+
   describe "message interpolation" do
     it "delivers a message with placeholders replaced (no literal {{...}})" do
       recipient = create(:user)
