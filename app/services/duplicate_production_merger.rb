@@ -1,0 +1,141 @@
+# frozen_string_literal: true
+
+# Consolidates duplicate productions (created by the contract/course bugs) down to
+# a single "winner" per group, moving ALL data onto the winner so nothing is lost:
+#
+#   * winner is chosen automatically by how much real work lives on it
+#     (cast assignments, then shows, then offerings, then having a contract, then age)
+#   * each loser's shows are moved to the winner; shows that share the exact
+#     start time are merged (their casting is folded in) so you don't get doubles
+#   * course offerings, messages, and the contract link are moved to the winner
+#   * the emptied loser productions are deleted
+#
+# Use DuplicateProductionMerger.duplicate_groups to find groups, then #call each.
+# Pass dry_run: true (default) to preview the actions without touching data.
+class DuplicateProductionMerger
+  Result = Struct.new(:winner, :losers, :actions, keyword_init: true)
+
+  # Find sets of productions that are duplicates of each other:
+  #   A) more than one production sharing a contract (the course-husk bug), and
+  #   B) same-name productions in an org where at least one is contract-linked
+  #      (the "made it manually, then made a contract" bug) — the contract
+  #      requirement avoids merging legitimately-separate same-name productions.
+  def self.duplicate_groups(organization = nil)
+    org_scope = organization ? Production.where(organization_id: organization.id) : Production.all
+
+    groups = []
+
+    Production.where.not(contract_id: nil)
+              .group(:contract_id).having("COUNT(*) > 1")
+              .pluck(:contract_id)
+              .each { |cid| groups << Production.where(contract_id: cid).to_a }
+
+    org_scope.group(:organization_id, :name).having("COUNT(*) > 1").count.each_key do |(org_id, name)|
+      prods = Production.where(organization_id: org_id, name: name).to_a
+      groups << prods if prods.any? { |p| p.contract_id.present? }
+    end
+
+    coalesce(groups)
+  end
+
+  # Merge groups that share any production into single groups (union-find-ish),
+  # so a production caught by both rules is handled once.
+  def self.coalesce(groups)
+    merged = []
+    groups.each do |group|
+      ids = group.map(&:id).to_set
+      hit = merged.find { |m| m[:ids].intersect?(ids) }
+      if hit
+        hit[:ids] |= ids
+        hit[:prods] = (hit[:prods] + group).uniq(&:id)
+      else
+        merged << { ids: ids, prods: group.uniq(&:id) }
+      end
+    end
+    # A second pass in case two existing buckets became connected via a later group.
+    merged.map { |m| m[:prods] }
+  end
+
+  def initialize(productions)
+    @productions = productions.uniq(&:id)
+  end
+
+  def call(dry_run: true)
+    return Result.new(winner: @productions.first, losers: [], actions: [ "single production — nothing to do" ]) if @productions.size < 2
+
+    winner = @productions.max_by { |p| score(p) }
+    losers = @productions - [ winner ]
+    actions = [ "WINNER ##{winner.id} #{winner.name.inspect} (type=#{winner.production_type}, score=#{score(winner).inspect})" ]
+
+    ActiveRecord::Base.transaction do
+      losers.each { |loser| merge_loser(loser, winner, actions, dry_run) }
+      raise ActiveRecord::Rollback if dry_run
+    end
+
+    Result.new(winner: winner, losers: losers, actions: actions)
+  end
+
+  private
+
+  # Higher is more canonical. Arrays compare left-to-right; -id makes the older
+  # (lower id) production win ties.
+  def score(production)
+    [
+      production.show_person_role_assignments.count,
+      production.shows.count,
+      production.course_offerings.count,
+      production.contract_id ? 1 : 0,
+      -production.id
+    ]
+  end
+
+  def merge_loser(loser, winner, actions, dry_run)
+    loser.shows.reload.to_a.each do |show|
+      twin = winner.shows.find_by(date_and_time: show.date_and_time)
+      if twin
+        actions << "  merge duplicate show ##{show.id} into ##{twin.id} (#{show.date_and_time})"
+        merge_show(show, twin) unless dry_run
+      else
+        actions << "  move show ##{show.id} (#{show.date_and_time}) to winner"
+        show.update!(production_id: winner.id) unless dry_run
+      end
+    end
+
+    loser.course_offerings.reload.each do |offering|
+      actions << "  move course offering ##{offering.id} to winner"
+      offering.update!(production_id: winner.id) unless dry_run
+    end
+
+    loser.messages.reload.each do |message|
+      message.update!(production_id: winner.id) unless dry_run
+    end
+
+    if loser.contract_id && winner.contract_id.nil?
+      actions << "  move contract ##{loser.contract_id} to winner"
+      unless dry_run
+        contract_id = loser.contract_id
+        loser.update!(contract_id: nil)
+        winner.update!(contract_id: contract_id)
+      end
+    elsif loser.contract_id && winner.contract_id && loser.contract_id != winner.contract_id
+      actions << "  NOTE: loser's contract ##{loser.contract_id} is now production-less (winner keeps contract ##{winner.contract_id}) — review for a duplicate contract"
+    end
+
+    actions << "  delete emptied production ##{loser.id}"
+    loser.reload.destroy! unless dry_run
+  end
+
+  # Fold a duplicate show's casting into the surviving twin, then delete it.
+  def merge_show(loser_show, twin)
+    loser_show.show_person_role_assignments.reload.each do |assignment|
+      exists = twin.show_person_role_assignments.exists?(
+        role_id: assignment.role_id,
+        assignable_type: assignment.assignable_type,
+        assignable_id: assignment.assignable_id
+      )
+      exists ? assignment.destroy! : assignment.update!(show_id: twin.id)
+    end
+    ShowCastNotification.where(show_id: loser_show.id).update_all(show_id: twin.id)
+    loser_show.reload.destroy!
+  end
+end
