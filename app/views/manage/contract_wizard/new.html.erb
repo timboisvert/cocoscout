@@ -71,8 +71,26 @@
                    id="production_name"
                    placeholder="e.g. Spring Recital 2026"
                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <p class="text-xs text-gray-500 mt-1">Optional. Used as the production name when the contract is activated.</p>
+            <p class="text-xs text-gray-500 mt-1">Optional. Used as the production name when a new production is created for this contract.</p>
           </div>
+
+          <% if @linkable_productions&.any? %>
+            <div>
+              <label for="link_production_id" class="block text-sm font-medium text-gray-900 mb-1.5">
+                Link to an existing production
+                <span class="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <select name="contract[link_production_id]"
+                      id="link_production_id"
+                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                <option value="">-- Create a new production --</option>
+                <% @linkable_productions.each do |production| %>
+                  <option value="<%= production.id %>"><%= production.name %></option>
+                <% end %>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Choose this if you already set up the show. The contract attaches to it instead of creating a duplicate production.</p>
+            </div>
+          <% end %>
         </div>
 
         <div class="mt-8 flex justify-end">

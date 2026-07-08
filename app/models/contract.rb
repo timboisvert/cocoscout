@@ -33,10 +33,16 @@ class Contract < ApplicationRecord
 
   # Lifecycle methods
   def activate!
-    return false unless status_draft?
-    return false unless valid_for_activation?
+    activated = false
 
-    transaction do
+    # Lock the row for the whole activation so two concurrent activate requests
+    # (double-click, or the wizard + money endpoints firing together) can't both
+    # pass the draft check and each create a duplicate production/shows/payments.
+    # The second caller blocks here, then sees status == active and no-ops.
+    with_lock do
+      next unless status_draft?
+      next unless valid_for_activation?
+
       create_records_from_draft!
 
       update!(
@@ -45,9 +51,10 @@ class Contract < ApplicationRecord
         skip_event_creation: false
         # Keep draft_data - it contains the full contract config (services, payment_config, etc.)
       )
+      activated = true
     end
 
-    true
+    activated
   rescue ActiveRecord::RecordInvalid => e
     errors.add(:base, e.message)
     false
@@ -479,13 +486,23 @@ class Contract < ApplicationRecord
     created_shows = []
     if rentals.any?
       prod_data = draft_data["production"] || {}
-      # Use existing production if one is already linked (e.g., from course offering wizard)
-      production = productions.first || productions.create!(
-        organization: organization,
-        name: production_name.presence || prod_data["name"].presence || contractor_name,
-        production_type: "third_party",
-        contact_email: contractor_email
-      )
+      # Reuse an existing production rather than creating a duplicate:
+      #   1. one already linked to this contract (e.g. from the course offering wizard), or
+      #   2. one the user explicitly chose to link when starting the contract.
+      # Only fall back to creating a fresh third_party production when neither exists.
+      linked_production_id = draft_data["link_production_id"].presence
+      production = productions.first
+      production ||= organization.productions.find_by(id: linked_production_id) if linked_production_id
+      if production
+        production.update!(contract: self) unless production.contract_id == id
+      else
+        production = productions.create!(
+          organization: organization,
+          name: production_name.presence || prod_data["name"].presence || contractor_name,
+          production_type: "third_party",
+          contact_email: contractor_email
+        )
+      end
 
       rentals.each do |info|
         rental = info[:rental]

@@ -8,6 +8,7 @@ module Manage
     def new
       @contract = Current.organization.contracts.build
       @contractors = Current.organization.contractors.alphabetical
+      @linkable_productions = linkable_productions
     end
 
     def create_draft
@@ -18,10 +19,16 @@ module Manage
       unless contractor
         @contract = Current.organization.contracts.build
         @contractors = Current.organization.contractors.alphabetical
+        @linkable_productions = linkable_productions
         flash.now[:alert] = "Please select a contractor or create a new one."
         render :new, status: :unprocessable_entity
         return
       end
+
+      # Optionally attach the contract to an existing production instead of
+      # creating a new one on activation (prevents duplicate productions when the
+      # show was already set up manually).
+      linked = linkable_productions.find_by(id: params[:contract][:link_production_id].presence)
 
       @contract = Current.organization.contracts.build(
         contractor_id: contractor.id,
@@ -29,7 +36,8 @@ module Manage
         contractor_email: contractor.email,
         contractor_phone: contractor.phone,
         contractor_address: contractor.address,
-        production_name: params[:contract][:production_name].presence,
+        production_name: linked&.name.presence || params[:contract][:production_name].presence,
+        draft_data: linked ? { "link_production_id" => linked.id } : {},
         status: :draft,
         wizard_step: 2
       )
@@ -38,6 +46,7 @@ module Manage
         redirect_to manage_bookings_contract_wizard_path(@contract)
       else
         @contractors = Current.organization.contractors.alphabetical
+        @linkable_productions = linkable_productions
         render :new, status: :unprocessable_entity
       end
     end
@@ -265,6 +274,12 @@ module Manage
 
     def set_contract
       @contract = Current.organization.contracts.find(params[:contract_id])
+    end
+
+    # Active productions not already tied to a contract — candidates a new contract
+    # can attach to instead of creating a duplicate production.
+    def linkable_productions
+      Current.organization.productions.active.where(contract_id: nil).order(:name)
     end
 
     def contractor_params

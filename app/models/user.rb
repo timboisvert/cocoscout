@@ -362,6 +362,24 @@ class User < ApplicationRecord
     end
   end
 
+  # Authorization check for a single production. Unlike accessible_productions
+  # (which powers dropdowns/lists and is intentionally limited to *active*
+  # productions), this answers "is the user allowed to open this production?" and
+  # so includes archived productions — managers/viewers can still open past shows,
+  # money, casting, etc. Used by the manage access guards.
+  def can_access_production?(production)
+    return false unless production
+    return false unless Current.organization && production.organization_id == Current.organization.id
+
+    # Managers and viewers can open any production in the org, archived or not.
+    return true if %w[manager viewer].include?(default_role)
+
+    # Otherwise, explicit production permission or reviewer access grants entry.
+    return true if production_permissions.where(production_id: production.id).exists?
+
+    productions_with_reviewer_access.where(id: production.id).exists?
+  end
+
   # Returns productions where user is a reviewer for an active audition cycle
   def productions_with_reviewer_access
     return Production.none unless person

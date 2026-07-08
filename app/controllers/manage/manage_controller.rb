@@ -206,19 +206,21 @@ module Manage
     end
 
     def ensure_user_has_access_to_production
-      # Ensure user has access to the current production
-      # This checks if @production or Current.production is in the user's accessible productions
+      # Ensure the user is allowed to open the production in context. Uses
+      # can_access_production? (not accessible_productions) so archived productions
+      # remain openable by managers/viewers — otherwise a stale/archived selection
+      # in Current.production would bounce them off org-level pages too.
       production = instance_variable_get(:@production) || Current.production
       return unless production
 
-      return if Current.user.accessible_productions.include?(production)
+      return if Current.user.can_access_production?(production)
 
       redirect_to manage_productions_path, alert: "You do not have access to this production."
     end
 
     def check_production_access
       # Explicit check for @production after it's been set in child controller
-      return if Current.user.accessible_productions.include?(@production)
+      return if Current.user.can_access_production?(@production)
 
       redirect_to manage_productions_path, alert: "You do not have access to this production."
     end
@@ -273,9 +275,14 @@ module Manage
       user_id = Current.user&.id
       if user_id && Current.organization && session[:current_production_id_for_organization].is_a?(Hash)
         prod_id = session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"]
-        Current.production = if prod_id
-                               Current.organization.productions.includes(logo_attachment: :blob).find_by(id: prod_id)
+        production = if prod_id
+                       Current.organization.productions.includes(logo_attachment: :blob).find_by(id: prod_id)
         end
+        # Only honor the stored selection if the user can actually open it. This
+        # prevents a stale/archived/foreign selection (e.g. left over from
+        # impersonation or a shared browser) from leaking onto org-level pages
+        # like Messages and tripping the production access guard.
+        Current.production = (production && Current.user.can_access_production?(production)) ? production : nil
       else
         Current.production = nil
       end

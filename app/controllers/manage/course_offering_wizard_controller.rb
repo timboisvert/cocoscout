@@ -345,14 +345,29 @@ module Manage
       end
 
       ActiveRecord::Base.transaction do
-        # Create a course production behind the scenes
-        @production = Current.organization.productions.create!(
-          name: @wizard_state[:title],
-          production_type: :course,
-          casting_source: :talent_pool,
-          casting_setup_completed: true,
-          contract: contract
-        )
+        # When scheduled from a contract, the contract's activation already created
+        # a production (with the shows). Reuse/convert it into the course production
+        # instead of creating a second one — otherwise the contract is left with an
+        # empty orphan third_party production after its shows are moved to the course.
+        existing_contract_production = contract && contract.productions.where.not(production_type: "course").first
+
+        if existing_contract_production
+          existing_contract_production.update!(
+            name: @wizard_state[:title],
+            production_type: :course,
+            casting_source: :talent_pool,
+            casting_setup_completed: true
+          )
+          @production = existing_contract_production
+        else
+          @production = Current.organization.productions.create!(
+            name: @wizard_state[:title],
+            production_type: :course,
+            casting_source: :talent_pool,
+            casting_setup_completed: true,
+            contract: contract
+          )
+        end
 
         # Set up instructor people if selected
         instructor_person_ids = Array(@wizard_state[:instructor_person_ids]).map(&:to_i).reject(&:zero?)
