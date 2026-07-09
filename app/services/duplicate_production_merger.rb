@@ -75,6 +75,10 @@ class DuplicateProductionMerger
     losers = productions - [ winner ]
     actions = [ "WINNER ##{winner.id} #{winner.name.inspect} (type=#{winner.production_type}, score=#{score(winner).inspect})" ]
 
+    # Moving/deleting shows fires Show's after_destroy/after_commit payment-sync,
+    # which would re-link a payment to a just-deleted show (FK violation). We manage
+    # the payment links here, so suppress that per-show sync for the whole merge.
+    ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync] = true
     ActiveRecord::Base.transaction do
       losers.each { |loser| merge_loser(loser, winner, actions, dry_run) }
 
@@ -91,6 +95,8 @@ class DuplicateProductionMerger
     end
 
     Result.new(winner: winner, losers: losers, actions: actions)
+  ensure
+    ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync] = nil
   end
 
   private
@@ -153,6 +159,9 @@ class DuplicateProductionMerger
       exists ? assignment.destroy! : assignment.update!(show_id: twin.id)
     end
     ShowCastNotification.where(show_id: loser_show.id).update_all(show_id: twin.id)
+    # Re-point payments/other refs onto the surviving twin so deleting the duplicate
+    # doesn't violate a foreign key (Show only nullifies contract_payments).
+    ContractPayment.where(show_id: loser_show.id).update_all(show_id: twin.id)
     loser_show.reload.destroy!
   end
 end

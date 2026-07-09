@@ -83,6 +83,26 @@ RSpec.describe DuplicateProductionMerger do
     end
   end
 
+  describe "a duplicate show that has a contract payment" do
+    let(:contract) { create(:contract, :revenue_share, :active, organization: org) }
+    let!(:manual) { create(:production, organization: org, name: "TC", production_type: :in_house) }
+    let!(:cprod) { create(:production, organization: org, name: "TC", production_type: :third_party).tap { |p| contract.update!(production: p) } }
+    let(:time) { 1.week.from_now.change(usec: 0) }
+    # manual wins (more shows), so the contract show — which carries the payment — is the one deleted.
+    let!(:manual_twin) { create(:show, production: manual, location: location, date_and_time: time) }
+    let!(:manual_extra) { create(:show, production: manual, location: location, date_and_time: time + 5.days) }
+    let(:rental) { create(:space_rental, contract: contract, location: location, starts_at: time, ends_at: time + 2.hours) }
+    let!(:contract_show) { create(:show, production: cprod, location: location, date_and_time: time, space_rental: rental) }
+    let!(:payment) { create(:contract_payment, contract: contract).tap { |p| p.update_column(:show_id, contract_show.id) } }
+
+    it "merges without a foreign-key violation and moves the payment to the surviving show" do
+      expect { described_class.new([ manual, cprod ]).call(dry_run: false) }.not_to raise_error
+
+      expect(Show.exists?(contract_show.id)).to be(false)
+      expect(payment.reload.show_id).to eq(manual_twin.id)
+    end
+  end
+
   describe ".coalesce" do
     it "unions overlapping groups so each production appears in exactly one group" do
       a = create(:production, organization: org)
