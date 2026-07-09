@@ -77,6 +77,16 @@ class DuplicateProductionMerger
 
     ActiveRecord::Base.transaction do
       losers.each { |loser| merge_loser(loser, winner, actions, dry_run) }
+
+      # A production that carries a contract is a third-party production. If the
+      # winner was a manually-created in_house one, fix its type so revenue-share
+      # sync/settlement (gated on type_third_party?) still runs for the contract.
+      will_carry_contract = winner.contracts.any? || losers.any? { |l| l.contracts.any? }
+      if will_carry_contract && winner.production_type == "in_house"
+        actions << "  set winner ##{winner.id} to third_party (now carries a contract)"
+        winner.update!(production_type: "third_party") unless dry_run
+      end
+
       raise ActiveRecord::Rollback if dry_run
     end
 

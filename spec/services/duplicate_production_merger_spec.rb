@@ -52,6 +52,9 @@ RSpec.describe DuplicateProductionMerger do
       expect(manual.reload.shows.count).to eq(1)
       expect(manual.contracts).to contain_exactly(contract)
       expect(manual.show_person_role_assignments.count).to eq(1)
+      # An in_house production that gains a contract becomes third_party so its
+      # revenue-share sync/settlement runs.
+      expect(manual.production_type).to eq("third_party")
     end
   end
 
