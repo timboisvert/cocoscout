@@ -23,8 +23,8 @@ RSpec.describe Contract, type: :model do
       expect(contract).to respond_to(:space_rentals)
     end
 
-    it "has many productions" do
-      expect(contract).to respond_to(:productions)
+    it "belongs to a production" do
+      expect(contract).to respond_to(:production)
     end
   end
 
@@ -126,12 +126,12 @@ RSpec.describe Contract, type: :model do
         end
 
         it "creates a production for the contract" do
-          expect { contract.activate! }.to change { contract.productions.count }.by(1)
+          expect { contract.activate! }.to change { contract.reload.production }.from(nil)
         end
 
         it "creates shows for each space rental" do
           contract.activate!
-          production = contract.productions.first
+          production = contract.reload.production
           expect(production.shows.count).to eq(1)
         end
       end

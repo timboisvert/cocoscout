@@ -279,7 +279,9 @@ module Manage
     # Active productions not already tied to a contract — candidates a new contract
     # can attach to instead of creating a duplicate production.
     def linkable_productions
-      Current.organization.productions.active.where(contract_id: nil).order(:name)
+      Current.organization.productions.active
+             .left_joins(:contracts).where(contracts: { id: nil })
+             .order(:name)
     end
 
     def contractor_params

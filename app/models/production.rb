@@ -40,7 +40,16 @@ class Production < ApplicationRecord
   has_many :agreement_signatures, dependent: :destroy
 
   belongs_to :organization
-  belongs_to :contract, optional: true
+  # A production can be the subject of many contracts over time (each contract books
+  # more dates/space rentals for the same show).
+  has_many :contracts, dependent: :nullify
+
+  # Backwards-compatible accessor: "the" contract for this production, i.e. the most
+  # recent one. Prefer show.space_rental&.contract when you need the contract for a
+  # specific show, since a production may carry several contracts.
+  def contract
+    contracts.order(:created_at, :id).last
+  end
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
     # Production logos display as a square (1:1). Posters use 3:4 (Instagram

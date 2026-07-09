@@ -71,7 +71,9 @@ class ShowPayout < ApplicationRecord
     production = show.production
     return unless production.type_third_party?
 
-    contract = production.contract
+    # A production can carry several contracts; the one that applies to THIS show is
+    # the one that booked its space rental. Fall back to the production's latest.
+    contract = show.space_rental&.contract || production.contract
     return unless contract&.revenue_share?
 
     contract_payment = contract.find_payment_for_show(show)

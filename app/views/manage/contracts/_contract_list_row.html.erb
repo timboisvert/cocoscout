@@ -67,11 +67,8 @@
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Production</div>
         <% if contract.production_name.present? %>
           <div class="text-sm font-medium text-gray-900 truncate"><%= contract.production_name %></div>
-        <% elsif contract.productions.any? %>
-          <div class="text-sm font-medium text-gray-900 truncate"><%= contract.productions.first.name %></div>
-          <% if contract.productions.count > 1 %>
-            <div class="text-xs text-gray-500">+<%= contract.productions.count - 1 %> more</div>
-          <% end %>
+        <% elsif contract.production.present? %>
+          <div class="text-sm font-medium text-gray-900 truncate"><%= contract.production.name %></div>
         <% else %>
           <div class="text-sm text-gray-400">—</div>
         <% end %>

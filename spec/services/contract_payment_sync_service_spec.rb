@@ -18,7 +18,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "when contract is not revenue share" do
       let(:contract) { create(:contract, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
       let(:show) { create(:show, production: production, date_and_time: 1.week.ago) }
 
       it "does nothing" do
@@ -30,7 +30,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "with per_event settlement" do
       let(:contract) { create(:contract, :revenue_share_per_event, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "updates the matching payment with contractor share" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
@@ -85,7 +85,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "with monthly settlement" do
       let(:contract) { create(:contract, :revenue_share, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "aggregates all shows in the same month" do
         show1 = create(:show, production: production, date_and_time: Date.new(2026, 3, 7).to_time)
@@ -157,7 +157,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "with weekly settlement" do
       let(:contract) { create(:contract, :revenue_share_weekly, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "aggregates shows within the same week" do
         # Monday March 9, 2026
@@ -182,7 +182,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "with flat fee show financials" do
       let(:contract) { create(:contract, :revenue_share_per_event, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "uses flat fee as revenue" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
@@ -199,7 +199,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "with no matching payment" do
       let(:contract) { create(:contract, :revenue_share_per_event, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "does not raise an error" do
         show = create(:show, production: production, date_and_time: 1.week.ago)
@@ -211,7 +211,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
     end
 
     context "with production that has no contract" do
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: nil) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party") }
 
       it "does nothing" do
         show = create(:show, production: production, date_and_time: 1.week.ago)

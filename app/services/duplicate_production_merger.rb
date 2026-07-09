@@ -84,7 +84,7 @@ class DuplicateProductionMerger
       production.show_person_role_assignments.count,
       production.shows.count,
       production.course_offerings.count,
-      production.contract_id ? 1 : 0,
+      production.contracts.count,
       -production.id
     ]
   end
@@ -110,15 +110,11 @@ class DuplicateProductionMerger
       message.update!(production_id: winner.id) unless dry_run
     end
 
-    if loser.contract_id && winner.contract_id.nil?
-      actions << "  move contract ##{loser.contract_id} to winner"
-      unless dry_run
-        contract_id = loser.contract_id
-        loser.update!(contract_id: nil)
-        winner.update!(contract_id: contract_id)
-      end
-    elsif loser.contract_id && winner.contract_id && loser.contract_id != winner.contract_id
-      actions << "  NOTE: loser's contract ##{loser.contract_id} is now production-less (winner keeps contract ##{winner.contract_id}) — review for a duplicate contract"
+    # Re-point every contract on the loser to the winner. A production can carry
+    # many contracts, so two valid contracts for the same show end up on one production.
+    loser.contracts.reload.each do |contract|
+      actions << "  move contract ##{contract.id} onto winner ##{winner.id}"
+      contract.update!(production: winner) unless dry_run
     end
 
     actions << "  delete emptied production ##{loser.id}"

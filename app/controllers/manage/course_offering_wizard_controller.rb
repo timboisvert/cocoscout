@@ -349,7 +349,8 @@ module Manage
         # a production (with the shows). Reuse/convert it into the course production
         # instead of creating a second one — otherwise the contract is left with an
         # empty orphan third_party production after its shows are moved to the course.
-        existing_contract_production = contract && contract.productions.where.not(production_type: "course").first
+        existing_contract_production = contract&.production
+        existing_contract_production = nil if existing_contract_production&.production_type == "course"
 
         if existing_contract_production
           existing_contract_production.update!(
@@ -364,9 +365,9 @@ module Manage
             name: @wizard_state[:title],
             production_type: :course,
             casting_source: :talent_pool,
-            casting_setup_completed: true,
-            contract: contract
+            casting_setup_completed: true
           )
+          contract&.update!(production: @production)
         end
 
         # Set up instructor people if selected

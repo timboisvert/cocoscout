@@ -65,7 +65,7 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
   end
 
   describe "production name" do
-    let!(:production) { create(:production, organization: org, name: "Music & Improv Show", contract: contract) }
+    let!(:production) { create(:production, organization: org, name: "Music & Improv Show").tap { |p| contract.update!(production: p) } }
 
     it "prefills the amend step with the current name" do
       contract.update!(production_name: "Music & Improv Show")

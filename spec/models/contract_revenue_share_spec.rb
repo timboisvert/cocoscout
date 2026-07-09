@@ -56,7 +56,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
   describe "#revenue_share_summary" do
     let(:contract) { create(:contract, :revenue_share, :active, organization: organization) }
-    let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+    let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
     context "with no shows" do
       it "returns summary with zero values" do
@@ -154,7 +154,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
   describe "#find_payment_for_show" do
     context "with monthly settlement" do
       let(:contract) { create(:contract, :revenue_share, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "matches a show to a payment in the same month" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
@@ -181,7 +181,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
     context "with weekly settlement" do
       let(:contract) { create(:contract, :revenue_share_weekly, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "matches a show to a payment in the same week" do
         # Monday March 9, 2026
@@ -195,7 +195,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
     context "with per_event settlement" do
       let(:contract) { create(:contract, :revenue_share_per_event, :active, organization: organization) }
-      let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+      let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
       it "matches to the closest payment by date" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
@@ -208,7 +208,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
     it "returns nil for non-revenue-share contracts" do
       contract = create(:contract, :active, organization: organization)
-      production = create(:production, organization: organization, contract: contract)
+      production = create(:production, organization: organization).tap { |p| contract.update!(production: p) }
       show = create(:show, production: production, date_and_time: 1.week.ago)
 
       expect(contract.find_payment_for_show(show)).to be_nil
@@ -217,7 +217,7 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
   describe "#shows_for_payment" do
     let(:contract) { create(:contract, :revenue_share, :active, organization: organization) }
-    let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+    let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
 
     context "with monthly settlement" do
       it "returns all shows in the payment's month" do

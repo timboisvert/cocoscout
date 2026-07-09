@@ -169,7 +169,7 @@ module Manage
       @payments = @contract.contract_payments.by_due_date
       @documents = @contract.contract_documents.recent
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
-      @productions = @contract.productions.includes(:shows)
+      @productions = [ @contract.production ].compact
       @ticketing = @contract.draft_ticketing
       @tech = @contract.draft_tech
     end
@@ -206,11 +206,8 @@ module Manage
         return
       end
 
-      # Delete associated productions and their shows
-      @contract.productions.each do |production|
-        production.shows.destroy_all
-        production.destroy
-      end
+      # Remove this contract's shows; only delete the production if nothing else uses it.
+      detach_and_maybe_delete_production(@contract)
 
       @contract.destroy
       redirect_to manage_contracts_path, notice: "Contract and all associated data permanently deleted."
@@ -234,7 +231,7 @@ module Manage
 
     def cancel
       # GET action - show cancellation page
-      @shows = @contract.productions.flat_map(&:shows).sort_by(&:date_and_time)
+      @shows = @contract.contract_shows.order(:date_and_time).to_a
       @pending_payments = @contract.contract_payments.where(status: "pending")
       @pending_total = @pending_payments.sum(:amount)
     end
@@ -266,8 +263,8 @@ module Manage
           @contract.contract_payments.where(status: "pending").update_all(status: "cancelled")
         end
 
-        # Delete associated productions and their shows
-        @contract.productions.destroy_all
+        # Remove this contract's shows (leave a shared production intact).
+        detach_and_maybe_delete_production(@contract)
 
         # Mark contract as cancelled
         @contract.update!(
@@ -424,7 +421,7 @@ module Manage
       @amend_data = @contract.amend_data
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
       @tech = @amend_data["tech"] || @contract.draft_tech
-      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.productions.first&.name
+      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.production&.name
     end
 
     def save_amend_ticketing_tech
@@ -505,7 +502,7 @@ module Manage
         # record(s) so the contract and the show stay in sync.
         if staged_production_name.present? && staged_production_name != @contract.production_name.to_s
           @contract.update!(production_name: staged_production_name)
-          @contract.productions.each { |p| p.update!(name: staged_production_name) }
+          @contract.production&.update!(name: staged_production_name)
         end
 
         # Remove rentals and their associated shows
@@ -515,7 +512,7 @@ module Manage
         end
 
         # Find the production for this contract (needed to create shows)
-        production = @contract.productions.first
+        production = @contract.production
         prod_data = @contract.draft_data["production"] || {}
         event_type = prod_data["event_type"].presence || "show"
 
@@ -588,6 +585,18 @@ module Manage
     end
 
     private
+
+    # Remove a contract's own shows, and delete its production only when no other
+    # contract still uses it and it has no remaining shows (productions are shared).
+    def detach_and_maybe_delete_production(contract)
+      production = contract.production
+      contract.contract_shows.destroy_all
+      return unless production
+
+      if production.contracts.where.not(id: contract.id).none? && production.shows.reload.none?
+        production.destroy
+      end
+    end
 
     # Booking generation helpers (borrowed from wizard)
     def generate_bookings_from_rules(rules)

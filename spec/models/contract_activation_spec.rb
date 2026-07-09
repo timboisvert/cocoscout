@@ -23,7 +23,8 @@ RSpec.describe "Contract#activate!", type: :model do
   end
 
   it "creates exactly one production" do
-    expect { contract.activate! }.to change { Production.where(contract_id: contract.id).count }.from(0).to(1)
+    expect { contract.activate! }.to change { contract.reload.production }.from(nil)
+    expect(contract.production).to be_present
   end
 
   it "is idempotent — a second activate! creates no extra production/shows" do
@@ -31,8 +32,8 @@ RSpec.describe "Contract#activate!", type: :model do
 
     expect { contract.activate! }.not_to change { Production.count }
     expect(contract.activate!).to be(false) # already active
-    expect(Production.where(contract_id: contract.id).count).to eq(1)
-    expect(contract.reload.space_rentals.count).to eq(1)
+    expect(contract.reload.production).to be_present
+    expect(contract.space_rentals.count).to eq(1)
   end
 
   describe "linking to an existing production (Pattern 2)" do
@@ -53,8 +54,8 @@ RSpec.describe "Contract#activate!", type: :model do
 
     it "reuses the linked production instead of creating a new one" do
       expect { linked_contract.activate! }.not_to change { Production.count }
-      expect(existing.reload.contract_id).to eq(linked_contract.id)
-      expect(linked_contract.reload.productions).to contain_exactly(existing)
+      expect(linked_contract.reload.production).to eq(existing)
+      expect(existing.reload.contracts).to contain_exactly(linked_contract)
     end
 
     it "keeps the linked production's original type (does not force third_party)" do

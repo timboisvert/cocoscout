@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_27_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -488,6 +488,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_27_120000) do
     t.jsonb "draft_data", default: {}
     t.text "notes"
     t.bigint "organization_id", null: false
+    t.bigint "production_id"
     t.string "production_name"
     t.jsonb "revenue_projections", default: {}
     t.jsonb "services", default: []
@@ -499,6 +500,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_27_120000) do
     t.index ["contractor_id"], name: "index_contracts_on_contractor_id"
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
+    t.index ["production_id"], name: "index_contracts_on_production_id"
     t.index ["status"], name: "index_contracts_on_status"
   end
 
@@ -2658,6 +2660,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_27_120000) do
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
+  add_foreign_key "contracts", "productions"
   add_foreign_key "course_offering_instructors", "course_offerings"
   add_foreign_key "course_offering_instructors", "people"
   add_foreign_key "course_offering_payout_line_items", "course_offering_payouts"

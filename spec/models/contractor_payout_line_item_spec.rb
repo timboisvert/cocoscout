@@ -6,7 +6,7 @@ RSpec.describe "Contractor payout line item creation" do
   let(:organization) { create(:organization) }
   let(:contractor) { create(:contractor, organization: organization, venmo_identifier: "danvenmo") }
   let(:contract) { create(:contract, :active, :revenue_share, :with_contractor, organization: organization, contractor: contractor) }
-  let(:production) { create(:production, organization: organization, production_type: "third_party", contract: contract) }
+  let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
   let(:show) { create(:show, production: production, date_and_time: 1.day.ago) }
   let!(:show_financials) { create(:show_financials, show: show, ticket_revenue: 1000, ticket_count: 50, data_confirmed: true) }
   let!(:show_payout) { create(:show_payout, show: show) }

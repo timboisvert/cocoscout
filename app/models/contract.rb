@@ -7,7 +7,9 @@ class Contract < ApplicationRecord
   has_many :contract_documents, dependent: :destroy
   has_many :contract_payments, dependent: :destroy
   has_many :space_rentals, dependent: :destroy
-  has_many :productions, dependent: :nullify
+  # A contract is FOR one production (the real-world show). A production can be the
+  # subject of many contracts over time — see Production#contracts.
+  belongs_to :production, optional: true
   has_many :course_offerings, dependent: :nullify
 
   # Status enum
@@ -69,8 +71,11 @@ class Contract < ApplicationRecord
         completed_at: Time.current
       )
 
-      # Archive associated productions
-      productions.where(archived_at: nil).update_all(archived_at: Time.current)
+      # Archive the production only if no OTHER active contract still uses it
+      # (a production can be shared by several contracts over time).
+      if production && production.contracts.status_active.where.not(id: id).none? && !production.archived?
+        production.update!(archived_at: Time.current)
+      end
     end
 
     true
@@ -81,13 +86,11 @@ class Contract < ApplicationRecord
 
     transaction do
       if delete_events
-        # Delete associated productions and their shows
-        productions.destroy_all
+        # Remove only THIS contract's shows (the production may be shared with
+        # other contracts, so we never destroy the whole production here).
+        contract_shows.destroy_all
       else
-        # Mark associated shows as cancelled
-        productions.each do |production|
-          production.shows.update_all(canceled: true)
-        end
+        contract_shows.update_all(canceled: true)
       end
 
       update!(
@@ -181,6 +184,20 @@ class Contract < ApplicationRecord
     contract_payments.where(status: "pending").where("due_date < ?", Date.current)
   end
 
+  # Shows covered by THIS contract. When the production is shared by several
+  # contracts, each contract only "owns" the shows booked through its own space
+  # rentals. When the production belongs to only this contract, all of its shows
+  # are this contract's (covers any show created without an explicit rental).
+  def contract_shows
+    rental_show_ids = Show.where(space_rental_id: space_rentals.select(:id)).select(:id)
+
+    if production_id.present? && production && production.contracts.count <= 1
+      Show.where(production_id: production_id).or(Show.where(id: rental_show_ids))
+    else
+      Show.where(id: rental_show_ids)
+    end
+  end
+
   # Revenue share financial helpers — calculates from show-level financials
   def contractor_share_percentage
     return nil unless revenue_share?
@@ -191,7 +208,7 @@ class Contract < ApplicationRecord
   def revenue_share_summary
     return nil unless revenue_share?
 
-    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).to_a }
+    all_shows = contract_shows.includes(:show_financials).to_a
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -213,7 +230,7 @@ class Contract < ApplicationRecord
   def flat_fee_revenue_summary
     return nil unless ticket_revenue_minus_fee?
 
-    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).to_a }
+    all_shows = contract_shows.includes(:show_financials).to_a
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -248,7 +265,7 @@ class Contract < ApplicationRecord
     payment = case settlement
     when "per_event", "next_day", "same_day"
       # Match by positional order: sort shows and payments by date, pair 1:1
-      all_shows = productions.flat_map { |p| p.shows.order(:date_and_time).to_a }
+      all_shows = contract_shows.order(:date_and_time).to_a
       show_index = all_shows.index { |s| s.id == show.id }
       show_index ? revenue_payments.to_a[show_index] : nil
     when "weekly"
@@ -276,7 +293,7 @@ class Contract < ApplicationRecord
     end
 
     settlement = draft_payment_config["revenue_settlement"] || "monthly"
-    all_shows = productions.flat_map { |p| p.shows.includes(:show_financials).order(:date_and_time).to_a }
+    all_shows = contract_shows.includes(:show_financials).order(:date_and_time).to_a
 
     case settlement
     when "per_event", "next_day", "same_day"
@@ -487,22 +504,20 @@ class Contract < ApplicationRecord
     if rentals.any?
       prod_data = draft_data["production"] || {}
       # Reuse an existing production rather than creating a duplicate:
-      #   1. one already linked to this contract (e.g. from the course offering wizard), or
+      #   1. one already attached to this contract, or
       #   2. one the user explicitly chose to link when starting the contract.
-      # Only fall back to creating a fresh third_party production when neither exists.
+      # Only create a fresh third_party production when neither exists.
       linked_production_id = draft_data["link_production_id"].presence
-      production = productions.first
+      production = self.production
       production ||= organization.productions.find_by(id: linked_production_id) if linked_production_id
-      if production
-        production.update!(contract: self) unless production.contract_id == id
-      else
-        production = productions.create!(
-          organization: organization,
-          name: production_name.presence || prod_data["name"].presence || contractor_name,
-          production_type: "third_party",
-          contact_email: contractor_email
-        )
-      end
+      production ||= organization.productions.create!(
+        name: production_name.presence || prod_data["name"].presence || contractor_name,
+        production_type: "third_party",
+        contact_email: contractor_email
+      )
+
+      # Attach this contract to that production (a production can carry many contracts).
+      update!(production: production) unless self.production_id == production.id
 
       rentals.each do |info|
         rental = info[:rental]

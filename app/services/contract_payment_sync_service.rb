@@ -9,7 +9,9 @@ class ContractPaymentSyncService
   def initialize(show)
     @show = show
     @production = show.production
-    @contract = @production&.contract
+    # The contract that applies to THIS show is the one that booked its space rental
+    # (a production can carry several contracts). Fall back to the production's latest.
+    @contract = show.space_rental&.contract || @production&.contract
   end
 
   def call
@@ -61,8 +63,7 @@ class ContractPaymentSyncService
                                 .order(:due_date)
 
     # Group shows by period
-    all_shows = @contract.productions
-                         .flat_map { |p| p.shows.includes(:show_financials).to_a }
+    all_shows = @contract.contract_shows.includes(:show_financials).to_a
 
     revenue_payments.each do |payment|
       period_start = payment.due_date.public_send(period_method)

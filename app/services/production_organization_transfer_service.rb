@@ -301,11 +301,11 @@ class ProductionOrganizationTransferService
   end
 
   def analyze_contracts
-    if production.contract_id.present?
+    if production.contracts.any?
       @analysis[:warnings] << {
         category: "Contract",
         message: "Contract linkage will be removed",
-        details: [ production.contract&.name ]
+        details: production.contracts.map(&:name)
       }
       @analysis[:data_loss] << "Contract linkage"
     end
@@ -314,8 +314,8 @@ class ProductionOrganizationTransferService
   # === EXECUTION METHODS ===
 
   def break_contract_connections
-    if production.contract_id.present?
-      production.update!(contract_id: nil)
+    if production.contracts.any?
+      production.contracts.update_all(production_id: nil)
       @changes_made << "Unlinked from contract"
     end
   end

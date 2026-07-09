@@ -15,7 +15,8 @@ RSpec.describe "Course wizard reuses a contract's production", type: :request do
   let(:contract) { create(:contract, organization: org, status: :active) }
   # Simulate the post-activation state: the contract already has its production + show.
   let!(:contract_production) do
-    create(:production, organization: org, name: "Rental Show", production_type: :third_party, contract: contract)
+    create(:production, organization: org, name: "Rental Show", production_type: :third_party)
+      .tap { |p| contract.update!(production: p) }
   end
   let!(:show) { create(:show, production: contract_production, location: location) }
 
@@ -48,11 +49,10 @@ RSpec.describe "Course wizard reuses a contract's production", type: :request do
   it "does NOT create a second production for the contract" do
     expect {
       post manage_course_wizard_create_path
-    }.not_to change { Production.where(contract_id: contract.id).count }
+    }.not_to change { Production.count }
 
     contract.reload
-    expect(contract.productions.count).to eq(1)
-    reused = contract.productions.first
+    reused = contract.production
     expect(reused.id).to eq(contract_production.id)
     expect(reused.production_type).to eq("course")
     expect(reused.course_offerings.count).to eq(1)
