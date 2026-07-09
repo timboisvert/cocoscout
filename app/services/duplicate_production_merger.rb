@@ -38,22 +38,27 @@ class DuplicateProductionMerger
     coalesce(groups)
   end
 
-  # Merge groups that share any production into single groups (union-find-ish),
-  # so a production caught by both rules is handled once.
+  # Merge groups that share any production into single groups via union-find, so a
+  # production caught by several rules ends up in exactly ONE group (otherwise one
+  # group could delete a production a later group still references).
   def self.coalesce(groups)
-    merged = []
-    groups.each do |group|
-      ids = group.map(&:id).to_set
-      hit = merged.find { |m| m[:ids].intersect?(ids) }
-      if hit
-        hit[:ids] |= ids
-        hit[:prods] = (hit[:prods] + group).uniq(&:id)
-      else
-        merged << { ids: ids, prods: group.uniq(&:id) }
-      end
+    parent = {}
+    find = lambda do |x|
+      parent[x] = x unless parent.key?(x)
+      parent[x] = find.call(parent[x]) unless parent[x] == x
+      parent[x]
     end
-    # A second pass in case two existing buckets became connected via a later group.
-    merged.map { |m| m[:prods] }
+    union = ->(a, b) { parent[find.call(a)] = find.call(b) }
+
+    prod_by_id = {}
+    groups.each do |group|
+      group.each { |p| prod_by_id[p.id] = p; find.call(p.id) }
+      group.map(&:id).each_cons(2) { |a, b| union.call(a, b) }
+    end
+
+    buckets = Hash.new { |h, k| h[k] = [] }
+    prod_by_id.each_key { |id| buckets[find.call(id)] << prod_by_id[id] }
+    buckets.values.select { |bucket| bucket.size > 1 }
   end
 
   def initialize(productions)
@@ -61,10 +66,13 @@ class DuplicateProductionMerger
   end
 
   def call(dry_run: true)
-    return Result.new(winner: @productions.first, losers: [], actions: [ "single production — nothing to do" ]) if @productions.size < 2
+    # Re-fetch live rows so a production already removed by an earlier group (or a
+    # previous run) can't crash us — it simply drops out of the group.
+    productions = Production.where(id: @productions.map(&:id)).to_a
+    return Result.new(winner: productions.first, losers: [], actions: [ "fewer than 2 live productions — nothing to do" ]) if productions.size < 2
 
-    winner = @productions.max_by { |p| score(p) }
-    losers = @productions - [ winner ]
+    winner = productions.max_by { |p| score(p) }
+    losers = productions - [ winner ]
     actions = [ "WINNER ##{winner.id} #{winner.name.inspect} (type=#{winner.production_type}, score=#{score(winner).inspect})" ]
 
     ActiveRecord::Base.transaction do
@@ -118,7 +126,10 @@ class DuplicateProductionMerger
     end
 
     actions << "  delete emptied production ##{loser.id}"
-    loser.reload.destroy! unless dry_run
+    # Re-fetch a clean row so its cached `shows`/`course_offerings` (which we just
+    # moved to the winner) aren't re-destroyed by dependent: :destroy. Guarded so an
+    # already-removed row can't crash the run.
+    Production.where(id: loser.id).first&.destroy! unless dry_run
   end
 
   # Fold a duplicate show's casting into the surviving twin, then delete it.

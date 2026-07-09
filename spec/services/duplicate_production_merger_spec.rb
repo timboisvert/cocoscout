@@ -80,6 +80,21 @@ RSpec.describe DuplicateProductionMerger do
     end
   end
 
+  describe ".coalesce" do
+    it "unions overlapping groups so each production appears in exactly one group" do
+      a = create(:production, organization: org)
+      b = create(:production, organization: org)
+      c = create(:production, organization: org)
+      d = create(:production, organization: org)
+
+      # Chain that the old single-pass got wrong: {a,b} and {c,d} both connect to {b,c}.
+      groups = described_class.coalesce([ [ a, b ], [ c, d ], [ b, c ] ])
+
+      expect(groups.size).to eq(1)
+      expect(groups.first.map(&:id).sort).to eq([ a, b, c, d ].map(&:id).sort)
+    end
+  end
+
   describe ".duplicate_groups" do
     it "detects same-contract husks and same-name contract duplicates, ignoring non-contract same-names" do
       contract = create(:contract, organization: org, status: :active)
