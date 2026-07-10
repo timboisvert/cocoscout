@@ -17,8 +17,9 @@
 
     <div class="relative" data-controller="dropdown">
       <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-12">
-        <% if Current.user.person&.headshot&.attached? %>
-          <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% user_headshot_variant = Current.user.person&.safe_headshot_variant(:tiny) %>
+        <% if user_headshot_variant %>
+          <%= image_tag user_headshot_variant, class: "w-8 h-8 rounded-lg object-cover" %>
         <% else %>
           <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
             <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>

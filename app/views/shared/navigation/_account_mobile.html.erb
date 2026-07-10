@@ -75,8 +75,9 @@
       <div class="border-t border-gray-200 bg-gray-50 px-3 py-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 min-w-0 flex-1">
-            <% if Current.user.person&.headshot&.attached? %>
-              <%= image_tag Current.user.person.headshot, class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
+            <% user_headshot_variant = Current.user.person&.safe_headshot_variant(:tiny) %>
+            <% if user_headshot_variant %>
+              <%= image_tag user_headshot_variant, class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
             <% else %>
               <div class="w-7 h-7 rounded bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-xs flex-shrink-0">
                 <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
