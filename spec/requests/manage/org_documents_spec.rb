@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe "Manage::OrgDocuments", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
-  let!(:org) { create(:organization, owner: owner) }
+  let!(:org) { create(:organization, :pro, owner: owner) }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
   let!(:production) { create(:production, organization: org) }
 

@@ -52,6 +52,7 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organization</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productions</th>
@@ -64,6 +65,13 @@
               <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='<%= organization_detail_path(org) %>'">
                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                   <%= org.name %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm">
+                  <% if org.on_paid_plan? %>
+                    <span class="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-semibold text-pink-700">Production Co.<%= org.comped? ? " (comp)" : "" %></span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">Producer</span>
+                  <% end %>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                   <div class="font-medium"><%= org.owner.person&.name || org.owner.email_address %></div>

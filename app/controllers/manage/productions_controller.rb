@@ -5,6 +5,7 @@ module Manage
     before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
     before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
     before_action :ensure_user_is_global_manager, only: %i[new create]
+    before_action :enforce_free_production_limit, only: :create
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
     skip_before_action :show_manage_sidebar, only: %i[new create]
 

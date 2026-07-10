@@ -17,11 +17,10 @@ class Organization < ApplicationRecord
   has_many :organization_staff_members, dependent: :destroy
   has_many :shifts, dependent: :destroy
   has_many :staffing_finalizations, dependent: :destroy
-  has_many :payroll_runs, dependent: :destroy
   has_many :agreement_templates, dependent: :destroy
   has_many :questionnaires, dependent: :destroy
   has_many :org_payouts, dependent: :destroy
-  has_one :payroll_schedule, dependent: :destroy
+  has_many :payout_ledger_entries, dependent: :destroy
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
 
@@ -37,6 +36,27 @@ class Organization < ApplicationRecord
 
   scope :demo, -> { where(is_demo: true) }
   scope :non_demo, -> { where(is_demo: false) }
+
+  # Subscription tiers. "free" is the Producer plan (default, for solo producers
+  # and small teams); "paid" is the Pro plan. See #on_paid_plan?
+  # for the access gate.
+  enum :subscription_tier, { free: "free", paid: "paid" }, default: :free, prefix: :tier
+
+  # Customer-facing plan names.
+  TIER_NAMES = { "free" => "Producer", "paid" => "Pro" }.freeze
+
+  # Modules that require the Pro tier. Everything else (Shows,
+  # Casting, Availability, basic Sign-ups, Messages, Contacts, Documents, and
+  # Courses) is included on the Producer plan.
+  PAID_FEATURES = %i[money staffing auditions casting_table reports].freeze
+
+  # Producer plan may schedule at most this many (non-canceled) shows/events per
+  # calendar month, counting every event type including rehearsals.
+  FREE_MONTHLY_EVENT_LIMIT = 6
+
+  # Producer plan may run at most this many active, schedulable productions
+  # (courses don't count — they're free with a per-transaction fee).
+  FREE_PRODUCTION_LIMIT = 1
 
   validates :name, presence: true
 
@@ -113,6 +133,84 @@ class Organization < ApplicationRecord
   # Check if user can manage this organization
   def manageable_by?(user)
     owned_by?(user) || organization_roles.exists?(user: user, company_role: "manager")
+  end
+
+  # ---- Subscription / entitlements ------------------------------------------
+
+  # Single source of truth for Pro access. True when comped (indefinitely or
+  # within a comp window) or holding an access-granting Stripe subscription.
+  # past_due still grants access so a failed renewal doesn't lock people out
+  # instantly (surfaced as a warning banner instead).
+  def on_paid_plan?
+    return true if comped_indefinitely?
+    return true if comped_until.present? && comped_until.future?
+
+    subscription_status.in?(%w[active trialing past_due])
+  end
+
+  # True when the org's Pro access comes from a comp rather than a paid Stripe subscription.
+  def comped?
+    comped_indefinitely? || (comped_until.present? && comped_until.future?)
+  end
+
+  # Customer-facing plan name reflecting effective access ("Pro"
+  # when on the paid plan by any means, else "Producer").
+  def plan_name
+    on_paid_plan? ? TIER_NAMES["paid"] : TIER_NAMES["free"]
+  end
+
+  # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is
+  # available to this org. Free features and courses are always available.
+  def feature_available?(feature)
+    return true unless feature.to_sym.in?(PAID_FEATURES)
+
+    on_paid_plan?
+  end
+
+  # Non-canceled shows/events for the calendar month containing +date+.
+  def events_in_month(date = Time.current)
+    Show.where(production: productions)
+        .where(date_and_time: date.beginning_of_month..date.end_of_month)
+        .where(canceled: false)
+  end
+
+  # True when a free org has already used its monthly event allowance for the
+  # calendar month containing +date+. Paid orgs are never at the limit.
+  def at_event_limit?(date = Time.current)
+    return false if on_paid_plan?
+
+    events_in_month(date).count >= FREE_MONTHLY_EVENT_LIMIT
+  end
+
+  # === Payout balances (derived from the ledger; never cached) ===
+
+  # What this organization currently owes +payee+ (a Person/Contractor/Group),
+  # in cents. Positive means we owe them; zero/negative means settled.
+  def payout_balance_cents_for(payee)
+    payout_ledger_entries.for_payee(payee).sum(:amount_cents)
+  end
+
+  # Every payee this org has a non-zero balance with, as a Hash keyed by
+  # [payee_type, payee_id] => balance_cents. One grouped query, no N+1.
+  def payout_balances_by_payee
+    payout_ledger_entries
+      .group(:payee_type, :payee_id)
+      .sum(:amount_cents)
+      .reject { |_key, cents| cents.zero? }
+  end
+
+  # Active, schedulable productions that count toward the Producer plan limit
+  # (courses and archived productions are excluded).
+  def productions_counting_toward_limit
+    productions.active.schedulable
+  end
+
+  # True when a Producer-plan org has reached its production allowance. Paid
+  # orgs run unlimited productions.
+  def at_production_limit?
+    return false if on_paid_plan?
+
+    productions_counting_toward_limit.count >= FREE_PRODUCTION_LIMIT
   end
 
   # Organization stats

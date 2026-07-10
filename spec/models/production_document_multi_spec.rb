@@ -5,7 +5,7 @@ require "rails_helper"
 # A single document can apply to several productions, and "Production team"
 # sharing is satisfied by the team of ANY production it applies to.
 RSpec.describe "ProductionDocument multi-production", type: :model do
-  let(:org) { create(:organization) }
+  let(:org) { create(:organization, :pro) }
   let(:home)  { create(:production, organization: org, name: "Starlet") }
   let(:other) { create(:production, organization: org, name: "Rising Stars") }
   let(:user) { create(:user) }

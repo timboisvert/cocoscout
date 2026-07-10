@@ -17,8 +17,9 @@
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Team Members</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
     <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Agreements</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Billing &amp; Plan</button>
     <% if @is_owner %>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     <% end %>
   </nav>
 
@@ -458,7 +459,17 @@
     </div>
   </div>
 
-  <!-- Tab 5: Danger Zone (Owner only) -->
+  <!-- Tab 5: Billing & Plan -->
+  <div data-tabs-target="panel" class="hidden">
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Billing & Plan" %>
+      <div class="p-6 bg-white">
+        <%= render "manage/billing/plan_summary", organization: @organization %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 6: Danger Zone (Owner only) -->
   <% if @is_owner %>
     <div data-tabs-target="panel" class="hidden">
       <!-- Transfer Ownership Section -->

@@ -1,0 +1,48 @@
+<% content_for :title, "Course Revenue & Fees" %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <%= render "manage/reports/header", title: "Course Revenue & Fees", subtitle: "Confirmed course registrations, gross revenue, platform fees, and net." %>
+
+    <div class="grid gap-4 sm:grid-cols-2 mb-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Gross revenue</div>
+        <div class="text-3xl font-bold text-gray-900"><%= number_to_currency(@total_gross / 100.0) %></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Platform fees</div>
+        <div class="text-3xl font-bold text-gray-900"><%= number_to_currency(@total_fees / 100.0) %></div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[36rem] text-left text-sm">
+          <thead class="bg-gray-50 text-gray-500">
+            <tr>
+              <th class="px-5 py-3 font-medium">Course</th>
+              <th class="px-5 py-3 font-medium text-right">Registrations</th>
+              <th class="px-5 py-3 font-medium text-right">Gross</th>
+              <th class="px-5 py-3 font-medium text-right">Fees</th>
+              <th class="px-5 py-3 font-medium text-right">Net</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% @rows.each do |row| %>
+              <tr>
+                <td class="px-5 py-3 font-medium text-gray-900"><%= row[:offering].title %></td>
+                <td class="px-5 py-3 text-right text-gray-600"><%= row[:registrations] %></td>
+                <td class="px-5 py-3 text-right text-gray-600"><%= number_to_currency(row[:gross_cents] / 100.0) %></td>
+                <td class="px-5 py-3 text-right text-gray-600"><%= number_to_currency(row[:fee_cents] / 100.0) %></td>
+                <td class="px-5 py-3 text-right font-semibold text-gray-900"><%= number_to_currency(row[:net_cents] / 100.0) %></td>
+              </tr>
+            <% end %>
+            <% if @rows.empty? %>
+              <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400">No course revenue yet.</td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -617,7 +617,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -1250,6 +1250,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
   end
 
   create_table "organizations", force: :cascade do |t|
+    t.boolean "comped_indefinitely", default: false, null: false
+    t.datetime "comped_until"
     t.datetime "created_at", null: false
     t.string "invite_token"
     t.boolean "is_demo", default: false, null: false
@@ -1257,6 +1259,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
     t.string "preferred_payment_method"
+    t.string "stripe_customer_id"
+    t.string "stripe_subscription_id"
+    t.datetime "subscription_canceled_at"
+    t.datetime "subscription_current_period_end"
+    t.string "subscription_interval"
+    t.string "subscription_status"
+    t.string "subscription_tier", default: "free", null: false
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
     t.string "venmo_identifier"
@@ -1264,6 +1273,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
+    t.index ["stripe_customer_id"], name: "index_organizations_on_stripe_customer_id"
+    t.index ["stripe_subscription_id"], name: "index_organizations_on_stripe_subscription_id"
     t.index ["talent_pool_mode"], name: "index_organizations_on_talent_pool_mode"
   end
 
@@ -1272,6 +1283,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.bigint "person_id", null: false
     t.index ["organization_id", "person_id"], name: "index_organizations_people_on_organization_id_and_person_id"
     t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
+  end
+
+  create_table "payout_ledger_entries", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.string "description"
+    t.string "entry_type", null: false
+    t.datetime "occurred_at", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "payee_id", null: false
+    t.string "payee_type", null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "payee_type", "payee_id"], name: "index_payout_ledger_entries_on_org_and_payee"
+    t.index ["organization_id"], name: "index_payout_ledger_entries_on_organization_id"
+    t.index ["source_type", "source_id", "entry_type"], name: "index_payout_ledger_entries_on_source_and_type", unique: true, where: "(source_id IS NOT NULL)"
   end
 
   create_table "payout_scheme_defaults", force: :cascade do |t|
@@ -1303,72 +1332,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.index ["production_id", "effective_from"], name: "index_payout_schemes_on_production_id_and_effective_from"
     t.index ["production_id", "is_default"], name: "index_payout_schemes_on_production_id_and_is_default"
     t.index ["production_id"], name: "index_payout_schemes_on_production_id"
-  end
-
-  create_table "payroll_line_items", force: :cascade do |t|
-    t.decimal "advance_deductions", precision: 10, scale: 2, default: "0.0", null: false
-    t.jsonb "breakdown", default: {}
-    t.datetime "created_at", null: false
-    t.decimal "gross_amount", precision: 10, scale: 2, default: "0.0", null: false
-    t.boolean "manually_paid", default: false
-    t.datetime "manually_paid_at"
-    t.bigint "manually_paid_by_id"
-    t.decimal "net_amount", precision: 10, scale: 2, default: "0.0", null: false
-    t.datetime "paid_at"
-    t.string "payment_method"
-    t.text "payment_notes"
-    t.text "payout_error"
-    t.string "payout_reference_id"
-    t.string "payout_status"
-    t.bigint "payroll_run_id", null: false
-    t.bigint "person_id", null: false
-    t.integer "show_count", default: 0
-    t.datetime "updated_at", null: false
-    t.index ["manually_paid_by_id"], name: "index_payroll_line_items_on_manually_paid_by_id"
-    t.index ["payroll_run_id", "person_id"], name: "index_payroll_line_items_on_payroll_run_id_and_person_id", unique: true
-    t.index ["payroll_run_id"], name: "index_payroll_line_items_on_payroll_run_id"
-    t.index ["person_id"], name: "index_payroll_line_items_on_person_id"
-  end
-
-  create_table "payroll_runs", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "created_by_id", null: false
-    t.integer "line_item_count", default: 0
-    t.text "notes"
-    t.bigint "organization_id", null: false
-    t.bigint "payroll_schedule_id"
-    t.date "period_end", null: false
-    t.date "period_start", null: false
-    t.datetime "processed_at"
-    t.bigint "processed_by_id"
-    t.bigint "production_id"
-    t.string "status", default: "pending", null: false
-    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
-    t.datetime "updated_at", null: false
-    t.index ["created_by_id"], name: "index_payroll_runs_on_created_by_id"
-    t.index ["organization_id", "period_start", "period_end"], name: "idx_on_organization_id_period_start_period_end_15a4e22ff4"
-    t.index ["organization_id"], name: "index_payroll_runs_on_organization_id"
-    t.index ["payroll_schedule_id"], name: "index_payroll_runs_on_payroll_schedule_id"
-    t.index ["processed_by_id"], name: "index_payroll_runs_on_processed_by_id"
-    t.index ["production_id"], name: "index_payroll_runs_on_production_id"
-    t.index ["status"], name: "index_payroll_runs_on_status"
-  end
-
-  create_table "payroll_schedules", force: :cascade do |t|
-    t.boolean "autopilot", default: false, null: false
-    t.datetime "created_at", null: false
-    t.string "frequency", default: "per_show", null: false
-    t.decimal "min_payout_threshold", precision: 10, scale: 2, default: "0.0"
-    t.bigint "organization_id", null: false
-    t.integer "pay_day"
-    t.integer "payday_offset_days", default: 0
-    t.string "payday_timing", default: "period_end", null: false
-    t.date "period_anchor"
-    t.string "period_type", default: "biweekly", null: false
-    t.bigint "production_id"
-    t.string "semi_monthly_days"
-    t.datetime "updated_at", null: false
-    t.index ["organization_id"], name: "index_payroll_schedules_on_organization_id", unique: true
   end
 
   create_table "people", force: :cascade do |t|
@@ -1574,7 +1537,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.boolean "casting_setup_completed", default: false, null: false
     t.string "casting_source", default: "talent_pool", null: false
     t.string "contact_email"
-    t.bigint "contract_id"
     t.datetime "created_at", null: false
     t.boolean "default_attendance_enabled", default: false, null: false
     t.boolean "default_signup_based_casting", default: false, null: false
@@ -1595,7 +1557,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
-    t.index ["contract_id"], name: "index_productions_on_contract_id"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
     t.index ["production_type"], name: "index_productions_on_production_type"
     t.index ["public_key"], name: "index_productions_on_public_key", unique: true
@@ -2053,7 +2014,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.text "payout_error"
     t.string "payout_reference_id"
     t.string "payout_status"
-    t.bigint "payroll_line_item_id"
     t.decimal "shares", precision: 10, scale: 2
     t.bigint "show_payout_id", null: false
     t.datetime "updated_at", null: false
@@ -2062,7 +2022,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
-    t.index ["payroll_line_item_id"], name: "index_show_payout_line_items_on_payroll_line_item_id"
     t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
@@ -2733,20 +2692,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
   add_foreign_key "organization_staff_members", "people"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
   add_foreign_key "payout_scheme_defaults", "productions"
   add_foreign_key "payout_schemes", "organizations"
   add_foreign_key "payout_schemes", "productions"
-  add_foreign_key "payroll_line_items", "payroll_runs"
-  add_foreign_key "payroll_line_items", "people"
-  add_foreign_key "payroll_line_items", "users", column: "manually_paid_by_id"
-  add_foreign_key "payroll_runs", "organizations"
-  add_foreign_key "payroll_runs", "payroll_schedules"
-  add_foreign_key "payroll_runs", "productions"
-  add_foreign_key "payroll_runs", "users", column: "created_by_id"
-  add_foreign_key "payroll_runs", "users", column: "processed_by_id"
-  add_foreign_key "payroll_schedules", "organizations"
-  add_foreign_key "payroll_schedules", "productions"
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
   add_foreign_key "person_advances", "people"
@@ -2766,7 +2716,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
   add_foreign_key "productions", "agreement_templates"
-  add_foreign_key "productions", "contracts"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
   add_foreign_key "questionnaire_answers", "questionnaire_responses"
@@ -2804,7 +2753,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_120000) do
   add_foreign_key "show_cast_notifications", "shows"
   add_foreign_key "show_financials", "shows"
   add_foreign_key "show_links", "shows"
-  add_foreign_key "show_payout_line_items", "payroll_line_items"
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"

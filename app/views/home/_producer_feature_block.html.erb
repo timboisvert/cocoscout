@@ -1,0 +1,60 @@
+<%# Alternating image/text marketing feature block for the producers page.
+    locals:
+      eyebrow, title, description, bullets (array of strings),
+      carousel_key (string), images (array of { src:, alt: }),
+      reverse (bool), pro (bool, optional) %>
+<div class="w-full px-6 py-16 <%= local_assigns[:pro] ? 'bg-white/60' : 'bg-white' %>">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col <%= reverse ? 'lg:flex-row-reverse' : 'lg:flex-row' %> gap-10 items-center">
+      <div class="lg:w-1/3">
+        <div class="flex items-center gap-2">
+          <span class="text-pink-500 font-bold text-sm uppercase tracking-wide"><%= eyebrow %></span>
+          <% if local_assigns[:pro] %>
+            <span class="inline-flex items-center rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Pro</span>
+          <% end %>
+        </div>
+        <h3 class="text-3xl font-bold text-slate-900 mt-2 mb-4 coustard-regular"><%= title %></h3>
+        <p class="text-lg text-slate-600 mb-6"><%= description %></p>
+        <ul class="text-slate-600 space-y-3">
+          <% Array(bullets).each do |b| %>
+            <li class="flex items-start gap-3">
+              <span class="text-pink-500 mt-1">✓</span>
+              <span><%= b %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <div class="lg:w-2/3">
+        <% if images.size > 1 %>
+          <div data-carousel="<%= carousel_key %>">
+            <div class="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 relative">
+              <div class="carousel-slides relative">
+                <% images.each_with_index do |img, i| %>
+                  <div class="carousel-slide <%= 'absolute inset-0 hidden' unless i.zero? %>" data-slide="<%= i %>">
+                    <%= image_tag img[:src], alt: img[:alt], class: "w-full" %>
+                  </div>
+                <% end %>
+              </div>
+              <button type="button" class="carousel-prev absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center hover:bg-pink-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button type="button" class="carousel-next absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center hover:bg-pink-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+            <div class="flex justify-center gap-2 mt-4">
+              <% images.each_with_index do |_, i| %>
+                <button type="button" class="carousel-dot w-2.5 h-2.5 rounded-full <%= i.zero? ? 'bg-pink-500' : 'bg-slate-300' %>" data-dot="<%= i %>"></button>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <div class="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <%= image_tag images.first[:src], alt: images.first[:alt], class: "w-full" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

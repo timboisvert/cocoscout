@@ -39,7 +39,7 @@ RSpec.describe Organization, type: :model do
   end
 
   describe 'dependent destroy behavior' do
-    let(:company) { create(:organization) }
+    let(:company) { create(:organization, :pro) }
 
     it 'destroys associated productions when destroyed' do
       create(:production, organization: company)
@@ -66,7 +66,7 @@ RSpec.describe Organization, type: :model do
 
   describe 'with multiple productions' do
     it 'can have multiple productions' do
-      company = create(:organization)
+      company = create(:organization, :pro)
       production1 = create(:production, organization: company, name: 'Hamilton')
       production2 = create(:production, organization: company, name: 'Wicked')
 

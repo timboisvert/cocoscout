@@ -97,6 +97,36 @@
               <% end %>
             </div>
 
+            <!-- Plan selection -->
+            <div>
+              <span class="block text-sm font-medium text-slate-900 mb-1.5">Choose a plan</span>
+              <div class="space-y-2">
+                <label class="flex items-start gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
+                  <%= radio_button_tag "plan", "free", true, class: "mt-1 h-4 w-4 accent-pink-500" %>
+                  <span>
+                    <span class="block text-sm font-semibold text-slate-900">Producer — Free</span>
+                    <span class="block text-xs text-slate-500">One production, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> events per month. Casting, availability, sign-ups, messaging, contacts, documents, and courses.</span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
+                  <%= radio_button_tag "plan", "pro", false, class: "mt-1 h-4 w-4 accent-pink-500" %>
+                  <span class="flex-1">
+                    <span class="block text-sm font-semibold text-slate-900">Pro — $20/mo or $200/yr</span>
+                    <span class="block text-xs text-slate-500 mb-2">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
+                    <span class="flex gap-4 text-xs text-slate-700">
+                      <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                        <%= radio_button_tag "interval", "year", true, class: "h-3.5 w-3.5 accent-pink-500" %> Annual ($200/yr)
+                      </label>
+                      <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                        <%= radio_button_tag "interval", "month", false, class: "h-3.5 w-3.5 accent-pink-500" %> Monthly ($20/mo)
+                      </label>
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <p class="mt-1.5 text-xs text-slate-500">You can upgrade or change plans anytime. Choosing Pro takes you to secure checkout after your organization is created.</p>
+            </div>
+
             <!-- Info Box -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div class="flex items-start gap-3">

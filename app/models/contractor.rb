@@ -3,6 +3,7 @@
 class Contractor < ApplicationRecord
   belongs_to :organization
   has_many :contracts, dependent: :nullify
+  has_many :payout_ledger_entries, as: :payee, dependent: :destroy
 
   validates :name, presence: true
   validates :name, uniqueness: { scope: :organization_id, case_sensitive: false }

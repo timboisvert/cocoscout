@@ -10,7 +10,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
   end
 
   describe "access control (owner/manager only)" do
-    let(:org) { create(:organization) }
+    let(:org) { create(:organization, :pro) }
 
     it "redirects a viewer-level user away" do
       viewer = create(:user, password: password)
@@ -33,7 +33,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
 
   describe "POST /manage/staffing/staff — invite a new person" do
     let(:owner) { create(:user, password: password) }
-    let!(:org) { create(:organization, owner: owner) }
+    let!(:org) { create(:organization, :pro, owner: owner) }
     let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
     let!(:house_role) { create(:house_role, organization: org) }
 
@@ -84,7 +84,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
 
   describe "inviting an already-added staffer who has no account" do
     let(:owner) { create(:user, password: password) }
-    let!(:org) { create(:organization, owner: owner) }
+    let!(:org) { create(:organization, :pro, owner: owner) }
     let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
     # Person with an email but no linked user account (added via the people picker).
     let(:accountless) { create(:person, name: "No Account", email: "noaccount@example.com", user: nil) }

@@ -68,7 +68,6 @@ class ProductionOrganizationTransferService
       # 1. Break external connections
       break_contract_connections
       break_casting_table_connections
-      break_payroll_connections
 
       # 2. Handle permissions (must delete before org change)
       clear_production_permissions
@@ -84,7 +83,6 @@ class ProductionOrganizationTransferService
       # 5. Update organization references on related records
       update_message_organization_references
       update_log_organization_references
-      update_payroll_run_references
 
       # 6. Finally, move the production
       production.update!(organization_id: target_org.id)
@@ -254,26 +252,6 @@ class ProductionOrganizationTransferService
   end
 
   def analyze_financial_data
-    # Payroll schedule
-    if production.payroll_schedule.present?
-      @analysis[:warnings] << {
-        category: "Payroll Schedule",
-        message: "Production payroll schedule will be deleted",
-        details: []
-      }
-      @analysis[:data_loss] << "Payroll schedule configuration"
-    end
-
-    # Payroll runs
-    payroll_runs_count = production.payroll_runs.count
-    if payroll_runs_count > 0
-      @analysis[:migrations] << {
-        category: "Payroll Runs",
-        count: payroll_runs_count,
-        action: "Historical payroll runs will be updated to target organization"
-      }
-    end
-
     # Check for org-level payout schemes in use
     org_level_payouts = ShowPayout.joins(:show)
                                   .where(shows: { production_id: production.id })
@@ -323,13 +301,6 @@ class ProductionOrganizationTransferService
   def break_casting_table_connections
     count = CastingTableProduction.where(production: production).delete_all
     @changes_made << "Removed from #{count} casting tables" if count > 0
-  end
-
-  def break_payroll_connections
-    if production.payroll_schedule.present?
-      production.payroll_schedule.destroy
-      @changes_made << "Deleted payroll schedule"
-    end
   end
 
   def clear_production_permissions
@@ -471,10 +442,5 @@ class ProductionOrganizationTransferService
     email_count = EmailLog.where(production_id: production.id).update_all(organization_id: target_org.id)
 
     @changes_made << "Updated #{email_count} email logs" if email_count > 0
-  end
-
-  def update_payroll_run_references
-    count = production.payroll_runs.update_all(organization_id: target_org.id)
-    @changes_made << "Updated #{count} payroll runs" if count > 0
   end
 end

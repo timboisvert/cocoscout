@@ -13,6 +13,9 @@
         has_team_access = %w[manager viewer].include?(Current.user.default_role) ||
           Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? }
 
+        # Pro-tier gating: paid modules show a lock and link to billing for free orgs.
+        on_paid_plan = Current.organization&.on_paid_plan?
+
         # Build links based on access level
         links = []
 
@@ -49,11 +52,7 @@
               path: manage_course_offerings_path,
               active: ["course_offerings", "course_offering_wizard"].include?(controller_name)
             },
-            {
-              label: "Money",
-              path: manage_money_index_path,
-              active: controller_name == "money" || controller_name == "money_financials" || controller_name == "money_payouts" || controller_name == "show_payouts" || controller_name == "show_financials"
-            },
+            # Producer-plan (free) modules come before the locked Pro ones.
             {
               label: "Documents",
               path: manage_org_documents_path,
@@ -63,15 +62,33 @@
               label: "Contacts",
               path: manage_contacts_path,
               active: ["directory", "people", "groups", "questionnaires"].include?(controller_name)
+            },
+            # Locked modules link to their real page; the paid-feature gate renders
+            # the feature-specific upgrade paywall for Producer-plan orgs.
+            {
+              label: "Money",
+              path: manage_money_index_path,
+              locked: !on_paid_plan,
+              feature: :money,
+              active: controller_name == "money" || controller_name == "money_financials" || controller_name == "money_payouts" || controller_name == "show_payouts" || controller_name == "show_financials"
+            },
+            {
+              label: "Reports",
+              path: manage_reports_path,
+              locked: !on_paid_plan,
+              feature: :reports,
+              active: controller_name == "reports"
             }
           ].compact
 
-          # Staffing is limited to org owners/managers. Insert it right after Money.
+          # Staffing is limited to org owners/managers. Insert it right above Money.
           if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
             money_idx = links.index { |l| l[:label] == "Money" }
-            links.insert((money_idx ? money_idx + 1 : links.length), {
+            links.insert((money_idx || links.length), {
               label: "Staffing",
               path: manage_staffing_index_path,
+              locked: !on_paid_plan,
+              feature: :staffing,
               active: controller_path.start_with?("manage/staffing")
             })
           end
@@ -97,7 +114,24 @@
               <% end %>
             </div>
           <% else %>
-            <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active], badge: item[:badge] %>
+            <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active], badge: item[:badge], locked: item[:locked], upgrade_feature: (item[:locked] ? item[:feature] : nil) %>
+          <% end %>
+        <% end %>
+
+        <% unless on_paid_plan %>
+          <% used = Current.organization.events_in_month.count %>
+          <% limit = Organization::FREE_MONTHLY_EVENT_LIMIT %>
+          <% can_manage_billing = Current.user&.superadmin? || Current.organization.manageable_by?(Current.user) %>
+          <% upgrade_link = can_manage_billing ? manage_organization_path(Current.organization, anchor: "tab-4") : pricing_path %>
+          <%= link_to upgrade_link, class: "block mx-3 mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 hover:border-pink-300 transition-colors" do %>
+            <div class="flex items-center justify-between text-xs font-semibold text-gray-700">
+              <span>Producer plan</span>
+              <span class="<%= used >= limit ? 'text-pink-600' : 'text-gray-500' %>"><%= used %>/<%= limit %> events</span>
+            </div>
+            <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+              <div class="h-full rounded-full <%= used >= limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [(used.to_f / limit * 100).round, 100].min %>%"></div>
+            </div>
+            <div class="mt-1.5 text-xs text-pink-600 font-medium">Upgrade to Pro Plan →</div>
           <% end %>
         <% end %>
 

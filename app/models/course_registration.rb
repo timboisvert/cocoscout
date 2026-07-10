@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class CourseRegistration < ApplicationRecord
+  # Canonical CocoScout platform fee on course transactions. Single source of
+  # truth referenced by the Stripe webhook and CoursePayoutCalculator. Applies
+  # to new transactions only — existing rows store their fee in cocoscout_fee_cents.
+  PLATFORM_FEE_PERCENTAGE = 10.0
+
   belongs_to :course_offering
   belongs_to :person
   belongs_to :user, optional: true

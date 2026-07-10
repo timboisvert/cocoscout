@@ -6,6 +6,7 @@ module Manage
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
     before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series confirm_time_change apply_time_change upload_poster]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
+    before_action :enforce_free_event_limit, only: :create
 
     # Org-level shows index (moved from org_shows_controller)
     def org_index

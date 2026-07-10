@@ -34,7 +34,7 @@
     gtag('config', 'G-P198QVDCDH');
   </script>
 
-  <body class="inter-regular text-slate-700 bg-[#f9f9f7]" <% if Current.user.present? %>data-controller="user-notifications" data-user-notifications-user-id-value="<%= Current.user.id %>"<% end %>>
+  <body class="inter-regular text-slate-700 bg-[#f9f9f7]" <% if Current.user.present? %>data-controller="user-notifications upgrade-modal" data-user-notifications-user-id-value="<%= Current.user.id %>"<% end %>>
 
   <div class="flex min-h-screen">
 
@@ -91,5 +91,20 @@
     <%= turbo_frame_tag "contact_modal" %>
     <%# Modals teleported here to escape overflow-hidden containers %>
     <%= yield :modals %>
+
+    <%# Pro upgrade modal — content is fetched on demand when a locked feature is clicked %>
+    <% if Current.user.present? %>
+      <div data-upgrade-modal-target="overlay" class="hidden fixed inset-0 z-[60] items-start justify-center overflow-y-auto p-4 sm:p-6">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" data-action="click->upgrade-modal#close"></div>
+        <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8">
+          <button type="button" data-action="click->upgrade-modal#close" class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500" aria-label="Close">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <div data-upgrade-modal-target="content" class="p-6 sm:p-8">
+            <div class="py-16 text-center text-gray-400 text-sm">Loading…</div>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </body>
 </html>

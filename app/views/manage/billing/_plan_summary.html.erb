@@ -1,0 +1,119 @@
+<%# Subscription page for an organization. locals: organization %>
+<%
+  paid = organization.on_paid_plan?
+  events_used = organization.events_in_month.count
+  events_limit = Organization::FREE_MONTHLY_EVENT_LIMIT
+  prods_used = organization.productions_counting_toward_limit.count
+  prods_limit = Organization::FREE_PRODUCTION_LIMIT
+
+  # What the Producer plan is missing (shown as the upgrade value).
+  pro_unlocks = [
+    "Unlimited productions and shows/events",
+    "Money — financials, payouts, contracts & advances",
+    "Staffing — shifts, onboarding & contractor payments",
+    "In-person & video Auditions",
+    "Casting Tables",
+    "Company-wide Reports"
+  ]
+%>
+
+<% if organization.subscription_status == "past_due" %>
+  <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+    Your last payment didn't go through. Please update your payment method to keep Pro.
+  </div>
+<% end %>
+
+<!-- Current plan -->
+<div class="flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Current plan</div>
+    <div class="flex items-center gap-2.5">
+      <h3 class="text-3xl coustard-regular text-gray-900"><%= paid ? "Pro" : "Producer" %></h3>
+      <% if paid && organization.comped? %>
+        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Complimentary</span>
+      <% end %>
+    </div>
+    <p class="mt-2 text-sm text-gray-600 max-w-md">
+      <% if organization.comped_indefinitely? %>
+        Your organization has complimentary Pro access, indefinitely.
+      <% elsif organization.comped? %>
+        Complimentary Pro access through <%= organization.comped_until.strftime("%B %-d, %Y") %>.
+      <% elsif paid && organization.subscription_current_period_end.present? %>
+        <%= organization.subscription_canceled_at.present? ? "Your access ends" : "Renews" %>
+        <%= organization.subscription_current_period_end.strftime("%B %-d, %Y") %>
+        · <%= organization.subscription_interval == "year" ? "$200/year" : "$20/month" %>
+      <% elsif paid %>
+        Unlimited productions and events, with every module unlocked.
+      <% else %>
+        For solo producers and small teams. Upgrade any time to unlock the full toolkit.
+      <% end %>
+    </p>
+  </div>
+
+  <% if paid && !organization.comped? %>
+    <%= button_to manage_billing_portal_path, class: "inline-block" do %>
+      <%= render "shared/button", text: "Manage subscription", variant: "secondary", size: "medium" %>
+    <% end %>
+  <% end %>
+</div>
+
+<!-- Usage -->
+<div class="mt-6 grid gap-4 sm:grid-cols-2">
+  <div class="rounded-xl bg-gray-50 border border-gray-200 p-4">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-medium text-gray-700">Events this month</span>
+      <span class="text-sm font-semibold text-gray-900">
+        <%= events_used %><%= paid ? "" : " / #{events_limit}" %>
+      </span>
+    </div>
+    <% unless paid %>
+      <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+        <div class="h-full rounded-full <%= events_used >= events_limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [(events_used.to_f / events_limit * 100).round, 100].min %>%"></div>
+      </div>
+    <% end %>
+    <p class="mt-2 text-xs text-gray-500">
+      Shows, rehearsals, and every event type count toward your monthly total.<%= " Unlimited on Pro." if paid %>
+    </p>
+  </div>
+
+  <div class="rounded-xl bg-gray-50 border border-gray-200 p-4">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-medium text-gray-700">Productions</span>
+      <span class="text-sm font-semibold text-gray-900">
+        <%= prods_used %><%= paid ? "" : " / #{prods_limit}" %>
+      </span>
+    </div>
+    <% unless paid %>
+      <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+        <div class="h-full rounded-full <%= prods_used >= prods_limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [(prods_used.to_f / prods_limit * 100).round, 100].min %>%"></div>
+      </div>
+    <% end %>
+    <p class="mt-2 text-xs text-gray-500">
+      Active productions you schedule shows and events under. Courses don't count.<%= " Unlimited on Pro." if paid %>
+    </p>
+  </div>
+</div>
+
+<!-- Upgrade (Producer only) -->
+<% unless paid %>
+  <div class="mt-8 pt-6 border-t border-gray-200">
+    <h3 class="text-lg font-bold text-gray-900">Upgrade to Pro</h3>
+    <p class="mt-1 text-sm text-gray-600">Keep everything you have on Producer, and also unlock:</p>
+
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+      <% pro_unlocks.each do |item| %>
+        <li class="flex items-start gap-2 text-sm text-gray-700">
+          <svg class="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <span><%= item %></span>
+        </li>
+      <% end %>
+    </ul>
+
+    <div class="mt-6">
+      <%= render "manage/billing/pricing_options" %>
+    </div>
+    <p class="mt-4 text-sm text-gray-500">
+      <%= link_to "Compare all plans in detail", pricing_path, class: "text-pink-600 hover:text-pink-700", target: "_blank", rel: "noopener" %>
+    </p>
+  </div>
+<% end %>

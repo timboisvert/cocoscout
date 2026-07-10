@@ -214,6 +214,9 @@ class PayoutCalculator
         calculated_at: Time.current,
         total_payout: total
       )
+
+      # Mirror the calculated line items onto the company-wide payout ledger.
+      payout.sync_earnings_to_ledger!
     end
 
     total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] } + individual_allocation_items.sum { |i| i[:amount] }

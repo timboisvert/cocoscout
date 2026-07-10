@@ -166,6 +166,10 @@ module Manage
     end
 
     def create_show
+      if wizard_event_limit_reached?
+        redirect_to org_billing_tab_path, notice: event_limit_notice and return
+      end
+
       if @wizard_state[:event_frequency] == "recurring"
         create_recurring_events
       else
@@ -179,6 +183,25 @@ module Manage
     end
 
     private
+
+    # Free-plan monthly event cap, read from the wizard's collected state (the
+    # concern's params-based helper doesn't apply here). The Show model
+    # validation is the hard backstop; this gives a friendlier redirect.
+    def wizard_event_limit_reached?
+      return false if Current.organization.nil? || Current.organization.on_paid_plan?
+
+      raw = @wizard_state[:recurrence_start_datetime].presence || @wizard_state[:date_and_time].presence
+      return false if raw.blank?
+
+      date = begin
+        Time.zone.parse(raw.to_s)
+      rescue ArgumentError
+        nil
+      end
+      return false if date.nil?
+
+      Current.organization.at_event_limit?(date)
+    end
 
     # Call time for a created show: `offset` minutes before its start, or nil
     # when the manager didn't enable a separate call time.

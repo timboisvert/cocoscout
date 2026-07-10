@@ -122,6 +122,7 @@ class Show < ApplicationRecord
   validates :date_and_time, presence: true
   validate :poster_content_type
   validate :location_or_online_required
+  validate :within_free_event_limit, on: :create
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
@@ -837,6 +838,24 @@ class Show < ApplicationRecord
     return if location.present? || location_id.present? || is_online?
 
     errors.add(:base, "Please select a location or mark this event as online")
+  end
+
+  # Free orgs are capped at Organization::FREE_MONTHLY_EVENT_LIMIT non-canceled
+  # events per calendar month. This is the guaranteed backstop; controllers
+  # catch the same condition earlier for a friendlier upgrade prompt. Paid orgs
+  # and canceled events are never blocked.
+  def within_free_event_limit
+    return if canceled?
+    return if date_and_time.blank?
+
+    organization = production&.organization
+    return if organization.nil?
+    return unless organization.at_event_limit?(date_and_time)
+
+    errors.add(:base,
+               "This organization has reached its free plan limit of " \
+               "#{Organization::FREE_MONTHLY_EVENT_LIMIT} events for that month. " \
+               "Upgrade to Pro for unlimited events.")
   end
 
   def clear_assignments_on_custom_roles_toggle

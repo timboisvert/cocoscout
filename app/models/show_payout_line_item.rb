@@ -4,13 +4,20 @@ class ShowPayoutLineItem < ApplicationRecord
   belongs_to :show_payout
   belongs_to :payee, polymorphic: true, optional: true  # Person or Group (optional for guests)
   belongs_to :manually_paid_by, class_name: "User", optional: true
-  belongs_to :payroll_line_item, optional: true  # If part of a payroll run
 
   has_one :show, through: :show_payout
   has_one :production, through: :show_payout
 
   has_many :advance_recoveries, dependent: :destroy
   has_many :person_advances, through: :advance_recoveries
+
+  # Ledger entries this line item sourced (its earning, and a payout when paid).
+  # dependent: :destroy so a recalculation (line_items.destroy_all) can't orphan
+  # ledger entries and inflate a balance.
+  has_many :payout_ledger_entries, as: :source, dependent: :destroy
+
+  # Payee types that carry a company-wide payout balance (guests do not).
+  LEDGER_PAYEE_TYPES = %w[Person Contractor Group].freeze
 
   # Payment methods for tracking how payments were made
   PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a].freeze
@@ -51,6 +58,7 @@ class ShowPayoutLineItem < ApplicationRecord
       payment_notes: notes,
       paid_at: Time.current
     )
+    sync_payout_ledger_entry!
   end
 
   def mark_as_offline_paid!(by_user, method:, notes: nil)
@@ -62,6 +70,7 @@ class ShowPayoutLineItem < ApplicationRecord
       payment_notes: notes,
       paid_at: Time.current
     )
+    sync_payout_ledger_entry!
   end
 
   def unmark_as_already_paid!
@@ -81,6 +90,54 @@ class ShowPayoutLineItem < ApplicationRecord
       payout_status: nil,
       payout_error: nil
     )
+    sync_payout_ledger_entry!
+  end
+
+  # Whether this line item participates in the company-wide payout ledger.
+  def ledger_eligible?
+    !is_guest? && payee_id.present? && LEDGER_PAYEE_TYPES.include?(payee_type)
+  end
+
+  # Post/refresh this line item's `earning` entry (net of advances) on the ledger.
+  # Idempotent per line item. No-op for guests and non-ledger payees.
+  def sync_earning_ledger_entry!
+    return unless ledger_eligible?
+
+    org = show_payout&.production&.organization
+    return unless org
+
+    PayoutLedgerEntry.post!(
+      organization: org,
+      payee: payee,
+      entry_type: "earning",
+      amount_cents: (net_amount.to_d * 100).round,
+      source: self,
+      description: "Show payout earning",
+      occurred_at: show&.date_and_time || show_payout&.calculated_at || Time.current
+    )
+  end
+
+  # Post a `payout` entry when this line item is paid (manually/offline), or
+  # remove it when unpaid. Keeps the ledger balance in step with the paid state.
+  def sync_payout_ledger_entry!
+    return unless ledger_eligible?
+
+    org = show_payout&.production&.organization
+    return unless org
+
+    if paid?
+      PayoutLedgerEntry.post!(
+        organization: org,
+        payee: payee,
+        entry_type: "payout",
+        amount_cents: -(net_amount.to_d * 100).round,
+        source: self,
+        description: payment_method_label ? "Paid via #{payment_method_label}" : "Paid",
+        occurred_at: paid_at || Time.current
+      )
+    else
+      PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
+    end
   end
 
   def paid?
@@ -130,14 +187,9 @@ class ShowPayoutLineItem < ApplicationRecord
     amount - (advance_deduction || 0)
   end
 
-  # Check if this line item is part of a payroll run
-  def in_payroll?
-    payroll_line_item_id.present?
-  end
-
-  # Check if this can be paid independently (outside payroll)
+  # Check if this can be paid independently (for one-off payments)
   def can_pay_independently?
-    !paid? && !in_payroll?
+    !paid?
   end
 
   # Mark as paid independently (for one-off payments)

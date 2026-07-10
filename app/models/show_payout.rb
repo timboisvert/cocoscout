@@ -112,6 +112,16 @@ class ShowPayout < ApplicationRecord
     update!(total_payout: line_items.sum(:amount))
   end
 
+  # Post/refresh each performer line item's `earning` entry on the payout ledger.
+  # Idempotent (keyed per line item); called after a payout is calculated and by
+  # the ledger backfill. Paid line items also carry an offsetting `payout` entry.
+  def sync_earnings_to_ledger!
+    line_items.includes(:payee).find_each do |li|
+      li.sync_earning_ledger_entry!
+      li.sync_payout_ledger_entry! if li.paid?
+    end
+  end
+
   # Total advance deductions from all line items
   def total_advance_deductions
     line_items.sum(:advance_deduction)

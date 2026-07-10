@@ -13,7 +13,8 @@
 #
 # No contract = no payout needed (org already has all the money).
 class CoursePayoutCalculator
-  PLATFORM_FEE_PERCENTAGE = 5.0
+  # Canonical rate lives on CourseRegistration; aliased here for readability.
+  PLATFORM_FEE_PERCENTAGE = CourseRegistration::PLATFORM_FEE_PERCENTAGE
 
   attr_reader :course_offering
 

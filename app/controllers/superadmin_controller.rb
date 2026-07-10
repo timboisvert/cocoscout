@@ -7,7 +7,7 @@ class SuperadminController < ApplicationController
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
-                         destroy_organization organization_consolidation organization_consolidation_execute
+                         destroy_organization update_subscription organization_consolidation organization_consolidation_execute
                          production_transfer production_transfer_execute
                          content_templates content_template_new content_template_create content_template_edit content_template_update
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
@@ -212,6 +212,30 @@ class SuperadminController < ApplicationController
 
   def organization_detail
     @organization = Organization.find(params[:id])
+  end
+
+  # Grant/remove complimentary Pro access for an organization. This is a comp
+  # overlay only — it never touches a real Stripe subscription the org may have.
+  def update_subscription
+    organization = Organization.find(params[:id])
+
+    notice =
+      case params[:subscription_action]
+      when "comp_indefinite"
+        organization.update!(comped_indefinitely: true, comped_until: nil)
+        "#{organization.name} now has CocoScout Pro indefinitely."
+      when "comp_months"
+        months = [ params[:months].to_i, 1 ].max
+        organization.update!(comped_indefinitely: false, comped_until: months.months.from_now)
+        "#{organization.name} now has CocoScout Pro for #{months} month(s)."
+      when "remove_comp"
+        organization.update!(comped_indefinitely: false, comped_until: nil)
+        "Complimentary Pro access removed for #{organization.name}."
+      else
+        "No change made."
+      end
+
+    redirect_to organization_detail_path(organization), notice: notice
   end
 
   def destroy_organization

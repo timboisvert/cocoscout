@@ -116,13 +116,26 @@ module Manage
     def schedule
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
       @step = 3
-      @contracts = Current.organization.contracts.status_active.order(:contractor_name)
+      # Linking a course to a contract is a Pro (paid) capability.
+      @contracts = if Current.organization.on_paid_plan?
+        Current.organization.contracts.status_active.order(:contractor_name)
+      else
+        Current.organization.contracts.none
+      end
       @locations = Current.organization.locations.order(:name)
     end
 
     def save_schedule
-      @wizard_state[:contract_id] = params[:contract_id].presence&.to_i
-      @wizard_state[:schedule_mode] = params[:schedule_mode].presence || "independent"
+      # Contract scheduling requires the paid plan; Producer-plan orgs always
+      # schedule independently regardless of what was posted.
+      contract_scheduling_allowed = Current.organization.on_paid_plan?
+
+      @wizard_state[:contract_id] = params[:contract_id].presence&.to_i if contract_scheduling_allowed
+      @wizard_state[:schedule_mode] = if contract_scheduling_allowed
+        params[:schedule_mode].presence || "independent"
+      else
+        "independent"
+      end
       @wizard_state[:location_id] = params[:location_id].presence&.to_i
       @wizard_state[:is_online] = params[:is_online] == "1"
 
@@ -324,8 +337,7 @@ module Manage
       if @wizard_state[:contract_id].present?
         @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
         if @contract && @wizard_state[:selected_show_ids].present?
-          @selected_shows = Show.joins(:production)
-            .where(productions: { contract_id: @contract.id })
+          @selected_shows = @contract.contract_shows
             .where(id: @wizard_state[:selected_show_ids])
             .order(:date_and_time)
         end
@@ -536,8 +548,7 @@ module Manage
       if @wizard_state[:contract_id].present?
         @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
         if @contract && @wizard_state[:selected_show_ids].present?
-          @selected_shows = Show.joins(:production)
-            .where(productions: { contract_id: @contract.id })
+          @selected_shows = @contract.contract_shows
             .where(id: @wizard_state[:selected_show_ids])
             .order(:date_and_time)
         end
@@ -556,9 +567,7 @@ module Manage
     def create_course_sessions!(contract)
       if @wizard_state[:schedule_mode] == "contract" && contract.present? && @wizard_state[:selected_show_ids].present?
         # Move selected shows from the contract's production to the course production
-        shows = Show.joins(:production)
-          .where(productions: { contract_id: contract.id })
-          .where(id: @wizard_state[:selected_show_ids])
+        shows = contract.contract_shows.where(id: @wizard_state[:selected_show_ids])
         shows.each do |show|
           show.update!(production: @production, event_type: "class")
         end

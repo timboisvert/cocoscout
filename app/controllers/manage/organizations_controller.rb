@@ -60,6 +60,13 @@ module Manage
         session[:current_organization_id] ||= {}
         session[:current_organization_id][Current.user&.id.to_s] = @organization.id
 
+        # If they chose Pro at signup, take them straight into checkout. The org
+        # stays on the free tier until Stripe confirms the subscription.
+        if params[:plan] == "pro"
+          interval = %w[month year].include?(params[:interval]) ? params[:interval] : "year"
+          redirect_to manage_billing_path(upgrade: interval) and return
+        end
+
         redirect_to_intent_or(manage_path, notice: "#{@organization.name} was successfully created")
       else
         render :new, status: :unprocessable_entity

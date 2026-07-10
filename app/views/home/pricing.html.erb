@@ -1,0 +1,142 @@
+<% content_for :title, "Pricing — CocoScout" %>
+
+<%
+  yes = ->(note = nil) {
+    %(<span class="inline-flex items-center gap-1.5 text-slate-800"><svg class="w-5 h-5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>#{note ? %(<span class="text-sm text-slate-500">#{note}</span>) : ""}</span>).html_safe
+  }
+  no = ->() { %(<span class="text-slate-300 text-sm">&mdash;</span>).html_safe }
+  txt = ->(s) { %(<span class="text-sm font-medium text-slate-800">#{s}</span>).html_safe }
+
+  # Each group: name, and rows of [feature, producer_cell, pro_cell]
+  groups = [
+    ["Productions & events", [
+      ["Productions", txt.call("1"), txt.call("Unlimited")],
+      ["Shows &amp; events per month", txt.call("Up to 6"), txt.call("Unlimited")],
+      ["Recurring events &amp; all event types", yes.call, yes.call],
+      ["Performers", txt.call("Unlimited"), txt.call("Unlimited")],
+      ["Contacts directory &amp; groups", yes.call, yes.call],
+      ["Messaging", yes.call, yes.call],
+      ["Documents &amp; handbooks", yes.call, yes.call]
+    ]],
+    ["Casting", [
+      ["Roles", yes.call, yes.call],
+      ["Talent Pools", yes.call, yes.call],
+      ["Cast Availability", yes.call, yes.call],
+      ["Show / event casting assignments", yes.call, yes.call],
+      ["Casting Tables", no.call, yes.call]
+    ]],
+    ["Sign-ups &amp; auditions", [
+      ["Event sign-up forms", yes.call, yes.call],
+      ["In-person auditions", no.call, yes.call],
+      ["Video audition submissions", no.call, yes.call]
+    ]],
+    ["Courses", [
+      ["Sell classes &amp; workshops", yes.call, yes.call],
+      ["Platform fee", txt.call("10% per transaction"), txt.call("10% per transaction")]
+    ]],
+    ["Money &amp; payments", [
+      ["Financials, payouts &amp; contracts", no.call, yes.call],
+      ["Advances", no.call, yes.call],
+      ["Pay performers", no.call, yes.call]
+    ]],
+    ["Staffing", [
+      ["Staff availability", no.call, yes.call],
+      ["Work shifts", no.call, yes.call],
+      ["Employee onboarding", no.call, yes.call],
+      ["Org charts", no.call, yes.call],
+      ["Manage US contractors", no.call, yes.call("$6/month per contractor")],
+      ["Pay US contractors", no.call, yes.call("2 free payments/month per contractor")],
+      ["Tax forms (W-9, 1099-NEC, 1096)", no.call, yes.call]
+    ]],
+    ["Reports", [
+      ["Revenue, payouts &amp; course reports", no.call, yes.call],
+      ["Cast participation &amp; events reports", no.call, yes.call]
+    ]]
+  ]
+%>
+
+<div class="bg-white">
+  <%= render "shared/marketing/header" %>
+
+  <!-- Hero -->
+  <section class="px-4 sm:px-6 lg:px-8 pt-16 pb-10 text-center max-w-4xl mx-auto">
+    <h1 class="coustard-regular text-4xl sm:text-5xl text-slate-900 mb-4">Pricing that grows with you</h1>
+    <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+      Solo producers and small teams start free on <span class="font-semibold">Producer</span>. When you're running multiple productions, upgrade to <span class="font-semibold">Pro</span> for the full toolkit.
+    </p>
+  </section>
+
+  <!-- Plan cards -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-12">
+    <div class="max-w-4xl mx-auto grid gap-6 md:grid-cols-2">
+      <!-- Producer -->
+      <div class="border border-slate-200 rounded-2xl p-8 flex flex-col">
+        <h2 class="text-xl font-bold text-slate-900">Producer</h2>
+        <p class="mt-2 text-4xl font-bold text-slate-900">$0</p>
+        <p class="mt-1 text-sm text-slate-500">For solo producers and small production teams.</p>
+        <ul class="mt-6 space-y-2 text-sm text-slate-700 flex-1">
+          <li>1 production</li>
+          <li>Up to 6 shows/events per month</li>
+          <li>Unlimited performers</li>
+          <li>Casting, availability, sign-ups &amp; messaging</li>
+          <li>Documents &amp; courses (fee per transaction)</li>
+        </ul>
+        <%= link_to "Start free", signup_path, class: "mt-6 inline-flex justify-center items-center px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 font-medium hover:border-pink-400 hover:text-pink-600 transition" %>
+      </div>
+
+      <!-- Pro -->
+      <div class="border-2 border-pink-500 rounded-2xl p-8 flex flex-col relative">
+        <span class="absolute -top-3 left-8 inline-flex items-center rounded-full bg-pink-500 px-3 py-1 text-xs font-semibold text-white">Recommended</span>
+        <h2 class="text-xl font-bold text-slate-900">Pro</h2>
+        <p class="mt-2 text-4xl font-bold text-slate-900">$20<span class="text-base font-medium text-slate-500">/mo</span></p>
+        <p class="mt-1 text-sm text-slate-500">or $200/year — two months free.</p>
+        <ul class="mt-6 space-y-2 text-sm text-slate-700 flex-1">
+          <li><span class="font-semibold">Unlimited</span> productions and events</li>
+          <li>Money: financials, payouts, contracts &amp; advances</li>
+          <li>Staffing, Auditions &amp; Casting Tables</li>
+          <li>Reports across your whole company</li>
+          <li>Pay performers &amp; manage contractors ($6/mo each)</li>
+        </ul>
+        <%= link_to "Go Pro", signup_path, class: "mt-6 inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-pink-500 text-white font-medium hover:bg-pink-600 transition" %>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison — each section in its own box -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-20">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="coustard-regular text-2xl text-slate-900 text-center mb-6">Compare plans</h2>
+
+      <div class="space-y-4">
+        <% groups.each do |group_name, rows| %>
+          <div class="border border-slate-200 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[36rem] text-left">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200">
+                    <th class="px-5 py-3 text-sm font-bold text-slate-900"><%= group_name.html_safe %></th>
+                    <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 w-48">Producer</th>
+                    <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 w-56">Pro</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <% rows.each do |label, producer_cell, pro_cell| %>
+                    <tr>
+                      <td class="px-5 py-3 text-sm text-slate-800"><%= label.html_safe %></td>
+                      <td class="px-5 py-3"><%= producer_cell %></td>
+                      <td class="px-5 py-3"><%= pro_cell %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <p class="text-center text-sm text-slate-500 mt-8">
+        Prices in USD. Cancel anytime. <%= link_to "Start free", signup_path, class: "text-pink-600 hover:text-pink-700 font-medium" %> and upgrade whenever you're ready.
+      </p>
+    </div>
+  </section>
+</div>

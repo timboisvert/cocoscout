@@ -12,4 +12,7 @@ class HomeController < ApplicationController
   def new_home; end
   def new_performers; end
   def new_producers; end
+
+  # Free vs. Pro plan comparison
+  def pricing; end
 end

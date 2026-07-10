@@ -3,9 +3,10 @@
   <p class="text-sm text-gray-600 mb-6">When does this course meet? Add your session dates now, or you can adjust them later.</p>
 
   <%= form_with url: manage_course_wizard_schedule_path, method: :post, local: true do |form| %>
-    <%# Contract toggle - only visible to users with organizational roles %>
+    <%# Contract toggle - only visible to org managers on the Pro plan
+        (contracts are a paid feature). %>
     <% has_org_role = Current.user.organization_roles.where(organization: Current.organization).exists? %>
-    <% if has_org_role && @contracts.any? %>
+    <% if has_org_role && Current.organization.on_paid_plan? && @contracts.any? %>
       <div class="mb-6">
         <div class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg">
           <label class="relative inline-flex items-center cursor-pointer mt-0.5">
@@ -35,7 +36,7 @@
           <option value="">Choose a contract...</option>
           <% @contracts.each do |c| %>
             <%
-              contract_shows = Show.joins(:production).where(productions: { contract_id: c.id }).order(:date_and_time)
+              contract_shows = c.contract_shows.order(:date_and_time)
               event_type_configs = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"]
             %>
             <option value="<%= c.id %>"

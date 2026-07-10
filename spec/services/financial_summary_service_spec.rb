@@ -3,7 +3,7 @@
 require "rails_helper"
 
 RSpec.describe FinancialSummaryService do
-  let(:organization) { create(:organization) }
+  let(:organization) { create(:organization, :pro) }
   let(:production) { create(:production, organization: organization) }
 
   describe "PERIODS" do

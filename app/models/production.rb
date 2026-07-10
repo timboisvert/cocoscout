@@ -30,9 +30,7 @@ class Production < ApplicationRecord
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy
 
-  # Payroll and advances
-  has_one :payroll_schedule, dependent: :destroy
-  has_many :payroll_runs, dependent: :destroy
+  # Advances
   has_many :person_advances, dependent: :destroy
 
   # Agreements
@@ -96,7 +94,7 @@ class Production < ApplicationRecord
   # castable     – productions we run casting/auditions/sign-ups/talent pools for (in-house only)
   # schedulable  – productions that have shows/events we manage (in-house + third-party, never courses)
   # non_contract – productions we own outright, not governed by a contract (in-house + course);
-  #                e.g. payroll/advances we run ourselves, or shows that can be transferred between productions
+  #                e.g. advances we run ourselves, or shows that can be transferred between productions
   scope :castable, -> { where(production_type: "in_house") }
   scope :schedulable, -> { where.not(production_type: "course") }
   scope :non_contract, -> { where.not(production_type: "third_party") }
@@ -109,6 +107,7 @@ class Production < ApplicationRecord
   validate :public_key_not_reserved
   validate :public_key_change_frequency
   validate :logo_content_type
+  validate :within_free_production_limit, on: :create
 
   # Callbacks
   before_validation :generate_public_key, on: :create
@@ -590,5 +589,19 @@ class Production < ApplicationRecord
     return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png image/gif])
 
     errors.add(:logo, "Logo must be a JPEG, JPG, PNG, or GIF file")
+  end
+
+  # Producer plan is limited to Organization::FREE_PRODUCTION_LIMIT active,
+  # schedulable productions. Courses and archived productions don't count.
+  # Controllers catch this earlier for a friendlier upgrade prompt.
+  def within_free_production_limit
+    return if type_course?
+    return if archived?
+    return if organization.nil?
+    return unless organization.at_production_limit?
+
+    errors.add(:base,
+               "The Producer plan includes one production. " \
+               "Upgrade to Pro to run unlimited productions.")
   end
 end

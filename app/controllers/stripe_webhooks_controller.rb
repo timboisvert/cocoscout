@@ -24,12 +24,47 @@ class StripeWebhooksController < ApplicationController
       handle_checkout_completed(event.data.object)
     when "charge.refunded"
       handle_charge_refunded(event.data.object)
+    when "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"
+      handle_subscription_event(event.data.object)
+    when "invoice.paid", "invoice.payment_failed"
+      handle_invoice_event(event.data.object)
     end
 
     head :ok
   end
 
   private
+
+  # Sync an org's subscription state from a Stripe subscription object.
+  # SubscriptionSyncService maps non-access statuses (canceled, etc.) back to the
+  # free tier, so the deleted event is handled by the same path.
+  def handle_subscription_event(subscription)
+    organization = organization_for_subscription(subscription)
+    return unless organization
+
+    SubscriptionSyncService.new(organization, subscription).call
+  end
+
+  def handle_invoice_event(invoice)
+    subscription_id = invoice["subscription"]
+    return if subscription_id.blank?
+
+    organization = Organization.find_by(stripe_subscription_id: subscription_id) ||
+                   Organization.find_by(stripe_customer_id: invoice["customer"])
+    return unless organization
+
+    SubscriptionSyncService.from_id(organization, subscription_id)
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Failed to sync subscription from invoice: #{e.message}"
+  end
+
+  def organization_for_subscription(subscription)
+    metadata_org_id = subscription.respond_to?(:metadata) ? subscription.metadata["organization_id"] : nil
+
+    Organization.find_by(id: metadata_org_id) ||
+      Organization.find_by(stripe_subscription_id: subscription.id) ||
+      Organization.find_by(stripe_customer_id: subscription.customer)
+  end
 
   def handle_checkout_completed(session)
     metadata = session.metadata
@@ -93,7 +128,7 @@ class StripeWebhooksController < ApplicationController
       # We still charge 0 platform fee — Stripe fees are deducted separately by Stripe
       return 0
     end
-    (amount_cents * 0.05).round
+    (amount_cents * CourseRegistration::PLATFORM_FEE_PERCENTAGE / 100.0).round
   end
 
   def record_stripe_fee(registration, payment_intent_id)

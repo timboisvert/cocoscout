@@ -53,10 +53,10 @@ class Person < ApplicationRecord
   has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
   has_many :given_shoutouts, class_name: "Shoutout", foreign_key: :author_id, dependent: :destroy
 
-  # Advances and payroll
+  # Advances
   has_many :person_advances, dependent: :destroy
   has_many :show_advance_waivers, dependent: :destroy
-  has_many :payroll_line_items, dependent: :destroy
+  has_many :payout_ledger_entries, as: :payee, dependent: :destroy
 
   # Agreements
   has_many :agreement_signatures, dependent: :destroy

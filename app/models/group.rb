@@ -6,6 +6,7 @@ class Group < ApplicationRecord
 
   has_many :group_memberships, dependent: :destroy
   has_many :group_invitations, dependent: :destroy
+  has_many :payout_ledger_entries, as: :payee, dependent: :destroy
   has_many :members, through: :group_memberships, source: :person
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true

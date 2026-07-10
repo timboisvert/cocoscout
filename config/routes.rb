@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   # Landing pages
   get "/for-performers", to: "home#new_performers", as: "performers"
   get "/for-producers", to: "home#new_producers", as: "producers"
+  get "/pricing", to: "home#pricing", as: "pricing"
 
   # Redirects from old /new paths
   get "/new", to: redirect("/")
@@ -219,6 +220,7 @@ Rails.application.routes.draw do
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
     delete "/organizations/:id", to: "superadmin#destroy_organization", as: "destroy_organization"
+    patch "/organizations/:id/subscription", to: "superadmin#update_subscription", as: "organization_subscription"
     get  "/organizations/:id/consolidate", to: "superadmin#organization_consolidation", as: "organization_consolidation"
     post "/organizations/:id/consolidate", to: "superadmin#organization_consolidation_execute", as: "organization_consolidation_execute"
     get  "/productions/:id/transfer", to: "superadmin#production_transfer", as: "production_transfer"
@@ -957,6 +959,24 @@ Rails.application.routes.draw do
       end
     end
 
+    # Reports (Pro tier)
+    scope path: "reports" do
+      get "/",                     to: "reports#index",                 as: "reports"
+      get "/revenue-by-production", to: "reports#revenue_by_production", as: "report_revenue_by_production"
+      get "/revenue-over-time",     to: "reports#revenue_over_time",     as: "report_revenue_over_time"
+      get "/events-summary",        to: "reports#events_summary",        as: "report_events_summary"
+      get "/cast-participation",    to: "reports#cast_participation",    as: "report_cast_participation"
+      get "/payouts-summary",       to: "reports#payouts_summary",       as: "report_payouts_summary"
+      get "/course-revenue",        to: "reports#course_revenue",        as: "report_course_revenue"
+    end
+
+    # Subscription billing (Producer / Pro)
+    get  "/billing",          to: "billing#show",     as: "billing"
+    get  "/billing/upgrade/:feature", to: "billing#upgrade", as: "billing_upgrade"
+    post "/billing/checkout", to: "billing#checkout", as: "billing_checkout"
+    get  "/billing/success",  to: "billing#success",  as: "billing_success"
+    post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
+
     # Agreement templates (org-level) - nested under organization for better URL structure
     scope path: "organization" do
       resources :agreement_templates, except: [ :show ] do
@@ -1189,21 +1209,6 @@ Rails.application.routes.draw do
     # Advance waivers
     post "money/advances/:production_id/waiver", to: "advances#create_waiver", as: "create_money_advance_waiver"
     delete "money/advances/:production_id/waiver/:id", to: "advances#destroy_waiver", as: "destroy_money_advance_waiver"
-
-    # Payroll runs - organization-level (spans all productions)
-    get "money/payroll", to: "payroll#index", as: "money_payroll"
-    get "money/payroll/settings", to: "payroll#settings", as: "money_payroll_settings"
-    patch "money/payroll/settings", to: "payroll#update_settings"
-    get "money/payroll/new", to: "payroll#new_run", as: "new_money_payroll_run"
-    post "money/payroll", to: "payroll#create_run", as: "create_money_payroll_run"
-    post "money/payroll/pay_now", to: "payroll#pay_now", as: "money_payroll_pay_now"
-    get "money/payroll/runs/:id", to: "payroll#show_run", as: "money_payroll_run"
-    post "money/payroll/runs/:id/start", to: "payroll#start_run", as: "start_money_payroll_run"
-    post "money/payroll/runs/:id/cancel", to: "payroll#cancel_run", as: "cancel_money_payroll_run"
-    post "money/payroll/runs/:id/complete", to: "payroll#complete_run", as: "complete_money_payroll_run"
-    # Payroll line items
-    post "money/payroll/runs/:run_id/line_items/:id/pay", to: "payroll#mark_line_item_paid", as: "pay_money_payroll_line_item"
-    post "money/payroll/runs/:run_id/line_items/:id/unpay", to: "payroll#unmark_line_item_paid", as: "unpay_money_payroll_line_item"
 
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"

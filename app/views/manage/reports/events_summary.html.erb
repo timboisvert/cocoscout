@@ -1,0 +1,48 @@
+<% content_for :title, "Events Summary" %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <%= render "manage/reports/header", title: "Events Summary", subtitle: "Every show and event across your productions, by type and status." %>
+
+    <div class="grid gap-4 sm:grid-cols-4 mb-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Total</div>
+        <div class="text-3xl font-bold text-gray-900"><%= @total %></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Upcoming</div>
+        <div class="text-3xl font-bold text-blue-600"><%= @upcoming %></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Past</div>
+        <div class="text-3xl font-bold text-gray-900"><%= @past %></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="text-sm text-gray-500">Canceled</div>
+        <div class="text-3xl font-bold text-gray-400"><%= @canceled %></div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-50 text-gray-500">
+          <tr>
+            <th class="px-5 py-3 font-medium">Event type</th>
+            <th class="px-5 py-3 font-medium text-right">Count</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @by_type.each do |type, count| %>
+            <tr>
+              <td class="px-5 py-3 text-gray-900"><%= type.to_s.humanize %></td>
+              <td class="px-5 py-3 text-right font-semibold text-gray-900"><%= count %></td>
+            </tr>
+          <% end %>
+          <% if @by_type.empty? %>
+            <tr><td colspan="2" class="px-5 py-8 text-center text-gray-400">No events scheduled yet.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

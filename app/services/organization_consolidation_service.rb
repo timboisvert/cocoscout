@@ -52,7 +52,6 @@ class OrganizationConsolidationService
     analyze_directory
     analyze_team_members
     analyze_messages_and_logs
-    analyze_payroll
 
     @analysis
   end
@@ -83,16 +82,12 @@ class OrganizationConsolidationService
       # 9. Move team members
       migrate_team_members
 
-      # 10. Move payroll schedule
-      migrate_payroll_schedule
-
-      # 11. Move all productions (the big one — this also moves talent pools, shows, etc.)
+      # 10. Move all productions (the big one — this also moves talent pools, shows, etc.)
       migrate_productions
 
-      # 12. Update organization references on messages, email logs, payroll runs
+      # 11. Update organization references on messages and email logs
       update_message_references
       update_email_log_references
-      update_payroll_run_references
 
       # 13. Move team invitations
       migrate_team_invitations
@@ -366,34 +361,6 @@ class OrganizationConsolidationService
     end
   end
 
-  def analyze_payroll
-    if source_org.payroll_schedule.present?
-      if target_org.payroll_schedule.present?
-        @analysis[:warnings] << {
-          category: "Payroll Schedule",
-          message: "Both orgs have a payroll schedule — source schedule will be deleted",
-          details: []
-        }
-        @analysis[:data_loss] << "Source org payroll schedule (target org already has one)"
-      else
-        @analysis[:migrations] << {
-          category: "Payroll Schedule",
-          count: 1,
-          action: "Will be moved to target organization"
-        }
-      end
-    end
-
-    payroll_run_count = source_org.payroll_runs.count
-    if payroll_run_count > 0
-      @analysis[:migrations] << {
-        category: "Payroll Runs",
-        count: payroll_run_count,
-        action: "Organization reference will be updated to target"
-      }
-    end
-  end
-
   # === EXECUTION METHODS ===
 
   def apply_location_mappings
@@ -564,19 +531,6 @@ class OrganizationConsolidationService
     @changes_made << "Migrated team members"
   end
 
-  def migrate_payroll_schedule
-    source_schedule = source_org.payroll_schedule
-    return unless source_schedule
-
-    if target_org.payroll_schedule.present?
-      source_schedule.destroy
-      @changes_made << "Deleted source payroll schedule (target already has one)"
-    else
-      source_schedule.update_columns(organization_id: target_org.id)
-      @changes_made << "Moved payroll schedule to target"
-    end
-  end
-
   def migrate_productions
     # Production-level payout schemes also have organization_id — update them
     prod_scheme_count = PayoutScheme.where(organization_id: source_org.id).production_level
@@ -598,11 +552,6 @@ class OrganizationConsolidationService
   def update_email_log_references
     count = EmailLog.where(organization_id: source_org.id).update_all(organization_id: target_org.id)
     @changes_made << "Updated #{count} email log references" if count > 0
-  end
-
-  def update_payroll_run_references
-    count = PayrollRun.where(organization_id: source_org.id).update_all(organization_id: target_org.id)
-    @changes_made << "Updated #{count} payroll run references" if count > 0
   end
 
   def migrate_team_invitations

@@ -5,6 +5,7 @@ module Manage
     include Authentication
     include Pagy::Method
     include SentryContext
+    include Manage::PaidFeatureGate
 
     layout "application"
 
@@ -19,6 +20,8 @@ module Manage
     }, except: %i[index welcome dismiss_production_welcome]
     before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? },
                   except: %i[index welcome dismiss_production_welcome]
+    # Pro-tier gate — runs after the org is loaded and access is confirmed.
+    before_action :require_paid_feature!, if: -> { Current.user.present? }
 
     before_action :track_last_dashboard
     before_action :show_manage_sidebar

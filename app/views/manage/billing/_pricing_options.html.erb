@@ -1,0 +1,28 @@
+<%# Professional Monthly/Annual pricing cards + upgrade CTAs. Reused by the
+    upgrade modal, the full-page paywall, and the subscription page. %>
+<div class="grid gap-4 sm:grid-cols-2">
+  <div class="rounded-xl border border-gray-200 p-5 flex flex-col">
+    <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">Monthly</div>
+    <div class="mt-1.5 flex items-baseline gap-1">
+      <span class="text-3xl font-bold text-gray-900">$20</span>
+      <span class="text-sm text-gray-500">/month</span>
+    </div>
+    <p class="mt-1 text-xs text-gray-500 flex-1">Billed monthly. Cancel anytime.</p>
+    <%= button_to manage_billing_checkout_path(interval: "month"), class: "mt-4 block" do %>
+      <%= render "shared/button", text: "Choose monthly", variant: "secondary", size: "medium" %>
+    <% end %>
+  </div>
+
+  <div class="rounded-xl border-2 border-pink-500 p-5 flex flex-col relative">
+    <span class="absolute -top-2.5 left-5 inline-flex items-center rounded-full bg-pink-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">Best value</span>
+    <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">Annual</div>
+    <div class="mt-1.5 flex items-baseline gap-1">
+      <span class="text-3xl font-bold text-gray-900">$200</span>
+      <span class="text-sm text-gray-500">/year</span>
+    </div>
+    <p class="mt-1 text-xs text-gray-500 flex-1">Two months free vs. monthly.</p>
+    <%= button_to manage_billing_checkout_path(interval: "year"), class: "mt-4 block" do %>
+      <%= render "shared/button", text: "Choose annual", variant: "primary", size: "medium" %>
+    <% end %>
+  </div>
+</div>
