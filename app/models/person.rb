@@ -446,6 +446,13 @@ class Person < ApplicationRecord
     venmo_identifier.present? && venmo_identifier_type.present?
   end
 
+  # Nudge legacy Venmo/Zelle users to connect a bank for automatic payouts.
+  # Auto-clears once they've connected (needs_bank_connection? comes from
+  # StripeConnectable).
+  def needs_bank_migration_prompt?
+    (venmo_configured? || zelle_configured?) && needs_bank_connection?
+  end
+
   def venmo_ready_for_payouts?
     venmo_configured?
   end

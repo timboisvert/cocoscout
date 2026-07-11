@@ -3,6 +3,8 @@
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
+  <%= render "my/payments/bank_connect_banner" %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["My Payments", my_payments_path]
