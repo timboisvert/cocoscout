@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_174119) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_11_223416) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1330,9 +1330,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_174119) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
+    t.integer "extra_payment_fee_cents", default: 0, null: false
     t.string "funding_payment_intent_id"
     t.string "funding_status"
+    t.string "kind", default: "balance", null: false
     t.bigint "organization_id", null: false
+    t.date "payday"
     t.string "status", default: "draft", null: false
     t.bigint "total_cents", default: 0, null: false
     t.string "trigger", default: "manual", null: false

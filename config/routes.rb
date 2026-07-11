@@ -1152,6 +1152,8 @@ Rails.application.routes.draw do
     # staff list (people-first hub); the weekly schedule lives under /scheduling.
     get  "staffing",                              to: "staffing#index",                  as: "staffing_index"
     get  "staffing/scheduling",                   to: "staffing#scheduling",             as: "staffing_scheduling"
+    get  "staffing/pay",                          to: "staffing/pay#new",                as: "staffing_pay"
+    post "staffing/pay",                          to: "staffing/pay#create",             as: "create_staffing_pay"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
