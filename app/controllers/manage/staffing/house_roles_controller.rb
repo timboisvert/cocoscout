@@ -10,6 +10,12 @@ module Manage
         @house_roles = Current.organization.house_roles.ordered
       end
 
+      # Turbo-frame role manager, embedded in a modal on the staff wizard / edit
+      # page. Add/remove here re-renders the frame in place.
+      def editor
+        @house_roles = Current.organization.house_roles.active.ordered
+      end
+
       # new/edit aren't used in the normal flow — the modal on the index page
       # handles both. Redirect direct navigation to the index so we don't have
       # to maintain duplicate full-page form views.
@@ -25,9 +31,9 @@ module Manage
         @house_role = Current.organization.house_roles.new(house_role_params)
         @house_role.position = (Current.organization.house_roles.maximum(:position) || 0) + 1
         if @house_role.save
-          redirect_to manage_staffing_house_roles_path, notice: "House role added."
+          redirect_to roles_redirect_target, notice: "House role added."
         else
-          redirect_to manage_staffing_house_roles_path,
+          redirect_to roles_redirect_target,
                       alert: "Couldn't add role: #{@house_role.errors.full_messages.to_sentence}"
         end
       end
@@ -44,14 +50,20 @@ module Manage
       def destroy
         if @house_role.shifts.any?
           @house_role.archive!
-          redirect_to manage_staffing_house_roles_path, notice: "House role archived (existing shifts kept)."
+          redirect_to roles_redirect_target, notice: "House role archived (existing shifts kept)."
         else
           @house_role.destroy!
-          redirect_to manage_staffing_house_roles_path, notice: "House role removed."
+          redirect_to roles_redirect_target, notice: "House role removed."
         end
       end
 
       private
+
+      # When add/remove is triggered from the embedded editor frame, redirect back
+      # to it so Turbo re-renders the frame in place; otherwise the full page.
+      def roles_redirect_target
+        params[:return_to] == "editor" ? manage_staffing_house_roles_editor_path : manage_staffing_house_roles_path
+      end
 
       def set_house_role
         @house_role = Current.organization.house_roles.find(params[:id])

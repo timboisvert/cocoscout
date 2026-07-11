@@ -44,6 +44,7 @@ module Manage
       # Step 2: Job (title + department)
       def job
         @staff_member = build_preview_member
+        @departments = Current.organization.departments.ordered
       end
 
       def save_job

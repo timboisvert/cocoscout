@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_172638) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_11_174119) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -638,6 +638,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_172638) do
     t.text "notes"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_demo_users_on_email", unique: true
+  end
+
+  create_table "departments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.bigint "organization_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_departments_on_organization_id"
   end
 
   create_table "device_tokens", force: :cascade do |t|
@@ -2687,6 +2696,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_172638) do
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "departments", "organizations"
   add_foreign_key "device_tokens", "users"
   add_foreign_key "document_productions", "production_documents"
   add_foreign_key "document_productions", "productions"

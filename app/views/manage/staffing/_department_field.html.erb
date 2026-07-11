@@ -1,0 +1,52 @@
+<%# Department picker: a select of the org's managed departments plus a link
+    that opens a modal to add/remove departments (Turbo-frame). The modal (which
+    contains its own forms) is deferred via content_for :staffing_modals so it
+    renders OUTSIDE the surrounding form — the parent view must
+    `<%= yield :staffing_modals %>` after its form. New departments are synced
+    into the select when the modal closes.
+    Locals: departments (collection), selected (name string), field_name. %>
+<% field_name = local_assigns.fetch(:field_name, "department") %>
+<% selected = local_assigns[:selected].to_s %>
+<% names = departments.map(&:name) %>
+
+<select id="staff-department-select" name="<%= field_name %>"
+        class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+  <option value="">No department</option>
+  <% names.each do |n| %>
+    <option value="<%= n %>" <%= "selected" if n == selected %>><%= n %></option>
+  <% end %>
+  <% if selected.present? && names.exclude?(selected) %>
+    <option value="<%= selected %>" selected><%= selected %></option>
+  <% end %>
+</select>
+
+<div class="mt-2" data-controller="modal">
+  <%= render "shared/button", text: "Manage departments", variant: "ghost", size: "small", icon: "cog", type: :button,
+        data: { action: "click->modal#open", "modal-id": "departments-modal" } %>
+</div>
+
+<% content_for :staffing_modals do %>
+  <div id="departments-modal" data-controller="modal department-field" data-department-field-select-value="staff-department-select"
+       class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->modal#closeOnBackdrop click->department-field#sync">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">Departments</h3>
+          <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
+                data: { action: "click->modal#close click->department-field#sync" } %>
+        </div>
+        <div class="px-5 py-4">
+          <%= turbo_frame_tag "departments_manager", src: manage_staffing_departments_path, loading: :lazy,
+                data: { "department-field-target": "frame" } do %>
+            <p class="text-sm text-gray-400 py-2">Loading…</p>
+          <% end %>
+        </div>
+        <div class="flex items-center justify-end px-5 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "Done", variant: "primary", size: "small", type: :button,
+                data: { action: "click->modal#close click->department-field#sync" } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

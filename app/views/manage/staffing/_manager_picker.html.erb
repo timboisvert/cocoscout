@@ -13,9 +13,13 @@
   <input type="hidden" name="<%= field_name %>" value="<%= selected&.id %>" data-manager-picker-target="input">
 
   <div class="flex items-center gap-3">
-    <span data-manager-picker-target="display" class="text-sm <%= selected ? "text-gray-900 font-medium" : "text-gray-400" %>">
-      <%= selected ? selected.display_name : "No manager" %>
-    </span>
+    <div data-manager-picker-target="display">
+      <% if selected %>
+        <%= render "manage/staffing/manager_chip", member: selected %>
+      <% else %>
+        <span class="text-sm text-gray-400">No manager</span>
+      <% end %>
+    </div>
     <%= render "shared/button", text: "Choose manager", variant: "outline", size: "small", type: :button,
           data: { action: "click->manager-picker#open" } %>
   </div>
@@ -48,6 +52,8 @@
               <div data-manager-picker-target="row"
                    data-id="<%= m.id %>"
                    data-display="<%= m.display_name %>"
+                   data-headshot="<%= mh ? url_for(mh) : "" %>"
+                   data-initials="<%= mp.initials %>"
                    data-name="<%= [ m.display_name, mp.email, m.title ].compact.join(" ").downcase %>"
                    data-action="click->manager-picker#choose"
                    class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">

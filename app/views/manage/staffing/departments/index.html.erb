@@ -1,0 +1,22 @@
+<%= turbo_frame_tag "departments_manager" do %>
+  <div class="space-y-2">
+    <% if @departments.any? %>
+      <% @departments.each do |dept| %>
+        <div class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2" data-dept-name="<%= dept.name %>">
+          <span class="text-sm text-gray-900"><%= dept.name %></span>
+          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small",
+                path: manage_staffing_department_path(dept), method: :delete,
+                data: { turbo_confirm: "Remove the #{dept.name} department?" } %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-gray-400 py-2">No departments yet — add your first below.</p>
+    <% end %>
+  </div>
+
+  <%= form_with url: manage_staffing_departments_path, method: :post, class: "flex items-center gap-2 mt-4" do %>
+    <input type="text" name="department[name]" placeholder="e.g. Front of House" required
+           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+    <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+  <% end %>
+<% end %>

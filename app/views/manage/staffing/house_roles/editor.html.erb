@@ -1,0 +1,35 @@
+<%= turbo_frame_tag "house_roles_manager" do %>
+  <div class="space-y-2">
+    <% if @house_roles.any? %>
+      <% @house_roles.each do |role| %>
+        <div class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2"
+             data-role-id="<%= role.id %>" data-role-name="<%= role.name %>">
+          <span class="text-sm text-gray-900 flex items-center gap-2">
+            <%= role.name %>
+            <% if role.show_specific? %><span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">Per-show</span><% end %>
+          </span>
+          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small",
+                path: manage_destroy_staffing_house_role_path(role, return_to: "editor"), method: :delete,
+                data: { turbo_confirm: "Remove the #{role.name} role?" } %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-gray-400 py-2">No roles yet — add your first below.</p>
+    <% end %>
+  </div>
+
+  <%= form_with url: manage_create_staffing_house_role_path, method: :post, class: "mt-4 space-y-3" do %>
+    <input type="hidden" name="return_to" value="editor">
+    <div class="flex items-center gap-2">
+      <input type="text" name="house_role[name]" placeholder="e.g. Bartender" required
+             class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <input type="number" name="house_role[default_required_count]" value="1" min="1" title="How many needed by default"
+             class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-gray-600">
+      <input type="checkbox" name="house_role[role_type]" value="show_specific" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+      Per-show role (one shift per show, not the whole evening)
+    </label>
+  <% end %>
+<% end %>

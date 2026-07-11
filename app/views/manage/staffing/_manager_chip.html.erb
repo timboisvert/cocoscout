@@ -1,0 +1,11 @@
+<%# Small bordered chip showing a selected manager (headshot + name). %>
+<% mp = member.person %>
+<% h = mp.respond_to?(:safe_headshot_variant) ? mp.safe_headshot_variant(:thumb) : nil %>
+<span class="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-gray-300 bg-white shadow-sm">
+  <% if h %>
+    <%= image_tag h, alt: member.display_name, class: "w-6 h-6 rounded-full object-cover" %>
+  <% else %>
+    <span class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600"><%= mp.initials %></span>
+  <% end %>
+  <span class="text-sm font-medium text-gray-900"><%= member.display_name %></span>
+</span>

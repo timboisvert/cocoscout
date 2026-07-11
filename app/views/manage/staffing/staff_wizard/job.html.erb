@@ -9,7 +9,7 @@
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-      <%= text_field_tag :department, @staff_member.department, placeholder: "e.g. Front of House, Box Office, Tech", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <%= render "manage/staffing/department_field", departments: @departments, selected: @staff_member.department %>
     </div>
 
     <div class="flex items-center justify-between pt-4 border-t border-gray-200">
@@ -17,4 +17,6 @@
       <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+
+  <%= yield :staffing_modals %>
 <% end %>

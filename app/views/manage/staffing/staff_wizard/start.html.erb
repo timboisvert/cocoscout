@@ -1,6 +1,6 @@
 <%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 4, step_name: "Start" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When do they start?</h2>
-  <p class="text-gray-600 mb-6">Their first day in this job. You can leave this blank if it's already underway or not set yet.</p>
+  <p class="text-gray-600 mb-6">Their first day in this job. Leave it blank if it's not set yet — otherwise put the date they actually started, even if that's already passed.</p>
 
   <%= form_with url: manage_save_start_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
     <div class="max-w-xs">

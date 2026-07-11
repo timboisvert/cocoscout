@@ -1155,11 +1155,17 @@ Rails.application.routes.draw do
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
+    get  "staffing/house_roles/editor",           to: "staffing/house_roles#editor",     as: "staffing_house_roles_editor"
     get  "staffing/house_roles/new",              to: "staffing/house_roles#new",        as: "new_staffing_house_role"
     post "staffing/house_roles",                  to: "staffing/house_roles#create",     as: "create_staffing_house_role"
     get  "staffing/house_roles/:id/edit",         to: "staffing/house_roles#edit",       as: "edit_staffing_house_role"
     patch  "staffing/house_roles/:id",            to: "staffing/house_roles#update",     as: "update_staffing_house_role"
     delete "staffing/house_roles/:id",            to: "staffing/house_roles#destroy",    as: "destroy_staffing_house_role"
+
+    # Departments — a managed list, edited in a modal (Turbo-frame).
+    get    "staffing/departments",                to: "staffing/departments#index",      as: "staffing_departments"
+    post   "staffing/departments",                to: "staffing/departments#create"
+    delete "staffing/departments/:id",            to: "staffing/departments#destroy",    as: "staffing_department"
 
     get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
     # Gusto-style add-staff wizard (the primary "add a staff member" flow).

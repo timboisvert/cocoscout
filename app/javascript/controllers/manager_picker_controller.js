@@ -45,9 +45,14 @@ export default class extends Controller {
         const row = event.currentTarget
         this.pendingId = row.dataset.id
         this.pendingName = row.dataset.display
-        this.rowTargets.forEach(r => r.classList.toggle("ring-2", r === row))
-        this.rowTargets.forEach(r => r.classList.toggle("ring-pink-400", r === row))
-        this.rowTargets.forEach(r => r.classList.toggle("bg-pink-50", r === row))
+        this.pendingHeadshot = row.dataset.headshot || ""
+        this.pendingInitials = row.dataset.initials || "?"
+        this.rowTargets.forEach(r => {
+            const on = r === row
+            r.classList.toggle("ring-2", on)
+            r.classList.toggle("ring-pink-400", on)
+            r.classList.toggle("bg-pink-50", on)
+        })
         this.updateSelectButton()
     }
 
@@ -55,9 +60,7 @@ export default class extends Controller {
         if (event) event.preventDefault()
         if (!this.pendingId) return
         this.inputTarget.value = this.pendingId
-        this.displayTarget.textContent = this.pendingName || "Selected"
-        this.displayTarget.classList.remove("text-gray-400")
-        this.displayTarget.classList.add("text-gray-900")
+        this.displayTarget.innerHTML = this.chipHtml(this.pendingName, this.pendingHeadshot, this.pendingInitials)
         this.close()
     }
 
@@ -65,10 +68,22 @@ export default class extends Controller {
         if (event) event.preventDefault()
         this.inputTarget.value = ""
         this.pendingId = ""
-        this.displayTarget.textContent = "No manager"
-        this.displayTarget.classList.add("text-gray-400")
-        this.displayTarget.classList.remove("text-gray-900")
+        this.displayTarget.innerHTML = `<span class="text-sm text-gray-400">No manager</span>`
         this.close()
+    }
+
+    // Matches the server-rendered _manager_chip partial.
+    chipHtml(name, headshot, initials) {
+        const avatar = headshot
+            ? `<img src="${this.escape(headshot)}" alt="${this.escape(name)}" class="w-6 h-6 rounded-full object-cover">`
+            : `<span class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">${this.escape(initials)}</span>`
+        return `<span class="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-gray-300 bg-white shadow-sm">${avatar}<span class="text-sm font-medium text-gray-900">${this.escape(name)}</span></span>`
+    }
+
+    escape(str) {
+        const d = document.createElement("div")
+        d.textContent = String(str == null ? "" : str)
+        return d.innerHTML
     }
 
     highlightCurrent() {

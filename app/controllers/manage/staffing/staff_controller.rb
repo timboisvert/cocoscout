@@ -19,6 +19,7 @@ module Manage
       # Full-page staff editor (roomy — replaces the old cramped modal).
       def edit
         @house_roles = Current.organization.house_roles.active.ordered
+        @departments = Current.organization.departments.ordered
         @managers = Current.organization.organization_staff_members.active
                            .includes(:person).order("people.name").references(:person).to_a
       end
