@@ -28,12 +28,25 @@ class StripeWebhooksController < ApplicationController
       handle_subscription_event(event.data.object)
     when "invoice.paid", "invoice.payment_failed"
       handle_invoice_event(event.data.object)
+    when "account.updated"
+      handle_connect_account_updated(event.data.object)
     end
 
     head :ok
   end
 
   private
+
+  # A payee's Connect Express account changed (finished onboarding, payouts
+  # enabled/disabled, new requirements). Refresh our columns from the event.
+  def handle_connect_account_updated(account)
+    payee = StripeConnectService.payee_for_account(account.id)
+    return unless payee
+
+    StripeConnectService.new(payee).sync_account(account)
+  rescue StripeConnectService::Error => e
+    Rails.logger.warn("Connect account.updated sync failed for #{account.id}: #{e.message}")
+  end
 
   # Sync an org's subscription state from a Stripe subscription object.
   # SubscriptionSyncService maps non-access statuses (canceled, etc.) back to the

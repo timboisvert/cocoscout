@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Contractor < ApplicationRecord
+  include StripeConnectable
+
   belongs_to :organization
   has_many :contracts, dependent: :nullify
   has_many :payout_ledger_entries, as: :payee, dependent: :destroy

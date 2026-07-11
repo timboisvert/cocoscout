@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_232803) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -465,12 +465,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
     t.string "name", null: false
     t.text "notes"
     t.bigint "organization_id", null: false
+    t.boolean "payouts_enabled", default: false, null: false
     t.string "phone"
+    t.string "stripe_account_id"
+    t.string "stripe_account_status"
+    t.datetime "stripe_account_synced_at"
     t.datetime "updated_at", null: false
     t.string "venmo_identifier"
     t.string "zelle_identifier"
     t.index ["organization_id", "name"], name: "index_contractors_on_organization_id_and_name"
     t.index ["organization_id"], name: "index_contractors_on_organization_id"
+    t.index ["stripe_account_id"], name: "index_contractors_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
   end
 
   create_table "contracts", force: :cascade do |t|
@@ -1241,9 +1246,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
   create_table "organization_staff_members", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
+    t.string "first_name"
+    t.integer "hourly_rate_cents"
+    t.string "last_name"
+    t.bigint "manager_id"
+    t.string "middle_initial"
+    t.string "onboarding_state", default: "added", null: false
     t.bigint "organization_id", null: false
     t.bigint "person_id", null: false
+    t.string "personal_email"
+    t.string "preferred_first_name"
+    t.date "start_date"
+    t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["manager_id"], name: "index_organization_staff_members_on_manager_id"
     t.index ["organization_id", "person_id"], name: "idx_org_staff_members_unique", unique: true
     t.index ["organization_id"], name: "index_organization_staff_members_on_organization_id"
     t.index ["person_id"], name: "index_organization_staff_members_on_person_id"
@@ -1348,6 +1364,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
+    t.boolean "payouts_enabled", default: false, null: false
     t.boolean "performance_credits_visible", default: true, null: false
     t.string "phone"
     t.string "preferred_payment_method"
@@ -1360,6 +1377,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
     t.boolean "public_profile_enabled", default: true, null: false
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
+    t.string "stripe_account_id"
+    t.string "stripe_account_status"
+    t.datetime "stripe_account_synced_at"
     t.boolean "training_credits_visible", default: true, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
@@ -1375,6 +1395,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
     t.index ["email"], name: "index_people_on_email"
     t.index ["name"], name: "index_people_on_name"
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
+    t.index ["stripe_account_id"], name: "index_people_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
     t.index ["user_id"], name: "index_people_on_user_id"
   end
 
@@ -2688,6 +2709,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_100156) do
   add_foreign_key "org_payouts", "users", column: "paid_by_user_id"
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
+  add_foreign_key "organization_staff_members", "organization_staff_members", column: "manager_id", on_delete: :nullify
   add_foreign_key "organization_staff_members", "organizations"
   add_foreign_key "organization_staff_members", "people"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"

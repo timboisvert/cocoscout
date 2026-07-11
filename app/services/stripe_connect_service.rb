@@ -1,0 +1,81 @@
+# frozen_string_literal: true
+
+# Manages a payee's Stripe Connect Express account — the rail CocoScout uses to
+# pay performers and staff to their bank. Mirrors the direct-Stripe-call style of
+# SubscriptionSyncService / CourseOfferingStripeService.
+#
+#   svc = StripeConnectService.new(person)
+#   svc.ensure_account                       # create the Express account if missing
+#   svc.onboarding_link(return_url:, refresh_url:)  # hosted onboarding (bank + KYC)
+#   svc.sync_account                         # refresh payouts_enabled/status from Stripe
+#
+# Stripe collects the worker's identity/tax info (incl. SSN) during onboarding —
+# CocoScout never stores it.
+class StripeConnectService
+  class Error < StandardError; end
+
+  def initialize(payee)
+    @payee = payee
+  end
+
+  # Create the Express account if the payee doesn't have one yet. Idempotent.
+  def ensure_account
+    return @payee if @payee.stripe_account_id.present?
+
+    account = Stripe::Account.create(
+      type: "express",
+      email: @payee.email.presence,
+      business_type: "individual",
+      capabilities: { transfers: { requested: true } },
+      metadata: { payee_type: @payee.class.name, payee_id: @payee.id }
+    )
+    @payee.update!(stripe_account_id: account.id, stripe_account_status: "pending", stripe_account_synced_at: Time.current)
+    @payee
+  rescue Stripe::StripeError => e
+    raise Error, e.message
+  end
+
+  # A single-use hosted-onboarding link. Send the payee here to connect their bank.
+  def onboarding_link(return_url:, refresh_url:)
+    ensure_account
+    Stripe::AccountLink.create(
+      account: @payee.stripe_account_id,
+      return_url: return_url,
+      refresh_url: refresh_url,
+      type: "account_onboarding"
+    ).url
+  rescue Stripe::StripeError => e
+    raise Error, e.message
+  end
+
+  # Pull the current account state from Stripe into our columns. Pass a Stripe
+  # Account (e.g. from an account.updated webhook) to avoid a re-fetch.
+  def sync_account(stripe_account = nil)
+    return @payee if @payee.stripe_account_id.blank?
+
+    account = stripe_account || Stripe::Account.retrieve(@payee.stripe_account_id)
+    @payee.update!(
+      payouts_enabled: account.payouts_enabled,
+      stripe_account_status: derive_status(account),
+      stripe_account_synced_at: Time.current
+    )
+    @payee
+  rescue Stripe::StripeError => e
+    raise Error, e.message
+  end
+
+  # Find the payee behind a Connect account id (for webhooks). Checks people then
+  # contractors.
+  def self.payee_for_account(account_id)
+    Person.find_by(stripe_account_id: account_id) || Contractor.find_by(stripe_account_id: account_id)
+  end
+
+  private
+
+  def derive_status(account)
+    return "enabled" if account.payouts_enabled
+    return "restricted" if account.requirements&.disabled_reason.present?
+
+    "pending"
+  end
+end

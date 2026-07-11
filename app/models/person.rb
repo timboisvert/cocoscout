@@ -3,6 +3,7 @@
 class Person < ApplicationRecord
   include CacheInvalidation
   include SuspiciousDetection
+  include StripeConnectable
   invalidates_cache :person_card, :person_profile
 
   has_many :socials, as: :sociable, dependent: :destroy
