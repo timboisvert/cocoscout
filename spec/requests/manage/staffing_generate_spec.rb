@@ -153,7 +153,7 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
       create(:house_role, organization: org, role_type: :show_specific)
       post manage_generate_staffing_path(week_start: week_start.to_s)
 
-      get manage_staffing_index_path(week_start: week_start.to_s)
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(production.name) # show-specific label
     end
@@ -180,14 +180,14 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
 
     it "renders the extra roles on the schedule card" do
       shift.update!(additional_role_ids: [ secondary.id ])
-      get manage_staffing_index_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
+      get manage_staffing_scheduling_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
       expect(response.body).to include("Also covers")
       expect(response.body).to include("Manager")
     end
 
     it "echoes the doubled shift into the extra role's Gantt row" do
       shift.update!(additional_role_ids: [ secondary.id ])
-      get manage_staffing_index_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
+      get manage_staffing_scheduling_path(week_start: shift.starts_at.to_date.beginning_of_week.to_s)
       # The secondary-row echo block carries this title.
       expect(response.body).to include("Also covering Manager")
     end
@@ -200,7 +200,7 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
       create(:show_person_role_assignment, show: early_show, assignable: performer)
       post manage_generate_staffing_path(week_start: week_start.to_s)
 
-      get manage_staffing_index_path(week_start: week_start.to_s)
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response).to have_http_status(:ok)
 
       payload = response.body[/data-shift-assign-cast-by-day-value="([^"]*)"/, 1]

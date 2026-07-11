@@ -7,7 +7,38 @@ module Manage
   class StaffingController < Manage::ManageController
     before_action :ensure_org_owner_or_manager
 
+    # The Staffing landing is now the people-first hub: the org's staff list with
+    # onboarding status. The weekly schedule moved to #scheduling.
     def index
+      return unless Current.organization
+
+      @staff_members = Current.organization.organization_staff_members
+                              .active
+                              .includes(:house_roles, person: :user)
+                              .joins(:person)
+                              .order("people.name")
+      @house_roles = Current.organization.house_roles.active.ordered
+      @staff_count = @staff_members.size
+
+      # People who could be added as staff (org members not already on staff),
+      # embedded as JSON for the add-staff modal's client-side picker.
+      @available_people_payload = available_org_people.map do |p|
+        headshot_variant = (p.respond_to?(:safe_headshot_variant) ? p.safe_headshot_variant(:thumb) : nil)
+        { id: p.id, name: p.name, email: p.email, initials: p.initials,
+          headshot_url: headshot_variant ? url_for(headshot_variant) : nil }
+      end
+
+      # Emails with an outstanding (unaccepted) invite — flags staff who haven't
+      # set up their CocoScout account yet.
+      @pending_invite_emails = PersonInvitation.pending
+                                               .where(organization: Current.organization)
+                                               .pluck(:email)
+                                               .map { |e| e.to_s.downcase }
+                                               .to_set
+    end
+
+    # The weekly house-staff schedule (formerly the Staffing landing page).
+    def scheduling
       return unless Current.organization
 
       @week_start = parse_week_start(params[:week_start])
@@ -76,7 +107,7 @@ module Manage
       @week_end = @week_start + 6.days
       roles = Current.organization.house_roles.active.to_a
       if roles.empty?
-        redirect_to manage_staffing_index_path(week_start: @week_start.to_s),
+        redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s),
                     alert: "Add at least one house role first." and return
       end
 
@@ -150,7 +181,7 @@ module Manage
         else
           "#{created} shift(s) generated#{" (#{skipped} already existed and were skipped)" if skipped > 0}."
         end
-      redirect_to manage_staffing_index_path(week_start: @week_start.to_s), notice: notice
+      redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s), notice: notice
     end
 
     # Finalize a week's schedule: record it and message every assigned staffer
@@ -207,7 +238,7 @@ module Manage
         else
           "Schedule finalized and #{notified} staff member#{"s" unless notified == 1} notified."
         end
-      redirect_to manage_staffing_index_path(week_start: @week_start.to_s), notice: notice
+      redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s), notice: notice
     end
 
     public
@@ -225,6 +256,12 @@ module Manage
     helper_method :default_finalize_intro
 
     private
+
+    # People in the org who aren't already staff members (for the add-staff picker).
+    def available_org_people
+      existing_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
+      Current.organization.people.where.not(id: existing_ids).order(:name)
+    end
 
     # HTML body for a staffer: the manager's intro text, then that person's own
     # shift list, then a link to My Shifts. The intro is editable in the modal;

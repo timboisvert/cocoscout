@@ -1,21 +1,8 @@
-<% content_for :title, "Staffing" %>
+<% content_for :title, "Scheduling" %>
 
 <%
   days = (@week_start..@week_end).to_a
   assign_url_template = manage_assign_staffing_shift_path(":id")
-
-  staffing_description = <<~HTML
-    <p>
-      Schedule your house staff — bartenders, FOH, tech, security — across all your shows.
-      Define the roles you need, mark who's qualified for what, then build the week's schedule
-      from your show calendar.
-    </p>
-  HTML
-
-  staffing_actions = [
-    { icon: "user-group", text: "Staff",       description: "Who can be assigned to shifts",   path: manage_staffing_staff_path },
-    { icon: "cog",        text: "Roles",       description: "Bartender, FOH, tech, security…", path: manage_staffing_house_roles_path }
-  ]
 %>
 
 <div class="w-full mb-10"
@@ -32,24 +19,28 @@
      data-shift-add-create-url-value="<%= manage_create_staffing_shift_path %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render "shared/module_header",
-    title: "Staffing",
-    description: staffing_description,
-    actions: staffing_actions
-  %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path]
+    ],
+    text: "Scheduling",
+    links: [
+      { text: "Roles", icon: "cog", path: manage_staffing_house_roles_path }
+    ]
+  } %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">
 
   <%# === Week navigation === %>
   <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
     <div class="flex items-center gap-2">
-      <%= link_to manage_staffing_index_path(week_start: (@week_start - 7.days).to_s),
+      <%= link_to manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s),
             class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" do %>
         ← Prev
       <% end %>
-      <%= link_to "This week", manage_staffing_index_path,
+      <%= link_to "This week", manage_staffing_scheduling_path,
             class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" %>
-      <%= link_to manage_staffing_index_path(week_start: (@week_start + 7.days).to_s),
+      <%= link_to manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s),
             class: "px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:border-gray-400" do %>
         Next →
       <% end %>

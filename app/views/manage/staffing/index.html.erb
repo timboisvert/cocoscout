@@ -1,0 +1,20 @@
+<% content_for :title, "Staffing" %>
+
+<div class="w-full mb-10"
+     data-controller="staff-modal"
+     data-staff-modal-create-url-value="<%= manage_create_staffing_staff_path %>"
+     data-staff-modal-update-url-template-value="<%= manage_update_staffing_staff_path(":id") %>"
+     data-staff-modal-available-people-value="<%= @available_people_payload.to_json %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render "shared/module_header",
+    title: "Staffing",
+    description: "<p>Your team — who works for you, what they do, and how they get paid. Add staff, schedule their shifts, and pay them, all in one place.</p>",
+    actions: [
+      { icon: "user-group", text: "Add staff member", description: "Onboard someone new", path: manage_new_staffing_staff_wizard_path },
+      { icon: "calendar", text: "Scheduling", description: "Build the week's shifts", path: manage_staffing_scheduling_path },
+      { icon: "cog", text: "Roles", description: "Bartender, FOH, tech…", path: manage_staffing_house_roles_path }
+    ] %>
+
+  <%= render "manage/staffing/staff_list" %>
+</div>

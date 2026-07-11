@@ -1145,9 +1145,10 @@ Rails.application.routes.draw do
       # Only keeping show-specific nested resources that require production context
     end
 
-    # Staffing section - org-level house staffing (the schedule lives on the
-    # index page itself; house roles + staff are sub-areas).
+    # Staffing section - org-level house staffing. The landing page is now the
+    # staff list (people-first hub); the weekly schedule lives under /scheduling.
     get  "staffing",                              to: "staffing#index",                  as: "staffing_index"
+    get  "staffing/scheduling",                   to: "staffing#scheduling",             as: "staffing_scheduling"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
@@ -1158,6 +1159,9 @@ Rails.application.routes.draw do
     delete "staffing/house_roles/:id",            to: "staffing/house_roles#destroy",    as: "destroy_staffing_house_role"
 
     get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
+    # Gusto-style add-staff wizard (the primary "add a staff member" flow).
+    get  "staffing/staff/onboard",                to: "staffing/staff_wizard#new",       as: "new_staffing_staff_wizard"
+    post "staffing/staff/onboard",                to: "staffing/staff_wizard#create",    as: "staffing_staff_wizard"
     get  "staffing/staff/new",                    to: "staffing/staff#new",              as: "new_staffing_staff"
     post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
     get  "staffing/staff/:id/edit",               to: "staffing/staff#edit",             as: "edit_staffing_staff"
@@ -1176,8 +1180,8 @@ Rails.application.routes.draw do
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#acknowledge_gap", as: "acknowledge_gap_staffing_shift"
     delete "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#unacknowledge_gap", as: "unacknowledge_gap_staffing_shift"
-    # Legacy /staffing/schedule URLs redirect to the new home so old bookmarks still work.
-    get    "staffing/schedule", to: redirect("/manage/staffing")
+    # Legacy /staffing/schedule URLs redirect to the scheduling sub-section.
+    get    "staffing/schedule", to: redirect("/manage/staffing/scheduling")
 
     # Org-level Documents hub — every document the manager can edit, across all
     # of their productions. Create-new here picks a production first; show/edit
