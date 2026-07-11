@@ -24,9 +24,15 @@
           <% is_owner = org.owned_by?(Current.user) %>
           <% is_manager = role == 'manager' %>
           <% can_manage = is_owner || is_manager %>
-          <div class="bg-white <%= is_owner ? 'border-2 border-pink-200' : 'border border-gray-300' %> rounded-lg p-6 hover:shadow-lg transition-shadow w-full sm:w-80">
+          <% is_current = Current.organization&.id == org.id %>
+          <div class="bg-white <%= is_current ? 'border-2 border-pink-500 ring-2 ring-pink-100' : (is_owner ? 'border-2 border-pink-200' : 'border border-gray-300') %> rounded-lg p-6 hover:shadow-lg transition-shadow w-full sm:w-80">
             <div class="mb-4">
-              <h3 class="text-xl font-bold text-gray-900 mb-2"><%= org.name %></h3>
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="text-xl font-bold text-gray-900"><%= org.name %></h3>
+                <% if is_current %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-pink-100 text-pink-700">Current</span>
+                <% end %>
+              </div>
               <% if is_owner %>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">
                   Owner
@@ -63,13 +69,26 @@
               </div>
             <% end %>
 
-            <% if can_manage %>
-              <%= link_to "Manage", manage_organization_path(org), class: "block w-full text-center px-4 py-2.5 text-sm bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-semibold transition-colors" %>
-            <% else %>
-              <div class="block w-full text-center px-4 py-2.5 text-sm bg-gray-300 text-gray-600 rounded-lg font-semibold cursor-not-allowed">
-                View Details
-              </div>
-            <% end %>
+            <div class="space-y-2">
+              <% if is_current %>
+                <div class="w-full text-center px-4 py-3 text-sm bg-pink-50 text-pink-700 border border-pink-200 rounded-lg font-semibold">
+                  ✓ Currently selected
+                </div>
+                <% if can_manage %>
+                  <%= render "shared/button", text: "Manage", path: manage_organization_path(org), variant: "primary", size: "jumbo" %>
+                <% end %>
+              <% else %>
+                <%= render "shared/button", text: "Switch to this organization", path: set_organization_path(id: org.id), method: :post, variant: "primary", size: "jumbo" %>
+                <% if can_manage %>
+                  <%= render "shared/button", text: "Manage", path: manage_organization_path(org), variant: "outline", size: "jumbo" %>
+                <% end %>
+              <% end %>
+              <% unless can_manage %>
+                <div class="w-full text-center px-4 py-3 text-sm bg-gray-100 text-gray-500 rounded-lg font-semibold">
+                  View only
+                </div>
+              <% end %>
+            </div>
           </div>
         <% end %>
       </div>
@@ -77,12 +96,9 @@
       <!-- Create Another Organization Button -->
       <div class="text-center">
         <p class="text-sm text-slate-600 mb-3">Ready to create another organization?</p>
-        <%= link_to new_manage_organization_path, class: "inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors" do %>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Create another organization
-        <% end %>
+        <div class="inline-block">
+          <%= render "shared/button", text: "Create another organization", path: new_manage_organization_path, variant: "primary", size: "large", icon: "plus" %>
+        </div>
       </div>
 
     <% else %>
@@ -97,12 +113,9 @@
         <p class="text-slate-600 mb-6 max-w-md mx-auto">
           Create your first organization to start managing productions, casting calls, and your team.
         </p>
-        <%= link_to new_manage_organization_path, class: "inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors" do %>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Create Your First Organization
-        <% end %>
+        <div class="inline-block">
+          <%= render "shared/button", text: "Create Your First Organization", path: new_manage_organization_path, variant: "primary", size: "large", icon: "plus" %>
+        </div>
       </div>
     <% end %>
 

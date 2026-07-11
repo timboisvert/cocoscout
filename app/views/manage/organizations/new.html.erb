@@ -73,7 +73,21 @@
       <div class="order-1 lg:order-2">
         <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
           <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Create your organization</h2>
-          <p class="text-sm text-slate-600 mb-6">This will be your workspace for managing productions, courses, and your team.</p>
+          <p class="text-sm text-slate-600 mb-4">This will be your workspace for managing productions, courses, and your team.</p>
+
+          <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <div>
+                <p class="text-sm font-semibold text-amber-900 mb-1">This is a separate account</p>
+                <p class="text-xs text-amber-800">
+                  Each organization is billed on its own. Any Pro subscription ($20/month or $200/year) applies to <strong>this organization only</strong> — a new organization starts fresh on its own plan and doesn't share billing, productions, or team with your other organizations.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <%= form_with(model: [:manage, @organization], class: "space-y-5") do |form| %>
 

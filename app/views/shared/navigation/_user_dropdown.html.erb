@@ -17,8 +17,9 @@
 
     <div class="relative" data-controller="dropdown">
       <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-12">
-        <% if Current.user.person&.headshot&.attached? %>
-          <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% user_headshot_variant = Current.user.person&.safe_headshot_variant(:tiny) %>
+        <% if user_headshot_variant %>
+          <%= image_tag user_headshot_variant, class: "w-8 h-8 rounded-lg object-cover" %>
         <% else %>
           <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
             <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
@@ -33,10 +34,59 @@
         </svg>
       </button>
 
-      <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-0 w-56 py-1 bg-pink-500 rounded-lg shadow-lg z-50">
+      <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-0 w-64 py-1 bg-pink-500 rounded-lg shadow-lg z-50">
         <%= link_to "My Profile", profile_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 rounded-t-lg transition cursor-pointer" %>
 
+        <%# Production + Organization live here (both tiers). In an org context only. %>
+        <% if Current.organization.present? %>
+          <% org = Current.organization %>
+
+          <%# ----- Production(s) ----- %>
+          <div class="border-t border-pink-400 my-0.5"></div>
+          <div class="px-3 py-2">
+            <% if org.on_paid_plan? %>
+              <%# Pro: can run several productions — link to all and add more. %>
+              <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Productions</div>
+              <div class="flex flex-col gap-0.5">
+                <%= link_to "My Productions", manage_productions_path, class: "text-sm text-white font-medium hover:underline" %>
+                <% if current_user_is_global_manager? %>
+                  <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+                <% end %>
+              </div>
+            <% else %>
+              <%# Producer: a single production — link straight to it, no adding more. %>
+              <% my_production = Current.user.accessible_productions.where(organization: org).order(:name).first %>
+              <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Production</div>
+              <% if my_production %>
+                <%= link_to my_production.name, edit_manage_production_path(my_production), class: "block text-sm text-white font-medium hover:underline truncate" %>
+              <% elsif current_user_is_global_manager? && !org.at_production_limit? %>
+                <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+              <% else %>
+                <span class="text-xs text-pink-200">No production yet</span>
+              <% end %>
+            <% end %>
+          </div>
+
+          <%# ----- Organization ----- %>
+          <div class="border-t border-pink-400 my-0.5"></div>
+          <div class="px-3 py-2">
+            <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Organization</div>
+            <div class="text-sm text-white font-medium truncate"><%= org.name %></div>
+            <div class="flex flex-col gap-0.5 mt-1">
+              <% if current_user_is_global_manager? %>
+                <%= link_to "Manage My Organization", manage_organization_path(org), class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+              <% end %>
+              <% if Current.user.accessible_organizations.count > 1 %>
+                <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+              <% else %>
+                <%= link_to "Add Another Organization", new_manage_organization_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
         <% if Current.user.superadmin? %>
+          <div class="border-t border-pink-400 my-0.5"></div>
           <%= link_to "Superadmin", superadmin_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 transition cursor-pointer" %>
         <% end %>
 

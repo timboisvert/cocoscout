@@ -36,7 +36,8 @@
 
     <!-- Row 1: Summary Boxes -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-      <%# Audition Sign-ups — accordion %>
+      <%# Audition Sign-ups — accordion (Pro-tier only; auditions are a paid feature) %>
+      <% if Current.organization&.on_paid_plan? %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
         <details class="group">
           <summary class="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors [&::-webkit-details-marker]:hidden">
@@ -90,6 +91,7 @@
           </div>
         </details>
       </div>
+      <% end %>
 
       <%# Event Registrations — accordion %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
