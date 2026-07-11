@@ -1,6 +1,14 @@
 <%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 1, step_name: "Details" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who are you adding?</h2>
-  <p class="text-gray-600 mb-6">Their basic details. We'll invite them to create their account and set up how they get paid.</p>
+  <p class="text-gray-600 mb-4">Their basic details. We'll invite them to create their account and set up how they get paid.</p>
+
+  <div class="rounded-lg border border-pink-100 bg-pink-50 p-4 mb-6">
+    <p class="text-sm text-gray-700">
+      <span class="font-semibold text-gray-900">Add as many people as you want — for free.</span>
+      You're only charged $5 for a staff member in a month where they actually have a work shift.
+      If they don't work that month, they cost you nothing.
+    </p>
+  </div>
 
   <%= form_with url: manage_save_details_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
     <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">

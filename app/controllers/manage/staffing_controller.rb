@@ -33,7 +33,6 @@ module Manage
       @active_staff, @pending_staff = members.partition { |m| account_claimed?(m) }
       @staff_count = @active_staff.size
       @pending_count = @pending_staff.size
-      @billing = StaffBillingService.new(Current.organization)
     end
 
     # The weekly house-staff schedule (formerly the Staffing landing page).
@@ -227,6 +226,13 @@ module Manage
         )
         Shift.where(id: person_shifts.map(&:id)).each do |s|
           s.shift_assignments.where(person_id: person.id).update_all(notified_at: Time.current)
+        end
+
+        # Durably mark this person billable for every month they were notified
+        # about — this survives later assignment changes, so an org can't remove
+        # assignments before the cycle closes to dodge the charge.
+        person_shifts.map { |s| s.starts_at.to_date.beginning_of_month }.uniq.each do |month|
+          StaffActivation.record!(organization: Current.organization, person: person, month: month)
         end
         notified += 1
       end

@@ -15,6 +15,7 @@ class Organization < ApplicationRecord
   # Staffing module
   has_many :house_roles, dependent: :destroy
   has_many :departments, dependent: :destroy
+  has_many :staff_activations, dependent: :destroy
   has_many :organization_staff_members, dependent: :destroy
   has_many :shifts, dependent: :destroy
   has_many :staffing_finalizations, dependent: :destroy

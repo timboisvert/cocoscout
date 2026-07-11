@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_223416) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_11_224601) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2480,6 +2480,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_223416) do
     t.index ["starts_at"], name: "index_space_rentals_on_starts_at"
   end
 
+  create_table "staff_activations", force: :cascade do |t|
+    t.date "billing_month", null: false
+    t.datetime "created_at", null: false
+    t.datetime "first_notified_at"
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "person_id", "billing_month"], name: "idx_staff_activations_unique", unique: true
+    t.index ["organization_id"], name: "index_staff_activations_on_organization_id"
+    t.index ["person_id"], name: "index_staff_activations_on_person_id"
+  end
+
   create_table "staff_role_qualifications", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "house_role_id", null: false
@@ -2857,6 +2869,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_223416) do
   add_foreign_key "space_rentals", "contracts"
   add_foreign_key "space_rentals", "location_spaces"
   add_foreign_key "space_rentals", "locations"
+  add_foreign_key "staff_activations", "organizations"
+  add_foreign_key "staff_activations", "people"
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
   add_foreign_key "staff_unavailabilities", "people"

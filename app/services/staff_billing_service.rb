@@ -13,20 +13,24 @@ class StaffBillingService
 
   def initialize(organization, month: Date.current)
     @organization = organization
-    @range = month.beginning_of_month.beginning_of_day..month.end_of_month.end_of_day
+    @month = month.to_date.beginning_of_month
+    @range = @month.beginning_of_day..@month.end_of_month.end_of_day
   end
 
-  # Staff members scheduled for >= 1 shift this month (their person is assigned
-  # to an org shift starting within the month).
+  # Staff members billable this month — those who were *notified* of a shift
+  # (recorded as a durable StaffActivation at finalize time, so it can't be
+  # undone by removing the assignment before the cycle closes).
   def active_staff_members
-    scheduled_ids = ShiftAssignment.joins(:shift)
-                                   .where(shifts: { organization_id: @organization.id, starts_at: @range })
-                                   .distinct.pluck(:person_id)
-    @organization.organization_staff_members.active.where(person_id: scheduled_ids)
+    person_ids = activations.select(:person_id)
+    @organization.organization_staff_members.active.where(person_id: person_ids)
+  end
+
+  def activations
+    @organization.staff_activations.for_month(@month)
   end
 
   def active_count
-    active_staff_members.count
+    activations.count
   end
 
   def active_staff_cents

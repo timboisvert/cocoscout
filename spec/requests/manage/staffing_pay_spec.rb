@@ -15,7 +15,7 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
   it "renders the pay grid" do
     get manage_staffing_pay_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Ready Rae").and include("Run pay")
+    expect(response.body).to include("Ready Rae").and include("Pay People")
   end
 
   it "runs pay for the entered hours and pays through Connect" do
