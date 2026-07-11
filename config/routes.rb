@@ -1163,8 +1163,14 @@ Rails.application.routes.draw do
 
     get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
     # Gusto-style add-staff wizard (the primary "add a staff member" flow).
-    get  "staffing/staff/onboard",                to: "staffing/staff_wizard#new",       as: "new_staffing_staff_wizard"
-    post "staffing/staff/onboard",                to: "staffing/staff_wizard#create",    as: "staffing_staff_wizard"
+    # Multi-step, matching the show/contract wizard model (session-backed state).
+    get    "staffing/staff/onboard",              to: "staffing/staff_wizard#details",       as: "new_staffing_staff_wizard"
+    post   "staffing/staff/onboard/details",      to: "staffing/staff_wizard#save_details",  as: "staffing_staff_wizard_details"
+    get    "staffing/staff/onboard/employment",   to: "staffing/staff_wizard#employment",    as: "staffing_staff_wizard_employment"
+    post   "staffing/staff/onboard/employment",   to: "staffing/staff_wizard#save_employment", as: "save_staffing_staff_wizard_employment"
+    get    "staffing/staff/onboard/roles",        to: "staffing/staff_wizard#roles",         as: "staffing_staff_wizard_roles"
+    post   "staffing/staff/onboard/roles",        to: "staffing/staff_wizard#create",        as: "staffing_staff_wizard"
+    delete "staffing/staff/onboard/cancel",       to: "staffing/staff_wizard#cancel",        as: "cancel_staffing_staff_wizard"
     get  "staffing/staff/new",                    to: "staffing/staff#new",              as: "new_staffing_staff"
     post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
     get  "staffing/staff/:id/edit",               to: "staffing/staff#edit",             as: "edit_staffing_staff"

@@ -9,23 +9,46 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
   let!(:house_role) { org.house_roles.create!(name: "Bartender") }
 
-  before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
+  # The wizard persists step state in Rails.cache, which is the null-store in
+  # tests — give it a real in-memory store so the multi-step flow carries over.
+  let(:wizard_cache) { ActiveSupport::Cache::MemoryStore.new }
 
-  it "renders the add-staff wizard" do
+  before do
+    allow(Rails).to receive(:cache).and_return(wizard_cache)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  # Walk the multi-step wizard: details → employment → roles → create.
+  def complete_wizard(details:, employment: {}, role_ids: [])
+    post manage_staffing_staff_wizard_details_path, params: details
+    post manage_save_staffing_staff_wizard_employment_path, params: employment
+    post manage_staffing_staff_wizard_path, params: { house_role_ids: role_ids }
+  end
+
+  it "renders the first step of the add-staff wizard" do
     get manage_new_staffing_staff_wizard_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Add Staff Member")
+    expect(response.body).to include("Details")
+  end
+
+  it "renders the employment step with an hourly rate field" do
+    post manage_staffing_staff_wizard_details_path, params: {
+      first_name: "Dana", last_name: "Reed", personal_email: "dee@example.com"
+    }
+    get manage_staffing_staff_wizard_employment_path
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include("Hourly rate")
   end
 
   it "creates a staff member with employment details, a person, and roles" do
     expect {
-      post manage_staffing_staff_wizard_path, params: {
-        first_name: "Dana", middle_initial: "Q", last_name: "Reed",
-        preferred_first_name: "Dee", personal_email: "dee@example.com",
-        title: "Bartender", hourly_rate: "22.50", start_date: "2026-08-01",
-        house_role_ids: [ house_role.id ]
-      }
+      complete_wizard(
+        details: { first_name: "Dana", middle_initial: "Q", last_name: "Reed",
+                   preferred_first_name: "Dee", personal_email: "dee@example.com" },
+        employment: { title: "Bartender", hourly_rate: "22.50", start_date: "2026-08-01" },
+        role_ids: [ house_role.id ]
+      )
     }.to change { org.organization_staff_members.count }.by(1)
 
     member = org.organization_staff_members.order(:created_at).last
@@ -43,21 +66,27 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect(response).to redirect_to(manage_staffing_index_path)
   end
 
-  it "re-renders with an error when required fields are missing" do
+  it "re-renders the details step with an error when required fields are missing" do
     expect {
-      post manage_staffing_staff_wizard_path, params: { first_name: "", last_name: "", personal_email: "nope" }
+      post manage_staffing_staff_wizard_details_path, params: { first_name: "", last_name: "", personal_email: "nope" }
     }.not_to change { org.organization_staff_members.count }
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.body).to include("required")
+  end
+
+  it "sends you back to step one if you jump to the end without details" do
+    post manage_staffing_staff_wizard_path, params: { house_role_ids: [ house_role.id ] }
+    expect(response).to redirect_to(manage_new_staffing_staff_wizard_path)
   end
 
   it "assigns a manager from an existing staff member" do
     boss_person = create(:person, name: "Boss Person", email: "boss@example.com")
     boss = org.organization_staff_members.create!(person: boss_person, onboarding_state: "added")
 
-    post manage_staffing_staff_wizard_path, params: {
-      first_name: "New", last_name: "Hire", personal_email: "hire@example.com", manager_id: boss.id
-    }
+    complete_wizard(
+      details: { first_name: "New", last_name: "Hire", personal_email: "hire@example.com" },
+      employment: { manager_id: boss.id }
+    )
     member = org.organization_staff_members.find_by!(personal_email: "hire@example.com")
     expect(member.manager).to eq(boss)
   end
