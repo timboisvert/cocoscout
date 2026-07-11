@@ -44,8 +44,4 @@ RSpec.describe StaffBillingService do
     StaffActivation.record!(organization: org, person: worked, month: this_month)
     expect(described_class.new(org).active_count).to eq(1)
   end
-
-  it "no-ops usage reporting until a metered subscription item is configured" do
-    expect(described_class.new(org).report_usage!).to eq(:not_configured)
-  end
 end

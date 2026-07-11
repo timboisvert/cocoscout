@@ -45,21 +45,4 @@ class StaffBillingService
   def monthly_estimate_cents
     active_staff_cents + extra_payment_fee_cents
   end
-
-  # Report this month's active-staff usage to Stripe so it's billed on the org's
-  # existing subscription. No-op until a metered staffing subscription item is
-  # configured on the org (kept safe so nothing charges by accident before the
-  # Stripe price is wired up).
-  def report_usage!
-    item_id = @organization.try(:staff_meter_subscription_item_id)
-    return :not_configured if item_id.blank?
-
-    Stripe::SubscriptionItem.create_usage_record(
-      item_id,
-      quantity: active_count,
-      timestamp: Time.current.to_i,
-      action: "set"
-    )
-    :reported
-  end
 end

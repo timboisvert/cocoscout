@@ -67,3 +67,7 @@ production:
   backfill_stripe_fees:
     class: BackfillStripeFeeJob
     schedule: every hour
+
+  meter_staff_billing:
+    class: MeterStaffBillingJob
+    schedule: at 4am every day

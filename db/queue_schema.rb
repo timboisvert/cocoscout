@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_224601) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_11_233652) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2486,6 +2486,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_224601) do
     t.datetime "first_notified_at"
     t.bigint "organization_id", null: false
     t.bigint "person_id", null: false
+    t.datetime "reported_at"
     t.datetime "updated_at", null: false
     t.index ["organization_id", "person_id", "billing_month"], name: "idx_staff_activations_unique", unique: true
     t.index ["organization_id"], name: "index_staff_activations_on_organization_id"
