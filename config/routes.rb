@@ -1198,6 +1198,12 @@ Rails.application.routes.draw do
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
+    # Payout runs: pay everyone with a connected bank at once (Stripe Connect).
+    get  "money/payout-runs",      to: "payout_batches#index",  as: "payout_batches"
+    get  "money/payout-runs/new",  to: "payout_batches#new",    as: "new_payout_batch"
+    post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
+    get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
+
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"
     get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"
     post "money/payouts/:production_id/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"

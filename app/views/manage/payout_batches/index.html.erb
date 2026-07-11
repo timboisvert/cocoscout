@@ -1,0 +1,57 @@
+<% content_for :title, "Payout Runs" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path]
+    ],
+    text: "Payout Runs",
+    links: [
+      { text: "New payout run", icon: "banknotes", path: manage_new_payout_batch_path }
+    ]
+  } %>
+
+  <p class="text-sm text-gray-600 mb-6 max-w-2xl">
+    Pay everyone who's connected a bank, all at once. You fund the run (ACH or card) and CocoScout
+    deposits each person's balance straight to their account.
+  </p>
+
+  <% if @batches.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-2.5 font-semibold">Date</th>
+            <th class="px-4 py-2.5 font-semibold">Status</th>
+            <th class="px-4 py-2.5 font-semibold text-right">Total</th>
+            <th class="px-4 py-2.5 font-semibold text-right">People</th>
+            <th class="px-4 py-2.5 font-semibold">Started by</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @batches.each do |batch| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2.5">
+                <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+              </td>
+              <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
+              <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
+              <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
+              <td class="px-4 py-2.5 text-gray-600"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
+      <p class="text-gray-600 mb-4">No payout runs yet.</p>
+      <div class="inline-block">
+        <%= render "shared/button", text: "Run your first payout", variant: "primary", size: "medium", path: manage_new_payout_batch_path %>
+      </div>
+    </div>
+  <% end %>
+</div>

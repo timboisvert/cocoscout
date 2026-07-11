@@ -1,0 +1,63 @@
+<% content_for :title, "Payout Run" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payout Runs", manage_payout_batches_path]
+    ],
+    text: @batch.created_at.strftime("%b %-d, %Y"),
+    links: []
+  } %>
+
+  <div class="max-w-3xl">
+    <div class="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-6">
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Status</div>
+        <div class="mt-1"><%= render "manage/payout_batches/status_badge", status: @batch.status %></div>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total</div>
+        <div class="mt-1 text-xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@batch.total_cents / 100.0) %></div>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Paid so far</div>
+        <div class="mt-1 text-xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@batch.paid_total_cents / 100.0) %></div>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Funding</div>
+        <div class="mt-1 text-sm font-medium text-gray-900"><%= @batch.funding_status&.titleize || "—" %></div>
+      </div>
+    </div>
+
+    <% if @batch.status == "funding" %>
+      <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        We're collecting the funds for this run. Payouts to each person go out automatically once it clears.
+      </div>
+    <% end %>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-900">Payments</h3>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <% @batch.items.includes(:payee).each do |item| %>
+          <div class="px-5 py-3 flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <span class="text-gray-900"><%= item.payee&.name %></span>
+              <% if item.error.present? %>
+                <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+              <%= render "manage/payout_batches/status_badge", status: item.status %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -25,6 +25,7 @@ module Manage
       "manage/contract_documents" => :money,
       "manage/contractors" => :money,
       "manage/payout_schemes" => :money,
+      "manage/payout_batches" => :money,
       "manage/advances" => :money,
       # Reports
       "manage/reports" => :reports,
