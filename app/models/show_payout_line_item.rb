@@ -98,6 +98,16 @@ class ShowPayoutLineItem < ApplicationRecord
     !is_guest? && payee_id.present? && LEDGER_PAYEE_TYPES.include?(payee_type)
   end
 
+  # A "migrated" performer: they've connected a bank, so they're paid
+  # automatically by the standard payout run — not hand-paid per show. Legacy
+  # performers (Venmo/Zelle/cash) are unaffected. False until the payee connects
+  # a bank, so the existing per-show pay flow is unchanged for everyone today.
+  def auto_payout?
+    return false if is_guest? || paid?
+
+    payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+  end
+
   # Post/refresh this line item's `earning` entry (net of advances) on the ledger.
   # Idempotent per line item. No-op for guests and non-ledger payees.
   def sync_earning_ledger_entry!

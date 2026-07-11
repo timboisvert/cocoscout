@@ -52,7 +52,8 @@
 
   # Check for regular performers (non-guests) who need payment info
   regular_line_items = @show_payout.line_items.where(payee_type: "Person").where(is_guest: [false, nil])
-  performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.payee.venmo_configured? && !li.payee.zelle_configured? }
+  # Auto-pay (bank-connected) performers don't need Venmo/Zelle — exclude them.
+  performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.payee.venmo_configured? && !li.payee.zelle_configured? && !li.auto_payout? }
 
   # Check for people with unpaid advances who need payment info
   show_advances_for_setup = @production.person_advances.for_show(@show).unpaid.includes(:person)
@@ -909,16 +910,19 @@
           <%
             unpaid_count = line_items.count { |li| !li.paid? }
             paid_count = line_items.count { |li| li.paid? }
-            payment_ready_count = line_items.count { |li| li.payee_has_payment_method? && !li.paid? }
-            needs_setup_count = line_items.count { |li| !li.payee_has_payment_method? && !li.paid? }
+            payment_ready_count = line_items.count { |li| li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
+            needs_setup_count = line_items.count { |li| !li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
+            auto_payout_count = line_items.count(&:auto_payout?)
             pending_payout_count = line_items.count { |li| li.payout_pending? }
           %>
 
           <!-- Payment Summary Bar -->
           <% if is_calculated && unpaid_count > 0 %>
             <%
-              # Get unpaid items for the walkthrough
-              unpaid_items = line_items.reject(&:paid?)
+              # Get unpaid items for the manual pay walkthrough. Auto-pay
+              # (bank-connected) performers are excluded — they're paid by the
+              # standard payout run, not hand-paid here.
+              unpaid_items = line_items.reject { |li| li.paid? || li.auto_payout? }
               unpaid_total = unpaid_items.sum(&:net_amount)
             %>
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
@@ -933,6 +937,11 @@
                   <% if needs_setup_count > 0 %>
                     <span class="text-gray-600">
                       <span class="font-semibold text-pink-600"><%= needs_setup_count %></span> need payment setup
+                    </span>
+                  <% end %>
+                  <% if auto_payout_count > 0 %>
+                    <span class="text-gray-600" title="These performers connected a bank and are paid automatically on your next payout run.">
+                      <span class="font-semibold text-blue-600"><%= auto_payout_count %></span> auto-pay
                     </span>
                   <% end %>
                 </div>
@@ -1137,6 +1146,12 @@
                             <% if failed_item&.payout_error.present? %>
                               <div class="text-xs text-red-500 mt-0.5" title="<%= failed_item.payout_error %>">Error</div>
                             <% end %>
+                          </div>
+                        <% elsif item.auto_payout? %>
+                          <%# Bank connected — paid automatically by the standard payout run. %>
+                          <div class="text-right" title="This person connected a bank, so they're paid automatically on your next payout run.">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">Auto-pay</span>
+                            <div class="text-xs text-gray-400 mt-0.5">next payout run</div>
                           </div>
                         <% else %>
                           <%# For grouped items, pass comma-separated IDs %>

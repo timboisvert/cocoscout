@@ -287,6 +287,10 @@ module Manage
 
       count = 0
       @show_payout.line_items.not_already_paid.each do |line_item|
+        # Skip auto-pay (bank-connected) performers — they're paid by the standard
+        # payout run, never hand-marked here.
+        next if line_item.auto_payout?
+
         line_item.mark_as_offline_paid!(Current.user, method: method, notes: notes)
         count += 1
       end
