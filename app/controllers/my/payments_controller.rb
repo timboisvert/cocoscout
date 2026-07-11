@@ -22,7 +22,18 @@ module My
     end
 
     def setup
-      # Page for managing Venmo settings
+      # Onboarding / payment settings page: confirm your details, then set up
+      # how you get paid.
+    end
+
+    # Confirm/update the worker's own details as the first step of onboarding.
+    def update_profile
+      if @person.update(profile_params)
+        redirect_to my_payments_setup_path, notice: "Your details were saved."
+      else
+        flash.now[:alert] = @person.errors.full_messages.to_sentence.presence || "Please fix the errors below."
+        render :setup, status: :unprocessable_entity
+      end
     end
 
     def update_venmo
@@ -113,6 +124,10 @@ module My
       return if @person
 
       redirect_to profile_path, alert: "Please complete your profile to view payments."
+    end
+
+    def profile_params
+      params.require(:person).permit(:name, :pronouns)
     end
 
     def venmo_params
