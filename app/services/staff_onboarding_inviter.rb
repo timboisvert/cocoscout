@@ -97,7 +97,7 @@ class StaffOnboardingInviter
           <p>Hi #{first},</p>
           <p>You've been added to the team at <strong>#{@organization.name}</strong>. Finish your onboarding to get set up — you'll confirm your details (like your legal and preferred names) and set up your payment details so you get paid automatically. It only takes a minute.</p>
           <p><a href="#{setup_url}">Complete onboarding and set up payment details →</a></p>
-          <p>Your payment info stays with our payment processor, never with the productions you work for.</p>
+          <p>Your payment details stay secure with our payment processor.</p>
         HTML
     end
   end

@@ -1,10 +1,9 @@
 <%# Role assignment checkboxes + a "Manage roles" modal (Turbo-frame) for
     adding/removing house roles without leaving the page. The modal (which
     contains its own forms) is deferred via content_for :staffing_modals so it
-    renders OUTSIDE the surrounding form — the parent view must
-    `<%= yield :staffing_modals %>` after its form. New roles are synced into the
-    checkbox grid when the modal closes.
-    Locals: house_roles (collection), assigned_ids (array of ids). %>
+    renders OUTSIDE the surrounding form — the parent view must yield
+    :staffing_modals after its form. New roles sync into the checkbox grid when
+    the modal closes. Locals: house_roles, assigned_ids (array of ids). %>
 <% if house_roles.empty? %>
   <p class="text-sm text-gray-500 mb-3" id="staff-roles-empty">No roles yet — add some so you can mark what this person is qualified for.</p>
 <% end %>

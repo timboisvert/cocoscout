@@ -1,10 +1,9 @@
 <%# Department picker: a select of the org's managed departments plus a link
     that opens a modal to add/remove departments (Turbo-frame). The modal (which
     contains its own forms) is deferred via content_for :staffing_modals so it
-    renders OUTSIDE the surrounding form — the parent view must
-    `<%= yield :staffing_modals %>` after its form. New departments are synced
-    into the select when the modal closes.
-    Locals: departments (collection), selected (name string), field_name. %>
+    renders OUTSIDE the surrounding form — the parent view must yield
+    :staffing_modals after its form. New departments sync into the select when
+    the modal closes. Locals: departments, selected (name string), field_name. %>
 <% field_name = local_assigns.fetch(:field_name, "department") %>
 <% selected = local_assigns[:selected].to_s %>
 <% names = departments.map(&:name) %>
