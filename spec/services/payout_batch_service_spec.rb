@@ -58,6 +58,45 @@ RSpec.describe PayoutBatchService do
     end
   end
 
+  describe ".fund!" do
+    before { org.update!(stripe_customer_id: "cus_1") }
+
+    it "card funding that succeeds immediately funds and processes the batch" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.fund!(batch, method: "card")
+
+      expect(batch.reload.status).to eq("completed")
+      expect(batch.funding_status).to eq("succeeded")
+      expect(org.payout_balance_cents_for(ready)).to eq(0)
+    end
+
+    it "ACH funding waits for settlement before transferring" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_2"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.fund!(batch, method: "ach")
+
+      # Not funded yet — balance intact proves no transfers ran.
+      expect(batch.reload.status).to eq("funding")
+      expect(batch.funding_status).to eq("processing")
+      expect(org.payout_balance_cents_for(ready)).to eq(5000)
+
+      # Settlement webhook advances it → transfers run and the balance clears.
+      PayoutBatchService.advance_funding!(batch, "succeeded")
+      expect(batch.reload.status).to eq("completed")
+      expect(org.payout_balance_cents_for(ready)).to eq(0)
+    end
+
+    it "rejects an unknown funding method" do
+      batch = PayoutBatchService.build_for(organization: org)
+      expect { PayoutBatchService.fund!(batch, method: "crypto") }.to raise_error(ArgumentError)
+    end
+  end
+
   describe "reversal" do
     it "restores the balance when a paid item is marked failed" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_2"))

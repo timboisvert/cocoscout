@@ -28,6 +28,48 @@ class PayoutBatchService
     batch
   end
 
+  FUNDING_METHODS = %w[ach card].freeze
+
+  # Fund the batch from the org: an ACH debit (default, cheap, settles in a few
+  # days) or a card charge (instant "pay now" rush). Creates a PaymentIntent
+  # against the org's Stripe customer; card funding that succeeds immediately is
+  # advanced straight into processing, while ACH waits for the webhook.
+  def self.fund!(batch, method: "ach", payment_method_id: nil)
+    raise ArgumentError, "unknown funding method #{method}" unless FUNDING_METHODS.include?(method)
+    return batch if batch.total_cents.zero?
+
+    intent = Stripe::PaymentIntent.create(
+      amount: batch.total_cents,
+      currency: "usd",
+      customer: batch.organization.stripe_customer_id,
+      payment_method: payment_method_id,
+      payment_method_types: [ method == "ach" ? "us_bank_account" : "card" ],
+      confirm: true,
+      metadata: { payout_batch_id: batch.id }
+    )
+    batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
+    advance_funding!(batch, intent.status)
+    batch
+  rescue Stripe::StripeError => e
+    batch.update!(status: "failed", funding_status: "failed")
+    raise Error, e.message
+  end
+
+  # Move a batch forward based on its funding PaymentIntent status. Called from
+  # #fund! (instant card) and the payment_intent webhook (ACH settlement).
+  def self.advance_funding!(batch, intent_status)
+    case intent_status
+    when "succeeded"
+      batch.update!(status: "funded", funding_status: "succeeded")
+      process!(batch)
+    when "processing", "requires_action"
+      batch.update!(funding_status: intent_status)
+    end
+    batch
+  end
+
+  class Error < StandardError; end
+
   # Transfer every pending item to its connected account. Each success posts a
   # `payout` ledger entry (debiting the balance); failures leave the balance intact.
   def self.process!(batch)

@@ -32,12 +32,28 @@ class StripeWebhooksController < ApplicationController
       handle_connect_account_updated(event.data.object)
     when "transfer.reversed"
       handle_transfer_reversed(event.data.object)
+    when "payment_intent.succeeded", "payment_intent.payment_failed"
+      handle_payout_funding(event.data.object, event.type)
     end
 
     head :ok
   end
 
   private
+
+  # A payout batch's funding PaymentIntent settled (ACH) or failed. On success,
+  # advance the batch into processing (transfers go out); on failure, mark it
+  # failed. Guarded by funding_payment_intent_id so non-batch PIs are ignored.
+  def handle_payout_funding(intent, event_type)
+    batch = PayoutBatch.find_by(funding_payment_intent_id: intent.id)
+    return unless batch
+
+    if event_type == "payment_intent.succeeded"
+      PayoutBatchService.advance_funding!(batch, "succeeded")
+    else
+      batch.update!(status: "failed", funding_status: "failed")
+    end
+  end
 
   # A Connect transfer was reversed — undo the payout: mark the batch item failed
   # and remove its ledger entry so the payee's balance is restored.
