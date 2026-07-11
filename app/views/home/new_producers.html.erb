@@ -18,9 +18,12 @@
           Everything you need to<br>run your show — free.
         </h1>
 
-        <p class="text-lg sm:text-xl text-slate-600 mb-10 leading-relaxed">
+        <p class="text-lg sm:text-xl text-slate-600 mb-4 leading-relaxed">
           Scheduling, casting, availability, sign-ups, messaging, contacts, documents, and courses —
           all free for solo producers and small teams. Ready to grow? Upgrade to Pro any time.
+        </p>
+        <p class="text-sm font-semibold uppercase tracking-wider text-pink-600 mb-10">
+          Built by performers &amp; producers, for performers &amp; producers.
         </p>
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
@@ -132,10 +135,10 @@
         <div class="max-w-6xl mx-auto">
           <h3 class="text-center text-2xl font-bold text-slate-900 mb-10 coustard-regular">Plus everything else in Pro</h3>
           <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <%= render "home/producer_feature_card", pro: true, icon: "users", title: "Staffing", description: "Shifts, availability, employee onboarding, org charts, and contractor payments." %>
+            <%= render "home/producer_feature_card", pro: true, icon: "users", title: "Staffing", description: "Schedule, onboard, and manage your team — $5/month per staff member, only in months they work." %>
             <%= render "home/producer_feature_card", pro: true, icon: "chart", title: "Reports", description: "Revenue, payouts, cast participation, and programming analytics." %>
             <%= render "home/producer_feature_card", pro: true, icon: "sparkles", title: "Unlimited everything", description: "Run unlimited productions and unlimited shows/events every month." %>
-            <%= render "home/producer_feature_card", pro: true, icon: "dollar", title: "Pay your team", description: "Pay performers and manage US contractors for $6/month each." %>
+            <%= render "home/producer_feature_card", pro: true, icon: "dollar", title: "Pay your team", description: "Pay performers, and pay staff with 2 free payments a month each — then just $1." %>
           </div>
 
           <div class="text-center mt-12">

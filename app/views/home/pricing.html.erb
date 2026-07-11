@@ -40,12 +40,10 @@
       ["Pay performers", no.call, yes.call]
     ]],
     ["Staffing", [
-      ["Staff availability", no.call, yes.call],
-      ["Work shifts", no.call, yes.call],
-      ["Employee onboarding", no.call, yes.call],
-      ["Org charts", no.call, yes.call],
-      ["Manage US contractors", no.call, yes.call("$6/month per contractor")],
-      ["Pay US contractors", no.call, yes.call("2 free payments/month per contractor")],
+      ["Staff availability &amp; work shifts", no.call, yes.call],
+      ["Staff onboarding &amp; org charts", no.call, yes.call],
+      ["Schedule &amp; manage a staff member", no.call, yes.call("$5/mo — only in months they work")],
+      ["Pay your staff", no.call, yes.call("2 free payments/mo each, then $1")],
       ["Tax forms (W-9, 1099-NEC, 1096)", no.call, yes.call]
     ]],
     ["Reports", [
@@ -64,6 +62,18 @@
     <p class="text-lg text-slate-600 max-w-2xl mx-auto">
       Solo producers and small teams start free on <span class="font-semibold">Producer</span>. When you're running multiple productions, upgrade to <span class="font-semibold">Pro</span> for the full toolkit.
     </p>
+  </section>
+
+  <!-- Built by performers & producers -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-6">
+    <div class="max-w-3xl mx-auto rounded-2xl bg-slate-900 text-white px-6 py-6 text-center">
+      <p class="text-xs uppercase tracking-wider text-pink-300 font-semibold mb-2">Built by performers &amp; producers, for performers &amp; producers</p>
+      <p class="text-base text-slate-200">
+        We've run the shows and cashed the checks — so our pricing is fair by design. Staffing is
+        <span class="font-semibold text-white">$5/month per person, only in the months they actually work</span>.
+        If someone sits out a month, you pay nothing for them.
+      </p>
+    </div>
   </section>
 
   <!-- Plan cards -->
@@ -95,7 +105,7 @@
           <li>Money: financials, payouts, contracts &amp; advances</li>
           <li>Staffing, Auditions &amp; Casting Tables</li>
           <li>Reports across your whole company</li>
-          <li>Pay performers &amp; manage contractors ($6/mo each)</li>
+          <li>Pay performers &amp; add staff for $5/mo — only in months they work</li>
         </ul>
         <%= link_to "Go Pro", signup_path, class: "mt-6 inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-pink-500 text-white font-medium hover:bg-pink-600 transition" %>
       </div>

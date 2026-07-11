@@ -76,18 +76,17 @@ module Manage
       staffing: {
         name: "Staffing",
         icon: "users",
-        headline: "Schedule your crew and manage contractors without the chaos",
-        subhead: "Availability, shifts, onboarding, and contractor payments — all in one workspace.",
-        description: "Staffing gives you everything you need to run the people behind the show: who's working, when, what they're owed, and the paperwork to keep it all above board.",
+        headline: "Run your team — schedule, manage, and pay them — without the chaos",
+        subhead: "Availability, shifts, onboarding, and payments in one workspace, priced fairly: $5/month per staff member, only in the months they actually work.",
+        description: "Staffing gives you everything you need to run the people behind the show: who's working, when, what they're owed, and the paperwork to keep it all above board. Built by performers and producers who were tired of paying per head for people who weren't even working that month.",
         capabilities: [
           { title: "Staff availability & work shifts", body: "Collect availability and build shift schedules that fit each event, venue, and role." },
-          { title: "Employee onboarding", body: "Onboard new staff with the details and documents you need on file from day one." },
-          { title: "Org charts", body: "Map your team structure so everyone knows who reports to whom." },
-          { title: "Manage US contractors", body: "Add and track US-based contractors for $6/month each." },
-          { title: "Pay contractors", body: "Pay each contractor with 2 free payments per month included per contractor." },
-          { title: "Tax forms", body: "Generate the contractor tax forms you need — W-9, 1099-NEC, 1096, and more." }
+          { title: "Onboarding & org charts", body: "Onboard new staff Gusto-style and map who reports to whom." },
+          { title: "Fair, per-active pricing", body: "Just $5/month per staff member — and only in months they're scheduled to work. Nobody working this month? You pay nothing for them." },
+          { title: "Pay your staff", body: "Each staff member includes 2 free payments per month; additional payments are just $1." },
+          { title: "Tax forms", body: "Generate the tax forms you need — W-9, 1099-NEC, 1096, and more." }
         ],
-        outcome: "Keep your crew scheduled, paid, and compliant — without leaving CocoScout."
+        outcome: "Keep your team scheduled, paid, and compliant — without leaving CocoScout, and without paying for people who aren't working."
       },
       auditions: {
         name: "Auditions",
