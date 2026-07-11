@@ -31,6 +31,29 @@ RSpec.describe "Manage::Reports", type: :request do
     end
   end
 
+  it "downloads each report as a CSV spreadsheet" do
+    [
+      manage_report_revenue_by_production_path(format: :csv),
+      manage_report_revenue_over_time_path(format: :csv),
+      manage_report_events_summary_path(format: :csv),
+      manage_report_cast_participation_path(format: :csv),
+      manage_report_payouts_summary_path(format: :csv),
+      manage_report_course_revenue_path(format: :csv)
+    ].each do |path|
+      get path
+      expect(response).to have_http_status(:ok), "expected #{path} to download"
+      expect(response.media_type).to eq("text/csv"), "expected #{path} to be CSV"
+      expect(response.headers["Content-Disposition"]).to include(".csv")
+    end
+  end
+
+  it "presents Payouts as its own section and drops the coming-soon reports" do
+    get manage_reports_path
+    expect(response.body).to include("Payouts")
+    expect(response.body).not_to include("Coming soon")
+    expect(response.body).not_to include("Availability Response Rates")
+  end
+
   it "gates reports behind the Pro plan" do
     free_owner = create(:user, password: password)
     free_org = create(:organization, owner: free_owner)

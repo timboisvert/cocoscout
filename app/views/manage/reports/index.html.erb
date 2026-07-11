@@ -1,55 +1,38 @@
 <% content_for :title, "Reports" %>
 
-<div class="min-h-screen bg-gray-50">
+<div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="mb-8">
-      <div class="flex items-center gap-2 text-sm text-gray-600 mb-4">
-        <%= link_to "Home", manage_path, class: "hover:text-pink-600" %>
-        <span>/</span>
-        <span class="text-gray-900">Reports</span>
-      </div>
-      <h1 class="text-4xl coustard-regular text-gray-900">Reports</h1>
-      <p class="mt-2 text-gray-600">Insights across your productions, cast, events, and finances.</p>
-    </div>
+  <%= render "shared/module_header",
+    title: "Reports",
+    description: "<p>Insights across your productions, cast, events, and finances. Every report can be printed to PDF or downloaded as a spreadsheet.</p>" %>
 
-    <% report_paths = {
+  <%
+    report_paths = {
       revenue_by_production: manage_report_revenue_by_production_path,
       revenue_over_time: manage_report_revenue_over_time_path,
-      payouts_summary: manage_report_payouts_summary_path,
       course_revenue: manage_report_course_revenue_path,
+      payouts_summary: manage_report_payouts_summary_path,
       events_summary: manage_report_events_summary_path,
       cast_participation: manage_report_cast_participation_path
-    } %>
+    }
+  %>
 
-    <% @report_catalog.each do |group| %>
-      <div class="mb-8">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3"><%= group[:title] %></h2>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <% group[:reports].each do |report| %>
-            <% available = report[:status] != :coming_soon %>
-            <% path = report_paths[report[:key]] %>
-            <% if available && path %>
-              <%= link_to path, class: "block bg-white border border-gray-200 rounded-lg p-5 hover:border-pink-300 hover:shadow-sm transition" do %>
-                <div class="flex items-start justify-between">
-                  <h3 class="text-base font-semibold text-gray-900"><%= report[:title] %></h3>
-                  <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </div>
-                <p class="mt-1.5 text-sm text-gray-500"><%= report[:description] %></p>
-              <% end %>
-            <% else %>
-              <div class="block bg-gray-50 border border-dashed border-gray-200 rounded-lg p-5 opacity-70">
-                <div class="flex items-start justify-between">
-                  <h3 class="text-base font-semibold text-gray-500"><%= report[:title] %></h3>
-                  <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 font-bold">Soon</span>
-                </div>
-                <p class="mt-1.5 text-sm text-gray-400"><%= report[:description] %></p>
-              </div>
-            <% end %>
+  <% @report_catalog.each do |group| %>
+    <div class="mb-8">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3"><%= group[:title] %></h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <% group[:reports].each do |report| %>
+          <% path = report_paths[report[:key]] %>
+          <%= link_to path, class: "block bg-white border border-gray-200 rounded-lg p-5 hover:border-pink-300 hover:shadow-sm transition" do %>
+            <div class="flex items-start justify-between">
+              <h3 class="text-base font-semibold text-gray-900"><%= report[:title] %></h3>
+              <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            <p class="mt-1.5 text-sm text-gray-500"><%= report[:description] %></p>
           <% end %>
-        </div>
+        <% end %>
       </div>
-    <% end %>
-  </div>
+    </div>
+  <% end %>
 </div>
