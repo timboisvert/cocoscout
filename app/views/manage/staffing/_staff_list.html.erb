@@ -1,6 +1,7 @@
 <%# Staff hub: searchable, toggleable roster split into active staff and people
-    still pending onboarding. Rendered inside a data-controller="staff-modal
-    staff-hub" wrapper. Uses @active_staff, @pending_staff, @house_roles. %>
+    still pending onboarding. Rendered inside a data-controller="invite-preview"
+    wrapper. Uses @active_staff, @pending_staff. Editing a member opens a full
+    page (not a modal); the only modal here is the onboarding email preview. %>
 
 <div data-controller="staff-hub">
   <%# ---- Toolbar: search + list/grid toggle ---- %>
@@ -55,8 +56,9 @@
   <% elsif @pending_staff.empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
       <p class="text-sm text-gray-600 mb-3">No staff added yet.</p>
-      <%= link_to "Add your first staff member", manage_new_staffing_staff_wizard_path,
-            class: "bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm no-underline" %>
+      <%= link_to manage_new_staffing_staff_wizard_path, class: "inline-flex" do %>
+        <%= render "shared/button", text: "Add your first staff member", variant: "primary", size: "small", type: :button %>
+      <% end %>
     </div>
   <% end %>
 
@@ -66,167 +68,4 @@
   </div>
 </div>
 
-<%# ================= Edit staff member modal (tabbed) ================= %>
-<div data-staff-modal-target="modal"
-     class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-     data-action="click->staff-modal#backdropClose keydown.esc@window->staff-modal#close">
-  <div class="flex min-h-full items-start justify-center p-4 py-12">
-    <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->staff-modal#stopPropagation">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <h3 class="text-base font-semibold text-gray-900"><span data-staff-modal-target="title">Edit staff member</span></h3>
-        <button type="button" data-action="click->staff-modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-
-      <%# Tabs %>
-      <div class="flex gap-1 px-5 pt-3 border-b border-gray-200">
-        <% [ [ "details", "Details" ], [ "roles", "Roles" ], [ "onboarding", "Onboarding" ] ].each do |key, label| %>
-          <button type="button"
-                  data-staff-modal-target="tab"
-                  data-tab="<%= key %>"
-                  data-action="click->staff-modal#switchTab"
-                  class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer">
-            <%= label %>
-          </button>
-        <% end %>
-      </div>
-
-      <%= form_with url: "#", method: :patch, local: true, data: { "staff-modal-target": "form" } do %>
-        <%# --- Details panel --- %>
-        <div data-staff-modal-target="panel" data-panel="details" class="px-5 py-4 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
-            <input type="text" name="preferred_first_name" data-staff-modal-target="prefFirst"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Personal email</label>
-            <input type="email" name="personal_email" data-staff-modal-target="personalEmail"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-              <input type="text" name="title" data-staff-modal-target="jobTitle" placeholder="e.g. Bartender"
-                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                <input type="text" name="hourly_rate" data-staff-modal-target="hourlyRate" inputmode="decimal" placeholder="0.00"
-                       class="block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Start date</label>
-              <input type="date" name="start_date" data-staff-modal-target="startDate"
-                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Manager</label>
-              <select name="manager_id" data-staff-modal-target="manager"
-                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-                <option value="">No manager</option>
-                <% @active_staff.each do |m| %>
-                  <option value="<%= m.id %>"><%= m.display_name %></option>
-                <% end %>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <%# --- Roles panel --- %>
-        <div data-staff-modal-target="panel" data-panel="roles" class="hidden px-5 py-4">
-          <% if @house_roles.any? %>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Roles they can fill</label>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <% @house_roles.each do |role| %>
-                <label class="relative cursor-pointer">
-                  <input type="checkbox" name="house_role_ids[]" value="<%= role.id %>"
-                         data-staff-modal-target="roleCheckbox" class="sr-only peer">
-                  <span class="block text-center text-xs font-medium px-2 py-3 rounded-md border bg-white text-gray-700 border-gray-200 hover:border-pink-400 peer-checked:bg-pink-500 peer-checked:text-white peer-checked:border-pink-500 transition-colors">
-                    <%= role.name %>
-                  </span>
-                </label>
-              <% end %>
-            </div>
-          <% else %>
-            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-              No house roles yet — <%= link_to "add some", manage_staffing_house_roles_path, class: "underline font-medium" %> first.
-            </div>
-          <% end %>
-        </div>
-
-        <%# Footer (Save) — hidden on the Onboarding tab. %>
-        <div data-staff-modal-target="saveFooter" class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-          <button type="button" data-action="click->staff-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-          <%= render "shared/button", text: "Save changes", variant: "primary", size: "small", type: :submit %>
-        </div>
-      <% end %>
-
-      <%# --- Onboarding panel (separate action forms) --- %>
-      <div data-staff-modal-target="panel" data-panel="onboarding" class="hidden px-5 py-4 space-y-4">
-        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3">
-          <div class="text-sm font-medium text-gray-900 mb-1">Onboarding status</div>
-          <div class="text-sm text-gray-600" data-staff-modal-target="onboardingStatus"></div>
-        </div>
-
-        <%# Opens the same email-preview modal used by the roster — review the
-            draft before it sends. Its data attributes are populated on open. %>
-        <button type="button" data-staff-modal-target="resendButton" data-action="click->invite-preview#open"
-                class="w-full text-center px-4 py-2.5 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium cursor-pointer transition-colors">
-          <span data-staff-modal-target="resendLabel">Send onboarding invite</span>
-        </button>
-        <p class="text-xs text-gray-500 -mt-2">Shows the email as a draft first, then you confirm the send.</p>
-
-        <form data-staff-modal-target="removeForm" action="#" method="post"
-              data-turbo-confirm="Remove this person from your staff? Existing shift assignments are kept.">
-          <input type="hidden" name="_method" value="delete">
-          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
-          <button type="submit" class="w-full text-center px-4 py-2.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium cursor-pointer transition-colors">
-            Remove from staff
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<%# ================= Onboarding email preview + send modal ================= %>
-<div data-invite-preview-target="modal"
-     class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
-     data-action="click->invite-preview#backdropClose keydown.esc@window->invite-preview#close">
-  <div class="flex min-h-full items-start justify-center p-4 py-12">
-    <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->invite-preview#stopPropagation">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <h3 class="text-base font-semibold text-gray-900">Send onboarding email</h3>
-        <button type="button" data-action="click->invite-preview#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="px-5 py-4 space-y-3">
-        <p class="text-sm text-gray-600">This is the invite we'll email and message to <span class="font-medium text-gray-900" data-invite-preview-target="toName"></span> — asking them to create their account and set up how they get paid. Review it, then send.</p>
-        <div class="rounded-lg border border-gray-200 overflow-hidden">
-          <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-500 space-y-0.5">
-            <div><span class="font-medium text-gray-700">To:</span> <span data-invite-preview-target="toName"></span> &lt;<span data-invite-preview-target="toEmail"></span>&gt;</div>
-            <div><span class="font-medium text-gray-700">Subject:</span> <span data-invite-preview-target="subject"></span></div>
-          </div>
-          <div class="px-4 py-3 text-sm text-gray-700 space-y-2 [&_a]:text-pink-600 [&_a]:underline [&_strong]:font-semibold" data-invite-preview-target="body"></div>
-        </div>
-      </div>
-      <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-        <button type="button" data-action="click->invite-preview#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-        <form data-invite-preview-target="form" action="#" method="post" class="inline">
-          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
-          <button type="submit" class="px-4 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium cursor-pointer transition-colors">
-            <span data-invite-preview-target="sendLabel">Send email</span>
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+<%= render "manage/staffing/invite_preview_modal" %>

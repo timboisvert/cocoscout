@@ -1,13 +1,13 @@
 <p>Hi <%= @staff_member.preferred_first_name.presence || @staff_member.first_name.presence || @person&.name %>,</p>
 
-<p>You've been added to the team at <strong><%= @organization.name %></strong>. To make sure you get paid, set up how you'd like to receive your money — it only takes a minute.</p>
+<p>You've been added to the team at <strong><%= @organization.name %></strong>. Finish your onboarding to get set up — you'll confirm your details (like your legal and preferred names) and set up your payment details so you get paid automatically. It only takes a minute.</p>
 
 <p>
   <a href="<%= @onboarding_url %>" style="display:inline-block;background:#ec4899;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600;">
-    Set up how you get paid →
+    Complete onboarding and set up payment details →
   </a>
 </p>
 
-<p style="color:#6b7280;font-size:14px;">You'll connect a bank account so payments land automatically and securely — your details stay with our payment processor, never with the productions you work for.</p>
+<p style="color:#6b7280;font-size:14px;">Your payment details stay with our payment processor, never with the productions you work for.</p>
 
 <p>Thanks,<br>The <%= @organization.name %> team</p>

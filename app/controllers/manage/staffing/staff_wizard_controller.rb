@@ -6,11 +6,13 @@ module Manage
     # contract wizard model: state lives in the cache (keyed per user) between
     # steps, each step renders inside the shared wizard_layout, and the final
     # step creates the Person + OrganizationStaffMember and sends the onboarding
-    # invite. Sensitive info (SSN, bank) is never entered here — the worker
-    # provides that to Stripe during their own onboarding.
+    # invite. One focused question per step. Sensitive info (SSN, bank) is never
+    # entered here — the worker provides that to Stripe during their own
+    # onboarding.
     class StaffWizardController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
       before_action :load_wizard_state
+      before_action :require_started, only: %i[job manager start pay roles create]
 
       # Step 1: Personal details
       def details
@@ -36,40 +38,63 @@ module Manage
           personal_email: email
         )
         save_wizard_state
-        redirect_to manage_staffing_staff_wizard_employment_path
+        redirect_to manage_job_staffing_staff_wizard_path
       end
 
-      # Step 2: Employment
-      def employment
-        return redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?
+      # Step 2: Job (title + department)
+      def job
+        @staff_member = build_preview_member
+      end
 
+      def save_job
+        @wizard_state.merge!(title: params[:title].to_s.strip, department: params[:department].to_s.strip)
+        save_wizard_state
+        redirect_to manage_manager_staffing_staff_wizard_path
+      end
+
+      # Step 3: Manager
+      def manager
         @staff_member = build_preview_member
         @managers = active_staff_for_manager_select
+        @selected_manager = @managers.find { |m| m.id == @wizard_state[:manager_id].to_i }
       end
 
-      def save_employment
-        @wizard_state.merge!(
-          title: params[:title].to_s.strip,
-          hourly_rate: params[:hourly_rate].to_s.strip,
-          start_date: params[:start_date].to_s.strip,
-          manager_id: params[:manager_id].to_s.strip
-        )
+      def save_manager
+        @wizard_state[:manager_id] = params[:manager_id].to_s.strip
         save_wizard_state
-        redirect_to manage_staffing_staff_wizard_roles_path
+        redirect_to manage_start_staffing_staff_wizard_path
       end
 
-      # Step 3: Roles
-      def roles
-        return redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?
+      # Step 4: Start date
+      def start
+        @staff_member = build_preview_member
+      end
 
+      def save_start
+        @wizard_state[:start_date] = params[:start_date].to_s.strip
+        save_wizard_state
+        redirect_to manage_pay_staffing_staff_wizard_path
+      end
+
+      # Step 5: Pay
+      def pay
+        @staff_member = build_preview_member
+      end
+
+      def save_pay
+        @wizard_state[:hourly_rate] = params[:hourly_rate].to_s.strip
+        save_wizard_state
+        redirect_to manage_roles_staffing_staff_wizard_path
+      end
+
+      # Step 6: Roles
+      def roles
         @staff_member = build_preview_member
         @house_roles = Current.organization.house_roles.active.ordered
       end
 
       # Final step: create the person + membership, then invite.
       def create
-        return redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?
-
         @wizard_state[:house_role_ids] = Array(params[:house_role_ids]).map(&:to_i).reject(&:zero?)
         save_wizard_state
 
@@ -90,13 +115,13 @@ module Manage
         clear_wizard_state
 
         notice = if invited
-          "#{staff_member.display_name} added to staff — we emailed and messaged them to set up how they get paid."
+          "#{staff_member.display_name} added to staff — we emailed and messaged them to complete onboarding."
         else
-          "#{staff_member.display_name} added to staff. Invite them to finish onboarding when you're ready."
+          "#{staff_member.display_name} added to staff. Invite them to complete onboarding when you're ready."
         end
         redirect_to manage_staffing_index_path, notice: notice
       rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_staffing_staff_wizard_roles_path,
+        redirect_to manage_roles_staffing_staff_wizard_path,
                     alert: "Couldn't add staff member: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
@@ -106,6 +131,10 @@ module Manage
       end
 
       private
+
+      def require_started
+        redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?
+      end
 
       # A non-persisted OrganizationStaffMember carrying the in-progress state, so
       # the step views can reuse the same field helpers/prefills.
@@ -121,6 +150,7 @@ module Manage
           preferred_first_name: @wizard_state[:preferred_first_name].presence,
           personal_email: @wizard_state[:personal_email].presence,
           title: @wizard_state[:title].presence,
+          department: @wizard_state[:department].presence,
           hourly_rate_cents: parse_rate_cents(@wizard_state[:hourly_rate]),
           start_date: @wizard_state[:start_date].presence,
           manager_id: valid_manager_id(@wizard_state[:manager_id]),
@@ -142,7 +172,7 @@ module Manage
 
       def active_staff_for_manager_select
         Current.organization.organization_staff_members.active.includes(:person)
-               .order("people.name").references(:person)
+               .order("people.name").references(:person).to_a
       end
 
       def upsert_person(email:, name:)

@@ -63,30 +63,8 @@
               "send-label": resend_label
             } %>
     <% end %>
-    <%= render "shared/button",
-          text: "Edit",
-          variant: "outline",
-          size: "small",
-          type: :button,
-          data: {
-            action: "click->staff-modal#openForEdit",
-            "member-id": member.id,
-            "person-name": person.name,
-            "pref-first": member.preferred_first_name,
-            "title": member.title,
-            "personal-email": (member.personal_email.presence || person.email),
-            "hourly-rate": member.hourly_rate_dollars,
-            "start-date": member.start_date&.iso8601,
-            "manager-id": member.manager_id,
-            "role-ids": member.house_role_ids.to_json,
-            "onboarding-state": onboarding,
-            "pending": pending,
-            "invite-path": manage_invite_staffing_staff_path(member),
-            "destroy-path": manage_destroy_staffing_staff_path(member),
-            "to-email": preview[:to_email],
-            "email-subject": preview[:subject],
-            "email-body": preview[:body],
-            "send-label": resend_label
-          } %>
+    <%= link_to manage_edit_staffing_staff_path(member), class: "inline-flex" do %>
+      <%= render "shared/button", text: "Edit", variant: "outline", size: "small", type: :button %>
+    <% end %>
   </div>
 </div>

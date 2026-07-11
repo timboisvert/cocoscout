@@ -4,18 +4,17 @@ import { Controller } from "@hotwired/stimulus"
 // (already interpolated), then lets the org confirm the send. Replaces the
 // cheap browser confirm dialog for (re)sending onboarding invites.
 export default class extends Controller {
-    static targets = ["modal", "toName", "toEmail", "subject", "body", "form", "sendLabel"]
+    static targets = ["modal", "toName", "toEmail", "subject", "body", "form"]
 
     open(event) {
         if (event) event.preventDefault()
         const d = event.currentTarget.dataset
 
         if (this.hasFormTarget && d.invitePath) this.formTarget.action = d.invitePath
-        if (this.hasToNameTarget) this.toNameTarget.textContent = d.toName || ""
+        this.toNameTargets.forEach(el => { el.textContent = d.toName || "" })
         if (this.hasToEmailTarget) this.toEmailTarget.textContent = d.toEmail || ""
         if (this.hasSubjectTarget) this.subjectTarget.textContent = d.emailSubject || ""
         if (this.hasBodyTarget) this.bodyTarget.innerHTML = d.emailBody || ""
-        if (this.hasSendLabelTarget) this.sendLabelTarget.textContent = d.sendLabel || "Send email"
 
         this.show()
     }

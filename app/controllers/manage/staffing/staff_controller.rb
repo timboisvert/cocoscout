@@ -4,7 +4,7 @@ module Manage
   module Staffing
     class StaffController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_staff_member, only: %i[update destroy invite]
+      before_action :set_staff_member, only: %i[edit update destroy invite]
 
       # The staffing hub (Manage::StaffingController#index) is now the one and
       # only staff roster. Keep this legacy path working by redirecting to it.
@@ -16,8 +16,11 @@ module Manage
         redirect_to manage_staffing_index_path
       end
 
+      # Full-page staff editor (roomy — replaces the old cramped modal).
       def edit
-        redirect_to manage_staffing_index_path
+        @house_roles = Current.organization.house_roles.active.ordered
+        @managers = Current.organization.organization_staff_members.active
+                           .includes(:person).order("people.name").references(:person).to_a
       end
 
       def create
@@ -124,7 +127,11 @@ module Manage
       def editable_employment_attributes
         attrs = {}
         attrs[:preferred_first_name] = params[:preferred_first_name].to_s.strip.presence if params.key?(:preferred_first_name)
+        attrs[:first_name] = params[:first_name].to_s.strip.presence if params.key?(:first_name)
+        attrs[:middle_initial] = params[:middle_initial].to_s.strip.first if params.key?(:middle_initial)
+        attrs[:last_name] = params[:last_name].to_s.strip.presence if params.key?(:last_name)
         attrs[:title] = params[:title].to_s.strip.presence if params.key?(:title)
+        attrs[:department] = params[:department].to_s.strip.presence if params.key?(:department)
         attrs[:personal_email] = params[:personal_email].to_s.strip.downcase.presence if params.key?(:personal_email)
         attrs[:start_date] = params[:start_date].presence if params.key?(:start_date)
         attrs[:hourly_rate_cents] = parse_rate_cents(params[:hourly_rate]) if params.key?(:hourly_rate)

@@ -1,0 +1,84 @@
+<%# Click-in manager picker (replaces the manager dropdown).
+    Locals:
+      staff       - collection of OrganizationStaffMember to choose from
+      selected    - the currently-selected member (or nil)
+      exclude_id  - a member id to omit (e.g. the person being edited)
+      field_name  - form field name (default "manager_id") %>
+<% field_name = local_assigns.fetch(:field_name, "manager_id") %>
+<% selected = local_assigns[:selected] %>
+<% exclude_id = local_assigns[:exclude_id] %>
+<% pickable = staff.reject { |m| exclude_id && m.id == exclude_id } %>
+
+<div data-controller="manager-picker">
+  <input type="hidden" name="<%= field_name %>" value="<%= selected&.id %>" data-manager-picker-target="input">
+
+  <div class="flex items-center gap-3">
+    <span data-manager-picker-target="display" class="text-sm <%= selected ? "text-gray-900 font-medium" : "text-gray-400" %>">
+      <%= selected ? selected.display_name : "No manager" %>
+    </span>
+    <%= render "shared/button", text: "Choose manager", variant: "outline", size: "small", type: :button,
+          data: { action: "click->manager-picker#open" } %>
+  </div>
+
+  <%# ---- picker modal ---- %>
+  <div data-manager-picker-target="modal"
+       class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->manager-picker#backdropClose keydown.esc@window->manager-picker#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->manager-picker#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">Choose a manager</h3>
+          <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
+                data: { action: "click->manager-picker#close" } %>
+        </div>
+
+        <div class="px-5 py-3 border-b border-gray-100">
+          <input type="text"
+                 data-manager-picker-target="search"
+                 data-action="input->manager-picker#filter"
+                 placeholder="Search staff by name…"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500 text-sm">
+        </div>
+
+        <div class="px-3 py-2 max-h-80 overflow-y-auto">
+          <% if pickable.any? %>
+            <% pickable.each do |m| %>
+              <% mp = m.person %>
+              <% mh = mp.respond_to?(:safe_headshot_variant) ? mp.safe_headshot_variant(:thumb) : nil %>
+              <div data-manager-picker-target="row"
+                   data-id="<%= m.id %>"
+                   data-display="<%= m.display_name %>"
+                   data-name="<%= [ m.display_name, mp.email, m.title ].compact.join(" ").downcase %>"
+                   data-action="click->manager-picker#choose"
+                   class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <% if mh %>
+                  <%= image_tag mh, alt: m.display_name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= mp.initials %></div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate"><%= m.display_name %></div>
+                  <% if m.title.present? %><div class="text-xs text-gray-500 truncate"><%= m.title %></div><% end %>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-400 text-center py-6">No other staff to pick from yet.</p>
+          <% end %>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "No manager", variant: "ghost", size: "small", type: :button,
+                data: { action: "click->manager-picker#clear" } %>
+          <div class="flex items-center gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button,
+                  data: { action: "click->manager-picker#close" } %>
+            <%= render "shared/button", text: "Select as manager", variant: "primary", size: "small", type: :button,
+                  disabled: true,
+                  data: { action: "click->manager-picker#confirm", "manager-picker-target": "selectButton" } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

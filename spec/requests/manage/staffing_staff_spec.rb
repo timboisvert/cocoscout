@@ -132,4 +132,35 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect(accountless.reload.user).to eq(existing)
     end
   end
+
+  describe "editing a staff member" do
+    let(:owner) { create(:user, password: password) }
+    let!(:org) { create(:organization, :pro, owner: owner) }
+    let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+    let(:person) { create(:person, name: "Edit Me", email: "edit@example.com") }
+    let!(:member) { create(:organization_staff_member, organization: org, person: person, onboarding_state: "invited") }
+    let(:boss_person) { create(:person, name: "Boss", email: "boss@example.com") }
+    let!(:boss) { create(:organization_staff_member, organization: org, person: boss_person, onboarding_state: "added") }
+
+    before { sign_in(owner) }
+
+    it "renders the full edit page" do
+      get manage_edit_staffing_staff_path(member)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Edit Edit Me").or include("Personal details")
+      expect(response.body).to include("Department")
+    end
+
+    it "updates employment details including department and manager" do
+      patch manage_update_staffing_staff_path(member), params: {
+        title: "Bartender", department: "Front of House", hourly_rate: "18.00", manager_id: boss.id
+      }
+      member.reload
+      expect(member.title).to eq("Bartender")
+      expect(member.department).to eq("Front of House")
+      expect(member.hourly_rate_cents).to eq(1800)
+      expect(member.manager).to eq(boss)
+      expect(response).to redirect_to(manage_staffing_index_path)
+    end
+  end
 end

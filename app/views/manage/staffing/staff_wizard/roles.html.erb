@@ -1,11 +1,15 @@
-<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 3, step_name: "Roles" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What can they do?</h2>
-  <p class="text-gray-600 mb-6">Pick the house roles <%= @staff_member.display_name.presence || "they" %> can fill. You can change these anytime.</p>
+<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 6, step_name: "Roles" } do %>
+  <div class="flex items-start justify-between gap-4 mb-2">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900 coustard-regular">What can they do?</h2>
+      <p class="text-gray-600 mt-1">Pick the house roles <%= @staff_member.display_name.presence || "they" %> can fill. You can change these anytime.</p>
+    </div>
+  </div>
 
   <%= form_with url: manage_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
     <% if @house_roles.any? %>
       <% assigned = Array(@wizard_state[:house_role_ids]).map(&:to_i) %>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <% @house_roles.each do |role| %>
           <label class="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300">
             <%= check_box_tag "house_role_ids[]", role.id, assigned.include?(role.id), class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
@@ -15,12 +19,19 @@
       </div>
     <% else %>
       <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-        No house roles yet — <%= link_to "add some", manage_staffing_house_roles_path, class: "underline font-medium" %> so you can mark what this person is qualified for. You can still add them now.
+        No house roles yet — create some so you can mark what this person is qualified for. You can still add them now.
       </div>
     <% end %>
 
+    <div class="flex items-center gap-2 pt-1">
+      <%= link_to manage_new_staffing_house_role_path, class: "inline-flex" do %>
+        <%= render "shared/button", text: "Create a new role", variant: "outline", size: "small", icon: "plus", type: :button %>
+      <% end %>
+      <%= link_to "Manage all roles", manage_staffing_house_roles_path, class: "text-sm text-gray-500 hover:text-gray-700 underline" %>
+    </div>
+
     <div class="flex items-center justify-between pt-4 border-t border-gray-200">
-      <%= link_to "← Back", manage_staffing_staff_wizard_employment_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+      <%= link_to "← Back", manage_pay_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
       <%= render "shared/button", text: "Add staff member", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>

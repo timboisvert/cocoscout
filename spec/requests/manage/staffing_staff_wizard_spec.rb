@@ -18,10 +18,13 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
   end
 
-  # Walk the multi-step wizard: details → employment → roles → create.
-  def complete_wizard(details:, employment: {}, role_ids: [])
-    post manage_staffing_staff_wizard_details_path, params: details
-    post manage_save_staffing_staff_wizard_employment_path, params: employment
+  # Walk the multi-step wizard: details → job → manager → start → pay → roles.
+  def complete_wizard(details:, job: {}, manager_id: nil, start_date: nil, hourly_rate: nil, role_ids: [])
+    post manage_save_details_staffing_staff_wizard_path, params: details
+    post manage_save_job_staffing_staff_wizard_path, params: job
+    post manage_save_manager_staffing_staff_wizard_path, params: { manager_id: manager_id }
+    post manage_save_start_staffing_staff_wizard_path, params: { start_date: start_date }
+    post manage_save_pay_staffing_staff_wizard_path, params: { hourly_rate: hourly_rate }
     post manage_staffing_staff_wizard_path, params: { house_role_ids: role_ids }
   end
 
@@ -32,11 +35,11 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect(response.body).to include("Details")
   end
 
-  it "renders the employment step with an hourly rate field" do
-    post manage_staffing_staff_wizard_details_path, params: {
+  it "renders the pay step with an hourly rate field" do
+    post manage_save_details_staffing_staff_wizard_path, params: {
       first_name: "Dana", last_name: "Reed", personal_email: "dee@example.com"
     }
-    get manage_staffing_staff_wizard_employment_path
+    get manage_pay_staffing_staff_wizard_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Hourly rate")
   end
@@ -46,7 +49,8 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
       complete_wizard(
         details: { first_name: "Dana", middle_initial: "Q", last_name: "Reed",
                    preferred_first_name: "Dee", personal_email: "dee@example.com" },
-        employment: { title: "Bartender", hourly_rate: "22.50", start_date: "2026-08-01" },
+        job: { title: "Bartender", department: "Front of House" },
+        start_date: "2026-08-01", hourly_rate: "22.50",
         role_ids: [ house_role.id ]
       )
     }.to change { org.organization_staff_members.count }.by(1)
@@ -56,6 +60,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect(member.middle_initial).to eq("Q")
     expect(member.preferred_first_name).to eq("Dee")
     expect(member.title).to eq("Bartender")
+    expect(member.department).to eq("Front of House")
     expect(member.hourly_rate_cents).to eq(2250)
     expect(member.start_date.to_s).to eq("2026-08-01")
     # Adding a staff member auto-sends the onboarding invite.
@@ -68,7 +73,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
 
   it "re-renders the details step with an error when required fields are missing" do
     expect {
-      post manage_staffing_staff_wizard_details_path, params: { first_name: "", last_name: "", personal_email: "nope" }
+      post manage_save_details_staffing_staff_wizard_path, params: { first_name: "", last_name: "", personal_email: "nope" }
     }.not_to change { org.organization_staff_members.count }
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.body).to include("required")
@@ -85,7 +90,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
 
     complete_wizard(
       details: { first_name: "New", last_name: "Hire", personal_email: "hire@example.com" },
-      employment: { manager_id: boss.id }
+      manager_id: boss.id
     )
     member = org.organization_staff_members.find_by!(personal_email: "hire@example.com")
     expect(member.manager).to eq(boss)

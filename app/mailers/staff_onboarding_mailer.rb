@@ -20,7 +20,7 @@ class StaffOnboardingMailer < ApplicationMailer
         format.html { render html: rendered[:body].html_safe, layout: "mailer" }
       end
     else
-      @subject = "Finish setting up how you get paid at #{@organization.name}"
+      @subject = "Complete your onboarding at #{@organization.name}"
       mail(to: to, subject: @subject)
     end
   end

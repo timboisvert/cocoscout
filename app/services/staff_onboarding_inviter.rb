@@ -92,12 +92,12 @@ class StaffOnboardingInviter
       })
       { subject: rendered[:subject], body: rendered[:body] }
     else
-      { subject: "Finish setting up how you get paid at #{@organization.name}",
+      { subject: "Complete your onboarding at #{@organization.name}",
         body: <<~HTML }
           <p>Hi #{first},</p>
-          <p>You've been added to the team at <strong>#{@organization.name}</strong>. To make sure you get paid, set up how you'd like to receive your money — it only takes a minute.</p>
-          <p><a href="#{setup_url}">Set up how you get paid →</a></p>
-          <p>You'll connect a bank account so payments land automatically and securely.</p>
+          <p>You've been added to the team at <strong>#{@organization.name}</strong>. Finish your onboarding to get set up — you'll confirm your details (like your legal and preferred names) and set up your payment details so you get paid automatically. It only takes a minute.</p>
+          <p><a href="#{setup_url}">Complete onboarding and set up payment details →</a></p>
+          <p>Your payment info stays with our payment processor, never with the productions you work for.</p>
         HTML
     end
   end
