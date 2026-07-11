@@ -28,9 +28,10 @@
         <% end %>
       </div>
     </div>
-  <% else %>
-    <%# Nothing owed right now — fall back to the general "connect a bank" nudge
-        for legacy Venmo/Zelle users (self-guards). %>
+  <% elsif local_assigns.fetch(:banner_fallback, true) %>
+    <%# Nothing owed right now — fall back to the general "connect your bank" nudge
+        (self-guards on needs_bank_connection?). Suppressed where the page already
+        carries the connect message (e.g. the setup page's August 1 callout). %>
     <%= render "my/payments/bank_connect_banner" %>
   <% end %>
 <% end %>
