@@ -56,6 +56,41 @@
       </div>
     <% end %>
 
+    <!-- Bank account (Stripe Connect) — the primary way to get paid -->
+    <div class="bg-white rounded-lg border-2 border-pink-200 p-6 mb-6">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900 text-lg flex items-center gap-2">
+              Bank account
+              <% if @person.can_receive_payouts? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Connected</span>
+              <% elsif @person.connect_account_started? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Finishing setup</span>
+              <% end %>
+            </h3>
+            <p class="text-sm text-gray-500 mt-1 max-w-md">Get paid automatically, straight to your bank. Powered by Stripe — your bank and tax details stay with Stripe, never with the productions you work for.</p>
+          </div>
+        </div>
+        <div class="flex-shrink-0">
+          <% if @person.can_receive_payouts? %>
+            <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small", path: my_payments_connect_bank_path, method: :post %>
+          <% elsif @person.connect_account_started? %>
+            <%= render "shared/button", text: "Finish setup", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post %>
+          <% else %>
+            <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "medium", path: my_payments_connect_bank_path, method: :post %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-4">Prefer an app? You can also add Zelle or Venmo below.</p>
+
     <!-- Payment Methods Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
