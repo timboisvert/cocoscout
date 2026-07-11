@@ -8,7 +8,7 @@ class MeterStaffBillingJob < ApplicationJob
   queue_as :background
 
   def perform
-    return unless StaffMeterService.configured?
+    return unless StaffMeterService.configured? || StaffMeterService.extra_payments_configured?
 
     Organization.where.not(stripe_customer_id: nil).find_each do |organization|
       StaffMeterService.reconcile_month!(organization)

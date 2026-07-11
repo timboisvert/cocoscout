@@ -74,6 +74,7 @@ class StaffPayRunService
       batch.recalculate_total!
     end
 
+    MeterStaffFeeJob.perform_later(batch.id) if batch.extra_payment_fee_cents.to_i.positive?
     Result.new(batch: batch, skipped: skipped)
   end
 end

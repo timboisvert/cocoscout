@@ -42,6 +42,30 @@ RSpec.describe StaffMeterService do
     end
   end
 
+  describe ".report_extra_payments!" do
+    let(:batch) { org.payout_batches.create!(trigger: "manual", status: "completed", kind: "staff_pay", extra_payment_fee_cents: 300) }
+
+    context "when configured" do
+      before { allow(described_class).to receive(:extra_payment_event_name).and_return("staff_extra") }
+
+      it "reports the fee as $1 units and marks the batch metered" do
+        expect(Stripe::Billing::MeterEvent).to receive(:create).with(
+          hash_including(event_name: "staff_extra", identifier: "staff_extra:batch:#{batch.id}",
+                         payload: { stripe_customer_id: "cus_meter", value: "3" })
+        )
+        expect(described_class.report_extra_payments!(batch)).to eq(:reported)
+        expect(batch.reload.fee_metered_at).to be_present
+      end
+    end
+
+    it "does nothing when there's no fee" do
+      allow(described_class).to receive(:extra_payment_event_name).and_return("staff_extra")
+      free = org.payout_batches.create!(trigger: "manual", status: "completed", kind: "staff_pay", extra_payment_fee_cents: 0)
+      expect(Stripe::Billing::MeterEvent).not_to receive(:create)
+      expect(described_class.report_extra_payments!(free)).to eq(:nothing_to_report)
+    end
+  end
+
   describe ".reconcile_month!" do
     before { allow(described_class).to receive(:active_event_name).and_return("staff_active") }
 

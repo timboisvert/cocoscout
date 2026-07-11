@@ -57,5 +57,28 @@ namespace :stripe do
     puts "  STRIPE_METER_STAFF_ACTIVE=#{event_name}"
     puts "  Meter:  #{meter.id}"
     puts "  Price:  #{price.id}"
+
+    # Second meter: the $1-per-extra-payment fee (2 free payments/month, then $1).
+    fee_event = "staff_extra_payment"
+    fee_meter = Stripe::Billing::Meter.create(
+      display_name: "Staff extra payments",
+      event_name: fee_event,
+      default_aggregation: { formula: "sum" },
+      customer_mapping: { event_payload_key: "stripe_customer_id", type: "by_id" },
+      value_settings: { event_payload_key: "value" }
+    )
+    fee_product = Stripe::Product.create(name: "CocoScout Staffing — extra payment")
+    fee_price = Stripe::Price.create(
+      product: fee_product.id,
+      currency: "usd",
+      unit_amount: 100, # $1
+      recurring: { interval: "month", usage_type: "metered", meter: fee_meter.id },
+      metadata: { plan: "staff_extra_payment" }
+    )
+
+    puts "\nExtra-payment meter created:"
+    puts "  STRIPE_METER_STAFF_EXTRA=#{fee_event}"
+    puts "  Meter:  #{fee_meter.id}"
+    puts "  Price:  #{fee_price.id}"
   end
 end
