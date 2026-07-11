@@ -33,6 +33,7 @@ module Manage
       @active_staff, @pending_staff = members.partition { |m| account_claimed?(m) }
       @staff_count = @active_staff.size
       @pending_count = @pending_staff.size
+      @billing = StaffBillingService.new(Current.organization)
     end
 
     # The weekly house-staff schedule (formerly the Staffing landing page).

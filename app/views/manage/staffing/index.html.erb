@@ -12,5 +12,17 @@
       { icon: "dollar-sign", text: "Run pay", description: "Pay staff for hours worked", path: manage_staffing_pay_path }
     ] %>
 
+  <% if @billing %>
+    <div class="flex flex-wrap items-center justify-between gap-2 bg-pink-50 border border-pink-100 rounded-lg px-4 py-3 mb-5 text-sm">
+      <div class="text-gray-700">
+        <span class="font-semibold text-gray-900"><%= @billing.active_count %></span>
+        active <%= "staff member".pluralize(@billing.active_count) %> this month
+        <span class="text-gray-400">·</span>
+        est. <span class="font-semibold text-gray-900"><%= number_to_currency(@billing.monthly_estimate_cents / 100.0) %></span>
+      </div>
+      <div class="text-xs text-gray-500">$5/month per staff member — only in months they actually work.</div>
+    </div>
+  <% end %>
+
   <%= render "manage/staffing/staff_list" %>
 </div>
