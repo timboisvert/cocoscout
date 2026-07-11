@@ -30,12 +30,23 @@ class StripeWebhooksController < ApplicationController
       handle_invoice_event(event.data.object)
     when "account.updated"
       handle_connect_account_updated(event.data.object)
+    when "transfer.reversed"
+      handle_transfer_reversed(event.data.object)
     end
 
     head :ok
   end
 
   private
+
+  # A Connect transfer was reversed — undo the payout: mark the batch item failed
+  # and remove its ledger entry so the payee's balance is restored.
+  def handle_transfer_reversed(transfer)
+    item = PayoutBatchItem.find_by(stripe_transfer_id: transfer.id)
+    return unless item
+
+    item.mark_failed!("Transfer reversed")
+  end
 
   # A payee's Connect Express account changed (finished onboarding, payouts
   # enabled/disabled, new requirements). Refresh our columns from the event.

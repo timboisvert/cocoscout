@@ -21,6 +21,7 @@ class Organization < ApplicationRecord
   has_many :questionnaires, dependent: :destroy
   has_many :org_payouts, dependent: :destroy
   has_many :payout_ledger_entries, dependent: :destroy
+  has_many :payout_batches, dependent: :destroy
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
 

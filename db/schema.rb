@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_232803) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_233658) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1299,6 +1299,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_232803) do
     t.bigint "person_id", null: false
     t.index ["organization_id", "person_id"], name: "index_organizations_people_on_organization_id_and_person_id"
     t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
+  end
+
+  create_table "payout_batch_items", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.datetime "paid_at"
+    t.bigint "payee_id", null: false
+    t.string "payee_type", null: false
+    t.bigint "payout_batch_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "stripe_transfer_id"
+    t.datetime "updated_at", null: false
+    t.index ["payee_type", "payee_id"], name: "index_payout_batch_items_on_payee_type_and_payee_id"
+    t.index ["payout_batch_id"], name: "index_payout_batch_items_on_payout_batch_id"
+  end
+
+  create_table "payout_batches", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "funding_payment_intent_id"
+    t.string "funding_status"
+    t.bigint "organization_id", null: false
+    t.string "status", default: "draft", null: false
+    t.bigint "total_cents", default: 0, null: false
+    t.string "trigger", default: "manual", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
+    t.index ["organization_id"], name: "index_payout_batches_on_organization_id"
   end
 
   create_table "payout_ledger_entries", force: :cascade do |t|
@@ -2714,6 +2744,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_232803) do
   add_foreign_key "organization_staff_members", "people"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "payout_batch_items", "payout_batches"
+  add_foreign_key "payout_batches", "organizations"
+  add_foreign_key "payout_batches", "users", column: "created_by_id"
   add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
   add_foreign_key "payout_scheme_defaults", "productions"
