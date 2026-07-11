@@ -4,21 +4,16 @@
 <% onboarding = @staff_member.onboarding_state.presence || "added" %>
 <% preview = StaffOnboardingInviter.preview(staff_member: @staff_member) %>
 
-<div class="w-full mb-10" data-controller="invite-preview">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
-    text: "Edit #{@staff_member.display_name}",
-    links: []
-  } %>
+<%= turbo_frame_tag "staff_edit" do %>
+  <div class="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-2xl" data-controller="invite-preview staff-edit">
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <div class="max-w-3xl mx-auto space-y-6">
-    <%# ---- Person header ---- %>
-    <div class="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-5">
+    <%# ---- Header ---- %>
+    <div class="flex items-center gap-4 px-6 py-5 border-b border-gray-200">
       <% if headshot %>
-        <%= image_tag headshot, alt: person.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+        <%= image_tag headshot, alt: person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
       <% else %>
-        <div class="w-14 h-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0"><%= person.initials %></div>
+        <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0"><%= person.initials %></div>
       <% end %>
       <div class="flex-1 min-w-0">
         <div class="text-lg font-semibold text-gray-900 truncate"><%= @staff_member.display_name %></div>
@@ -31,105 +26,101 @@
       <% else %>
         <span class="inline-flex items-center px-2 py-1 rounded bg-gray-200 text-gray-600 text-xs font-medium">Not invited</span>
       <% end %>
+      <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
+            data: { action: "click->modal#close" } %>
     </div>
 
-    <%= form_with url: manage_update_staffing_staff_path(@staff_member), method: :patch, class: "space-y-6" do %>
-      <%# ---- Personal details ---- %>
-      <section class="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Personal details</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
-          <div class="sm:col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">First name</label>
-            <%= text_field_tag :first_name, @staff_member.first_name.presence || person.name.to_s.split.first, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div class="sm:col-span-1">
-            <label class="block text-sm font-medium text-gray-700 mb-1">M.I.</label>
-            <%= text_field_tag :middle_initial, @staff_member.middle_initial, maxlength: 1, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Last name</label>
-            <%= text_field_tag :last_name, @staff_member.last_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div class="sm:col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
-            <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from legal first name", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div class="sm:col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Personal email</label>
-            <%= email_field_tag :personal_email, (@staff_member.personal_email.presence || person.email), class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-        </div>
-      </section>
+    <%# ---- Tabs ---- %>
+    <div class="flex gap-1 px-6 border-b border-gray-200 overflow-x-auto">
+      <% [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles" ], [ "onboarding", "Onboarding" ], [ "danger", "Danger Zone" ] ].each do |key, label| %>
+        <button type="button" data-staff-edit-target="tab" data-tab="<%= key %>" data-action="click->staff-edit#switch"
+                class="px-3 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap">
+          <%= label %>
+        </button>
+      <% end %>
+    </div>
 
-      <%# ---- Job ---- %>
-      <section class="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Job</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <%= text_field_tag :title, @staff_member.title, placeholder: "e.g. Bartender", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <%= render "manage/staffing/department_field", departments: @departments, selected: @staff_member.department %>
-          </div>
-        </div>
-      </section>
-
-      <%# ---- Manager ---- %>
-      <section class="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Reports to</h2>
-        <%= render "manage/staffing/manager_picker", staff: @managers, selected: @staff_member.manager, exclude_id: @staff_member.id %>
-      </section>
-
-      <%# ---- Start & pay ---- %>
-      <section class="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Start &amp; pay</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Start date</label>
-            <%= date_field_tag :start_date, @staff_member.start_date, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-              <%= text_field_tag :hourly_rate, @staff_member.hourly_rate_dollars, inputmode: "decimal", placeholder: "0.00", class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+    <div class="px-6 py-6">
+      <%= form_with url: manage_update_staffing_staff_path(@staff_member), method: :patch, data: { turbo_frame: "_top" } do %>
+        <%# --- Details --- %>
+        <div data-staff-edit-target="panel" data-panel="details" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
+            <div class="sm:col-span-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">First name</label>
+              <%= text_field_tag :first_name, @staff_member.first_name.presence || person.name.to_s.split.first, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">M.I.</label>
+              <%= text_field_tag :middle_initial, @staff_member.middle_initial, maxlength: 1, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+              <%= text_field_tag :last_name, @staff_member.last_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
+              <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from legal first name", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Personal email</label>
+              <%= email_field_tag :personal_email, (@staff_member.personal_email.presence || person.email), class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
             </div>
           </div>
         </div>
-      </section>
 
-      <%# ---- Roles ---- %>
-      <section class="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Roles they can fill</h2>
-        <%= render "manage/staffing/roles_field", house_roles: @house_roles, assigned_ids: @staff_member.house_role_ids %>
-      </section>
+        <%# --- Job --- %>
+        <div data-staff-edit-target="panel" data-panel="job" class="hidden space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <%= text_field_tag :title, @staff_member.title, placeholder: "e.g. Bartender", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <%= render "manage/staffing/department_field", departments: @departments, selected: @staff_member.department %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reports to</label>
+            <%= render "manage/staffing/manager_picker", staff: @managers, selected: @staff_member.manager, exclude_id: @staff_member.id %>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+              <%= date_field_tag :start_date, @staff_member.start_date, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <%= text_field_tag :hourly_rate, @staff_member.hourly_rate_dollars, inputmode: "decimal", placeholder: "0.00", class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div class="flex items-center justify-end gap-3">
-        <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
-        <%= render "shared/button", text: "Save changes", variant: "primary", size: "medium", type: :submit %>
-      </div>
-    <% end %>
+        <%# --- Roles --- %>
+        <div data-staff-edit-target="panel" data-panel="roles" class="hidden">
+          <%= render "manage/staffing/roles_field", house_roles: @house_roles, assigned_ids: @staff_member.house_role_ids %>
+        </div>
 
-    <%# Manage-departments / manage-roles modals, deferred here so they sit
-        OUTSIDE the edit form above (their own forms can't be nested). %>
-    <%= yield :staffing_modals %>
+        <div data-staff-edit-target="saveFooter" class="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
+          <%= link_to "Cancel", manage_staffing_index_path, data: { turbo_frame: "_top" }, class: "text-sm text-gray-600 hover:text-gray-900" %>
+          <%= render "shared/button", text: "Save changes", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
 
-    <%# ---- Onboarding (separate from the edit form) ---- %>
-    <section class="bg-white border border-gray-200 rounded-xl p-6">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">Onboarding</h2>
-      <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 mb-4">
-        <% if onboarding == "completed" %>
-          <p class="text-sm text-gray-700">✅ <span class="font-medium">Onboarded.</span> <%= @staff_member.display_name %> has created their account and set up how they get paid.</p>
-        <% elsif onboarding == "invited" %>
-          <p class="text-sm text-gray-700"><span class="font-medium">Invited.</span> We've emailed and messaged <%= @staff_member.display_name %> to complete onboarding — we're waiting on them to finish.</p>
-        <% else %>
-          <p class="text-sm text-gray-700"><span class="font-medium">Not invited yet.</span> Send the onboarding invite whenever you're ready.</p>
-        <% end %>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3">
+      <%# --- Onboarding (own actions, outside the edit form) --- %>
+      <div data-staff-edit-target="panel" data-panel="onboarding" class="hidden space-y-4">
+        <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+          <% if onboarding == "completed" %>
+            <p class="text-sm text-gray-700">✅ <span class="font-medium">Onboarded.</span> <%= @staff_member.display_name %> has created their account and set up how they get paid.</p>
+          <% elsif onboarding == "invited" %>
+            <p class="text-sm text-gray-700"><span class="font-medium">Invited.</span> We've emailed and messaged <%= @staff_member.display_name %> to complete onboarding — we're waiting on them to finish.</p>
+          <% else %>
+            <p class="text-sm text-gray-700"><span class="font-medium">Not invited yet.</span> Send the onboarding invite whenever you're ready.</p>
+          <% end %>
+        </div>
         <% if person.email.present? || @staff_member.personal_email.present? %>
           <%= render "shared/button",
                 text: (onboarding == "added" ? "Send onboarding invite" : "Resend onboarding invite"),
@@ -143,13 +134,24 @@
                   "email-body": preview[:body]
                 } %>
         <% end %>
-        <%= form_with url: manage_destroy_staffing_staff_path(@staff_member), method: :delete,
-              data: { turbo_confirm: "Remove #{@staff_member.display_name} from your staff? Existing shift assignments are kept." } do %>
-          <%= render "shared/button", text: "Remove from staff", variant: "danger", size: "small", icon: "trash", type: :submit %>
-        <% end %>
       </div>
-    </section>
-  </div>
 
-  <%= render "manage/staffing/invite_preview_modal" %>
-</div>
+      <%# --- Danger Zone --- %>
+      <div data-staff-edit-target="panel" data-panel="danger" class="hidden">
+        <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+          <h3 class="text-sm font-semibold text-red-800 mb-1">Remove from staff</h3>
+          <p class="text-sm text-red-700 mb-4">Removes <%= @staff_member.display_name %> from your roster. Existing shift assignments are kept, and you can add them back later.</p>
+          <%= form_with url: manage_destroy_staffing_staff_path(@staff_member), method: :delete,
+                data: { turbo_frame: "_top", turbo_confirm: "Remove #{@staff_member.display_name} from your staff?" } do %>
+            <%= render "shared/button", text: "Remove from staff", variant: "danger", size: "small", icon: "trash", type: :submit %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Manage-departments / manage-roles modals, deferred here so they sit
+        OUTSIDE the edit form above (their own forms can't be nested). %>
+    <%= yield :staffing_modals %>
+    <%= render "manage/staffing/invite_preview_modal" %>
+  </div>
+<% end %>

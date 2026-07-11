@@ -63,8 +63,8 @@
               "send-label": resend_label
             } %>
     <% end %>
-    <%= link_to manage_edit_staffing_staff_path(member), class: "inline-flex" do %>
-      <%= render "shared/button", text: "Edit", variant: "outline", size: "small", type: :button %>
-    <% end %>
+    <%= render "shared/button", text: "Edit", variant: "outline", size: "small",
+          path: manage_edit_staffing_staff_path(member),
+          data: { turbo_frame: "staff_edit", action: "click->modal#open", "modal-id": "staff-edit-modal" } %>
   </div>
 </div>
