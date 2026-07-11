@@ -36,12 +36,10 @@ class OrganizationStaffMember < ApplicationRecord
     onboarding_state == "completed"
   end
 
-  private
-
-  def manager_in_same_org
-    return if manager.nil?
-
-    errors.add(:manager, "must belong to the same organization") if manager.organization_id != organization_id
+  # "Pending" = added or invited but not yet finished onboarding (no claimed
+  # account / not set up). These live in a separate section on the staff hub.
+  def pending_onboarding?
+    !onboarding_completed?
   end
 
   def archived?
@@ -54,5 +52,13 @@ class OrganizationStaffMember < ApplicationRecord
 
   def unarchive!
     update!(archived_at: nil)
+  end
+
+  private
+
+  def manager_in_same_org
+    return if manager.nil?
+
+    errors.add(:manager, "must belong to the same organization") if manager.organization_id != organization_id
   end
 end

@@ -26,8 +26,17 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       create(:organization_role, :manager, user: manager, organization: org)
       sign_in(manager)
 
-      get manage_staffing_staff_path
+      get manage_staffing_index_path
       expect(response).to have_http_status(:ok)
+    end
+
+    it "redirects the legacy staff path to the staffing hub" do
+      manager = create(:user, password: password)
+      create(:organization_role, :manager, user: manager, organization: org)
+      sign_in(manager)
+
+      get manage_staffing_staff_path
+      expect(response).to redirect_to(manage_staffing_index_path)
     end
   end
 
@@ -57,7 +66,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
 
       member = org.organization_staff_members.find_by(person: person)
       expect(member.house_role_ids).to include(house_role.id)
-      expect(response).to redirect_to(manage_staffing_staff_path)
+      expect(response).to redirect_to(manage_staffing_index_path)
     end
 
     it "reuses an existing person/account by email" do
@@ -78,7 +87,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect {
         post manage_create_staffing_staff_path, params: { invite_email: "not-an-email", invite_name: "X" }
       }.not_to change(OrganizationStaffMember, :count)
-      expect(response).to redirect_to(manage_staffing_staff_path)
+      expect(response).to redirect_to(manage_staffing_index_path)
     end
   end
 
@@ -93,9 +102,16 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
     before { sign_in(owner) }
 
     it "shows a 'No account' badge with an Invite action in the staff list" do
-      get manage_staffing_staff_path
+      get manage_staffing_index_path
       expect(response.body).to include("No account")
       expect(response.body).to include(manage_invite_staffing_staff_path(member))
+    end
+
+    it "removes a staff member (archives without error)" do
+      expect {
+        delete manage_destroy_staffing_staff_path(member)
+      }.to change { member.reload.archived_at }.from(nil).to(be_present)
+      expect(response).to redirect_to(manage_staffing_index_path)
     end
 
     it "creates and links a user, and sends an invitation" do
@@ -105,7 +121,7 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
         .and change(PersonInvitation, :count).by(1)
 
       expect(accountless.reload.user).to be_present
-      expect(response).to redirect_to(manage_staffing_staff_path)
+      expect(response).to redirect_to(manage_staffing_index_path)
     end
 
     it "reuses an existing account with the same email instead of duplicating it" do

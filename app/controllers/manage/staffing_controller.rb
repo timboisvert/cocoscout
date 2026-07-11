@@ -12,29 +12,27 @@ module Manage
     def index
       return unless Current.organization
 
-      @staff_members = Current.organization.organization_staff_members
-                              .active
-                              .includes(:house_roles, person: :user)
-                              .joins(:person)
-                              .order("people.name")
+      members = Current.organization.organization_staff_members
+                       .active
+                       .includes(:house_roles, person: :user)
+                       .joins(:person)
+                       .order("people.name")
       @house_roles = Current.organization.house_roles.active.ordered
-      @staff_count = @staff_members.size
 
-      # People who could be added as staff (org members not already on staff),
-      # embedded as JSON for the add-staff modal's client-side picker.
-      @available_people_payload = available_org_people.map do |p|
-        headshot_variant = (p.respond_to?(:safe_headshot_variant) ? p.safe_headshot_variant(:thumb) : nil)
-        { id: p.id, name: p.name, email: p.email, initials: p.initials,
-          headshot_url: headshot_variant ? url_for(headshot_variant) : nil }
-      end
-
-      # Emails with an outstanding (unaccepted) invite — flags staff who haven't
-      # set up their CocoScout account yet.
+      # Emails with an outstanding (unaccepted) invite — the concrete signal that
+      # someone hasn't set up their CocoScout account yet.
       @pending_invite_emails = PersonInvitation.pending
                                                .where(organization: Current.organization)
                                                .pluck(:email)
                                                .map { |e| e.to_s.downcase }
                                                .to_set
+
+      # A staff member is "pending" until they've created/claimed a CocoScout
+      # account. Those people live in a separate sub-list — they're on their way
+      # onto the team but not fully onboarded yet.
+      @active_staff, @pending_staff = members.partition { |m| account_claimed?(m) }
+      @staff_count = @active_staff.size
+      @pending_count = @pending_staff.size
     end
 
     # The weekly house-staff schedule (formerly the Staffing landing page).
@@ -256,6 +254,17 @@ module Manage
     helper_method :default_finalize_intro
 
     private
+
+    # Has this staff member created/claimed their CocoScout account? True once
+    # they have a linked user AND no outstanding (unaccepted) invite. Until then
+    # they sit in the "pending" list rather than the active roster.
+    def account_claimed?(member)
+      person = member.person
+      return false if person&.user.nil?
+
+      email = person.email.to_s.downcase
+      email.blank? || !@pending_invite_emails.include?(email)
+    end
 
     # People in the org who aren't already staff members (for the add-staff picker).
     def available_org_people

@@ -35,7 +35,8 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect(member.title).to eq("Bartender")
     expect(member.hourly_rate_cents).to eq(2250)
     expect(member.start_date.to_s).to eq("2026-08-01")
-    expect(member.onboarding_state).to eq("added")
+    # Adding a staff member auto-sends the onboarding invite.
+    expect(member.onboarding_state).to eq("invited")
     expect(member.house_roles).to include(house_role)
     expect(member.person.email).to eq("dee@example.com")
     expect(member.person.name).to eq("Dana Reed")

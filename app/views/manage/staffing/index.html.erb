@@ -1,10 +1,8 @@
 <% content_for :title, "Staffing" %>
 
 <div class="w-full mb-10"
-     data-controller="staff-modal"
-     data-staff-modal-create-url-value="<%= manage_create_staffing_staff_path %>"
-     data-staff-modal-update-url-template-value="<%= manage_update_staffing_staff_path(":id") %>"
-     data-staff-modal-available-people-value="<%= @available_people_payload.to_json %>">
+     data-controller="staff-modal invite-preview"
+     data-staff-modal-update-url-template-value="<%= manage_update_staffing_staff_path(":id") %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render "shared/module_header",

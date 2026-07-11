@@ -6,42 +6,18 @@ module Manage
       before_action :ensure_org_owner_or_manager
       before_action :set_staff_member, only: %i[update destroy invite]
 
+      # The staffing hub (Manage::StaffingController#index) is now the one and
+      # only staff roster. Keep this legacy path working by redirecting to it.
       def index
-        @staff_members = Current.organization.organization_staff_members
-                                .active
-                                .includes(:house_roles, person: :user)
-                                .joins(:person)
-                                .order("people.name")
-        @house_roles = Current.organization.house_roles.active.ordered
-        # Available people for the picker (org members not already on staff).
-        # Embedded as JSON in the page so the picker can filter client-side.
-        @available_people_payload = available_org_people.map { |p|
-          headshot_variant = (p.respond_to?(:safe_headshot_variant) ? p.safe_headshot_variant(:thumb) : nil)
-          {
-            id: p.id,
-            name: p.name,
-            email: p.email,
-            initials: p.initials,
-            headshot_url: headshot_variant ? url_for(headshot_variant) : nil
-          }
-        }
-        # Emails with an outstanding (unaccepted) invite to this org — used to
-        # flag staff who haven't set up their CocoScout account yet.
-        @pending_invite_emails = PersonInvitation.pending
-                                                 .where(organization: Current.organization)
-                                                 .pluck(:email)
-                                                 .map { |e| e.to_s.downcase }
-                                                 .to_set
+        redirect_to manage_staffing_index_path
       end
 
-      # new/edit aren't used in the normal flow — the modal on the index page
-      # handles both. Redirect direct navigation to the index.
       def new
-        redirect_to manage_staffing_staff_path
+        redirect_to manage_staffing_index_path
       end
 
       def edit
-        redirect_to manage_staffing_staff_path
+        redirect_to manage_staffing_index_path
       end
 
       def create
@@ -52,16 +28,21 @@ module Manage
         @staff_member = Current.organization.organization_staff_members.new(person_id: params[:person_id])
         if @staff_member.save
           sync_role_ids(@staff_member, params[:house_role_ids])
-          redirect_to manage_staffing_staff_path, notice: "Staff member added."
+          redirect_to manage_staffing_index_path, notice: "Staff member added."
         else
-          redirect_to manage_staffing_staff_path,
+          redirect_to manage_staffing_index_path,
                       alert: "Couldn't add staff member: #{@staff_member.errors.full_messages.to_sentence}"
         end
       end
 
       def update
+        @staff_member.assign_attributes(editable_employment_attributes)
+        @staff_member.save!
         sync_role_ids(@staff_member, params[:house_role_ids])
-        redirect_to manage_staffing_staff_path, notice: "Staff member updated."
+        redirect_to manage_staffing_index_path, notice: "#{@staff_member.display_name} updated."
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to manage_staffing_index_path,
+                    alert: "Couldn't update: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       # Invite an already-added staffer to finish onboarding: ensure they have a
@@ -70,18 +51,18 @@ module Manage
       # as "invited" so the staff list reflects where they are.
       def invite
         StaffOnboardingInviter.call(staff_member: @staff_member, sender: Current.user)
-        redirect_to manage_staffing_staff_path,
+        redirect_to manage_staffing_index_path,
                     notice: "Invited #{@staff_member.display_name} to finish onboarding — we emailed and messaged them to set up how they get paid."
       rescue StaffOnboardingInviter::Error => e
-        redirect_to manage_staffing_staff_path, alert: e.message
+        redirect_to manage_staffing_index_path, alert: e.message
       rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_staffing_staff_path,
+        redirect_to manage_staffing_index_path,
                     alert: "Couldn't invite #{@staff_member.display_name}: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       def destroy
         @staff_member.archive!
-        redirect_to manage_staffing_staff_path, notice: "Staff member removed."
+        redirect_to manage_staffing_index_path, notice: "Staff member removed."
       end
 
       private
@@ -94,7 +75,7 @@ module Manage
         name  = params[:invite_name].to_s.strip
 
         unless email.match?(URI::MailTo::EMAIL_REGEXP)
-          redirect_to manage_staffing_staff_path, alert: "Enter a valid email to invite someone." and return
+          redirect_to manage_staffing_index_path, alert: "Enter a valid email to invite someone." and return
         end
 
         ActiveRecord::Base.transaction do
@@ -121,11 +102,11 @@ module Manage
           invitation = PersonInvitation.create!(email: email, organization: Current.organization)
           Manage::PersonMailer.person_invitation(invitation).deliver_later
 
-          redirect_to manage_staffing_staff_path,
+          redirect_to manage_staffing_index_path,
                       notice: "Invited #{person.name} and added them to staff."
         end
       rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_staffing_staff_path, alert: "Couldn't invite: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+        redirect_to manage_staffing_index_path, alert: "Couldn't invite: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       def set_staff_member
@@ -136,6 +117,31 @@ module Manage
         # People in the org who aren't already staff members.
         existing_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
         Current.organization.people.where.not(id: existing_ids).order(:name)
+      end
+
+      # Only assign employment fields that were actually submitted, so a partial
+      # form (e.g. the Roles tab alone) never blanks out other details.
+      def editable_employment_attributes
+        attrs = {}
+        attrs[:preferred_first_name] = params[:preferred_first_name].to_s.strip.presence if params.key?(:preferred_first_name)
+        attrs[:title] = params[:title].to_s.strip.presence if params.key?(:title)
+        attrs[:personal_email] = params[:personal_email].to_s.strip.downcase.presence if params.key?(:personal_email)
+        attrs[:start_date] = params[:start_date].presence if params.key?(:start_date)
+        attrs[:hourly_rate_cents] = parse_rate_cents(params[:hourly_rate]) if params.key?(:hourly_rate)
+        attrs[:manager_id] = valid_manager_id(params[:manager_id]) if params.key?(:manager_id)
+        attrs
+      end
+
+      def parse_rate_cents(value)
+        return nil if value.blank?
+
+        (value.to_s.delete("$,").to_d * 100).round
+      end
+
+      def valid_manager_id(id)
+        return nil if id.blank? || id.to_i == @staff_member&.id
+
+        Current.organization.organization_staff_members.active.where(id: id).pick(:id)
       end
 
       def sync_role_ids(staff_member, role_ids)

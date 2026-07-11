@@ -15,6 +15,12 @@ class StaffOnboardingInviter
     new(...).call
   end
 
+  # Build the interpolated onboarding email/message without sending anything —
+  # used to preview the exact draft before an org confirms the send.
+  def self.preview(staff_member:)
+    new(staff_member: staff_member, sender: nil).preview
+  end
+
   # sender: the User performing the invite (for the in-app message's From).
   def initialize(staff_member:, sender:)
     @staff_member = staff_member
@@ -23,8 +29,12 @@ class StaffOnboardingInviter
     @sender = sender
   end
 
+  def preview
+    onboarding_copy.merge(to_name: @person&.name, to_email: recipient_email.presence)
+  end
+
   def call
-    email = (@person.email.presence || @staff_member.personal_email).to_s.strip.downcase
+    email = recipient_email
     raise Error, "#{@person.name} has no email on file — add one before inviting them." unless email.match?(URI::MailTo::EMAIL_REGEXP)
 
     ActiveRecord::Base.transaction do
@@ -55,9 +65,23 @@ class StaffOnboardingInviter
   end
 
   def send_in_app_message
+    copy = onboarding_copy
+    MessageService.send_direct(
+      sender: @sender,
+      recipient_person: @person,
+      subject: copy[:subject],
+      body: copy[:body],
+      organization: @organization,
+      system_generated: true
+    )
+  end
+
+  # The single source of truth for the onboarding subject + body, interpolated
+  # for this member. Used both for what we send and for the preview draft.
+  def onboarding_copy
     first = @staff_member.preferred_first_name.presence ||
             @staff_member.first_name.presence ||
-            @person.first_name.presence || "there"
+            @person&.first_name.presence || "there"
     setup_url = my_payments_setup_url(**default_url_options)
 
     if ContentTemplateService.exists?("staff_onboarding_invite")
@@ -66,26 +90,20 @@ class StaffOnboardingInviter
         organization_name: @organization.name,
         onboarding_url: setup_url
       })
-      subject = rendered[:subject]
-      body = rendered[:body]
+      { subject: rendered[:subject], body: rendered[:body] }
     else
-      subject = "Finish setting up how you get paid at #{@organization.name}"
-      body = <<~HTML
-        <p>Hi #{first},</p>
-        <p>You've been added to the team at <strong>#{@organization.name}</strong>. To make sure you get paid, set up how you'd like to receive your money — it only takes a minute.</p>
-        <p><a href="#{setup_url}">Set up how you get paid →</a></p>
-        <p>You'll connect a bank account so payments land automatically and securely.</p>
-      HTML
+      { subject: "Finish setting up how you get paid at #{@organization.name}",
+        body: <<~HTML }
+          <p>Hi #{first},</p>
+          <p>You've been added to the team at <strong>#{@organization.name}</strong>. To make sure you get paid, set up how you'd like to receive your money — it only takes a minute.</p>
+          <p><a href="#{setup_url}">Set up how you get paid →</a></p>
+          <p>You'll connect a bank account so payments land automatically and securely.</p>
+        HTML
     end
+  end
 
-    MessageService.send_direct(
-      sender: @sender,
-      recipient_person: @person,
-      subject: subject,
-      body: body,
-      organization: @organization,
-      system_generated: true
-    )
+  def recipient_email
+    (@person&.email.presence || @staff_member.personal_email).to_s.strip.downcase
   end
 
   def default_url_options
