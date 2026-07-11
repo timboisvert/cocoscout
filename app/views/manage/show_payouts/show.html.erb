@@ -1027,26 +1027,28 @@
                                         data-action="click->payment-actions#showGuestPaymentModal"
                                         class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(add payment info)</button>
                               <% else %>
-                                <span class="relative" data-controller="quick-payment">
+                                <%# Instead of typing their Venmo/Zelle, show a QR the performer scans
+                                    to set up their own payment (connect a bank). %>
+                                <span data-controller="qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
                                   <button type="button"
-                                          data-action="click->quick-payment#toggle"
-                                          class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(add payment info)</button>
-                                  <div data-quick-payment-target="popup" class="hidden absolute left-0 top-6 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-64">
-                                    <%= form_with url: manage_quick_payment_info_money_show_payout_path(@show, item.payee_id), method: :patch, local: true, class: "space-y-3" do |f| %>
-                                      <div class="text-sm font-medium text-gray-900 mb-2"><%= item.payee_name %></div>
-                                      <div>
-                                        <label class="text-xs text-gray-500 block mb-1">Venmo Handle</label>
-                                        <input type="text" name="venmo_handle" placeholder="@username" value="<%= item.payee.respond_to?(:venmo_identifier) ? item.payee.formatted_venmo_identifier : '' %>" class="w-full text-sm px-2.5 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+                                          data-action="click->qr-code#open"
+                                          class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(show payment QR)</button>
+                                  <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+                                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
+                                      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                                        <h3 class="text-lg font-semibold text-gray-900">Set up payment</h3>
+                                        <button type="button" data-action="click->qr-code#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
                                       </div>
-                                      <div>
-                                        <label class="text-xs text-gray-500 block mb-1">Zelle Email or Phone</label>
-                                        <input type="text" name="zelle_email" placeholder="email@example.com" value="<%= item.payee.respond_to?(:zelle_identifier) ? item.payee.formatted_zelle_identifier : '' %>" class="w-full text-sm px-2.5 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+                                      <div class="p-6 text-center">
+                                        <p class="text-sm text-gray-600 mb-4">Have <span class="font-medium"><%= item.payee_name %></span> scan this with their phone camera to set up how they get paid — they'll connect a bank so payments land automatically.</p>
+                                        <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                                          <canvas data-qr-code-target="canvas" width="220" height="220"></canvas>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-4">Or send them to <%= my_payments_setup_url %></p>
                                       </div>
-                                      <div class="flex gap-2">
-                                        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-                                        <button type="button" data-action="click->quick-payment#close" class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
-                                      </div>
-                                    <% end %>
+                                    </div>
                                   </div>
                                 </span>
                               <% end %>
