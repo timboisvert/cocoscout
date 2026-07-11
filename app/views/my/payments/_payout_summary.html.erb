@@ -1,0 +1,36 @@
+<%# Balance-aware payout status for the current person. Shows what they're owed
+    across all their productions and turns that into the reason to connect a bank.
+    Self-guarding: renders nothing when there's nothing worth showing. Works on
+    any "my" page (uses Current.user's person if @person isn't set). %>
+<% ps_person = @person || Current.user&.person %>
+<% if ps_person %>
+  <% owed_cents = ps_person.payout_balance_cents %>
+  <% if owed_cents.positive? %>
+    <% owed = number_to_currency(owed_cents / 100.0) %>
+    <div class="mb-6 rounded-lg border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-white p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <div class="text-xs font-semibold uppercase tracking-wider text-pink-600">You're owed</div>
+          <div class="text-3xl font-bold text-gray-900 tabular-nums mt-0.5"><%= owed %></div>
+          <% if ps_person.can_receive_payouts? %>
+            <p class="text-sm text-gray-600 mt-1">Heading to your bank on your next payout.</p>
+          <% else %>
+            <p class="text-sm text-gray-700 mt-1 max-w-md">
+              Connect your bank and you'll get this <span class="font-semibold"><%= owed %></span>
+              automatically, straight to your account — no chasing checks.
+            </p>
+          <% end %>
+        </div>
+        <% unless ps_person.can_receive_payouts? %>
+          <div class="flex-shrink-0">
+            <%= render "shared/button", text: "Connect your bank & get paid", variant: "primary", size: "medium", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <%# Nothing owed right now — fall back to the general "connect a bank" nudge
+        for legacy Venmo/Zelle users (self-guards). %>
+    <%= render "my/payments/bank_connect_banner" %>
+  <% end %>
+<% end %>

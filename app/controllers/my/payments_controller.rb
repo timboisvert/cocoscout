@@ -6,7 +6,7 @@ module My
     before_action :set_person
 
     def index
-      # Get all payment history for the current person across all shows
+      # A simple log of everything this person has been paid, across all shows.
       paid_items = ShowPayoutLineItem
         .where(payee: @person)
         .joins(show_payout: :show)
@@ -14,25 +14,11 @@ module My
         .includes(show_payout: { show: :production })
         .order("show_payout_line_items.paid_at DESC NULLS LAST, shows.date_and_time DESC")
 
-      # Calculate totals from full dataset
-      all_items = paid_items.to_a
-      @total_received = all_items.sum(&:amount)
-      @venmo_total = all_items.select(&:paid_via_venmo?).sum(&:amount)
-      @zelle_total = all_items.select(&:paid_via_zelle?).sum(&:amount)
-      @offline_total = all_items.reject { |p| p.paid_via_venmo? || p.paid_via_zelle? }.sum(&:amount)
+      @total_received = paid_items.to_a.sum(&:amount)
+      # What we still owe them, across every organization (from the ledger).
+      @to_be_paid_cents = @person.payout_balance_cents
 
-      # Paginate
       @pagy, @payment_history = pagy(paid_items, limit: 25)
-
-      # Pending payouts (awaiting payout but not yet paid)
-      @pending_payouts = ShowPayoutLineItem
-        .where(payee: @person)
-        .joins(show_payout: :show)
-        .where(show_payouts: { status: "awaiting_payout" })
-        .where(manually_paid: false)
-        .where(payout_reference_id: nil)
-        .includes(show_payout: { show: :production })
-        .order("shows.date_and_time DESC")
     end
 
     def setup
@@ -79,14 +65,6 @@ module My
         @person.update!(preferred_payment_method: @person.venmo_configured? ? "venmo" : nil)
       end
       redirect_to my_payments_setup_path, notice: "Zelle information removed."
-    end
-
-    def update_preferred
-      if @person.update(preferred_payment_method: params[:preferred_payment_method])
-        redirect_to my_payments_setup_path, notice: "Payment preference saved!"
-      else
-        redirect_to my_payments_setup_path, alert: "Could not update preference."
-      end
     end
 
     # Start (or resume) Stripe Connect bank onboarding.

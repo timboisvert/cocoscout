@@ -13,6 +13,8 @@
 
   <div class="max-w-4xl">
 
+    <%= render "my/payments/payout_summary" %>
+
     <p class="text-gray-600 mb-6 max-w-2xl">
       Choose how you get paid. We recommend connecting your bank for automatic, secure
       direct deposit — your money lands without anyone chasing checks. You can also use a
@@ -33,63 +35,31 @@
               Bank account
               <% if @person.can_receive_payouts? %>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Connected</span>
-              <% elsif @person.connect_account_started? %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Finishing setup</span>
               <% end %>
             </h3>
             <p class="text-sm text-gray-500 mt-1 max-w-md">Get paid automatically, straight to your bank. Powered by Stripe — your bank and tax details stay with Stripe, never with the productions you work for.</p>
           </div>
         </div>
         <div class="flex-shrink-0">
+          <%# turbo: false so the browser follows the redirect out to Stripe's hosted onboarding. %>
           <% if @person.can_receive_payouts? %>
-            <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small", path: my_payments_connect_bank_path, method: :post %>
-          <% elsif @person.connect_account_started? %>
-            <%= render "shared/button", text: "Finish setup", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post %>
+            <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
           <% else %>
-            <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "medium", path: my_payments_connect_bank_path, method: :post %>
+            <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "medium", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
           <% end %>
         </div>
       </div>
     </div>
 
-    <!-- Other ways to get paid (payment apps) — demoted, still supported -->
-    <details class="group bg-white border border-gray-200 rounded-lg mb-6" <%= "open" if @person.venmo_configured? || @person.zelle_configured? %>>
-      <summary class="list-none cursor-pointer p-4 flex items-center justify-between hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
-        <div class="min-w-0">
-          <span class="font-medium text-gray-900">Prefer a payment app?</span>
-          <span class="text-sm text-gray-500 ml-1">
-            Add Zelle or Venmo<% if @person.zelle_configured? || @person.venmo_configured? %> · <span class="text-green-600 font-medium">set up</span><% end %>
-          </span>
-        </div>
-        <svg class="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </summary>
-
-      <div class="p-4 border-t border-gray-200">
-        <% if @person.venmo_configured? && @person.zelle_configured? %>
-          <div class="mb-6">
-            <h3 class="font-medium text-gray-900 mb-1">Preferred app</h3>
-            <p class="text-sm text-gray-500 mb-3">Which do you prefer when a production pays you by app?</p>
-            <%= form_with url: my_payments_update_preferred_path, method: :patch, local: true do |f| %>
-              <div class="flex gap-4 items-center">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="preferred_payment_method" value="zelle"
-                         <%= @person.preferred_payment_method == "zelle" || @person.preferred_payment_method.nil? ? "checked" : "" %>
-                         class="h-4 w-4 accent-pink-500">
-                  <span class="font-medium text-gray-800">Zelle</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="preferred_payment_method" value="venmo"
-                         <%= @person.preferred_payment_method == "venmo" ? "checked" : "" %>
-                         class="h-4 w-4 accent-pink-500">
-                  <span class="font-medium text-gray-800">Venmo</span>
-                </label>
-                <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
+    <%# Payment apps — transitional; only shown to people who already set one up %>
+    <% if @person.venmo_configured? || @person.zelle_configured? %>
+      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+        <h3 class="font-medium text-gray-900">Payment apps</h3>
+        <p class="text-sm text-gray-500 mt-1 mb-5 max-w-2xl">
+          You set up an app payment before, so you can still update it here. Heads up: CocoScout is
+          moving to direct bank deposit — soon a connected bank will be the only way to get paid, so
+          set yours up above when you get a chance.
+        </p>
 
         <!-- Payment Methods Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -250,6 +220,6 @@
 
       </div>
       </div>
-    </details>
+    <% end %>
   </div>
 </div>

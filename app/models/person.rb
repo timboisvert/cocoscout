@@ -453,6 +453,17 @@ class Person < ApplicationRecord
     (venmo_configured? || zelle_configured?) && needs_bank_connection?
   end
 
+  # Total amount currently owed to this person across every organization they
+  # work for, in cents (sum of their payout ledger — earnings minus payouts and
+  # advance recoveries). Positive = we owe them.
+  def payout_balance_cents
+    payout_ledger_entries.sum(:amount_cents)
+  end
+
+  def owed_payout?
+    payout_balance_cents.positive?
+  end
+
   def venmo_ready_for_payouts?
     venmo_configured?
   end

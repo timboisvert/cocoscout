@@ -19,7 +19,7 @@
         </div>
       </div>
       <div class="flex-shrink-0">
-        <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post %>
+        <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
       </div>
     </div>
   </div>
