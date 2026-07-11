@@ -12,515 +12,103 @@
     ]
   } %>
 
-  <!-- Main Grid: Analytics (3/4) + Impersonate (1/4) -->
-  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-4">
-    <!-- Analytics Card (3/4 width) -->
-    <div class="lg:col-span-3 border border-gray-200 rounded-lg overflow-hidden">
-      <!-- Tabs for People / Organizations -->
-      <div data-controller="tabs" class="h-full flex flex-col">
-        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <nav class="flex gap-6">
-            <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select"
-                    class="font-semibold text-gray-900 coustard-regular cursor-pointer pb-1 border-b-2 border-pink-500">
-              People
-            </button>
-            <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select"
-                    class="font-semibold text-gray-400 coustard-regular cursor-pointer pb-1 border-b-2 border-transparent hover:text-gray-600">
-              Organizations
-            </button>
-          </nav>
-        </div>
+  <%# ===== Headline: the three core things — People, Organizations, Mics ===== %>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+    <%= render "superadmin/metric_column",
+      title: "People",
+      view_all_path: people_list_path,
+      chart_title: "New people over time",
+      chart_label: "people",
+      daily: @people_daily_data, weekly: @people_weekly_data, monthly: @people_monthly_data,
+      stats: [
+        { value: number_with_delimiter(@people_total), label: "Total", color: "text-gray-900" },
+        { value: number_with_delimiter(@people_active), label: "Active (30d)", color: "text-green-600" },
+        { value: @people_new_today, label: "New today", color: "text-pink-600" },
+        { value: @people_new_past_7_days, label: "Past 7 days", color: "text-blue-600" }
+      ] %>
 
-        <!-- People Panel -->
-        <div data-tabs-target="panel" class="p-4 flex-1">
-          <!-- Snapshot Stats -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@people_total) %></div>
-              <div class="text-xs text-gray-500 mt-1">Total</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@people_active) %></div>
-              <div class="text-xs text-gray-500 mt-1">Active (30d)</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-pink-600"><%= @people_new_today %></div>
-              <div class="text-xs text-gray-500 mt-1">New Today</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-blue-600"><%= @people_new_past_7_days %></div>
-              <div class="text-xs text-gray-500 mt-1">Past 7 Days</div>
-            </div>
-          </div>
+    <%= render "superadmin/metric_column",
+      title: "Organizations",
+      view_all_path: organizations_list_path,
+      chart_title: "New organizations over time",
+      chart_label: "organizations",
+      daily: @organizations_daily_data, weekly: @organizations_weekly_data, monthly: @organizations_monthly_data,
+      stats: [
+        { value: number_with_delimiter(@organizations_total), label: "Total", color: "text-gray-900" },
+        { value: number_with_delimiter(@organizations_active), label: "Active (30d)", color: "text-green-600" },
+        { value: @organizations_new_today, label: "New today", color: "text-pink-600" },
+        { value: @organizations_new_past_7_days, label: "Past 7 days", color: "text-blue-600" }
+      ] %>
 
-          <!-- Chart with Dropdown -->
-          <div data-controller="chart-switcher">
-            <div class="flex items-center justify-between mb-4">
-              <h4 class="text-sm font-medium text-gray-700">New People Over Time</h4>
-              <select data-chart-switcher-target="select" data-action="chart-switcher#switch"
-                      class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
-                <option value="daily" selected>Daily (Past 30 Days)</option>
-                <option value="weekly">Weekly (Past 12 Weeks)</option>
-                <option value="monthly">Monthly (Past 12 Months)</option>
-              </select>
-            </div>
-
-            <div class="h-48">
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="daily">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_daily_data.to_json %>" data-line-chart-color-value="#ec4899" data-line-chart-label-value="people">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="weekly" class="hidden">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_weekly_data.to_json %>" data-line-chart-color-value="#22c55e" data-line-chart-label-value="people">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="monthly" class="hidden">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_monthly_data.to_json %>" data-line-chart-color-value="#3b82f6" data-line-chart-label-value="people">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-4 pt-4 border-t border-gray-100">
-            <%= link_to "View All People →", people_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
-          </div>
-        </div>
-
-        <!-- Organizations Panel -->
-        <div data-tabs-target="panel" class="hidden p-4 flex-1">
-          <!-- Snapshot Stats -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@organizations_total) %></div>
-              <div class="text-xs text-gray-500 mt-1">Total</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@organizations_active) %></div>
-              <div class="text-xs text-gray-500 mt-1">Active (30d)</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-pink-600"><%= @organizations_new_today %></div>
-              <div class="text-xs text-gray-500 mt-1">New Today</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-2xl font-bold text-blue-600"><%= @organizations_new_past_7_days %></div>
-              <div class="text-xs text-gray-500 mt-1">Past 7 Days</div>
-            </div>
-          </div>
-
-          <!-- Chart with Dropdown -->
-          <div data-controller="chart-switcher">
-            <div class="flex items-center justify-between mb-4">
-              <h4 class="text-sm font-medium text-gray-700">New Organizations Over Time</h4>
-              <select data-chart-switcher-target="select" data-action="chart-switcher#switch"
-                      class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
-                <option value="daily" selected>Daily (Past 30 Days)</option>
-                <option value="weekly">Weekly (Past 12 Weeks)</option>
-                <option value="monthly">Monthly (Past 12 Months)</option>
-              </select>
-            </div>
-
-            <div class="h-48">
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="daily">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_daily_data.to_json %>" data-line-chart-color-value="#ec4899" data-line-chart-label-value="organizations">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="weekly" class="hidden">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_weekly_data.to_json %>" data-line-chart-color-value="#22c55e" data-line-chart-label-value="organizations">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-              <div data-chart-switcher-target="panel" data-chart-switcher-key="monthly" class="hidden">
-                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_monthly_data.to_json %>" data-line-chart-color-value="#3b82f6" data-line-chart-label-value="organizations">
-                  <canvas data-line-chart-target="canvas"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-4 pt-4 border-t border-gray-100">
-            <%= link_to "View All Organizations →", organizations_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Impersonate Card (1/4 width) -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden" data-controller="impersonate-search">
-      <%= render "shared/card_header", title: "Impersonate" %>
-      <div class="p-4">
-        <% if session[:impersonate_user_id] %>
-          <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div class="text-sm text-yellow-800 mb-2">Currently impersonating</div>
-            <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small" %>
-          </div>
-        <% end %>
-
-        <!-- Search Input -->
-        <div class="relative">
-          <input type="text"
-                 placeholder="Search name, email, or public key..."
-                 autocomplete="off"
-                 autocapitalize="none"
-                 data-impersonate-search-target="input"
-                 data-action="input->impersonate-search#search"
-                 class="w-full shadow-sm rounded-lg border px-3 py-2 text-sm border-gray-400 focus:border-pink-500 focus:ring-pink-500">
-          <div data-impersonate-search-target="spinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
-            <svg class="animate-spin h-4 w-4 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Search Results -->
-        <div data-impersonate-search-target="results" class="mt-2 hidden">
-          <div class="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
-          </div>
-        </div>
-
-        <!-- Recent Impersonations -->
-        <% if @recent_impersonations.any? %>
-          <div class="mt-3 pt-3 border-t border-gray-200">
-            <h4 class="text-xs font-medium text-gray-500 mb-2">Recent</h4>
-            <div class="space-y-1">
-              <% @recent_impersonations.first(4).each do |recent| %>
-                <%= button_to impersonate_user_path, method: :post, params: { email: recent["email"] }, class: "w-full text-left cursor-pointer group" do %>
-                  <div class="p-2 border border-gray-200 rounded hover:border-pink-400 hover:bg-pink-50 transition-all flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                      <span class="text-xs font-semibold text-gray-600"><%= recent["name"].to_s.first.upcase %></span>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="font-medium text-xs text-gray-900 truncate"><%= recent["name"] %></div>
-                    </div>
-                  </div>
-                <% end %>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    </div>
+    <%= render "superadmin/metric_column",
+      title: "Mics",
+      view_all_path: mics_index_path,
+      chart_title: "New mics over time",
+      chart_label: "mics",
+      daily: @mics_daily_data, weekly: @mics_weekly_data, monthly: @mics_monthly_data,
+      stats: [
+        { value: number_with_delimiter(@mics_total), label: "Total", color: "text-gray-900" },
+        { value: number_with_delimiter(@mics_pending), label: "Pending", color: "text-amber-600" },
+        { value: @mics_new_today, label: "New today", color: "text-pink-600" },
+        { value: @mics_new_past_7_days, label: "Past 7 days", color: "text-blue-600" }
+      ] %>
   </div>
 
-  <!-- Row 2: Monitor Grid (6 columns) -->
-  <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-4">
-    <!-- Profiles Monitor -->
-    <%= link_to profiles_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Profiles Monitor</h3>
-              <p class="text-xs text-gray-500">Sign-ins & completeness</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Data Monitor -->
-    <%= link_to data_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Data Monitor</h3>
-              <p class="text-xs text-gray-500">Database tables & stats</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Mics -->
-    <%
-      mics_pending = MicSuggestion.status_pending.count +
-                     MicClaim.status_pending.count +
-                     MicChallenge.status_pending.count +
-                     Mic.pending_moderation.count
-    %>
-    <%= link_to mics_index_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-              <span class="text-pink-600 text-lg font-bold">🎤</span>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Mics</h3>
-              <p class="text-xs text-gray-500">
-                Search · admin<% if mics_pending.positive? %> · <span class="text-pink-600 font-bold"><%= mics_pending %> pending</span><% end %>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <%# Mic city hubs is a child of the Mics admin surface — reach it
-        from /superadmin/mics, not from here. %>
-
-    <!-- Queue Monitor -->
-    <%= link_to queue_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Queue Monitor</h3>
-              <p class="text-xs text-gray-500">Jobs & failed tasks</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Cable Monitor -->
-    <%= link_to cable_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Cable Monitor</h3>
-              <p class="text-xs text-gray-500">WebSocket & real-time</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Cache Monitor -->
-    <%= link_to cache_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Cache Monitor</h3>
-              <p class="text-xs text-gray-500">Cache stats & clear</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Storage Monitor -->
-    <%= link_to storage_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Storage Monitor</h3>
-              <p class="text-xs text-gray-500">S3 stats & cleanup</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Email Logs -->
-    <%= link_to email_logs_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Email Logs</h3>
-              <p class="text-xs text-gray-500">Sent emails & status</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Messages Monitor -->
-    <%= link_to messages_list_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Messages Monitor</h3>
-              <p class="text-xs text-gray-500">All in-app messages</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Content Templates -->
-    <%= link_to content_templates_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Content Templates</h3>
-              <p class="text-xs text-gray-500">Manage templates</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Agreements Monitor -->
-    <%= link_to agreements_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Agreements</h3>
-              <p class="text-xs text-gray-500">Stats & default template</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Key Monitor -->
-    <%= link_to keys_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Key Monitor</h3>
-              <p class="text-xs text-gray-500">Short URL keys (/a/, /s/)</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Demo Users -->
-    <%= link_to demo_users_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Demo Users</h3>
-              <p class="text-xs text-gray-500">Manage demo org access</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Rake Tasks -->
-    <%= link_to tasks_monitor_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Rake Tasks</h3>
-              <p class="text-xs text-gray-500">Browse available tasks</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Finances -->
-    <%= link_to finances_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Finances</h3>
-              <p class="text-xs text-gray-500">Revenue & expenses</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <!-- Promo Codes -->
-    <%= link_to promo_codes_path, class: "block" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-semibold text-gray-900">Promo Codes</h3>
-              <p class="text-xs text-gray-500">Fee waivers & credits</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
+  <%# ===== Business ===== %>
+  <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mt-8 mb-3">Business</h2>
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+    <%= render "superadmin/tool_card", title: "Finances", subtitle: "Revenue & expenses", path: finances_path,
+      icon_bg: "bg-green-100", icon_color: "text-green-600",
+      icon_path: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" %>
+    <%= render "superadmin/tool_card", title: "Promo Codes", subtitle: "Fee waivers & credits", path: promo_codes_path,
+      icon_bg: "bg-amber-100", icon_color: "text-amber-600",
+      icon_path: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" %>
+    <%= render "superadmin/tool_card", title: "Demo Users", subtitle: "Manage demo org access", path: demo_users_path,
+      icon_bg: "bg-violet-100", icon_color: "text-violet-600",
+      icon_path: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" %>
   </div>
+
+  <%# ===== Content ===== %>
+  <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mt-8 mb-3">Content</h2>
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+    <%= render "superadmin/tool_card", title: "Profiles Monitor", subtitle: "Sign-ins & completeness", path: profiles_monitor_path,
+      icon_bg: "bg-pink-100", icon_color: "text-pink-600",
+      icon_path: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" %>
+    <%= render "superadmin/tool_card", title: "Email Logs", subtitle: "Sent emails & status", path: email_logs_path,
+      icon_bg: "bg-pink-100", icon_color: "text-pink-600",
+      icon_path: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" %>
+    <%= render "superadmin/tool_card", title: "Messages Monitor", subtitle: "All in-app messages", path: messages_list_path,
+      icon_bg: "bg-cyan-100", icon_color: "text-cyan-600",
+      icon_path: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" %>
+    <%= render "superadmin/tool_card", title: "Content Templates", subtitle: "Manage templates", path: content_templates_path,
+      icon_bg: "bg-indigo-100", icon_color: "text-indigo-600",
+      icon_path: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" %>
+    <%= render "superadmin/tool_card", title: "Agreements", subtitle: "Stats & default template", path: agreements_monitor_path,
+      icon_bg: "bg-emerald-100", icon_color: "text-emerald-600",
+      icon_path: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" %>
+    <%= render "superadmin/tool_card", title: "Key Monitor", subtitle: "Short URL keys (/a/, /s/)", path: keys_monitor_path,
+      icon_bg: "bg-purple-100", icon_color: "text-purple-600",
+      icon_path: "M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" %>
+  </div>
+
+  <%# ===== Technical ===== %>
+  <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mt-8 mb-3">Technical</h2>
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+    <%= render "superadmin/tool_card", title: "Data Monitor", subtitle: "Database tables & stats", path: data_monitor_path,
+      icon_bg: "bg-blue-100", icon_color: "text-blue-600",
+      icon_path: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" %>
+    <%= render "superadmin/tool_card", title: "Cable Monitor", subtitle: "WebSocket & real-time", path: cable_monitor_path,
+      icon_bg: "bg-yellow-100", icon_color: "text-yellow-600",
+      icon_path: "M13 10V3L4 14h7v7l9-11h-7z" %>
+    <%= render "superadmin/tool_card", title: "Cache Monitor", subtitle: "Cache stats & clear", path: cache_monitor_path,
+      icon_bg: "bg-purple-100", icon_color: "text-purple-600",
+      icon_path: "M13 10V3L4 14h7v7l9-11h-7z" %>
+    <%= render "superadmin/tool_card", title: "Storage Monitor", subtitle: "S3 stats & cleanup", path: storage_monitor_path,
+      icon_bg: "bg-amber-100", icon_color: "text-amber-600",
+      icon_path: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" %>
+    <%= render "superadmin/tool_card", title: "Queue Monitor", subtitle: "Jobs & failed tasks", path: queue_monitor_path,
+      icon_bg: "bg-green-100", icon_color: "text-green-600",
+      icon_path: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" %>
+  </div>
+
 </div>

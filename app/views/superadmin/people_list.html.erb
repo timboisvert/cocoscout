@@ -11,6 +11,11 @@
     links: []
   } %>
 
+  <!-- Impersonation tool -->
+  <div class="mt-4 lg:max-w-md">
+    <%= render "superadmin/impersonate" %>
+  </div>
+
   <!-- Search Bar -->
   <div class="mb-4 mt-4">
     <%= form_with url: people_list_path, method: :get, class: "flex gap-2" do |f| %>

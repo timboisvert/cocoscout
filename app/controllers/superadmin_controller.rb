@@ -56,15 +56,15 @@ class SuperadminController < ApplicationController
     @organizations_weekly_data = build_weekly_chart_data(Organization, 12)
     @organizations_monthly_data = build_monthly_chart_data(Organization, 12)
 
-    if cookies.encrypted[:recent_impersonations].present?
-      begin
-        @recent_impersonations = JSON.parse(cookies.encrypted[:recent_impersonations])
-      rescue JSON::ParserError
-        @recent_impersonations = []
-      end
-    else
-      @recent_impersonations = []
-    end
+    # Mic stats + chart data (one of the three headline metrics)
+    @mics_total = Mic.count
+    @mics_new_today = Mic.where("created_at > ?", Time.current.beginning_of_day).count
+    @mics_new_past_7_days = Mic.where("created_at > ?", 7.days.ago).count
+    @mics_pending = MicSuggestion.status_pending.count + MicClaim.status_pending.count +
+                    MicChallenge.status_pending.count + Mic.pending_moderation.count
+    @mics_daily_data = build_daily_chart_data(Mic, 30)
+    @mics_weekly_data = build_weekly_chart_data(Mic, 12)
+    @mics_monthly_data = build_monthly_chart_data(Mic, 12)
   end
 
   def search_users
@@ -111,6 +111,18 @@ class SuperadminController < ApplicationController
 
     @pagy, @people = pagy(@people, items: 25)
     @suspicious_count = Person.suspicious.where.not("email LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}").count
+
+    # Impersonation tool lives on the People page.
+    @recent_impersonations =
+      if cookies.encrypted[:recent_impersonations].present?
+        begin
+          JSON.parse(cookies.encrypted[:recent_impersonations])
+        rescue JSON::ParserError
+          []
+        end
+      else
+        []
+      end
   end
 
   def person_detail

@@ -1,0 +1,24 @@
+<%# Superadmin tool card (1/6-width panel).
+    locals: title, subtitle, path, icon_bg (bg class), icon_color (text class),
+            icon_path (svg d) OR emoji %>
+<%= link_to path, class: "block" do %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
+    <div class="p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg <%= icon_bg %> flex items-center justify-center flex-shrink-0">
+          <% if local_assigns[:emoji] %>
+            <span class="text-lg"><%= emoji %></span>
+          <% else %>
+            <svg class="w-5 h-5 <%= icon_color %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon_path %>" />
+            </svg>
+          <% end %>
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-semibold text-gray-900"><%= title %></h3>
+          <p class="text-xs text-gray-500"><%= subtitle %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
