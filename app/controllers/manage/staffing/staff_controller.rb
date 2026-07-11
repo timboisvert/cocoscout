@@ -64,31 +64,19 @@ module Manage
         redirect_to manage_staffing_staff_path, notice: "Staff member updated."
       end
 
-      # Grant an already-added staffer a CocoScout account so they can be
-      # notified. Needed for people added from the org (no account) rather than
-      # invited by email. Creates/links a user and emails an invitation.
+      # Invite an already-added staffer to finish onboarding: ensure they have a
+      # CocoScout account, then send BOTH an onboarding email (focused on setting
+      # up how they get paid) and a parallel in-app message. Marks the membership
+      # as "invited" so the staff list reflects where they are.
       def invite
-        person = @staff_member.person
-        email = person.email.to_s.strip.downcase
-
-        unless email.match?(URI::MailTo::EMAIL_REGEXP)
-          redirect_to manage_staffing_staff_path,
-                      alert: "#{person.name} has no email on file — add one before inviting them." and return
-        end
-
-        ActiveRecord::Base.transaction do
-          if person.user.nil?
-            user = User.find_by(email_address: email) ||
-                   User.create!(email_address: email, password: User.generate_secure_password)
-            person.update!(user: user)
-          end
-          invitation = PersonInvitation.create!(email: email, organization: Current.organization)
-          Manage::PersonMailer.person_invitation(invitation).deliver_later
-        end
-
-        redirect_to manage_staffing_staff_path, notice: "Invitation sent to #{person.name}. They can be notified once they set up their account."
+        StaffOnboardingInviter.call(staff_member: @staff_member, sender: Current.user)
+        redirect_to manage_staffing_staff_path,
+                    notice: "Invited #{@staff_member.display_name} to finish onboarding — we emailed and messaged them to set up how they get paid."
+      rescue StaffOnboardingInviter::Error => e
+        redirect_to manage_staffing_staff_path, alert: e.message
       rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_staffing_staff_path, alert: "Couldn't invite #{person.name}: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+        redirect_to manage_staffing_staff_path,
+                    alert: "Couldn't invite #{@staff_member.display_name}: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       def destroy

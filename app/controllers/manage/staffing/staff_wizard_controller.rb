@@ -40,8 +40,24 @@ module Manage
           sync_role_ids(@staff_member, params[:house_role_ids])
         end
 
-        redirect_to manage_staffing_index_path,
-                    notice: "#{@staff_member.display_name} added to staff. Invite them to finish onboarding when you're ready."
+        # Send the onboarding invite (email + in-app message) right away unless
+        # the employer opted out — they can always resend from the staff list.
+        invited = false
+        if params[:skip_invite].blank?
+          begin
+            StaffOnboardingInviter.call(staff_member: @staff_member, sender: Current.user)
+            invited = true
+          rescue StaffOnboardingInviter::Error
+            invited = false
+          end
+        end
+
+        notice = if invited
+          "#{@staff_member.display_name} added to staff — we emailed and messaged them to set up how they get paid."
+        else
+          "#{@staff_member.display_name} added to staff. Invite them to finish onboarding when you're ready."
+        end
+        redirect_to manage_staffing_index_path, notice: notice
       rescue ActiveRecord::RecordInvalid => e
         @staff_member.errors.add(:base, e.record.errors.full_messages.to_sentence.presence || e.message)
         load_form_collections
