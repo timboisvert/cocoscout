@@ -64,7 +64,6 @@
             } %>
     <% end %>
     <%= render "shared/button", text: "Edit", variant: "outline", size: "small",
-          path: manage_edit_staffing_staff_path(member),
-          data: { turbo_frame: "staff_edit", action: "click->modal#open", "modal-id": "staff-edit-modal" } %>
+          path: manage_edit_staffing_staff_path(member) %>
   </div>
 </div>

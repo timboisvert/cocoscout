@@ -24,7 +24,7 @@
       <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
         <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button,
               data: { action: "click->invite-preview#close" } %>
-        <%= form_with url: "#", method: :post, data: { "invite-preview-target": "form", turbo_frame: "_top" }, class: "inline" do %>
+        <%= form_with url: "#", method: :post, data: { "invite-preview-target": "form" }, class: "inline" do %>
           <%= render "shared/button", text: "Send email", variant: "primary", size: "small", type: :submit %>
         <% end %>
       </div>

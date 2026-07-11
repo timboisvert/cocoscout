@@ -1,6 +1,6 @@
 <% content_for :title, "Staffing" %>
 
-<div class="w-full mb-10" data-controller="invite-preview modal">
+<div class="w-full mb-10" data-controller="invite-preview">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render "shared/module_header",
@@ -12,15 +12,4 @@
     ] %>
 
   <%= render "manage/staffing/staff_list" %>
-
-  <%# Staff edit modal — the Edit button on each card loads the tabbed edit form
-      into this frame (data-turbo-frame="staff_edit") and opens the modal. %>
-  <div id="staff-edit-modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <%= turbo_frame_tag "staff_edit" do %>
-        <div class="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-2xl p-10 text-center text-gray-400">Loading…</div>
-      <% end %>
-    </div>
-  </div>
 </div>
