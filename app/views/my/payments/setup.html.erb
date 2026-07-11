@@ -15,11 +15,14 @@
 
     <%= render "my/payments/payout_summary" %>
 
-    <p class="text-gray-600 mb-6 max-w-2xl">
-      Choose how you get paid. We recommend connecting your bank for automatic, secure
-      direct deposit — your money lands without anyone chasing checks. You can also use a
-      payment app.
-    </p>
+    <div class="mb-6 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <p class="text-sm text-amber-900">
+        <span class="font-semibold">Connect your bank by August 1 to keep getting paid.</span>
+        CocoScout is moving to automatic direct deposit. Set up your bank account below so there's no
+        disruption in getting paid. If you already use Zelle or Venmo, you can keep using it for a little
+        longer — but that option is going away very soon.
+      </p>
+    </div>
 
     <!-- Bank account (Stripe Connect) — the primary way to get paid -->
     <div class="bg-white rounded-lg border-2 border-pink-200 p-6 mb-6">
@@ -54,11 +57,11 @@
     <%# Payment apps — transitional; only shown to people who already set one up %>
     <% if @person.venmo_configured? || @person.zelle_configured? %>
       <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
-        <h3 class="font-medium text-gray-900">Payment apps</h3>
+        <h3 class="font-medium text-gray-900">Payment apps <span class="ml-1 text-xs font-normal text-amber-700">Going away August 1</span></h3>
         <p class="text-sm text-gray-500 mt-1 mb-5 max-w-2xl">
-          You set up an app payment before, so you can still update it here. Heads up: CocoScout is
-          moving to direct bank deposit — soon a connected bank will be the only way to get paid, so
-          set yours up above when you get a chance.
+          You set one of these up before, so you can still update it here for now — productions will keep
+          paying you this way until you connect a bank. After <span class="font-medium text-gray-700">August 1</span>,
+          a connected bank will be the only way to get paid, so set yours up above when you can.
         </p>
 
         <!-- Payment Methods Grid -->
