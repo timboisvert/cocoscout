@@ -1,12 +1,8 @@
-<%# Availability manager: mark the times you're (un)available. Self-contained
-    (its own unavailability controller + modal). Uses @unavailability_entries,
-    @availability_mode. %>
-<section class="mb-6"
-     data-controller="unavailability"
-     data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
-     data-unavailability-create-url-value="<%= my_create_shift_unavailability_path %>"
-     data-unavailability-mode-value="<%= @availability_mode %>"
-     data-unavailability-set-mode-url-value="<%= my_set_shift_availability_mode_path %>">
+<%# Availability manager: mark the times you're (un)available. The unavailability
+    controller lives on the page wrapper (so the header action can open it too);
+    this section just holds the summary + the calendar modal. Uses
+    @unavailability_entries, @availability_mode. %>
+<section class="mb-6">
   <div class="flex items-center justify-between gap-3 mb-3">
     <h2 class="text-base font-semibold text-gray-900">Availability</h2>
     <%= render "shared/button", text: "Manage availability", variant: "secondary", size: "small", type: :button,

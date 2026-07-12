@@ -53,7 +53,7 @@ RSpec.describe "Staff shift visibility", type: :request do
       expect(response.body).not_to include("DraftWeekRole")
     end
 
-    it "hides past shifts" do
+    it "keeps past shifts out of Upcoming but surfaces recent ones to confirm" do
       past_week = Date.current.beginning_of_week - 7
       create(:staffing_finalization, organization: org, week_start: past_week, finalized_at: Time.current)
       s = create(:shift, organization: org, house_role: create(:house_role, organization: org, name: "PastWeekRole"),
@@ -62,7 +62,8 @@ RSpec.describe "Staff shift visibility", type: :request do
       create(:shift_assignment, shift: s, person: my_person)
 
       get my_shifts_path
-      expect(response.body).not_to include("PastWeekRole")
+      # Recent past shifts now appear under "Confirm your hours" so they can be paid.
+      expect(response.body).to include("Confirm your hours").and include("PastWeekRole")
     end
 
     it "shows a doubled-up shift with the combined role label" do

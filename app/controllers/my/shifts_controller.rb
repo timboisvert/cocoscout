@@ -13,8 +13,6 @@ module My
       @people_by_id = @people.index_by(&:id)
       @my_person_ids = people_ids.to_set
 
-      @tab = params[:tab] == "all_staff" ? "all_staff" : "mine"
-
       assignments = ShiftAssignment
         .where(person_id: people_ids)
         .joins(:shift)
@@ -39,8 +37,6 @@ module My
 
       # Money owed across every org, for the summary strip.
       @to_be_paid_cents = @people.sum { |p| p.respond_to?(:payout_balance_cents) ? p.payout_balance_cents : 0 }
-
-      load_all_staff_calendar(people_ids, finalized_weeks) if @tab == "all_staff"
 
       # Unavailability for the calendar/summary (the client renders both). Cover
       # the current month through ~12 months out so month navigation has data.
@@ -131,43 +127,6 @@ module My
       @staff_orgs = Organization.where(
         id: OrganizationStaffMember.active.where(person_id: people_ids).distinct.pluck(:organization_id)
       ).order(:name).to_a
-    end
-
-    # "All Staff" tab: a month calendar of every staffer's shifts in the orgs the
-    # current user is house staff at. Same finalized-week gate as the personal
-    # view, so drafts stay hidden. Reuses the shared month_calendar component.
-    def load_all_staff_calendar(people_ids, finalized_weeks)
-      @staff_org_ids = OrganizationStaffMember.active
-        .where(person_id: people_ids)
-        .distinct
-        .pluck(:organization_id)
-      @multi_org = @staff_org_ids.size > 1
-
-      @cal_month = (safe_date(params[:month]) || Date.current).beginning_of_month
-      # Don't let users page into the past — earliest navigable month is this one.
-      @cal_month = Date.current.beginning_of_month if @cal_month < Date.current.beginning_of_month
-
-      # Cover the full grid (a month view can spill into adjacent weeks).
-      range_start = @cal_month.beginning_of_week(:sunday)
-      range_end   = @cal_month.end_of_month.end_of_week(:sunday)
-
-      shifts =
-        if @staff_org_ids.any?
-          Shift.where(organization_id: @staff_org_ids)
-               .where(starts_at: range_start.beginning_of_day..range_end.end_of_day)
-               .includes(:house_role, :additional_roles, :organization, shift_assignments: :person)
-               .ordered
-               .to_a
-        else
-          []
-        end
-
-      # Hide shifts whose week isn't finalized yet (matches the personal view).
-      shifts.select! do |s|
-        finalized_weeks.include?([ s.organization_id, s.starts_at.to_date.beginning_of_week ])
-      end
-
-      @shifts_by_date = shifts.group_by { |s| s.starts_at.to_date }
     end
 
     def safe_date(value)
