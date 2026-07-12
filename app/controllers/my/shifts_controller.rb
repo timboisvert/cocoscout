@@ -35,9 +35,6 @@ module My
 
       load_timekeeping(people_ids, finalized_weeks)
 
-      # Money owed across every org, for the summary strip.
-      @to_be_paid_cents = @people.sum { |p| p.respond_to?(:payout_balance_cents) ? p.payout_balance_cents : 0 }
-
       # Unavailability for the calendar/summary (the client renders both). Cover
       # the current month through ~12 months out so month navigation has data.
       person = Current.user.person
@@ -118,15 +115,35 @@ module My
       confirmed_ids = StaffTimeEntry.where(shift_assignment_id: past.map(&:id)).pluck(:shift_assignment_id).to_set
       @unconfirmed_shifts = past.reject { |a| confirmed_ids.include?(a.id) }
 
+      # Every unpaid entry (pending review + approved) — these are what the worker
+      # is still owed staffing pay for.
       @time_entries = StaffTimeEntry.where(person_id: people_ids).unpaid
-        .where(started_at: 60.days.ago..Time.current)
         .includes(shift_assignment: { shift: :house_role })
         .order(started_at: :desc)
         .to_a
+      # A little recently-paid history.
+      @paid_entries = StaffTimeEntry.where(person_id: people_ids).paid
+        .where(paid_at: 90.days.ago..Time.current)
+        .includes(shift_assignment: { shift: :house_role })
+        .order(paid_at: :desc).limit(10).to_a
+
+      # Pay rate per (org, person) so we can estimate what they're owed for
+      # STAFFING hours (this excludes performance payouts entirely).
+      rates = OrganizationStaffMember.where(person_id: people_ids)
+                                     .pluck(:organization_id, :person_id, :hourly_rate_cents)
+                                     .each_with_object({}) { |(org_id, pid, cents), h| h[[ org_id, pid ]] = cents.to_i }
+
       @unpaid_hours = @time_entries.sum { |e| e.hours.to_f }
+      @pending_hours = @time_entries.select { |e| e.status == "pending" }.sum { |e| e.hours.to_f }
+      @approved_hours = @time_entries.select { |e| e.status == "approved" }.sum { |e| e.hours.to_f }
+      @owed_estimate_cents = @time_entries.sum { |e| (e.hours.to_d * (rates[[ e.organization_id, e.person_id ]] || 0)).round }
+
       @staff_orgs = Organization.where(
         id: OrganizationStaffMember.active.where(person_id: people_ids).distinct.pluck(:organization_id)
       ).order(:name).to_a
+
+      person = Current.user.person
+      @bank_connected = person.respond_to?(:can_receive_payouts?) && person.can_receive_payouts?
     end
 
     def safe_date(value)

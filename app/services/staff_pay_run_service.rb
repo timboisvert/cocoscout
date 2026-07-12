@@ -85,7 +85,11 @@ class StaffPayRunService
     ids = Array(ids).map(&:to_i).reject(&:zero?)
     return if ids.empty?
 
-    organization.staff_time_entries.unpaid.for_person(payee).where(id: ids)
-                .update_all(payout_batch_id: batch.id, paid_at: Time.current, updated_at: Time.current)
+    # Paying implies approval — backfill approved_at for any that weren't
+    # explicitly approved first.
+    now = Time.current
+    scope = organization.staff_time_entries.unpaid.for_person(payee).where(id: ids)
+    scope.where(approved_at: nil).update_all(approved_at: now, updated_at: now)
+    scope.update_all(payout_batch_id: batch.id, paid_at: now, updated_at: now)
   end
 end

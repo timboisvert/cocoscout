@@ -2,14 +2,17 @@
     controller lives on the page wrapper (so the header action can open it too);
     this section just holds the summary + the calendar modal. Uses
     @unavailability_entries, @availability_mode. %>
-<section class="mb-6">
-  <div class="flex items-center justify-between gap-3 mb-3">
-    <h2 class="text-base font-semibold text-gray-900">Availability</h2>
-    <%= render "shared/button", text: "Manage availability", variant: "secondary", size: "small", type: :button,
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+      <h2 class="text-base font-semibold text-gray-900">Availability</h2>
+    </div>
+    <%= render "shared/button", text: "Manage", variant: "secondary", size: "small", type: :button,
           data: { action: "click->unavailability#open" } %>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+  <div class="p-5">
     <div class="min-w-0" data-unavailability-target="summary"></div>
   </div>
 

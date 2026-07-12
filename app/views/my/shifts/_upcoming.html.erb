@@ -1,0 +1,42 @@
+<%# Goal 1: when do I work. Uses @rows_by_day, @has_any, @people. %>
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
+    <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <h2 class="text-base font-semibold text-gray-900">Upcoming shifts</h2>
+  </div>
+
+  <div class="p-5">
+    <% if @has_any %>
+      <div class="space-y-5">
+        <% @rows_by_day.each do |day, rows| %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2"><%= day.strftime("%A, %B %-d") %></h3>
+            <div class="space-y-2">
+              <% rows.each do |row| %>
+                <% shift = row[:shift] %>
+                <% org = shift.organization %>
+                <% location_name = shift.source.try(:location).try(:name) %>
+                <div class="flex items-center gap-4 p-3 bg-gray-50 border border-gray-100 rounded-lg">
+                  <div class="flex-shrink-0 w-12 text-center">
+                    <div class="text-[10px] font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></div>
+                    <div class="text-xl font-bold text-gray-900 leading-tight"><%= shift.starts_at.strftime("%-d") %></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 truncate"><%= shift.role_label %></div>
+                    <div class="text-sm text-gray-600 tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></div>
+                    <div class="text-xs text-gray-500 truncate">
+                      <% if org %><%= org.name %><% end %><% if location_name.present? %> · <%= location_name %><% end %>
+                      <% if @people.size > 1 %> · <%= row[:person].name %><% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500 text-center py-6">No upcoming shifts. They'll show up here once your schedule is posted.</p>
+    <% end %>
+  </div>
+</section>

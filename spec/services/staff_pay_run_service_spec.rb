@@ -34,6 +34,7 @@ RSpec.describe StaffPayRunService do
 
       expect(e1.reload.payout_batch).to eq(result.batch)
       expect(e1.reload).to be_paid
+      expect(e1).to be_approved # paying implies approval
       expect(e2.reload).to be_paid
       expect(other.reload).not_to be_paid # not pulled in
     end

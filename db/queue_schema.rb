@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_190416) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_195142) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2513,6 +2513,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_190416) do
   end
 
   create_table "staff_time_entries", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
     t.datetime "created_at", null: false
     t.datetime "ended_at", null: false
     t.decimal "hours", precision: 6, scale: 2, null: false
@@ -2525,6 +2527,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_190416) do
     t.string "source", default: "manual", null: false
     t.datetime "started_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["approved_by_id"], name: "index_staff_time_entries_on_approved_by_id"
     t.index ["organization_id"], name: "index_staff_time_entries_on_organization_id"
     t.index ["payout_batch_id"], name: "index_staff_time_entries_on_payout_batch_id"
     t.index ["person_id"], name: "index_staff_time_entries_on_person_id"
@@ -2907,6 +2910,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_190416) do
   add_foreign_key "staff_time_entries", "payout_batches"
   add_foreign_key "staff_time_entries", "people"
   add_foreign_key "staff_time_entries", "shift_assignments"
+  add_foreign_key "staff_time_entries", "users", column: "approved_by_id"
   add_foreign_key "staff_unavailabilities", "people"
   add_foreign_key "staffing_finalizations", "organizations"
   add_foreign_key "staffing_finalizations", "users", column: "finalized_by_id"

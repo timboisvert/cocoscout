@@ -19,11 +19,17 @@ module Manage
 
       # A person's unpaid time entries, rendered into the pull-hours modal frame.
       def time_entries
-        @person = Current.organization.people.find(params[:person_id])
-        @entries = Current.organization.staff_time_entries.unpaid.for_person(@person)
-                          .includes(shift_assignment: { shift: :house_role })
-                          .chronological
-        render partial: "manage/staffing/pay/time_entries", locals: { entries: @entries }
+        person = staff_person
+        render partial: "manage/staffing/pay/time_entries", locals: { entries: unpaid_entries_for(person), person: person }
+      end
+
+      # Manager sign-off: approve a person's pending (submitted) time entries so
+      # the worker sees them approved. Re-renders the modal frame.
+      def approve_time_entries
+        person = staff_person
+        Current.organization.staff_time_entries.unpaid.for_person(person).pending
+               .update_all(approved_at: Time.current, approved_by_id: Current.user.id, updated_at: Time.current)
+        render partial: "manage/staffing/pay/time_entries", locals: { entries: unpaid_entries_for(person), person: person }
       end
 
       # Server-side draft autosave of the whole pay form (opaque JSON blob).
@@ -61,6 +67,17 @@ module Manage
       end
 
       private
+
+      # Only a person who's on this org's staff (scopes the pull/approve to us).
+      def staff_person
+        staff_ids = Current.organization.organization_staff_members.pluck(:person_id)
+        Person.where(id: staff_ids).find(params[:person_id])
+      end
+
+      def unpaid_entries_for(person)
+        Current.organization.staff_time_entries.unpaid.for_person(person)
+               .includes(shift_assignment: { shift: :house_role }).chronological
+      end
 
       def payable_staff
         Current.organization.organization_staff_members.active

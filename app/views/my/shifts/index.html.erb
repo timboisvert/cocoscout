@@ -3,14 +3,14 @@
 <%
   shifts_description = <<~HTML
     <p>
-      Everything about your work in one place — your upcoming shifts, the hours you've worked,
-      when you're available, and what you're owed. Confirm your hours after each shift so you get paid.
+      Your work in one place — when you're scheduled, the hours you've worked, what you're owed for them,
+      and when you're free. Confirm your hours after each shift so you get paid.
     </p>
   HTML
 %>
 
 <%# One wrapper hosts the modal + time-entry-form + availability controllers, so
-    the header quick-actions and the section buttons all reach the same modals. %>
+    the header quick-actions and the box buttons all reach the same modals. %>
 <div class="w-full mb-10"
      data-controller="modal time-entry-form unavailability"
      data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
@@ -33,80 +33,20 @@
     ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">
-    <%# 1. Glance — money owed, hours, shifts, availability %>
+    <%# Glance %>
     <%= render "my/shifts/summary" %>
 
-    <%# 2. Act — anything that needs the worker's attention %>
-    <% if @unconfirmed_shifts.any? %>
-      <%= render "my/shifts/confirm_hours" %>
-    <% end %>
+    <%# Goals 1 & 3: what's coming up · what you're owed %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mb-6">
+      <%= render "my/shifts/upcoming" %>
+      <%= render "my/shifts/getting_paid" %>
+    </div>
 
-    <%# 3. Plan — what's coming up %>
-    <section class="mb-6">
-      <h2 class="text-base font-semibold text-gray-900 mb-3">Upcoming shifts</h2>
-      <% if @has_any %>
-        <div class="space-y-6">
-          <% @rows_by_day.each do |day, rows| %>
-            <div>
-              <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                <%= day.strftime("%A, %B %-d, %Y") %>
-              </h3>
-              <div class="space-y-2">
-                <% rows.each do |row| %>
-                  <% shift = row[:shift] %>
-                  <% person = row[:person] %>
-                  <% assignment = row[:assignment] %>
-                  <% org = shift.organization %>
-                  <% location_name = shift.source.try(:location).try(:name) %>
-                  <div class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                    <div class="flex items-center gap-4">
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= shift.starts_at.strftime("%a") %></div>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 truncate"><%= shift.role_label %></div>
-                        <div class="text-sm text-gray-600">
-                          <span class="tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
-                          <% if org %>· <%= org.name %><% end %>
-                        </div>
-                        <% if location_name.present? %>
-                          <div class="text-xs text-gray-500 truncate mt-0.5"><%= location_name %></div>
-                        <% end %>
-                      </div>
-                      <div class="flex-shrink-0 text-right">
-                        <% case assignment.response_status %>
-                        <% when :accepted %>
-                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-medium">Accepted</span>
-                        <% when :declined %>
-                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-medium">Declined</span>
-                        <% else %>
-                          <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs font-medium">Scheduled</span>
-                        <% end %>
-                        <% if @people.size > 1 %>
-                          <div class="text-[11px] text-gray-400 mt-1 truncate max-w-[8rem]"><%= person.name %></div>
-                        <% end %>
-                      </div>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-          <p class="text-sm text-gray-500">You don't have any upcoming shifts. We'll show them here once your schedule is posted.</p>
-        </div>
-      <% end %>
-    </section>
-
-    <%# 4. Set — when you can work %>
-    <%= render "my/shifts/availability" %>
-
-    <%# 5. Track — your logged hours %>
-    <%= render "my/shifts/my_hours" %>
+    <%# Goals 2 & 4: your hours · your availability %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <%= render "my/shifts/your_hours" %>
+      <%= render "my/shifts/availability" %>
+    </div>
   </div>
 
   <%= render "my/shifts/time_entry_modal" %>

@@ -1,0 +1,85 @@
+<%# Goal 2: review recent shifts, confirm/adjust the hours worked, and track their
+    approval status. Rendered inside the page's modal + time-entry-form wrapper.
+    Uses @unconfirmed_shifts, @time_entries. %>
+<% dt = ->(t) { t&.strftime("%Y-%m-%dT%H:%M") } %>
+<% badge = ->(status) {
+     case status
+     when "approved" then ["Approved", "bg-green-100 text-green-700"]
+     when "paid"     then ["Paid", "bg-blue-100 text-blue-700"]
+     else ["Pending review", "bg-amber-100 text-amber-700"]
+     end
+   } %>
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <h2 class="text-base font-semibold text-gray-900">Your hours</h2>
+    </div>
+    <%= render "shared/button", text: "Add time", variant: "secondary", size: "small", icon: "plus", type: :button,
+          data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
+                  mode: "manual", url: my_time_entries_path, title: "Add time you worked" } %>
+  </div>
+
+  <div class="p-5 space-y-4">
+    <%# Recent shifts still to confirm %>
+    <% if @unconfirmed_shifts.any? %>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div class="text-sm font-medium text-amber-900 mb-2">Confirm the hours you worked</div>
+        <div class="space-y-2">
+          <% @unconfirmed_shifts.each do |a| %>
+            <% s = a.shift %>
+            <div class="flex items-center justify-between gap-3 bg-white border border-amber-200 rounded-lg px-3 py-2">
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate"><%= s.starts_at.strftime("%a %b %-d") %> · <%= s.role_label %></div>
+                <div class="text-xs text-gray-500"><%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %> · <%= number_with_precision(s.scheduled_hours, precision: 2, strip_insignificant_zeros: true) %>h scheduled</div>
+              </div>
+              <%= render "shared/button", text: "Confirm", variant: "primary", size: "small", type: :button,
+                    data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
+                            mode: "confirm", url: my_time_entries_path,
+                            "assignment-id": a.id, started: dt.call(s.starts_at), ended: dt.call(s.ends_at),
+                            title: "Confirm your hours" } %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Logged entries with status %>
+    <% if @time_entries.any? %>
+      <div class="space-y-2">
+        <% @time_entries.each do |e| %>
+          <% label, badge_class = badge.call(e.status) %>
+          <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-gray-900 truncate">
+                <%= e.started_at.strftime("%a %b %-d") %>
+                <span class="text-gray-400">·</span>
+                <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h
+                <% if e.source == "manual" %><span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">self-logged</span><% end %>
+              </div>
+              <div class="text-xs text-gray-500 truncate">
+                <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
+                <% if e.shift&.role_label.present? %> · <%= e.shift.role_label %><% end %>
+                <% if e.notes.present? %> · <%= e.notes %><% end %>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= badge_class %>"><%= label %></span>
+              <% if e.status == "pending" %>
+                <%= render "shared/button", text: "Edit", variant: "outline", size: "small", type: :button,
+                      data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
+                              mode: "edit", url: my_time_entry_path(e), method: "patch",
+                              started: dt.call(e.started_at), ended: dt.call(e.ended_at), notes: e.notes.to_s,
+                              title: "Edit your hours" } %>
+                <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small",
+                      path: my_time_entry_path(e), method: :delete, data: { turbo_confirm: "Remove this time entry?" } %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% elsif @unconfirmed_shifts.empty? %>
+      <p class="text-sm text-gray-500 text-center py-4">No hours to review. Confirm a shift or add time you worked on your own.</p>
+    <% end %>
+  </div>
+</section>
