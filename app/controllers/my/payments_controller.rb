@@ -127,7 +127,7 @@ module My
     end
 
     def profile_params
-      params.require(:person).permit(:name, :pronouns)
+      params.require(:person).permit(:name)
     end
 
     def venmo_params

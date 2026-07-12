@@ -16,14 +16,13 @@ RSpec.describe "My::Payments bank connect", type: :request do
     expect(response.body).to include("Connect your bank")
   end
 
-  it "lets the worker confirm/edit their details as the first onboarding step" do
+  it "lets the worker set the name that appears on their payments" do
     get my_payments_setup_path
-    expect(response.body).to include("Your details")
+    expect(response.body).to include("Your name")
 
-    patch my_payments_update_profile_path, params: { person: { name: "New Legal Name", pronouns: "they/them" } }
+    patch my_payments_update_profile_path, params: { person: { name: "New Legal Name" } }
     expect(response).to redirect_to(my_payments_setup_path)
     expect(person.reload.name).to eq("New Legal Name")
-    expect(person.pronouns).to eq("they/them")
   end
 
   it "redirects to Stripe hosted onboarding when connecting" do
