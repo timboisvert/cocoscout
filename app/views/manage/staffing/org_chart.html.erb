@@ -1,0 +1,26 @@
+<% content_for :title, "Org Chart" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
+    text: "Org Chart",
+    links: [ { text: "Add staff member", path: manage_new_staffing_staff_wizard_path } ]
+  } %>
+
+  <% if @staff.blank? %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-4">
+      <p class="text-sm text-gray-600 mb-3">No staff yet — add your team to see your org chart.</p>
+      <%= render "shared/button", text: "Add a staff member", variant: "primary", size: "small", path: manage_new_staffing_staff_wizard_path %>
+    </div>
+  <% else %>
+    <p class="text-sm text-gray-500 mt-2 mb-5">Everyone on your team, by who reports to whom. Set a person's manager from their profile. Click anyone to edit.</p>
+    <div class="overflow-x-auto">
+      <ul class="space-y-3 min-w-max">
+        <% @roots.each do |member| %>
+          <%= render "manage/staffing/org_node", member: member, children_by_manager: @children_by_manager %>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

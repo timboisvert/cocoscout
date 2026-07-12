@@ -1,0 +1,28 @@
+<%# One node in the org chart, with its reports nested beneath it.
+    Locals: member, children_by_manager (Hash of manager_id => [members]). %>
+<% person = member.person %>
+<% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
+<% children = Array(children_by_manager[member.id]) %>
+<li>
+  <%= link_to manage_edit_staffing_staff_path(member),
+        class: "inline-flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-pink-300 transition-colors no-underline" do %>
+    <% if headshot %>
+      <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+    <% end %>
+    <div class="min-w-0">
+      <div class="text-sm font-medium text-gray-900 truncate"><%= member.display_name %></div>
+      <% subtitle = [ member.title.presence, member.department.presence ].compact.join(" · ") %>
+      <% if subtitle.present? %><div class="text-xs text-gray-500 truncate"><%= subtitle %></div><% end %>
+    </div>
+  <% end %>
+
+  <% if children.any? %>
+    <ul class="ml-5 mt-2 pl-5 border-l border-gray-200 space-y-2">
+      <% children.each do |child| %>
+        <%= render "manage/staffing/org_node", member: child, children_by_manager: children_by_manager %>
+      <% end %>
+    </ul>
+  <% end %>
+</li>

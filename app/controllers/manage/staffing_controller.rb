@@ -35,6 +35,18 @@ module Manage
       @pending_count = @pending_staff.size
     end
 
+    # Full org chart of the org's staff, built from manager relationships.
+    def org_chart
+      return unless Current.organization
+
+      @staff = Current.organization.organization_staff_members.active
+                      .includes(:person, :manager).order("people.name").references(:person).to_a
+      active_ids = @staff.map(&:id).to_set
+      @children_by_manager = @staff.group_by(&:manager_id)
+      # Roots: no manager, or a manager who's no longer active staff.
+      @roots = @staff.select { |m| m.manager_id.nil? || active_ids.exclude?(m.manager_id) }
+    end
+
     # The weekly house-staff schedule (formerly the Staffing landing page).
     def scheduling
       return unless Current.organization
