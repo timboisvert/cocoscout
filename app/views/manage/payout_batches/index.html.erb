@@ -19,6 +19,58 @@
     deposits each person's balance straight to their account.
   </p>
 
+  <%# ---- Payout schedule ---- %>
+  <% org = Current.organization %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6 max-w-2xl">
+    <div class="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">Payout schedule</h2>
+        <p class="text-sm text-gray-500 mt-0.5">
+          <% if org.payout_schedule_enabled? %>
+            <%= org.payout_schedule_label %> — next run <span class="font-medium text-gray-700"><%= org.next_payout_date.strftime("%A, %b %-d") %></span>.
+          <% else %>
+            Automatic payouts are off — you run them yourself.
+          <% end %>
+        </p>
+      </div>
+    </div>
+
+    <%= form_with url: manage_payout_batch_schedule_path, method: :patch, class: "grid grid-cols-1 sm:grid-cols-2 gap-3 items-end" do %>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
+        <select name="payout_schedule" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <% [ %w[manual Manual], %w[weekly Weekly], %w[monthly Monthly] ].each do |val, label| %>
+            <option value="<%= val %>" <%= "selected" if org.payout_schedule == val %>><%= label %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Funding</label>
+        <select name="payout_funding_method" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="ach" <%= "selected" if org.payout_funding_method == "ach" %>>Bank transfer (ACH)</option>
+          <option value="card" <%= "selected" if org.payout_funding_method == "card" %>>Card (instant)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Day of week <span class="text-gray-400">(if weekly)</span></label>
+        <select name="weekly_day" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <% Date::DAYNAMES.each_with_index do |name, i| %>
+            <option value="<%= i %>" <%= "selected" if (org.payout_schedule == "weekly" ? org.payout_schedule_day : PayoutScheduling::DEFAULT_WEEKLY_DAY) == i %>><%= name %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Day of month <span class="text-gray-400">(if monthly)</span></label>
+        <input type="number" name="monthly_day" min="1" max="28"
+               value="<%= org.payout_schedule == 'monthly' ? org.payout_schedule_day : PayoutScheduling::DEFAULT_MONTHLY_DAY %>"
+               class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+      <div class="sm:col-span-2 flex justify-end">
+        <%= render "shared/button", text: "Save schedule", variant: "secondary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+
   <% if @batches.any? %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
       <table class="w-full text-sm">

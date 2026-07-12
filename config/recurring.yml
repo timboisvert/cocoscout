@@ -71,3 +71,7 @@ production:
   meter_staff_billing:
     class: MeterStaffBillingJob
     schedule: at 4am every day
+
+  run_scheduled_payouts:
+    class: RunScheduledPayoutsJob
+    schedule: at 6am every day

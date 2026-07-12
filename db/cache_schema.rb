@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_234445) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_003137) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1281,9 +1281,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_234445) do
     t.datetime "created_at", null: false
     t.string "invite_token"
     t.boolean "is_demo", default: false, null: false
+    t.date "last_auto_payout_on"
     t.string "name"
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
+    t.string "payout_funding_method", default: "ach", null: false
+    t.string "payout_schedule", default: "manual", null: false
+    t.integer "payout_schedule_day"
     t.string "preferred_payment_method"
     t.string "stripe_customer_id"
     t.string "stripe_subscription_id"

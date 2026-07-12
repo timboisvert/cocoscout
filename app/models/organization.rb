@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Organization < ApplicationRecord
+  include PayoutScheduling
+
   belongs_to :owner, class_name: "User"
   belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true
   has_many :productions, dependent: :destroy

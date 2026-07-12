@@ -27,6 +27,17 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     expect(response.body).to include("Payout Runs")
   end
 
+  it "saves a weekly payout schedule" do
+    patch manage_payout_batch_schedule_path, params: {
+      payout_schedule: "weekly", weekly_day: "5", payout_funding_method: "card"
+    }
+    org.reload
+    expect(org.payout_schedule).to eq("weekly")
+    expect(org.payout_schedule_day).to eq(5)
+    expect(org.payout_funding_method).to eq("card")
+    expect(response).to redirect_to(manage_payout_batches_path)
+  end
+
   it "previews who is ready vs waiting on bank setup" do
     get manage_new_payout_batch_path
     expect(response).to have_http_status(:ok)

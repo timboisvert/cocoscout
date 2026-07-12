@@ -4,6 +4,9 @@
   has_financials = @show_financials&.complete?
   has_line_items = @line_items&.any? || false
   is_calculated = @show_payout.calculated_at.present?
+  # When the org has an automatic payout cadence, show the real next run date
+  # instead of the generic "next payout run".
+  next_payout_on = @production.organization.next_payout_date
 
   # Determine payout status with new terminology
   if @show_payout.paid?
@@ -1159,7 +1162,7 @@
                           <%# Bank connected — paid automatically by the standard payout run. %>
                           <div class="text-right" title="This person connected a bank, so they're paid automatically on your next payout run.">
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">Auto-pay</span>
-                            <div class="text-xs text-gray-400 mt-0.5">next payout run</div>
+                            <div class="text-xs text-gray-400 mt-0.5"><%= next_payout_on ? "run #{next_payout_on.strftime('%b %-d')}" : "next payout run" %></div>
                           </div>
                         <% else %>
                           <%# For grouped items, pass comma-separated IDs %>

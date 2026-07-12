@@ -1221,7 +1221,8 @@ Rails.application.routes.draw do
     get "money/financials", to: "money_financials#index", as: "money_financials"
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
     # Payout runs: pay everyone with a connected bank at once (Stripe Connect).
-    get  "money/payout-runs",      to: "payout_batches#index",  as: "payout_batches"
+    get   "money/payout-runs",          to: "payout_batches#index",           as: "payout_batches"
+    patch "money/payout-runs/schedule", to: "payout_batches#update_schedule",  as: "payout_batch_schedule"
     get  "money/payout-runs/new",  to: "payout_batches#new",    as: "new_payout_batch"
     post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"

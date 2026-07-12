@@ -38,6 +38,26 @@ module Manage
       @batch = organization.payout_batches.find(params[:id])
     end
 
+    # Set the org's automatic payout cadence (manual / weekly / monthly).
+    def update_schedule
+      schedule = params[:payout_schedule].to_s
+      day = case schedule
+      when "weekly"  then params[:weekly_day]
+      when "monthly" then params[:monthly_day]
+      end
+
+      if organization.update(
+        payout_schedule: schedule,
+        payout_schedule_day: day.presence,
+        payout_funding_method: params[:payout_funding_method].presence || organization.payout_funding_method
+      )
+        redirect_to manage_payout_batches_path, notice: "Payout schedule updated."
+      else
+        redirect_to manage_payout_batches_path,
+                    alert: "Couldn't update schedule: #{organization.errors.full_messages.to_sentence}"
+      end
+    end
+
     private
 
     def organization
