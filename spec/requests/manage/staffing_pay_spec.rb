@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe "Manage::Staffing::Pay", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
-  let!(:org) { create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1") }
+  let!(:org) { create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account") }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
   let(:person) { create(:person, name: "Ready Rae", stripe_account_id: "acct_r", payouts_enabled: true) }
   let!(:member) { create(:organization_staff_member, organization: org, person: person, hourly_rate_cents: 2000) }

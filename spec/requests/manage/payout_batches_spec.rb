@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe "Manage::PayoutBatches", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
-  let!(:org) { create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1") }
+  let!(:org) { create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account") }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
 
   let!(:ready) do
@@ -25,6 +25,26 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     get manage_payout_batches_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Payout Runs")
+  end
+
+  describe "funding source" do
+    it "shows the connected source on the index" do
+      org.update!(funding_payment_method_label: "Chase •••• 6789")
+      get manage_payout_batches_path
+      expect(response.body).to include("Chase •••• 6789")
+    end
+
+    it "saves the funding source when returning from Stripe" do
+      allow_any_instance_of(PayoutFundingService).to receive(:save_from_session!)
+      get manage_payout_funding_return_path(session_id: "cs_1")
+      expect(response).to redirect_to(manage_payout_batches_path)
+    end
+
+    it "removes the funding source" do
+      delete manage_remove_payout_funding_path
+      expect(org.reload.funding_payment_method_id).to be_nil
+      expect(response).to redirect_to(manage_payout_batches_path)
+    end
   end
 
   it "saves a weekly payout schedule" do

@@ -10,6 +10,14 @@
 
   <% payable = @staff_members.select { |m| m.person.respond_to?(:can_receive_payouts?) && m.person.can_receive_payouts? } %>
 
+  <% unless Current.organization.funding_payment_method_id.present? %>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-amber-900">Connect a bank or card to fund pay runs first.</p>
+      <%= render "shared/button", text: "Connect a funding source", variant: "primary", size: "small",
+            path: manage_connect_payout_funding_path, method: :post %>
+    </div>
+  <% end %>
+
   <% if @staff_members.empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-4">
       <p class="text-sm text-gray-600 mb-3">No staff to pay yet.</p>

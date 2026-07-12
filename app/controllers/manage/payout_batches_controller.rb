@@ -38,6 +38,29 @@ module Manage
       @batch = organization.payout_batches.find(params[:id])
     end
 
+    # Connect the bank/card the org funds payout runs from (Stripe Checkout).
+    def connect_funding
+      url = PayoutFundingService.new(organization).setup_session_url(
+        success_url: manage_payout_funding_return_url + "?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url: manage_payout_batches_url
+      )
+      redirect_to url, allow_other_host: true
+    rescue PayoutFundingService::Error => e
+      redirect_to manage_payout_batches_path, alert: "Couldn't start funding setup: #{e.message}"
+    end
+
+    def funding_return
+      PayoutFundingService.new(organization).save_from_session!(params[:session_id])
+      redirect_to manage_payout_batches_path, notice: "Funding source connected — you're ready to run payouts."
+    rescue PayoutFundingService::Error => e
+      redirect_to manage_payout_batches_path, alert: "Couldn't save your funding source: #{e.message}"
+    end
+
+    def remove_funding
+      PayoutFundingService.new(organization).remove!
+      redirect_to manage_payout_batches_path, notice: "Funding source removed."
+    end
+
     # Set the org's automatic payout cadence (manual / weekly / monthly).
     def update_schedule
       schedule = params[:payout_schedule].to_s

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_003137) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_044431) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1279,6 +1279,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_003137) do
     t.boolean "comped_indefinitely", default: false, null: false
     t.datetime "comped_until"
     t.datetime "created_at", null: false
+    t.string "funding_payment_method_id"
+    t.string "funding_payment_method_label"
+    t.string "funding_payment_method_type"
     t.string "invite_token"
     t.boolean "is_demo", default: false, null: false
     t.date "last_auto_payout_on"

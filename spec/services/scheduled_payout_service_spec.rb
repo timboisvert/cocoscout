@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe ScheduledPayoutService do
   let(:owner) { create(:user) }
   let!(:org) do
-    create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1",
+    create(:organization, :pro, owner: owner, stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account",
            payout_schedule: "weekly", payout_schedule_day: Date.current.wday, payout_funding_method: "ach")
   end
 

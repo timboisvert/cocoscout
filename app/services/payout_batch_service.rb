@@ -34,17 +34,25 @@ class PayoutBatchService
   # days) or a card charge (instant "pay now" rush). Creates a PaymentIntent
   # against the org's Stripe customer; card funding that succeeds immediately is
   # advanced straight into processing, while ACH waits for the webhook.
-  def self.fund!(batch, method: "ach", payment_method_id: nil)
-    raise ArgumentError, "unknown funding method #{method}" unless FUNDING_METHODS.include?(method)
+  def self.fund!(batch, method: nil, payment_method_id: nil)
     return batch if batch.total_cents.zero?
+
+    org = batch.organization
+    payment_method = payment_method_id.presence || org.funding_payment_method_id.presence
+    raise Error, "Connect a bank or card to fund payouts first." if payment_method.blank?
+
+    # The Stripe payment-method type: prefer the connected source's type, else
+    # the caller's ach/card choice.
+    pm_type = org.funding_payment_method_type.presence || (method == "card" ? "card" : "us_bank_account")
 
     intent = Stripe::PaymentIntent.create(
       amount: batch.total_cents,
       currency: "usd",
-      customer: batch.organization.stripe_customer_id,
-      payment_method: payment_method_id,
-      payment_method_types: [ method == "ach" ? "us_bank_account" : "card" ],
+      customer: org.stripe_customer_id,
+      payment_method: payment_method,
+      payment_method_types: [ pm_type ],
       confirm: true,
+      off_session: true,
       metadata: { payout_batch_id: batch.id }
     )
     batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
