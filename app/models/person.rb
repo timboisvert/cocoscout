@@ -8,6 +8,15 @@ class Person < ApplicationRecord
 
   has_many :socials, as: :sociable, dependent: :destroy
   has_many :staff_time_entries, dependent: :destroy
+
+  # How this person expresses staffing availability: mark the times they're
+  # "unavailable" (available otherwise), or mark only when they're "available".
+  AVAILABILITY_MODES = %w[unavailable available].freeze
+  validates :availability_mode, inclusion: { in: AVAILABILITY_MODES }
+
+  def availability_mode_available?
+    availability_mode == "available"
+  end
   accepts_nested_attributes_for :socials, allow_destroy: true
 
   has_many :audition_requests, as: :requestable, dependent: :destroy

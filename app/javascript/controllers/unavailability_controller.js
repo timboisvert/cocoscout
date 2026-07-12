@@ -12,15 +12,58 @@ const SCOPE_CELL = {
 }
 
 export default class extends Controller {
-    static targets = ["summary", "modal", "calendar", "monthLabel", "actionBar", "selectedCount", "multiButton"]
-    static values = { entries: Array, createUrl: String }
+    static targets = ["summary", "modal", "calendar", "monthLabel", "actionBar", "selectedCount", "multiButton", "modeBtn", "modeBanner"]
+    static values = { entries: Array, createUrl: String, mode: String, setModeUrl: String }
 
     connect() {
         this.entries = new Map((this.entriesValue || []).map(e => [e.date, e.scope]))
+        this.mode = this.modeValue || "unavailable"
         this.viewMonth = this.startOfMonth(new Date())
         this.multiMode = false
         this.selected = new Set()
+        this.updateModeUI()
         this.renderSummary()
+    }
+
+    get available() { return this.mode === "available" }
+
+    setMode(event) {
+        if (event) event.preventDefault()
+        const newMode = event.currentTarget.dataset.mode
+        if (!newMode || newMode === this.mode) return
+        if (this.entries.size > 0 &&
+            !window.confirm("Switching will clear the days you've already marked. Continue?")) return
+
+        this.mode = newMode
+        this.entries.clear()
+        this.persistMode()
+        this.updateModeUI()
+        this.renderCalendar()
+        this.renderSummary()
+    }
+
+    persistMode() {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content
+        fetch(this.setModeUrlValue, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": token, "Accept": "application/json" },
+            body: JSON.stringify({ mode: this.mode })
+        }).catch(() => {})
+    }
+
+    updateModeUI() {
+        this.modeBtnTargets.forEach(btn => {
+            const on = btn.dataset.mode === this.mode
+            btn.classList.toggle("bg-white", on)
+            btn.classList.toggle("shadow-sm", on)
+            btn.classList.toggle("text-gray-900", on)
+            btn.classList.toggle("text-gray-500", !on)
+        })
+        if (this.hasModeBannerTarget) {
+            this.modeBannerTarget.textContent = this.available
+                ? "Mark the days and times you're available — you'll be considered unavailable at all other times."
+                : "Mark the days and times you can't work — you're available every other time."
+        }
     }
 
     open(event) {
@@ -108,9 +151,12 @@ export default class extends Controller {
             .sort((a, b) => (a[0] < b[0] ? -1 : 1))
 
         if (upcoming.length === 0) {
+            const empty = this.available
+                ? "You haven't marked any availability yet. Mark the days and times you can work."
+                : "You're available for all upcoming shifts. Block off any days you can't work."
             this.summaryTarget.innerHTML = `
-                <div class="text-sm font-medium text-gray-900">Your availability</div>
-                <div class="text-xs text-gray-500 mt-1">You're available for all upcoming shifts. Block off any days you can't work.</div>`
+                <div class="text-sm font-medium text-gray-900">My availability</div>
+                <div class="text-xs text-gray-500 mt-1">${empty}</div>`
             return
         }
 
@@ -126,8 +172,9 @@ export default class extends Controller {
                     Show all ${upcoming.length} →
                 </button>`
         }
+        const heading = this.available ? "Upcoming dates you're available" : "Upcoming dates you're unavailable"
         this.summaryTarget.innerHTML = `
-            <div class="text-sm font-medium text-gray-900">Upcoming dates you're unavailable</div>
+            <div class="text-sm font-medium text-gray-900">${heading}</div>
             <div class="mt-1 space-y-0.5">${rows}${extra}</div>`
     }
 
@@ -185,10 +232,11 @@ export default class extends Controller {
         }
         // Pluralize Afternoon/Evening when more than one day is selected.
         const plural = n > 1
+        const verb = this.available ? "Available" : "Unavailable"
         const labels = {
-            all_day: "Unavailable All Day",
-            day_shifts: `Unavailable Afternoon${plural ? "s" : ""}`,
-            evening_shifts: `Unavailable Evening${plural ? "s" : ""}`
+            all_day: `${verb} All Day`,
+            day_shifts: `${verb} Afternoon${plural ? "s" : ""}`,
+            evening_shifts: `${verb} Evening${plural ? "s" : ""}`
         }
         this.actionBarTarget.querySelectorAll("[data-scope]").forEach(btn => {
             const label = labels[btn.dataset.scope]

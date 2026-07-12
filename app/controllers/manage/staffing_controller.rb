@@ -103,10 +103,18 @@ module Manage
       # Staff unavailability for this week, so the assign modal can flag/filter
       # people who marked themselves unavailable on a shift's date + day part.
       staff_person_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
-      @staff_unavailability_payload = StaffUnavailability
+      modes = Person.where(id: staff_person_ids).pluck(:id, :availability_mode).to_h
+      entries_by_person = StaffUnavailability
         .where(person_id: staff_person_ids, date: @week_start..@week_end)
-        .group_by { |u| u.person_id.to_s }
-        .transform_values { |list| list.map { |u| { date: u.date.iso8601, scope: u.scope } } }
+        .group_by(&:person_id)
+      # Include every staff person + their mode so the assign modal can interpret
+      # "available"-mode people (available only where marked) correctly.
+      @staff_unavailability_payload = staff_person_ids.index_with do |pid|
+        {
+          mode: modes[pid] || "unavailable",
+          entries: (entries_by_person[pid] || []).map { |u| { date: u.date.iso8601, scope: u.scope } }
+        }
+      end.transform_keys(&:to_s)
     end
 
     # Per-day shift auto-generation. See the long comment in the previous

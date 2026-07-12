@@ -41,6 +41,7 @@ module My
       # Unavailability for the calendar/summary (the client renders both). Cover
       # the current month through ~12 months out so month navigation has data.
       person = Current.user.person
+      @availability_mode = person&.availability_mode || "unavailable"
       @unavailability_entries =
         if person
           person.staff_unavailabilities
@@ -76,6 +77,22 @@ module My
         return render(json: { ok: false, error: "Invalid scope" }, status: :unprocessable_entity)
       end
 
+      render json: { ok: true }
+    end
+
+    # Switch between marking unavailable-times vs available-times. Because the
+    # marks invert meaning, switching modes clears any existing marks.
+    def set_availability_mode
+      person = Current.user.person
+      return render(json: { ok: false }, status: :unprocessable_entity) unless person
+
+      mode = params[:mode].to_s
+      return render(json: { ok: false, error: "Invalid mode" }, status: :unprocessable_entity) unless Person::AVAILABILITY_MODES.include?(mode)
+
+      if person.availability_mode != mode
+        person.staff_unavailabilities.delete_all
+        person.update!(availability_mode: mode)
+      end
       render json: { ok: true }
     end
 

@@ -14,9 +14,9 @@
   <div class="border-b border-gray-200 mb-6">
     <nav class="flex gap-6 -mb-px">
       <% tab_base = "inline-flex items-center px-1 py-2.5 border-b-2 text-sm font-medium transition-colors" %>
-      <%= link_to "My Shifts", my_shifts_path,
+      <%= link_to "Me", my_shifts_path,
             class: "#{tab_base} #{@tab == 'mine' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
-      <%= link_to "All Staff", my_shifts_path(tab: "all_staff"),
+      <%= link_to "Everyone", my_shifts_path(tab: "all_staff"),
             class: "#{tab_base} #{@tab == 'all_staff' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
     </nav>
   </div>
@@ -28,6 +28,8 @@
   <div data-controller="unavailability"
        data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
        data-unavailability-create-url-value="<%= my_create_shift_unavailability_path %>"
+       data-unavailability-mode-value="<%= @availability_mode %>"
+       data-unavailability-set-mode-url-value="<%= my_set_shift_availability_mode_path %>"
        class="border border-gray-200 rounded-lg bg-white px-4 py-3 mb-6">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0" data-unavailability-target="summary"></div>
@@ -44,13 +46,21 @@
       <div class="flex min-h-full items-start justify-center p-4 py-12">
         <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->unavailability#stopPropagation">
           <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-            <div>
-              <h3 class="text-base font-semibold text-gray-900">Mark your unavailability</h3>
-              <p class="text-xs text-gray-500">Block off the days you can't work. Unmarked dates assume availability.</p>
-            </div>
+            <h3 class="text-base font-semibold text-gray-900">My availability</h3>
             <button type="button" data-action="click->unavailability#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
+          </div>
+
+          <%# Mode: mark unavailable-times or available-times %>
+          <div class="px-5 pt-4">
+            <div class="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs font-medium">
+              <button type="button" data-unavailability-target="modeBtn" data-mode="unavailable" data-action="click->unavailability#setMode"
+                      class="px-3 py-1.5 rounded-md text-gray-500 cursor-pointer transition-colors">When I'm unavailable</button>
+              <button type="button" data-unavailability-target="modeBtn" data-mode="available" data-action="click->unavailability#setMode"
+                      class="px-3 py-1.5 rounded-md text-gray-500 cursor-pointer transition-colors">When I'm available</button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2" data-unavailability-target="modeBanner"></p>
           </div>
 
           <div class="px-5 py-4">

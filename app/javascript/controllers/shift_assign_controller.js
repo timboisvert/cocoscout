@@ -97,16 +97,22 @@ export default class extends Controller {
         return this.castConflictsFor(personId).length > 0
     }
 
-    // Is this person unavailable for the shift currently being assigned?
+    // Is this person unavailable for the shift currently being assigned? Respects
+    // their availability mode: "unavailable" marks block times (available
+    // otherwise); "available" marks are the only times they can work.
     isUnavailable(personId) {
         if (!this.currentShiftDate) return false
-        const entries = (this.hasStaffUnavailabilityValue ? this.staffUnavailabilityValue : {})[personId] || []
-        return entries.some(e => {
+        const data = (this.hasStaffUnavailabilityValue ? this.staffUnavailabilityValue : {})[personId]
+        if (!data) return false
+
+        const entries = data.entries || []
+        const covers = entries.some(e => {
             if (e.date !== this.currentShiftDate) return false
             return e.scope === "all_day" ||
                    (e.scope === "day_shifts" && this.currentDayPart === "day") ||
                    (e.scope === "evening_shifts" && this.currentDayPart === "evening")
         })
+        return data.mode === "available" ? !covers : covers
     }
 
     close(event) {

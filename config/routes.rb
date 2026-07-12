@@ -397,8 +397,9 @@ Rails.application.routes.draw do
     # House staffing shifts the user has been assigned to.
     get   "/shifts",                        to: "shifts#index",             as: "shifts"
 
-    # House-staff unavailability (dates they can't work), managed from My Shifts.
+    # House-staff availability (marked as unavailable-times or available-times).
     post  "/shifts/unavailability",         to: "shifts#create_unavailability", as: "create_shift_unavailability"
+    post  "/shifts/availability-mode",      to: "shifts#set_availability_mode", as: "set_shift_availability_mode"
 
     # Timekeeping: confirm/adjust worked hours and log ad-hoc time from My Shifts.
     post   "/time-entries",                 to: "time_entries#create",          as: "time_entries"
