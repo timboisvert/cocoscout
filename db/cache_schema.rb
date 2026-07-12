@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_044431) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_152915) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2511,6 +2511,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_044431) do
     t.index ["organization_staff_member_id"], name: "idx_staff_role_qual_member"
   end
 
+  create_table "staff_time_entries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ended_at", null: false
+    t.decimal "hours", precision: 6, scale: 2, null: false
+    t.string "notes"
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.bigint "payout_batch_id"
+    t.bigint "person_id", null: false
+    t.bigint "shift_assignment_id"
+    t.string "source", default: "manual", null: false
+    t.datetime "started_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_staff_time_entries_on_organization_id"
+    t.index ["payout_batch_id"], name: "index_staff_time_entries_on_payout_batch_id"
+    t.index ["person_id"], name: "index_staff_time_entries_on_person_id"
+    t.index ["shift_assignment_id"], name: "idx_staff_time_entries_unique_assignment", unique: true, where: "(shift_assignment_id IS NOT NULL)"
+    t.index ["shift_assignment_id"], name: "index_staff_time_entries_on_shift_assignment_id"
+  end
+
   create_table "staff_unavailabilities", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "date", null: false
@@ -2882,6 +2902,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_044431) do
   add_foreign_key "staff_activations", "people"
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
+  add_foreign_key "staff_time_entries", "organizations"
+  add_foreign_key "staff_time_entries", "payout_batches"
+  add_foreign_key "staff_time_entries", "people"
+  add_foreign_key "staff_time_entries", "shift_assignments"
   add_foreign_key "staff_unavailabilities", "people"
   add_foreign_key "staffing_finalizations", "organizations"
   add_foreign_key "staffing_finalizations", "users", column: "finalized_by_id"

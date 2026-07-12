@@ -6,6 +6,7 @@
 class ShiftAssignment < ApplicationRecord
   belongs_to :shift
   belongs_to :person
+  has_one :staff_time_entry, dependent: :destroy
 
   validates :person_id, uniqueness: { scope: :shift_id, message: "is already assigned to this shift" }
   validates :position, numericality: { only_integer: true, greater_than: 0 }

@@ -22,6 +22,8 @@
   </div>
 
   <% if @tab == "mine" %>
+  <%= render "my/shifts/timekeeping" %>
+
   <%# === Availability summary + editor === %>
   <div data-controller="unavailability"
        data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"

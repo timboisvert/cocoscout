@@ -33,7 +33,7 @@ class StaffPayRunService
   end
 
   # lines: array of hashes with keys :staff_member, :hours, :bonus_cents,
-  # :reimbursement_cents, :tips_cents, :cash_tips_cents, :notes.
+  # :reimbursement_cents, :tips_cents, :cash_tips_cents, :notes, :time_entry_ids.
   def self.build(organization:, created_by:, lines:, payday: nil)
     batch = nil
     skipped = []
@@ -66,6 +66,7 @@ class StaffPayRunService
           organization: organization, payee: payee, entry_type: "earning",
           amount_cents: amount, source: item, description: "Staff pay run", occurred_at: Time.current
         )
+        tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
 
         fee_total += EXTRA_PAYMENT_FEE_CENTS if payments_this_month(organization: organization, payee: payee) >= FREE_PAYMENTS_PER_MONTH
       end
@@ -76,5 +77,15 @@ class StaffPayRunService
 
     MeterStaffFeeJob.perform_later(batch.id) if batch.extra_payment_fee_cents.to_i.positive?
     Result.new(batch: batch, skipped: skipped)
+  end
+
+  # Attach the pulled-in worked-time entries to this batch so they leave the
+  # unpaid pool and can't be paid again. Scoped to the org + payee for safety.
+  def self.tie_time_entries!(organization, payee, ids, batch)
+    ids = Array(ids).map(&:to_i).reject(&:zero?)
+    return if ids.empty?
+
+    organization.staff_time_entries.unpaid.for_person(payee).where(id: ids)
+                .update_all(payout_batch_id: batch.id, paid_at: Time.current, updated_at: Time.current)
   end
 end

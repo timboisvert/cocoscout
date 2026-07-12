@@ -11,6 +11,25 @@ module Manage
       def new
         @staff_members = payable_staff
         @payday = Date.current
+        # Unpaid worked-hours totals per person, for the "N unpaid hours" hint.
+        @unpaid_hours_by_person = Current.organization.staff_time_entries.unpaid
+                                         .group(:person_id).sum(:hours)
+        @draft = PayDraft.read(Current.user, Current.organization)
+      end
+
+      # A person's unpaid time entries, rendered into the pull-hours modal frame.
+      def time_entries
+        @person = Current.organization.people.find(params[:person_id])
+        @entries = Current.organization.staff_time_entries.unpaid.for_person(@person)
+                          .includes(shift_assignment: { shift: :house_role })
+                          .chronological
+        render partial: "manage/staffing/pay/time_entries", locals: { entries: @entries }
+      end
+
+      # Server-side draft autosave of the whole pay form (opaque JSON blob).
+      def save_draft
+        PayDraft.write(Current.user, Current.organization, params[:draft].to_s)
+        head :no_content
       end
 
       def create
@@ -34,6 +53,7 @@ module Manage
         method = params[:funding_method].presence_in(PayoutBatchService::FUNDING_METHODS) || "ach"
         PayoutBatchService.fund!(batch, method: method)
 
+        PayDraft.clear(Current.user, Current.organization)
         redirect_to manage_payout_batch_path(batch), notice: pay_notice(batch, result.skipped)
       rescue PayoutBatchService::Error => e
         redirect_to manage_staffing_pay_path,
@@ -64,7 +84,8 @@ module Manage
             reimbursement_cents: dollars_to_cents(row[:reimbursement]),
             tips_cents: dollars_to_cents(row[:tips]),
             cash_tips_cents: dollars_to_cents(row[:cash_tips]),
-            notes: row[:notes].to_s.strip.presence
+            notes: row[:notes].to_s.strip.presence,
+            time_entry_ids: Array(row[:time_entry_ids])
           }
           gross = StaffPayRunService.payable_cents(
             rate_cents: member.hourly_rate_cents, hours: line[:hours],

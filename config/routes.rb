@@ -400,6 +400,11 @@ Rails.application.routes.draw do
     # House-staff unavailability (dates they can't work), managed from My Shifts.
     post  "/shifts/unavailability",         to: "shifts#create_unavailability", as: "create_shift_unavailability"
 
+    # Timekeeping: confirm/adjust worked hours and log ad-hoc time from My Shifts.
+    post   "/time-entries",                 to: "time_entries#create",          as: "time_entries"
+    patch  "/time-entries/:id",             to: "time_entries#update",          as: "time_entry"
+    delete "/time-entries/:id",             to: "time_entries#destroy"
+
     # Inline profile-completion updates from the dashboard panel (talent-pool nudge).
     patch "/profile_completion/contact",  to: "profile_completion#update_contact",  as: "profile_completion_contact"
     patch "/profile_completion/payment",  to: "profile_completion#update_payment",  as: "profile_completion_payment"
@@ -1154,8 +1159,10 @@ Rails.application.routes.draw do
     get  "staffing",                              to: "staffing#index",                  as: "staffing_index"
     get  "staffing/scheduling",                   to: "staffing#scheduling",             as: "staffing_scheduling"
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
-    get  "staffing/pay",                          to: "staffing/pay#new",                as: "staffing_pay"
-    post "staffing/pay",                          to: "staffing/pay#create",             as: "create_staffing_pay"
+    get   "staffing/pay",                         to: "staffing/pay#new",                as: "staffing_pay"
+    post  "staffing/pay",                         to: "staffing/pay#create",             as: "create_staffing_pay"
+    get   "staffing/pay/time-entries",            to: "staffing/pay#time_entries",       as: "staffing_pay_time_entries"
+    patch "staffing/pay/draft",                   to: "staffing/pay#save_draft",         as: "staffing_pay_draft"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"

@@ -42,6 +42,13 @@ class Shift < ApplicationRecord
     all_role_names.join(" + ")
   end
 
+  # Scheduled length in hours (used to prefill a worker's time confirmation).
+  def scheduled_hours
+    return 0 if starts_at.blank? || ends_at.blank?
+
+    ((ends_at - starts_at) / 1.hour).round(2)
+  end
+
   scope :for_week, ->(date) {
     week_start = date.beginning_of_week
     week_end = date.end_of_week

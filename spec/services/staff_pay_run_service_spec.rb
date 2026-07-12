@@ -19,6 +19,26 @@ RSpec.describe StaffPayRunService do
     end
   end
 
+  describe "tying pulled-in time entries" do
+    it "marks the included entries paid and attached to the batch" do
+      member = staff(name: "Tied Tom", rate_cents: 2000)
+      e1 = create(:staff_time_entry, organization: org, person: member.person)
+      e2 = create(:staff_time_entry, organization: org, person: member.person)
+      other = create(:staff_time_entry, organization: org, person: member.person)
+
+      result = described_class.build(
+        organization: org, created_by: owner,
+        lines: [ { staff_member: member, hours: 4, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0,
+                   time_entry_ids: [ e1.id, e2.id ] } ]
+      )
+
+      expect(e1.reload.payout_batch).to eq(result.batch)
+      expect(e1.reload).to be_paid
+      expect(e2.reload).to be_paid
+      expect(other.reload).not_to be_paid # not pulled in
+    end
+  end
+
   describe ".build" do
     it "creates a staff_pay batch with items + earnings for bankable staff, skipping the rest" do
       ready = staff(name: "Ready Rae", rate_cents: 2000)

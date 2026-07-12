@@ -8,6 +8,8 @@ class PayoutBatch < ApplicationRecord
   belongs_to :organization
   belongs_to :created_by, class_name: "User", optional: true
   has_many :items, class_name: "PayoutBatchItem", dependent: :destroy
+  # Worked-time entries pulled into this run; freeing them if the batch is deleted.
+  has_many :staff_time_entries, dependent: :nullify
 
   validates :status, inclusion: { in: STATUSES }
   validates :trigger, inclusion: { in: TRIGGERS }

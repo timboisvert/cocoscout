@@ -34,6 +34,8 @@ module My
       @rows_by_day = @rows.group_by { |r| r[:shift].starts_at.to_date }
       @has_any = @rows.any?
 
+      load_timekeeping(people_ids, finalized_weeks)
+
       load_all_staff_calendar(people_ids, finalized_weeks) if @tab == "all_staff"
 
       # Unavailability for the calendar/summary (the client renders both). Cover
@@ -78,6 +80,34 @@ module My
     end
 
     private
+
+    # Timekeeping panel: recent past shifts still to confirm, the worker's logged
+    # (unpaid) entries, and a running unpaid-hours total. Same finalized-week gate
+    # as the personal shift list.
+    def load_timekeeping(people_ids, finalized_weeks)
+      window = 30.days.ago.beginning_of_day..Time.current
+      past = ShiftAssignment.where(person_id: people_ids)
+        .joins(:shift)
+        .where("shifts.ends_at >= ? AND shifts.ends_at <= ?", window.begin, window.end)
+        .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source ])
+        .order("shifts.starts_at DESC")
+        .to_a
+      past.select! do |a|
+        finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])
+      end
+      confirmed_ids = StaffTimeEntry.where(shift_assignment_id: past.map(&:id)).pluck(:shift_assignment_id).to_set
+      @unconfirmed_shifts = past.reject { |a| confirmed_ids.include?(a.id) }
+
+      @time_entries = StaffTimeEntry.where(person_id: people_ids).unpaid
+        .where(started_at: 60.days.ago..Time.current)
+        .includes(shift_assignment: { shift: :house_role })
+        .order(started_at: :desc)
+        .to_a
+      @unpaid_hours = @time_entries.sum { |e| e.hours.to_f }
+      @staff_orgs = Organization.where(
+        id: OrganizationStaffMember.active.where(person_id: people_ids).distinct.pluck(:organization_id)
+      ).order(:name).to_a
+    end
 
     # "All Staff" tab: a month calendar of every staffer's shifts in the orgs the
     # current user is house staff at. Same finalized-week gate as the personal
