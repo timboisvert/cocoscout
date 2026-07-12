@@ -12,6 +12,24 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  describe "draft autosave" do
+    # PayDraft uses Rails.cache (null-store in tests) — give it a real store.
+    let(:cache) { ActiveSupport::Cache::MemoryStore.new }
+    before { allow(Rails).to receive(:cache).and_return(cache) }
+
+    it "saves and restores the draft, and clears it after a paid run" do
+      patch manage_staffing_pay_draft_path, params: { draft: '{"payday":"2026-08-01"}' }, as: :json
+      expect(response).to have_http_status(:no_content)
+      expect(PayDraft.read(owner, org)).to eq('{"payday":"2026-08-01"}')
+
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double(id: "pi_1", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double(id: "tr_1"))
+      post manage_create_staffing_pay_path, params: { funding_method: "ach", lines: { member.id.to_s => { hours: "4" } } }
+
+      expect(PayDraft.read(owner, org)).to be_nil
+    end
+  end
+
   it "renders the pay grid" do
     get manage_staffing_pay_path
     expect(response).to have_http_status(:ok)

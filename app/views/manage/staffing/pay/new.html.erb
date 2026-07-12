@@ -1,6 +1,8 @@
 <% content_for :title, "Pay People" %>
 
-<div class="w-full mb-10" data-controller="pay-run pay-pull tips-worksheet">
+<div class="w-full mb-10" data-controller="pay-run pay-pull tips-worksheet pay-draft"
+     data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
+     data-pay-draft-initial-value="<%= @draft %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
@@ -24,7 +26,8 @@
       <%= render "shared/button", text: "Add a staff member", variant: "primary", size: "small", path: manage_new_staffing_staff_wizard_path %>
     </div>
   <% else %>
-    <%= form_with url: manage_create_staffing_pay_path, method: :post, class: "mt-4" do %>
+    <%= form_with url: manage_create_staffing_pay_path, method: :post, class: "mt-4",
+          data: { "pay-draft-target": "form", action: "input->pay-draft#schedule change->pay-draft#schedule" } do %>
       <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Payday</label>
