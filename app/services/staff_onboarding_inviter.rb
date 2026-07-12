@@ -22,11 +22,14 @@ class StaffOnboardingInviter
   end
 
   # sender: the User performing the invite (for the in-app message's From).
-  def initialize(staff_member:, sender:)
+  # subject/body: optional overrides (e.g. the reviewer edited the draft).
+  def initialize(staff_member:, sender:, subject: nil, body: nil)
     @staff_member = staff_member
     @organization = staff_member.organization
     @person = staff_member.person
     @sender = sender
+    @subject_override = subject.to_s.strip.presence
+    @body_override = body.to_s.strip.presence
   end
 
   def preview
@@ -43,8 +46,9 @@ class StaffOnboardingInviter
       @staff_member.update!(onboarding_state: "invited")
     end
 
-    StaffOnboardingMailer.invite(@staff_member).deliver_later
-    send_in_app_message
+    copy = onboarding_copy
+    StaffOnboardingMailer.invite(@staff_member, subject: copy[:subject], body: copy[:body]).deliver_later
+    send_in_app_message(copy)
     @staff_member
   end
 
@@ -64,8 +68,7 @@ class StaffOnboardingInviter
     PersonInvitation.create!(email: email, organization: @organization)
   end
 
-  def send_in_app_message
-    copy = onboarding_copy
+  def send_in_app_message(copy = onboarding_copy)
     MessageService.send_direct(
       sender: @sender,
       recipient_person: @person,
@@ -76,9 +79,16 @@ class StaffOnboardingInviter
     )
   end
 
-  # The single source of truth for the onboarding subject + body, interpolated
-  # for this member. Used both for what we send and for the preview draft.
+  # The subject + body actually used — the reviewer's edits if they made any,
+  # otherwise the interpolated default.
   def onboarding_copy
+    default = default_onboarding_copy
+    { subject: @subject_override || default[:subject], body: @body_override || default[:body] }
+  end
+
+  # The single source of truth for the default (interpolated) onboarding copy.
+  # Used for the preview draft and as the fallback when not overridden.
+  def default_onboarding_copy
     first = @staff_member.preferred_first_name.presence ||
             @staff_member.first_name.presence ||
             @person&.first_name.presence || "there"

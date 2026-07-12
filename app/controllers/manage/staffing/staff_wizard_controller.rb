@@ -12,7 +12,7 @@ module Manage
     class StaffWizardController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
       before_action :load_wizard_state
-      before_action :require_started, only: %i[job manager start pay roles create]
+      before_action :require_started, only: %i[job manager start pay roles save_roles review create]
 
       # Step 1: Personal details
       def details
@@ -94,11 +94,24 @@ module Manage
         @house_roles = Current.organization.house_roles.active.ordered
       end
 
-      # Final step: create the person + membership, then invite.
-      def create
+      def save_roles
         @wizard_state[:house_role_ids] = Array(params[:house_role_ids]).map(&:to_i).reject(&:zero?)
         save_wizard_state
+        redirect_to manage_review_staffing_staff_wizard_path
+      end
 
+      # Step 7: Review — confirm everything and edit the invite email before it
+      # goes out.
+      def review
+        @staff_member = build_preview_member
+        @manager = @wizard_state[:manager_id].present? ? active_staff_for_manager_select.find { |m| m.id == @wizard_state[:manager_id].to_i } : nil
+        @selected_roles = Current.organization.house_roles.where(id: Array(@wizard_state[:house_role_ids])).ordered
+        @email_preview = StaffOnboardingInviter.preview(staff_member: @staff_member)
+      end
+
+      # Final step: create the person + membership, then invite (with any edits
+      # the reviewer made to the email).
+      def create
         staff_member = nil
         ActiveRecord::Base.transaction do
           person = upsert_person(email: @wizard_state[:personal_email],
@@ -112,7 +125,7 @@ module Manage
           sync_role_ids(staff_member, @wizard_state[:house_role_ids])
         end
 
-        invited = send_invite(staff_member)
+        invited = send_invite(staff_member, subject: params[:email_subject], body: params[:email_body])
         clear_wizard_state
 
         notice = if invited
@@ -122,7 +135,7 @@ module Manage
         end
         redirect_to manage_staffing_index_path, notice: notice
       rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_roles_staffing_staff_wizard_path,
+        redirect_to manage_review_staffing_staff_wizard_path,
                     alert: "Couldn't add staff member: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
@@ -197,8 +210,8 @@ module Manage
         staff_member.house_role_ids = valid
       end
 
-      def send_invite(staff_member)
-        StaffOnboardingInviter.call(staff_member: staff_member, sender: Current.user)
+      def send_invite(staff_member, subject: nil, body: nil)
+        StaffOnboardingInviter.call(staff_member: staff_member, sender: Current.user, subject: subject, body: body)
         true
       rescue StaffOnboardingInviter::Error
         false

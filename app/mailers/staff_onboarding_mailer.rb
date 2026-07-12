@@ -5,7 +5,9 @@
 # template system when a "staff_onboarding_invite" template exists, and otherwise
 # falls back to the built-in view (so it works before anyone customizes the copy).
 class StaffOnboardingMailer < ApplicationMailer
-  def invite(staff_member)
+  # subject/body: the exact copy to send (e.g. the reviewer's edited draft). When
+  # omitted, falls back to the content template or the built-in view.
+  def invite(staff_member, subject: nil, body: nil)
     @staff_member = staff_member
     @person = staff_member.person
     @organization = staff_member.organization
@@ -14,7 +16,11 @@ class StaffOnboardingMailer < ApplicationMailer
     to = @person.email.presence || staff_member.personal_email
     return if to.blank?
 
-    if ContentTemplateService.exists?("staff_onboarding_invite")
+    if body.present?
+      mail(to: to, subject: subject.presence || "Complete your onboarding at #{@organization.name}") do |format|
+        format.html { render html: body.html_safe, layout: "mailer" }
+      end
+    elsif ContentTemplateService.exists?("staff_onboarding_invite")
       rendered = ContentTemplateService.render("staff_onboarding_invite", template_vars)
       mail(to: to, subject: rendered[:subject]) do |format|
         format.html { render html: rendered[:body].html_safe, layout: "mailer" }

@@ -1,0 +1,47 @@
+<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 7, step_name: "Review" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review &amp; send</h2>
+  <p class="text-gray-600 mb-6">Here's everything you've entered. When you hit the button below, we'll add <%= @staff_member.display_name.presence || "this person" %> to your staff and email + message them an invitation to create their CocoScout account and set up how they get paid.</p>
+
+  <%# ---- Summary of entered details ---- %>
+  <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 mb-6">
+    <% [
+         [ "Name", [ @wizard_state[:first_name], @wizard_state[:middle_initial], @wizard_state[:last_name] ].reject(&:blank?).join(" ") ],
+         [ "Preferred name", @wizard_state[:preferred_first_name] ],
+         [ "Email", @wizard_state[:personal_email] ],
+         [ "Title", @wizard_state[:title] ],
+         [ "Department", @wizard_state[:department] ],
+         [ "Reports to", @manager&.display_name ],
+         [ "Start date", (@staff_member.start_date&.strftime("%B %-d, %Y")) ],
+         [ "Hourly rate", (@staff_member.hourly_rate_cents ? number_to_currency(@staff_member.hourly_rate_cents / 100.0) : nil) ],
+         [ "Roles", (@selected_roles.any? ? @selected_roles.map(&:name).join(", ") : nil) ]
+       ].each do |label, value| %>
+      <div class="flex items-start gap-4 px-4 py-2.5">
+        <div class="w-40 flex-shrink-0 text-sm text-gray-500"><%= label %></div>
+        <div class="text-sm text-gray-900"><%= value.presence || "<span class='text-gray-400'>—</span>".html_safe %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <%= form_with url: manage_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
+    <%# ---- What happens + editable email draft ---- %>
+    <div class="rounded-lg border border-pink-100 bg-pink-50 p-4">
+      <h3 class="text-sm font-semibold text-gray-900 mb-1">The invitation we'll send</h3>
+      <p class="text-sm text-gray-600 mb-3">
+        This email (and a matching in-app message) goes to <span class="font-medium text-gray-900"><%= @email_preview[:to_email] %></span>.
+        It invites them to create their account, confirm their details, and set up their payment info so they get paid automatically. Edit anything you like before sending.
+      </p>
+
+      <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+      <%= text_field_tag :email_subject, @email_preview[:subject], class: "block w-full mb-3 px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+
+      <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+      <%= text_area_tag :email_body, @email_preview[:body], rows: 8, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <p class="mt-1 text-xs text-gray-500">Links and basic formatting use HTML. The name and organization are already filled in for you.</p>
+    </div>
+
+    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+      <%= link_to "← Back", manage_roles_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+      <%= render "shared/button", text: "Add staff member & send invitation", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

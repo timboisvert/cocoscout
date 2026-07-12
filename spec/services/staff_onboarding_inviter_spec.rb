@@ -9,7 +9,7 @@ RSpec.describe StaffOnboardingInviter do
   let(:member) { create(:organization_staff_member, organization: org, person: person, onboarding_state: "added") }
 
   it "sends the onboarding email, an in-app message, and marks the member invited" do
-    expect(StaffOnboardingMailer).to receive(:invite).with(member).and_return(double(deliver_later: true))
+    expect(StaffOnboardingMailer).to receive(:invite).with(member, hash_including(:subject, :body)).and_return(double(deliver_later: true))
     expect(MessageService).to receive(:send_direct).with(hash_including(recipient_person: person, sender: owner, organization: org)).and_return(true)
 
     described_class.call(staff_member: member, sender: owner)

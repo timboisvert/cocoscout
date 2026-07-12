@@ -18,14 +18,15 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
   end
 
-  # Walk the multi-step wizard: details → job → manager → start → pay → roles.
-  def complete_wizard(details:, job: {}, manager_id: nil, start_date: nil, hourly_rate: nil, role_ids: [])
+  # Walk the multi-step wizard: details → job → manager → start → pay → roles → review.
+  def complete_wizard(details:, job: {}, manager_id: nil, start_date: nil, hourly_rate: nil, role_ids: [], email: {})
     post manage_save_details_staffing_staff_wizard_path, params: details
     post manage_save_job_staffing_staff_wizard_path, params: job
     post manage_save_manager_staffing_staff_wizard_path, params: { manager_id: manager_id }
     post manage_save_start_staffing_staff_wizard_path, params: { start_date: start_date }
     post manage_save_pay_staffing_staff_wizard_path, params: { hourly_rate: hourly_rate }
-    post manage_staffing_staff_wizard_path, params: { house_role_ids: role_ids }
+    post manage_save_roles_staffing_staff_wizard_path, params: { house_role_ids: role_ids }
+    post manage_staffing_staff_wizard_path, params: email
   end
 
   it "renders the first step of the add-staff wizard" do
@@ -82,6 +83,26 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
   it "sends you back to step one if you jump to the end without details" do
     post manage_staffing_staff_wizard_path, params: { house_role_ids: [ house_role.id ] }
     expect(response).to redirect_to(manage_new_staffing_staff_wizard_path)
+  end
+
+  it "renders the review step summarizing the entry and the invite draft" do
+    post manage_save_details_staffing_staff_wizard_path, params: {
+      first_name: "Dana", last_name: "Reed", personal_email: "dee@example.com"
+    }
+    get manage_review_staffing_staff_wizard_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Review").and include("dee@example.com")
+    expect(response.body).to include("Complete your onboarding") # the default draft subject
+  end
+
+  it "sends the reviewer's edited invitation copy" do
+    complete_wizard(
+      details: { first_name: "Dana", last_name: "Reed", personal_email: "dee@example.com" },
+      email: { email_subject: "Welcome to the team!", email_body: "<p>Come on in, Dana.</p>" }
+    )
+    msg = Message.order(:created_at).last
+    expect(msg.subject).to eq("Welcome to the team!")
+    expect(msg.body.to_plain_text).to include("Come on in, Dana")
   end
 
   it "assigns a manager from an existing staff member" do
