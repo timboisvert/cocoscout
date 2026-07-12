@@ -33,8 +33,12 @@ module My
       @rows = assignments.map { |a| { assignment: a, shift: a.shift, person: a.person } }
       @rows_by_day = @rows.group_by { |r| r[:shift].starts_at.to_date }
       @has_any = @rows.any?
+      @upcoming_count = @rows.size
 
       load_timekeeping(people_ids, finalized_weeks)
+
+      # Money owed across every org, for the summary strip.
+      @to_be_paid_cents = @people.sum { |p| p.respond_to?(:payout_balance_cents) ? p.payout_balance_cents : 0 }
 
       load_all_staff_calendar(people_ids, finalized_weeks) if @tab == "all_staff"
 
@@ -51,6 +55,9 @@ module My
         else
           []
         end
+
+      today = Date.current.iso8601
+      @availability_upcoming_count = @unavailability_entries.count { |e| e[:date] >= today }
     end
 
     # Upsert/clear unavailability for one or more dates. Called by the client-side

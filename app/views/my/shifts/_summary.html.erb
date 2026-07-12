@@ -1,0 +1,28 @@
+<%# At-a-glance summary for the worker: money owed, unpaid hours, upcoming
+    shifts, availability. Uses @to_be_paid_cents, @unpaid_hours, @upcoming_count,
+    @availability_mode, @availability_upcoming_count. %>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <%= link_to my_payments_path, class: "group block rounded-xl border border-gray-200 bg-white p-4 hover:border-pink-300 transition-colors no-underline" do %>
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">To be paid</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@to_be_paid_cents / 100.0) %></div>
+    <div class="text-[11px] text-pink-600 mt-0.5">View payments →</div>
+  <% end %>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Unpaid hours</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@unpaid_hours, precision: 2, strip_insignificant_zeros: true) %></div>
+    <div class="text-[11px] text-gray-400 mt-0.5">logged, not yet paid</div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Upcoming shifts</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= @upcoming_count %></div>
+    <div class="text-[11px] text-gray-400 mt-0.5">scheduled ahead</div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Availability</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= @availability_upcoming_count %></div>
+    <div class="text-[11px] text-gray-400 mt-0.5"><%= @availability_mode == "available" ? "days you're available" : "days blocked off" %></div>
+  </div>
+</div>

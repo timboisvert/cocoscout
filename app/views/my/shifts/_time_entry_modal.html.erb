@@ -1,0 +1,50 @@
+<%# Shared modal for confirming a shift, adding ad-hoc time, or editing an entry.
+    Populated by the time-entry-form controller on open. Rendered once inside the
+    page's `data-controller="modal time-entry-form"` wrapper. Uses @staff_orgs. %>
+<div id="time-entry-modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+     data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+  <div class="flex min-h-full items-start justify-center p-4 py-12">
+    <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <h3 class="text-base font-semibold text-gray-900" data-time-entry-form-target="title">Log time</h3>
+        <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
+              data: { action: "click->modal#close" } %>
+      </div>
+      <%= form_with url: my_time_entries_path, method: :post, data: { "time-entry-form-target": "form" } do %>
+        <input type="hidden" name="_method" value="post" data-time-entry-form-target="methodInput">
+        <input type="hidden" name="shift_assignment_id" data-time-entry-form-target="assignmentInput">
+        <div class="px-5 py-4 space-y-4">
+          <div data-time-entry-form-target="orgRow" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+            <select name="organization_id" data-time-entry-form-target="orgSelect"
+                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% @staff_orgs.each do |o| %><option value="<%= o.id %>"><%= o.name %></option><% end %>
+            </select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Started</label>
+              <input type="datetime-local" name="started_at" required data-time-entry-form-target="started" data-action="input->time-entry-form#recalc"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Ended</label>
+              <input type="datetime-local" name="ended_at" required data-time-entry-form-target="ended" data-action="input->time-entry-form#recalc"
+                     class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+          </div>
+          <p class="text-sm text-gray-600"><span data-time-entry-form-target="hours" class="font-semibold text-gray-900">0</span> hours</p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input type="text" name="notes" data-time-entry-form-target="notes"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Save hours", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
