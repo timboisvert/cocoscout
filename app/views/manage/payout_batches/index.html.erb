@@ -38,7 +38,7 @@
         </div>
         <div class="flex items-center gap-2">
           <%= render "shared/button", text: "Change", variant: "secondary", size: "small",
-                path: manage_connect_payout_funding_path, method: :post %>
+                path: manage_connect_payout_funding_path, method: :post, form: { data: { turbo: false } } %>
           <%= render "shared/button", text: "Remove", variant: "danger", size: "small",
                 path: manage_remove_payout_funding_path, method: :delete,
                 data: { turbo_confirm: "Remove this funding source? You won't be able to run payouts until you add another." } %>
@@ -49,7 +49,7 @@
         <p class="text-sm text-amber-900">Connect a bank or card before you run payouts — that's what we charge to fund each run.</p>
       </div>
       <%= render "shared/button", text: "Connect a bank or card", variant: "primary", size: "small", icon: "banknotes",
-            path: manage_connect_payout_funding_path, method: :post %>
+            path: manage_connect_payout_funding_path, method: :post, form: { data: { turbo: false } } %>
     <% end %>
   </div>
 
