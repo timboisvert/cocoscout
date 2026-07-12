@@ -1149,6 +1149,12 @@
                               <div class="text-xs text-red-500 mt-0.5" title="<%= failed_item.payout_error %>">Error</div>
                             <% end %>
                           </div>
+                        <% elsif item.settled_via_payout_run? %>
+                          <%# Bank connected and their balance has been paid by a completed run. %>
+                          <div class="text-right" title="Paid automatically on a payout run.">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">Paid</span>
+                            <div class="text-xs text-gray-400 mt-0.5">payout run</div>
+                          </div>
                         <% elsif item.auto_payout? %>
                           <%# Bank connected — paid automatically by the standard payout run. %>
                           <div class="text-right" title="This person connected a bank, so they're paid automatically on your next payout run.">

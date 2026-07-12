@@ -104,8 +104,23 @@ class ShowPayoutLineItem < ApplicationRecord
   # a bank, so the existing per-show pay flow is unchanged for everyone today.
   def auto_payout?
     return false if is_guest? || paid?
+    return false unless payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
 
-    payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+    # Still awaiting the next run — not yet covered by a completed payout.
+    !settled_via_payout_run?
+  end
+
+  # A bank-connected performer whose balance has already been paid down by a
+  # completed payout run. Their per-show line reads "Paid · payout run" instead
+  # of forever showing "Auto-pay · next payout run".
+  def settled_via_payout_run?
+    return false if is_guest? || paid?
+    return false unless ledger_eligible? && payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+
+    org = show_payout&.production&.organization
+    return false unless org
+
+    org.payout_balance_cents_for(payee) <= 0 && paid_via_batch?(org)
   end
 
   # Post/refresh this line item's `earning` entry (net of advances) on the ledger.
@@ -314,6 +329,15 @@ class ShowPayoutLineItem < ApplicationRecord
   end
 
   private
+
+  # Has a completed payout batch actually sent this payee money for this org?
+  def paid_via_batch?(org)
+    PayoutBatchItem.paid
+                   .joins(:payout_batch)
+                   .where(payout_batches: { organization_id: org.id })
+                   .where(payee_type: payee.class.polymorphic_name, payee_id: payee_id)
+                   .exists?
+  end
 
   # Check if all line items are paid and auto-mark the show payout as paid
   def check_all_paid
