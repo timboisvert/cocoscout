@@ -112,8 +112,8 @@
       <%= render "home/producer_feature_block", pro: true,
         eyebrow: "Money & Payments", reverse: true, carousel_key: "money",
         title: "Track revenue and pay your people",
-        description: "See financials per show, manage contracts, build payout schemes, and track what every performer and contractor is owed.",
-        bullets: ["Show & production financials", "Payout schemes and performer payments", "Contracts and advances"],
+        description: "See financials per show, manage contracts and advances, and pay everyone — performers get paid straight to their bank, on a schedule you set or all at once.",
+        bullets: ["Show & production financials", "Pay performers straight to their bank", "Scheduled or one-click payout runs", "Payout schemes, contracts, and advances"],
         images: [
           { src: "screenshots/accounting/1-financial-overview.png", alt: "Financial overview" },
           { src: "screenshots/accounting/2-show-financials.png", alt: "Show financials" },
@@ -130,15 +130,30 @@
           { src: "screenshots/casting/1-casting-table.png", alt: "Casting table" }
         ] %>
 
+      <%= render "home/producer_feature_block", pro: true,
+        eyebrow: "Staffing", reverse: true, carousel_key: "staffing",
+        title: "Your whole team — scheduled, onboarded, and paid",
+        description: "Build the week's shifts, invite staff to onboard themselves, then pay them for the hours they work — straight to their bank. Fair by design: $5/month per person, only in the months they actually work.",
+        bullets: [
+          "Weekly shift scheduling by role, with staff availability",
+          "Staff onboard themselves and connect their own bank",
+          "Pay from an hours grid — 2 free payments a month each, then $1",
+          "Nothing to pay for anyone who doesn't work that month"
+        ],
+        images: [
+          { src: "screenshots/scheduling/1-shows-list.png", alt: "Weekly staffing schedule" },
+          { src: "screenshots/scheduling/2-show-detail.png", alt: "Shift detail" },
+          { src: "screenshots/scheduling/3-availability-grid.png", alt: "Staff availability grid" }
+        ] %>
+
       <!-- More Pro features -->
       <div class="w-full px-6 pt-8 pb-20">
         <div class="max-w-6xl mx-auto">
           <h3 class="text-center text-2xl font-bold text-slate-900 mb-10 coustard-regular">Plus everything else in Pro</h3>
-          <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <%= render "home/producer_feature_card", pro: true, icon: "users", title: "Staffing", description: "Schedule, onboard, and manage your team — $5/month per staff member, only in months they work." %>
+          <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <%= render "home/producer_feature_card", pro: true, icon: "chart", title: "Reports", description: "Revenue, payouts, cast participation, and programming analytics." %>
             <%= render "home/producer_feature_card", pro: true, icon: "sparkles", title: "Unlimited everything", description: "Run unlimited productions and unlimited shows/events every month." %>
-            <%= render "home/producer_feature_card", pro: true, icon: "dollar", title: "Pay your team", description: "Pay performers, and pay staff with 2 free payments a month each — then just $1." %>
+            <%= render "home/producer_feature_card", pro: true, icon: "document", title: "Documents & contracts", description: "Send agreements, collect signatures, and keep every contract in one place." %>
           </div>
 
           <div class="text-center mt-12">
