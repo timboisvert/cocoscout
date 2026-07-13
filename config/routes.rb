@@ -473,6 +473,10 @@ Rails.application.routes.draw do
       get "/locks", to: "sign_ups#slot_locks", as: "sign_up_slot_locks"
     end
 
+    # Staff onboarding welcome page (where the invite email lands).
+    get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
+    post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
+
     # Payments (for talent to manage Venmo/Zelle settings and view history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"

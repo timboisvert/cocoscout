@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_195142) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_211257) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1253,6 +1253,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_195142) do
   end
 
   create_table "organization_staff_members", force: :cascade do |t|
+    t.datetime "acknowledged_at"
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.string "department"
@@ -1413,6 +1414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_195142) do
     t.boolean "hide_contact_info", default: true, null: false
     t.datetime "last_email_changed_at"
     t.datetime "last_public_key_changed_at"
+    t.string "legal_name"
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"

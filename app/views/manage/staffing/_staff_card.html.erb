@@ -21,17 +21,19 @@
   <div class="flex-1 min-w-0">
     <div class="font-medium text-gray-900 text-sm truncate flex items-center gap-1.5">
       <span class="truncate"><%= member.display_name %></span>
-      <% if pending %>
-        <% if person.user.nil? %>
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium flex-shrink-0"
-                title="No CocoScout account yet — they need to accept the invite and sign up.">No account</span>
-        <% else %>
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium flex-shrink-0"
-                title="Invited — waiting on them to finish signing up.">Invited</span>
-        <% end %>
-      <% elsif onboarding == "completed" %>
+      <% case member.onboarding_status %>
+      <% when :no_account %>
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium flex-shrink-0"
+              title="No CocoScout account yet — they need to accept the invite and sign up.">No account</span>
+      <% when :invited %>
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium flex-shrink-0"
+              title="Invited — waiting on them to accept onboarding.">Invited</span>
+      <% when :awaiting_bank %>
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium flex-shrink-0"
+              title="Accepted onboarding — still needs to connect a bank to get paid.">Awaiting bank</span>
+      <% when :onboarded %>
         <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium flex-shrink-0"
-              title="Onboarded — set up and ready to be paid.">Onboarded</span>
+              title="Onboarded — accepted and bank connected, ready to be paid.">Onboarded</span>
       <% end %>
     </div>
     <div class="text-xs text-gray-500 truncate">

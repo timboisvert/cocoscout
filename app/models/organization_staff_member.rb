@@ -42,6 +42,38 @@ class OrganizationStaffMember < ApplicationRecord
     !onboarding_completed?
   end
 
+  # They've accepted onboarding on their welcome page.
+  def acknowledged?
+    acknowledged_at.present?
+  end
+
+  # Their bank (Stripe Connect) is ready to receive payouts.
+  def bank_connected?
+    person&.can_receive_payouts? || false
+  end
+
+  # Onboarding is only "done" when they've BOTH acknowledged and connected a
+  # bank — connecting a bank alone isn't the same as accepting the role. Call
+  # this whenever either side changes (acknowledge action, Stripe webhook).
+  def refresh_onboarding_state!
+    return if onboarding_state == "added" && !acknowledged? # never invited/engaged yet
+
+    update!(onboarding_state: acknowledged? && bank_connected? ? "completed" : "invited")
+  end
+
+  # A finer-grained status for the staff list than the coarse onboarding_state.
+  # :no_account → invited but hasn't claimed a CocoScout account
+  # :invited → account exists but hasn't accepted onboarding
+  # :awaiting_bank → accepted, still needs to connect a bank
+  # :onboarded → accepted and bank connected
+  def onboarding_status
+    return :onboarded if onboarding_completed?
+    return :no_account if person&.user.nil?
+    return :awaiting_bank if acknowledged?
+
+    :invited
+  end
+
   def archived?
     archived_at.present?
   end

@@ -11,7 +11,7 @@ class StaffOnboardingMailer < ApplicationMailer
     @staff_member = staff_member
     @person = staff_member.person
     @organization = staff_member.organization
-    @onboarding_url = my_payments_setup_url(**default_url_options)
+    @onboarding_url = my_onboarding_url(@organization.id, **default_url_options)
 
     to = @person.email.presence || staff_member.personal_email
     return if to.blank?

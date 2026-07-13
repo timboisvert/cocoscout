@@ -13,14 +13,20 @@
 
   <div class="max-w-3xl">
 
-    <!-- Your name (as it appears on payments) -->
+    <!-- Your name — display name (how you appear) + legal name (for official pay) -->
     <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
       <h3 class="font-semibold text-gray-900 text-lg mb-1">Your name</h3>
-      <p class="text-sm text-gray-500 mb-4">This is how you appear on your payments and to the productions you work for.</p>
+      <p class="text-sm text-gray-500 mb-4">How you appear to productions, plus the legal name we use to pay you officially.</p>
       <%= form_with url: my_payments_update_profile_path, method: :patch, class: "space-y-4" do %>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Display name</label>
           <%= text_field_tag "person[name]", @person.name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          <p class="text-xs text-gray-500 mt-1">The name productions see — a stage name is fine here.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full legal name</label>
+          <%= text_field_tag "person[legal_name]", @person.legal_name, placeholder: "As it appears on your ID", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          <p class="text-xs text-gray-500 mt-1">Used only to pay you officially and for tax records — not shown publicly.</p>
         </div>
         <div class="flex justify-end">
           <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>

@@ -72,12 +72,11 @@ class StripeWebhooksController < ApplicationController
 
     StripeConnectService.new(payee).sync_account(account)
 
-    # Once a worker can actually receive payouts, mark any staff memberships as
-    # onboarded so the org's staff list reflects that they're all set.
-    if payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? && payee.is_a?(Person)
-      OrganizationStaffMember.where(person_id: payee.id)
-                             .where.not(onboarding_state: "completed")
-                             .update_all(onboarding_state: "completed", updated_at: Time.current)
+    # A worker's payout ability changed — re-evaluate their staff memberships.
+    # Onboarding completes only when they've also acknowledged (see
+    # refresh_onboarding_state!); a connected bank alone isn't enough.
+    if payee.is_a?(Person)
+      OrganizationStaffMember.where(person_id: payee.id).find_each(&:refresh_onboarding_state!)
     end
   rescue StripeConnectService::Error => e
     Rails.logger.warn("Connect account.updated sync failed for #{account.id}: #{e.message}")
