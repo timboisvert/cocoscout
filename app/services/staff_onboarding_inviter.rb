@@ -86,30 +86,20 @@ class StaffOnboardingInviter
     { subject: @subject_override || default[:subject], body: @body_override || default[:body] }
   end
 
-  # The single source of truth for the default (interpolated) onboarding copy.
-  # Used for the preview draft and as the fallback when not overridden.
+  # The single source of truth for the default (interpolated) onboarding copy —
+  # always rendered from the "staff_onboarding_invite" content template. All
+  # onboarding messaging/email copy lives in the template service, never inline.
   def default_onboarding_copy
     first = @staff_member.preferred_first_name.presence ||
             @staff_member.first_name.presence ||
             @person&.first_name.presence || "there"
-    setup_url = my_payments_setup_url(**default_url_options)
 
-    if ContentTemplateService.exists?("staff_onboarding_invite")
-      rendered = ContentTemplateService.render("staff_onboarding_invite", {
-        first_name: first,
-        organization_name: @organization.name,
-        onboarding_url: setup_url
-      })
-      { subject: rendered[:subject], body: rendered[:body] }
-    else
-      { subject: "Complete your onboarding at #{@organization.name}",
-        body: <<~HTML }
-          <p>Hi #{first},</p>
-          <p>You've been added to the team at <strong>#{@organization.name}</strong>. Finish your onboarding to get set up — you'll confirm your details (like your legal and preferred names) and set up your payment details so you get paid automatically. It only takes a minute.</p>
-          <p><a href="#{setup_url}">Complete onboarding and set up payment details →</a></p>
-          <p>Your payment details stay secure with our payment processor.</p>
-        HTML
-    end
+    rendered = ContentTemplateService.render("staff_onboarding_invite", {
+      first_name: first,
+      organization_name: @organization.name,
+      onboarding_url: my_onboarding_url(@organization.id, **default_url_options)
+    })
+    { subject: rendered[:subject], body: rendered[:body] }
   end
 
   def recipient_email

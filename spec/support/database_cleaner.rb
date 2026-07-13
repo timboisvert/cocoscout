@@ -53,6 +53,7 @@ def seed_content_templates
     { key: "removed_from_cast_notification", name: "Removed from Cast", subject: "Removed", body: "Removed", category: "casting", channel: "message" },
     { key: "casting_table_notification", name: "Casting Table", subject: "Casting", body: "Casting info", category: "casting", channel: "message" },
     { key: "payment_setup_reminder", name: "Payment Reminder", subject: "Payment", body: "Set up payment", category: "payments", channel: "message" },
+    { key: "staff_onboarding_invite", name: "Staff Onboarding Invite", subject: "Welcome to {{organization_name}}", body: "Hi {{first_name}}, get set up at {{onboarding_url}}", category: "staffing", channel: "both" },
     { key: "course_registration_confirmed", name: "Course Registration Confirmed", subject: "You're registered for {{course_title}}!", body: "Hi {{recipient_name}}, your registration for {{course_title}} is confirmed.", category: "courses", channel: "both" },
     { key: "course_registration_producer_notification", name: "Course Registration Producer Notification", subject: "New registration for {{course_title}}", body: "{{registrant_name}} has registered for {{course_title}}.", category: "courses", channel: "message" }
   ]

@@ -1,33 +1,29 @@
 # frozen_string_literal: true
 
 # Invites a newly-added staff member to finish onboarding — create/access their
-# CocoScout account and connect their bank so they can be paid. Uses the content
-# template system when a "staff_onboarding_invite" template exists, and otherwise
-# falls back to the built-in view (so it works before anyone customizes the copy).
+# CocoScout account and connect their bank so they can be paid. All copy comes
+# from the "staff_onboarding_invite" content template: the caller (the inviter)
+# renders it and passes the subject/body here; if not supplied, we render it too.
+# There is deliberately no hardcoded fallback copy.
 class StaffOnboardingMailer < ApplicationMailer
-  # subject/body: the exact copy to send (e.g. the reviewer's edited draft). When
-  # omitted, falls back to the content template or the built-in view.
+  # subject/body: the exact copy to send (already rendered from the template, e.g.
+  # the reviewer's edited draft). When omitted, we render the template ourselves.
   def invite(staff_member, subject: nil, body: nil)
     @staff_member = staff_member
     @person = staff_member.person
     @organization = staff_member.organization
-    @onboarding_url = my_onboarding_url(@organization.id, **default_url_options)
 
     to = @person.email.presence || staff_member.personal_email
     return if to.blank?
 
-    if body.present?
-      mail(to: to, subject: subject.presence || "Complete your onboarding at #{@organization.name}") do |format|
-        format.html { render html: body.html_safe, layout: "mailer" }
-      end
-    elsif ContentTemplateService.exists?("staff_onboarding_invite")
+    if body.blank? || subject.blank?
       rendered = ContentTemplateService.render("staff_onboarding_invite", template_vars)
-      mail(to: to, subject: rendered[:subject]) do |format|
-        format.html { render html: rendered[:body].html_safe, layout: "mailer" }
-      end
-    else
-      @subject = "Complete your onboarding at #{@organization.name}"
-      mail(to: to, subject: @subject)
+      subject = rendered[:subject]
+      body = rendered[:body]
+    end
+
+    mail(to: to, subject: subject) do |format|
+      format.html { render html: body.html_safe, layout: "mailer" }
     end
   end
 
@@ -37,7 +33,7 @@ class StaffOnboardingMailer < ApplicationMailer
     {
       first_name: @staff_member.preferred_first_name.presence || @staff_member.first_name.presence || @person&.name.to_s,
       organization_name: @organization.name,
-      onboarding_url: @onboarding_url
+      onboarding_url: my_onboarding_url(@organization.id, **default_url_options)
     }
   end
 end

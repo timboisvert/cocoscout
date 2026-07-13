@@ -28,6 +28,12 @@ RSpec.describe StaffOnboardingInviter do
     expect(PersonInvitation.pending.where(email: "pat@example.com", organization: org)).to exist
   end
 
+  it "renders the invite copy from the content template, linking to the welcome page" do
+    preview = described_class.preview(staff_member: member)
+    expect(preview[:body]).to include("/my/onboarding/#{org.id}")
+    expect(preview[:body]).not_to include("/payments/setup")
+  end
+
   it "raises when there's no email to reach the worker" do
     person.update_columns(email: nil)
     member.update_columns(personal_email: nil)
