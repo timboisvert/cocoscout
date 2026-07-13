@@ -96,6 +96,7 @@ module Manage
 
       def save_roles
         @wizard_state[:house_role_ids] = Array(params[:house_role_ids]).map(&:to_i).reject(&:zero?)
+        @wizard_state[:role_rates] = params[:role_rates]&.to_unsafe_h || {}
         save_wizard_state
         redirect_to manage_review_staffing_staff_wizard_path
       end
@@ -122,7 +123,7 @@ module Manage
           staff_member.assign_attributes(employment_attributes_from_state)
           staff_member.archived_at = nil
           staff_member.save!
-          sync_role_ids(staff_member, @wizard_state[:house_role_ids])
+          staff_member.sync_role_qualifications!(role_ids: @wizard_state[:house_role_ids], rates: @wizard_state[:role_rates])
         end
 
         invited = send_invite(staff_member, subject: params[:email_subject], body: params[:email_body])
@@ -202,12 +203,6 @@ module Manage
 
         person.organizations << Current.organization unless person.organizations.include?(Current.organization)
         person
-      end
-
-      def sync_role_ids(staff_member, role_ids)
-        ids = Array(role_ids).map(&:to_i).reject(&:zero?)
-        valid = Current.organization.house_roles.where(id: ids).pluck(:id)
-        staff_member.house_role_ids = valid
       end
 
       def send_invite(staff_member, subject: nil, body: nil)

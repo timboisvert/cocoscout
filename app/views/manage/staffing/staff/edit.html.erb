@@ -109,7 +109,11 @@
 
         <%# --- Roles --- %>
         <div data-staff-edit-target="panel" data-panel="roles" class="hidden">
-          <%= render "manage/staffing/roles_field", house_roles: @house_roles, assigned_ids: @staff_member.house_role_ids %>
+          <% role_rates = @staff_member.staff_role_qualifications.each_with_object({}) { |q, h| h[q.house_role_id] = q.hourly_rate_dollars } %>
+          <%= render "manage/staffing/roles_field", house_roles: @house_roles,
+                assigned_ids: @staff_member.house_role_ids,
+                role_rates: role_rates,
+                default_rate_dollars: @staff_member.hourly_rate_dollars %>
         </div>
 
         <div data-staff-edit-target="saveFooter" class="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">

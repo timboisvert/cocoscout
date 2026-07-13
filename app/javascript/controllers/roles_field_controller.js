@@ -13,18 +13,32 @@ export default class extends Controller {
         if (!list || !this.hasFrameTarget) return
 
         const rows = this.frameTarget.querySelectorAll("[data-role-id]")
+        // Preserve which roles are checked and any rates already typed in.
         const checked = new Set(
-            Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value)
+            Array.from(list.querySelectorAll('input[data-role-checkbox]:checked')).map(i => i.value)
         )
+        const rates = {}
+        list.querySelectorAll("[data-role-row]").forEach(row => {
+            const id = row.dataset.roleId
+            const rate = row.querySelector("[data-role-rate]")
+            if (id && rate && rate.value) rates[id] = rate.value
+        })
+        const placeholder = list.dataset.ratePlaceholder || "0.00"
 
         let html = ""
         rows.forEach(r => {
             const id = r.dataset.roleId
-            const name = r.dataset.roleName
+            const name = this.escape(r.dataset.roleName)
             const isChecked = checked.has(id) ? "checked" : ""
-            html += `<label class="relative cursor-pointer">` +
-                `<input type="checkbox" name="house_role_ids[]" value="${id}" ${isChecked} class="sr-only peer">` +
-                `<span class="block text-center text-sm font-medium px-2 py-3 rounded-lg border bg-white text-gray-700 border-gray-200 hover:border-pink-400 peer-checked:bg-pink-500 peer-checked:text-white peer-checked:border-pink-500 transition-colors">${this.escape(name)}</span>` +
+            const rateVal = rates[id] ? this.escape(rates[id]) : ""
+            html += `<label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer" data-role-row data-role-id="${id}">` +
+                `<input type="checkbox" name="house_role_ids[]" value="${id}" ${isChecked} data-role-checkbox class="h-4 w-4 rounded border-gray-300 accent-pink-500">` +
+                `<span class="flex-1 text-sm font-medium text-gray-800">${name}</span>` +
+                `<div class="relative w-28 flex-shrink-0">` +
+                `<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>` +
+                `<input type="text" inputmode="decimal" name="role_rates[${id}]" value="${rateVal}" placeholder="${this.escape(placeholder)}" data-role-rate class="w-full pl-5 pr-8 py-1.5 border border-gray-200 rounded text-right text-sm focus:outline-none focus:ring-1 focus:ring-pink-300">` +
+                `<span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">/hr</span>` +
+                `</div>` +
                 `</label>`
         })
         list.innerHTML = html

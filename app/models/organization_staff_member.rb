@@ -32,6 +32,40 @@ class OrganizationStaffMember < ApplicationRecord
     hourly_rate_cents ? hourly_rate_cents / 100.0 : nil
   end
 
+  # Parse a dollar string ("$15", "15.50") to cents; nil/blank → nil.
+  def self.rate_cents_from(value)
+    return nil if value.blank?
+
+    (value.to_s.delete("$,").to_d * 100).round
+  end
+
+  # What this member earns for a given house role: the role's own rate, falling
+  # back to their default hourly rate when the role rate isn't set.
+  def rate_cents_for(house_role)
+    return hourly_rate_cents if house_role.nil?
+
+    qualification = staff_role_qualifications.detect { |q| q.house_role_id == house_role.id } ||
+                    staff_role_qualifications.find_by(house_role_id: house_role.id)
+    qualification&.hourly_rate_cents || hourly_rate_cents
+  end
+
+  # Set which house roles this member can fill and each one's pay rate in one go.
+  # role_ids: array of house_role ids. rates: hash of house_role_id => dollars
+  # (string or number); a blank/missing rate means "use the default".
+  def sync_role_qualifications!(role_ids:, rates: {})
+    rates = (rates || {}).transform_keys(&:to_i)
+    ids = Array(role_ids).map(&:to_i).reject(&:zero?).uniq
+    valid = organization.house_roles.where(id: ids).pluck(:id)
+
+    staff_role_qualifications.where.not(house_role_id: valid).destroy_all
+
+    valid.each do |rid|
+      qualification = staff_role_qualifications.find_or_initialize_by(house_role_id: rid)
+      qualification.hourly_rate_cents = self.class.rate_cents_from(rates[rid])
+      qualification.save!
+    end
+  end
+
   def onboarding_completed?
     onboarding_state == "completed"
   end

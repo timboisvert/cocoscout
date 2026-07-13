@@ -31,7 +31,7 @@ module Manage
 
         @staff_member = Current.organization.organization_staff_members.new(person_id: params[:person_id])
         if @staff_member.save
-          sync_role_ids(@staff_member, params[:house_role_ids])
+          @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
           redirect_to manage_staffing_index_path, notice: "Staff member added."
         else
           redirect_to manage_staffing_index_path,
@@ -42,7 +42,7 @@ module Manage
       def update
         @staff_member.assign_attributes(editable_employment_attributes)
         @staff_member.save!
-        sync_role_ids(@staff_member, params[:house_role_ids])
+        @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
         redirect_to manage_staffing_index_path, notice: "#{@staff_member.display_name} updated."
       rescue ActiveRecord::RecordInvalid => e
         redirect_to manage_staffing_index_path,
@@ -101,7 +101,7 @@ module Manage
           staff_member = Current.organization.organization_staff_members.find_or_initialize_by(person: person)
           staff_member.archived_at = nil
           staff_member.save!
-          sync_role_ids(staff_member, params[:house_role_ids])
+          staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
 
           invitation = PersonInvitation.create!(email: email, organization: Current.organization)
           Manage::PersonMailer.person_invitation(invitation).deliver_later
@@ -150,25 +150,6 @@ module Manage
         return nil if id.blank? || id.to_i == @staff_member&.id
 
         Current.organization.organization_staff_members.active.where(id: id).pick(:id)
-      end
-
-      def sync_role_ids(staff_member, role_ids)
-        ids = Array(role_ids).map(&:to_i).reject(&:zero?)
-        # Only allow this org's roles.
-        ids &= Current.organization.house_roles.pluck(:id)
-
-        current = staff_member.house_role_ids
-        to_add = ids - current
-        to_remove = current - ids
-
-        StaffRoleQualification.where(
-          organization_staff_member_id: staff_member.id,
-          house_role_id: to_remove
-        ).delete_all if to_remove.any?
-
-        to_add.each do |rid|
-          staff_member.staff_role_qualifications.create!(house_role_id: rid)
-        end
       end
     end
   end

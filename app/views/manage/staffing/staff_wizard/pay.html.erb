@@ -1,6 +1,6 @@
 <%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 5, step_name: "Pay" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How much do they make?</h2>
-  <p class="text-gray-600 mb-6">Their hourly rate. This is what we'll use to calculate pay on a pay run — you can change it anytime.</p>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What's their default rate?</h2>
+  <p class="text-gray-600 mb-6">A default hourly rate to fall back on. Next you'll pick the roles they can work and can set a specific rate for each one — this rate is used whenever a role doesn't have its own. You can change all of it anytime.</p>
 
   <%= form_with url: manage_save_pay_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
     <div class="max-w-xs">
