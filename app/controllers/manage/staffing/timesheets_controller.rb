@@ -42,6 +42,65 @@ module Manage
         redirect_to manage_staffing_timesheets_path,
                     notice: count.positive? ? "Approved #{helpers.pluralize(count, 'hour entry')}." : "Those hours were already handled."
       end
+
+      # History of hours a manager has signed off on, newest first and grouped by
+      # month. Approved-but-unpaid entries can still be corrected (unapprove →
+      # edit → reapprove); once an entry is paid it's locked here for the record.
+      def approved
+        entries = Current.organization.staff_time_entries.signed_off
+                         .includes(:person, :approved_by, shift_assignment: { shift: :house_role })
+                         .order(started_at: :desc)
+
+        @months = entries.group_by { |e| e.started_at.beginning_of_month }
+                         .sort_by { |month, _| month }.reverse
+        @total_hours = entries.sum(&:hours)
+        @total_entries = entries.size
+      end
+
+      # Send an approved entry back to the pending queue so it can be corrected
+      # and re-approved. Paid entries are locked and can't be unapproved.
+      def unapprove
+        entry = find_editable_entry
+        return unless entry
+
+        entry.update!(approved_at: nil, approved_by: nil)
+        redirect_to manage_approved_staffing_timesheets_path, notice: "Sent that entry back for review."
+      end
+
+      def edit
+        @entry = find_editable_entry
+      end
+
+      # Correct the worked time on an entry (unpaid only). Editing leaves the
+      # entry's approval status as-is; the usual flow is to unapprove first, edit,
+      # then reapprove from the queue.
+      def update
+        @entry = find_editable_entry
+        return unless @entry
+
+        if @entry.update(entry_params)
+          redirect_to manage_approved_staffing_timesheets_path, notice: "Updated those hours."
+        else
+          render :edit, status: :unprocessable_entity
+        end
+      end
+
+      private
+
+      # Entries are editable only while unpaid; once pulled into a pay run they're
+      # settled and must stay put. Redirects (and returns nil) otherwise.
+      def find_editable_entry
+        entry = Current.organization.staff_time_entries.find(params[:id])
+        if entry.paid?
+          redirect_to manage_approved_staffing_timesheets_path, alert: "That entry has been paid and can't be changed."
+          return nil
+        end
+        entry
+      end
+
+      def entry_params
+        params.require(:staff_time_entry).permit(:started_at, :ended_at, :notes)
+      end
     end
   end
 end

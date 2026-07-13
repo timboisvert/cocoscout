@@ -1,0 +1,65 @@
+<% content_for :title, "Edit Hours" %>
+
+<div class="w-full max-w-lg mx-auto mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path],
+      ["Approve Hours", manage_staffing_timesheets_path],
+      ["Approved Hours", manage_approved_staffing_timesheets_path]
+    ],
+    text: "Edit Hours",
+    links: []
+  } %>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+    <div class="flex items-center gap-3 mb-5">
+      <% headshot_variant = @entry.person.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, alt: @entry.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+          <%= @entry.person.initials %>
+        </div>
+      <% end %>
+      <div>
+        <div class="font-medium text-gray-900"><%= @entry.person.name %></div>
+        <div class="text-xs text-gray-500">
+          <% if @entry.approved? %>Approved — editing keeps it approved.<% else %>Pending review.<% end %>
+        </div>
+      </div>
+    </div>
+
+    <% if @entry.errors.any? %>
+      <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <%= @entry.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+
+    <%= form_with model: @entry, url: manage_staffing_timesheet_path(@entry), method: :patch do |f| %>
+      <div class="space-y-4">
+        <div>
+          <%= f.label :started_at, "Clock in", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.datetime_field :started_at, value: @entry.started_at&.strftime("%Y-%m-%dT%H:%M"),
+                class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+        <div>
+          <%= f.label :ended_at, "Clock out", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.datetime_field :ended_at, value: @entry.ended_at&.strftime("%Y-%m-%dT%H:%M"),
+                class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+        <div>
+          <%= f.label :notes, "Notes", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_area :notes, rows: 2,
+                class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 mt-6">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+        <%= link_to manage_approved_staffing_timesheets_path do %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

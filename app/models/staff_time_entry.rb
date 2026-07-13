@@ -26,6 +26,9 @@ class StaffTimeEntry < ApplicationRecord
   scope :paid, -> { where.not(payout_batch_id: nil) }
   scope :pending, -> { where(approved_at: nil, payout_batch_id: nil) }
   scope :approved, -> { where.not(approved_at: nil).where(payout_batch_id: nil) }
+  # Everything a manager has signed off on, whether or not it's since been paid —
+  # backs the "view approved hours" history.
+  scope :signed_off, -> { where.not(approved_at: nil) }
   scope :for_person, ->(person) { where(person_id: person) }
   scope :recent, ->(range) { where(started_at: range) }
   scope :chronological, -> { order(:started_at) }

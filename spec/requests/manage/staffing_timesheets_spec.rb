@@ -58,4 +58,61 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
     expect(response).to redirect_to(manage_staffing_timesheets_path)
     expect(flash[:alert]).to be_present
   end
+
+  describe "approved-hours history" do
+    it "lists approved and paid entries, and not pending ones" do
+      pending = create(:staff_time_entry, organization: org, person: person, notes: "still-pending")
+      approved = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner, notes: "signed-off")
+      paid = create(:staff_time_entry, :paid, organization: org, person: person, approved_at: Time.current, approved_by: owner, notes: "paid-out")
+
+      get manage_approved_staffing_timesheets_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("signed-off").and include("paid-out")
+      expect(response.body).not_to include("still-pending")
+    end
+
+    it "shows an empty state when nothing has been approved" do
+      create(:staff_time_entry, organization: org, person: person)
+      get manage_approved_staffing_timesheets_path
+      expect(response.body).to include("Nothing approved yet")
+    end
+  end
+
+  describe "unapprove" do
+    it "sends an approved entry back to pending" do
+      entry = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
+      patch manage_unapprove_staffing_timesheet_path(entry)
+      expect(response).to redirect_to(manage_approved_staffing_timesheets_path)
+      entry.reload
+      expect(entry.approved_at).to be_nil
+      expect(entry.status).to eq("pending")
+    end
+
+    it "refuses to unapprove a paid entry" do
+      entry = create(:staff_time_entry, :paid, organization: org, person: person, approved_at: Time.current, approved_by: owner)
+      patch manage_unapprove_staffing_timesheet_path(entry)
+      expect(flash[:alert]).to be_present
+      expect(entry.reload.approved_at).to be_present
+    end
+  end
+
+  describe "edit/update" do
+    it "updates the worked time and recomputes hours" do
+      entry = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
+      patch manage_staffing_timesheet_path(entry), params: {
+        staff_time_entry: {
+          started_at: "2026-07-01T18:00",
+          ended_at: "2026-07-01T21:30"
+        }
+      }
+      expect(response).to redirect_to(manage_approved_staffing_timesheets_path)
+      expect(entry.reload.hours).to eq(3.5)
+    end
+
+    it "refuses to edit a paid entry" do
+      entry = create(:staff_time_entry, :paid, organization: org, person: person)
+      patch manage_staffing_timesheet_path(entry), params: { staff_time_entry: { started_at: "2026-07-01T18:00", ended_at: "2026-07-01T22:00" } }
+      expect(flash[:alert]).to be_present
+    end
+  end
 end

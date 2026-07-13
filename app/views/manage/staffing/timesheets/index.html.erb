@@ -5,7 +5,9 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
     text: "Approve Hours",
-    links: []
+    links: [
+      { text: "View approved hours", path: manage_approved_staffing_timesheets_path, icon: "check-circle", variant: "secondary" }
+    ]
   } %>
 
   <% if @groups.empty? %>
