@@ -1,19 +1,8 @@
-<%# Unpaid time entries for one person, loaded into the pull-hours modal frame.
-    Checkboxes default on; the pay-pull controller sums the checked ones. A
-    manager can approve pending (submitted) hours here so the worker sees them
-    approved. Locals: entries, person. %>
+<%# Approved (signed-off, unpaid) time entries for one person, loaded into the
+    pull-hours modal frame. Checkboxes default on; the pay-pull controller sums
+    the checked ones. Hours are approved on the Approve Hours queue before they
+    reach this point. Locals: entries, person. %>
 <%= turbo_frame_tag "pay_time_entries" do %>
-  <% pending = entries.select { |e| e.status == "pending" } %>
-  <% if pending.any? %>
-    <%= form_with url: manage_approve_staffing_pay_time_entries_path(person_id: person.id), method: :patch,
-          data: { turbo_frame: "pay_time_entries" }, class: "mb-3" do %>
-      <div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-        <span class="text-xs text-amber-900"><%= pluralize(pending.size, "entry") %> pending your approval</span>
-        <%= render "shared/button", text: "Approve all", variant: "primary", size: "small", type: :submit %>
-      </div>
-    <% end %>
-  <% end %>
-
   <% if entries.any? %>
     <div class="space-y-2">
       <% entries.each do |e| %>
@@ -33,15 +22,11 @@
               <% if e.shift&.role_label.present? %> · <%= e.shift.role_label %><% end %>
             </div>
           </div>
-          <% if e.status == "approved" %>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Approved</span>
-          <% else %>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 flex-shrink-0">Pending</span>
-          <% end %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Approved</span>
         </label>
       <% end %>
     </div>
   <% else %>
-    <p class="text-sm text-gray-400 py-4 text-center">No unpaid hours logged for this person yet.</p>
+    <p class="text-sm text-gray-400 py-4 text-center">No approved hours to pull yet — sign off on their submitted time in Approve Hours first.</p>
   <% end %>
 <% end %>

@@ -69,10 +69,10 @@
                 <td class="px-3 py-2 text-right align-top">
                   <input id="pay-hours-<%= member.id %>" type="number" step="0.25" min="0" name="lines[<%= member.id %>][hours]" data-pay-field="hours" data-action="input->pay-run#recalc" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
                   <span id="pay-entries-<%= member.id %>"></span>
-                  <% unpaid = (@unpaid_hours_by_person[member.person_id] || 0).to_f %>
-                  <% if unpaid.positive? %>
+                  <% approved = (@approved_hours_by_person[member.person_id] || 0).to_f %>
+                  <% if approved.positive? %>
                     <button type="button" data-action="click->pay-pull#open" data-member-id="<%= member.id %>" data-src="<%= manage_staffing_pay_time_entries_path(person_id: member.person_id) %>"
-                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">pull <%= number_with_precision(unpaid, precision: 2, strip_insignificant_zeros: true) %>h</button>
+                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">pull <%= number_with_precision(approved, precision: 2, strip_insignificant_zeros: true) %>h</button>
                   <% end %>
                 </td>
                 <td class="px-3 py-2 text-right"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][bonus]" data-pay-field="bonus" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>

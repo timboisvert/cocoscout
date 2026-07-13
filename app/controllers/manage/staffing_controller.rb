@@ -33,6 +33,10 @@ module Manage
       @active_staff, @pending_staff = members.partition { |m| account_claimed?(m) }
       @staff_count = @active_staff.size
       @pending_count = @pending_staff.size
+
+      # Worked hours submitted by staff and awaiting a manager's sign-off — the
+      # badge on the "Approve Hours" tile.
+      @hours_to_approve_count = Current.organization.staff_time_entries.pending.count
     end
 
     # Full org chart of the org's staff, built from manager relationships.

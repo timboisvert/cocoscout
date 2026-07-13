@@ -11,25 +11,18 @@ module Manage
       def new
         @staff_members = payable_staff
         @payday = Date.current
-        # Unpaid worked-hours totals per person, for the "N unpaid hours" hint.
-        @unpaid_hours_by_person = Current.organization.staff_time_entries.unpaid
-                                         .group(:person_id).sum(:hours)
+        # Approved-but-unpaid hours per person, for the "N hours" pull hint. Hours
+        # must be approved on the Approve Hours queue before they're payable.
+        @approved_hours_by_person = Current.organization.staff_time_entries.approved
+                                           .group(:person_id).sum(:hours)
         @draft = PayDraft.read(Current.user, Current.organization)
       end
 
-      # A person's unpaid time entries, rendered into the pull-hours modal frame.
+      # A person's approved (sign-off complete, unpaid) time entries, rendered
+      # into the pull-hours modal frame.
       def time_entries
         person = staff_person
-        render partial: "manage/staffing/pay/time_entries", locals: { entries: unpaid_entries_for(person), person: person }
-      end
-
-      # Manager sign-off: approve a person's pending (submitted) time entries so
-      # the worker sees them approved. Re-renders the modal frame.
-      def approve_time_entries
-        person = staff_person
-        Current.organization.staff_time_entries.unpaid.for_person(person).pending
-               .update_all(approved_at: Time.current, approved_by_id: Current.user.id, updated_at: Time.current)
-        render partial: "manage/staffing/pay/time_entries", locals: { entries: unpaid_entries_for(person), person: person }
+        render partial: "manage/staffing/pay/time_entries", locals: { entries: approved_entries_for(person), person: person }
       end
 
       # Server-side draft autosave of the whole pay form (opaque JSON blob).
@@ -74,8 +67,8 @@ module Manage
         Person.where(id: staff_ids).find(params[:person_id])
       end
 
-      def unpaid_entries_for(person)
-        Current.organization.staff_time_entries.unpaid.for_person(person)
+      def approved_entries_for(person)
+        Current.organization.staff_time_entries.approved.for_person(person)
                .includes(shift_assignment: { shift: :house_role }).chronological
       end
 

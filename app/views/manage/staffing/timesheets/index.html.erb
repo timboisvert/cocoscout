@@ -1,0 +1,85 @@
+<% content_for :title, "Approve Hours" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
+    text: "Approve Hours",
+    links: []
+  } %>
+
+  <% if @groups.empty? %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-10 text-center mt-6">
+      <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <p class="text-sm font-medium text-gray-900">You're all caught up</p>
+      <p class="text-sm text-gray-500 mt-1">No hours are waiting for your approval. Submitted time shows up here for sign-off before you pay it.</p>
+    </div>
+  <% else %>
+    <%# Summary bar + approve-everything %>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 mt-6">
+      <p class="text-sm text-gray-700">
+        <span class="font-semibold text-gray-900"><%= pluralize(@total_entries, "entry") %></span>
+        · <span class="font-semibold text-gray-900"><%= number_with_precision(@total_hours, precision: 2, strip_insignificant_zeros: true) %> hrs</span>
+        from <%= pluralize(@groups.size, "person") %> awaiting your approval
+      </p>
+      <%= form_with url: manage_approve_staffing_timesheets_path, method: :patch, data: { turbo_confirm: "Approve every pending entry from all #{@groups.size} people?" } do %>
+        <%= hidden_field_tag :all, "1" %>
+        <%= render "shared/button", text: "Approve everything", variant: "secondary", size: "small", type: :submit %>
+      <% end %>
+    </div>
+
+    <div class="space-y-4 mt-4">
+      <% @groups.each do |person, entries| %>
+        <% person_hours = entries.sum(&:hours) %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <%# Person header %>
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50">
+            <div class="flex items-center gap-3 min-w-0">
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate"><%= person.name %></div>
+                <div class="text-xs text-gray-500"><%= pluralize(entries.size, "entry") %> · <%= number_with_precision(person_hours, precision: 2, strip_insignificant_zeros: true) %> hrs</div>
+              </div>
+            </div>
+            <%= form_with url: manage_approve_staffing_timesheets_path(person_id: person.id), method: :patch do %>
+              <%= render "shared/button", text: "Approve #{number_with_precision(person_hours, precision: 2, strip_insignificant_zeros: true)} hrs", variant: "primary", size: "small", type: :submit %>
+            <% end %>
+          </div>
+
+          <%# This person's pending entries %>
+          <div class="divide-y divide-gray-100">
+            <% entries.each do |e| %>
+              <div class="flex items-center gap-3 px-5 py-3">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium text-gray-900">
+                    <%= e.started_at.strftime("%a %b %-d") %>
+                    <span class="text-gray-400">·</span>
+                    <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h
+                    <% if e.source == "manual" %>
+                      <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">self-logged</span>
+                    <% end %>
+                  </div>
+                  <div class="text-xs text-gray-500 truncate">
+                    <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
+                    <% if e.shift&.role_label.present? %> · <%= e.shift.role_label %><% end %>
+                    <% if e.notes.present? %> · <span class="italic">“<%= e.notes %>”</span><% end %>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 flex-shrink-0">Pending</span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

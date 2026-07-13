@@ -8,6 +8,7 @@
     description: "<p>Your team — who works for you, what they do, and how they get paid. Add staff, schedule their shifts, and pay them, all in one place.</p>",
     actions: [
       { icon: "calendar", text: "Scheduling", description: "Build the week's shifts", path: manage_staffing_scheduling_path },
+      { icon: "clipboard-list", text: "Approve Hours", description: "Sign off on submitted time", path: manage_staffing_timesheets_path, badge: @hours_to_approve_count },
       { icon: "dollar-sign", text: "Pay People", description: "Pay staff for hours worked", path: manage_staffing_pay_path },
       { icon: "users", text: "Org Chart", description: "See your whole team", path: manage_staffing_org_chart_path },
       { icon: "user-group", text: "Add staff member", description: "Onboard someone new", path: manage_new_staffing_staff_wizard_path }

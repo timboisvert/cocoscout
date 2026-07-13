@@ -12,14 +12,14 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "approves a person's pending hours (worker then sees them approved)" do
-    e = create(:staff_time_entry, organization: org, person: person)
-    expect(e.status).to eq("pending")
+  it "only offers approved hours to pull into a run" do
+    pending = create(:staff_time_entry, organization: org, person: person)
+    approved = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
 
-    patch manage_approve_staffing_pay_time_entries_path(person_id: person.id)
+    get manage_staffing_pay_time_entries_path(person_id: person.id)
     expect(response).to have_http_status(:ok)
-    expect(e.reload).to be_approved
-    expect(e.approved_by).to eq(owner)
+    expect(response.body).to include(%(data-entry-id="#{approved.id}"))
+    expect(response.body).not_to include(%(data-entry-id="#{pending.id}"))
   end
 
   describe "draft autosave" do
