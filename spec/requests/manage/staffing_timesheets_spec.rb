@@ -97,7 +97,7 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
   end
 
   describe "edit/update" do
-    it "updates the worked time and recomputes hours" do
+    it "recomputes hours and kicks the entry back to review for the audit trail" do
       entry = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
       patch manage_staffing_timesheet_path(entry), params: {
         staff_time_entry: {
@@ -105,13 +105,34 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
           ended_at: "2026-07-01T21:30"
         }
       }
-      expect(response).to redirect_to(manage_approved_staffing_timesheets_path)
-      expect(entry.reload.hours).to eq(3.5)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Re-approve now")
+      entry.reload
+      expect(entry.hours).to eq(3.5)
+      expect(entry.approved_at).to be_nil
+      expect(entry.status).to eq("pending")
     end
 
     it "refuses to edit a paid entry" do
       entry = create(:staff_time_entry, :paid, organization: org, person: person)
       patch manage_staffing_timesheet_path(entry), params: { staff_time_entry: { started_at: "2026-07-01T18:00", ended_at: "2026-07-01T22:00" } }
+      expect(flash[:alert]).to be_present
+    end
+  end
+
+  describe "reapprove" do
+    it "signs off again on an edited entry" do
+      entry = create(:staff_time_entry, organization: org, person: person)
+      patch manage_reapprove_staffing_timesheet_path(entry)
+      expect(response).to redirect_to(manage_approved_staffing_timesheets_path)
+      entry.reload
+      expect(entry.approved_at).to be_present
+      expect(entry.approved_by).to eq(owner)
+    end
+
+    it "refuses to reapprove a paid entry" do
+      entry = create(:staff_time_entry, :paid, organization: org, person: person)
+      patch manage_reapprove_staffing_timesheet_path(entry)
       expect(flash[:alert]).to be_present
     end
   end

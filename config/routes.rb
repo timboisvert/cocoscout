@@ -1169,6 +1169,7 @@ Rails.application.routes.draw do
     get   "staffing/timesheets/approved",         to: "staffing/timesheets#approved",    as: "approved_staffing_timesheets"
     get   "staffing/timesheets/:id/edit",         to: "staffing/timesheets#edit",        as: "edit_staffing_timesheet"
     patch "staffing/timesheets/:id/unapprove",    to: "staffing/timesheets#unapprove",   as: "unapprove_staffing_timesheet"
+    patch "staffing/timesheets/:id/reapprove",    to: "staffing/timesheets#reapprove",   as: "reapprove_staffing_timesheet"
     patch "staffing/timesheets/:id",              to: "staffing/timesheets#update",      as: "staffing_timesheet"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"

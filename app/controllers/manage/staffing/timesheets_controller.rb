@@ -71,18 +71,31 @@ module Manage
         @entry = find_editable_entry
       end
 
-      # Correct the worked time on an entry (unpaid only). Editing leaves the
-      # entry's approval status as-is; the usual flow is to unapprove first, edit,
-      # then reapprove from the queue.
+      # Correct the worked time on an entry (unpaid only). For the audit trail,
+      # any edit sends the entry back to "pending review": the manager is then
+      # offered a re-approve step in the same modal (see the :saved state in the
+      # edit view). Renders the modal frame rather than redirecting so the flow
+      # stays in one place.
       def update
         @entry = find_editable_entry
         return unless @entry
 
-        if @entry.update(entry_params)
-          redirect_to manage_approved_staffing_timesheets_path, notice: "Updated those hours."
+        if @entry.update(entry_params.merge(approved_at: nil, approved_by: nil))
+          @saved = true
+          render :edit
         else
           render :edit, status: :unprocessable_entity
         end
+      end
+
+      # Sign off again on an entry that was just edited (and thereby kicked back to
+      # pending). Full-page redirect so the approved-hours list reflects it.
+      def reapprove
+        entry = find_editable_entry
+        return unless entry
+
+        entry.update!(approved_at: Time.current, approved_by: Current.user)
+        redirect_to manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
       end
 
       private

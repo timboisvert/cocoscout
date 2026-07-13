@@ -65,7 +65,7 @@
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Paid</span>
                   <% else %>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>
-                    <%= link_to manage_edit_staffing_timesheet_path(e), class: "text-gray-400 hover:text-pink-600", title: "Edit hours" do %>
+                    <%= link_to manage_edit_staffing_timesheet_path(e), data: { turbo_frame: "timesheet_edit_modal" }, class: "text-gray-400 hover:text-pink-600", title: "Edit hours" do %>
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
                     <% end %>
                     <%= button_to manage_unapprove_staffing_timesheet_path(e), method: :patch,
@@ -83,3 +83,6 @@
     </div>
   <% end %>
 </div>
+
+<%# Host frame for the edit / re-approve modal (populated by the Edit links). %>
+<%= turbo_frame_tag "timesheet_edit_modal" %>
