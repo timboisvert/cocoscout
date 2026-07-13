@@ -1,13 +1,15 @@
 <% content_for :title, "Pay People" %>
 
-<div class="w-full mb-10" data-controller="pay-run pay-pull tips-worksheet pay-draft"
+<div class="w-full mb-10" data-controller="pay-run pay-pull tips-worksheet pay-draft help-modal"
      data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
      data-pay-draft-initial-value="<%= @draft %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ ["Staffing", manage_staffing_index_path] ],
     text: "Pay People",
-    links: []
+    links: [
+      { text: "How pay works", icon: "search", variant: "secondary", type: :button, data: { action: "click->help-modal#open" } }
+    ]
   } %>
 
   <% payable = @staff_members.select { |m| m.person.respond_to?(:can_receive_payouts?) && m.person.can_receive_payouts? } %>
@@ -28,13 +30,47 @@
   <% else %>
     <%= form_with url: manage_create_staffing_pay_path, method: :post, class: "mt-4",
           data: { "pay-draft-target": "form", action: "input->pay-draft#schedule change->pay-draft#schedule" } do %>
-      <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Payday</label>
-          <%= date_field_tag :payday, @payday, class: "px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <%# ACH is the only funding method for now — no card option. %>
+      <input type="hidden" name="funding_method" value="ach">
+
+      <%# Gusto-style summary: the pay date plus the estimated money-movement
+          timeline (funds leave your bank on a different day than staff get paid). %>
+      <% run_on = Date.current %>
+      <% withdraw_on = add_business_days(run_on, 1) %>
+      <% deposit_on = add_business_days(withdraw_on, 2) %>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 mb-4">
+        <div class="flex flex-col lg:flex-row lg:items-stretch gap-5">
+          <div class="lg:w-56 lg:border-r lg:border-gray-100 lg:pr-5">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pay date</label>
+            <%= date_field_tag :payday, @payday, class: "w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="text-xs text-gray-500 mt-1">The pay date for your records.</p>
+          </div>
+
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Estimated timing</span>
+              <button type="button" data-action="click->help-modal#open" class="text-xs text-pink-600 hover:text-pink-700 cursor-pointer">What's this?</button>
+            </div>
+            <ol class="relative border-l border-gray-200 ml-1.5 space-y-3">
+              <li class="ml-4">
+                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-pink-500"></span>
+                <div class="text-sm font-medium text-gray-900">Today, <%= run_on.strftime("%b %-d") %></div>
+                <div class="text-xs text-gray-500">You start this pay run</div>
+              </li>
+              <li class="ml-4">
+                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-gray-300"></span>
+                <div class="text-sm font-medium text-gray-900">~<%= withdraw_on.strftime("%b %-d") %></div>
+                <div class="text-xs text-gray-500">Funds debited from your bank (ACH)</div>
+              </li>
+              <li class="ml-4">
+                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-gray-300"></span>
+                <div class="text-sm font-medium text-gray-900">~<%= deposit_on.strftime("%b %-d") %></div>
+                <div class="text-xs text-gray-500">Staff receive their deposits</div>
+              </li>
+            </ol>
+            <p class="text-[11px] text-gray-400 mt-3">Estimates — actual ACH timing depends on your bank.</p>
+          </div>
         </div>
-        <%# ACH is the only funding method for now — no card option. %>
-        <input type="hidden" name="funding_method" value="ach">
       </div>
 
       <div class="overflow-x-auto border border-gray-200 rounded-lg bg-white">
@@ -165,4 +201,40 @@
       </div>
     </div>
   </div>
+
+  <%# ---- Help pop-up: what each column means ---- %>
+  <%= render layout: "shared/help_modal", locals: { title: "Paying your team" } do %>
+    <p class="text-sm text-gray-600 mb-4">Enter what each person earned this pay period. Here's what every column does:</p>
+    <dl class="space-y-3 text-sm">
+      <div>
+        <dt class="font-medium text-gray-900">Rate &amp; Hours</dt>
+        <dd class="text-gray-600">Their hourly rate times the hours they worked. Hit <span class="text-pink-600">pull</span> to load hours they submitted and you approved.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-gray-900">Bonus</dt>
+        <dd class="text-gray-600">A one-off extra on top of their hourly pay.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-gray-900">Reimb.</dt>
+        <dd class="text-gray-600">Expenses you're paying back (supplies, mileage). Added to their deposit as-is.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-gray-900">Tips</dt>
+        <dd class="text-gray-600">Tips you're paying out <em>through us</em> — added to the deposit they receive.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-gray-900">Cash tips</dt>
+        <dd class="text-gray-600">Tips they were <strong>already handed in cash</strong>. Recorded here for your records and their pay history only — <strong>we don't send this money again</strong>, so it's excluded from the total.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-gray-900">Total</dt>
+        <dd class="text-gray-600">What we'll deposit to their bank — everything above except cash tips.</dd>
+      </div>
+    </dl>
+    <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+      <p>Only staff with a connected bank get paid; the rest are skipped until they connect one.</p>
+      <p>Funds are pulled from your bank by ACH and land in staff accounts a few business days later.</p>
+      <p>Each staff member gets 2 free payments a month; additional payments are $1 each.</p>
+    </div>
+  <% end %>
 </div>
