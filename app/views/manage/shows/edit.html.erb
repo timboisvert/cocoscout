@@ -90,6 +90,23 @@
       <div class="text-sm text-gray-500">(eg. If the event on this particular date has a sub-name or special name to go along with the Production name)</div>
       <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
     </div>
+
+    <!-- Casting -->
+    <div class="mt-6 pt-6 border-t border-gray-200">
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <h4 class="text-sm font-semibold text-gray-900">Enable casting for this <%= @show.event_type.titleize.downcase %></h4>
+          <p class="text-xs text-gray-500 mt-1">
+            When enabled, you can assign cast members to roles for this event.
+            Shows, classes, and workshops default to on; rehearsals and meetings default to off — flip this on if one of them needs cast after all.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer ml-4">
+          <%= form.check_box :casting_enabled, class: "sr-only peer" %>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+    </div>
   </div>
 
   <!-- Tab 2: Schedule -->
