@@ -32,19 +32,37 @@ export default class extends Controller {
         return Array.from(this.frameTarget.querySelectorAll('input[data-entry-id]:checked'))
     }
 
+    // Total hours and total worked pay (each entry at its own role's rate) for
+    // the currently checked entries.
+    totals() {
+        return this.checkedEntries().reduce((acc, c) => {
+            const hours = parseFloat(c.dataset.hours) || 0
+            const rateCents = parseFloat(c.dataset.rateCents) || 0
+            acc.hours += hours
+            acc.workedCents += Math.round(rateCents * hours)
+            return acc
+        }, { hours: 0, workedCents: 0 })
+    }
+
     recalcSubtotal() {
-        const sum = this.checkedEntries().reduce((a, c) => a + (parseFloat(c.dataset.hours) || 0), 0)
-        if (this.hasSubtotalTarget) this.subtotalTarget.textContent = String(Math.round(sum * 100) / 100)
+        const { hours, workedCents } = this.totals()
+        if (this.hasSubtotalTarget) {
+            this.subtotalTarget.textContent = `${Math.round(hours * 100) / 100} hrs · $${(workedCents / 100).toFixed(2)}`
+        }
     }
 
     include(event) {
         if (event) event.preventDefault()
         const checked = this.checkedEntries()
-        const sum = checked.reduce((a, c) => a + (parseFloat(c.dataset.hours) || 0), 0)
+        const { hours, workedCents } = this.totals()
 
         const hoursInput = document.getElementById(`pay-hours-${this.memberId}`)
         if (hoursInput) {
-            hoursInput.value = Math.round(sum * 100) / 100
+            hoursInput.value = Math.round(hours * 100) / 100
+            // Pulled entries are paid per-role, so hand the computed worked pay to
+            // the row for the live total (the server recomputes it authoritatively).
+            const row = hoursInput.closest('[data-pay-run-target="row"]')
+            if (row) row.dataset.workedCents = String(workedCents)
             hoursInput.dispatchEvent(new Event("input", { bubbles: true })) // triggers pay-run#recalc
         }
         const holder = document.getElementById(`pay-entries-${this.memberId}`)

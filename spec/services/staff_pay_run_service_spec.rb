@@ -13,9 +13,38 @@ RSpec.describe StaffPayRunService do
     create(:organization_staff_member, organization: org, person: person, hourly_rate_cents: rate_cents)
   end
 
+  # A 5-hour (18:00–23:00) time entry tied to a shift for the given house role.
+  def role_entry(person, house_role)
+    shift = create(:shift, house_role: house_role)
+    assignment = create(:shift_assignment, shift: shift, person: person)
+    create(:staff_time_entry, :from_shift, organization: org, person: person, shift_assignment: assignment)
+  end
+
   describe ".payable_cents" do
-    it "sums hours×rate plus bonus, reimbursement and tips" do
-      expect(described_class.payable_cents(rate_cents: 2000, hours: 3.5, bonus_cents: 1000, reimbursement_cents: 250, tips_cents: 500)).to eq(8750)
+    it "sums worked pay plus bonus, reimbursement and tips" do
+      expect(described_class.payable_cents(worked_cents: 7000, bonus_cents: 1000, reimbursement_cents: 250, tips_cents: 500)).to eq(8750)
+    end
+  end
+
+  describe ".worked_cents" do
+    it "pays the member's default rate on manually entered hours" do
+      member = staff(name: "Manual Mo", rate_cents: 2000)
+      expect(described_class.worked_cents(organization: org, member: member, hours: 3.5)).to eq(7000)
+    end
+
+    it "pays each pulled entry at its own role's rate" do
+      member = staff(name: "Roley Rae", rate_cents: 1300) # default $13/hr
+      bartender = create(:house_role, organization: org, name: "Bartender")
+      barback = create(:house_role, organization: org, name: "Barback")
+      member.sync_role_qualifications!(role_ids: [ bartender.id, barback.id ],
+                                       rates: { bartender.id => "15", barback.id => "18" })
+
+      bar_entry = role_entry(member.person, bartender)     # 5h × $15 = 7500
+      back_entry = role_entry(member.person, barback)      # 5h × $18 = 9000
+
+      worked = described_class.worked_cents(organization: org, member: member,
+                                            time_entry_ids: [ bar_entry.id, back_entry.id ])
+      expect(worked).to eq(16_500)
     end
   end
 

@@ -1,9 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Live totals for the staff pay-run grid. Each row carries the hourly rate (in
-// cents) on data-rate; recalc computes rate×hours + bonus + reimbursement +
-// tips per row and the grand total in the footer. Cash tips are excluded from
-// the amount paid through Stripe.
+// Live totals for the staff pay-run grid. Worked pay is either per-role (when
+// approved hours are pulled in — the row carries the computed worked cents on
+// data-worked-cents) or the row's default rate×hours. recalc adds bonus +
+// reimbursement + tips per row and the grand total in the footer. Cash tips are
+// excluded from the amount paid through Stripe.
 export default class extends Controller {
     static targets = ["row", "grandTotal", "count"]
 
@@ -17,7 +18,9 @@ export default class extends Controller {
         this.rowTargets.forEach(row => {
             const rate = (parseFloat(row.dataset.rate || "0") || 0) / 100
             const val = f => parseFloat(row.querySelector(`[data-pay-field="${f}"]`)?.value || "0") || 0
-            const total = rate * val("hours") + val("bonus") + val("reimbursement") + val("tips")
+            // Pulled per-role pay takes precedence over rate×hours when present.
+            const worked = row.dataset.workedCents ? (parseFloat(row.dataset.workedCents) / 100) : rate * val("hours")
+            const total = worked + val("bonus") + val("reimbursement") + val("tips")
             const cell = row.querySelector("[data-pay-total]")
             if (cell) cell.textContent = this.fmt(total)
             if (total > 0 && row.dataset.payable === "true") { grand += total; paying += 1 }

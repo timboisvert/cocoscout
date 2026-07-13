@@ -15,10 +15,21 @@ class StaffPayRunService
 
   Result = Struct.new(:batch, :skipped, keyword_init: true)
 
+  # Worked-hours pay in cents. When specific approved time entries are pulled in,
+  # each is paid at that role's rate (rate_cents_for resolves role rate → member
+  # default); otherwise the manually entered hours are paid at the member default.
+  def self.worked_cents(organization:, member:, hours: 0, time_entry_ids: nil)
+    ids = Array(time_entry_ids).map(&:to_i).reject(&:zero?)
+    return (member.hourly_rate_cents.to_i * hours.to_f).round if ids.empty?
+
+    organization.staff_time_entries.for_person(member.person).where(id: ids)
+                .includes(shift_assignment: { shift: :house_role })
+                .sum { |entry| (member.rate_cents_for(entry.shift&.house_role).to_i * entry.hours.to_f).round }
+  end
+
   # amount actually routed through Stripe (cash tips excluded).
-  def self.payable_cents(rate_cents:, hours:, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0)
-    worked = (rate_cents.to_i * hours.to_f / 1.0).round
-    worked + bonus_cents.to_i + reimbursement_cents.to_i + tips_cents.to_i
+  def self.payable_cents(worked_cents:, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0)
+    worked_cents.to_i + bonus_cents.to_i + reimbursement_cents.to_i + tips_cents.to_i
   end
 
   # How many Stripe payments this payee has already been sent this calendar
@@ -47,9 +58,12 @@ class StaffPayRunService
       lines.each do |line|
         member = line[:staff_member]
         payee = member.person
+        worked = worked_cents(
+          organization: organization, member: member,
+          hours: line[:hours], time_entry_ids: line[:time_entry_ids]
+        )
         amount = payable_cents(
-          rate_cents: member.hourly_rate_cents,
-          hours: line[:hours],
+          worked_cents: worked,
           bonus_cents: line[:bonus_cents],
           reimbursement_cents: line[:reimbursement_cents],
           tips_cents: line[:tips_cents]

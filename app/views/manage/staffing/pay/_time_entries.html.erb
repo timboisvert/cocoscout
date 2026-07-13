@@ -7,7 +7,8 @@
     <div class="space-y-2">
       <% entries.each do |e| %>
         <label class="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300">
-          <input type="checkbox" checked data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>"
+          <% entry_rate_cents = member&.rate_cents_for(e.shift&.house_role).to_i %>
+          <input type="checkbox" checked data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>" data-rate-cents="<%= entry_rate_cents %>"
                  data-action="change->pay-pull#recalcSubtotal"
                  class="h-4 w-4 rounded border-gray-300 accent-pink-500">
           <div class="min-w-0 flex-1">
@@ -20,6 +21,7 @@
             <div class="text-xs text-gray-500 truncate">
               <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
               <% if e.shift&.role_label.present? %> · <%= e.shift.role_label %><% end %>
+              <% if entry_rate_cents.positive? %> · <%= number_to_currency(entry_rate_cents / 100.0) %>/hr<% end %>
             </div>
           </div>
           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Approved</span>

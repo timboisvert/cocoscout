@@ -22,7 +22,8 @@ module Manage
       # into the pull-hours modal frame.
       def time_entries
         person = staff_person
-        render partial: "manage/staffing/pay/time_entries", locals: { entries: approved_entries_for(person), person: person }
+        member = Current.organization.organization_staff_members.active.find_by(person_id: person.id)
+        render partial: "manage/staffing/pay/time_entries", locals: { entries: approved_entries_for(person), person: person, member: member }
       end
 
       # Server-side draft autosave of the whole pay form (opaque JSON blob).
@@ -97,8 +98,12 @@ module Manage
             notes: row[:notes].to_s.strip.presence,
             time_entry_ids: Array(row[:time_entry_ids])
           }
+          worked = StaffPayRunService.worked_cents(
+            organization: Current.organization, member: member,
+            hours: line[:hours], time_entry_ids: line[:time_entry_ids]
+          )
           gross = StaffPayRunService.payable_cents(
-            rate_cents: member.hourly_rate_cents, hours: line[:hours],
+            worked_cents: worked,
             bonus_cents: line[:bonus_cents], reimbursement_cents: line[:reimbursement_cents], tips_cents: line[:tips_cents]
           )
           next if gross <= 0
