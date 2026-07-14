@@ -5,7 +5,7 @@ module Manage
     before_action :load_course_offering, only: %i[
       show edit update destroy open_registration close_registration
       search_instructor update_instructor invite_instructor
-      cancel_registration refund_registration
+      cancel_registration refund_registration add_sessions
       enable_questionnaire disable_questionnaire send_questionnaire
       questionnaire update_questionnaire_settings
     ]
