@@ -252,7 +252,7 @@ module Manage
           production.shows.create!(
             date_and_time: dt,
             duration_minutes: duration,
-            event_type: "Class",
+            event_type: "class",
             location: production.shows.last&.location
           )
           created_count += 1
@@ -261,7 +261,7 @@ module Manage
             production.shows.create!(
               date_and_time: session_dt,
               duration_minutes: duration,
-              event_type: "Class",
+              event_type: "class",
               location: production.shows.last&.location
             )
             created_count += 1
