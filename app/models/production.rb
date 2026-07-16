@@ -36,6 +36,7 @@ class Production < ApplicationRecord
   # Agreements
   belongs_to :agreement_template, optional: true
   has_many :agreement_signatures, dependent: :destroy
+  has_many :agreement_requests, dependent: :destroy
 
   belongs_to :organization
   # A production can be the subject of many contracts over time (each contract books
@@ -513,6 +514,46 @@ class Production < ApplicationRecord
     percent = total > 0 ? (signed * 100.0 / total).round : 100
 
     { signed: signed, total: total, percent: percent }
+  end
+
+  # Per-person roster for the producer grid: every Person in the talent pool with
+  # their agreement state — :signed, :awaiting (sent, not yet signed), or
+  # :not_sent — plus the relevant timestamps. Sorted signed → awaiting →
+  # not_sent, then by name. Returns [] unless an agreement is configured.
+  def agreement_roster
+    return [] unless agreement_template.present?
+
+    people = effective_talent_pool.members.select { |m| m.is_a?(Person) }
+    signatures = agreement_signatures.index_by(&:person_id)
+    requests = agreement_requests.index_by(&:person_id)
+
+    people.map { |person|
+      signature = signatures[person.id]
+      request = requests[person.id]
+      status = if signature then :signed
+      elsif request then :awaiting
+      else :not_sent
+      end
+
+      {
+        person: person,
+        status: status,
+        signed_at: signature&.signed_at,
+        sent_at: request&.sent_at,
+        send_count: request&.send_count
+      }
+    }.sort_by { |row| [ { signed: 0, awaiting: 1, not_sent: 2 }[row[:status]], row[:person].name.to_s.downcase ] }
+  end
+
+  # Roster counts for the summary line: { signed:, awaiting:, not_sent:, total: }.
+  def agreement_roster_counts
+    counts = agreement_roster.each_with_object(Hash.new(0)) { |row, memo| memo[row[:status]] += 1 }
+    {
+      signed: counts[:signed],
+      awaiting: counts[:awaiting],
+      not_sent: counts[:not_sent],
+      total: counts.values.sum
+    }
   end
 
   private

@@ -328,48 +328,36 @@ module Manage
       return redirect_to edit_manage_production_path(@production), alert: "No agreement configured for this production" unless @production.agreement_template.present?
 
       @stats = @production.agreement_signature_stats
-      @signed = @production.agreement_signatures.includes(:person).order("people.name")
-      @unsigned = @production.people_without_agreement_signature.order(:name)
+      @roster = @production.agreement_roster
+      @roster_counts = @production.agreement_roster_counts
     end
 
+    # Send (or re-send) the agreement request. Defaults to everyone who hasn't
+    # signed; pass person_id to target a single performer. Delivery + roster
+    # tracking both go through AgreementRequestService.
     def send_agreement_reminders
       return redirect_to edit_manage_production_path(@production), alert: "No agreement configured" unless @production.agreement_template.present?
 
-      unsigned_people = @production.people_without_agreement_signature
+      recipients = if params[:person_id].present?
+        @production.people_without_agreement_signature.where(id: params[:person_id])
+      else
+        @production.people_without_agreement_signature
+      end
 
-      if unsigned_people.empty?
+      if recipients.empty?
         redirect_to agreement_status_manage_production_path(@production), notice: "Everyone has already signed the agreement!"
         return
       end
 
-      # Render agreement reminder from content template
-      agreement_url = Rails.application.routes.url_helpers.my_production_agreement_url(@production, host: Rails.application.config.action_mailer.default_url_options[:host])
-
-      rendered = ContentTemplateService.render("request_agreement_signature", {
-        recipient_name: "team",
-        production_name: @production.name,
-        agreement_url: agreement_url
-      })
-
-      conversation = Conversation.create!(
-        organization: @production.organization,
-        created_by: Current.user,
-        subject: rendered[:subject],
-        message_type: :announcement
+      count = AgreementRequestService.send_to(
+        production: @production,
+        people: recipients.to_a,
+        via: "manual",
+        sent_by: Current.user
       )
-
-      message = conversation.messages.create!(
-        sender: Current.person,
-        body: rendered[:body]
-      )
-
-      # Add all unsigned people as participants
-      unsigned_people.each do |person|
-        conversation.conversation_participants.find_or_create_by!(person: person)
-      end
 
       redirect_to agreement_status_manage_production_path(@production),
-                  notice: "Reminder sent to #{unsigned_people.count} #{'performer'.pluralize(unsigned_people.count)} who haven't signed"
+                  notice: "Agreement sent to #{count} #{'performer'.pluralize(count)}."
     end
 
     private
@@ -421,7 +409,7 @@ module Manage
                                          :cast_talent_pool_ids,
                                          :auto_create_event_pages, :auto_create_event_pages_mode,
                                          :event_visibility_overrides,
-                                         :agreement_template_id, :agreement_required).merge(organization_id: Current.organization&.id)
+                                         :agreement_template_id, :agreement_required, :agreement_auto_send).merge(organization_id: Current.organization&.id)
     end
 
     # Convert event_visibility checkboxes to JSON stored in event_visibility_overrides

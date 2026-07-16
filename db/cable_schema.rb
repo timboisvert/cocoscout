@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_222459) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -70,6 +70,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_222459) do
     t.index ["person_advance_id", "show_payout_line_item_id"], name: "idx_advance_recoveries_unique", unique: true
     t.index ["person_advance_id"], name: "index_advance_recoveries_on_person_advance_id"
     t.index ["show_payout_line_item_id"], name: "index_advance_recoveries_on_show_payout_line_item_id"
+  end
+
+  create_table "agreement_requests", force: :cascade do |t|
+    t.bigint "agreement_template_id"
+    t.datetime "created_at", null: false
+    t.bigint "person_id", null: false
+    t.bigint "production_id", null: false
+    t.integer "send_count", default: 1, null: false
+    t.datetime "sent_at", null: false
+    t.bigint "sent_by_id"
+    t.string "sent_via", default: "manual", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agreement_template_id"], name: "index_agreement_requests_on_agreement_template_id"
+    t.index ["person_id"], name: "index_agreement_requests_on_person_id"
+    t.index ["production_id", "person_id"], name: "index_agreement_requests_on_production_id_and_person_id", unique: true
+    t.index ["production_id"], name: "index_agreement_requests_on_production_id"
+    t.index ["sent_by_id"], name: "index_agreement_requests_on_sent_by_id"
   end
 
   create_table "agreement_signatures", force: :cascade do |t|
@@ -1603,6 +1620,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_222459) do
   end
 
   create_table "productions", force: :cascade do |t|
+    t.boolean "agreement_auto_send", default: false, null: false
     t.boolean "agreement_required", default: false, null: false
     t.bigint "agreement_template_id"
     t.datetime "archived_at"
@@ -2687,6 +2705,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_222459) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "advance_recoveries", "person_advances"
   add_foreign_key "advance_recoveries", "show_payout_line_items"
+  add_foreign_key "agreement_requests", "agreement_templates"
+  add_foreign_key "agreement_requests", "people"
+  add_foreign_key "agreement_requests", "productions"
+  add_foreign_key "agreement_requests", "users", column: "sent_by_id"
   add_foreign_key "agreement_signatures", "agreement_templates"
   add_foreign_key "agreement_signatures", "people"
   add_foreign_key "agreement_signatures", "productions"
