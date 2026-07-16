@@ -38,7 +38,9 @@ module Manage
       "manage/audition_email_assignments" => :auditions,
       # Casting Table
       "manage/casting_tables" => :casting_table,
-      "manage/casting_table_wizard" => :casting_table
+      "manage/casting_table_wizard" => :casting_table,
+      # Performer agreements
+      "manage/agreement_templates" => :agreements
     }.freeze
 
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.
@@ -131,6 +133,20 @@ module Manage
           { title: "Events & programming", body: "Break down your calendar by event type and status to plan what's next." }
         ],
         outcome: "Make booking, budgeting, and casting decisions from real numbers — not gut feel."
+      },
+      agreements: {
+        name: "Performer Agreements",
+        icon: "clipboard-list",
+        headline: "Get every performer on the same page — and on the record",
+        subhead: "Send agreements, collect e-signatures, and always know who's signed.",
+        description: "Performer Agreements turns your code of conduct, payment terms, and policies into a reusable template performers sign online. Send it manually or automatically when someone joins your talent pool, and track it all from one roster.",
+        capabilities: [
+          { title: "Reusable agreement templates", body: "Write your terms once with merge fields for production, performer, and date, and reuse them across every production." },
+          { title: "Online e-signatures", body: "Performers review and sign in-app; each signature is snapshotted with a timestamp for your records." },
+          { title: "Manual or automatic sending", body: "Send on your schedule, or have the agreement go out the moment someone is added to a talent pool." },
+          { title: "Signed / awaiting / not-sent roster", body: "See at a glance who has signed, who's been asked, and who still needs it — and resend in a click." }
+        ],
+        outcome: "Cast with confidence, knowing everyone has agreed to your terms in writing."
       }
     }.freeze
 

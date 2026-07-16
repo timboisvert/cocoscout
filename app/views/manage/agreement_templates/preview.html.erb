@@ -1,5 +1,30 @@
 <% content_for :title, "Preview: #{@agreement_template.name}" %>
 
+<% if turbo_frame_request? %>
+  <%# Rendered into the agreement_preview_modal frame — shown as a modal. %>
+  <%= turbo_frame_tag "agreement_preview_modal" do %>
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4"
+         data-controller="frame-modal" data-action="click->frame-modal#closeOnBackdrop">
+      <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg my-8" data-action="click->frame-modal#stop">
+        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-lg">
+          <div>
+            <h3 class="text-lg font-semibold text-white">Agreement Preview</h3>
+            <p class="text-xs text-white/80"><%= @agreement_template.name %> · Version <%= @agreement_template.version %></p>
+          </div>
+          <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->frame-modal#close" aria-label="Close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-6 max-h-[70vh] overflow-y-auto">
+          <p class="text-xs text-gray-500 mb-4">This preview uses sample data. Variables like performer name and production are replaced with real values when shown to performers.</p>
+          <div class="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
+            <%= @rendered_content %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% else %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -43,3 +68,4 @@
     <% end %>
   </div>
 </div>
+<% end %>
