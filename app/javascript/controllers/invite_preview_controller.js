@@ -1,10 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Opens a modal that previews the onboarding email exactly as it will be sent
-// (already interpolated), then lets the org confirm the send. Replaces the
-// cheap browser confirm dialog for (re)sending onboarding invites.
+// Opens a modal with the onboarding email draft (already interpolated) and lets
+// the org edit the subject and (rich-text) body before (re)sending the invite.
 export default class extends Controller {
-    static targets = ["modal", "toName", "toEmail", "subject", "body", "form"]
+    static targets = ["modal", "toName", "toEmail", "subject", "bodyInput", "bodyEditor", "form"]
 
     open(event) {
         if (event) event.preventDefault()
@@ -13,8 +12,13 @@ export default class extends Controller {
         if (this.hasFormTarget && d.invitePath) this.formTarget.action = d.invitePath
         this.toNameTargets.forEach(el => { el.textContent = d.toName || "" })
         if (this.hasToEmailTarget) this.toEmailTarget.textContent = d.toEmail || ""
-        if (this.hasSubjectTarget) this.subjectTarget.textContent = d.emailSubject || ""
-        if (this.hasBodyTarget) this.bodyTarget.innerHTML = d.emailBody || ""
+        if (this.hasSubjectTarget) this.subjectTarget.value = d.emailSubject || ""
+
+        const html = d.emailBody || ""
+        if (this.hasBodyInputTarget) this.bodyInputTarget.value = html
+        if (this.hasBodyEditorTarget && this.bodyEditorTarget.editor) {
+            this.bodyEditorTarget.editor.loadHTML(html)
+        }
 
         this.show()
     }

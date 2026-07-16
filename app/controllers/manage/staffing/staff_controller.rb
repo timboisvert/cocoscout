@@ -54,7 +54,8 @@ module Manage
       # up how they get paid) and a parallel in-app message. Marks the membership
       # as "invited" so the staff list reflects where they are.
       def invite
-        StaffOnboardingInviter.call(staff_member: @staff_member, sender: Current.user)
+        StaffOnboardingInviter.call(staff_member: @staff_member, sender: Current.user,
+                                    subject: params[:email_subject], body: params[:email_body])
         redirect_to manage_staffing_index_path,
                     notice: "Invited #{@staff_member.display_name} to finish onboarding — we emailed and messaged them to set up how they get paid."
       rescue StaffOnboardingInviter::Error => e

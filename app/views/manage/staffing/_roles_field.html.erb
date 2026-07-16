@@ -1,19 +1,17 @@
 <%# Role assignments WITH a per-role pay rate. Each role the person can fill has
-    its own hourly rate (blank = fall back to their default rate). Submits
-    house_role_ids[] and role_rates[<id>]. A "Manage roles" modal (Turbo-frame)
-    adds/removes house roles without leaving the page; new roles sync into the
-    list when it closes.
-    Locals: house_roles, assigned_ids (array of ids).
-    Optional: role_rates (hash id => dollars), default_rate_dollars. %>
+    its own hourly rate — this is the only rate they're paid at (there is no
+    default/fallback rate). Submits house_role_ids[] and role_rates[<id>]. A
+    "Manage roles" modal (Turbo-frame) adds/removes house roles without leaving
+    the page; new roles sync into the list when it closes.
+    Locals: house_roles, assigned_ids (array of ids). Optional: role_rates. %>
 <%
   role_rates = local_assigns.fetch(:role_rates, {}).transform_keys(&:to_i)
-  default_rate_dollars = local_assigns[:default_rate_dollars]
-  rate_placeholder = default_rate_dollars.present? ? format("%.2f", default_rate_dollars) : "0.00"
+  rate_placeholder = "0.00"
 %>
 <% if house_roles.empty? %>
   <p class="text-sm text-gray-500 mb-3" id="staff-roles-empty">No roles yet — add some so you can mark what this person is qualified for and what they earn in each.</p>
 <% end %>
-<p class="text-xs text-gray-500 mb-2">Check each role they can work and set the rate for it. Leave a rate blank to use their default rate<%= " ($#{rate_placeholder}/hr)" if default_rate_dollars.present? %>.</p>
+<p class="text-xs text-gray-500 mb-2">Check each role they can work and set the hourly rate for it. They're paid the rate for whichever role they work.</p>
 <div id="staff-roles-list" data-rate-placeholder="<%= rate_placeholder %>" class="space-y-2">
   <% house_roles.each do |role| %>
     <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer" data-role-row data-role-id="<%= role.id %>">
@@ -42,7 +40,7 @@
        class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->modal#closeOnBackdrop click->roles-field#sync">
     <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->modal#stopPropagation">
+      <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->modal#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
           <h3 class="text-lg font-semibold text-white">House roles</h3>
           <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->modal#close click->roles-field#sync">

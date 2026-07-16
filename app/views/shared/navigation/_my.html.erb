@@ -2,35 +2,9 @@
   <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "talent" %>
 
   <div class="flex-1 overflow-y-auto">
-
     <div class="mt-2">
-      <%= render "shared/nav_link", text: "Home", path: my_dashboard_path, active: controller_name == "dashboard" %>
-      <div class="relative">
-        <%= render "shared/nav_link", text: "My Messages", path: my_messages_path, active: controller_name == "messages" %>
-        <% unread_count = Current.user&.unread_message_count.to_i %>
-        <% if unread_count > 0 %>
-          <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full" data-unread-badge><%= unread_count > 99 ? "99+" : unread_count %></span>
-        <% end %>
-      </div>
-      <div class="relative">
-        <%= render "shared/nav_link", text: "My Open Requests", path: my_requests_path, active: controller_name == "open_requests" %>
-        <% open_requests_count = Current.user&.open_requests_count.to_i %>
-        <% if open_requests_count > 0 %>
-          <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full"><%= open_requests_count > 99 ? "99+" : open_requests_count %></span>
-        <% end %>
-      </div>
-      <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
-      <% if Current.user&.shows_my_shifts? %>
-        <%= render "shared/nav_link", text: "My Shifts", path: my_shifts_path, active: controller_name == "shifts" %>
-      <% end %>
-      <%= render "shared/nav_link", text: "My Courses", path: my_courses_path, active: controller_name == "courses" %>
-      <%= render "shared/nav_link", text: "My Auditions", path: my_auditions_path, active: controller_name == "auditions" %>
-      <%= render "shared/nav_link", text: "My Documents", path: my_documents_path, active: controller_name == "documents" %>
-      <%= render "shared/nav_link", text: "My Shoutouts", path: my_shoutouts_path, active: controller_name == "shoutouts" %>
-      <%= render "shared/nav_link", text: "My Payments", path: my_payments_path, active: controller_name == "payments" %>
-      <%= render "shared/nav_link", text: "My Productions", path: my_productions_path, active: controller_name == "productions" %>
+      <%= render "shared/navigation/sidebar_nav", context: :talent %>
     </div>
-
   </div>
 
   <!-- Bottom section -->

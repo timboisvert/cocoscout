@@ -1,12 +1,13 @@
-<%# Onboarding email preview + send modal. Rendered inside a
-    data-controller="invite-preview" wrapper. Opened by any button carrying the
-    member's draft (invite-path, to-name, to-email, email-subject, email-body). %>
+<%# Onboarding email draft + send modal. Rendered once inside the
+    data-controller="invite-preview" wrapper (staffing index). Opened by any
+    button carrying the member's draft (invite-path, to-name, to-email,
+    email-subject, email-body). Subject and body are editable before sending. %>
 <div data-invite-preview-target="modal"
      class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
      data-action="click->invite-preview#backdropClose keydown.esc@window->invite-preview#close">
   <div class="flex min-h-full items-start justify-center p-4 py-12">
-    <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->invite-preview#stopPropagation">
-      <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
+    <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl" data-action="click->invite-preview#stopPropagation">
+      <div class="flex items-center justify-between px-6 py-4 bg-pink-500 rounded-t-xl">
         <h3 class="text-lg font-semibold text-white">Send onboarding email</h3>
         <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->invite-preview#close">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -14,23 +15,36 @@
           </svg>
         </button>
       </div>
-      <div class="px-5 py-4 space-y-3">
-        <p class="text-sm text-gray-600">This is the invite we'll email and message to <span class="font-medium text-gray-900" data-invite-preview-target="toName"></span> — asking them to complete onboarding and set up their payment details. Review it, then send.</p>
-        <div class="rounded-lg border border-gray-200 overflow-hidden">
-          <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-500 space-y-0.5">
-            <div><span class="font-medium text-gray-700">To:</span> <span data-invite-preview-target="toName"></span> &lt;<span data-invite-preview-target="toEmail"></span>&gt;</div>
-            <div><span class="font-medium text-gray-700">Subject:</span> <span data-invite-preview-target="subject"></span></div>
+
+      <%= form_with url: "#", method: :post, data: { "invite-preview-target": "form" } do %>
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-sm text-gray-600">
+            This invite is emailed and messaged to
+            <span class="font-medium text-gray-900" data-invite-preview-target="toName"></span>
+            &lt;<span data-invite-preview-target="toEmail"></span>&gt;. Edit anything before you send it.
+          </p>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <%= text_field_tag :email_subject, "", data: { "invite-preview-target": "subject" },
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
           </div>
-          <div class="px-4 py-3 text-sm text-gray-700 space-y-2 [&_a]:text-pink-600 [&_a]:underline [&_strong]:font-semibold" data-invite-preview-target="body"></div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <input type="hidden" name="email_body" id="invite_email_body" data-invite-preview-target="bodyInput">
+            <trix-editor input="invite_email_body" data-invite-preview-target="bodyEditor"
+                         class="trix-content block w-full bg-white border border-gray-300 rounded-lg min-h-[220px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></trix-editor>
+            <p class="mt-1 text-xs text-gray-500">The name and organization are already filled in for you.</p>
+          </div>
         </div>
-      </div>
-      <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button,
-              data: { action: "click->invite-preview#close" } %>
-        <%= form_with url: "#", method: :post, data: { "invite-preview-target": "form" }, class: "inline" do %>
+
+        <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button,
+                data: { action: "click->invite-preview#close" } %>
           <%= render "shared/button", text: "Send email", variant: "primary", size: "small", type: :submit %>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>

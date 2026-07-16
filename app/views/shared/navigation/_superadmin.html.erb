@@ -1,50 +1,12 @@
 <%# Super Admin left sidebar — global (not org-scoped). Same shell as the other
-    dashboards: switcher on top, grouped section links, coco logo + account menu
-    at the bottom. Lets a superadmin move between tools without bouncing back to
-    the landing page. %>
-<%
-  sections = [
-    { label: nil, links: [
-      { label: "Overview",      path: superadmin_path,        active: controller_name == "superadmin" && action_name == "index" },
-      { label: "People",        path: people_list_path,       active: %w[people_list person_detail].include?(action_name) },
-      { label: "Organizations", path: organizations_list_path, active: %w[organizations_list organization_detail organization_consolidation production_transfer].include?(action_name) },
-      { label: "Open Mics",     path: mics_index_path,        active: controller_name == "mics" }
-    ] },
-    { label: "Business", links: [
-      { label: "Finances",    path: finances_path,    active: action_name.start_with?("finances") },
-      { label: "Promo Codes", path: promo_codes_path, active: action_name.start_with?("promo_code") },
-      { label: "Demo Users",  path: demo_users_path,  active: action_name == "demo_users" }
-    ] },
-    { label: "Content", links: [
-      { label: "Profiles",          path: profiles_monitor_path,  active: action_name == "profiles" },
-      { label: "Email Logs",        path: email_logs_path,        active: %w[email_logs email_log].include?(action_name) },
-      { label: "Messages",          path: messages_list_path,     active: %w[messages_list message_detail].include?(action_name) },
-      { label: "Content Templates", path: content_templates_path, active: action_name.start_with?("content_template") },
-      { label: "Agreements",        path: agreements_monitor_path, active: action_name == "agreements" },
-      { label: "Keys",              path: keys_monitor_path,      active: action_name == "keys" }
-    ] },
-    { label: "Technical", links: [
-      { label: "Data",    path: data_monitor_path,    active: action_name == "data" },
-      { label: "Cable",   path: cable_monitor_path,   active: action_name == "cable" },
-      { label: "Cache",   path: cache_monitor_path,   active: action_name == "cache" },
-      { label: "Storage", path: storage_monitor_path, active: action_name == "storage" },
-      { label: "Queue",   path: queue_monitor_path,   active: action_name.start_with?("queue") }
-    ] }
-  ]
-%>
+    dashboards: switcher on top, grouped section links (from the shared
+    dashboard_nav_sections helper), coco logo + account menu at the bottom. %>
 <nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col z-50 justify-between fixed left-0 top-0 h-screen">
   <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "superadmin" %>
 
   <div class="flex-1 overflow-y-auto">
     <div class="mt-2">
-      <% sections.each do |section| %>
-        <% if section[:label] %>
-          <div class="px-4 mt-4 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
-        <% end %>
-        <% section[:links].each do |item| %>
-          <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active] %>
-        <% end %>
-      <% end %>
+      <%= render "shared/navigation/sidebar_nav", context: :superadmin %>
     </div>
   </div>
 

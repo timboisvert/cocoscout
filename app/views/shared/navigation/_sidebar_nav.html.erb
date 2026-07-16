@@ -1,0 +1,21 @@
+<%# Desktop sidebar nav rendered from the shared dashboard_nav_sections helper.
+    Local: context (:production | :talent | :account | :superadmin).
+    Text-only links with an unread pill and a Pro lock — matching the previous
+    per-context sidebars exactly. %>
+<% dashboard_nav_sections(context).each do |section| %>
+  <% if section[:label].present? %>
+    <div class="px-4 mt-4 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
+  <% end %>
+  <% section[:items].each do |item| %>
+    <% if item[:badge].to_i > 0 %>
+      <div class="relative">
+        <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active],
+              locked: item[:locked], upgrade_feature: (item[:locked] ? item[:feature] : nil) %>
+        <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full" data-unread-badge><%= item[:badge] > 99 ? "99+" : item[:badge] %></span>
+      </div>
+    <% else %>
+      <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active],
+            locked: item[:locked], upgrade_feature: (item[:locked] ? item[:feature] : nil) %>
+    <% end %>
+  <% end %>
+<% end %>

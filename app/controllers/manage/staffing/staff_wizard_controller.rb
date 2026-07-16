@@ -74,21 +74,10 @@ module Manage
       def save_start
         @wizard_state[:start_date] = params[:start_date].to_s.strip
         save_wizard_state
-        redirect_to manage_pay_staffing_staff_wizard_path
-      end
-
-      # Step 5: Pay
-      def pay
-        @staff_member = build_preview_member
-      end
-
-      def save_pay
-        @wizard_state[:hourly_rate] = params[:hourly_rate].to_s.strip
-        save_wizard_state
         redirect_to manage_roles_staffing_staff_wizard_path
       end
 
-      # Step 6: Roles
+      # Step 5: Roles (staff are paid per role — no default/fallback rate)
       def roles
         @staff_member = build_preview_member
         @house_roles = Current.organization.house_roles.active.ordered
@@ -166,17 +155,10 @@ module Manage
           personal_email: @wizard_state[:personal_email].presence,
           title: @wizard_state[:title].presence,
           department: @wizard_state[:department].presence,
-          hourly_rate_cents: parse_rate_cents(@wizard_state[:hourly_rate]),
           start_date: @wizard_state[:start_date].presence,
           manager_id: valid_manager_id(@wizard_state[:manager_id]),
           onboarding_state: "added"
         }
-      end
-
-      def parse_rate_cents(value)
-        return nil if value.blank?
-
-        (value.to_s.delete("$,").to_d * 100).round
       end
 
       def valid_manager_id(id)

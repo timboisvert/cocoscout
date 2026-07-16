@@ -1202,8 +1202,6 @@ Rails.application.routes.draw do
     post   "staffing/staff/onboard/manager",    to: "staffing/staff_wizard#save_manager", as: "save_manager_staffing_staff_wizard"
     get    "staffing/staff/onboard/start",      to: "staffing/staff_wizard#start",        as: "start_staffing_staff_wizard"
     post   "staffing/staff/onboard/start",      to: "staffing/staff_wizard#save_start",   as: "save_start_staffing_staff_wizard"
-    get    "staffing/staff/onboard/pay",        to: "staffing/staff_wizard#pay",          as: "pay_staffing_staff_wizard"
-    post   "staffing/staff/onboard/pay",        to: "staffing/staff_wizard#save_pay",     as: "save_pay_staffing_staff_wizard"
     get    "staffing/staff/onboard/roles",      to: "staffing/staff_wizard#roles",        as: "roles_staffing_staff_wizard"
     post   "staffing/staff/onboard/roles",      to: "staffing/staff_wizard#save_roles",   as: "save_roles_staffing_staff_wizard"
     get    "staffing/staff/onboard/review",     to: "staffing/staff_wizard#review",       as: "review_staffing_staff_wizard"

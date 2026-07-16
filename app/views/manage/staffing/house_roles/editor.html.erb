@@ -18,18 +18,35 @@
     <% end %>
   </div>
 
-  <%= form_with url: manage_create_staffing_house_role_path, method: :post, class: "mt-4 space-y-3" do %>
-    <input type="hidden" name="return_to" value="editor">
-    <div class="flex items-center gap-2">
-      <input type="text" name="house_role[name]" placeholder="e.g. Bartender" required
-             class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-      <input type="number" name="house_role[default_required_count]" value="1" min="1" title="How many needed by default"
-             class="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-      <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
-    </div>
-    <label class="flex items-center gap-2 text-sm text-gray-600">
-      <input type="checkbox" name="house_role[role_type]" value="show_specific" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-      Per-show role (one shift per show, not the whole evening)
-    </label>
-  <% end %>
+  <div class="mt-5 pt-4 border-t border-gray-200">
+    <h4 class="text-sm font-semibold text-gray-900 mb-3">Add a role</h4>
+    <%= form_with url: manage_create_staffing_house_role_path, method: :post, class: "space-y-4" do %>
+      <input type="hidden" name="return_to" value="editor">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Role name</label>
+        <input type="text" name="house_role[name]" placeholder="e.g. Bartender" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">How many needed by default</label>
+        <input type="number" name="house_role[default_required_count]" value="1" min="1"
+               class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        <p class="mt-1 text-xs text-gray-500">How many people this role usually needs per show. You can change it per shift later.</p>
+      </div>
+
+      <label class="flex items-start gap-2.5 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pink-300">
+        <input type="checkbox" name="house_role[role_type]" value="show_specific" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm text-gray-700">
+          <span class="block font-medium text-gray-900">Per-show role</span>
+          <span class="block text-xs text-gray-500 mt-0.5">One shift per show, rather than one shift for the whole evening.</span>
+        </span>
+      </label>
+
+      <div class="flex justify-end">
+        <%= render "shared/button", text: "Add role", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
 <% end %>
