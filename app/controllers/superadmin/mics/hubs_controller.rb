@@ -10,15 +10,16 @@ module Superadmin
   module Mics
     class HubsController < ApplicationController
       before_action :require_superadmin
-      before_action :hide_sidebar
+      before_action :use_superadmin_sidebar
       before_action :load_hub, except: [ :index, :create ]
 
-      def hide_sidebar
+      def use_superadmin_sidebar
         @show_my_sidebar = false
         @show_manage_sidebar = false
         @show_manage_header_only = false
         @show_group_sidebar = false
         @show_account_sidebar = false
+        @show_superadmin_sidebar = true
       end
 
       def index

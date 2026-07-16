@@ -67,6 +67,12 @@
         <%= render "shared/navigation/my" %>
         <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-56 overflow-x-hidden">
 
+      <% elsif @show_superadmin_sidebar %>
+
+        <%= render "shared/navigation/superadmin_mobile" %>
+        <%= render "shared/navigation/superadmin" %>
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-56 overflow-x-hidden">
+
       <% elsif @show_account_sidebar %>
 
         <%= render "shared/navigation/account_mobile" %>

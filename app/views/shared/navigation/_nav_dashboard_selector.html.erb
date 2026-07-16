@@ -10,7 +10,8 @@
     "production" => "Production Dashboard",
     "talent" => "Talent Dashboard",
     "profile" => profile_label,
-    "account" => "My Account"
+    "account" => "My Account",
+    "superadmin" => "Super Admin"
   }
   current_label = dashboard_labels[current_dashboard] || "Dashboard"
 
@@ -20,6 +21,7 @@
     { key: "profile", label: profile_label, path: profile_path, desc: "Edit your headshots, resume, and settings" }
   ]
   dashboards << { key: "account", label: "My Account", path: account_path, desc: "Email, password, subscription, and notifications" } if current_dashboard == "account"
+  dashboards << { key: "superadmin", label: "Super Admin", path: superadmin_path, desc: "Platform administration and monitoring" } if Current.user&.superadmin?
 %>
 <div class="relative h-16 flex items-center px-3 pt-1 border-b border-gray-200 shrink-0" data-controller="dropdown">
   <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center justify-between w-full rounded-lg px-2 py-1.5 transition cursor-pointer hover:bg-slate-50">

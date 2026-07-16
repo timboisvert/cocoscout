@@ -5,17 +5,17 @@
 module Superadmin
   class MicsController < ApplicationController
     before_action :require_superadmin
-    before_action :hide_sidebar
+    before_action :use_superadmin_sidebar
 
-    # Mirrors the SuperadminController version — we render the same kind
-    # of full-bleed page and don't want the My / Manage / Account
-    # sidebars sneaking in for signed-in superadmins.
-    def hide_sidebar
+    # Render inside the Super Admin dashboard chrome, matching the rest of the
+    # superadmin tools (see shared/navigation/_superadmin).
+    def use_superadmin_sidebar
       @show_my_sidebar = false
       @show_manage_sidebar = false
       @show_manage_header_only = false
       @show_group_sidebar = false
       @show_account_sidebar = false
+      @show_superadmin_sidebar = true
     end
 
     # Master search across every Mic in the system. Filters: q (name +

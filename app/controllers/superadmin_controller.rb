@@ -14,10 +14,14 @@ class SuperadminController < ApplicationController
                          agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
                          promo_codes promo_code_new promo_code_create promo_code_deactivate
                          finances finances_org_detail finances_org_record_payment finances_org_update_payment_info finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
-  before_action :hide_sidebar
+  before_action :use_superadmin_sidebar
 
-  def hide_sidebar
+  # Render superadmin pages inside the dashboard chrome with a dedicated Super
+  # Admin sidebar, so navigating between tools doesn't bounce back to the
+  # landing page (see shared/navigation/_superadmin).
+  def use_superadmin_sidebar
     @show_my_sidebar = false
+    @show_superadmin_sidebar = true
   end
 
   def index

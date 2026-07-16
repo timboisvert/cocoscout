@@ -1,0 +1,24 @@
+<%# Compact mobile top bar for Super Admin: title + a menu of the sections and
+    account actions. Desktop uses the full _superadmin sidebar instead. %>
+<div class="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-50" data-controller="dropdown">
+  <span class="text-sm font-semibold coustard-regular text-pink-500">Super Admin</span>
+  <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="p-2 -mr-2 text-gray-600 cursor-pointer" aria-label="Menu">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+
+  <div data-dropdown-target="menu" class="hidden absolute right-3 top-12 w-64 max-h-[75vh] overflow-y-auto py-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+    <% [
+         ["Overview", superadmin_path], ["People", people_list_path], ["Organizations", organizations_list_path], ["Open Mics", mics_index_path],
+         ["Finances", finances_path], ["Promo Codes", promo_codes_path], ["Demo Users", demo_users_path],
+         ["Profiles", profiles_monitor_path], ["Email Logs", email_logs_path], ["Messages", messages_list_path],
+         ["Content Templates", content_templates_path], ["Agreements", agreements_monitor_path], ["Keys", keys_monitor_path],
+         ["Data", data_monitor_path], ["Cable", cable_monitor_path], ["Cache", cache_monitor_path], ["Storage", storage_monitor_path], ["Queue", queue_monitor_path]
+       ].each do |label, path| %>
+      <%= link_to label, path, class: "block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    <% end %>
+    <div class="border-t border-gray-200 my-1"></div>
+    <%= link_to "My Account", account_path, class: "block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    <%= link_to "Exit to app", manage_path, class: "block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm font-medium text-pink-600 hover:bg-gray-50" %>
+  </div>
+</div>
