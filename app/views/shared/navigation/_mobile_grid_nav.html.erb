@@ -67,19 +67,12 @@
         <% dashboard_nav_sections(context).each do |section| %>
           <% if section[:label].present? %>
             <div class="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
-            <div class="grid grid-cols-3 gap-2.5">
-              <% section[:items].each do |item| %>
-                <%= render "shared/navigation/mobile_grid_tile", item: item, full: false %>
-              <% end %>
-            </div>
-          <% else %>
-            <%= render "shared/navigation/mobile_grid_tile", item: section[:items].first, full: true %>
-            <div class="grid grid-cols-3 gap-2.5 mt-2.5">
-              <% (section[:items][1..] || []).each do |item| %>
-                <%= render "shared/navigation/mobile_grid_tile", item: item, full: false %>
-              <% end %>
-            </div>
           <% end %>
+          <div class="grid grid-cols-3 gap-2.5">
+            <% section[:items].each do |item| %>
+              <%= render "shared/navigation/mobile_grid_tile", item: item, full: false %>
+            <% end %>
+          </div>
         <% end %>
       </div>
 
