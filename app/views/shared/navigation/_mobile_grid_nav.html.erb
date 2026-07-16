@@ -3,9 +3,7 @@
     out as a grid (the first/Home item full-width, the rest 3-up). Item lists and
     visibility come from the shared dashboard_nav_sections helper, so mobile and
     desktop always agree on who sees what.
-    Locals: context, dashboard_label, dashboard_desc, current_dashboard.
-    Optional: show_org_switcher (bool) — production dashboard org quick-switch. %>
-<% show_org_switcher = local_assigns.fetch(:show_org_switcher, false) && Current.organization.present? && current_user_is_global_manager? && Current.user.accessible_organizations.count > 1 %>
+    Locals: context, dashboard_label, dashboard_desc, current_dashboard. %>
 <div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
   <%# ===== TOP BAR ===== %>
   <div class="flex items-center justify-between px-4 py-2.5">
@@ -63,16 +61,6 @@
           </div>
         </button>
 
-        <% if show_org_switcher %>
-          <button type="button" data-action="mobile-nav#showOrgPopup" class="w-full flex items-center justify-between hover:bg-gray-50 rounded-lg transition cursor-pointer mb-4 px-1">
-            <div class="flex items-center gap-2 min-w-0 text-left">
-              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6M9 12h6m-6 5.25h6"/></svg>
-              <span class="text-sm text-gray-600 truncate"><%= Current.organization.name %></span>
-            </div>
-            <span class="text-xs text-pink-600 font-medium flex-shrink-0">Switch</span>
-          </button>
-        <% end %>
-
         <div class="border-t border-gray-200 mb-4"></div>
 
         <%# ===== NAV GRID ===== %>
@@ -120,6 +108,5 @@
 
     <%= render "shared/navigation/mobile_dashboard_popup", current_dashboard: current_dashboard %>
     <%= render "shared/navigation/mobile_account_popup" %>
-    <% if show_org_switcher %><%= render "shared/navigation/mobile_org_popup" %><% end %>
   </div>
 </div>
