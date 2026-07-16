@@ -52,11 +52,11 @@ namespace :stripe do
       metadata: { plan: "staff_active" }
     )
 
-    puts "\nStaffing meter created. Add to your environment / credentials, then add"
-    puts "a subscription item on price #{price.id} to each org's Pro subscription:"
+    puts "\nStaffing meter created. Add these to your environment / credentials"
+    puts "(the checkout attaches the metered price to new Pro subscriptions):"
     puts "  STRIPE_METER_STAFF_ACTIVE=#{event_name}"
+    puts "  STRIPE_PRICE_STAFF_ACTIVE=#{price.id}"
     puts "  Meter:  #{meter.id}"
-    puts "  Price:  #{price.id}"
 
     # Second meter: the $1-per-extra-payment fee (2 free payments/month, then $1).
     fee_event = "staff_extra_payment"
@@ -78,7 +78,7 @@ namespace :stripe do
 
     puts "\nExtra-payment meter created:"
     puts "  STRIPE_METER_STAFF_EXTRA=#{fee_event}"
+    puts "  STRIPE_PRICE_STAFF_EXTRA=#{fee_price.id}"
     puts "  Meter:  #{fee_meter.id}"
-    puts "  Price:  #{fee_price.id}"
   end
 end

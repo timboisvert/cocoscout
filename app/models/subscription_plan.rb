@@ -27,4 +27,29 @@ module SubscriptionPlan
   def annual_price_id
     ENV["STRIPE_PRICE_PRO_ANNUAL"] || Rails.application.credentials.dig(:stripe, :price_pro_annual)
   end
+
+  # Metered staffing price IDs (the $5/active-staff and $1/extra-payment prices
+  # created by `rake stripe:setup_staff_meter`). When set, they're attached to
+  # the Pro subscription at checkout so reported usage actually invoices.
+  def staff_active_price_id
+    ENV["STRIPE_PRICE_STAFF_ACTIVE"] || Rails.application.credentials.dig(:stripe, :price_staff_active)
+  end
+
+  def staff_extra_price_id
+    ENV["STRIPE_PRICE_STAFF_EXTRA"] || Rails.application.credentials.dig(:stripe, :price_staff_extra)
+  end
+
+  # Checkout line items for a Pro subscription: the base plan, plus the two
+  # metered staffing prices when configured. Metered prices are added without a
+  # quantity — Stripe bills them from the usage the app reports. Returns nil when
+  # the base plan price isn't configured.
+  def checkout_line_items(interval)
+    base = price_id(interval)
+    return nil if base.blank?
+
+    items = [ { price: base, quantity: 1 } ]
+    items << { price: staff_active_price_id } if staff_active_price_id.present?
+    items << { price: staff_extra_price_id } if staff_extra_price_id.present?
+    items
+  end
 end
