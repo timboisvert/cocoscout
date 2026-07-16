@@ -3,7 +3,7 @@
 <%
   full = local_assigns.fetch(:full, false)
   active = item[:active]
-  layout = full ? "flex-row items-center gap-3 px-4 py-3.5" : "flex-col items-center justify-center text-center gap-2 p-3 aspect-square"
+  layout = full ? "flex-row items-center gap-3 px-4 py-3.5" : "flex-col items-center justify-center text-center gap-1.5 px-2 py-3"
   border = active ? "border-pink-300 bg-pink-50" : "border-gray-200 bg-white"
   icon_color = active ? "text-pink-600" : "text-gray-500"
   label_color = active ? "text-pink-600" : "text-gray-700"
