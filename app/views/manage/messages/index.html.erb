@@ -24,6 +24,7 @@
         text: "Send a Message",
         icon: "envelope",
         type: :button,
+        any_manage_access: true,
         data: {
           controller: "compose-message",
           action: "click->compose-message#openWithSteps",
@@ -41,7 +42,7 @@
           }.to_json : "{}"
         }
       },
-      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0 }
+      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0, any_manage_access: true }
     ]
   } %>
 

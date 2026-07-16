@@ -12,7 +12,13 @@
         <%
           if controller.class.ancestors.include?(Manage::ManageController)
             requires_global_manager = link[:global_manager_required] || false
-            can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
+            can_show_link = if link[:any_manage_access]
+              current_user_has_any_manage_access?
+            elsif requires_global_manager
+              current_user_is_global_manager?
+            else
+              current_user_can_manage?
+            end
           else
             can_show_link = true
           end
@@ -85,7 +91,13 @@
           <%
             if controller.class.ancestors.include?(Manage::ManageController)
               requires_global_manager = link[:global_manager_required] || false
-              can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
+              can_show_link = if link[:any_manage_access]
+                current_user_has_any_manage_access?
+              elsif requires_global_manager
+                current_user_is_global_manager?
+              else
+                current_user_can_manage?
+              end
             else
               can_show_link = true
             end

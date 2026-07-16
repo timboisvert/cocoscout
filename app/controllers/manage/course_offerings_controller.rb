@@ -5,7 +5,7 @@ module Manage
     before_action :load_course_offering, only: %i[
       show edit update destroy open_registration close_registration
       search_instructor update_instructor invite_instructor
-      cancel_registration refund_registration
+      cancel_registration refund_registration add_sessions
       enable_questionnaire disable_questionnaire send_questionnaire
       questionnaire update_questionnaire_settings
     ]
@@ -252,7 +252,7 @@ module Manage
           production.shows.create!(
             date_and_time: dt,
             duration_minutes: duration,
-            event_type: "Class",
+            event_type: "class",
             location: production.shows.last&.location
           )
           created_count += 1
@@ -261,7 +261,7 @@ module Manage
             production.shows.create!(
               date_and_time: session_dt,
               duration_minutes: duration,
-              event_type: "Class",
+              event_type: "class",
               location: production.shows.last&.location
             )
             created_count += 1

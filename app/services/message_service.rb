@@ -5,7 +5,9 @@ class MessageService
     # visibility: :show (team + show cast), :production (all team), or :personal (private)
     def send_to_show_cast(show:, sender:, subject:, body:, visibility: :show)
       # Get People (not Users) who are cast in this show
-      people = show.show_person_role_assignments.includes(:assignable).map do |assignment|
+      people = show.show_person_role_assignments.includes(:assignable).filter_map do |assignment|
+        next if assignment.assignable.nil? # orphaned assignment (assignable was deleted)
+
         assignment.assignable.is_a?(Person) ? assignment.assignable : assignment.assignable.members
       end.flatten.uniq
 
