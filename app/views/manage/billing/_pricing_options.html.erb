@@ -8,7 +8,9 @@
       <span class="text-sm text-gray-500">/month</span>
     </div>
     <p class="mt-1 text-xs text-gray-500 flex-1">Billed monthly. Cancel anytime.</p>
-    <%= button_to manage_billing_checkout_path(interval: "month"), class: "mt-4 block" do %>
+    <%# turbo: false so the browser natively follows the redirect to Stripe's
+        hosted checkout (Turbo would otherwise swallow the cross-origin redirect). %>
+    <%= button_to manage_billing_checkout_path(interval: "month"), form: { data: { turbo: false } }, class: "mt-4 block" do %>
       <%= render "shared/button", text: "Choose monthly", variant: "secondary", size: "medium" %>
     <% end %>
   </div>
@@ -21,7 +23,7 @@
       <span class="text-sm text-gray-500">/year</span>
     </div>
     <p class="mt-1 text-xs text-gray-500 flex-1">Two months free vs. monthly.</p>
-    <%= button_to manage_billing_checkout_path(interval: "year"), class: "mt-4 block" do %>
+    <%= button_to manage_billing_checkout_path(interval: "year"), form: { data: { turbo: false } }, class: "mt-4 block" do %>
       <%= render "shared/button", text: "Choose annual", variant: "primary", size: "medium" %>
     <% end %>
   </div>
