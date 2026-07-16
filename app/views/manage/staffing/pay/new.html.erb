@@ -147,9 +147,13 @@
        data-action="click->pay-pull#backdropClose keydown.esc@window->pay-pull#close">
     <div class="flex min-h-full items-start justify-center p-4 py-12">
       <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-pull#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900">Pull worked hours</h3>
-          <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button, data: { action: "click->pay-pull#close" } %>
+        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
+          <h3 class="text-lg font-semibold text-white">Pull worked hours</h3>
+          <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->pay-pull#close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
         <div class="px-5 py-4 max-h-96 overflow-y-auto">
           <%= turbo_frame_tag "pay_time_entries", data: { "pay-pull-target": "frame" } do %>
@@ -172,9 +176,13 @@
        data-action="click->tips-worksheet#backdropClose keydown.esc@window->tips-worksheet#close">
     <div class="flex min-h-full items-start justify-center p-4 py-12">
       <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->tips-worksheet#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900" data-tips-worksheet-target="title">Tips worksheet</h3>
-          <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button, data: { action: "click->tips-worksheet#close" } %>
+        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
+          <h3 class="text-lg font-semibold text-white" data-tips-worksheet-target="title">Tips worksheet</h3>
+          <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->tips-worksheet#close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
         <div class="px-5 py-4">
           <p class="text-sm text-gray-500 mb-3">Enter each day's amount; we'll total them for you.</p>

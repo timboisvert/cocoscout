@@ -6,10 +6,13 @@
      data-action="click->invite-preview#backdropClose keydown.esc@window->invite-preview#close">
   <div class="flex min-h-full items-start justify-center p-4 py-12">
     <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->invite-preview#stopPropagation">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <h3 class="text-base font-semibold text-gray-900">Send onboarding email</h3>
-        <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
-              data: { action: "click->invite-preview#close" } %>
+      <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
+        <h3 class="text-lg font-semibold text-white">Send onboarding email</h3>
+        <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->invite-preview#close">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
       <div class="px-5 py-4 space-y-3">
         <p class="text-sm text-gray-600">This is the invite we'll email and message to <span class="font-medium text-gray-900" data-invite-preview-target="toName"></span> — asking them to complete onboarding and set up their payment details. Review it, then send.</p>

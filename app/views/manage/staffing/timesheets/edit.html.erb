@@ -7,8 +7,8 @@
          data-controller="timesheet-edit-modal"
          data-action="click->timesheet-edit-modal#reloadOnBackdrop keydown.esc@window->timesheet-edit-modal#reload">
       <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg" data-action="click->timesheet-edit-modal#stopPropagation">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900">Hours updated</h3>
+        <div class="px-6 py-4 bg-pink-500 rounded-t-lg">
+          <h3 class="text-lg font-semibold text-white">Hours updated</h3>
         </div>
         <div class="p-6">
           <div class="flex items-start gap-3">
@@ -36,9 +36,9 @@
          data-controller="timesheet-edit-modal"
          data-action="click->timesheet-edit-modal#closeOnBackdrop keydown.esc@window->timesheet-edit-modal#close">
       <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg" data-action="click->timesheet-edit-modal#stopPropagation">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900">Edit hours</h3>
-          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="click->timesheet-edit-modal#close">
+        <div class="flex items-center justify-between px-6 py-4 bg-pink-500 rounded-t-lg">
+          <h3 class="text-lg font-semibold text-white">Edit hours</h3>
+          <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->timesheet-edit-modal#close">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
