@@ -1,0 +1,96 @@
+<%# Account + switcher menu anchored at the bottom of the left sidebar, opening
+    upward. Replaces the old top-right header dropdown (_user_dropdown) so the
+    main content can flow to the top of the page. Shared by every dashboard
+    sidebar (Production, Talent, Account, Profile, Super Admin). %>
+<% return if respond_to?(:turbo_native_app?) && turbo_native_app? %>
+
+<div class="px-3 pb-3 pt-2 border-t border-gray-200">
+  <% if impersonating? %>
+    <div class="flex items-center justify-between gap-2 bg-pink-100 border border-pink-300 px-3 py-2 rounded-lg mb-2">
+      <div class="min-w-0">
+        <div class="text-[10px] font-semibold text-pink-800 uppercase tracking-wide">Impersonating</div>
+        <div class="text-xs font-medium text-pink-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+      </div>
+      <%= render "shared/button", text: "Stop", variant: "outline-pink", size: "small", path: stop_impersonating_user_path, method: :post %>
+    </div>
+  <% end %>
+
+  <div class="relative" data-controller="dropdown">
+    <button data-action="click->dropdown#toggle click@window->dropdown#hide"
+            class="flex items-center gap-2.5 w-full hover:bg-slate-50 rounded-lg px-2 py-2 transition cursor-pointer">
+      <% user_headshot_variant = Current.user.person&.safe_headshot_variant(:tiny) %>
+      <% if user_headshot_variant %>
+        <%= image_tag user_headshot_variant, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+          <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+        </div>
+      <% end %>
+      <div class="flex flex-col items-start min-w-0 flex-1">
+        <div class="text-sm font-medium text-slate-700 truncate w-full text-left"><%= Current.user.person&.name || Current.user.email_address %></div>
+        <div class="text-xs text-slate-500 truncate w-full text-left"><%= Current.user.email_address %></div>
+      </div>
+      <svg class="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+      </svg>
+    </button>
+
+    <div data-dropdown-target="menu" class="hidden absolute left-0 right-0 bottom-full mb-2 py-1 bg-pink-500 rounded-lg shadow-lg z-50">
+      <%= link_to "My Profile", profile_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 rounded-t-lg transition cursor-pointer" %>
+
+      <%# Production + Organization (org context only). %>
+      <% if Current.organization.present? %>
+        <% org = Current.organization %>
+
+        <div class="border-t border-pink-400 my-0.5"></div>
+        <div class="px-3 py-2">
+          <% if org.on_paid_plan? %>
+            <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Productions</div>
+            <div class="flex flex-col gap-0.5">
+              <%= link_to "My Productions", manage_productions_path, class: "text-sm text-white font-medium hover:underline" %>
+              <% if current_user_is_global_manager? %>
+                <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+              <% end %>
+            </div>
+          <% else %>
+            <% my_production = Current.user.accessible_productions.where(organization: org).order(:name).first %>
+            <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Production</div>
+            <% if my_production %>
+              <%= link_to my_production.name, edit_manage_production_path(my_production), class: "block text-sm text-white font-medium hover:underline truncate" %>
+            <% elsif current_user_is_global_manager? && !org.at_production_limit? %>
+              <%= link_to "Add a Production", manage_productions_wizard_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+            <% else %>
+              <span class="text-xs text-pink-200">No production yet</span>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="border-t border-pink-400 my-0.5"></div>
+        <div class="px-3 py-2">
+          <div class="text-[10px] text-pink-200 font-semibold uppercase tracking-wider mb-1">Organization</div>
+          <div class="text-sm text-white font-medium truncate"><%= org.name %></div>
+          <div class="flex flex-col gap-0.5 mt-1">
+            <% if current_user_is_global_manager? %>
+              <%= link_to "Manage My Organization", manage_organization_path(org), class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+            <% end %>
+            <% if Current.user.accessible_organizations.count > 1 %>
+              <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+            <% else %>
+              <%= link_to "Add Another Organization", new_manage_organization_path, class: "text-xs text-pink-100 hover:text-white hover:underline" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if Current.user.superadmin? %>
+        <div class="border-t border-pink-400 my-0.5"></div>
+        <%= link_to "Super Admin", superadmin_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 transition cursor-pointer" %>
+      <% end %>
+
+      <div class="border-t border-pink-400 my-0.5"></div>
+
+      <%= link_to "My Account", account_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 transition cursor-pointer" %>
+      <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 rounded-b-lg transition cursor-pointer" %>
+    </div>
+  </div>
+</div>
