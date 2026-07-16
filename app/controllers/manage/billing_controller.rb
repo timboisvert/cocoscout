@@ -87,19 +87,22 @@ module Manage
     # Create a subscription Checkout Session for the given interval and redirect
     # to Stripe. Shared by the checkout action and the auto-upgrade path in show.
     def start_checkout(interval)
-      line_items = SubscriptionPlan.checkout_line_items(interval)
+      price_id = SubscriptionPlan.price_id(interval)
 
-      if line_items.blank?
+      if price_id.blank?
         redirect_to org_billing_tab_path, alert: "That plan isn't available right now."
         return
       end
 
       ensure_stripe_customer!
 
+      # Just the Pro base plan. Metered staffing usage bills on a separate
+      # monthly subscription (see StaffMeterService), so it works the same for
+      # annual and monthly subscribers.
       session = Stripe::Checkout::Session.create(
         mode: "subscription",
         customer: @organization.stripe_customer_id,
-        line_items: line_items,
+        line_items: [ { price: price_id, quantity: 1 } ],
         success_url: manage_billing_success_url + "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: org_billing_tab_url,
         metadata: { organization_id: @organization.id },

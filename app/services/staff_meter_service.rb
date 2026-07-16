@@ -38,6 +38,8 @@ module StaffMeterService
     org = activation.organization
     return :not_configured unless configured? && org&.stripe_customer_id.present?
 
+    ensure_staffing_subscription!(org)
+
     Stripe::Billing::MeterEvent.create(
       event_name: active_event_name,
       identifier: identifier_for(activation),
@@ -50,6 +52,29 @@ module StaffMeterService
     :error
   end
 
+  # Ensure the org has its separate, always-monthly staffing subscription — the
+  # one that carries the two metered prices — so reported usage actually
+  # invoices, regardless of whether the Pro plan is monthly or annual. Created
+  # once, lazily, on the first metered event. Best-effort: returns the
+  # subscription id or nil (usage still records on the customer either way).
+  def ensure_staffing_subscription!(org)
+    return org.staffing_subscription_id if org.staffing_subscription_id.present?
+
+    items = SubscriptionPlan.staffing_subscription_items
+    return nil if items.nil? || org.stripe_customer_id.blank?
+
+    subscription = Stripe::Subscription.create(
+      customer: org.stripe_customer_id,
+      items: items,
+      metadata: { organization_id: org.id, kind: "staffing" }
+    )
+    org.update_column(:staffing_subscription_id, subscription.id)
+    subscription.id
+  rescue Stripe::StripeError => e
+    Rails.logger.warn("Staffing subscription create failed for org #{org.id}: #{e.message}")
+    nil
+  end
+
   # Report the $1 extra-payment fees from a pay run as metered units (one unit =
   # $1). Idempotent per batch.
   def report_extra_payments!(batch)
@@ -57,6 +82,8 @@ module StaffMeterService
     units = batch.extra_payment_fee_cents.to_i / 100
     return :nothing_to_report if units <= 0
     return :not_configured unless extra_payments_configured? && org&.stripe_customer_id.present?
+
+    ensure_staffing_subscription!(org)
 
     Stripe::Billing::MeterEvent.create(
       event_name: extra_payment_event_name,

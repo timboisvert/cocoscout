@@ -39,28 +39,12 @@ module SubscriptionPlan
     ENV["STRIPE_PRICE_STAFF_EXTRA"] || Rails.application.credentials.dig(:stripe, :price_staff_extra)
   end
 
-  def monthly_interval?(interval)
-    %w[month monthly].include?(interval.to_s)
-  end
+  # Subscription items for the separate, always-monthly staffing subscription
+  # (the two metered prices, added without a quantity — Stripe bills them from
+  # reported usage). Returns nil unless both metered prices are configured.
+  def staffing_subscription_items
+    return nil if staff_active_price_id.blank? || staff_extra_price_id.blank?
 
-  # Checkout line items for a Pro subscription: the base plan, plus the two
-  # metered staffing prices when configured. Metered prices are added without a
-  # quantity — Stripe bills them from the usage the app reports.
-  #
-  # Stripe requires every recurring price on one subscription to share a billing
-  # interval, so the monthly metered staffing prices can only ride along on the
-  # monthly plan — never the annual one (that would error out at checkout).
-  # Annual subscribers' staffing usage is billed on a separate monthly path.
-  # Returns nil when the base plan price isn't configured.
-  def checkout_line_items(interval)
-    base = price_id(interval)
-    return nil if base.blank?
-
-    items = [ { price: base, quantity: 1 } ]
-    if monthly_interval?(interval)
-      items << { price: staff_active_price_id } if staff_active_price_id.present?
-      items << { price: staff_extra_price_id } if staff_extra_price_id.present?
-    end
-    items
+    [ { price: staff_active_price_id }, { price: staff_extra_price_id } ]
   end
 end
