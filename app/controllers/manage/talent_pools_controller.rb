@@ -267,7 +267,8 @@ module Manage
     end
 
     def confirm_remove_person
-      @person = Current.organization.people.find(params[:person_id])
+      @person = Person.find_by(id: params[:person_id]) ||
+                Current.organization.people.find(params[:person_id])
       @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
                                                        .includes(:show, :role)
                                                        .where(shows: { production_id: @production.id })
@@ -279,7 +280,17 @@ module Manage
     end
 
     def remove_person
-      person = Current.organization.people.find(params[:person_id])
+      # Resolve the person globally rather than through Current.organization.people:
+      # a pooled member may not carry the org HABTM link (e.g. merged into a
+      # single-mode org pool, or their org membership was later removed), and the
+      # org-scoped find would 404 → the UI shows "Failed to remove member". The
+      # actual removal is still scoped to @talent_pool below, so this is safe.
+      person = Person.find_by(id: params[:person_id])
+      unless person
+        return render json: { success: false, error: "Person not found" }, status: :not_found if request.xhr?
+
+        redirect_to(manage_casting_talent_pool_path(@production), alert: "Person not found") and return
+      end
 
       # Delete upcoming show assignments for this person in this production
       ShowPersonRoleAssignment.joins(:show)
@@ -305,7 +316,8 @@ module Manage
     end
 
     def confirm_remove_group
-      @group = Current.organization.groups.find(params[:group_id])
+      @group = Group.find_by(id: params[:group_id]) ||
+               Current.organization.groups.find(params[:group_id])
       @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
                                                        .includes(:show, :role)
                                                        .where(shows: { production_id: @production.id })
@@ -317,7 +329,14 @@ module Manage
     end
 
     def remove_group
-      group = Current.organization.groups.find(params[:group_id])
+      # Resolve globally for the same reason as remove_person; the removal itself
+      # is scoped to @talent_pool below.
+      group = Group.find_by(id: params[:group_id])
+      unless group
+        return render json: { success: false, error: "Group not found" }, status: :not_found if request.xhr?
+
+        redirect_to(manage_casting_talent_pool_path(@production), alert: "Group not found") and return
+      end
 
       # Delete upcoming show assignments for this group in this production
       ShowPersonRoleAssignment.joins(:show)
