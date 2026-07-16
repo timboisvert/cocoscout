@@ -68,7 +68,7 @@
     </div>
     <% unless paid %>
       <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-        <div class="h-full rounded-full <%= events_used >= events_limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [(events_used.to_f / events_limit * 100).round, 100].min %>%"></div>
+        <div class="h-full rounded-full <%= events_used >= events_limit ? 'bg-gray-400' : 'bg-pink-500' %>" style="width: <%= [(events_used.to_f / events_limit * 100).round, 100].min %>%"></div>
       </div>
     <% end %>
     <p class="mt-2 text-xs text-gray-500">
@@ -85,7 +85,7 @@
     </div>
     <% unless paid %>
       <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-        <div class="h-full rounded-full <%= prods_used >= prods_limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [(prods_used.to_f / prods_limit * 100).round, 100].min %>%"></div>
+        <div class="h-full rounded-full <%= prods_used >= prods_limit ? 'bg-gray-400' : 'bg-pink-500' %>" style="width: <%= [(prods_used.to_f / prods_limit * 100).round, 100].min %>%"></div>
       </div>
     <% end %>
     <p class="mt-2 text-xs text-gray-500">
