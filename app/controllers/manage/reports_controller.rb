@@ -11,7 +11,7 @@ module Manage
   # shared "show" template, so all reports look consistent and can be downloaded
   # as CSV (Excel) or printed to PDF (window.print) with no per-report work.
   class ReportsController < Manage::ManageController
-    before_action :ensure_org_owner_or_manager
+    before_action :ensure_reports_access
 
     # Landing-page catalog. Each report links to a built page.
     REPORT_CATALOG = [
@@ -56,7 +56,7 @@ module Manage
     end
 
     def revenue_by_production
-      rows = organization.productions.active.schedulable.order(:name).map do |production|
+      rows = reportable_productions.active.schedulable.order(:name).map do |production|
         financials = show_financials_for(production_ids: [ production.id ])
         [
           production.name,
@@ -79,7 +79,7 @@ module Manage
     end
 
     def revenue_over_time
-      show_ids = Show.where(production_id: organization.productions.select(:id)).select(:id)
+      show_ids = Show.where(production_id: reportable_productions.select(:id)).select(:id)
       financials = ShowFinancials.where(show_id: show_ids).includes(:show)
       by_month = Hash.new(0.0)
       12.downto(0) { |i| by_month[(Time.zone.today.beginning_of_month - i.months)] = 0.0 }
@@ -106,7 +106,7 @@ module Manage
     end
 
     def events_summary
-      shows = Show.where(production_id: organization.productions.select(:id))
+      shows = Show.where(production_id: reportable_productions.select(:id))
       by_type = shows.group(:event_type).count.sort_by { |_, count| -count }
 
       render_report(
@@ -126,7 +126,7 @@ module Manage
     end
 
     def cast_participation
-      show_ids = Show.where(production_id: organization.productions.select(:id)).select(:id)
+      show_ids = Show.where(production_id: reportable_productions.select(:id)).select(:id)
       assignments = ShowPersonRoleAssignment.where(show_id: show_ids).where.not(assignable_id: nil)
 
       grouped = assignments.group(:assignable_type, :assignable_id)
@@ -153,7 +153,7 @@ module Manage
     end
 
     def payouts_summary
-      show_ids = Show.where(production_id: organization.productions.select(:id)).select(:id)
+      show_ids = Show.where(production_id: reportable_productions.select(:id)).select(:id)
       payouts = ShowPayout.where(show_id: show_ids)
 
       amount_by_status = payouts.group(:status).sum(:total_payout)
@@ -181,7 +181,7 @@ module Manage
     end
 
     def course_revenue
-      offerings = CourseOffering.where(production_id: organization.productions.select(:id)).includes(:production)
+      offerings = CourseOffering.where(production_id: reportable_productions.select(:id)).includes(:production)
 
       rows = offerings.map do |offering|
         confirmed = offering.course_registrations.where(status: "confirmed")
@@ -206,6 +206,39 @@ module Manage
 
     def organization
       Current.organization
+    end
+
+    # Reports are open to org owners/managers (org-wide) AND to production-team
+    # members who hold a per-production permission (scoped to just those
+    # productions). Everyone else is bounced. The paid-tier check still applies
+    # via Manage::PaidFeatureGate.
+    def ensure_reports_access
+      return if reports_org_wide? || own_production_ids.exists?
+
+      redirect_to manage_path, notice: "You do not have permission to access that page."
+    end
+
+    # True when the user should see every production in the org (owner/manager or
+    # superadmin). False for production-team members, who get a scoped view.
+    def reports_org_wide?
+      Current.user&.superadmin? || organization&.manageable_by?(Current.user)
+    end
+
+    # IDs of productions in this org the current user has a direct role on.
+    def own_production_ids
+      Current.user.production_permissions
+             .joins(:production)
+             .where(productions: { organization_id: organization.id })
+             .select(:production_id)
+    end
+
+    # The set of productions every report is built from — all of them for
+    # owners/managers, only the user's own for production-team members.
+    def reportable_productions
+      @reportable_productions ||= begin
+        scope = organization.productions
+        reports_org_wide? ? scope : scope.where(id: own_production_ids)
+      end
     end
 
     # Column descriptor: label + value format (:text, :number, :currency).
@@ -256,7 +289,7 @@ module Manage
 
     # ShowFinancials scoped to the org (optionally to specific productions).
     def show_financials_for(production_ids: nil)
-      ids = production_ids || organization.productions.select(:id)
+      ids = production_ids || reportable_productions.select(:id)
       show_ids = Show.where(production_id: ids).select(:id)
       ShowFinancials.where(show_id: show_ids).to_a
     end
