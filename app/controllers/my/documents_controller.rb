@@ -12,6 +12,13 @@ module My
       @show_my_sidebar = true
       @documents = accessible_documents.includes(:production, :rich_text_body).order(updated_at: :desc)
       @documents_by_production = @documents.group_by(&:production)
+
+      # Agreements the user has signed — surfaced here so performers can always
+      # find what they agreed to (links to the signed copy on the production).
+      person_ids = Current.user.people.pluck(:id)
+      @signed_agreements = AgreementSignature.where(person_id: person_ids)
+                                             .includes(:production)
+                                             .recent
     end
 
     def show
