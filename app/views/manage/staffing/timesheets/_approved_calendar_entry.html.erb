@@ -1,0 +1,22 @@
+<%#
+  One approved time entry as a compact calendar chip. `item` is a StaffTimeEntry.
+  Approved (unpaid) entries link into the edit / re-approve modal; paid entries
+  are locked (no link).
+%>
+<% e = item %>
+<% hrs = number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>
+<% label = "#{e.person.name} · #{hrs}h" %>
+
+<% if e.paid? %>
+  <div class="block text-[11px] leading-tight rounded px-1.5 py-1 mb-1 bg-gray-100 text-gray-500 truncate"
+       title="<%= label %> · Paid">
+    <%= label %>
+  </div>
+<% else %>
+  <%= link_to manage_edit_staffing_timesheet_path(e),
+        data: { turbo_frame: "timesheet_edit_modal" },
+        class: "block text-[11px] leading-tight rounded px-1.5 py-1 mb-1 bg-green-100 text-green-800 hover:bg-green-200 truncate",
+        title: "#{label} — click to edit or send back for review" do %>
+    <%= label %>
+  <% end %>
+<% end %>

@@ -47,14 +47,17 @@ module Manage
       # month. Approved-but-unpaid entries can still be corrected (unapprove →
       # edit → reapprove); once an entry is paid it's locked here for the record.
       def approved
+        @current_month = parse_month(params[:month])
+
         entries = Current.organization.staff_time_entries.signed_off
                          .includes(:person, :approved_by, shift_assignment: { shift: :house_role })
-                         .order(started_at: :desc)
+                         .where(started_at: @current_month.beginning_of_month.beginning_of_day..
+                                            @current_month.end_of_month.end_of_day)
+                         .order(:started_at)
 
-        @months = entries.group_by { |e| e.started_at.beginning_of_month }
-                         .sort_by { |month, _| month }.reverse
-        @total_hours = entries.sum(&:hours)
-        @total_entries = entries.size
+        @items_by_date = entries.group_by { |e| e.started_at.to_date }
+        @month_hours = entries.sum(&:hours)
+        @month_entries = entries.size
       end
 
       # Send an approved entry back to the pending queue so it can be corrected
@@ -64,7 +67,8 @@ module Manage
         return unless entry
 
         entry.update!(approved_at: nil, approved_by: nil)
-        redirect_to manage_approved_staffing_timesheets_path, notice: "Sent that entry back for review."
+        redirect_to manage_approved_staffing_timesheets_path(month: entry.started_at.strftime("%Y-%m")),
+                    notice: "Sent that entry back for review."
       end
 
       def edit
@@ -99,6 +103,16 @@ module Manage
       end
 
       private
+
+      # Turn a "YYYY-MM" param into the first of that month, defaulting to the
+      # current month. Bad input falls back to this month rather than erroring.
+      def parse_month(value)
+        return Date.current.beginning_of_month if value.blank?
+
+        Date.strptime(value, "%Y-%m").beginning_of_month
+      rescue ArgumentError
+        Date.current.beginning_of_month
+      end
 
       # Entries are editable only while unpaid; once pulled into a pay run they're
       # settled and must stay put. Redirects (and returns nil) otherwise.
