@@ -84,6 +84,9 @@ class UnreadDigestJob < ApplicationJob
     user.message_subscriptions.unread.includes(message: :production).filter_map do |subscription|
       root_message = subscription.message
 
+      # In-app-only messages (e.g. agreement requests) never go in the digest.
+      next if root_message.skip_digest?
+
       # Use the counter cache for unread count
       unread_count = subscription.unread_count
       next if unread_count == 0

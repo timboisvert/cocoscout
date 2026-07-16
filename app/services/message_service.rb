@@ -93,7 +93,8 @@ class MessageService
 
     # Send direct message to a specific Person (private)
     # system_generated: true for automated/transactional messages that shouldn't appear in sender's sent folder
-    def send_direct(sender:, recipient_person:, subject:, body:, organization: nil, parent_message: nil, production: nil, system_generated: false)
+    # skip_digest: true for messages that should stay in-app only (no digest email)
+    def send_direct(sender:, recipient_person:, subject:, body:, organization: nil, parent_message: nil, production: nil, system_generated: false, skip_digest: false)
       create_message(
         sender: sender,
         recipients: [ recipient_person ],
@@ -104,7 +105,8 @@ class MessageService
         visibility: :personal,
         message_type: :direct,
         parent_message: parent_message,
-        system_generated: system_generated
+        system_generated: system_generated,
+        skip_digest: skip_digest
       )
     end
 
@@ -146,7 +148,7 @@ class MessageService
     # system_generated: true for automated/transactional messages (sign-up confirmations, etc.)
     def create_message(sender:, recipients:, subject:, body:, message_type:,
                        organization: nil, production: nil, show: nil,
-                       visibility: nil, parent_message: nil, system_generated: false)
+                       visibility: nil, parent_message: nil, system_generated: false, skip_digest: false)
       # Filter to people with accounts
       recipients = Array(recipients).uniq.select { |p| p.is_a?(Person) && p.user.present? }
       return nil if recipients.empty?
@@ -173,7 +175,8 @@ class MessageService
         body: body,
         message_type: message_type,
         parent_message: parent_message,
-        system_generated: system_generated
+        system_generated: system_generated,
+        skip_digest: skip_digest
       )
       message.skip_notify_subscribers = true
       message.save!

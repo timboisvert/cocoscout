@@ -82,11 +82,8 @@
         </div>
       <% end %>
 
-      <% if Current.user.superadmin? %>
-        <div class="border-t border-pink-400 my-0.5"></div>
-        <%= link_to "Super Admin", superadmin_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 transition cursor-pointer" %>
-      <% end %>
-
+      <%# Superadmin is reached via the dashboard switcher at the top of the
+          sidebar, so no link is needed here. %>
       <div class="border-t border-pink-400 my-0.5"></div>
 
       <%= link_to "My Account", account_path, class: "block px-3 py-2 text-sm font-medium text-white hover:bg-pink-600 transition cursor-pointer" %>

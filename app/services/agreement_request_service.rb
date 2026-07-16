@@ -59,6 +59,8 @@ class AgreementRequestService
         agreement_url: url
       })
 
+      # In-app message only — never an email (skip_digest). Rendered from the
+      # seeded request_agreement_signature ContentTemplate.
       MessageService.send_direct(
         sender: sender,
         recipient_person: person,
@@ -66,7 +68,8 @@ class AgreementRequestService
         body: rendered[:body],
         organization: production.organization,
         production: production,
-        system_generated: true
+        system_generated: true,
+        skip_digest: true
       )
     end
 
