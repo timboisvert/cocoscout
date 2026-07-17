@@ -15,8 +15,9 @@
   contractor = contract.contractor
   is_late = payment.overdue?
   is_incoming = payment.direction_incoming?
+  contractor_person = contractor&.person
   can_pay_via_run = !is_incoming && payment.status_pending? && payment.amount.to_f > 0 &&
-    contractor.respond_to?(:can_receive_payouts?) && contractor.can_receive_payouts?
+    contractor_person&.can_receive_payouts?
 %>
 
 <div data-controller="payment-modal">

@@ -110,6 +110,12 @@ class PayoutBatchService
   def self.record_performer_activation!(batch, item)
     return unless batch.kind == "performer" && item.payee.is_a?(Person)
 
+    # Don't count a person paid *only* as a contractor (contract payments ride the
+    # performer run too) toward the $3/active-performer charge — that's for
+    # performing. A person with any show-payout contribution still counts.
+    contributions = item.payout_contributions.to_a
+    return if contributions.any? && contributions.all? { |c| c.source_type == "ContractPayment" }
+
     PerformerActivation.record!(
       organization: batch.organization, person: item.payee, month: item.paid_at || Time.current
     )

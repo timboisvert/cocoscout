@@ -4,22 +4,24 @@ require "rails_helper"
 
 RSpec.describe ContractorPayoutRunService do
   let(:org) { create(:organization, :pro) }
-  let(:contractor) { create(:contractor, organization: org, stripe_account_id: "acct_c", payouts_enabled: true) }
+  let(:contractor) { create(:contractor, organization: org) }
+  # The contractor is paid as its backing Person (bank + ledger live there).
+  let!(:payee) { contractor.ensure_person!.tap { |p| p.update!(stripe_account_id: "acct_c", payouts_enabled: true) } }
   let(:contract) { create(:contract, organization: org, contractor: contractor) }
   let(:payment) { create(:contract_payment, :outgoing, contract: contract, amount: 300) }
 
   describe ".add_contract_payment!" do
-    it "opens a contractor run with a per-contractor item + contribution and posts an earning" do
+    it "opens the performer run with a per-person item + contribution and posts an earning" do
       result = nil
       expect { result = described_class.add_contract_payment!(payment) }.to change(PayoutBatch, :count).by(1)
 
       expect(result.added).to be(true)
       batch = result.batch
       expect(batch.kind).to eq("performer") # contractors ride the performer run (one funding event)
-      item = batch.items.find_by(payee: contractor)
+      item = batch.items.find_by(payee: payee)
       expect(item.amount_cents).to eq(30_000)
       expect(item.payout_contributions.first.source).to eq(payment)
-      expect(org.payout_balance_cents_for(contractor)).to eq(30_000) # earned, awaiting payout
+      expect(org.payout_balance_cents_for(payee)).to eq(30_000) # earned, awaiting payout
     end
 
     it "is idempotent per payment" do
@@ -35,9 +37,16 @@ RSpec.describe ContractorPayoutRunService do
       expect(described_class.add_contract_payment!(incoming).added).to be(false)
     end
 
-    it "rejects a contractor without a connected bank" do
-      contractor.update!(payouts_enabled: false)
+    it "rejects a contractor whose person hasn't connected a bank" do
+      payee.update!(payouts_enabled: false)
       expect(described_class.add_contract_payment!(payment).error).to match(/hasn't connected a bank/)
+    end
+
+    it "rejects a contractor with no email (no backing person yet)" do
+      emailless = org.contractors.create!(name: "No Email Co")
+      c = create(:contract, organization: org, contractor: emailless)
+      p = create(:contract_payment, :outgoing, contract: c, amount: 100)
+      expect(described_class.add_contract_payment!(p).error).to match(/Add an email/)
     end
 
     it "rejects a zero / TBD amount" do
@@ -46,14 +55,21 @@ RSpec.describe ContractorPayoutRunService do
     end
   end
 
-  it "marks the contract payment paid when the contractor run pays out" do
-    allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_c"))
-    batch = described_class.add_contract_payment!(payment).batch
+  describe "paying the run" do
+    before { allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_c")) }
 
-    PayoutBatchService.process!(batch)
+    it "marks the contract payment paid and clears the person's balance" do
+      batch = described_class.add_contract_payment!(payment).batch
+      PayoutBatchService.process!(batch)
 
-    expect(payment.reload).to be_status_paid
-    expect(payment.payment_method).to eq("stripe")
-    expect(org.payout_balance_cents_for(contractor)).to eq(0) # earned then paid
+      expect(payment.reload).to be_status_paid
+      expect(payment.payment_method).to eq("stripe")
+      expect(org.payout_balance_cents_for(payee)).to eq(0) # earned then paid
+    end
+
+    it "does not charge the contractor as a $3 active performer" do
+      batch = described_class.add_contract_payment!(payment).batch
+      expect { PayoutBatchService.process!(batch) }.not_to change(PerformerActivation, :count)
+    end
   end
 end

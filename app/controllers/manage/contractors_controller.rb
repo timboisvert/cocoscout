@@ -40,9 +40,10 @@ module Manage
       @completed_contracts = @contractor.contracts.status_completed
         .or(@contractor.contracts.status_cancelled)
         .order(contract_end_date: :desc)
-      # No-login Stripe bank-onboarding link to send the contractor (Phase 0),
-      # so we can pay them the same way as performers/staff.
-      @payment_setup_url = payee_onboarding_url(token: PayeeOnboardingToken.generate(@contractor))
+      # A contractor is paid as its backing Person; provision it if missing, then
+      # build the Person's no-login Stripe bank-onboarding link (Phase 0).
+      @person = @contractor.ensure_person!
+      @payment_setup_url = @person && payee_onboarding_url(token: PayeeOnboardingToken.generate(@person))
     end
 
     def new
@@ -53,6 +54,7 @@ module Manage
       @contractor = Current.organization.contractors.build(contractor_params)
 
       if @contractor.save
+        @contractor.ensure_person!
         respond_to do |format|
           format.html { redirect_to manage_contractor_path(@contractor), notice: "Contractor created." }
           format.json do

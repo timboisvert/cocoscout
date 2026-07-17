@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_142745) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_193607) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -483,6 +483,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_142745) do
     t.text "notes"
     t.bigint "organization_id", null: false
     t.boolean "payouts_enabled", default: false, null: false
+    t.bigint "person_id"
     t.string "phone"
     t.string "stripe_account_id"
     t.string "stripe_account_status"
@@ -492,6 +493,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_142745) do
     t.string "zelle_identifier"
     t.index ["organization_id", "name"], name: "index_contractors_on_organization_id_and_name"
     t.index ["organization_id"], name: "index_contractors_on_organization_id"
+    t.index ["person_id"], name: "index_contractors_on_person_id"
     t.index ["stripe_account_id"], name: "index_contractors_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
   end
 
@@ -2784,6 +2786,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_142745) do
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contractors", "organizations"
+  add_foreign_key "contractors", "people"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
   add_foreign_key "contracts", "productions"

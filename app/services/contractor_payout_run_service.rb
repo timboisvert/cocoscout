@@ -23,7 +23,12 @@ class ContractorPayoutRunService
 
       cents = (contract_payment.amount.to_d * 100).round
       return failure("Set an amount on this payment before paying it.") if cents <= 0
-      unless contractor.respond_to?(:can_receive_payouts?) && contractor.can_receive_payouts?
+
+      # The payee is the contractor's backing Person (the identity that holds the
+      # Stripe account + ledger). Provision it if missing.
+      payee = contractor.ensure_person!
+      return failure("Add an email to #{contractor.name} so they can connect a bank and be paid.") unless payee
+      unless payee.can_receive_payouts?
         return failure("#{contractor.name} hasn't connected a bank yet — send them the setup link first.")
       end
 
@@ -36,16 +41,16 @@ class ContractorPayoutRunService
         organization = contractor.organization
         batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
 
-        item = batch.items.find_by(payee: contractor) ||
-               batch.items.create!(payee: contractor, amount_cents: cents, status: "pending")
+        item = batch.items.find_by(payee: payee) ||
+               batch.items.create!(payee: payee, amount_cents: cents, status: "pending")
 
         contribution = PayoutContribution.create!(
-          payout_batch: batch, payout_batch_item: item, payee: contractor,
+          payout_batch: batch, payout_batch_item: item, payee: payee,
           source: contract_payment, amount_cents: cents,
           label: label_for(contract_payment), description: contractor.name
         )
         PayoutLedgerEntry.post!(
-          organization: organization, payee: contractor, entry_type: "earning",
+          organization: organization, payee: payee, entry_type: "earning",
           amount_cents: cents, source: contribution,
           description: "Contract payment: #{label_for(contract_payment)}", occurred_at: Time.current
         )
