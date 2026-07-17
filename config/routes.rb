@@ -486,7 +486,6 @@ Rails.application.routes.draw do
     # Payments (for talent to manage Venmo/Zelle settings and view history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
-    patch  "/payments/profile",                  to: "payments#update_profile",            as: "payments_update_profile"
     patch  "/payments/venmo",                    to: "payments#update_venmo",              as: "payments_update_venmo"
     delete "/payments/venmo",                    to: "payments#remove_venmo",              as: "payments_remove_venmo"
     patch  "/payments/zelle",                    to: "payments#update_zelle",              as: "payments_update_zelle"

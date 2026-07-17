@@ -16,13 +16,10 @@ RSpec.describe "My::Payments bank connect", type: :request do
     expect(response.body).to include("Connect your bank")
   end
 
-  it "lets the worker set the name that appears on their payments" do
+  it "no longer shows a name field (Stripe captures the legal name at onboarding)" do
     get my_payments_setup_path
-    expect(response.body).to include("Your name")
-
-    patch my_payments_update_profile_path, params: { person: { name: "New Legal Name" } }
-    expect(response).to redirect_to(my_payments_setup_path)
-    expect(person.reload.name).to eq("New Legal Name")
+    expect(response.body).not_to include("Your name")
+    expect(response.body).to include("How you get paid")
   end
 
   it "redirects to Stripe hosted onboarding when connecting" do

@@ -11,31 +11,11 @@
     links: []
   } %>
 
-  <div class="max-w-3xl">
-
-    <!-- Your name — display name (how you appear) + legal name (for official pay) -->
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 text-lg mb-1">Your name</h3>
-      <p class="text-sm text-gray-500 mb-4">How you appear to productions, plus the legal name we use to pay you officially.</p>
-      <%= form_with url: my_payments_update_profile_path, method: :patch, class: "space-y-4" do %>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Display name</label>
-          <%= text_field_tag "person[name]", @person.name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          <p class="text-xs text-gray-500 mt-1">The name productions see — a stage name is fine here.</p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Full legal name</label>
-          <%= text_field_tag "person[legal_name]", @person.legal_name, placeholder: "As it appears on your ID", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          <p class="text-xs text-gray-500 mt-1">Used only to pay you officially and for tax records — not shown publicly.</p>
-        </div>
-        <div class="flex justify-end">
-          <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
-        </div>
-      <% end %>
-    </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
 
     <!-- Bank account (Stripe Connect) — the primary way to get paid -->
-    <div class="bg-white rounded-lg border-2 border-pink-200 p-6 mb-6">
+    <div class="bg-white rounded-lg border-2 border-pink-200 p-6">
       <div class="flex items-start justify-between gap-4 flex-wrap">
         <div class="flex items-start gap-4">
           <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
@@ -256,5 +236,30 @@
         </div>
       </details>
     <% end %>
+    </div><%# /left column %>
+
+    <%# Right column: how getting paid works (money-section style aside). %>
+    <aside class="space-y-4">
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3">How you get paid</h3>
+        <ol class="space-y-3 text-sm text-gray-600">
+          <li class="flex gap-2.5">
+            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-semibold flex items-center justify-center">1</span>
+            <span>Connect your bank once — Stripe collects your legal name and details securely.</span>
+          </li>
+          <li class="flex gap-2.5">
+            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-semibold flex items-center justify-center">2</span>
+            <span>Productions pay you straight to that account — no apps, no chasing.</span>
+          </li>
+          <li class="flex gap-2.5">
+            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-pink-100 text-pink-600 text-xs font-semibold flex items-center justify-center">3</span>
+            <span>Track everything you've been paid on <%= link_to "My Payments", my_payments_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>.</span>
+          </li>
+        </ol>
+      </div>
+      <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+        <p class="text-xs text-gray-500">Your bank and tax details stay with Stripe — the productions you work for never see them.</p>
+      </div>
+    </aside>
   </div>
 </div>
