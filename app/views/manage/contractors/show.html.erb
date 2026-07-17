@@ -58,6 +58,33 @@
     </div>
   </div>
 
+  <%# Getting paid — Stripe bank connection %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+    <%= render "shared/card_header", title: "Getting paid" %>
+    <div class="p-4">
+      <% if @contractor.can_receive_payouts? %>
+        <div class="flex items-center gap-2 text-sm text-green-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span class="font-medium">Bank connected.</span>
+          <span class="text-gray-600">You can pay this contractor through a payout run, straight to their bank.</span>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-600 mb-3">
+          <% if @contractor.connect_account_started? %>
+            This contractor started bank setup but hasn't finished. Send them the link again to complete it.
+          <% else %>
+            Send this contractor a secure link to connect their bank, so you can pay them through CocoScout — no account needed on their end.
+          <% end %>
+        </p>
+        <%= render "shared/copy_url",
+          url: @payment_setup_url,
+          label: "Bank setup link",
+          copy_button_text: "Copy link",
+          help_text: @contractor.display_email.present? ? "Email this to #{@contractor.display_email}. The link expires in 30 days." : "Share this link with the contractor. It expires in 30 days." %>
+      <% end %>
+    </div>
+  </div>
+
   <%# Active Contracts %>
   <% if @active_contracts.any? || @draft_contracts.any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">

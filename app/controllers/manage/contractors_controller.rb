@@ -40,6 +40,9 @@ module Manage
       @completed_contracts = @contractor.contracts.status_completed
         .or(@contractor.contracts.status_cancelled)
         .order(contract_end_date: :desc)
+      # No-login Stripe bank-onboarding link to send the contractor (Phase 0),
+      # so we can pay them the same way as performers/staff.
+      @payment_setup_url = payee_onboarding_url(token: PayeeOnboardingToken.generate(@contractor))
     end
 
     def new
