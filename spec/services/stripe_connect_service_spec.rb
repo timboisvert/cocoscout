@@ -34,6 +34,24 @@ RSpec.describe StripeConnectService do
       expect(url).to eq("https://connect.stripe.com/setup/x")
       expect(person.reload.stripe_account_id).to eq("acct_x")
     end
+
+    it "limits onboarding to currently-due fields so individuals aren't asked for business/website info" do
+      allow(Stripe::Account).to receive(:create).and_return(stripe_account(id: "acct_x"))
+      expect(Stripe::AccountLink).to receive(:create).with(
+        hash_including(collection_options: { fields: "currently_due", future_requirements: "omit" })
+      ).and_return(double("link", url: "https://connect.stripe.com/setup/x"))
+      StripeConnectService.new(person).onboarding_link(return_url: "https://app/return", refresh_url: "https://app/refresh")
+    end
+  end
+
+  describe "#ensure_account business profile" do
+    it "creates an individual account with a product description (no business website required)" do
+      captured = nil
+      allow(Stripe::Account).to receive(:create) { |args| captured = args; stripe_account(id: "acct_ind") }
+      StripeConnectService.new(person).ensure_account
+      expect(captured[:business_type]).to eq("individual")
+      expect(captured[:business_profile][:product_description]).to be_present
+    end
   end
 
   describe "#sync_account" do

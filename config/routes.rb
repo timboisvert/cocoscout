@@ -57,6 +57,12 @@ Rails.application.routes.draw do
   get  "/join/:token", to: "organization_join#show", as: "join_organization"
   post "/join/:token", to: "organization_join#join", as: "do_join_organization"
 
+  # Public, no-login Stripe bank onboarding for payees without an account
+  # (guests, one-timers, contractors). Signed token resolves to the payee.
+  get  "/pay/setup/:token",        to: "payee_onboarding#show",            as: "payee_onboarding"
+  post "/pay/setup/:token/connect", to: "payee_onboarding#connect",         as: "payee_onboarding_connect"
+  get  "/pay/setup/:token/return", to: "payee_onboarding#return_from_stripe", as: "payee_onboarding_return"
+
   # ------------------------------------------------------------------
   # Open Mic Finder — public surface
   # ------------------------------------------------------------------

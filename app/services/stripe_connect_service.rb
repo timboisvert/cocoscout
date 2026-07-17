@@ -51,13 +51,19 @@ class StripeConnectService
   end
 
   # A single-use hosted-onboarding link. Send the payee here to connect their bank.
+  # collection_options limits onboarding to what's strictly required *right now*
+  # for an individual with the transfers capability (legal name + bank), and omits
+  # future/eventually-due prompts — so payees aren't asked for a business name or
+  # website they don't have. (Platform-wide field collection can also be trimmed
+  # in Stripe Dashboard → Settings → Connect → Onboarding.)
   def onboarding_link(return_url:, refresh_url:)
     ensure_account
     Stripe::AccountLink.create(
       account: @payee.stripe_account_id,
       return_url: return_url,
       refresh_url: refresh_url,
-      type: "account_onboarding"
+      type: "account_onboarding",
+      collection_options: { fields: "currently_due", future_requirements: "omit" }
     ).url
   rescue Stripe::StripeError => e
     raise Error, e.message

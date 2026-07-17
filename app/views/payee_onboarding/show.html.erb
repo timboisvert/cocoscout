@@ -1,0 +1,50 @@
+<% content_for :title, "Set up your bank" %>
+
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl coustard-regular text-gray-900">Get paid through CocoScout</h1>
+      <p class="mt-2 text-sm text-gray-600">Hi <%= @payee.name %> — connect your bank so payments land straight in your account.</p>
+    </div>
+
+    <% if flash[:alert] %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p class="text-sm text-red-600"><%= flash[:alert] %></p>
+      </div>
+    <% end %>
+
+    <% if @payee.can_receive_payouts? %>
+      <div class="bg-white shadow rounded-lg p-6 text-center">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+          <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">You're all set</h2>
+        <p class="text-gray-600 text-sm">Your bank is connected. There's nothing else to do — you'll be paid to this account.</p>
+      </div>
+    <% else %>
+      <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex items-start gap-3 mb-5">
+          <div class="flex items-center justify-center h-10 w-10 rounded-lg bg-pink-100 text-pink-600 flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Connect your bank</h2>
+            <p class="text-sm text-gray-600 mt-1">We use Stripe to pay you securely. You'll enter your legal name and bank details — it takes about a minute. CocoScout never sees your bank login.</p>
+          </div>
+        </div>
+
+        <%= button_to payee_onboarding_connect_path(token: @token), form: { data: { turbo: false } }, class: "block" do %>
+          <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "large" %>
+        <% end %>
+
+        <% if @payee.connect_account_started? %>
+          <p class="text-xs text-gray-500 mt-3 text-center">Started but not finished? Tap again to pick up where you left off.</p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <p class="text-center text-xs text-gray-400 mt-6">Powered by Stripe · CocoScout</p>
+  </div>
+</div>
