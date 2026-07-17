@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
-# Adds an outgoing contract payment to the organization's open "contractor"
-# payout run — the same accumulate-then-pay rail as performers and staff. One
-# PayoutBatchItem per contractor (their running total = one Stripe transfer),
-# with a PayoutContribution per contract payment. Each contribution posts an
-# `earning` ledger entry (so the contractor's balance reflects it); the item
-# posts the single debiting `payout` entry when paid, netting to zero.
+# Adds an outgoing contract payment to the organization's open *performer* payout
+# run — contractors ride the same run as performers so the whole thing is funded
+# by one ACH debit (no separate contractor run to fund). One PayoutBatchItem per
+# contractor (their running total = one Stripe transfer), with a
+# PayoutContribution per contract payment. Each contribution posts an `earning`
+# ledger entry (so the contractor's balance reflects it); the item posts the
+# single debiting `payout` entry when paid, netting to zero. Contractors don't
+# trigger the $3/performer charge (that's gated to Person payees).
 #
 # Idempotent per contract payment (unique source). Only outgoing, pending,
 # priced payments to a contractor with a connected bank are added.
@@ -32,7 +34,7 @@ class ContractorPayoutRunService
       batch = nil
       ActiveRecord::Base.transaction do
         organization = contractor.organization
-        batch = PayoutBatch.open_for(organization, kind: "contractor", created_by: added_by)
+        batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
 
         item = batch.items.find_by(payee: contractor) ||
                batch.items.create!(payee: contractor, amount_cents: cents, status: "pending")

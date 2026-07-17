@@ -15,7 +15,7 @@ RSpec.describe ContractorPayoutRunService do
 
       expect(result.added).to be(true)
       batch = result.batch
-      expect(batch.kind).to eq("contractor")
+      expect(batch.kind).to eq("performer") # contractors ride the performer run (one funding event)
       item = batch.items.find_by(payee: contractor)
       expect(item.amount_cents).to eq(30_000)
       expect(item.payout_contributions.first.source).to eq(payment)

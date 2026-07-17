@@ -51,7 +51,7 @@ module Manage
       result = ContractorPayoutRunService.add_contract_payment!(@payment, added_by: Current.user)
       if result.added
         redirect_to manage_payout_batch_path(result.batch),
-                    notice: "Added #{@payment.contract.contractor_name} to your contractor payout run."
+                    notice: "Added #{@payment.contract.contractor_name} to your open payout run."
       elsif result.batch # already added
         redirect_to manage_payout_batch_path(result.batch), notice: "This payment is already in a payout run."
       else

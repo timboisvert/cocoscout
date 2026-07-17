@@ -7,7 +7,7 @@ class PayoutBatch < ApplicationRecord
   # Run kinds. "staff_pay" = staffing hours; "performer" = show payouts. They run
   # on separate schedules, so an org can have one open run of each kind at a time.
   # ("balance" is the legacy generic kind.)
-  KINDS = %w[staff_pay performer contractor balance].freeze
+  KINDS = %w[staff_pay performer balance].freeze
 
   belongs_to :organization
   belongs_to :created_by, class_name: "User", optional: true
@@ -39,7 +39,6 @@ class PayoutBatch < ApplicationRecord
     case kind
     when "performer" then "Performer payouts"
     when "staff_pay" then "Staffing"
-    when "contractor" then "Contractor payouts"
     else "Payouts"
     end
   end
