@@ -1,19 +1,23 @@
 # frozen_string_literal: true
 
-# Builds a staff pay run: the manager enters hours (and any bonus / reimbursement
-# / tips) for each staff member, and this turns that into a PayoutBatch that pays
-# everyone through Stripe Connect. Each line posts an `earning` ledger entry (so
-# the worker's balance + history reflect it) and a batch item that pays it back
-# down, netting to zero.
+# Adds staff pay to the organization's open "staff_pay" payout run — the same
+# accumulate-then-pay model as performer runs. The manager enters hours (and any
+# bonus / reimbursement / tips) per staff member; each visit appends to the one
+# open staffing run, which is funded and paid later from the payout-runs page (on
+# its own schedule, separate from performers).
 #
-# Cash tips are recorded on the line for the record but are NOT routed through
-# Stripe. Only staff with a connected, payout-ready bank are paid; the rest are
-# reported back as skipped so the manager can nudge them to finish onboarding.
+# One PayoutBatchItem per payee (their running total = one Stripe transfer), with
+# a PayoutContribution per component (worked hours, bonus, reimbursement, tips) —
+# so the run's detail view shows exactly what each person is being paid for. Each
+# contribution posts an `earning` ledger entry (worker balance + history); the
+# item posts the single debiting `payout` entry when paid.
+#
+# Cash tips are recorded on the pay grid for the record but are NOT routed here.
+# Everyone with a positive amount is added, even without a connected bank — the
+# run page warns about who isn't ready, and their transfer is skipped at pay time
+# (leaving the balance owed), mirroring performer runs.
 class StaffPayRunService
-  FREE_PAYMENTS_PER_MONTH = 2
-  EXTRA_PAYMENT_FEE_CENTS = 100
-
-  Result = Struct.new(:batch, :skipped, keyword_init: true)
+  Result = Struct.new(:batch, :added, keyword_init: true)
 
   # Worked-hours pay in cents. When specific approved time entries are pulled in,
   # each is paid at that role's rate (rate_cents_for resolves role rate → member
@@ -32,29 +36,16 @@ class StaffPayRunService
     worked_cents.to_i + bonus_cents.to_i + reimbursement_cents.to_i + tips_cents.to_i
   end
 
-  # How many Stripe payments this payee has already been sent this calendar
-  # month — used to apply the "2 free, then $1" per-staff fee.
-  def self.payments_this_month(organization:, payee:, at: Time.current)
-    PayoutBatchItem.paid
-                   .joins(:payout_batch)
-                   .where(payout_batches: { organization_id: organization.id })
-                   .where(payee: payee)
-                   .where(paid_at: at.beginning_of_month..at.end_of_month)
-                   .count
-  end
-
   # lines: array of hashes with keys :staff_member, :hours, :bonus_cents,
   # :reimbursement_cents, :tips_cents, :cash_tips_cents, :notes, :time_entry_ids.
-  def self.build(organization:, created_by:, lines:, payday: nil)
+  def self.add_lines!(organization:, created_by:, lines:, payday: nil)
     batch = nil
-    skipped = []
+    added = 0
 
     ActiveRecord::Base.transaction do
-      batch = organization.payout_batches.create!(
-        trigger: "manual", status: "draft", kind: "staff_pay", created_by: created_by, payday: payday
-      )
+      batch = PayoutBatch.open_for(organization, kind: "staff_pay", created_by: created_by)
+      batch.update!(payday: payday) if payday.present? && batch.payday.blank?
 
-      fee_total = 0
       lines.each do |line|
         member = line[:staff_member]
         payee = member.person
@@ -62,35 +53,62 @@ class StaffPayRunService
           organization: organization, member: member,
           hours: line[:hours], time_entry_ids: line[:time_entry_ids]
         )
-        amount = payable_cents(
-          worked_cents: worked,
-          bonus_cents: line[:bonus_cents],
-          reimbursement_cents: line[:reimbursement_cents],
-          tips_cents: line[:tips_cents]
-        )
-        next if amount <= 0
 
-        unless payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
-          skipped << { member: member, amount_cents: amount }
-          next
+        parts = contribution_parts(organization, member, line, worked)
+        total = parts.sum { |p| p[:amount] }
+        next if total <= 0
+
+        item = batch.items.find_by(payee: payee) ||
+               batch.items.create!(payee: payee, amount_cents: total, status: "pending")
+
+        parts.each do |part|
+          add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount], description: line[:notes])
         end
+        item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
 
-        item = batch.items.create!(payee: payee, amount_cents: amount, status: "pending")
-        PayoutLedgerEntry.post!(
-          organization: organization, payee: payee, entry_type: "earning",
-          amount_cents: amount, source: item, description: "Staff pay run", occurred_at: Time.current
-        )
         tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
-
-        fee_total += EXTRA_PAYMENT_FEE_CENTS if payments_this_month(organization: organization, payee: payee) >= FREE_PAYMENTS_PER_MONTH
+        added += 1
       end
 
-      batch.update!(extra_payment_fee_cents: fee_total)
       batch.recalculate_total!
     end
 
-    MeterStaffFeeJob.perform_later(batch.id) if batch.extra_payment_fee_cents.to_i.positive?
-    Result.new(batch: batch, skipped: skipped)
+    Result.new(batch: batch, added: added)
+  end
+
+  # The named components of a line, each becoming a contribution row. Cash tips
+  # are intentionally excluded (recorded on the grid only, not sent through us).
+  def self.contribution_parts(organization, member, line, worked)
+    [
+      { label: worked_label(organization, member, line), amount: worked.to_i },
+      { label: "Bonus", amount: line[:bonus_cents].to_i },
+      { label: "Reimbursement", amount: line[:reimbursement_cents].to_i },
+      { label: "Tips", amount: line[:tips_cents].to_i }
+    ].select { |p| p[:amount].positive? }
+  end
+
+  def self.worked_label(organization, member, line)
+    ids = Array(line[:time_entry_ids]).map(&:to_i).reject(&:zero?)
+    hours = if ids.any?
+      organization.staff_time_entries.for_person(member.person).where(id: ids).sum(:hours)
+    else
+      line[:hours].to_f
+    end
+    formatted = ActiveSupport::NumberHelper.number_to_rounded(hours, precision: 2, strip_insignificant_zeros: true)
+    "Worked hours (#{formatted}h)"
+  end
+
+  def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil)
+    contribution = PayoutContribution.create!(
+      payout_batch: batch, payout_batch_item: item, payee: payee,
+      amount_cents: amount_cents, label: label, description: description
+    )
+    PayoutLedgerEntry.post!(
+      organization: batch.organization, payee: payee, entry_type: "earning",
+      amount_cents: amount_cents, source: contribution,
+      description: "Staff pay: #{label}", occurred_at: Time.current
+    )
+    contribution
   end
 
   # Attach the pulled-in worked-time entries to this batch so they leave the

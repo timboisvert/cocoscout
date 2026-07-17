@@ -55,7 +55,7 @@ RSpec.describe StaffPayRunService do
       e2 = create(:staff_time_entry, organization: org, person: member.person)
       other = create(:staff_time_entry, organization: org, person: member.person)
 
-      result = described_class.build(
+      result = described_class.add_lines!(
         organization: org, created_by: owner,
         lines: [ { staff_member: member, hours: 4, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0,
                    time_entry_ids: [ e1.id, e2.id ] } ]
@@ -69,14 +69,14 @@ RSpec.describe StaffPayRunService do
     end
   end
 
-  describe ".build" do
-    it "creates a staff_pay batch with items + earnings for bankable staff, skipping the rest" do
+  describe ".add_lines!" do
+    it "adds every payee with a positive amount to the open staffing run, including those without a bank" do
       ready = staff(name: "Ready Rae", rate_cents: 2000)
       nobank = staff(name: "Nobank Nia", rate_cents: 2000, bank: false)
 
       result = nil
       expect {
-        result = described_class.build(
+        result = described_class.add_lines!(
           organization: org, created_by: owner,
           lines: [
             { staff_member: ready, hours: 4, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0 },
@@ -87,26 +87,47 @@ RSpec.describe StaffPayRunService do
 
       batch = result.batch
       expect(batch.kind).to eq("staff_pay")
-      expect(batch.items.map(&:payee)).to eq([ ready.person ])
-      expect(batch.total_cents).to eq(8000)
-      # earning posted so the worker's balance reflects it before it's paid down
+      expect(batch.open?).to be(true)
+      expect(batch.items.map(&:payee)).to match_array([ ready.person, nobank.person ])
+      expect(batch.total_cents).to eq(16_000)
+      expect(result.added).to eq(2)
+      # earning posted so each worker's balance reflects it before it's paid down
       expect(org.payout_balance_cents_for(ready.person)).to eq(8000)
-      expect(result.skipped.map { |s| s[:member] }).to eq([ nobank ])
     end
 
-    it "charges the $1 extra-payment fee after 2 paid runs in a month" do
-      rae = staff(name: "Rae", rate_cents: 1000)
-      # Two already-paid items this month.
-      2.times do
-        b = org.payout_batches.create!(trigger: "manual", status: "completed", kind: "staff_pay")
-        b.items.create!(payee: rae.person, amount_cents: 1000, status: "paid", paid_at: Time.current)
-      end
-
-      result = described_class.build(
+    it "records a contribution per component (worked / bonus / reimbursement / tips)" do
+      member = staff(name: "Detail Dee", rate_cents: 2000)
+      result = described_class.add_lines!(
         organization: org, created_by: owner,
-        lines: [ { staff_member: rae, hours: 1, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0 } ]
+        lines: [ { staff_member: member, hours: 2, bonus_cents: 500, reimbursement_cents: 250, tips_cents: 1000 } ]
       )
-      expect(result.batch.extra_payment_fee_cents).to eq(100)
+
+      item = result.batch.items.find_by(payee: member.person)
+      labels = item.payout_contributions.pluck(:label)
+      expect(labels).to include("Worked hours (2h)", "Bonus", "Reimbursement", "Tips")
+      # 2h × $20 + $5 + $2.50 + $10 = $57.50
+      expect(item.amount_cents).to eq(5750)
+      expect(item.payout_contributions.sum(:amount_cents)).to eq(item.amount_cents)
+    end
+
+    it "accumulates a second add into the same open run and the same payee's item" do
+      member = staff(name: "Again Amy", rate_cents: 2000)
+      first = described_class.add_lines!(
+        organization: org, created_by: owner,
+        lines: [ { staff_member: member, hours: 1, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0 } ]
+      )
+      second = nil
+      expect {
+        second = described_class.add_lines!(
+          organization: org, created_by: owner,
+          lines: [ { staff_member: member, hours: 2, bonus_cents: 0, reimbursement_cents: 0, tips_cents: 0 } ]
+        )
+      }.not_to change(PayoutBatch, :count)
+
+      expect(second.batch).to eq(first.batch)
+      item = second.batch.items.find_by(payee: member.person)
+      expect(item.payout_contributions.count).to eq(2)
+      expect(item.amount_cents).to eq(6000) # (1h + 2h) × $20
     end
   end
 end

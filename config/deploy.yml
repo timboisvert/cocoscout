@@ -81,9 +81,9 @@ env:
     - STRIPE_PRICE_PRO_MONTHLY
     - STRIPE_PRICE_PRO_ANNUAL
     - STRIPE_PRICE_STAFF_ACTIVE
-    - STRIPE_PRICE_STAFF_EXTRA
     - STRIPE_METER_STAFF_ACTIVE
-    - STRIPE_METER_STAFF_EXTRA
+    - STRIPE_PRICE_PERFORMER_ACTIVE
+    - STRIPE_METER_PERFORMER_ACTIVE
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false

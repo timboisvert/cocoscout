@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_142745) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1358,8 +1358,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_150000) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
-    t.integer "extra_payment_fee_cents", default: 0, null: false
-    t.datetime "fee_metered_at"
     t.string "funding_payment_intent_id"
     t.string "funding_status"
     t.string "kind", default: "balance", null: false
@@ -1522,6 +1520,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_150000) do
     t.datetime "updated_at", null: false
     t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_59d6099064"
     t.index ["profileable_type", "profileable_id"], name: "index_performance_sections_on_profileable"
+  end
+
+  create_table "performer_activations", force: :cascade do |t|
+    t.date "billing_month", null: false
+    t.datetime "created_at", null: false
+    t.datetime "first_activated_at"
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.datetime "reported_at"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "person_id", "billing_month"], name: "idx_performer_activations_unique", unique: true
+    t.index ["organization_id"], name: "index_performer_activations_on_organization_id"
+    t.index ["person_id"], name: "index_performer_activations_on_person_id"
   end
 
   create_table "person_advances", force: :cascade do |t|
@@ -2862,6 +2873,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_150000) do
   add_foreign_key "payout_schemes", "productions"
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
+  add_foreign_key "performer_activations", "organizations"
+  add_foreign_key "performer_activations", "people"
   add_foreign_key "person_advances", "people"
   add_foreign_key "person_advances", "productions"
   add_foreign_key "person_advances", "shows"

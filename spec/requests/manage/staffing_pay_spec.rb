@@ -32,9 +32,7 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
       expect(response).to have_http_status(:no_content)
       expect(PayDraft.read(owner, org)).to eq('{"payday":"2026-08-01"}')
 
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double(id: "pi_1", status: "succeeded"))
-      allow(Stripe::Transfer).to receive(:create).and_return(double(id: "tr_1"))
-      post manage_create_staffing_pay_path, params: { funding_method: "ach", lines: { member.id.to_s => { hours: "4" } } }
+      post manage_create_staffing_pay_path, params: { lines: { member.id.to_s => { hours: "4" } } }
 
       expect(PayDraft.read(owner, org)).to be_nil
     end
@@ -46,23 +44,33 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     expect(response.body).to include("Ready Rae").and include("Pay People")
   end
 
-  it "runs pay for the entered hours and pays through Connect" do
-    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
-    allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
-
+  it "adds the entered hours to the open staffing run (accumulate, not paid yet)" do
     expect {
       post manage_create_staffing_pay_path, params: {
-        payday: Date.current.to_s, funding_method: "ach",
+        payday: Date.current.to_s,
         lines: { member.id.to_s => { hours: "4", bonus: "10" } }
       }
     }.to change(PayoutBatch, :count).by(1)
 
     batch = PayoutBatch.last
     expect(batch.kind).to eq("staff_pay")
+    expect(batch.open?).to be(true) # still a draft — funded later from the runs page
     expect(batch.total_cents).to eq(9000) # 4 * $20 + $10 bonus
-    expect(batch.status).to eq("completed")
-    expect(org.payout_balance_cents_for(person)).to eq(0) # earned then paid
+    expect(org.payout_balance_cents_for(person)).to eq(9000) # earned, awaiting payout
     expect(response).to redirect_to(manage_payout_batch_path(batch))
+  end
+
+  it "funds and pays the open staffing run through Connect from the runs page" do
+    post manage_create_staffing_pay_path, params: { lines: { member.id.to_s => { hours: "4" } } }
+    batch = PayoutBatch.last
+
+    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+    allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+
+    post manage_fund_payout_batch_path(batch)
+
+    expect(batch.reload.status).to eq("completed")
+    expect(org.payout_balance_cents_for(person)).to eq(0) # earned then paid
   end
 
   it "won't start a run when nobody has hours entered" do

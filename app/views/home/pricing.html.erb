@@ -36,15 +36,16 @@
       ["Platform fee", txt.call("10% per transaction"), txt.call("10% per transaction")]
     ]],
     ["Money &amp; payments", [
-      ["Financials, payouts &amp; contracts", no.call, yes.call],
-      ["Advances", no.call, yes.call],
-      ["Pay performers", no.call, yes.call]
+      ["Financials, contracts &amp; advances", no.call, yes.call],
+      ["Payout schemes &amp; payout runs", no.call, yes.call],
+      ["Pay a performer to their bank", no.call, yes.call("$3/mo — only in months you pay them")],
+      ["Unlimited payout runs", no.call, yes.call]
     ]],
     ["Staffing", [
       ["Staff availability &amp; work shifts", no.call, yes.call],
       ["Staff onboarding &amp; org charts", no.call, yes.call],
       ["Schedule &amp; manage a staff member", no.call, yes.call("$5/mo — only in months they work")],
-      ["Pay your staff", no.call, yes.call("2 free payments/mo each, then $1")],
+      ["Pay your staff", no.call, yes.call("Unlimited payouts — included")],
       ["Tax forms (W-9, 1099-NEC, 1096)", no.call, yes.call]
     ]],
     ["Reports", [
@@ -71,8 +72,9 @@
       <p class="text-xs uppercase tracking-wider text-pink-300 font-semibold mb-2">Built by performers &amp; producers, for performers &amp; producers</p>
       <p class="text-base text-slate-200">
         We've run the shows and paid the bills — so our pricing is fair by design. Staffing is
-        <span class="font-semibold text-white">$5/month per person, only in the months they actually work</span>.
-        If someone sits out a month, you pay nothing for them.
+        <span class="font-semibold text-white">$5/month per staff member</span>, and Money is
+        <span class="font-semibold text-white">$3/month per performer</span> — both only in the
+        months you actually use them. If someone sits out a month, you pay nothing for them.
       </p>
     </div>
   </section>
@@ -107,7 +109,8 @@
           <li>Staffing, Auditions &amp; Casting Tables</li>
           <li>Performer agreements &amp; e-signatures</li>
           <li>Reports across your whole company</li>
-          <li>Pay performers &amp; add staff for $5/mo — only in months they work</li>
+          <li>Pay performers $3/mo each — only in months you pay them</li>
+          <li>Add staff $5/mo each — only in months they work</li>
         </ul>
         <%= link_to "Go Pro", signup_path, class: "mt-6 inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-pink-500 text-white font-medium hover:bg-pink-600 transition" %>
       </div>

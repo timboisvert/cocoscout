@@ -23,12 +23,12 @@ RSpec.describe StaffBillingService do
     expect(svc.active_staff_cents).to eq(500)
   end
 
-  it "adds this month's extra-payment fees to the estimate" do
+  it "bills only for active staff — paying people is included, no per-payment fee" do
     worked = staff("Worked Wanda")
     StaffActivation.record!(organization: org, person: worked, month: this_month)
-    org.payout_batches.create!(trigger: "manual", status: "completed", kind: "staff_pay", extra_payment_fee_cents: 100)
+    org.payout_batches.create!(trigger: "manual", status: "completed", kind: "staff_pay")
 
-    expect(described_class.new(org).monthly_estimate_cents).to eq(600) # $5 active + $1 fee
+    expect(described_class.new(org).monthly_estimate_cents).to eq(500) # $5 active only
   end
 
   it "does not count an activation from another month" do

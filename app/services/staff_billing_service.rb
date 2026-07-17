@@ -2,8 +2,8 @@
 
 # Fair-pricing billing for the staffing module: an org is charged $5/month per
 # *active* staff member — active meaning scheduled for at least one shift that
-# calendar month. A staffer who doesn't work that month costs nothing. On top of
-# that, the $1 per-extra-payment fees collected during pay runs are billed too.
+# calendar month. A staffer who doesn't work that month costs nothing. Paying
+# people (any number of pay runs) is included — there's no per-payment fee.
 #
 # The monthly meter job reports the active count as usage on the org's metered
 # Stripe subscription item; #monthly_estimate_cents drives the running preview
@@ -14,7 +14,6 @@ class StaffBillingService
   def initialize(organization, month: Date.current)
     @organization = organization
     @month = month.to_date.beginning_of_month
-    @range = @month.beginning_of_day..@month.end_of_month.end_of_day
   end
 
   # Staff members billable this month — those who were *notified* of a shift
@@ -37,12 +36,7 @@ class StaffBillingService
     active_count * PER_ACTIVE_STAFF_CENTS
   end
 
-  # $1 extra-payment fees charged across this month's pay runs.
-  def extra_payment_fee_cents
-    @organization.payout_batches.where(created_at: @range).sum(:extra_payment_fee_cents)
-  end
-
   def monthly_estimate_cents
-    active_staff_cents + extra_payment_fee_cents
+    active_staff_cents
   end
 end

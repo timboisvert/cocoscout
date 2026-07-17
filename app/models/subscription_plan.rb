@@ -28,23 +28,26 @@ module SubscriptionPlan
     ENV["STRIPE_PRICE_PRO_ANNUAL"] || Rails.application.credentials.dig(:stripe, :price_pro_annual)
   end
 
-  # Metered staffing price IDs (the $5/active-staff and $1/extra-payment prices
-  # created by `rake stripe:setup_staff_meter`). When set, they're attached to
-  # the Pro subscription at checkout so reported usage actually invoices.
+  # Metered usage price IDs (created by `rake stripe:setup_staff_meter`):
+  # $5/active-staff and $3/active-performer per month. When set, they're attached
+  # to the org's usage subscription so reported usage actually invoices.
   def staff_active_price_id
     ENV["STRIPE_PRICE_STAFF_ACTIVE"] || Rails.application.credentials.dig(:stripe, :price_staff_active)
   end
 
-  def staff_extra_price_id
-    ENV["STRIPE_PRICE_STAFF_EXTRA"] || Rails.application.credentials.dig(:stripe, :price_staff_extra)
+  def performer_active_price_id
+    ENV["STRIPE_PRICE_PERFORMER_ACTIVE"] || Rails.application.credentials.dig(:stripe, :price_performer_active)
   end
 
-  # Subscription items for the separate, always-monthly staffing subscription
-  # (the two metered prices, added without a quantity — Stripe bills them from
-  # reported usage). Returns nil unless both metered prices are configured.
+  # Subscription items for the separate, always-monthly usage subscription (the
+  # metered active-staff and active-performer prices, added without a quantity —
+  # Stripe bills them from reported usage). Includes each configured price;
+  # returns nil if none are configured. Both meters should be configured together
+  # so the subscription is created carrying both from the first activation.
   def staffing_subscription_items
-    return nil if staff_active_price_id.blank? || staff_extra_price_id.blank?
-
-    [ { price: staff_active_price_id }, { price: staff_extra_price_id } ]
+    items = []
+    items << { price: staff_active_price_id } if staff_active_price_id.present?
+    items << { price: performer_active_price_id } if performer_active_price_id.present?
+    items.presence
   end
 end

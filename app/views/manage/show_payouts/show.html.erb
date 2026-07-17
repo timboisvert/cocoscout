@@ -934,7 +934,6 @@
             paid_count = line_items.count { |li| li.paid? }
             payment_ready_count = line_items.count { |li| li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
             needs_setup_count = line_items.count { |li| !li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
-            auto_payout_count = line_items.count(&:auto_payout?)
             pending_payout_count = line_items.count { |li| li.payout_pending? }
           %>
 
@@ -959,11 +958,6 @@
                   <% if needs_setup_count > 0 %>
                     <span class="text-gray-600">
                       <span class="font-semibold text-pink-600"><%= needs_setup_count %></span> need payment setup
-                    </span>
-                  <% end %>
-                  <% if auto_payout_count > 0 %>
-                    <span class="text-gray-600" title="These performers connected a bank and are paid automatically on your next payout run.">
-                      <span class="font-semibold text-blue-600"><%= auto_payout_count %></span> auto-pay
                     </span>
                   <% end %>
                 </div>
@@ -1177,11 +1171,17 @@
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">Paid</span>
                             <div class="text-xs text-gray-400 mt-0.5">payout run</div>
                           </div>
+                        <% elsif item.auto_payout? && item.in_payout_run? %>
+                          <%# Bank connected and already added to an open payout run. %>
+                          <div class="text-right" title="Added to a payout run. Pay the run to send this to their bank.">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run</span>
+                            <div class="text-xs text-gray-400 mt-0.5">awaiting payment</div>
+                          </div>
                         <% elsif item.auto_payout? %>
-                          <%# Bank connected — paid automatically by the standard payout run. %>
-                          <div class="text-right" title="This person connected a bank, so they're paid automatically on your next payout run.">
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">Auto-pay</span>
-                            <div class="text-xs text-gray-400 mt-0.5"><%= next_payout_on ? "run #{next_payout_on.strftime('%b %-d')}" : "next payout run" %></div>
+                          <%# Bank connected but not yet added — adding to a run is a manual step. %>
+                          <div class="text-right" title="This person connected a bank, so they're paid through a payout run. Use “Add to payout run” above to include them.">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">Bank connected</span>
+                            <div class="text-xs text-gray-400 mt-0.5">add to a payout run</div>
                           </div>
                         <% else %>
                           <%# For grouped items, pass comma-separated IDs %>

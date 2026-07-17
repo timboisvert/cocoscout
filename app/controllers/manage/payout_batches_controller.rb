@@ -36,6 +36,15 @@ module Manage
 
     def show
       @batch = organization.payout_batches.find(params[:id])
+      # Payees in an open run who can't be paid yet (no connected bank) — their
+      # transfer would fail, so warn before funding.
+      @not_ready_items = if @batch.open?
+        @batch.items.includes(:payee).pending.reject do |item|
+          item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
+        end
+      else
+        []
+      end
     end
 
     # Fund and pay an existing open run (e.g. a performer run built via

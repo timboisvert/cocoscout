@@ -19,18 +19,8 @@ module StaffMeterService
     ENV["STRIPE_METER_STAFF_ACTIVE"] || Rails.application.credentials.dig(:stripe, :meter_staff_active)
   end
 
-  # Separate meter for the $1-per-extra-payment fees (2 free payments/month per
-  # staff member, then $1 each).
-  def extra_payment_event_name
-    ENV["STRIPE_METER_STAFF_EXTRA"] || Rails.application.credentials.dig(:stripe, :meter_staff_extra)
-  end
-
   def configured?
     active_event_name.present?
-  end
-
-  def extra_payments_configured?
-    extra_payment_event_name.present?
   end
 
   # Report a single active-staff-member unit for the activation's month.
@@ -75,46 +65,14 @@ module StaffMeterService
     nil
   end
 
-  # Report the $1 extra-payment fees from a pay run as metered units (one unit =
-  # $1). Idempotent per batch.
-  def report_extra_payments!(batch)
-    org = batch.organization
-    units = batch.extra_payment_fee_cents.to_i / 100
-    return :nothing_to_report if units <= 0
-    return :not_configured unless extra_payments_configured? && org&.stripe_customer_id.present?
-
-    ensure_staffing_subscription!(org)
-
-    Stripe::Billing::MeterEvent.create(
-      event_name: extra_payment_event_name,
-      identifier: "staff_extra:batch:#{batch.id}",
-      payload: { stripe_customer_id: org.stripe_customer_id, value: units.to_s }
-    )
-    batch.update_column(:fee_metered_at, Time.current)
-    :reported
-  rescue Stripe::StripeError => e
-    Rails.logger.warn("Staff extra-payment meter failed for batch #{batch.id}: #{e.message}")
-    :error
-  end
-
-  # Re-send any of an org's activations + pay-run fees for `month` that haven't
-  # been metered yet (catches events that failed to send). Idempotent thanks to
-  # the event identifiers.
+  # Re-send any of an org's activations for `month` that haven't been metered yet
+  # (catches events that failed to send). Idempotent thanks to the event
+  # identifiers.
   def reconcile_month!(organization, month: Date.current)
-    return :not_configured unless organization.stripe_customer_id.present?
+    return :not_configured unless organization.stripe_customer_id.present? && configured?
 
-    if configured?
-      organization.staff_activations.for_month(month).where(reported_at: nil).find_each do |activation|
-        report_activation!(activation)
-      end
-    end
-
-    if extra_payments_configured?
-      range = month.to_date.beginning_of_month.beginning_of_day..month.to_date.end_of_month.end_of_day
-      organization.payout_batches.where(created_at: range, fee_metered_at: nil)
-                  .where("extra_payment_fee_cents > 0").find_each do |batch|
-        report_extra_payments!(batch)
-      end
+    organization.staff_activations.for_month(month).where(reported_at: nil).find_each do |activation|
+      report_activation!(activation)
     end
     :reconciled
   end

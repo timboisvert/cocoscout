@@ -33,11 +33,9 @@
       <%# ACH is the only funding method for now — no card option. %>
       <input type="hidden" name="funding_method" value="ach">
 
-      <%# Gusto-style summary: the pay date plus the estimated money-movement
-          timeline (funds leave your bank on a different day than staff get paid). %>
-      <% run_on = Date.current %>
-      <% withdraw_on = add_business_days(run_on, 1) %>
-      <% deposit_on = add_business_days(withdraw_on, 2) %>
+      <%# These hours/amounts get added to your one open staffing payout run;
+          you fund and pay that run separately (on its own schedule) from the
+          payout-runs page. %>
       <div class="rounded-lg border border-gray-200 bg-white p-4 mb-4">
         <div class="flex flex-col lg:flex-row lg:items-stretch gap-5">
           <div class="lg:w-56 lg:border-r lg:border-gray-100 lg:pr-5">
@@ -47,28 +45,17 @@
           </div>
 
           <div class="flex-1">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Estimated timing</span>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">How staff pay works</span>
               <button type="button" data-action="click->help-modal#open" class="text-xs text-pink-600 hover:text-pink-700 cursor-pointer">What's this?</button>
             </div>
-            <ol class="relative border-l border-gray-200 ml-1.5 space-y-3">
-              <li class="ml-4">
-                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-pink-500"></span>
-                <div class="text-sm font-medium text-gray-900">Today, <%= run_on.strftime("%b %-d") %></div>
-                <div class="text-xs text-gray-500">You start this pay run</div>
-              </li>
-              <li class="ml-4">
-                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-gray-300"></span>
-                <div class="text-sm font-medium text-gray-900">~<%= withdraw_on.strftime("%b %-d") %></div>
-                <div class="text-xs text-gray-500">Funds debited from your bank (ACH)</div>
-              </li>
-              <li class="ml-4">
-                <span class="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-gray-300"></span>
-                <div class="text-sm font-medium text-gray-900">~<%= deposit_on.strftime("%b %-d") %></div>
-                <div class="text-xs text-gray-500">Staff receive their deposits</div>
-              </li>
-            </ol>
-            <p class="text-[11px] text-gray-400 mt-3">Estimates — actual ACH timing depends on your bank.</p>
+            <p class="text-sm text-gray-600">
+              What you enter here is added to your <span class="font-medium text-gray-900">open staffing payout run</span>, so you can build it up across the pay period.
+              When you're ready, open it from
+              <%= link_to "Payout runs", manage_payout_batches_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>
+              and hit <span class="font-medium text-gray-900">Fund &amp; pay</span> — we debit your bank by ACH and deposit each person a few business days later.
+            </p>
+            <p class="text-[11px] text-gray-400 mt-2">Staffing runs are separate from performer runs and pay on their own schedule.</p>
           </div>
         </div>
       </div>
@@ -94,7 +81,7 @@
               <tr data-pay-run-target="row" data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>" class="<%= "opacity-60" unless can_pay %>">
                 <td class="px-3 py-2">
                   <div class="font-medium text-gray-900"><%= member.display_name %></div>
-                  <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank — will be skipped</span><% end %>
+                  <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
                 </td>
                 <td class="px-3 py-2 text-right text-gray-600"><%= member.hourly_rate_cents ? number_to_currency(member.hourly_rate_cents / 100.0) : "—" %></td>
                 <td class="px-3 py-2 text-right align-top">
@@ -133,11 +120,11 @@
         </table>
       </div>
 
-      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Each staff member gets 2 free payments a month; additional payments are $1 each. Cash tips are recorded for your records but not sent through us.</p>
+      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are recorded for your records but not sent through us.</p>
 
       <div class="flex items-center justify-end gap-3 mt-4">
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
-        <%= render "shared/button", text: "Pay People", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Add to pay run", variant: "primary", size: "medium", type: :submit %>
       </div>
     <% end %>
   <% end %>
@@ -242,7 +229,7 @@
     <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
       <p>Only staff with a connected bank get paid; the rest are skipped until they connect one.</p>
       <p>Funds are pulled from your bank by ACH and land in staff accounts a few business days later.</p>
-      <p>Each staff member gets 2 free payments a month; additional payments are $1 each.</p>
+      <p>Paying staff is unlimited — it's included in the $5/month per active staff member.</p>
     </div>
   <% end %>
 </div>

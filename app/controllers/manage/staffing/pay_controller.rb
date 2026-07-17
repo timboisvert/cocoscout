@@ -32,32 +32,28 @@ module Manage
         head :no_content
       end
 
+      # Add the entered hours/amounts to the org's open staffing payout run
+      # (accumulate model — funded and paid later from the payout-runs page, on
+      # its own schedule). Everyone with a positive amount is added; people who
+      # haven't connected a bank are flagged on the run and skipped at pay time.
       def create
         lines = parse_lines
         if lines.empty?
           redirect_to manage_staffing_pay_path, alert: "Enter hours or an amount for at least one person." and return
         end
 
-        result = StaffPayRunService.build(
+        result = StaffPayRunService.add_lines!(
           organization: Current.organization, created_by: Current.user,
           lines: lines, payday: parse_payday
         )
-        batch = result.batch
 
-        if batch.items.empty?
-          batch.destroy
-          redirect_to manage_staffing_pay_path,
-                      alert: skip_alert(result.skipped) and return
+        if result.added.zero?
+          redirect_to manage_staffing_pay_path, alert: "Nothing to add — enter hours or an amount for at least one person." and return
         end
 
-        method = params[:funding_method].presence_in(PayoutBatchService::FUNDING_METHODS) || "ach"
-        PayoutBatchService.fund!(batch, method: method)
-
         PayDraft.clear(Current.user, Current.organization)
-        redirect_to manage_payout_batch_path(batch), notice: pay_notice(batch, result.skipped)
-      rescue PayoutBatchService::Error => e
-        redirect_to manage_staffing_pay_path,
-                    alert: "Couldn't start the pay run: #{e.message}. Make sure your organization has a payment method set up to fund payouts."
+        redirect_to manage_payout_batch_path(result.batch),
+                    notice: "Added #{helpers.pluralize(result.added, 'person')} to your staff payout run. Fund and pay it when you're ready."
       end
 
       private
@@ -122,20 +118,6 @@ module Manage
         Date.parse(params[:payday].to_s)
       rescue ArgumentError, TypeError
         Date.current
-      end
-
-      def pay_notice(batch, skipped)
-        note = "Pay run started — #{helpers.number_to_currency(batch.total_cents / 100.0)} to #{batch.items.size} #{'person'.pluralize(batch.items.size)}."
-        note += " #{skipped.size} skipped (no connected bank yet)." if skipped.any?
-        note
-      end
-
-      def skip_alert(skipped)
-        if skipped.any?
-          "No one could be paid yet — #{skipped.size} #{'person'.pluralize(skipped.size)} still need to connect a bank."
-        else
-          "No one had an amount to pay."
-        end
       end
     end
   end

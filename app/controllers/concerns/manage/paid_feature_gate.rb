@@ -66,15 +66,15 @@ module Manage
         name: "Money & Payments",
         icon: "dollar-sign",
         headline: "Run the money side of your productions with confidence",
-        subhead: "From box-office revenue to performer payouts, keep every dollar organized in one connected place.",
-        description: "Money turns show financials, contracts, advances, and payouts into a single system that always ties out. No more spreadsheets, guesswork, or wondering who still needs to get paid.",
+        subhead: "Full production accounting and performer payouts in one connected place, priced fairly: $3/month per performer, only in the months you actually pay them.",
+        description: "Money turns show financials, contracts, advances, and payouts into a single system that always ties out — and pays performers straight to their bank. No more spreadsheets, guesswork, or wondering who still needs to get paid. Built by performers and producers who were tired of paying to move their own money.",
         capabilities: [
           { title: "Show & production financials", body: "Record ticket and other revenue per show and watch it roll up by production and time period." },
-          { title: "Performer payouts", body: "Build reusable payout schemes, calculate each performer's split automatically, and track what's owed." },
-          { title: "Contracts & revenue shares", body: "Track third-party contracts and rental revenue shares, with payments scheduled and reconciled for you." },
-          { title: "Advances", body: "Issue performer advances and automatically recover them from future show payouts." }
+          { title: "Performer payouts", body: "Build reusable payout schemes, calculate each performer's split automatically, and pay them straight to their bank in one click." },
+          { title: "Fair, per-active pricing", body: "Just $3/month per performer — and only in months you actually pay them. Unlimited payout runs included; a performer you don't pay that month costs nothing." },
+          { title: "Contracts & advances", body: "Track third-party contracts and revenue shares, and issue performer advances that recover automatically from future payouts." }
         ],
-        outcome: "Close every show knowing exactly what came in, what went out, and who's been paid."
+        outcome: "Close every show knowing exactly what came in, what went out, and who's been paid — for $3 a performer, only when you pay them."
       },
       staffing: {
         name: "Staffing",
@@ -86,7 +86,7 @@ module Manage
           { title: "Staff availability & work shifts", body: "Collect availability and build shift schedules that fit each event, venue, and role." },
           { title: "Onboarding & org charts", body: "Onboard new staff Gusto-style and map who reports to whom." },
           { title: "Fair, per-active pricing", body: "Just $5/month per staff member — and only in months they're scheduled to work. Nobody working this month? You pay nothing for them." },
-          { title: "Pay your staff", body: "Each staff member includes 2 free payments per month; additional payments are just $1." },
+          { title: "Pay your staff", body: "Pay staff straight to their bank as often as you like — unlimited payouts are included in the $5." },
           { title: "Tax forms", body: "Generate the tax forms you need — W-9, 1099-NEC, 1096, and more." }
         ],
         outcome: "Keep your team scheduled, paid, and compliant — without leaving CocoScout, and without paying for people who aren't working."

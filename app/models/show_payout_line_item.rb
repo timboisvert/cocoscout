@@ -115,16 +115,24 @@ class ShowPayoutLineItem < ApplicationRecord
     !is_guest? && payee_id.present? && LEDGER_PAYEE_TYPES.include?(payee_type)
   end
 
-  # A "migrated" performer: they've connected a bank, so they're paid
-  # automatically by the standard payout run — not hand-paid per show. Legacy
-  # performers (Venmo/Zelle/cash) are unaffected. False until the payee connects
-  # a bank, so the existing per-show pay flow is unchanged for everyone today.
+  # A bank-connected performer: they're paid through a Stripe payout run, not
+  # hand-paid per show via Venmo/Zelle. Legacy performers (Venmo/Zelle/cash) are
+  # unaffected. False until the payee connects a bank, so the existing per-show
+  # pay flow is unchanged for everyone today. (Historically called "auto-pay",
+  # but adding to a run is a manual step — see #in_payout_run?.)
   def auto_payout?
     return false if is_guest? || paid?
     return false unless payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
 
-    # Still awaiting the next run — not yet covered by a completed payout.
+    # Still awaiting a run — not yet covered by a completed payout.
     !settled_via_payout_run?
+  end
+
+  # Whether this line has actually been added to a payout run yet. Bank-connected
+  # performers show a badge, but nothing moves until a manager clicks
+  # "Add to payout run", so the badge must distinguish "ready to add" from "added".
+  def in_payout_run?
+    payout_contribution.present?
   end
 
   # A bank-connected performer whose balance has already been paid down by a

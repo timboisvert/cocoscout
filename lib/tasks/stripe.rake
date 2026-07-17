@@ -53,32 +53,34 @@ namespace :stripe do
     )
 
     puts "\nStaffing meter created. Add these to your environment / credentials"
-    puts "(the checkout attaches the metered price to new Pro subscriptions):"
+    puts "(attached to the org's usage subscription so reported usage invoices):"
     puts "  STRIPE_METER_STAFF_ACTIVE=#{event_name}"
     puts "  STRIPE_PRICE_STAFF_ACTIVE=#{price.id}"
     puts "  Meter:  #{meter.id}"
 
-    # Second meter: the $1-per-extra-payment fee (2 free payments/month, then $1).
-    fee_event = "staff_extra_payment"
-    fee_meter = Stripe::Billing::Meter.create(
-      display_name: "Staff extra payments",
-      event_name: fee_event,
+    # Performer meter: $3/active performer/month (cast in a show that month).
+    # Configure this alongside the staff meter so the usage subscription is
+    # created carrying both prices from the first activation.
+    perf_event = "performer_active_monthly"
+    perf_meter = Stripe::Billing::Meter.create(
+      display_name: "Active performers",
+      event_name: perf_event,
       default_aggregation: { formula: "sum" },
       customer_mapping: { event_payload_key: "stripe_customer_id", type: "by_id" },
       value_settings: { event_payload_key: "value" }
     )
-    fee_product = Stripe::Product.create(name: "CocoScout Staffing — extra payment")
-    fee_price = Stripe::Price.create(
-      product: fee_product.id,
+    perf_product = Stripe::Product.create(name: "CocoScout Money — active performer")
+    perf_price = Stripe::Price.create(
+      product: perf_product.id,
       currency: "usd",
-      unit_amount: 100, # $1
-      recurring: { interval: "month", usage_type: "metered", meter: fee_meter.id },
-      metadata: { plan: "staff_extra_payment" }
+      unit_amount: PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS, # $3
+      recurring: { interval: "month", usage_type: "metered", meter: perf_meter.id },
+      metadata: { plan: "performer_active" }
     )
 
-    puts "\nExtra-payment meter created:"
-    puts "  STRIPE_METER_STAFF_EXTRA=#{fee_event}"
-    puts "  STRIPE_PRICE_STAFF_EXTRA=#{fee_price.id}"
-    puts "  Meter:  #{fee_meter.id}"
+    puts "\nPerformer meter created:"
+    puts "  STRIPE_METER_PERFORMER_ACTIVE=#{perf_event}"
+    puts "  STRIPE_PRICE_PERFORMER_ACTIVE=#{perf_price.id}"
+    puts "  Meter:  #{perf_meter.id}"
   end
 end

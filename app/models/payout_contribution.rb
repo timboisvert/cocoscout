@@ -9,6 +9,11 @@ class PayoutContribution < ApplicationRecord
   belongs_to :payee, polymorphic: true
   belongs_to :source, polymorphic: true, optional: true
 
+  # Earning ledger entries a staff contribution posts (performer contributions
+  # post none — their earning lives on the ShowPayoutLineItem). dependent:
+  # :destroy so removing a contribution from an open run reverses what it owed.
+  has_many :payout_ledger_entries, as: :source, dependent: :destroy
+
   validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :label, presence: true
 

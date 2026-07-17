@@ -92,6 +92,7 @@ class PayoutBatchService
       )
       item.mark_paid!(transfer_id: transfer.id)
       settle_item_sources!(item, transfer.id)
+      record_performer_activation!(batch, item)
     rescue Stripe::StripeError => e
       item.mark_failed!(e.message)
     end
@@ -99,6 +100,21 @@ class PayoutBatchService
     all_paid = batch.items.where.not(status: "paid").none?
     batch.update!(status: all_paid ? "completed" : "failed", completed_at: Time.current)
     batch
+  end
+
+  # Mark a paid performer a billable "active performer" for the payout's month —
+  # this is the month Stripe bills us the active-account fee, so our $3 charge
+  # lands in the same month. Only performer runs paying an individual Person;
+  # staff are billed separately (StaffActivation, on scheduling). Best-effort:
+  # a billing hiccup must never fail an already-completed payout.
+  def self.record_performer_activation!(batch, item)
+    return unless batch.kind == "performer" && item.payee.is_a?(Person)
+
+    PerformerActivation.record!(
+      organization: batch.organization, person: item.payee, month: item.paid_at || Time.current
+    )
+  rescue StandardError => e
+    Rails.logger.warn("Performer activation failed for payout item #{item.id}: #{e.message}")
   end
 
   # Flip each of a paid item's contribution sources to "paid" for traceability

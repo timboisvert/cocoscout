@@ -2,10 +2,10 @@
 
 require "rails_helper"
 
-RSpec.describe StaffMeterService do
+RSpec.describe PerformerMeterService do
   let(:org) { create(:organization, :pro, stripe_customer_id: "cus_meter") }
-  let(:person) { create(:person, name: "Metered Mo") }
-  let(:activation) { StaffActivation.record!(organization: org, person: person, month: Date.current) }
+  let(:person) { create(:person, name: "Metered Mae") }
+  let(:activation) { PerformerActivation.record!(organization: org, person: person, month: Date.current) }
 
   describe ".report_activation!" do
     context "when the meter isn't configured" do
@@ -19,13 +19,13 @@ RSpec.describe StaffMeterService do
     end
 
     context "when configured" do
-      before { allow(described_class).to receive(:active_event_name).and_return("staff_active") }
+      before { allow(described_class).to receive(:active_event_name).and_return("performer_active") }
 
       it "sends one idempotent meter event of value 1 and marks it reported" do
         expect(Stripe::Billing::MeterEvent).to receive(:create).with(
           hash_including(
-            event_name: "staff_active",
-            identifier: "staff_active:#{org.id}:#{person.id}:#{Date.current.beginning_of_month.iso8601}",
+            event_name: "performer_active",
+            identifier: "performer_active:#{org.id}:#{person.id}:#{Date.current.beginning_of_month.iso8601}",
             payload: { stripe_customer_id: "cus_meter", value: "1" }
           )
         )
@@ -43,16 +43,19 @@ RSpec.describe StaffMeterService do
   end
 
   describe ".reconcile_month!" do
-    before { allow(described_class).to receive(:active_event_name).and_return("staff_active") }
+    before { allow(described_class).to receive(:active_event_name).and_return("performer_active") }
 
     it "re-sends only activations that haven't been metered yet" do
-      already = StaffActivation.record!(organization: org, person: person, month: Date.current)
+      already = PerformerActivation.record!(organization: org, person: person, month: Date.current)
       already.update_column(:reported_at, Time.current)
-      pending_person = create(:person, name: "Pending Pat")
-      StaffActivation.record!(organization: org, person: pending_person, month: Date.current)
+      pending = PerformerActivation.record!(organization: org, person: create(:person), month: Date.current)
 
-      expect(Stripe::Billing::MeterEvent).to receive(:create).once
-      described_class.reconcile_month!(org)
+      expect(described_class).to receive(:report_activation!).once do |activation|
+        expect(activation).to eq(pending)
+        :reported
+      end
+
+      expect(described_class.reconcile_month!(org)).to eq(:reconciled)
     end
   end
 end

@@ -56,10 +56,27 @@ RSpec.describe PayoutBatchService do
       expect(batch.reload.status).to eq("failed")
       expect(org.payout_balance_cents_for(ready)).to eq(5000)
     end
+
+    it "marks a performer a billable active performer for the payout's month when a performer run pays them" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_p"))
+
+      batch = org.payout_batches.create!(kind: "performer", status: "draft", trigger: "manual")
+      batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+
+      expect { PayoutBatchService.process!(batch) }
+        .to change { PerformerActivation.for_month(Date.current).where(person: ready).count }.by(1)
+    end
+
+    it "does not create performer activations for a non-performer (balance) run" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_b"))
+
+      batch = PayoutBatchService.build_for(organization: org) # kind: balance
+      expect { PayoutBatchService.process!(batch) }.not_to change(PerformerActivation, :count)
+    end
   end
 
   describe ".fund!" do
-    before { org.update!(stripe_customer_id: "cus_1") }
+    before { org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account") }
 
     it "card funding that succeeds immediately funds and processes the batch" do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
@@ -91,9 +108,11 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
-    it "rejects an unknown funding method" do
+    it "raises when the org has no connected funding source" do
+      org.update!(funding_payment_method_id: nil)
       batch = PayoutBatchService.build_for(organization: org)
-      expect { PayoutBatchService.fund!(batch, method: "crypto") }.to raise_error(ArgumentError)
+      expect { PayoutBatchService.fund!(batch, method: "ach") }
+        .to raise_error(PayoutBatchService::Error, /Connect a bank or card/)
     end
   end
 
