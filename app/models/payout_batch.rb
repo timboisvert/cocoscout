@@ -58,4 +58,44 @@ class PayoutBatch < ApplicationRecord
   def display_status
     status.titleize
   end
+
+  # The ordered lifecycle steps for the run-page timeline, each tagged with its
+  # state (:done / :current / :failed / :upcoming) based on the current status.
+  # A run flows draft -> funding -> funded -> processing -> completed; a failure
+  # marks the step it died on (funding vs paying) red.
+  TIMELINE = [
+    { key: "draft",      label: "Created" },
+    { key: "funding",    label: "Funding" },
+    { key: "funded",     label: "Funded" },
+    { key: "processing", label: "Paying" },
+    { key: "completed",  label: "Paid" }
+  ].freeze
+
+  def timeline_steps
+    keys = TIMELINE.map { |s| s[:key] }
+    times = { "draft" => created_at, "completed" => completed_at }
+
+    resolve = lambda do |index|
+      case status
+      when "completed"
+        :done
+      when "failed", "canceled"
+        failed_index = keys.index(funding_status == "failed" ? "funding" : "processing")
+        if index < failed_index then :done
+        elsif index == failed_index then (status == "failed" ? :failed : :upcoming)
+        else :upcoming
+        end
+      else
+        current = keys.index(status) || 0
+        if index < current then :done
+        elsif index == current then :current
+        else :upcoming
+        end
+      end
+    end
+
+    TIMELINE.each_with_index.map do |step, index|
+      { label: step[:label], state: resolve.call(index), at: times[step[:key]] }
+    end
+  end
 end

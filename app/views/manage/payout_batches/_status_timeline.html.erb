@@ -1,0 +1,49 @@
+<%# Horizontal status stepper for a payout run. Local: batch. %>
+<% steps = batch.timeline_steps %>
+<div class="rounded-lg border border-gray-200 bg-white p-5 mb-6">
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <span class="inline-flex items-center rounded-full bg-pink-50 border border-pink-200 px-2.5 py-0.5 text-xs font-semibold text-pink-700"><%= batch.kind_label %></span>
+    <%= render "manage/payout_batches/status_badge", status: batch.status %>
+  </div>
+
+  <div class="overflow-x-auto">
+    <div class="flex items-start min-w-[30rem]">
+      <% steps.each_with_index do |step, i| %>
+        <%
+          dot, ring, connector, label_class =
+            case step[:state]
+            when :done
+              [ "bg-green-500 text-white", "", "bg-green-500", "text-gray-700" ]
+            when :current
+              [ "bg-pink-500 text-white ring-4 ring-pink-100", "", "bg-gray-200", "text-pink-600 font-semibold" ]
+            when :failed
+              [ "bg-red-500 text-white", "", "bg-gray-200", "text-red-600 font-semibold" ]
+            else
+              [ "bg-gray-100 text-gray-400 border border-gray-300", "", "bg-gray-200", "text-gray-400" ]
+            end
+        %>
+        <div class="flex flex-col items-center text-center w-24 flex-shrink-0">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 <%= dot %>">
+            <% case step[:state] %>
+            <% when :done %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            <% when :failed %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            <% when :current %>
+              <span class="w-2 h-2 rounded-full bg-white"></span>
+            <% else %>
+              <span class="text-xs font-semibold"><%= i + 1 %></span>
+            <% end %>
+          </div>
+          <span class="mt-2 text-xs <%= label_class %>"><%= step[:label] %></span>
+          <% if step[:at] %>
+            <span class="mt-0.5 text-[11px] text-gray-400"><%= step[:at].strftime("%b %-d") %></span>
+          <% end %>
+        </div>
+        <% if i < steps.size - 1 %>
+          <div class="flex-1 h-0.5 mt-3.5 rounded <%= connector %>"></div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
