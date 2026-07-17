@@ -7,6 +7,8 @@ class PayoutBatchItem < ApplicationRecord
 
   belongs_to :payout_batch
   belongs_to :payee, polymorphic: true
+  # Detail lines that sum to this item's amount (what the payee is being paid for).
+  has_many :payout_contributions, dependent: :destroy
   # The `payout` ledger entry this item posts (removed if the item is destroyed).
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
 

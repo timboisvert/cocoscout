@@ -887,6 +887,25 @@
           <% end %>
         </div>
 
+        <%# Add these performer payouts to the open performer payout run. %>
+        <% if @show_payout.total_payout && has_line_items && !@show_payout.paid? %>
+          <div class="mb-4">
+            <% if @show_payout.in_payout_run? %>
+              <div class="inline-flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Added to the performer payout run.
+                <%= link_to "View runs", manage_payout_batches_path, class: "underline hover:text-green-900" %>
+              </div>
+            <% else %>
+              <%= button_to manage_add_to_run_money_show_payout_path(@show), method: :post, class: "inline-block",
+                    form: { data: { turbo_confirm: "Add these performer payouts to your open performer payout run?" } } do %>
+                <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small" %>
+              <% end %>
+              <p class="text-xs text-gray-500 mt-1">Adds each performer's payout to your open performer payout run, so you can pay everyone at once.</p>
+            <% end %>
+          </div>
+        <% end %>
+
         <%# Show stale calculation warning if there are outstanding advances not reflected %>
         <% if @show_payout.advance_deductions_stale? && !@show_payout.paid? %>
           <div class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4">

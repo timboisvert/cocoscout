@@ -112,6 +112,12 @@ class ShowPayout < ApplicationRecord
     update!(total_payout: line_items.sum(:amount))
   end
 
+  # Whether any of this show's payout lines have already been added to a
+  # (performer) payout run.
+  def in_payout_run?
+    PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: line_items.select(:id)).exists?
+  end
+
   # Post/refresh each performer line item's `earning` entry on the payout ledger.
   # Idempotent (keyed per line item); called after a payout is calculated and by
   # the ledger backfill. Paid line items also carry an offsetting `payout` entry.

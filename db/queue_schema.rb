@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1371,6 +1371,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_140000) do
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id"], name: "index_payout_batches_on_organization_id"
+  end
+
+  create_table "payout_contributions", force: :cascade do |t|
+    t.bigint "amount_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "label", null: false
+    t.bigint "payee_id", null: false
+    t.string "payee_type", null: false
+    t.bigint "payout_batch_id", null: false
+    t.bigint "payout_batch_item_id", null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["payee_type", "payee_id"], name: "index_payout_contributions_on_payee"
+    t.index ["payout_batch_id"], name: "index_payout_contributions_on_payout_batch_id"
+    t.index ["payout_batch_item_id"], name: "index_payout_contributions_on_payout_batch_item_id"
+    t.index ["source_type", "source_id"], name: "index_payout_contributions_on_source"
+    t.index ["source_type", "source_id"], name: "index_payout_contributions_on_source_unique", unique: true, where: "(source_id IS NOT NULL)"
   end
 
   create_table "payout_ledger_entries", force: :cascade do |t|
@@ -2834,6 +2853,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_140000) do
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"
   add_foreign_key "payout_batches", "users", column: "created_by_id"
+  add_foreign_key "payout_contributions", "payout_batch_items"
+  add_foreign_key "payout_contributions", "payout_batches"
   add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
   add_foreign_key "payout_scheme_defaults", "productions"
