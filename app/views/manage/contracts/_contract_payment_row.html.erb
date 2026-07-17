@@ -12,8 +12,11 @@
 <%
   show_mark_received = local_assigns.fetch(:show_mark_received, true)
   contract = payment.contract
+  contractor = contract.contractor
   is_late = payment.overdue?
   is_incoming = payment.direction_incoming?
+  can_pay_via_run = !is_incoming && payment.status_pending? && payment.amount.to_f > 0 &&
+    contractor.respond_to?(:can_receive_payouts?) && contractor.can_receive_payouts?
 %>
 
 <div data-controller="payment-modal">
@@ -98,6 +101,19 @@
         </div>
       <% elsif show_mark_received && payment.status_pending? %>
         <div class="flex items-center gap-2">
+          <% if payment.in_payout_run? %>
+            <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
+                  class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
+          <% elsif can_pay_via_run %>
+            <%= button_to add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
+                  method: :post, class: "inline-block",
+                  form: { data: { turbo_confirm: "Add this payment to your contractor payout run?" } } do %>
+              <span class="inline-flex items-center rounded-md bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-700 transition-colors cursor-pointer">
+                <%= icon("banknotes", class: "w-3 h-3 mr-1 inline") %>
+                Add to payout run
+              </span>
+            <% end %>
+          <% end %>
           <button type="button" data-action="click->payment-modal#open"
             class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer">
             <%= icon("check-circle", class: "w-3 h-3 mr-1 inline") %>

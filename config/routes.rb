@@ -1350,6 +1350,7 @@ Rails.application.routes.draw do
         member do
           post :mark_paid
           post :flip_direction
+          post :add_to_payout_run
         end
       end
       resources :space_rentals, only: %i[create update destroy], path: "rentals"

@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid flip_direction]
+    before_action :set_payment, only: %i[update destroy mark_paid flip_direction add_to_payout_run]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -43,6 +43,20 @@ module Manage
       @payment.update!(direction: new_direction)
       redirect_back fallback_location: manage_contract_path(@contract),
                     notice: "Payment direction changed to #{new_direction}."
+    end
+
+    # Add this outgoing payment to the org's open contractor payout run, to be
+    # paid to the contractor's bank via Stripe (same rail as performers/staff).
+    def add_to_payout_run
+      result = ContractorPayoutRunService.add_contract_payment!(@payment, added_by: Current.user)
+      if result.added
+        redirect_to manage_payout_batch_path(result.batch),
+                    notice: "Added #{@payment.contract.contractor_name} to your contractor payout run."
+      elsif result.batch # already added
+        redirect_to manage_payout_batch_path(result.batch), notice: "This payment is already in a payout run."
+      else
+        redirect_back fallback_location: manage_contract_path(@contract), alert: result.error
+      end
     end
 
     private

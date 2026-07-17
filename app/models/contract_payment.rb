@@ -4,6 +4,10 @@ class ContractPayment < ApplicationRecord
   belongs_to :contract
   belongs_to :show, optional: true
 
+  # This payment's slot in a payout run, if it's been added to one. dependent:
+  # :destroy so removing it detaches from the run (see PayoutContribution).
+  has_one :payout_contribution, as: :source, dependent: :destroy
+
   # Direction: whether they pay us or we pay them
   enum :direction, {
     incoming: "incoming",  # They pay us (rental fee, deposit)
@@ -58,6 +62,19 @@ class ContractPayment < ApplicationRecord
   # Check if payment is overdue
   def overdue?
     status_pending? && due_date < Date.current
+  end
+
+  # Whether this payment has been added to a payout run.
+  def in_payout_run?
+    payout_contribution.present?
+  end
+
+  # Marks this payment paid when its payout run pays out (called from
+  # PayoutBatchService.settle_item_sources!). Display-only for traceability —
+  # the PayoutBatchItem posts the single debiting ledger entry, so this must not
+  # touch the ledger.
+  def mark_paid_via_payout_run!(reference_id: nil)
+    update!(status: :paid, paid_date: Date.current, payment_method: "stripe", reference_number: reference_id)
   end
 
   # Mark as paid
