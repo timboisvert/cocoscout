@@ -15,8 +15,8 @@
   <div class="max-w-3xl">
     <% unless Current.organization.funding_payment_method_id.present? %>
       <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm text-amber-900">Connect a bank or card to fund payouts before you run one.</p>
-        <%= render "shared/button", text: "Connect a funding source", variant: "primary", size: "small",
+        <p class="text-sm text-amber-900">Connect a bank account to fund payouts before you run one.</p>
+        <%= render "shared/button", text: "Connect a bank account", variant: "primary", size: "small",
               path: manage_connect_payout_funding_path, method: :post, form: { data: { turbo: false } } %>
       </div>
     <% end %>

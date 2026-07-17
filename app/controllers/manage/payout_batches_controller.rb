@@ -40,25 +40,32 @@ module Manage
 
     # Connect the bank/card the org funds payout runs from (Stripe Checkout).
     def connect_funding
+      return_to = safe_funding_return_to(params[:return_to])
+      success = manage_payout_funding_return_url + "?session_id={CHECKOUT_SESSION_ID}"
+      success += "&return_to=#{CGI.escape(return_to)}" if return_to
+
       url = PayoutFundingService.new(organization).setup_session_url(
-        success_url: manage_payout_funding_return_url + "?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: manage_payout_batches_url
+        success_url: success,
+        cancel_url: return_to ? "#{request.base_url}#{return_to}" : manage_payout_batches_url
       )
       redirect_to url, allow_other_host: true
     rescue PayoutFundingService::Error => e
-      redirect_to manage_payout_batches_path, alert: "Couldn't start funding setup: #{e.message}"
+      redirect_to(return_to || manage_payout_batches_path, alert: "Couldn't start funding setup: #{e.message}")
     end
 
     def funding_return
       PayoutFundingService.new(organization).save_from_session!(params[:session_id])
-      redirect_to manage_payout_batches_path, notice: "Funding source connected — you're ready to run payouts."
+      redirect_to(safe_funding_return_to(params[:return_to]) || manage_payout_batches_path,
+                  notice: "Funding source connected — you're ready to run payouts.")
     rescue PayoutFundingService::Error => e
-      redirect_to manage_payout_batches_path, alert: "Couldn't save your funding source: #{e.message}"
+      redirect_to(safe_funding_return_to(params[:return_to]) || manage_payout_batches_path,
+                  alert: "Couldn't save your funding source: #{e.message}")
     end
 
     def remove_funding
       PayoutFundingService.new(organization).remove!
-      redirect_to manage_payout_batches_path, notice: "Funding source removed."
+      redirect_to(safe_funding_return_to(params[:return_to]) || manage_payout_batches_path,
+                  notice: "Funding source removed.")
     end
 
     # Set the org's automatic payout cadence (manual / weekly / monthly).
@@ -82,6 +89,12 @@ module Manage
     end
 
     private
+
+    # Only allow a same-app relative path as the post-funding redirect target,
+    # so ?return_to= can't be used as an open redirect.
+    def safe_funding_return_to(path)
+      path if path.to_s.start_with?("/") && !path.to_s.start_with?("//")
+    end
 
     def organization
       Current.organization

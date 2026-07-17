@@ -1,0 +1,35 @@
+<%# Payout funding source — the bank account or card the org is charged to fund
+    staff pay runs (a saved payment method, not a subscription). Reused on the
+    payout-runs page and the org Billing & Plan tab.
+    Locals: org. Optional: return_to (path to come back to after connect/remove). %>
+<% return_to = local_assigns[:return_to] %>
+<div class="bg-white border border-gray-200 rounded-lg p-5">
+  <h2 class="text-sm font-semibold text-gray-900 mb-1">Payout funding source</h2>
+  <p class="text-sm text-gray-500 mb-4">The bank account we charge (via ACH) to fund each staff payout run before depositing to your people.</p>
+  <% if org.funding_payment_method_id.present? %>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11"/></svg>
+        </div>
+        <div>
+          <div class="text-sm font-medium text-gray-900"><%= org.funding_payment_method_label %></div>
+          <div class="text-xs text-gray-500"><%= org.funding_payment_method_type == "card" ? "Card" : "Bank account (ACH)" %> · connected</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <%= render "shared/button", text: "Change", variant: "secondary", size: "small",
+              path: manage_connect_payout_funding_path(return_to: return_to), method: :post, form: { data: { turbo: false } } %>
+        <%= render "shared/button", text: "Remove", variant: "danger", size: "small",
+              path: manage_remove_payout_funding_path(return_to: return_to), method: :delete,
+              data: { turbo_confirm: "Remove this funding source? You won't be able to run payouts until you add another." } %>
+      </div>
+    </div>
+  <% else %>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-3">
+      <p class="text-sm text-amber-900">Connect a bank account before you run payouts — that's what we charge (via ACH) to fund each run.</p>
+    </div>
+    <%= render "shared/button", text: "Connect a bank account", variant: "primary", size: "small",
+          path: manage_connect_payout_funding_path(return_to: return_to), method: :post, form: { data: { turbo: false } } %>
+  <% end %>
+</div>

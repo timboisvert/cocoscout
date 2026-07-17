@@ -51,7 +51,8 @@
   </div>
 
   <% if paid && !organization.comped? %>
-    <%= button_to manage_billing_portal_path, class: "inline-block" do %>
+    <%# turbo: false so the browser follows the redirect to Stripe's billing portal. %>
+    <%= button_to manage_billing_portal_path, form: { data: { turbo: false } }, class: "inline-block" do %>
       <%= render "shared/button", text: "Manage subscription", variant: "secondary", size: "medium" %>
     <% end %>
   <% end %>

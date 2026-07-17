@@ -18,7 +18,8 @@ class PayoutFundingService
     Stripe::Checkout::Session.create(
       mode: "setup",
       customer: @organization.stripe_customer_id,
-      payment_method_types: %w[us_bank_account card],
+      # Bank accounts (ACH) only — we don't fund payouts from cards.
+      payment_method_types: %w[us_bank_account],
       success_url: success_url,
       cancel_url: cancel_url,
       metadata: { organization_id: @organization.id, purpose: "payout_funding" }
