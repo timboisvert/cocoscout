@@ -41,6 +41,24 @@
       </div>
     <% end %>
 
+    <% if @batch.open? && @batch.items.any? %>
+      <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Ready to pay <%= pluralize(@batch.items.count, "person") %> · <%= number_to_currency(@batch.total_cents / 100.0) %></p>
+          <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each person to their connected bank.</p>
+        </div>
+        <% if Current.organization.funding_payment_method_id.present? %>
+          <%= button_to manage_fund_payout_batch_path(@batch), method: :post, class: "inline-block",
+                form: { data: { turbo_confirm: "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank." } } do %>
+            <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium" %>
+          <% end %>
+        <% else %>
+          <%= render "shared/button", text: "Connect a bank account first", variant: "primary", size: "small",
+                path: manage_connect_payout_funding_path(return_to: manage_payout_batch_path(@batch)), method: :post, form: { data: { turbo: false } } %>
+        <% end %>
+      </div>
+    <% end %>
+
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-900">Payments</h3>

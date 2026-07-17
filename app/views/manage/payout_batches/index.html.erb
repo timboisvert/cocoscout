@@ -93,6 +93,7 @@
             <tr class="hover:bg-gray-50">
               <td class="px-4 py-2.5">
                 <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+                <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
               </td>
               <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
               <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>

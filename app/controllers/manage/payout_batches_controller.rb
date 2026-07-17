@@ -38,6 +38,21 @@ module Manage
       @batch = organization.payout_batches.find(params[:id])
     end
 
+    # Fund and pay an existing open run (e.g. a performer run built via
+    # "add to payout run"). ACH-debits the org, then transfers to each payee.
+    def fund
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.open? && batch.items.pending.any?
+        redirect_to(manage_payout_batch_path(batch), alert: "There's nothing to pay in this run.") and return
+      end
+
+      PayoutBatchService.fund!(batch, method: "ach")
+      redirect_to manage_payout_batch_path(batch),
+                  notice: "Funding started — everyone in this run gets paid once it clears."
+    rescue PayoutBatchService::Error => e
+      redirect_to manage_payout_batch_path(batch), alert: e.message
+    end
+
     # Connect the bank/card the org funds payout runs from (Stripe Checkout).
     def connect_funding
       return_to = safe_funding_return_to(params[:return_to])

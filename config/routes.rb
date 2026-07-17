@@ -1249,6 +1249,7 @@ Rails.application.routes.draw do
     get  "money/payout-runs/new",  to: "payout_batches#new",    as: "new_payout_batch"
     post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
+    post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
 
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"
     get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"
