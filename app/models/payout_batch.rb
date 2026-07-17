@@ -35,6 +35,14 @@ class PayoutBatch < ApplicationRecord
     status == "draft"
   end
 
+  def kind_label
+    case kind
+    when "performer" then "Performer payouts"
+    when "staff_pay" then "Staffing"
+    else "Payouts"
+    end
+  end
+
   def recalculate_total!
     update!(total_cents: items.sum(:amount_cents))
   end

@@ -13,6 +13,9 @@
   } %>
 
   <div class="max-w-3xl">
+    <div class="mb-4">
+      <span class="inline-flex items-center rounded-full bg-pink-50 border border-pink-200 px-2.5 py-0.5 text-xs font-semibold text-pink-700"><%= @batch.kind_label %> run</span>
+    </div>
     <div class="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-6">
       <div class="rounded-lg border border-gray-200 bg-white p-4">
         <div class="text-xs text-gray-500 uppercase tracking-wide">Status</div>
@@ -43,19 +46,45 @@
         <h3 class="font-semibold text-gray-900">Payments</h3>
       </div>
       <div class="divide-y divide-gray-100">
-        <% @batch.items.includes(:payee).each do |item| %>
-          <div class="px-5 py-3 flex items-center justify-between gap-4">
-            <div class="min-w-0">
-              <span class="text-gray-900"><%= item.payee&.name %></span>
-              <% if item.error.present? %>
-                <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
-              <% end %>
+        <% @batch.items.includes(:payee, payout_contributions: :source).each do |item| %>
+          <% contributions = item.payout_contributions.to_a %>
+          <% if contributions.any? %>
+            <%# Click a payee to expand what they're being paid for. %>
+            <details class="group">
+              <summary class="px-5 py-3 flex items-center justify-between gap-4 cursor-pointer list-none hover:bg-gray-50">
+                <div class="flex items-center gap-2 min-w-0">
+                  <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="text-gray-900 truncate"><%= item.payee&.name %></span>
+                  <span class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></span>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+                  <%= render "manage/payout_batches/status_badge", status: item.status %>
+                </div>
+              </summary>
+              <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
+                <% contributions.each do |c| %>
+                  <div class="flex items-center justify-between gap-4 py-1.5 text-sm">
+                    <span class="text-gray-600 truncate"><%= c.label %></span>
+                    <span class="text-gray-800 tabular-nums flex-shrink-0"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                  </div>
+                <% end %>
+              </div>
+            </details>
+          <% else %>
+            <div class="px-5 py-3 flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <span class="text-gray-900"><%= item.payee&.name %></span>
+                <% if item.error.present? %>
+                  <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0">
+                <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+                <%= render "manage/payout_batches/status_badge", status: item.status %>
+              </div>
             </div>
-            <div class="flex items-center gap-3 flex-shrink-0">
-              <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-              <%= render "manage/payout_batches/status_badge", status: item.status %>
-            </div>
-          </div>
+          <% end %>
         <% end %>
       </div>
     </div>

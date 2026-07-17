@@ -16,11 +16,16 @@ class ShowPayoutLineItem < ApplicationRecord
   # ledger entries and inflate a balance.
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
 
+  # This line's slot in a payout run, if it's been added to one. dependent:
+  # :destroy so recalculating a show (which deletes line items) detaches it from
+  # the run and re-totals it (see PayoutContribution#resettle_item_and_batch).
+  has_one :payout_contribution, as: :source, dependent: :destroy
+
   # Payee types that carry a company-wide payout balance (guests do not).
   LEDGER_PAYEE_TYPES = %w[Person Contractor Group].freeze
 
   # Payment methods for tracking how payments were made
-  PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a].freeze
+  PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a stripe].freeze
 
   # Payout statuses for tracking payment state
   PAYOUT_STATUSES = %w[pending success failed].freeze
@@ -71,6 +76,18 @@ class ShowPayoutLineItem < ApplicationRecord
       paid_at: Time.current
     )
     sync_payout_ledger_entry!
+  end
+
+  # Marked paid because its payout run's item was transferred via Stripe. Only
+  # flips this line's display/traceability state — the run's PayoutBatchItem
+  # posts the ledger payout, so we deliberately don't post another one here.
+  def mark_paid_via_payout_run!(reference_id: nil)
+    update!(
+      payout_status: "success",
+      payout_reference_id: reference_id,
+      payment_method: "stripe",
+      paid_at: Time.current
+    )
   end
 
   def unmark_as_already_paid!

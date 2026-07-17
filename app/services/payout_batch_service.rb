@@ -91,6 +91,7 @@ class PayoutBatchService
         metadata: { payout_batch_item_id: item.id }
       )
       item.mark_paid!(transfer_id: transfer.id)
+      settle_item_sources!(item, transfer.id)
     rescue Stripe::StripeError => e
       item.mark_failed!(e.message)
     end
@@ -98,5 +99,15 @@ class PayoutBatchService
     all_paid = batch.items.where.not(status: "paid").none?
     batch.update!(status: all_paid ? "completed" : "failed", completed_at: Time.current)
     batch
+  end
+
+  # Flip each of a paid item's contribution sources to "paid" for traceability
+  # (e.g. mark the ShowPayoutLineItems paid so the show reflects it). The item
+  # itself already posted the ledger payout, so sources don't touch the ledger.
+  def self.settle_item_sources!(item, transfer_id)
+    item.payout_contributions.includes(:source).each do |contribution|
+      source = contribution.source
+      source.mark_paid_via_payout_run!(reference_id: transfer_id) if source.respond_to?(:mark_paid_via_payout_run!)
+    end
   end
 end
