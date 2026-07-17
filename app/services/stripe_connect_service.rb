@@ -22,17 +22,32 @@ class StripeConnectService
   def ensure_account
     return @payee if @payee.stripe_account_id.present?
 
-    account = Stripe::Account.create(
+    account = Stripe::Account.create({
       type: "express",
       email: @payee.email.presence,
       business_type: "individual",
+      # These payees are individuals (performers, staff) paid small amounts, not
+      # businesses. Describing the work up front means Stripe doesn't ask them
+      # for a business website — onboarding is just their legal name + bank.
+      business_profile: {
+        mcc: "7929",
+        product_description: "Payments for performing and event/staffing work booked through CocoScout."
+      },
+      individual: individual_prefill,
       capabilities: { transfers: { requested: true } },
       metadata: { payee_type: @payee.class.name, payee_id: @payee.id }
-    )
+    }.compact)
     @payee.update!(stripe_account_id: account.id, stripe_account_status: "pending", stripe_account_synced_at: Time.current)
     @payee
   rescue Stripe::StripeError => e
     raise Error, e.message
+  end
+
+  # Prefill the individual's legal name (and email) so they don't retype it.
+  def individual_prefill
+    name = @payee.try(:name).to_s.strip
+    first, *rest = name.split(/\s+/)
+    { first_name: first.presence, last_name: rest.join(" ").presence, email: @payee.email.presence }.compact
   end
 
   # A single-use hosted-onboarding link. Send the payee here to connect their bank.

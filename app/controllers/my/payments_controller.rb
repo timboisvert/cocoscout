@@ -91,6 +91,9 @@ module My
     # Stripe redirects here after the worker finishes (or exits) onboarding.
     def connect_return
       StripeConnectService.new(@person).sync_account
+      # Keep each org's cached staff onboarding_state in step with the new bank
+      # status, so "awaiting bank" clears wherever they connected it.
+      OrganizationStaffMember.active.where(person_id: @person.id).find_each(&:refresh_onboarding_state!)
       notice = if @person.can_receive_payouts?
         "Your bank is connected — you're all set to get paid directly."
       else

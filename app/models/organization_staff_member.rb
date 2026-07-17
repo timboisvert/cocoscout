@@ -96,13 +96,16 @@ class OrganizationStaffMember < ApplicationRecord
   end
 
   # A finer-grained status for the staff list than the coarse onboarding_state.
+  # Reads the *live* bank state (person.can_receive_payouts?) rather than the
+  # cached onboarding_state, so connecting a bank anywhere — My Payments, the
+  # onboarding screen, or a Stripe sync — clears "awaiting bank" immediately.
   # :no_account → invited but hasn't claimed a CocoScout account
   # :invited → account exists but hasn't accepted onboarding
   # :awaiting_bank → accepted, still needs to connect a bank
   # :onboarded → accepted and bank connected
   def onboarding_status
-    return :onboarded if onboarding_completed?
     return :no_account if person&.user.nil?
+    return :onboarded if acknowledged? && bank_connected?
     return :awaiting_bank if acknowledged?
 
     :invited
