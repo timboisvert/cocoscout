@@ -1444,6 +1444,11 @@ module Manage
         personalized_subject.gsub!(/\{\{\s*#{Regexp.escape(key)}\s*\}\}/, value.to_s)
       end
 
+      # During the Venmo/Zelle -> bank transition, remind cast members who haven't
+      # connected a bank yet to set up payment — appended only to their message,
+      # and invisible to anyone already set up.
+      personalized_body += payment_setup_nudge_html if notification_type == :cast && payment_nudge_needed?(person)
+
       # Use the first show as the primary for the mailer (it needs a show reference)
       primary_show = assignments.first[:show]
 
@@ -1468,6 +1473,20 @@ module Manage
           email_batch_id: email_batch_id
         )
       end
+    end
+
+    # Whether to append the "set up your payment details" nudge for this recipient:
+    # they can't be paid to a bank yet, and the nudge template is seeded.
+    def payment_nudge_needed?(person)
+      person.respond_to?(:can_receive_payouts?) && !person.can_receive_payouts? &&
+        ContentTemplateService.exists?("payment_setup_nudge")
+    end
+
+    # The seeded nudge snippet, rendered with the recipient's setup URL.
+    def payment_setup_nudge_html
+      ContentTemplateService.render_body("payment_setup_nudge", { "payment_setup_url" => my_payments_setup_url })
+    rescue ContentTemplateService::TemplateNotFoundError
+      ""
     end
 
     def default_cast_email_subject

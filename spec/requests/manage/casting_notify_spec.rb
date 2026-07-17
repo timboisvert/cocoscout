@@ -147,6 +147,31 @@ RSpec.describe "Manage::Casting per-individual notify", type: :request do
     end
   end
 
+  describe "payment-setup nudge in cast messages" do
+    before { PaymentTemplateUpdater.ensure_nudge! } # seed the nudge template
+
+    def cast_only(person)
+      show.show_person_role_assignments.where(role: roles.first).destroy_all
+      create(:show_person_role_assignment, show: show, role: roles.first, assignable: person)
+      post manage_casting_show_notify_path(production, show), params: {
+        assignable_keys: [ "Person:#{person.id}" ], cast_email_draft: { title: "Cast", body: "You're in!" }
+      }
+      Message.order(:created_at).last
+    end
+
+    it "appends the nudge for a cast member who hasn't connected a bank" do
+      person = create(:person, user: create(:user))
+      msg = cast_only(person)
+      expect(msg.body.to_plain_text).to include("set up your payment details")
+    end
+
+    it "omits the nudge for a cast member who can already receive payouts" do
+      person = create(:person, user: create(:user), stripe_account_id: "acct_x", payouts_enabled: true)
+      msg = cast_only(person)
+      expect(msg.body.to_plain_text).not_to include("set up your payment details")
+    end
+  end
+
   describe "message interpolation" do
     it "delivers a message with placeholders replaced (no literal {{...}})" do
       recipient = create(:user)
