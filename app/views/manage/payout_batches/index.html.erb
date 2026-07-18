@@ -14,102 +14,133 @@
     ]
   } %>
 
-  <p class="text-sm text-gray-600 mb-6 max-w-2xl">
-    Pay everyone who's connected a bank, all at once. You fund the run via ACH and CocoScout
-    deposits each person's balance straight to their account.
-  </p>
+  <%
+    org = Current.organization
+    open_runs = @batches.select(&:open?)
+    ready_cents = open_runs.sum { |b| b.total_cents.to_i }
+    funded = org.funding_payment_method_id.present?
+    next_run = org.payout_schedule_enabled? ? org.next_payout_date : nil
+  %>
 
-  <% org = Current.organization %>
-
-  <%# ---- Funding source ---- %>
-  <div class="mb-6 max-w-2xl">
-    <%= render "manage/funding_source", org: org %>
+  <%# ---- Dashboard stat row ---- %>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Ready to pay</div>
+      <div class="mt-1 text-2xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(ready_cents / 100.0) %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(open_runs.size, "open run") %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide">People to pay</div>
+      <div class="mt-1 text-2xl font-bold text-gray-900 tabular-nums"><%= open_runs.sum { |b| b.items.size } %></div>
+      <div class="text-xs text-gray-400 mt-0.5">across open runs</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Next scheduled run</div>
+      <div class="mt-1 text-lg font-semibold text-gray-900"><%= next_run ? next_run.strftime("%a, %b %-d") : "Manual" %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= next_run ? org.payout_schedule_label : "you run them yourself" %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Funding</div>
+      <div class="mt-1 text-lg font-semibold <%= funded ? "text-green-700" : "text-amber-700" %>"><%= funded ? "Bank connected" : "Not connected" %></div>
+      <div class="text-xs text-gray-400 mt-0.5">source for ACH debits</div>
+    </div>
   </div>
 
-  <%# ---- Payout schedule ---- %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6 max-w-2xl">
-    <div class="flex items-start justify-between gap-4 mb-4">
-      <div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <%# ---- Main: the runs list ---- %>
+    <div class="lg:col-span-2">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
+          <h2 class="font-semibold text-gray-900">Payout runs</h2>
+          <%= link_to "New run", manage_new_payout_batch_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+        </div>
+
+        <% if @batches.any? %>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
+                  <th class="px-4 py-2.5 font-semibold">Run</th>
+                  <th class="px-4 py-2.5 font-semibold">Status</th>
+                  <th class="px-4 py-2.5 font-semibold text-right">Total</th>
+                  <th class="px-4 py-2.5 font-semibold text-right">People</th>
+                  <th class="px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% @batches.each do |batch| %>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2.5">
+                      <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+                      <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
+                    </td>
+                    <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
+                    <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
+                    <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
+                    <td class="px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="p-8 text-center">
+            <p class="text-gray-600 mb-4">No payout runs yet.</p>
+            <div class="inline-block">
+              <%= render "shared/button", text: "Run your first payout", variant: "primary", size: "medium", path: manage_new_payout_batch_path %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# ---- Sidebar: funding + schedule config ---- %>
+    <aside class="space-y-6">
+      <%= render "manage/funding_source", org: org %>
+
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
         <h2 class="text-sm font-semibold text-gray-900">Payout schedule</h2>
-        <p class="text-sm text-gray-500 mt-0.5">
+        <p class="text-sm text-gray-500 mt-0.5 mb-4">
           <% if org.payout_schedule_enabled? %>
             <%= org.payout_schedule_label %> — next run <span class="font-medium text-gray-700"><%= org.next_payout_date.strftime("%A, %b %-d") %></span>.
           <% else %>
             Automatic payouts are off — you run them yourself.
           <% end %>
         </p>
-      </div>
-    </div>
 
-    <%= form_with url: manage_payout_batch_schedule_path, method: :patch, class: "grid grid-cols-1 sm:grid-cols-2 gap-3 items-end" do %>
-      <div>
-        <label class="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
-        <select name="payout_schedule" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          <% [ %w[manual Manual], %w[weekly Weekly], %w[monthly Monthly] ].each do |val, label| %>
-            <option value="<%= val %>" <%= "selected" if org.payout_schedule == val %>><%= label %></option>
-          <% end %>
-        </select>
+        <%= form_with url: manage_payout_batch_schedule_path, method: :patch, class: "space-y-3" do %>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
+            <select name="payout_schedule" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% [ %w[manual Manual], %w[weekly Weekly], %w[monthly Monthly] ].each do |val, label| %>
+                <option value="<%= val %>" <%= "selected" if org.payout_schedule == val %>><%= label %></option>
+              <% end %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Day of week <span class="text-gray-400">(if weekly)</span></label>
+            <select name="weekly_day" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <% Date::DAYNAMES.each_with_index do |name, i| %>
+                <option value="<%= i %>" <%= "selected" if (org.payout_schedule == "weekly" ? org.payout_schedule_day : PayoutScheduling::DEFAULT_WEEKLY_DAY) == i %>><%= name %></option>
+              <% end %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Day of month <span class="text-gray-400">(if monthly)</span></label>
+            <input type="number" name="monthly_day" min="1" max="28"
+                   value="<%= org.payout_schedule == 'monthly' ? org.payout_schedule_day : PayoutScheduling::DEFAULT_MONTHLY_DAY %>"
+                   class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <input type="hidden" name="payout_funding_method" value="ach">
+          <div class="flex justify-end pt-1">
+            <%= render "shared/button", text: "Save schedule", variant: "secondary", size: "small", type: :submit %>
+          </div>
+        <% end %>
       </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-500 mb-1">Funding</label>
-        <select name="payout_funding_method" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          <option value="ach" selected>Bank transfer (ACH)</option>
-        </select>
+
+      <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+        <p class="text-xs text-gray-500">Pay everyone who's connected a bank at once. You fund the run via ACH and CocoScout deposits each person's balance straight to their account.</p>
       </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-500 mb-1">Day of week <span class="text-gray-400">(if weekly)</span></label>
-        <select name="weekly_day" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          <% Date::DAYNAMES.each_with_index do |name, i| %>
-            <option value="<%= i %>" <%= "selected" if (org.payout_schedule == "weekly" ? org.payout_schedule_day : PayoutScheduling::DEFAULT_WEEKLY_DAY) == i %>><%= name %></option>
-          <% end %>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-500 mb-1">Day of month <span class="text-gray-400">(if monthly)</span></label>
-        <input type="number" name="monthly_day" min="1" max="28"
-               value="<%= org.payout_schedule == 'monthly' ? org.payout_schedule_day : PayoutScheduling::DEFAULT_MONTHLY_DAY %>"
-               class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-      </div>
-      <div class="sm:col-span-2 flex justify-end">
-        <%= render "shared/button", text: "Save schedule", variant: "secondary", size: "small", type: :submit %>
-      </div>
-    <% end %>
+    </aside>
   </div>
-
-  <% if @batches.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-            <th class="px-4 py-2.5 font-semibold">Date</th>
-            <th class="px-4 py-2.5 font-semibold">Status</th>
-            <th class="px-4 py-2.5 font-semibold text-right">Total</th>
-            <th class="px-4 py-2.5 font-semibold text-right">People</th>
-            <th class="px-4 py-2.5 font-semibold">Started by</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <% @batches.each do |batch| %>
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-2.5">
-                <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
-                <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
-              </td>
-              <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
-              <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
-              <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
-              <td class="px-4 py-2.5 text-gray-600"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  <% else %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-      <p class="text-gray-600 mb-4">No payout runs yet.</p>
-      <div class="inline-block">
-        <%= render "shared/button", text: "Run your first payout", variant: "primary", size: "medium", path: manage_new_payout_batch_path %>
-      </div>
-    </div>
-  <% end %>
 </div>
