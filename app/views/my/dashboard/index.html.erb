@@ -12,6 +12,9 @@
     links: []
   } %>
 
+  <!-- Finish staff onboarding (per organization) -->
+  <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
+
   <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
   <% if (primary = @people.first) %>
     <%= render "my/dashboard/onboarding_checklist", person: primary %>

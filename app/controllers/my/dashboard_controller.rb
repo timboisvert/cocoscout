@@ -377,6 +377,15 @@ module My
         .select(&:agreement_required?)
         .reject { |production| production.agreement_signed_by?(@person) }
         .sort_by(&:name)
+
+      # Staff positions this user still needs to finish onboarding for. Per org —
+      # someone can be staff at several organizations, each with its own
+      # onboarding to complete. Completion is computed live (accepted + bank).
+      @incomplete_staff_onboardings = OrganizationStaffMember.active
+        .where(person_id: people_ids)
+        .includes(:organization, :person)
+        .reject(&:onboarding_completed?)
+        .sort_by { |m| m.organization.name.to_s.downcase }
     end
 
     def dismiss_onboarding
