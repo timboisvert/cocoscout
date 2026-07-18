@@ -1,0 +1,237 @@
+<%#
+  Talent-side full contract summary, shown in a modal from the My Contracts list.
+  Mirrors the manager review screen, framed from the contractor's point of view
+  (money the org pays them = "You receive"; money they owe = "You pay").
+
+  Required: contract
+%>
+<%
+  modal_id = "contract-modal-#{contract.id}"
+
+  payments = contract.contract_payments.to_a
+  receiving = payments.select(&:direction_outgoing?)   # org -> contractor
+  owing     = payments.select(&:direction_incoming?)   # contractor -> org
+  received_total = receiving.select(&:status_paid?).sum { |p| p.amount.to_f }
+  receiving_total = receiving.sum { |p| p.amount.to_f }
+  owing_total = owing.sum { |p| p.amount.to_f }
+
+  rentals = contract.space_rentals.to_a
+  ticketing = contract.draft_ticketing || {}
+  tiers = ticketing["tiers"] || []
+  discount = ticketing["discount"] || {}
+  tech = contract.draft_tech || {}
+  documents = contract.contract_documents.to_a
+
+  status_class = { "active" => "bg-green-100 text-green-700", "draft" => "bg-gray-100 text-gray-600",
+                   "completed" => "bg-blue-100 text-blue-700", "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"
+
+  amount_label = ->(payment) { payment.amount_tbd? && payment.amount.to_f.zero? ? "TBD" : number_to_currency(payment.amount) }
+%>
+
+<div id="<%= modal_id %>" class="hidden fixed inset-0 z-50 overflow-y-auto">
+  <div class="flex min-h-full items-start sm:items-center justify-center p-4">
+    <div class="fixed inset-0 bg-gray-500/75 transition-opacity" data-action="click->modal#close"></div>
+
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
+      <%# Header %>
+      <div class="flex items-start justify-between gap-3 px-6 py-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-xl">
+        <div class="min-w-0">
+          <h2 class="text-lg font-bold text-gray-900 truncate"><%= contract.production_name.presence || contract.contractor_name %></h2>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold <%= status_class %>"><%= contract.status.titleize %></span>
+            <% if contract.date_range %>
+              <span class="text-sm text-gray-500"><%= contract.date_range %></span>
+            <% end %>
+          </div>
+        </div>
+        <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <%= icon("x", class: "w-5 h-5") %>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-6">
+        <%# Who / what %>
+        <div>
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contract</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div>
+              <dt class="text-gray-500">Organization</dt>
+              <dd class="text-gray-900"><%= contract.organization&.name %></dd>
+            </div>
+            <% if contract.production_name.present? %>
+              <div>
+                <dt class="text-gray-500">Production</dt>
+                <dd class="text-gray-900"><%= contract.production_name %></dd>
+              </div>
+            <% end %>
+            <div>
+              <dt class="text-gray-500">Contractor</dt>
+              <dd class="text-gray-900"><%= contract.contractor_name %></dd>
+            </div>
+            <% if contract.contract_start_date && contract.contract_end_date %>
+              <div>
+                <dt class="text-gray-500">Length</dt>
+                <dd class="text-gray-900"><%= (contract.contract_end_date - contract.contract_start_date).to_i + 1 %> days</dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+
+        <%# What you'll be paid %>
+        <div>
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your pay</h3>
+          <% if receiving.any? %>
+            <div class="flex flex-wrap gap-4 text-sm mb-3">
+              <div><span class="text-gray-500">Received so far</span> <span class="font-semibold text-green-600"><%= number_to_currency(received_total) %></span></div>
+              <div><span class="text-gray-500">Total</span> <span class="font-semibold text-gray-900"><%= number_to_currency(receiving_total) %></span></div>
+            </div>
+            <div class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+              <% receiving.sort_by { |p| p.due_date || Date.current }.each do |payment| %>
+                <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span class="text-gray-700 truncate">
+                    <%= payment.description.presence || "Payment" %>
+                    <span class="text-gray-400">· <%= payment.due_date&.strftime("%b %-d, %Y") %></span>
+                  </span>
+                  <span class="flex items-center gap-2 flex-shrink-0">
+                    <span class="font-medium text-gray-900"><%= amount_label.call(payment) %></span>
+                    <% if payment.status_paid? %>
+                      <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Paid</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Scheduled</span>
+                    <% end %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500">No payments to you scheduled yet.</p>
+          <% end %>
+        </div>
+
+        <%# What you owe (incoming to the org, e.g. space rental) %>
+        <% if owing.any? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">What you pay</h3>
+            <div class="text-sm mb-3"><span class="text-gray-500">Total</span> <span class="font-semibold text-gray-900"><%= number_to_currency(owing_total) %></span></div>
+            <div class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+              <% owing.sort_by { |p| p.due_date || Date.current }.each do |payment| %>
+                <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span class="text-gray-700 truncate">
+                    <%= payment.description.presence || "Payment" %>
+                    <span class="text-gray-400">· <%= payment.due_date&.strftime("%b %-d, %Y") %></span>
+                  </span>
+                  <span class="font-medium text-gray-900"><%= amount_label.call(payment) %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Tech arrangement — only if the org provides it (affects the contractor's cut) %>
+        <% if tech["provider"].present? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tech</h3>
+            <% if tech["provider"] == "us" %>
+              <p class="text-sm text-gray-700">
+                <%= contract.organization&.name.presence || "The organization" %> provides tech:
+                <span class="font-medium"><%= tech["hours"] %> hr × <%= number_to_currency(tech["hourly_rate"]) %>
+                = <%= number_to_currency(tech["hours"].to_f * tech["hourly_rate"].to_f) %></span>
+              </p>
+              <p class="text-sm text-gray-500 mt-1"><%= tech["payment_method"] == "from_cut" ? "Taken out of your cut" : "Paid separately" %></p>
+            <% else %>
+              <p class="text-sm text-gray-700">You provide your own tech.</p>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# Space bookings %>
+        <% if rentals.any? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Space bookings</h3>
+            <ul class="space-y-1.5 text-sm">
+              <% rentals.sort_by(&:starts_at).each do |rental| %>
+                <li class="flex items-center gap-2 text-gray-700">
+                  <%= icon("calendar", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>
+                  <span>
+                    <%= rental.starts_at.strftime("%b %-d, %Y") %> at <%= rental.starts_at.strftime("%l:%M %p").strip %>
+                    <span class="text-gray-400">·</span> <%= rental.duration_hours %> hrs
+                    <span class="text-gray-400">·</span> <%= rental.space_name %>
+                  </span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <%# Ticketing (informational — relevant to revenue-share deals) %>
+        <% if tiers.any? || discount["code"].present? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ticketing</h3>
+            <% if tiers.any? %>
+              <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                <% tiers.each do |tier| %>
+                  <li class="flex items-center justify-between px-3 py-2 text-sm">
+                    <span class="text-gray-900"><%= tier["name"] %></span>
+                    <span class="font-medium text-gray-900"><%= number_to_currency(tier["price"]) %></span>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+            <% if discount["code"].present? %>
+              <p class="text-sm text-gray-600 mt-2">
+                Discount <span class="font-medium text-gray-900"><%= discount["code"] %></span>:
+                <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>
+              </p>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# Documents %>
+        <% if documents.any? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Documents</h3>
+            <div class="space-y-2">
+              <% documents.each do |doc| %>
+                <% if doc.file.attached? %>
+                  <div class="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg">
+                    <%= link_to rails_blob_path(doc.file, disposition: "inline"), target: "_blank", rel: "noopener", class: "flex items-center gap-2 min-w-0 text-sm text-gray-900 hover:text-pink-600" do %>
+                      <% if doc.file.content_type == "application/pdf" %>
+                        <%= icon("file-text", class: "w-4 h-4 text-red-500 flex-shrink-0") %>
+                      <% elsif doc.file.content_type&.start_with?("image/") %>
+                        <%= icon("image", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
+                      <% else %>
+                        <%= icon("file", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>
+                      <% end %>
+                      <span class="truncate"><%= doc.name %></span>
+                    <% end %>
+                    <%= link_to rails_blob_path(doc.file, disposition: "attachment"), class: "text-gray-400 hover:text-pink-600 flex-shrink-0", title: "Download" do %>
+                      <%= icon("download", class: "w-4 h-4") %>
+                    <% end %>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Terms %>
+        <% if contract.terms.present? %>
+          <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Terms</h3>
+            <p class="text-sm text-gray-700 whitespace-pre-line"><%= contract.terms %></p>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Footer %>
+      <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200">
+        <% if contract.contract_payments.any?(&:direction_outgoing?) %>
+          <span class="text-sm text-gray-500">Payments are sent to your connected bank.</span>
+        <% else %>
+          <span></span>
+        <% end %>
+        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

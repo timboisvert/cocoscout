@@ -11,7 +11,8 @@ module My
       person_ids = Current.user.people.select(:id)
       @contracts = Contract.joins(:contractor)
                            .where(contractors: { person_id: person_ids })
-                           .includes(:contractor, :production, :contract_payments)
+                           .includes(:contractor, :production, :organization, :contract_payments,
+                                     :contract_documents, space_rentals: [ :location, :location_space ])
                            .order(created_at: :desc)
       # Whether they still need to connect a bank to be paid.
       @needs_bank = Current.user.people.select(&:can_receive_payouts?).empty?
