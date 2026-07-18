@@ -6,14 +6,14 @@
 
   <%= render "my/payments/payout_summary" %>
 
+  <!-- Finish staff onboarding (per organization) -->
+  <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "My Calendar",
     links: []
   } %>
-
-  <!-- Finish staff onboarding (per organization) -->
-  <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
 
   <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
   <% if (primary = @people.first) %>
