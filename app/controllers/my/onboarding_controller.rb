@@ -19,10 +19,25 @@ module My
     def acknowledge
       @staff_member.update!(acknowledged_at: Time.current) unless @staff_member.acknowledged?
       @staff_member.refresh_onboarding_state!
+      accept_pending_invitations!
       redirect_to my_onboarding_path(@staff_member.organization_id), notice: "You're in — welcome aboard! A couple of quick things left below."
     end
 
     private
+
+    # Accepting onboarding is a clear "I've claimed my account" signal. Clear any
+    # still-pending org invitation for this person so they don't linger in the
+    # manager's "pending onboarding" list (common when they already had a
+    # CocoScout account and never clicked the accept-invite link).
+    def accept_pending_invitations!
+      emails = [ @person.email, @staff_member.personal_email ].compact_blank.map { |e| e.to_s.strip.downcase }.uniq
+      return if emails.empty?
+
+      PersonInvitation.pending
+                      .where(organization_id: @staff_member.organization_id)
+                      .where("LOWER(email) IN (?)", emails)
+                      .update_all(accepted_at: Time.current)
+    end
 
     def set_person
       @person = Current.user&.person

@@ -292,6 +292,11 @@ module Manage
     def account_claimed?(member)
       person = member.person
       return false if person&.user.nil?
+      # If they've accepted onboarding they've logged in and claimed their
+      # account for real — a stale pending invite (e.g. they already had a
+      # CocoScout account, so never clicked the accept link) shouldn't keep them
+      # stuck in the pending section.
+      return true if member.acknowledged?
 
       email = person.email.to_s.downcase
       email.blank? || !@pending_invite_emails.include?(email)

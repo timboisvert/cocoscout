@@ -26,6 +26,13 @@ RSpec.describe "My::Onboarding", type: :request do
     expect(member).to be_pending_onboarding
   end
 
+  it "accepts a still-pending org invitation when they acknowledge (so they leave the pending list)" do
+    invitation = PersonInvitation.create!(email: person.email, organization: org)
+    post my_acknowledge_onboarding_path(org.id)
+    expect(invitation.reload.accepted_at).to be_present
+    expect(invitation).not_to be_pending
+  end
+
   it "redirects when there's no membership for this user in that org" do
     other = create(:organization, :pro)
     get my_onboarding_path(other.id)
@@ -35,18 +42,26 @@ end
 
 RSpec.describe OrganizationStaffMember, "onboarding completion", type: :model do
   let(:org) { create(:organization, :pro) }
-  let(:person) { create(:person) }
+  let(:person) { create(:person, user: create(:user)) }
   let(:member) { create(:organization_staff_member, organization: org, person: person, onboarding_state: "invited") }
 
-  it "only completes when acknowledged AND bank-connected" do
-    allow(person).to receive(:can_receive_payouts?).and_return(true)
+  it "is complete only when acknowledged AND bank-connected (computed live, not from the cached column)" do
+    # Bank connected but never acknowledged → not complete.
+    person.update!(stripe_account_id: "acct_x", payouts_enabled: true)
+    expect(member.onboarding_completed?).to be(false)
+    expect(member.onboarding_status).to eq(:invited)
 
-    member.refresh_onboarding_state!
-    expect(member.onboarding_state).to eq("invited") # bank but never acknowledged
-
+    # Acknowledged + bank → complete, even though onboarding_state was never refreshed.
     member.update!(acknowledged_at: Time.current)
-    member.refresh_onboarding_state!
-    expect(member.onboarding_state).to eq("completed")
+    expect(member.onboarding_completed?).to be(true)
+    expect(member).not_to be_pending_onboarding
     expect(member.onboarding_status).to eq(:onboarded)
+  end
+
+  it "stays pending when acknowledged but no bank yet" do
+    member.update!(acknowledged_at: Time.current)
+    expect(member.onboarding_completed?).to be(false)
+    expect(member).to be_pending_onboarding
+    expect(member.onboarding_status).to eq(:awaiting_bank)
   end
 end

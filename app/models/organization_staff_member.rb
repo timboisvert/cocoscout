@@ -66,8 +66,12 @@ class OrganizationStaffMember < ApplicationRecord
     end
   end
 
+  # Computed live from the two real requirements (accepted + bank connected) so a
+  # stale cached `onboarding_state` can never leave someone stuck as "pending"
+  # after they've actually finished. `onboarding_state` is kept as a cache/hint
+  # (badge labels, resend copy) but is not authoritative for completion.
   def onboarding_completed?
-    onboarding_state == "completed"
+    acknowledged? && bank_connected?
   end
 
   # "Pending" = added or invited but not yet finished onboarding (no claimed
