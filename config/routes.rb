@@ -1400,6 +1400,7 @@ Rails.application.routes.draw do
     put "money/shows/:id/payouts", to: "show_payouts#update"
     post "money/shows/:id/payouts/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
     post "money/shows/:id/payouts/add_to_run", to: "show_payouts#add_to_payout_run", as: "add_to_run_money_show_payout"
+    post "money/shows/:id/payouts/promote_guest", to: "show_payouts#promote_guest", as: "promote_guest_money_show_payout"
     post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
     get "money/shows/:id/payouts/override", to: "show_payouts#override", as: "override_money_show_payout"
     patch "money/shows/:id/payouts/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"

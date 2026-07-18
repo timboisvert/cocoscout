@@ -13,7 +13,8 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments, :quick_payment_info, :contractor_payment_info, :issue_advances, :reset_calculation
+      :update_guest_payments, :quick_payment_info, :contractor_payment_info, :issue_advances, :reset_calculation,
+      :promote_guest
     ]
 
     def show
@@ -129,6 +130,19 @@ module Manage
       else
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Nothing to add — these payouts are already in a run, or the performers can't be paid through Stripe yet."
+      end
+    end
+
+    # Promote a guest performer to a real Person so they can connect a bank and be
+    # paid through a payout run (replacing the old Venmo/Zelle guest flow).
+    def promote_guest
+      line_item = @show_payout.line_items.find(params[:line_item_id])
+      result = GuestPromotionService.promote!(line_item: line_item, email: params[:email])
+      if result.person
+        redirect_to manage_money_show_payout_path(@show),
+                    notice: "#{result.person.name} is set up as a payee — send them the bank setup link, then add them to a payout run."
+      else
+        redirect_to manage_money_show_payout_path(@show), alert: result.error
       end
     end
 
