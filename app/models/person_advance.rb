@@ -12,7 +12,7 @@
 class PersonAdvance < ApplicationRecord
   STATUSES = %w[pending partial settled written_off].freeze
   ADVANCE_TYPES = %w[show general].freeze
-  PAYMENT_METHODS = %w[venmo zelle cash check other].freeze
+  PAYMENT_METHODS = %w[venmo zelle cash check other stripe].freeze
 
   belongs_to :person
   belongs_to :production
@@ -22,8 +22,9 @@ class PersonAdvance < ApplicationRecord
 
   has_many :advance_applications, class_name: "AdvanceRecovery", foreign_key: :person_advance_id, dependent: :destroy
   has_many :show_payout_line_items, through: :advance_applications
-  # The company-wide ledger entry this advance posts (removed with the advance).
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
+  # This advance's slot in a payout run, once issued into one.
+  has_one :payout_contribution, as: :source, dependent: :destroy
 
   validates :original_amount, presence: true, numericality: { greater_than: 0 }
   validates :remaining_balance, presence: true, numericality: { greater_than_or_equal_to: 0 }
@@ -57,34 +58,18 @@ class PersonAdvance < ApplicationRecord
   scope :partially_recovered, -> { partial }
 
   before_validation :set_remaining_balance, on: :create
-  # Keep the company-wide payout ledger in step with the advance: a paid advance
-  # fronts money to the payee, so its unrecovered balance sits as a negative
-  # `advance` entry that nets against their earnings. Re-syncs whenever it's
-  # paid, applied to a payout (remaining_balance drops), or written off.
-  after_save :sync_advance_ledger_entry!
 
-  # Post/refresh the negative `advance` ledger entry for the still-outstanding
-  # (unrecovered) balance of a paid advance; remove it otherwise. Idempotent per
-  # advance. The recovered portion is already netted out of the show payout's
-  # `earning` entry, so only the remaining balance belongs here.
-  def sync_advance_ledger_entry!
-    org = production&.organization
-    return unless org && person_id
+  # Whether this advance has been issued into a payout run.
+  def in_payout_run?
+    payout_contribution.present?
+  end
 
-    outstanding_cents = (remaining_balance.to_d * 100).round
-    if paid? && status != "written_off" && outstanding_cents.positive?
-      PayoutLedgerEntry.post!(
-        organization: org,
-        payee: person,
-        entry_type: "advance",
-        amount_cents: -outstanding_cents,
-        source: self,
-        description: "Advance",
-        occurred_at: paid_at || issued_at || Time.current
-      )
-    else
-      PayoutLedgerEntry.unpost!(source: self, entry_type: "advance")
-    end
+  # Marks the advance paid when its payout run pays out (called from
+  # PayoutBatchService.settle_item_sources!). Display-only — the PayoutBatchItem
+  # posts the single debiting `payout` ledger entry (which drives the payee's
+  # balance negative), and future earnings net against it. No ledger entry here.
+  def mark_paid_via_payout_run!(reference_id: nil)
+    update!(paid_at: Time.current, payment_method: "stripe")
   end
 
   # Payment status

@@ -2,44 +2,53 @@
 
 require "rails_helper"
 
-RSpec.describe "PersonAdvance ledger sync" do
-  let(:org) { create(:organization) }
+# Advances now flow through the performer payout run: issuing adds a payout, and
+# the ledger effect lands when the run pays (driving the balance negative), so
+# future earnings net against it. No self-posted `advance` entry, no
+# remaining_balance drift.
+RSpec.describe "Advance via payout run (ledger)" do
+  let(:org) { create(:organization, :pro) }
   let(:production) { create(:production, organization: org) }
-  let(:person) { create(:person, name: "Advance Andy") }
+  let(:person) { create(:person, name: "Advance Andy", stripe_account_id: "acct_a", payouts_enabled: true) }
+  let(:issuer) { create(:user) }
 
-  def advance(**attrs)
-    create(:person_advance, :paid, person: person, production: production,
-           original_amount: 50, remaining_balance: 50, **attrs)
+  def issue(cents = 5000)
+    AdvancePayoutService.issue!(person: person, amount_cents: cents, production: production, issued_by: issuer)
   end
 
-  it "posts a negative advance entry for a paid advance's outstanding balance" do
-    advance
-    expect(org.payout_balance_cents_for(person)).to eq(-5000)
+  def pay!(batch)
+    allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_a"))
+    PayoutBatchService.process!(batch)
   end
 
-  it "does not post for an unpaid advance" do
-    create(:person_advance, person: person, production: production, original_amount: 50, remaining_balance: 50)
-    expect(org.payout_balance_cents_for(person)).to eq(0)
+  it "doesn't hit the ledger until the run pays" do
+    issue
+    expect(org.payout_balance_cents_for(person, category: "performer")).to eq(0)
   end
 
-  it "shrinks as the advance is recovered and clears when settled" do
-    a = advance
-    a.update!(remaining_balance: 20, status: "partial")
-    expect(org.payout_balance_cents_for(person)).to eq(-2000)
+  it "drives the balance negative when paid, then nets against later earnings" do
+    result = issue(5000)
+    pay!(result.batch)
+    expect(org.payout_balance_cents_for(person, category: "performer")).to eq(-5000) # advanced $50
 
-    a.update!(remaining_balance: 0, status: "settled")
-    expect(org.payout_balance_cents_for(person)).to eq(0)
+    PayoutLedgerEntry.post!(organization: org, payee: person, entry_type: "earning",
+                            amount_cents: 10_000, category: "performer")
+    expect(org.payout_balance_cents_for(person, category: "performer")).to eq(5000) # $100 earned − $50 advance
   end
 
-  it "removes the entry when the advance is written off" do
-    a = advance
-    a.write_off!(notes: "gift")
-    expect(org.payout_balance_cents_for(person)).to eq(0)
+  it "marks the advance paid (via stripe) when the run pays" do
+    result = issue(5000)
+    pay!(result.batch)
+    expect(result.advance.reload).to be_paid
+    expect(result.advance.payment_method).to eq("stripe")
   end
 
-  it "nets correctly against an earning (earned 100, advanced 50 → owed 50)" do
-    PayoutLedgerEntry.post!(organization: org, payee: person, entry_type: "earning", amount_cents: 10_000, source: production)
-    advance
-    expect(org.payout_balance_cents_for(person)).to eq(5000)
+  it "puts the advance on the open performer run as a contribution" do
+    result = issue(4000)
+    item = result.batch.items.find_by(payee: person)
+    expect(result.batch.kind).to eq("performer")
+    expect(item.amount_cents).to eq(4000)
+    expect(item.payout_contributions.first.source).to eq(result.advance)
+    expect(result.advance.in_payout_run?).to be(true)
   end
 end

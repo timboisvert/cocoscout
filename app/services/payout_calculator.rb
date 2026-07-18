@@ -178,10 +178,8 @@ class PayoutCalculator
           calculation_details: item[:calculation_details]
         )
 
-        # Apply advance deductions for Person payees
-        if item[:payee].is_a?(Person)
-          apply_advance_deductions(line_item)
-        end
+        # Advances are no longer deducted at calc time — earnings post gross and
+        # advances net against them on the payout ledger (see AdvancePayoutService).
       end
 
       # Create line items for guests (restoring payment info if it existed)

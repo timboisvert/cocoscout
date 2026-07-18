@@ -142,25 +142,10 @@ class ShowPayout < ApplicationRecord
   # Returns true if:
   # 1. Line items show deductions but those advances are now settled (already recovered)
   # 2. There are outstanding advances for performers that aren't reflected in deductions
+  # Advances are no longer deducted at calc time (they net on the payout ledger),
+  # so there's nothing to be "stale" against.
   def advance_deductions_stale?
-    return false unless calculated_at.present?
-
-    person_ids = line_items.where(payee_type: "Person").pluck(:payee_id).compact
-    return false if person_ids.empty?
-
-    # Check for outstanding advances that aren't being deducted
-    outstanding_advances = PersonAdvance
-      .where(production: production, person_id: person_ids)
-      .outstanding
-      .paid
-      .sum(:remaining_balance)
-
-    # Current deductions in line items
-    current_deductions = total_advance_deductions
-
-    # If there are outstanding advances but no/different deductions, it's stale
-    # (This catches: new advances issued after calculation, or advances partially settled elsewhere)
-    outstanding_advances > 0 && current_deductions == 0
+    false
   end
 
   # Display status - combines stored status with derived states
