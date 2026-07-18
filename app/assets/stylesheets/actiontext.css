@@ -584,6 +584,17 @@ trix-editor .attachment__metadata .attachment__size {
   padding: 0;
 }
 
+/* Restore paragraph spacing: the `* { margin: 0 }` reset above out-specifies the
+   `trix-editor p` rule, so without this, paragraphs render with no gap between
+   them (both in the editor and anywhere .trix-content displays rich text). */
+.trix-content p {
+  margin-bottom: 0.75em;
+}
+
+.trix-content p:last-child {
+  margin-bottom: 0;
+}
+
 .trix-content h1 {
   font-size: 1.2em;
   line-height: 1.2;
