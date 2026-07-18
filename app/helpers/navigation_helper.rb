@@ -97,7 +97,10 @@ module NavigationHelper
     items += [
       { label: "My Courses", path: my_courses_path, icon: "courses", active: controller_name == "courses" },
       { label: "My Auditions", path: my_auditions_path, icon: "auditions", active: controller_name == "auditions" },
-      { label: "My Documents", path: my_documents_path, icon: "documents", active: controller_name == "documents" },
+      { label: "My Documents", path: my_documents_path, icon: "documents", active: controller_name == "documents" }
+    ]
+    items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
+    items += [
       { label: "My Shoutouts", path: my_shoutouts_path, icon: "shoutouts", active: controller_name == "shoutouts" },
       { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" },
       { label: "My Productions", path: my_productions_path, icon: "productions", active: controller_name == "productions" }

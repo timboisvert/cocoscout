@@ -379,6 +379,9 @@ Rails.application.routes.draw do
     get    "/documents",                    to: "documents#index",          as: "documents"
     get    "/documents/:id",                to: "documents#show",           as: "document"
 
+    # Contracts held by this person (as a contractor's backing Person).
+    get    "/contracts",                    to: "contracts#index",          as: "contracts"
+
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
     get    "/productions/:id/agreement",    to: "productions#agreement",    as: "production_agreement"

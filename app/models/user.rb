@@ -471,6 +471,12 @@ class User < ApplicationRecord
     on_staff? || has_assigned_shifts?
   end
 
+  # Whether any of this user's people are the backing Person of a contractor with
+  # a contract — drives the "My Contracts" nav entry.
+  def has_contracts?
+    Contract.joins(:contractor).where(contractors: { person_id: people.select(:id) }).exists?
+  end
+
 
   # Notification preferences - all default to true (opted in)
   NOTIFICATION_PREFERENCE_KEYS = %w[
