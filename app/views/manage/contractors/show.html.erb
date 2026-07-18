@@ -90,6 +90,35 @@
     </div>
   </div>
 
+  <%# CocoScout access — invite the contractor to log in and see their contracts %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+    <%= render "shared/card_header", title: "CocoScout access" %>
+    <div class="p-4">
+      <% if @person.nil? %>
+        <p class="text-sm text-gray-600">Add an email for this contractor to invite them.</p>
+      <% elsif @person.user.present? %>
+        <div class="flex items-center gap-2 text-sm text-green-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span class="font-medium">Has access.</span>
+          <span class="text-gray-600">They can log in to see their contracts and set up payment.</span>
+        </div>
+      <% else %>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-gray-600 max-w-md">
+            <% if @pending_invitation %>
+              Invited <%= @pending_invitation.created_at.strftime("%b %-d") %> — waiting for them to accept. They'll be able to see their contracts and set up payment.
+            <% else %>
+              Invite this contractor to CocoScout so they can log in, view their contracts, and connect their bank. They only see their own contracts — not your producer views.
+            <% end %>
+          </p>
+          <%= button_to invite_manage_contractor_path(@contractor), method: :post, class: "flex-shrink-0" do %>
+            <%= render "shared/button", text: @pending_invitation ? "Resend invite" : "Invite to CocoScout", variant: @pending_invitation ? "secondary" : "primary", size: "small" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
   <%# Active Contracts %>
   <% if @active_contracts.any? || @draft_contracts.any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">

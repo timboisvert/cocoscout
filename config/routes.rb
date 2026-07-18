@@ -1322,6 +1322,9 @@ Rails.application.routes.draw do
       collection do
         get :search
       end
+      member do
+        post :invite
+      end
     end
 
     # Contracts - third-party productions and venue rentals

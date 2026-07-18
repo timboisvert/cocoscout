@@ -31,4 +31,28 @@ RSpec.describe "Manage::Contractors", type: :request do
     expect(response.body).to include("Add an email")
     expect(response.body).not_to include("Bank setup link")
   end
+
+  describe "CocoScout access" do
+    it "shows an invite button when the contractor has no login yet" do
+      get manage_contractor_path(contractor)
+      expect(response.body).to include("Invite to CocoScout")
+    end
+
+    it "shows the has-access state once the person has a user" do
+      contractor.ensure_person!.update!(user: create(:user))
+      get manage_contractor_path(contractor)
+      expect(response.body).to include("Has access")
+    end
+
+    it "gives the backing person a login and sends an invitation" do
+      expect { post invite_manage_contractor_path(contractor) }.to change(PersonInvitation, :count).by(1)
+      expect(contractor.reload.person.user).to be_present
+      expect(response).to redirect_to(manage_contractor_path(contractor))
+    end
+
+    it "reuses the pending invitation on resend" do
+      post invite_manage_contractor_path(contractor)
+      expect { post invite_manage_contractor_path(contractor) }.not_to change(PersonInvitation, :count)
+    end
+  end
 end

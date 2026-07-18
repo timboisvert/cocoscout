@@ -2,7 +2,7 @@
 
 module Manage
   class ContractorsController < ManageController
-    before_action :set_contractor, only: [ :show, :edit, :update, :destroy ]
+    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite ]
 
     def index
       @query = params[:q].to_s.strip
@@ -44,6 +44,7 @@ module Manage
       # build the Person's no-login Stripe bank-onboarding link (Phase 0).
       @person = @contractor.ensure_person!
       @payment_setup_url = @person && payee_onboarding_url(token: PayeeOnboardingToken.generate(@person))
+      @pending_invitation = @person && PersonInvitation.pending.find_by(email: @person.email, organization: Current.organization)
     end
 
     def new
@@ -95,6 +96,23 @@ module Manage
       end
     end
 
+    # Invite the contractor to CocoScout: give their backing Person a login so
+    # they can see their contracts + set up payment. They land on the talent side
+    # with no manager role, so their visibility is limited to their own stuff.
+    def invite
+      person = @contractor.ensure_person!
+      unless person
+        redirect_to manage_contractor_path(@contractor), alert: "Add an email to this contractor first." and return
+      end
+
+      ensure_login_for(person)
+      invitation = PersonInvitation.pending.find_by(email: person.email, organization: Current.organization) ||
+                   PersonInvitation.create!(email: person.email, organization: Current.organization)
+      Manage::PersonMailer.person_invitation(invitation).deliver_later
+
+      redirect_to manage_contractor_path(@contractor), notice: "Invitation sent to #{person.email}."
+    end
+
     # JSON endpoint for autocomplete/search
     def search
       query = params[:q].to_s.strip
@@ -117,6 +135,16 @@ module Manage
     end
 
     private
+
+    # Give the person a User to log in with (created with a random password; they
+    # set it via the invitation link). No-op if they already have one.
+    def ensure_login_for(person)
+      return if person.user.present?
+
+      user = User.find_by(email_address: person.email.downcase) ||
+             User.create!(email_address: person.email.downcase, password: User.generate_secure_password)
+      person.update!(user: user)
+    end
 
     def set_contractor
       @contractor = Current.organization.contractors.find(params[:id])
