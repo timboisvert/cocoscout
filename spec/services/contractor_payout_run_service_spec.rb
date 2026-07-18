@@ -5,8 +5,13 @@ require "rails_helper"
 RSpec.describe ContractorPayoutRunService do
   let(:org) { create(:organization, :pro) }
   let(:contractor) { create(:contractor, organization: org) }
-  # The contractor is paid as its backing Person (bank + ledger live there).
-  let!(:payee) { contractor.ensure_person!.tap { |p| p.update!(stripe_account_id: "acct_c", payouts_enabled: true) } }
+  # The contractor is paid as its explicitly-linked Person (bank + ledger live there).
+  let!(:payee) do
+    create(:person, stripe_account_id: "acct_c", payouts_enabled: true).tap do |p|
+      org.people << p
+      contractor.update!(person: p)
+    end
+  end
   let(:contract) { create(:contract, organization: org, contractor: contractor) }
   let(:payment) { create(:contract_payment, :outgoing, contract: contract, amount: 300) }
 
@@ -42,11 +47,11 @@ RSpec.describe ContractorPayoutRunService do
       expect(described_class.add_contract_payment!(payment).error).to match(/hasn't connected a bank/)
     end
 
-    it "rejects a contractor with no email (no backing person yet)" do
-      emailless = org.contractors.create!(name: "No Email Co")
-      c = create(:contract, organization: org, contractor: emailless)
+    it "rejects a contractor with no linked person yet" do
+      unlinked = org.contractors.create!(name: "Unlinked Co")
+      c = create(:contract, organization: org, contractor: unlinked)
       p = create(:contract_payment, :outgoing, contract: c, amount: 100)
-      expect(described_class.add_contract_payment!(p).error).to match(/Add an email/)
+      expect(described_class.add_contract_payment!(p).error).to match(/Link a person/)
     end
 
     it "rejects a zero / TBD amount" do

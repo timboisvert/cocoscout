@@ -1327,6 +1327,7 @@ Rails.application.routes.draw do
       end
       member do
         post :invite
+        post :link_person
       end
     end
 

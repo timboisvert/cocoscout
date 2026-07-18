@@ -24,10 +24,10 @@ class ContractorPayoutRunService
       cents = (contract_payment.amount.to_d * 100).round
       return failure("Set an amount on this payment before paying it.") if cents <= 0
 
-      # The payee is the contractor's backing Person (the identity that holds the
-      # Stripe account + ledger). Provision it if missing.
-      payee = contractor.ensure_person!
-      return failure("Add an email to #{contractor.name} so they can connect a bank and be paid.") unless payee
+      # The payee is the contractor's explicitly-linked Person (the identity that
+      # holds the Stripe account + ledger).
+      payee = contractor.person
+      return failure("Link a person to #{contractor.name} first, then they can connect a bank and be paid.") unless payee
       unless payee.can_receive_payouts?
         return failure("#{contractor.name} hasn't connected a bank yet — send them the setup link first.")
       end

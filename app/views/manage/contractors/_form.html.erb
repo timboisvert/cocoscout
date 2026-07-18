@@ -68,6 +68,61 @@
     </div>
   </div>
 
+  <% unless contractor.persisted? %>
+    <%# Associated person — who this contractor IS. Optional at create time; can also be set later on the contractor page. %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6"
+         data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path %>">
+      <h3 class="text-sm font-medium text-gray-900">Associated person <span class="text-gray-400 font-normal">(optional)</span></h3>
+      <p class="text-sm text-gray-500 mt-0.5 mb-4">Link who this contractor is so they can log in, see their contracts, and get paid. You can also set this later.</p>
+
+      <input type="hidden" name="person_id" data-invite-search-target="selectedPersonIdInput">
+
+      <%# Step 1: search %>
+      <div data-invite-search-target="searchSection">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Search CocoScout by name or email</label>
+        <input type="text"
+               data-invite-search-target="input"
+               data-action="input->invite-search#search"
+               placeholder="Search by name or email…"
+               class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+        <div data-invite-search-target="results" class="mt-3"></div>
+        <div class="mt-3">
+          <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700" data-action="invite-search#showInviteForm">
+            <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %> Can't find them? Invite by email
+          </button>
+        </div>
+      </div>
+
+      <%# Selected existing person %>
+      <div data-invite-search-target="selectedPerson" class="hidden">
+        <div class="flex items-center justify-between gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 truncate" data-invite-search-target="selectedPersonName"></div>
+            <div class="text-sm text-gray-500 truncate" data-invite-search-target="selectedPersonEmail"></div>
+          </div>
+          <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" data-action="invite-search#backToSearch">Change</button>
+        </div>
+      </div>
+
+      <%# Invite-new details %>
+      <div data-invite-search-target="inviteForm" class="hidden mt-3">
+        <div data-invite-search-target="personDetailsSection" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
+            <input type="text" name="invite_name" data-invite-search-target="inviteName"
+                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+            <input type="email" name="invite_email" data-invite-search-target="inviteEmail" autocapitalize="none"
+                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+          </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">We'll invite them to CocoScout so they can accept, set a password, and connect their bank.</p>
+      </div>
+    </div>
+  <% end %>
+
   <div class="flex justify-end gap-3">
     <%= link_to contractor.persisted? ? manage_contractor_path(contractor) : manage_contractors_path, class: "px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition" do %>
       Cancel

@@ -2,7 +2,7 @@
 
 module Manage
   class ContractorsController < ManageController
-    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite ]
+    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :link_person ]
 
     def index
       @query = params[:q].to_s.strip
@@ -40,9 +40,9 @@ module Manage
       @completed_contracts = @contractor.contracts.status_completed
         .or(@contractor.contracts.status_cancelled)
         .order(contract_end_date: :desc)
-      # A contractor is paid as its backing Person; provision it if missing, then
-      # build the Person's no-login Stripe bank-onboarding link (Phase 0).
-      @person = @contractor.ensure_person!
+      # A contractor is paid as its backing Person — chosen explicitly by the
+      # manager (search-or-invite), never auto-created.
+      @person = @contractor.person
       @payment_setup_url = @person && payee_onboarding_url(token: PayeeOnboardingToken.generate(@person))
       @pending_invitation = @person && PersonInvitation.pending.find_by(email: @person.email, organization: Current.organization)
     end
@@ -55,9 +55,11 @@ module Manage
       @contractor = Current.organization.contractors.build(contractor_params)
 
       if @contractor.save
-        @contractor.ensure_person!
+        # Link/invite the associated person if chosen on the create form.
+        link_or_invite_person!(@contractor)
+        notice = @person_link_error ? "Contractor created, but we couldn't link a person: #{@person_link_error}" : "Contractor created."
         respond_to do |format|
-          format.html { redirect_to manage_contractor_path(@contractor), notice: "Contractor created." }
+          format.html { redirect_to manage_contractor_path(@contractor), notice: notice }
           format.json do
             render json: {
               id: @contractor.id,
@@ -100,17 +102,30 @@ module Manage
     # they can see their contracts + set up payment. They land on the talent side
     # with no manager role, so their visibility is limited to their own stuff.
     def invite
-      person = @contractor.ensure_person!
+      person = @contractor.person
       unless person
-        redirect_to manage_contractor_path(@contractor), alert: "Add an email to this contractor first." and return
+        redirect_to manage_contractor_path(@contractor), alert: "Link a person to this contractor first." and return
       end
 
-      ensure_login_for(person)
-      invitation = PersonInvitation.pending.find_by(email: person.email, organization: Current.organization) ||
-                   PersonInvitation.create!(email: person.email, organization: Current.organization)
-      Manage::PersonMailer.person_invitation(invitation).deliver_later
-
+      send_cocoscout_invitation!(person)
       redirect_to manage_contractor_path(@contractor), notice: "Invitation sent to #{person.email}."
+    end
+
+    # Link the contractor to a Person: an existing CocoScout person (person_id) or
+    # a brand-new invite (invite_name + invite_email). The reusable search-or-
+    # invite picker posts here.
+    def link_person
+      person = link_or_invite_person!(@contractor)
+      if person
+        redirect_to manage_contractor_path(@contractor),
+                    notice: "#{person.name} is now the person for this contractor."
+      elsif @person_link_error
+        redirect_to manage_contractor_path(@contractor),
+                    alert: "Couldn't link a person: #{@person_link_error}"
+      else
+        redirect_to manage_contractor_path(@contractor),
+                    alert: "Pick a person to link, or enter a name and email to invite someone new."
+      end
     end
 
     # JSON endpoint for autocomplete/search
@@ -135,6 +150,45 @@ module Manage
     end
 
     private
+
+    # Set the contractor's associated Person from the picker's params: an existing
+    # person (person_id), or a new invite (invite_email [+ invite_name]). A brand-
+    # new invited person is created + sent a CocoScout invitation so they can log
+    # in and see their contracts. Returns the Person, or nil if nothing was chosen.
+    def link_or_invite_person!(contractor)
+      if params[:person_id].present?
+        person = Person.find_by(id: params[:person_id])
+        return nil unless person
+
+        add_to_org(person)
+        contractor.update!(person: person)
+        person
+      elsif params[:invite_email].present?
+        email = params[:invite_email].to_s.strip.downcase
+        name = params[:invite_name].to_s.strip.presence || email.split("@").first
+        person = Person.where("LOWER(email) = ?", email).first || Person.create!(name: name, email: email)
+        add_to_org(person)
+        contractor.update!(person: person)
+        send_cocoscout_invitation!(person)
+        person
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      @person_link_error = e.record.errors.full_messages.to_sentence.presence || e.message
+      nil
+    end
+
+    def add_to_org(person)
+      Current.organization.people << person unless Current.organization.people.include?(person)
+    end
+
+    # Give the person a login (if needed) and send them the CocoScout invitation
+    # so they can accept, set a password, and see their contracts. Idempotent.
+    def send_cocoscout_invitation!(person)
+      ensure_login_for(person)
+      invitation = PersonInvitation.pending.find_by(email: person.email, organization: Current.organization) ||
+                   PersonInvitation.create!(email: person.email, organization: Current.organization)
+      Manage::PersonMailer.person_invitation(invitation).deliver_later
+    end
 
     # Give the person a User to log in with (created with a random password; they
     # set it via the invitation link). No-op if they already have one.
