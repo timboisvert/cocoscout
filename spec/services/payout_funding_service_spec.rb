@@ -6,9 +6,9 @@ RSpec.describe PayoutFundingService do
   let(:org) { create(:organization, stripe_customer_id: "cus_1") }
 
   describe "#setup_session_url" do
-    it "creates a setup-mode checkout session and returns its url" do
+    it "creates a bank-only setup-mode checkout session and returns its url" do
       expect(Stripe::Checkout::Session).to receive(:create).with(
-        hash_including(mode: "setup", customer: "cus_1", payment_method_types: %w[us_bank_account card])
+        hash_including(mode: "setup", customer: "cus_1", payment_method_types: %w[us_bank_account])
       ).and_return(double(url: "https://checkout.stripe.com/x"))
 
       url = described_class.new(org).setup_session_url(success_url: "http://s", cancel_url: "http://c")

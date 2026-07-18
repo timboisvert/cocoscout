@@ -56,6 +56,10 @@ class PayoutBatchItem < ApplicationRecord
   # owed (e.g. an outstanding advance still exceeds their earnings). Only for
   # performer-scoped runs; staff runs keep item = sum of contributions.
   def settle_performer_amount!
+    # Never re-settle a paid item — the transfer already happened and its payout
+    # ledger entry is history that must stand.
+    return self if paid?
+
     owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
     pending_advance_cents = payout_contributions.where(source_type: "PersonAdvance").sum(:amount_cents)
     total = owed + pending_advance_cents

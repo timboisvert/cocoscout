@@ -41,4 +41,33 @@ RSpec.describe PerformerPayoutRunService do
     item = described_class.add_show_payout!(show_payout).batch.items.find_by(payee: person)
     expect(item.amount_cents).to eq(20_000) # only the $200 performer earning, not the $50 staff
   end
+
+  it "is idempotent — re-adding the same show doesn't double the contribution or amount" do
+    described_class.add_show_payout!(show_payout)
+    result = described_class.add_show_payout!(show_payout)
+    item = result.batch.items.find_by(payee: person)
+    expect(item.amount_cents).to eq(20_000)
+    expect(item.payout_contributions.count).to eq(1)
+  end
+
+  it "drops an unpaid item when its only show is recalculated away" do
+    result = described_class.add_show_payout!(show_payout)
+    expect(result.batch.items.find_by(payee: person)).to be_present
+    line.destroy! # recalc cascades: contribution + earning entry
+    expect(result.batch.items.find_by(payee: person)).to be_nil
+  end
+
+  it "re-settles an unpaid item to the remaining net when one of several shows is recalculated away" do
+    show2 = create(:show, production: production)
+    sp2 = create(:show_payout, show: show2)
+    sp2.line_items.create!(payee: person, amount: 100, shares: 1)
+
+    described_class.add_show_payout!(show_payout) # $200
+    result = described_class.add_show_payout!(sp2)  # + $100
+    item = result.batch.items.find_by(payee: person)
+    expect(item.amount_cents).to eq(30_000)
+
+    line.destroy! # remove the $200 show
+    expect(item.reload.amount_cents).to eq(10_000) # only the $100 show remains
+  end
 end
