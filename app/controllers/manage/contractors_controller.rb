@@ -118,7 +118,7 @@ module Manage
       person = link_or_invite_person!(@contractor)
       if person
         redirect_to manage_contractor_path(@contractor),
-                    notice: "#{person.name} is now the person for this contractor."
+                    notice: "#{person.name} is now associated with this contractor."
       elsif @person_link_error
         redirect_to manage_contractor_path(@contractor),
                     alert: "Couldn't link a person: #{@person_link_error}"
