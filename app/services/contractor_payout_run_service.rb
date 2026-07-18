@@ -54,7 +54,7 @@ class ContractorPayoutRunService
           amount_cents: cents, source: contribution,
           description: "Contract payment: #{label_for(contract_payment)}", occurred_at: Time.current
         )
-        item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
+        item.settle_performer_amount!
         batch.recalculate_total!
       end
 

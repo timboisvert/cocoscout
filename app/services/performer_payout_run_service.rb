@@ -20,6 +20,9 @@ class PerformerPayoutRunService
 
       ActiveRecord::Base.transaction do
         batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
+        # Make sure the ledger reflects every earning before we settle to net
+        # balance (idempotent).
+        show_payout.sync_earnings_to_ledger!
         label = label_for(show_payout.show)
 
         show_payout.line_items.includes(:payee).each do |line|
@@ -29,14 +32,12 @@ class PerformerPayoutRunService
             next
           end
 
-          item = batch.items.find_by(payee: line.payee)
-          if item
-            add_contribution(batch, item, line, cents, label)
-            item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
-          else
-            item = batch.items.create!(payee: line.payee, amount_cents: cents, status: "pending")
-            add_contribution(batch, item, line, cents, label)
-          end
+          item = batch.items.find_by(payee: line.payee) ||
+                 batch.items.create!(payee: line.payee, amount_cents: cents, status: "pending")
+          add_contribution(batch, item, line, cents, label)
+          # Item pays the payee's net performer balance, so advances net against
+          # earnings automatically.
+          item.settle_performer_amount!
           added += 1
         end
 

@@ -31,7 +31,13 @@ class PayoutContribution < ApplicationRecord
   def resettle_item_and_batch
     item = payout_batch_item
     if item&.payout_contributions&.exists?
-      item.update_columns(amount_cents: item.payout_contributions.sum(:amount_cents), updated_at: Time.current)
+      # Performer-scoped runs pay the net ledger balance; staff/legacy runs are
+      # the sum of their contributions.
+      if payout_batch&.kind == "performer"
+        item.settle_performer_amount!
+      else
+        item.update_columns(amount_cents: item.payout_contributions.sum(:amount_cents), updated_at: Time.current)
+      end
     elsif item&.persisted?
       item.destroy
     end

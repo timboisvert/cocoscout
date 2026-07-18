@@ -48,4 +48,24 @@ class PayoutBatchItem < ApplicationRecord
       PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
     end
   end
+
+  # Set a performer-run item to what the payee is actually net-owed: their net
+  # performer ledger balance (earnings minus advances/prior payouts, floored at
+  # 0) plus any advances being issued in THIS run (money paid ahead of earnings,
+  # not yet on the ledger). Destroys the item and returns nil when nothing is
+  # owed (e.g. an outstanding advance still exceeds their earnings). Only for
+  # performer-scoped runs; staff runs keep item = sum of contributions.
+  def settle_performer_amount!
+    owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
+    pending_advance_cents = payout_contributions.where(source_type: "PersonAdvance").sum(:amount_cents)
+    total = owed + pending_advance_cents
+
+    if total.positive?
+      update!(amount_cents: total)
+      self
+    else
+      destroy
+      nil
+    end
+  end
 end
