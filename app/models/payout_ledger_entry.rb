@@ -16,12 +16,17 @@
 # source (e.g. a payout line item on every recalculation) never double-counts.
 class PayoutLedgerEntry < ApplicationRecord
   ENTRY_TYPES = %w[earning advance payout adjustment reversal].freeze
+  # Which run scope an entry belongs to, so a run pays a payee's net owed *within
+  # its scope*: "performer" (shows, contractors, advances — they share the
+  # performer run) or "staffing" (staff pay, its own run/schedule).
+  CATEGORIES = %w[performer staffing].freeze
 
   belongs_to :organization
   belongs_to :payee, polymorphic: true
   belongs_to :source, polymorphic: true, optional: true
 
   validates :entry_type, inclusion: { in: ENTRY_TYPES }
+  validates :category, inclusion: { in: CATEGORIES }
   validates :amount_cents, numericality: { only_integer: true }
   validates :currency, presence: true
   validates :occurred_at, presence: true
@@ -30,20 +35,22 @@ class PayoutLedgerEntry < ApplicationRecord
   scope :advances, -> { where(entry_type: "advance") }
   scope :payouts, -> { where(entry_type: "payout") }
   scope :for_payee, ->(payee) { where(payee: payee) }
+  scope :for_category, ->(category) { category ? where(category: category) : all }
 
   # Idempotently record (or update) the ledger entry for a given source.
   # When a source + entry_type already exists, its amount/description are
   # refreshed in place — so recalculating a payout re-states the earning
   # rather than adding a second one.
   def self.post!(organization:, payee:, entry_type:, amount_cents:, source: nil,
-                 description: nil, occurred_at: Time.current, currency: "usd")
+                 description: nil, occurred_at: Time.current, currency: "usd", category: "performer")
     attrs = {
       organization: organization,
       payee: payee,
       amount_cents: amount_cents,
       description: description,
       occurred_at: occurred_at,
-      currency: currency
+      currency: currency,
+      category: category
     }
 
     if source

@@ -193,8 +193,8 @@ class Organization < ApplicationRecord
 
   # What this organization currently owes +payee+ (a Person/Contractor/Group),
   # in cents. Positive means we owe them; zero/negative means settled.
-  def payout_balance_cents_for(payee)
-    payout_ledger_entries.for_payee(payee).sum(:amount_cents)
+  def payout_balance_cents_for(payee, category: nil)
+    payout_ledger_entries.for_payee(payee).for_category(category).sum(:amount_cents)
   end
 
   # Every payee this org has a non-zero balance with, as a Hash keyed by

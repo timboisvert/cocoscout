@@ -55,6 +55,27 @@ RSpec.describe PayoutLedgerEntry, type: :model do
     end
   end
 
+  describe "category scoping" do
+    before do
+      PayoutLedgerEntry.post!(organization: organization, payee: person, entry_type: "earning", amount_cents: 20_000, category: "performer")
+      PayoutLedgerEntry.post!(organization: organization, payee: person, entry_type: "earning", amount_cents: 5_000, category: "staffing")
+    end
+
+    it "sums everything when unscoped" do
+      expect(organization.payout_balance_cents_for(person)).to eq(25_000)
+    end
+
+    it "scopes the balance so a performer run doesn't sweep up staff pay (and vice versa)" do
+      expect(organization.payout_balance_cents_for(person, category: "performer")).to eq(20_000)
+      expect(organization.payout_balance_cents_for(person, category: "staffing")).to eq(5_000)
+    end
+
+    it "defaults new entries to performer" do
+      entry = PayoutLedgerEntry.post!(organization: organization, payee: person, entry_type: "earning", amount_cents: 100)
+      expect(entry.category).to eq("performer")
+    end
+  end
+
   describe ".unpost!" do
     it "removes the entry a source posted" do
       show = create(:show, production: production)

@@ -106,7 +106,7 @@ class StaffPayRunService
     PayoutLedgerEntry.post!(
       organization: batch.organization, payee: payee, entry_type: "earning",
       amount_cents: amount_cents, source: contribution,
-      description: "Staff pay: #{label}", occurred_at: Time.current
+      description: "Staff pay: #{label}", occurred_at: Time.current, category: "staffing"
     )
     contribution
   end

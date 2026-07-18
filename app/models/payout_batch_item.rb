@@ -35,7 +35,8 @@ class PayoutBatchItem < ApplicationRecord
         amount_cents: -amount_cents,
         source: self,
         description: "Payout ##{payout_batch_id}",
-        occurred_at: paid_at || Time.current
+        occurred_at: paid_at || Time.current,
+        category: payout_batch.kind == "staff_pay" ? "staffing" : "performer"
       )
     end
   end
