@@ -76,6 +76,21 @@ RSpec.describe "Manage::Contractors", type: :request do
     end
   end
 
+  describe "the person-picker search (link mode)" do
+    let!(:member) { create(:person, name: "Existing Member", email: "member@example.com").tap { |p| org.people << p } }
+
+    it "renders an existing org member as selectable in link mode" do
+      get search_for_invite_manage_people_path(q: "Existing", mode: "link")
+      expect(response.body).to include("invite-search#selectPerson").and include("Existing Member")
+      expect(response.body).not_to include("Already a member")
+    end
+
+    it "keeps org members non-selectable without link mode" do
+      get search_for_invite_manage_people_path(q: "Existing")
+      expect(response.body).to include("Already a member")
+    end
+  end
+
   describe "getting paid" do
     it "offers a bank-onboarding link once a person is linked but not bank-connected" do
       link!(email: "sound@example.com")

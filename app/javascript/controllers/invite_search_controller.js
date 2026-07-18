@@ -21,7 +21,8 @@ export default class extends Controller {
             this.resultsTarget.innerHTML = ""
             return
         }
-        const url = `${this.urlValue}?q=${encodeURIComponent(query)}`
+        const sep = this.urlValue.includes("?") ? "&" : "?"
+        const url = `${this.urlValue}${sep}q=${encodeURIComponent(query)}`
         fetch(url)
             .then(r => r.text())
             .then(html => {

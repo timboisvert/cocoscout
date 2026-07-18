@@ -71,7 +71,7 @@
   <% unless contractor.persisted? %>
     <%# Associated person — who this contractor IS. Optional at create time; can also be set later on the contractor page. %>
     <div class="bg-white border border-gray-200 rounded-lg p-6"
-         data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path %>">
+         data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path(mode: "link") %>">
       <h3 class="text-sm font-medium text-gray-900">Associated person <span class="text-gray-400 font-normal">(optional)</span></h3>
       <p class="text-sm text-gray-500 mt-0.5 mb-4">Link who this contractor is so they can log in, see their contracts, and get paid. You can also set this later.</p>
 
@@ -106,16 +106,22 @@
 
       <%# Invite-new details %>
       <div data-invite-search-target="inviteForm" class="hidden mt-3">
-        <div data-invite-search-target="personDetailsSection" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
-            <input type="text" name="invite_name" data-invite-search-target="inviteName"
-                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-            <input type="email" name="invite_email" data-invite-search-target="inviteEmail" autocapitalize="none"
-                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+        <div data-invite-search-target="personDetailsSection">
+          <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-3" data-action="invite-search#backToSearch">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back to search
+          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
+              <input type="text" name="invite_name" data-invite-search-target="inviteName"
+                     class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+              <input type="email" name="invite_email" data-invite-search-target="inviteEmail" autocapitalize="none"
+                     class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+            </div>
           </div>
         </div>
         <p class="text-xs text-gray-400 mt-2">We'll invite them to CocoScout so they can accept, set a password, and connect their bank.</p>

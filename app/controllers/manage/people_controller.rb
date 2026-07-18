@@ -107,13 +107,19 @@ module Manage
     def search_for_invite
       q = params[:q].to_s.strip
 
+      # In "link" mode (e.g. picking a contractor's associated person) an existing
+      # org member is a valid choice, so they render as selectable rather than
+      # a dead-end "Already a member" row.
+      selectable_members = params[:mode] == "link"
+
       if q.blank? || q.length < 2
         render partial: "manage/people/invite_search_results",
                locals: {
                  org_members: [],
                  global_people: [],
                  query: q,
-                 show_invite: false
+                 show_invite: false,
+                 selectable_members: selectable_members
                }
         return
       end
@@ -141,7 +147,8 @@ module Manage
                org_members: org_people,
                global_people: global_people,
                query: q,
-               show_invite: show_invite
+               show_invite: show_invite,
+               selectable_members: selectable_members
              }
     end
 

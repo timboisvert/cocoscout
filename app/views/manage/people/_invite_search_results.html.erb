@@ -1,4 +1,5 @@
 <%# Search results for invite page - shows org members, global CocoScout users, and invite option %>
+<% selectable_members = local_assigns.fetch(:selectable_members, false) %>
 
 <% if query.blank? || query.length < 2 %>
   <p class="text-gray-500 text-sm p-4">Type at least 2 characters to search...</p>
@@ -43,7 +44,19 @@
                 <span class="text-xs text-gray-500 block truncate"><%= member.email %></span>
               <% end %>
             </div>
-            <span class="text-xs text-gray-500 flex-shrink-0">Already a member</span>
+            <% if selectable_members %>
+              <button type="button"
+                class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 cursor-pointer flex-shrink-0"
+                data-action="invite-search#selectPerson"
+                data-person-id="<%= member.id %>"
+                data-person-name="<%= member.name %>"
+                data-person-email="<%= member.email %>"
+              >
+                Select
+              </button>
+            <% else %>
+              <span class="text-xs text-gray-500 flex-shrink-0">Already a member</span>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -78,7 +91,7 @@
               data-person-name="<%= person.name %>"
               data-person-email="<%= person.email %>"
             >
-              Invite
+              <%= selectable_members ? "Select" : "Invite" %>
             </button>
           </div>
         <% end %>
