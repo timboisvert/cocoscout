@@ -579,10 +579,12 @@
       <% show_advances = @production.person_advances.for_show(@show).includes(:person).by_issued_at %>
       <% if show_advances.any? %>
         <%
-          unpaid_advances = show_advances.unpaid
+          # Advances issued into a payout run are paid via that run — keep them
+          # out of the old offline "Pay Advances" walkthrough.
+          unpaid_advances = show_advances.unpaid.reject(&:in_payout_run?)
           paid_advances = show_advances.paid
           total_amount = show_advances.sum(:original_amount)
-          unpaid_amount = unpaid_advances.sum(:original_amount)
+          unpaid_amount = unpaid_advances.sum(&:original_amount)
         %>
         <div class="bg-white rounded-lg border border-gray-200 p-5"
              data-controller="advance-payments"

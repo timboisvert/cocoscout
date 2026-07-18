@@ -582,25 +582,20 @@ module Manage
         person = Person.find_by(id: person_id)
         next unless person
 
-        # Create the advance
-        @production.person_advances.create!(
-          person: person,
-          show: @show,
-          advance_type: "show",
-          original_amount: amount,
-          remaining_balance: amount,
-          issued_by: Current.user,
-          issued_at: Time.current,
-          status: "pending",
-          notes: advance_data[:notes].presence
+        # Issue the advance into the open performer run (paid to their bank when
+        # the run funds; nets against their earnings on the ledger).
+        result = AdvancePayoutService.issue!(
+          person: person, amount_cents: (amount.to_d * 100).round,
+          production: @production, issued_by: Current.user, show: @show
         )
+        next unless result.advance
 
         created_count += 1
         total_issued += amount
       end
 
       if created_count > 0
-        notice = "Issued #{created_count} advance#{'s' if created_count != 1} totaling #{helpers.number_to_currency(total_issued)}."
+        notice = "Added #{created_count} advance#{'s' if created_count != 1} (#{helpers.number_to_currency(total_issued)}) to your open performer run."
         notice += " Skipped #{skipped_count}." if skipped_count > 0
       else
         notice = "No advances issued."

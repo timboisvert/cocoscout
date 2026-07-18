@@ -21,17 +21,23 @@ module Manage
     end
 
     def create
-      @advance = @production.person_advances.build(advance_params)
-      @advance.issued_by = Current.user
-      @advance.issued_at = Time.current
-      @advance.remaining_balance = @advance.original_amount
+      person = Person.find_by(id: advance_params[:person_id])
+      show = advance_params[:show_id].present? ? @production.shows.find_by(id: advance_params[:show_id]) : nil
+      amount_cents = (advance_params[:original_amount].to_d * 100).round
 
-      if @advance.save
-        redirect_to manage_money_production_advances_path(@production),
-                    notice: "Advance of #{helpers.number_to_currency(@advance.original_amount)} issued to #{@advance.person.name}."
+      result = AdvancePayoutService.issue!(
+        person: person, amount_cents: amount_cents, production: @production,
+        issued_by: Current.user, show: show
+      )
+
+      if result.advance
+        redirect_to manage_payout_batch_path(result.batch),
+                    notice: "Advance of #{helpers.number_to_currency(amount_cents / 100.0)} added to your open performer run for #{person.name}. Pay the run to send it."
       else
+        flash.now[:alert] = result.error || "Couldn't issue the advance."
         @upcoming_shows = @production.shows.upcoming.order(:date_and_time).limit(30)
         @people = fetch_production_people
+        @advance = @production.person_advances.build(advance_params)
         render :new, status: :unprocessable_entity
       end
     end
