@@ -138,54 +138,7 @@
 
     <div class="">
       <% if @production_summaries.any? %>
-        <%= render layout: "shared/slim_list", locals: { label: "Production", columns: [ "Revenue", "Costs", "Profit" ] } do %>
-          <% @production_summaries.each do |summary| %>
-            <%
-              production = summary[:production]
-              is_third_party = summary[:is_third_party]
-              is_course = summary[:is_course]
-              gross_revenue = summary[:gross_revenue] || 0
-              net_income = summary[:net_income] || 0
-              costs = gross_revenue - net_income
-              event_count = is_third_party ? (summary[:total_shows] || 0) : (summary[:revenue_shows] || 0)
-              pending = summary[:pending_financials_count].to_i
-
-              if is_course
-                subtitle = "#{event_count} #{'registration'.pluralize(event_count)}"
-              else
-                subtitle = "#{event_count} revenue #{'event'.pluralize(event_count)}"
-                subtitle += " · #{pending} pending" if pending > 0
-              end
-
-              # What matters on the line is production vs course — not whether a
-              # contract governs it (that shows in the expanded events bar).
-              badge = is_course ? { text: "Course", color: "purple" } : nil
-
-              profit_class = net_income > 0 ? "text-green-600" : (net_income < 0 ? "text-red-600" : "text-gray-900")
-
-              row_locals = {
-                title: production.name,
-                subtitle: subtitle,
-                badge: badge,
-                cells: [
-                  { value: number_to_currency(gross_revenue) },
-                  { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
-                  { value: number_to_currency(net_income), class: profit_class }
-                ]
-              }
-            %>
-            <% if is_course %>
-              <%# A course is money in − money out = profit, all on one row (revenue is
-                  registrations, costs are the platform fee + instructor pay). Nothing to
-                  drill into, so it links straight to the course's financials. %>
-              <%= render "shared/slim_list_row", **row_locals, href: manage_money_production_financials_path(production) %>
-            <% else %>
-              <%= render "shared/slim_list_row", **row_locals,
-                    expand_src: manage_money_production_financial_events_path(production),
-                    expand_id: "prod-events-#{production.id}" %>
-            <% end %>
-          <% end %>
-        <% end %>
+        <%= render "manage/money/slim_grid", summaries: @production_summaries %>
       <% else %>
         <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
           <p class="text-gray-600">

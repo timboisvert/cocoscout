@@ -76,6 +76,27 @@ class CourseOffering < ApplicationRecord
     course_registrations.where(status: :confirmed).count
   end
 
+  # Money in (registrations) − money out (platform fee + instructor payouts) =
+  # profit. All values in cents. The single source of truth for course money,
+  # used by the money hub and the financials screens.
+  def financials_summary
+    confirmed = course_registrations.confirmed
+    refunded = course_registrations.refunded
+    gross_cents = confirmed.sum(:amount_cents) - refunded.sum(:amount_cents)
+    owed_cents = OrgPayout.owed_cents_for_course(self)
+    payout_cents = course_offering_payout&.line_items&.sum(:amount_cents).to_i
+
+    {
+      confirmed_count: confirmed.count,
+      refunded_count: refunded.count,
+      gross_cents: gross_cents,
+      owed_cents: owed_cents,
+      fee_cents: gross_cents - owed_cents,
+      payout_cents: payout_cents,
+      net_cents: payout_cents.positive? ? owed_cents - payout_cents : owed_cents
+    }
+  end
+
   # Effective count includes confirmed registrations PLUS
   # temporary Redis spot holds (people currently on Stripe checkout).
   def effective_registrations_count

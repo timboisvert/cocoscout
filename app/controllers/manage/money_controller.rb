@@ -58,13 +58,19 @@ module Manage
       @course_summaries = Rails.cache.fetch("#{cache_key}_courses", expires_in: 15.minutes) do
         @courses.map do |course|
           summary = build_production_summary(course)
-          # Enrich with course payout info
+          # Enrich with course payout info + real money in/out/profit (registration
+          # revenue lives in Stripe, not show financials), so the slim grid shows
+          # the same numbers as the financials screen.
           offering = course.course_offerings.first
           if offering
             payout = offering.course_offering_payout
-            confirmed_revenue = offering.course_registrations.confirmed.sum(:amount_cents)
+            cf = offering.financials_summary
+            summary[:is_course] = true
+            summary[:gross_revenue] = cf[:gross_cents] / 100.0
+            summary[:net_income] = cf[:net_cents] / 100.0
+            summary[:revenue_shows] = cf[:confirmed_count]
             summary[:course_offering] = offering
-            summary[:course_confirmed_revenue_cents] = confirmed_revenue
+            summary[:course_confirmed_revenue_cents] = offering.course_registrations.confirmed.sum(:amount_cents)
             summary[:course_payout_status] = payout&.status
             summary[:course_payout_total_cents] = payout&.total_payout_cents
           end

@@ -143,28 +143,13 @@ module Manage
 
     private
 
-    # Course revenue basics (registrations → gross, platform fee, payouts, net),
-    # shared by the summary list and the inline accordion. All values in cents.
+    # Course money in/out/profit (cents), from the CourseOffering. Returns {} when
+    # there's no offering yet.
     def course_financials(production)
       offering = production.course_offerings.includes(:course_offering_payout).first
       return {} unless offering
 
-      confirmed = offering.course_registrations.confirmed
-      refunded = offering.course_registrations.refunded
-      gross_cents = confirmed.sum(:amount_cents) - refunded.sum(:amount_cents)
-      owed_cents = OrgPayout.owed_cents_for_course(offering)
-      payout_cents = offering.course_offering_payout&.line_items&.sum(:amount_cents).to_i
-
-      {
-        offering: offering,
-        confirmed_count: confirmed.count,
-        refunded_count: refunded.count,
-        gross_cents: gross_cents,
-        owed_cents: owed_cents,
-        fee_cents: gross_cents - owed_cents,
-        payout_cents: payout_cents,
-        net_cents: payout_cents.positive? ? owed_cents - payout_cents : owed_cents
-      }
+      offering.financials_summary.merge(offering: offering)
     end
 
     def build_course_summary(production)
