@@ -63,10 +63,10 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       expect(response.body).not_to include("Improv 101")
     end
 
-    it "shows the course revenue basics inline (no 'go elsewhere' dead end)" do
+    it "shows the course money in/out inline (same format as a production)" do
       get manage_money_production_financial_events_path(course_production)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Registrations").and include("Gross revenue").and include("Net to organization")
+      expect(response.body).to include("Registrations").and include("Platform fee")
       expect(response.body).to include("prod-events-#{course_production.id}")
     end
   end

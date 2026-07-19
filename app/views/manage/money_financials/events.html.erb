@@ -7,29 +7,32 @@
     <% if @course.blank? %>
       <div class="py-2 pl-7 pr-3 text-xs text-gray-500">No course set up yet.</div>
     <% else %>
-      <%
-        rows = [
-          [ "Registrations", "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}", "text-gray-900" ],
-          [ "Gross revenue", number_to_currency(@course[:gross_cents] / 100.0), "text-gray-900" ],
-          [ "Platform fee", "−#{number_to_currency(@course[:fee_cents] / 100.0)}", "text-red-600" ]
-        ]
-        rows << [ "Payouts", "−#{number_to_currency(@course[:payout_cents] / 100.0)}", "text-red-600" ] if @course[:payout_cents].to_i.positive?
-        net = @course[:net_cents].to_i
-        rows << [ "Net to organization", number_to_currency(net / 100.0), net.positive? ? "text-green-600" : "text-gray-900" ]
-      %>
-      <div class="py-2 pl-7 pr-3">
-        <dl class="divide-y divide-gray-100">
-          <% rows.each do |label, value, cls| %>
-            <div class="flex items-center justify-between py-1.5 text-sm">
-              <dt class="text-gray-500"><%= label %></dt>
-              <dd class="tabular-nums font-medium <%= cls %>"><%= value %></dd>
-            </div>
-          <% end %>
-        </dl>
-        <div class="mt-2 flex gap-4 text-xs font-medium">
-          <%= link_to "Manage payouts →", manage_course_offering_payout_path(@course[:offering]), data: { turbo_frame: "_top" }, class: "text-pink-600 hover:text-pink-700" %>
-          <%= link_to "Course financials →", manage_money_production_financials_path(@production), data: { turbo_frame: "_top" }, class: "text-pink-600 hover:text-pink-700" %>
-        </div>
+      <%# Same money-in / money-out breakdown as a production, in the same columns. %>
+      <div class="divide-y divide-gray-100">
+        <%= render "shared/slim_list_row",
+          title: "Registrations",
+          subtitle: "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}",
+          cells: [
+            { value: number_to_currency(@course[:gross_cents] / 100.0) },
+            { value: "" },
+            { value: "" }
+          ] %>
+        <%= render "shared/slim_list_row",
+          title: "Platform fee",
+          cells: [
+            { value: "" },
+            { value: "−#{number_to_currency(@course[:fee_cents] / 100.0)}", class: "text-red-600" },
+            { value: "" }
+          ] %>
+        <% if @course[:payout_cents].to_i.positive? %>
+          <%= render "shared/slim_list_row",
+            title: "Payouts",
+            cells: [
+              { value: "" },
+              { value: "−#{number_to_currency(@course[:payout_cents] / 100.0)}", class: "text-red-600" },
+              { value: "" }
+            ] %>
+        <% end %>
       </div>
     <% end %>
   <% elsif @shows.any? %>
