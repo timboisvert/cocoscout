@@ -1,0 +1,66 @@
+<%#
+  One row in a shared/slim_list. Plain, linked (whole row), or an expandable
+  accordion whose body is lazily loaded from a Turbo frame. Reusable anywhere a
+  compact, spreadsheet-style row is wanted.
+
+  Locals:
+    title:      main label (required)
+    cells:      array of { value:, class: } — right-aligned columns; supply the
+                same count as the list's `columns` so they line up
+    col_class:  width utility per column (default "w-28"); match the list
+    badge:      optional { text:, color: } small pill next to the title
+                (color: pink|green|red|amber|gray|blue)
+    subtitle:   optional small secondary text under the title
+    href:       optional — a non-expandable row links here (whole row clickable)
+    expand_src: optional — Turbo-frame src, lazy-loaded when the row is expanded
+    expand_id:  Turbo-frame id (required when expand_src is given)
+%>
+<%
+  col_class = local_assigns.fetch(:col_class, "w-28")
+  badge = local_assigns[:badge]
+  cells = local_assigns.fetch(:cells, [])
+  subtitle = local_assigns[:subtitle]
+%>
+
+<% inner = capture do %>
+  <span class="flex-1 min-w-0">
+    <span class="flex items-center gap-2">
+      <span class="font-medium text-gray-900 text-sm truncate"><%= title %></span>
+      <% if badge %>
+        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-<%= badge[:color] %>-100 text-<%= badge[:color] %>-700 flex-shrink-0"><%= badge[:text] %></span>
+      <% end %>
+    </span>
+    <% if subtitle.present? %>
+      <span class="block text-[11px] text-gray-400 truncate mt-0.5"><%= subtitle %></span>
+    <% end %>
+  </span>
+  <% cells.each do |cell| %>
+    <span class="<%= col_class %> text-right flex-shrink-0 text-sm tabular-nums <%= cell[:class] %>"><%= cell[:value] %></span>
+  <% end %>
+<% end %>
+
+<% if local_assigns[:expand_src].present? %>
+  <details class="group">
+    <summary class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 list-none [&::-webkit-details-marker]:hidden">
+      <svg class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      <%= inner %>
+    </summary>
+    <div class="border-t border-gray-100 bg-gray-50/60 px-3 py-1">
+      <turbo-frame id="<%= expand_id %>" src="<%= expand_src %>" loading="lazy">
+        <div class="text-xs text-gray-400 py-3 pl-7">Loading…</div>
+      </turbo-frame>
+    </div>
+  </details>
+<% elsif local_assigns[:href].present? %>
+  <%= link_to href, class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50" do %>
+    <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
+    <%= inner %>
+  <% end %>
+<% else %>
+  <div class="flex items-center gap-3 px-3 py-2">
+    <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
+    <%= inner %>
+  </div>
+<% end %>

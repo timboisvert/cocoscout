@@ -1,0 +1,39 @@
+<%#
+  Slim, spreadsheet-style list — a compact alternative to the big segmented
+  production/show rows. Reusable across the money section and beyond: pass a set
+  of right-aligned column headers, then render "shared/slim_list_row" for each
+  item inside the block. Rows may be plain, linked, or expandable accordions.
+
+  Render it as a layout (render layout: "shared/slim_list") and put the rows in
+  the block. See app/views/manage/money_financials/index.html.erb for a live use.
+
+  Locals:
+    columns:   array of right-aligned column header labels
+    label:     header label for the first (title) column (default "Name")
+    col_class: width utility for each column cell (default "w-28"); pass the same
+               value to the rows so headers and cells line up
+    min_width: min-width utility so columns don't crush on mobile (default "min-w-[560px]")
+%>
+<%
+  col_class = local_assigns.fetch(:col_class, "w-28")
+  first_label = local_assigns.fetch(:label, "Name")
+  min_width = local_assigns.fetch(:min_width, "min-w-[560px]")
+%>
+<div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+  <div class="overflow-x-auto">
+    <div class="<%= min_width %>">
+      <%# Column headers %>
+      <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+        <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
+        <span class="flex-1 min-w-0"><%= first_label %></span>
+        <% columns.each do |col| %>
+          <span class="<%= col_class %> text-right flex-shrink-0"><%= col %></span>
+        <% end %>
+      </div>
+
+      <div class="divide-y divide-gray-100">
+        <%= yield %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1247,6 +1247,8 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     get "money/financials", to: "money_financials#index", as: "money_financials"
+    # Slim inline accordion of a production's revenue events (Turbo-frame, lazy).
+    get "money/financials/:production_id/events", to: "money_financials#events", as: "money_production_financial_events"
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
     # Payout runs: pay everyone with a connected bank at once (Stripe Connect).
     get    "money/payout-runs",              to: "payout_batches#index",            as: "payout_batches"

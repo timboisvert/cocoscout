@@ -101,6 +101,18 @@ module Manage
       end
     end
 
+    # Slim inline list of a production's revenue events, loaded lazily into the
+    # accordion on the all-productions financials list (Turbo frame).
+    def events
+      return head :not_found unless @production
+
+      @is_course = @production.production_type == "course"
+      revenue_types = EventTypes.revenue_event_types
+      @shows = load_shows_for_production(@production)
+                 .select { |s| revenue_types.include?(s.event_type) }
+      render layout: false
+    end
+
     private
 
     def set_production
