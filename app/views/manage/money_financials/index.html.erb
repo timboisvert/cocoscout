@@ -361,18 +361,28 @@
               end
 
               profit_class = net_income > 0 ? "text-green-600" : (net_income < 0 ? "text-red-600" : "text-gray-900")
+
+              row_locals = {
+                title: production.name,
+                subtitle: subtitle,
+                badge: badge,
+                cells: [
+                  { value: number_to_currency(gross_revenue) },
+                  { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
+                  { value: number_to_currency(net_income), class: profit_class }
+                ]
+              }
             %>
-            <%= render "shared/slim_list_row",
-              title: production.name,
-              subtitle: subtitle,
-              badge: badge,
-              expand_src: manage_money_production_financial_events_path(production),
-              expand_id: "prod-events-#{production.id}",
-              cells: [
-                { value: number_to_currency(gross_revenue) },
-                { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
-                { value: number_to_currency(net_income), class: profit_class }
-              ] %>
+            <% if is_course %>
+              <%# A course is money in − money out = profit, all on one row (revenue is
+                  registrations, costs are the platform fee + instructor pay). Nothing to
+                  drill into, so it links straight to the course's financials. %>
+              <%= render "shared/slim_list_row", **row_locals, href: manage_money_production_financials_path(production) %>
+            <% else %>
+              <%= render "shared/slim_list_row", **row_locals,
+                    expand_src: manage_money_production_financial_events_path(production),
+                    expand_id: "prod-events-#{production.id}" %>
+            <% end %>
           <% end %>
         <% end %>
       <% else %>

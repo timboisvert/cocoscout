@@ -1,41 +1,8 @@
-<%# Slim inline detail for one production, loaded lazily into the accordion on the
-    all-productions financials list. For a course: its revenue basics. Otherwise:
-    per-show revenue rows whose columns line up with the parent (Revenue / Costs /
-    Profit). Row links use _top so they escape the Turbo frame. %>
+<%# Slim per-show revenue rows for one production, loaded lazily into the accordion
+    on the all-productions financials list. Columns line up with the parent
+    (Revenue / Costs / Profit). Row links use _top so they escape the Turbo frame. %>
 <%= turbo_frame_tag "prod-events-#{@production.id}" do %>
-  <% if @production.type_course? %>
-    <% if @course.blank? %>
-      <div class="py-2 pl-7 pr-3 text-xs text-gray-500">No course set up yet.</div>
-    <% else %>
-      <%# Same money-in / money-out breakdown as a production, in the same columns. %>
-      <div class="divide-y divide-gray-100">
-        <%= render "shared/slim_list_row",
-          title: "Registrations",
-          subtitle: "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}",
-          cells: [
-            { value: number_to_currency(@course[:gross_cents] / 100.0) },
-            { value: "" },
-            { value: "" }
-          ] %>
-        <%= render "shared/slim_list_row",
-          title: "Platform fee",
-          cells: [
-            { value: "" },
-            { value: "−#{number_to_currency(@course[:fee_cents] / 100.0)}", class: "text-red-600" },
-            { value: "" }
-          ] %>
-        <% if @course[:payout_cents].to_i.positive? %>
-          <%= render "shared/slim_list_row",
-            title: "Payouts",
-            cells: [
-              { value: "" },
-              { value: "−#{number_to_currency(@course[:payout_cents] / 100.0)}", class: "text-red-600" },
-              { value: "" }
-            ] %>
-        <% end %>
-      </div>
-    <% end %>
-  <% elsif @shows.any? %>
+  <% if @shows.any? %>
     <div class="divide-y divide-gray-100">
       <% @shows.each do |show| %>
         <%

@@ -47,10 +47,13 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
   end
 
   describe "courses" do
-    it "lists a course with a Course badge and registration count" do
+    it "lists a course as a single row (money in/out/profit), linking to its financials" do
       get manage_money_financials_path
       expect(response.body).to include("Improv 101").and include("Course")
       expect(response.body).to include("1 registration")
+      # A course is one row — no expandable events accordion of its own.
+      expect(response.body).to include(manage_money_production_financials_path(course_production))
+      expect(response.body).not_to include("prod-events-#{course_production.id}")
     end
 
     it "filters to only courses / only productions" do
@@ -61,13 +64,6 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       get manage_money_financials_path(type: "productions")
       expect(response.body).to include("Slim Revue")
       expect(response.body).not_to include("Improv 101")
-    end
-
-    it "shows the course money in/out inline (same format as a production)" do
-      get manage_money_production_financial_events_path(course_production)
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Registrations").and include("Platform fee")
-      expect(response.body).to include("prod-events-#{course_production.id}")
     end
   end
 end

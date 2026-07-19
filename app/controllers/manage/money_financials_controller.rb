@@ -110,16 +110,11 @@ module Manage
       end
     end
 
-    # Slim inline list of a production's revenue events (or, for a course, its
-    # revenue basics), loaded lazily into the accordion on the all-productions
-    # financials list (Turbo frame).
+    # Slim inline list of a production's revenue events, loaded lazily into the
+    # accordion on the all-productions financials list (Turbo frame). Courses
+    # aren't expandable — their money in/out/profit fits on the one row.
     def events
       return head :not_found unless @production
-
-      if @production.type_course?
-        @course = course_financials(@production)
-        return render layout: false
-      end
 
       revenue_types = EventTypes.revenue_event_types
       @shows = load_shows_for_production(@production)
