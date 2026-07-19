@@ -37,279 +37,82 @@
   } %>
 
   <% if @production && @is_course %>
-    <%# Course Production View - Registration-based revenue %>
-    <%
-      offering = @course_offering
-      payout = offering&.course_offering_payout
-      confirmed_count = offering ? offering.course_registrations.confirmed.count : 0
-      refunded_count = offering ? offering.course_registrations.refunded.count : 0
-      confirmed_revenue = offering ? offering.course_registrations.confirmed.sum(:amount_cents) : 0
-      refunded_revenue = offering ? offering.course_registrations.refunded.sum(:amount_cents) : 0
-      gross_revenue_cents = confirmed_revenue - refunded_revenue
-      coverage = offering&.feature_credit_redemption&.feature_credit&.coverage_type
-      owed_cents = offering ? OrgPayout.owed_cents_for_course(offering) : 0
-      platform_fee_cents = gross_revenue_cents - owed_cents
-      total_payout_cents = payout&.line_items&.sum(:amount_cents).to_i
-      net_after_payouts_cents = owed_cents - total_payout_cents
-    %>
+    <%# Course financials — money in (registrations) − money out (platform fee +
+        instructor payouts) = profit. Same shape as a production. %>
+    <%= render "shared/money_summary",
+      title: "Financials",
+      money_in: @money_in,
+      money_out: @money_out,
+      profit: @money_profit %>
 
-    <%# Course Revenue Summary %>
-    <div class="grid grid-cols-2 md:grid-cols-<%= total_payout_cents > 0 ? 5 : 4 %> gap-4 mb-6">
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Registrations</div>
-        <div class="text-2xl font-semibold text-gray-900"><%= confirmed_count %></div>
-        <div class="text-xs text-gray-500">
-          confirmed
-          <% if refunded_count > 0 %>
-            · <%= refunded_count %> refunded
-          <% end %>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Gross Revenue</div>
-        <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(gross_revenue_cents / 100.0) %></div>
-        <div class="text-xs text-gray-500">from Stripe payments</div>
-      </div>
-
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Platform Fee<%= coverage == "full" ? " (waived)" : coverage == "platform_only" ? " (Stripe only)" : " (5%)" %></div>
-        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(platform_fee_cents / 100.0) %></div>
-        <div class="text-xs text-gray-500">CocoScout fee</div>
-      </div>
-
-      <% if total_payout_cents > 0 %>
-        <div class="bg-white rounded-lg border border-gray-200 p-5">
-          <div class="text-sm text-gray-500 mb-1">Payouts</div>
-          <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(total_payout_cents / 100.0) %></div>
-          <div class="text-xs text-gray-500">
-            to
-            <% payee_names = payout.line_items.map(&:payee_name).uniq %>
-            <%= payee_names.join(", ") %>
-          </div>
-        </div>
-      <% end %>
-
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Net to Organization</div>
-        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency((total_payout_cents > 0 ? net_after_payouts_cents : owed_cents) / 100.0) %></div>
-        <div class="text-xs text-gray-500">
-          <% if payout&.paid? %>
-            all payments complete
-          <% elsif payout&.calculated? %>
-            received via Stripe<%= total_payout_cents > 0 ? ", minus payouts" : "" %>
-          <% else %>
-            estimated
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <% if offering&.contract&.revenue_share? %>
-      <%# Contract info banner %>
-      <%
-        contract = offering.contract
-        our_pct = contract.revenue_share_percentage.to_i
-        their_pct = contract.contractor_share_percentage.to_i
-      %>
-      <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-semibold text-pink-800">Revenue Share Contract</span>
-          <span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
-            <%= our_pct %>/<%= their_pct %> Split
-          </span>
-        </div>
-        <p class="text-sm text-pink-700">
-          Organization keeps <strong><%= our_pct %>%</strong> of net revenue. <strong><%= their_pct %>%</strong> goes to <%= contract.contractor_name %>.
-        </p>
-      </div>
+    <% if @course_offering&.contract %>
+      <div class="mb-2"><%= render "manage/money_financials/contract_bar", contract: @course_offering.contract %></div>
     <% end %>
 
-    <%# Payout status & actions %>
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Payouts</h3>
-        <% if payout&.paid? %>
-          <span class="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-green-100 text-green-700 rounded-full">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            Paid
-          </span>
-        <% elsif payout&.calculated? && payout.line_items.any? %>
-          <span class="px-3 py-1 text-sm font-medium bg-pink-100 text-pink-700 rounded-full">Awaiting Payment</span>
-        <% end %>
-      </div>
-
-      <% if payout %>
-        <% if payout.line_items.any? %>
-          <%# Show line items summary %>
-          <div class="space-y-2 mb-4">
-            <% payout.line_items.each do |li| %>
-              <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div>
-                  <span class="font-medium text-gray-900"><%= li.payee_name %></span>
-                  <span class="text-sm text-gray-500 ml-2">
-                    <% if li.calculation_details["type"] == "contract_revenue_share" %>
-                      Contract · <%= li.calculation_details["share_percentage"].to_i %>%
-                    <% else %>
-                      Manual
-                    <% end %>
-                  </span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <span class="font-semibold text-gray-900"><%= li.formatted_amount %></span>
-                  <% if li.paid? %>
-                    <span class="text-xs text-green-600 font-medium">Paid</span>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <p class="text-sm text-gray-600 mb-4">
-            No payments have been added yet. You can add manual payments to track what you owe others.
-          </p>
-        <% end %>
-
-        <%= link_to manage_course_offering_payout_path(offering) do %>
-          <%= render "shared/button", text: "Manage Payouts", variant: "primary", size: "medium" %>
-        <% end %>
-      <% elsif gross_revenue_cents > 0 %>
-        <p class="text-sm text-gray-600 mb-4">
-          <% if offering&.contract&.revenue_share? %>
-            This course has a revenue share contract. Calculate the payout to determine what's owed to the contractor.
-          <% else %>
-            Track payments to instructors or others from this course's revenue.
-          <% end %>
-        </p>
-        <%= form_with url: manage_course_offering_payout_calculate_path(offering), method: :post do %>
-          <% if offering&.contract&.revenue_share? %>
-            <%= render "shared/button", text: "Calculate Payout", variant: "primary", size: "medium", type: :submit %>
-          <% else %>
-            <%= render "shared/button", text: "Set Up Payouts", variant: "primary", size: "medium", type: :submit %>
-          <% end %>
-        <% end %>
-      <% else %>
-        <p class="text-sm text-gray-500">No confirmed revenue yet. Payouts will be available once students register and pay.</p>
+    <%= render layout: "shared/slim_list", locals: { label: "Course", columns: [ "Revenue", "Costs", "Profit" ] } do %>
+      <%= render "shared/slim_list_row",
+        title: "Registrations",
+        subtitle: "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}",
+        cells: [
+          { value: number_to_currency((@course[:gross_cents] || 0) / 100.0) },
+          { value: "" },
+          { value: "" }
+        ] %>
+      <%= render "shared/slim_list_row",
+        title: "Platform fee",
+        subtitle: "CocoScout",
+        cells: [
+          { value: "" },
+          { value: "−#{number_to_currency((@course[:fee_cents] || 0) / 100.0)}", class: "text-red-600" },
+          { value: "" }
+        ] %>
+      <% @course_offering&.course_offering_payout&.line_items&.each do |li| %>
+        <%= render "shared/slim_list_row",
+          title: li.payee_name,
+          subtitle: "Instructor payout#{li.paid? ? ' · paid' : ''}",
+          cells: [
+            { value: "" },
+            { value: "−#{number_to_currency(li.amount_cents / 100.0)}", class: "text-red-600" },
+            { value: "" }
+          ] %>
       <% end %>
-    </div>
-
-    <%# Course Info Link %>
-    <div class="bg-gray-50 rounded-lg border border-gray-200 p-4 flex items-center justify-between">
-      <div>
-        <p class="text-sm font-medium text-gray-700">Course Details</p>
-        <p class="text-xs text-gray-500">View registrations, schedule, and settings</p>
-      </div>
-      <%= link_to manage_course_offering_path(offering) do %>
-        <%= render "shared/button", text: "View Course", variant: "secondary", size: "small" %>
-      <% end %>
-    </div>
-
-    <%# Session-Level Financials (if any sessions have shows) %>
-    <% if @shows.present? && @shows.any? %>
-      <div class="mt-6 pt-6 border-t border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Session Schedule</h3>
-        <p class="text-xs text-gray-500 mb-3">Individual class sessions. Revenue for courses is tracked at the course level via registrations, not per-session.</p>
-        <div class="space-y-2">
-          <% @shows.each do |show| %>
-            <div class="bg-white rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between">
-              <div>
-                <span class="text-sm font-medium text-gray-900"><%= show.date_and_time.strftime("%b %-d, %Y") %></span>
-                <span class="text-sm text-gray-500 ml-2"><%= show.date_and_time.strftime("%-I:%M %p") %></span>
-                <% if show.secondary_name.present? %>
-                  <span class="text-sm text-gray-500 ml-2">· <%= show.secondary_name %></span>
-                <% end %>
-              </div>
-              <% if show.date_and_time > Time.current %>
-                <span class="text-xs text-gray-400">Upcoming</span>
-              <% else %>
-                <span class="text-xs text-green-600">Completed</span>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
     <% end %>
 
-  <% elsif @production && @is_third_party %>
-    <%# Third-Party Production View - Contract Financials with Show Entry %>
-    <%= render partial: "manage/money_financials/third_party_financials", locals: {
-      production: @production,
-      contract: @contract,
-      contract_payments: @contract_payments,
-      space_rentals: @space_rentals,
-      financial_summary: @financial_summary,
-      shows: @shows || [],
-      filter: @filter || "all",
-      hide_future_events: @hide_future_events,
-      hide_non_revenue: @hide_non_revenue
-    } %>
+    <% if @course_offering %>
+      <div class="mt-3">
+        <%= link_to "Manage course payouts →", manage_course_offering_payout_path(@course_offering), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      </div>
+    <% end %>
 
   <% elsif @production %>
-    <%# In-House Production View - Show List %>
-    <%# Profitability Summary %>
-    <%= render partial: "manage/payouts/profitability_summary", locals: {
-      summary: @financial_summary,
+    <%# Single production — ours or a contract (venue rental / co-pro). Same money
+        in/out/profit + slim events list as the accordion on the list page. %>
+    <%= render "shared/money_summary",
+      title: "Financials",
+      money_in: @money_in,
+      money_out: @money_out,
+      profit: @money_profit,
       selected_period: @selected_period,
-      production: @production,
       period_path: manage_money_production_financials_path(@production),
-      refresh_url: manage_refresh_money_path
-    } %>
+      refresh_url: manage_refresh_money_path %>
 
-    <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
-      <%# Filter Bar with toggle %>
-      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-        {
-          label: "Status",
-          filters: [
-            { text: "All", path: manage_money_production_financials_path(@production, filter: "all", period: @selected_period), active: @filter == "all" },
-            { text: "Complete", path: manage_money_production_financials_path(@production, filter: "complete", period: @selected_period), active: @filter == "complete" },
-            { text: "Pending", path: manage_money_production_financials_path(@production, filter: "pending", period: @selected_period), active: @filter == "pending" }
-          ]
-        },
-        { separator: true },
-        {
-          partial: "manage/money_financials/toggle_filters",
-          locals: {
-            hide_non_revenue: @hide_non_revenue,
-            hide_future_events: @hide_future_events
-          }
-        }
-      ] %>
+    <% if @production.contract %>
+      <div class="mb-2"><%= render "manage/money_financials/contract_bar", contract: @production.contract %></div>
+    <% end %>
 
-      <% if @shows.any? %>
-        <div class="space-y-2">
-          <% @shows.each do |show| %>
-            <%= render partial: "manage/money_financials/show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">
-            <% if @filter == "all" && @hide_future_events %>
-              No past shows yet. Shows will appear here after they occur.
-            <% elsif @filter == "all" %>
-              No shows found for this production.
-            <% elsif @filter == "complete" %>
-              No shows with complete financial data.
-            <% elsif @filter == "pending" %>
-              All revenue events have financial data entered.
-            <% else %>
-              No shows with this status.
-            <% end %>
-          </p>
-        </div>
-      <% end %>
-    </div>
+    <%= render layout: "shared/slim_list", locals: { label: "Event", columns: [ "Revenue", "Costs", "Profit" ] } do %>
+      <%= render "manage/money_financials/event_rows", shows: @shows || [] %>
+    <% end %>
   <% else %>
     <%# All Productions View - Production List %>
-    <%# Profitability Summary %>
-    <%= render partial: "manage/payouts/profitability_summary", locals: {
-      summary: @financial_summary,
+    <%= render "shared/money_summary",
+      title: "Financials",
+      money_in: @financial_summary[:gross_revenue],
+      money_out: @financial_summary[:cost_of_shows],
+      profit: @financial_summary[:gross_profit],
       selected_period: @selected_period,
-      production: nil,
       period_path: manage_money_financials_path,
-      refresh_url: manage_refresh_money_path
-    } %>
+      refresh_url: manage_refresh_money_path %>
 
     <%# Filter Bar — Type (productions vs courses) first, then Status %>
     <div class="mb-3">
@@ -354,11 +157,9 @@
                 subtitle += " · #{pending} pending" if pending > 0
               end
 
-              badge = if is_third_party
-                { text: "Contract", color: "pink" }
-              elsif is_course
-                { text: "Course", color: "purple" }
-              end
+              # What matters on the line is production vs course — not whether a
+              # contract governs it (that shows in the expanded events bar).
+              badge = is_course ? { text: "Course", color: "purple" } : nil
 
               profit_class = net_income > 0 ? "text-green-600" : (net_income < 0 ? "text-red-600" : "text-gray-900")
 

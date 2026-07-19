@@ -1,0 +1,26 @@
+<%#
+  A small bar shown above a production's/course's events when it's governed by a
+  contract — from our perspective it's still just a production (or course) we
+  don't own outright. Says who it's with, the basic terms, and links to the
+  contract. Replaces the "Contract" pill on the list line.
+
+  Locals:
+    contract: Contract
+%>
+<%
+  terms =
+    if contract.respond_to?(:revenue_share?) && contract.revenue_share?
+      "Revenue share · you keep #{contract.revenue_share_percentage.to_i}%"
+    elsif contract.respond_to?(:ticket_revenue_minus_fee?) && contract.ticket_revenue_minus_fee?
+      "Flat fee #{number_to_currency(contract.flat_fee_amount)}"
+    else
+      "Flat fee"
+    end
+%>
+<div class="flex items-center justify-between gap-3 px-3 py-2 bg-amber-50 border-b border-amber-100 text-sm">
+  <div class="min-w-0">
+    <span class="font-medium text-amber-900">Contract with <%= contract.contractor_name %></span>
+    <span class="text-amber-700">· <%= terms %></span>
+  </div>
+  <%= link_to "View contract →", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "flex-shrink-0 font-medium text-amber-800 hover:text-amber-900" %>
+</div>

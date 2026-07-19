@@ -1,0 +1,79 @@
+<%#
+  The three numbers that matter, everywhere money is summarized: Money In,
+  Money Out, Profit. Reused on the money hub, the financials list, and a single
+  production/course page.
+
+  Locals (dollars):
+    money_in:   total money in
+    money_out:  total money out
+    profit:     money_in - money_out (pass explicitly; some screens net differently)
+  Optional:
+    title:          heading (default "Money")
+    period_path:    if given, shows the period dropdown
+    selected_period: current period symbol/string (for the dropdown)
+    refresh_url:    if given, shows a refresh button
+    cached_at:      ISO8601 timestamp (enables auto-refresh)
+%>
+<%
+  title = local_assigns.fetch(:title, "Money")
+  period_path = local_assigns[:period_path]
+  refresh_url = local_assigns[:refresh_url]
+  cached_at = local_assigns[:cached_at]
+  profit_class = profit > 0 ? "text-green-600" : (profit < 0 ? "text-red-600" : "text-gray-900")
+%>
+
+<div class="flex items-center justify-between mb-4"
+  <% if refresh_url %>
+    data-controller="refresh-financials"
+    data-refresh-financials-url-value="<%= refresh_url %>"
+    <% if cached_at %>data-refresh-financials-cached-at-value="<%= cached_at %>"<% end %>
+  <% end %>
+>
+  <div class="flex items-center gap-2">
+    <h2 class="text-lg font-semibold text-gray-900"><%= title %></h2>
+    <% if refresh_url %>
+      <button type="button"
+        data-action="click->refresh-financials#refresh"
+        data-refresh-financials-target="button"
+        class="inline-flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        title="Refresh">
+        <svg data-refresh-financials-target="icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M20.016 4.66v4.993" />
+        </svg>
+      </button>
+    <% end %>
+  </div>
+
+  <% if period_path %>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</span>
+      <div class="relative">
+        <select
+          onchange="window.location.href = '<%= period_path %><%= period_path.include?('?') ? '&' : '?' %>period=' + this.value"
+          class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600">
+          <% FinancialSummaryService::PERIOD_LABELS.each do |key, label| %>
+            <option value="<%= key %>" <%= 'selected' if selected_period.to_s == key.to_s %>><%= label %></option>
+          <% end %>
+        </select>
+        <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Money In</div>
+    <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(money_in) %></div>
+  </div>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Money Out</div>
+    <div class="text-2xl font-semibold text-red-600 tabular-nums"><%= number_to_currency(money_out) %></div>
+  </div>
+  <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="text-sm text-gray-500 mb-1">Profit</div>
+    <div class="text-2xl font-semibold tabular-nums <%= profit_class %>"><%= number_to_currency(profit) %></div>
+  </div>
+</div>

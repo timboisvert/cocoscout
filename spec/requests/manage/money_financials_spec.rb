@@ -66,4 +66,26 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       expect(response.body).not_to include("Improv 101")
     end
   end
+
+  describe "the single-production page" do
+    it "shows Money In / Money Out / Profit and the slim events list" do
+      get manage_money_production_financials_path(production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Money In").and include("Money Out").and include("Profit")
+      expect(response.body).to include(show.display_name)
+      expect(response.body).to include(manage_money_show_financials_path(show))
+      # No more "Performance vs. Similar Shows" anywhere.
+      expect(response.body).not_to include("Performance vs. Similar Shows")
+    end
+  end
+
+  describe "the course page" do
+    it "shows Money In / Money Out / Profit with a registrations + platform fee breakdown, no session schedule" do
+      get manage_money_production_financials_path(course_production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Money In").and include("Money Out").and include("Profit")
+      expect(response.body).to include("Registrations").and include("Platform fee")
+      expect(response.body).not_to include("Session Schedule")
+    end
+  end
 end

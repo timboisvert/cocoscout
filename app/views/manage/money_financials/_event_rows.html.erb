@@ -1,0 +1,47 @@
+<%#
+  Slim per-show revenue rows for one production — columns line up with the
+  financials list (Revenue / Costs / Profit). Shared by the inline accordion
+  (Turbo frame) and the single-production page.
+
+  Locals:
+    shows:     array of Show (with :show_financials loaded)
+    href_data: optional data attrs for each row link (e.g. { turbo_frame: "_top" }
+               inside a Turbo frame so links navigate the whole page)
+%>
+<% href_data = local_assigns.fetch(:href_data, {}) %>
+<% if shows.any? %>
+  <div class="divide-y divide-gray-100">
+    <% shows.each do |show| %>
+      <%
+        financials = show.show_financials
+        revenue = financials&.total_revenue || 0
+        costs = (financials&.calculated_expenses || 0) + (financials&.calculated_production_expenses || 0)
+        profit = revenue - costs
+
+        if show.canceled?
+          status = "Canceled"
+        elsif financials&.data_confirmed?
+          status = "Complete"
+        elsif financials&.has_data?
+          status = "Needs review"
+        else
+          status = "Needs data"
+        end
+
+        title = "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}"
+      %>
+      <%= render "shared/slim_list_row",
+        title: title,
+        subtitle: status,
+        href: manage_money_show_financials_path(show),
+        href_data: href_data,
+        cells: [
+          { value: number_to_currency(revenue) },
+          { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
+          { value: number_to_currency(profit), class: (profit > 0 ? "text-green-600" : profit < 0 ? "text-red-600" : "text-gray-900") }
+        ] %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="py-3 pl-7 pr-3 text-sm text-gray-500">No revenue events yet.</div>
+<% end %>

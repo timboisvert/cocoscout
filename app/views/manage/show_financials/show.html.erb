@@ -357,41 +357,6 @@
           <% end %>
         </div>
 
-        <!-- Performance Comparison -->
-        <% if @comparison_data && @comparison_data[:count] > 0 && has_data %>
-          <div class="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 class="font-semibold text-gray-900 mb-4">Performance vs. Similar Shows</h3>
-            <p class="text-sm text-gray-500 mb-4">Compared to <%= @comparison_data[:count] %> other <%= @show.event_type.titleize.downcase.pluralize %></p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="bg-gray-50 rounded-lg p-3">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Revenue</div>
-                <div class="text-lg font-semibold text-gray-900"><%= number_to_currency(@show_financials.total_revenue) %></div>
-                <div class="text-xs text-gray-500 mt-1">Avg: <%= number_to_currency(@comparison_data[:avg_revenue]) %></div>
-              </div>
-              <div class="bg-gray-50 rounded-lg p-3">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Profit</div>
-                <div class="text-lg font-semibold <%= @show_financials.net_revenue >= 0 ? 'text-green-600' : 'text-red-600' %>">
-                  <%= number_to_currency(@show_financials.net_revenue) %>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">Avg: <%= number_to_currency(@comparison_data[:avg_profit]) %></div>
-              </div>
-              <% if @comparison_data[:performance_vs_avg] %>
-                <div class="bg-gray-50 rounded-lg p-3">
-                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">vs. Average</div>
-                  <div class="text-lg font-semibold <%= @comparison_data[:performance_vs_avg] >= 0 ? 'text-green-600' : 'text-red-600' %>">
-                    <%= @comparison_data[:performance_vs_avg] >= 0 ? '+' : '' %><%= @comparison_data[:performance_vs_avg] %>%
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1">
-                    <%= @comparison_data[:performance_vs_avg] >= 0 ? 'Above' : 'Below' %> average profit
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-
-
       </div>
 
       <!-- Sidebar -->

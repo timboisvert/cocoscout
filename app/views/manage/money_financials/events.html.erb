@@ -1,41 +1,9 @@
 <%# Slim per-show revenue rows for one production, loaded lazily into the accordion
-    on the all-productions financials list. Columns line up with the parent
-    (Revenue / Costs / Profit). Row links use _top so they escape the Turbo frame. %>
+    on the all-productions financials list. If the production is governed by a
+    contract, a small contract bar sits at the top. %>
 <%= turbo_frame_tag "prod-events-#{@production.id}" do %>
-  <% if @shows.any? %>
-    <div class="divide-y divide-gray-100">
-      <% @shows.each do |show| %>
-        <%
-          financials = show.show_financials
-          revenue = financials&.total_revenue || 0
-          costs = (financials&.calculated_expenses || 0) + (financials&.calculated_production_expenses || 0)
-          profit = revenue - costs
-
-          if show.canceled?
-            status = "Canceled"
-          elsif financials&.data_confirmed?
-            status = "Complete"
-          elsif financials&.has_data?
-            status = "Needs review"
-          else
-            status = "Needs data"
-          end
-
-          title = "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}"
-        %>
-        <%= render "shared/slim_list_row",
-          title: title,
-          subtitle: status,
-          href: manage_money_show_financials_path(show),
-          href_data: { turbo_frame: "_top" },
-          cells: [
-            { value: number_to_currency(revenue) },
-            { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
-            { value: number_to_currency(profit), class: (profit > 0 ? "text-green-600" : profit < 0 ? "text-red-600" : "text-gray-900") }
-          ] %>
-      <% end %>
-    </div>
-  <% else %>
-    <div class="py-2 pl-7 pr-3 text-xs text-gray-500">No revenue events yet.</div>
+  <% if @contract %>
+    <%= render "manage/money_financials/contract_bar", contract: @contract %>
   <% end %>
+  <%= render "manage/money_financials/event_rows", shows: @shows, href_data: { turbo_frame: "_top" } %>
 <% end %>

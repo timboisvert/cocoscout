@@ -14,10 +14,13 @@ module Manage
         @is_course = @production.production_type == "course"
 
         if @is_course
-          # Course production - load course offering for payout info
+          # Course production - money in (registrations) − money out (platform fee
+          # + instructor payouts) = profit. Same shape as everything else.
           @course_offering = @production.course_offerings.includes(feature_credit_redemption: :feature_credit).first
-          @financial_summary = FinancialSummaryService.new(@production).summary_for_period(@selected_period)
-          @shows = load_shows_for_production(@production)
+          @course = course_financials(@production)
+          @money_in = (@course[:gross_cents] || 0) / 100.0
+          @money_out = ((@course[:fee_cents] || 0) + (@course[:payout_cents] || 0)) / 100.0
+          @money_profit = (@course[:net_cents] || 0) / 100.0
         elsif @is_third_party
           # Third-party production - load contract data AND shows for financial entry
           load_third_party_financials
@@ -26,6 +29,21 @@ module Manage
           # In-house production - show list of shows
           @financial_summary = FinancialSummaryService.new(@production).summary_for_period(@selected_period)
           @shows = load_shows_for_production(@production)
+        end
+
+        # Unified money in / money out / profit for the single-production page,
+        # regardless of whether it's ours or a contract (venue rental / co-pro).
+        unless @is_course
+          if @is_third_party
+            tp = build_third_party_summary(@production)
+            @money_in = tp[:gross_revenue] || 0
+            @money_profit = tp[:net_income] || 0
+            @money_out = @money_in - @money_profit
+          else
+            @money_in = @financial_summary[:gross_revenue] || 0
+            @money_out = @financial_summary[:cost_of_shows] || 0
+            @money_profit = @financial_summary[:gross_profit] || 0
+          end
         end
       else
         # All productions view - show list of productions with summaries
@@ -116,6 +134,7 @@ module Manage
     def events
       return head :not_found unless @production
 
+      @contract = @production.contract
       revenue_types = EventTypes.revenue_event_types
       @shows = load_shows_for_production(@production)
                  .select { |s| revenue_types.include?(s.event_type) }

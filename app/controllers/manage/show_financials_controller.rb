@@ -13,12 +13,6 @@ module Manage
       @production_expense_allocations = @show.production_expense_allocations
                                              .includes(:production_expense)
                                              .order("production_expenses.name")
-
-      # Calculate comparison metrics for this show type
-      @comparison_data = calculate_comparison_data
-
-      # Get recent shows of same type for trends
-      @recent_shows = recent_similar_shows
     end
 
     def edit
@@ -126,50 +120,6 @@ module Manage
       end
 
       permitted
-    end
-
-    def calculate_comparison_data
-      # Get shows of the same event type with financial data
-      similar_shows = @production.shows
-                                 .where(event_type: @show.event_type)
-                                 .where(canceled: false)
-                                 .where.not(id: @show.id)
-                                 .where("date_and_time < ?", Time.current)
-                                 .includes(:show_financials)
-                                 .select { |s| s.show_financials&.has_data? }
-
-      return nil if similar_shows.empty?
-
-      revenues = similar_shows.map { |s| s.show_financials.total_revenue }
-      expenses = similar_shows.map { |s| s.show_financials.calculated_expenses }
-      profits = similar_shows.map { |s| s.show_financials.net_revenue }
-      ticket_counts = similar_shows.filter_map { |s| s.show_financials.ticket_count if s.show_financials.ticket_sales? }
-
-      {
-        count: similar_shows.count,
-        avg_revenue: revenues.sum / revenues.count,
-        avg_expenses: expenses.sum / expenses.count,
-        avg_profit: profits.sum / profits.count,
-        avg_tickets: ticket_counts.any? ? ticket_counts.sum / ticket_counts.count : nil,
-        max_revenue: revenues.max,
-        min_revenue: revenues.min,
-        this_show_revenue: @show_financials.total_revenue,
-        this_show_profit: @show_financials.net_revenue,
-        performance_vs_avg: @show_financials.has_data? && revenues.any? ?
-          ((@show_financials.net_revenue - (profits.sum / profits.count)) / (profits.sum / profits.count).abs * 100).round(1) : nil
-      }
-    end
-
-    def recent_similar_shows
-      @production.shows
-                 .where(event_type: @show.event_type)
-                 .where(canceled: false)
-                 .where.not(id: @show.id)
-                 .where("date_and_time < ?", Time.current)
-                 .includes(:show_financials, :show_payout)
-                 .order(date_and_time: :desc)
-                 .limit(5)
-                 .select { |s| s.show_financials&.has_data? }
     end
   end
 end
