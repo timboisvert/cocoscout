@@ -311,14 +311,23 @@
       refresh_url: manage_refresh_money_path
     } %>
 
-    <%# Filter Bar %>
+    <%# Filter Bar — Type (productions vs courses) first, then Status %>
     <div class="mb-3">
       <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
         {
+          label: "Type",
+          filters: [
+            { text: "All",         path: manage_money_financials_path(type: "all", filter: @financials_filter),         active: @type_filter == "all" },
+            { text: "Productions", path: manage_money_financials_path(type: "productions", filter: @financials_filter), active: @type_filter == "productions" },
+            { text: "Courses",     path: manage_money_financials_path(type: "courses", filter: @financials_filter),     active: @type_filter == "courses" }
+          ]
+        },
+        { separator: true },
+        {
           label: "Status",
           filters: [
-            { text: "All",              path: manage_money_financials_path(filter: "all"),     active: @financials_filter.blank? || @financials_filter == "all" },
-            { text: "Pending Financials", path: manage_money_financials_path(filter: "pending"), active: @financials_filter == "pending" }
+            { text: "All",              path: manage_money_financials_path(type: @type_filter, filter: "all"),     active: @financials_filter.blank? || @financials_filter == "all" },
+            { text: "Pending Financials", path: manage_money_financials_path(type: @type_filter, filter: "pending"), active: @financials_filter == "pending" }
           ]
         }
       ] %>
@@ -331,24 +340,38 @@
             <%
               production = summary[:production]
               is_third_party = summary[:is_third_party]
+              is_course = summary[:is_course]
               gross_revenue = summary[:gross_revenue] || 0
               net_income = summary[:net_income] || 0
               costs = gross_revenue - net_income
               event_count = is_third_party ? (summary[:total_shows] || 0) : (summary[:revenue_shows] || 0)
               pending = summary[:pending_financials_count].to_i
-              subtitle = "#{event_count} revenue #{'event'.pluralize(event_count)}"
-              subtitle += " · #{pending} pending" if pending > 0
+
+              if is_course
+                subtitle = "#{event_count} #{'registration'.pluralize(event_count)}"
+              else
+                subtitle = "#{event_count} revenue #{'event'.pluralize(event_count)}"
+                subtitle += " · #{pending} pending" if pending > 0
+              end
+
+              badge = if is_third_party
+                { text: "Contract", color: "pink" }
+              elsif is_course
+                { text: "Course", color: "purple" }
+              end
+
+              profit_class = net_income > 0 ? "text-green-600" : (net_income < 0 ? "text-red-600" : "text-gray-900")
             %>
             <%= render "shared/slim_list_row",
               title: production.name,
               subtitle: subtitle,
-              badge: (is_third_party ? { text: "Contract", color: "pink" } : nil),
+              badge: badge,
               expand_src: manage_money_production_financial_events_path(production),
               expand_id: "prod-events-#{production.id}",
               cells: [
                 { value: number_to_currency(gross_revenue) },
                 { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
-                { value: number_to_currency(net_income), class: net_income >= 0 ? "text-green-600" : "text-red-600" }
+                { value: number_to_currency(net_income), class: profit_class }
               ] %>
           <% end %>
         <% end %>

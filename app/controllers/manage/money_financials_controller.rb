@@ -45,7 +45,9 @@ module Manage
           .count
 
         all_summaries = @productions.map do |production|
-          base = if production.type_third_party?
+          base = if production.type_course?
+            build_course_summary(production)
+          elsif production.type_third_party?
             build_third_party_summary(production)
           else
             summary = FinancialSummaryService.new(production).summary_for_period(@selected_period)
@@ -60,6 +62,13 @@ module Manage
             }
           end
           base.merge(pending_financials_count: pending_counts[production.id] || 0)
+        end
+
+        # Primary filter: productions vs courses (default all).
+        @type_filter = %w[productions courses].include?(params[:type]) ? params[:type] : "all"
+        case @type_filter
+        when "courses"     then all_summaries = all_summaries.select { |s| s[:is_course] }
+        when "productions" then all_summaries = all_summaries.reject { |s| s[:is_course] }
         end
 
         @financials_filter = params[:filter].presence
@@ -101,12 +110,17 @@ module Manage
       end
     end
 
-    # Slim inline list of a production's revenue events, loaded lazily into the
-    # accordion on the all-productions financials list (Turbo frame).
+    # Slim inline list of a production's revenue events (or, for a course, its
+    # revenue basics), loaded lazily into the accordion on the all-productions
+    # financials list (Turbo frame).
     def events
       return head :not_found unless @production
 
-      @is_course = @production.production_type == "course"
+      if @production.type_course?
+        @course = course_financials(@production)
+        return render layout: false
+      end
+
       revenue_types = EventTypes.revenue_event_types
       @shows = load_shows_for_production(@production)
                  .select { |s| revenue_types.include?(s.event_type) }
@@ -114,6 +128,41 @@ module Manage
     end
 
     private
+
+    # Course revenue basics (registrations → gross, platform fee, payouts, net),
+    # shared by the summary list and the inline accordion. All values in cents.
+    def course_financials(production)
+      offering = production.course_offerings.includes(:course_offering_payout).first
+      return {} unless offering
+
+      confirmed = offering.course_registrations.confirmed
+      refunded = offering.course_registrations.refunded
+      gross_cents = confirmed.sum(:amount_cents) - refunded.sum(:amount_cents)
+      owed_cents = OrgPayout.owed_cents_for_course(offering)
+      payout_cents = offering.course_offering_payout&.line_items&.sum(:amount_cents).to_i
+
+      {
+        offering: offering,
+        confirmed_count: confirmed.count,
+        refunded_count: refunded.count,
+        gross_cents: gross_cents,
+        owed_cents: owed_cents,
+        fee_cents: gross_cents - owed_cents,
+        payout_cents: payout_cents,
+        net_cents: payout_cents.positive? ? owed_cents - payout_cents : owed_cents
+      }
+    end
+
+    def build_course_summary(production)
+      cf = course_financials(production)
+      {
+        production: production,
+        is_course: true,
+        revenue_shows: cf[:confirmed_count] || 0,
+        gross_revenue: (cf[:gross_cents] || 0) / 100.0,
+        net_income: (cf[:net_cents] || 0) / 100.0
+      }
+    end
 
     def set_production
       return unless Current.organization

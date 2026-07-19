@@ -1,12 +1,37 @@
-<%# Slim revenue-event rows for one production, loaded lazily into the accordion
-    on the all-productions financials list. Columns line up with the parent list
-    (Revenue / Costs / Profit). %>
+<%# Slim inline detail for one production, loaded lazily into the accordion on the
+    all-productions financials list. For a course: its revenue basics. Otherwise:
+    per-show revenue rows whose columns line up with the parent (Revenue / Costs /
+    Profit). Row links use _top so they escape the Turbo frame. %>
 <%= turbo_frame_tag "prod-events-#{@production.id}" do %>
-  <% if @is_course %>
-    <div class="py-2 pl-7 pr-3 text-xs text-gray-500">
-      Course revenue is tracked at the course level, not per session.
-      <%= link_to "Open course financials →", manage_money_production_financials_path(@production), class: "text-pink-600 hover:text-pink-700 font-medium" %>
-    </div>
+  <% if @production.type_course? %>
+    <% if @course.blank? %>
+      <div class="py-2 pl-7 pr-3 text-xs text-gray-500">No course set up yet.</div>
+    <% else %>
+      <%
+        rows = [
+          [ "Registrations", "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}", "text-gray-900" ],
+          [ "Gross revenue", number_to_currency(@course[:gross_cents] / 100.0), "text-gray-900" ],
+          [ "Platform fee", "−#{number_to_currency(@course[:fee_cents] / 100.0)}", "text-red-600" ]
+        ]
+        rows << [ "Payouts", "−#{number_to_currency(@course[:payout_cents] / 100.0)}", "text-red-600" ] if @course[:payout_cents].to_i.positive?
+        net = @course[:net_cents].to_i
+        rows << [ "Net to organization", number_to_currency(net / 100.0), net.positive? ? "text-green-600" : "text-gray-900" ]
+      %>
+      <div class="py-2 pl-7 pr-3">
+        <dl class="divide-y divide-gray-100">
+          <% rows.each do |label, value, cls| %>
+            <div class="flex items-center justify-between py-1.5 text-sm">
+              <dt class="text-gray-500"><%= label %></dt>
+              <dd class="tabular-nums font-medium <%= cls %>"><%= value %></dd>
+            </div>
+          <% end %>
+        </dl>
+        <div class="mt-2 flex gap-4 text-xs font-medium">
+          <%= link_to "Manage payouts →", manage_course_offering_payout_path(@course[:offering]), data: { turbo_frame: "_top" }, class: "text-pink-600 hover:text-pink-700" %>
+          <%= link_to "Course financials →", manage_money_production_financials_path(@production), data: { turbo_frame: "_top" }, class: "text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+    <% end %>
   <% elsif @shows.any? %>
     <div class="divide-y divide-gray-100">
       <% @shows.each do |show| %>
@@ -32,10 +57,11 @@
           title: title,
           subtitle: status,
           href: manage_money_show_financials_path(show),
+          href_data: { turbo_frame: "_top" },
           cells: [
             { value: number_to_currency(revenue) },
             { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },
-            { value: number_to_currency(profit), class: profit >= 0 ? "text-green-600" : "text-red-600" }
+            { value: number_to_currency(profit), class: (profit > 0 ? "text-green-600" : profit < 0 ? "text-red-600" : "text-gray-900") }
           ] %>
       <% end %>
     </div>

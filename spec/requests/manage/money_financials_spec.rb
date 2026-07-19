@@ -14,6 +14,10 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
     end
   end
 
+  let!(:course_production) { create(:production, organization: org, name: "Improv 101", production_type: "course") }
+  let!(:course_offering) { create(:course_offering, production: course_production, title: "Improv 101") }
+  let!(:registration) { create(:course_registration, course_offering: course_offering, amount_cents: 5000, status: "confirmed") }
+
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
   describe "the all-productions slim list" do
@@ -37,6 +41,33 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       expect(response.body).to include("prod-events-#{production.id}")
       expect(response.body).to include(show.display_name)
       expect(response.body).to include(manage_money_show_financials_path(show))
+      # Event links must escape the frame so they don't error with "content missing"
+      expect(response.body).to include('data-turbo-frame="_top"')
+    end
+  end
+
+  describe "courses" do
+    it "lists a course with a Course badge and registration count" do
+      get manage_money_financials_path
+      expect(response.body).to include("Improv 101").and include("Course")
+      expect(response.body).to include("1 registration")
+    end
+
+    it "filters to only courses / only productions" do
+      get manage_money_financials_path(type: "courses")
+      expect(response.body).to include("Improv 101")
+      expect(response.body).not_to include("Slim Revue")
+
+      get manage_money_financials_path(type: "productions")
+      expect(response.body).to include("Slim Revue")
+      expect(response.body).not_to include("Improv 101")
+    end
+
+    it "shows the course revenue basics inline (no 'go elsewhere' dead end)" do
+      get manage_money_production_financial_events_path(course_production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Registrations").and include("Gross revenue").and include("Net to organization")
+      expect(response.body).to include("prod-events-#{course_production.id}")
     end
   end
 end

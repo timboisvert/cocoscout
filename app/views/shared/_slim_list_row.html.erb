@@ -12,6 +12,9 @@
                 (color: pink|green|red|amber|gray|blue)
     subtitle:   optional small secondary text under the title
     href:       optional — a non-expandable row links here (whole row clickable)
+    href_data:  optional hash of data attributes for the row link (e.g.
+                { turbo_frame: "_top" } so a link inside a Turbo frame navigates
+                the whole page instead of the frame)
     expand_src: optional — Turbo-frame src, lazy-loaded when the row is expanded
     expand_id:  Turbo-frame id (required when expand_src is given)
 %>
@@ -20,6 +23,7 @@
   badge = local_assigns[:badge]
   cells = local_assigns.fetch(:cells, [])
   subtitle = local_assigns[:subtitle]
+  href_data = local_assigns.fetch(:href_data, {})
 %>
 
 <% inner = capture do %>
@@ -54,7 +58,7 @@
     </div>
   </details>
 <% elsif local_assigns[:href].present? %>
-  <%= link_to href, class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50" do %>
+  <%= link_to href, class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50", data: href_data do %>
     <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
     <%= inner %>
   <% end %>
