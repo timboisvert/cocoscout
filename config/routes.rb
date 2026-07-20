@@ -1269,6 +1269,8 @@ Rails.application.routes.draw do
 
     # Advances - production-level
     get "money/advances", to: "advances#index", as: "money_advances"
+    # Slim inline accordion of a production's advances (Turbo-frame, lazy).
+    get "money/advances/:production_id/events", to: "advances#events", as: "money_production_advance_events"
     get "money/advances/:production_id", to: "advances#index", as: "money_production_advances"
     get "money/advances/:production_id/new", to: "advances#new", as: "new_money_production_advance"
     post "money/advances/:production_id", to: "advances#create", as: "create_money_production_advance"

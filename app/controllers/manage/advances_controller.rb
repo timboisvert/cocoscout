@@ -14,6 +14,15 @@ module Manage
       end
     end
 
+    # Slim inline list of a production's active advances (to pay + to repay),
+    # loaded lazily into the accordion on the advances list (Turbo frame).
+    def events
+      return head :not_found unless @production
+
+      @advances = @production.person_advances.outstanding.includes(:person, :show).by_issued_at
+      render layout: false
+    end
+
     def new
       @advance = @production.person_advances.build(advance_type: "show")
       @upcoming_shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time).limit(30)

@@ -1,0 +1,42 @@
+<%#
+  Slim rows for one production's active advances — columns line up with the
+  advances list (To pay / To repay). An unpaid advance sits in the To-pay column;
+  a paid-but-outstanding advance sits in the To-repay column.
+
+  Locals:
+    advances:   array of PersonAdvance (person/show loaded)
+    production: the Production (for the detail link)
+    href_data:  optional data attrs for each row link (e.g. { turbo_frame: "_top" })
+%>
+<% href_data = local_assigns.fetch(:href_data, {}) %>
+<% if advances.any? %>
+  <div class="divide-y divide-gray-100">
+    <% advances.each do |advance| %>
+      <%
+        title = advance.person&.name || "Advance"
+        if advance.unpaid?
+          subtitle = advance.show ? "To pay · #{advance.show.display_name}" : "To pay"
+          cells = [
+            { value: number_to_currency(advance.original_amount), class: "text-pink-600 font-medium" },
+            { value: "" }
+          ]
+        else
+          recovered = advance.original_amount - advance.remaining_balance
+          subtitle = recovered.positive? ? "To repay · #{number_to_currency(recovered)} recovered" : "To repay"
+          cells = [
+            { value: "" },
+            { value: number_to_currency(advance.remaining_balance), class: "text-amber-600 font-medium" }
+          ]
+        end
+      %>
+      <%= render "shared/slim_list_row",
+        title: title,
+        subtitle: subtitle,
+        href: manage_money_advance_path(production, advance),
+        href_data: href_data,
+        cells: cells %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="py-3 pl-7 pr-3 text-sm text-gray-500">No active advances.</div>
+<% end %>

@@ -188,43 +188,43 @@
       links: []
     } %>
 
-    <%# Org Summary Stats %>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <%# The two amounts that matter: what we still owe out, and what's still owed back. %>
+    <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Unpaid</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_unpaid) %></div>
-        <div class="text-xs text-gray-500"><%= @unpaid_count %> advance<%= @unpaid_count == 1 ? "" : "s" %> to pay out</div>
+        <div class="text-sm text-gray-500 mb-1">Advances to be paid</div>
+        <div class="text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@total_unpaid) %></div>
       </div>
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Outstanding</div>
-        <div class="text-2xl font-semibold text-amber-600"><%= number_to_currency(@total_outstanding) %></div>
-        <div class="text-xs text-gray-500"><%= @outstanding_count %> advance<%= @outstanding_count == 1 ? "" : "s" %> to repay</div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Issued This Month</div>
-        <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@total_issued_this_month) %></div>
-        <div class="text-xs text-gray-500">since <%= Date.current.beginning_of_month.strftime("%B 1") %></div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Repaid</div>
-        <div class="text-2xl font-semibold text-green-600"><%= @repaid_count %></div>
-        <div class="text-xs text-gray-500">advances fully repaid</div>
+        <div class="text-sm text-gray-500 mb-1">Advances to be repaid</div>
+        <div class="text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@total_outstanding) %></div>
       </div>
     </div>
 
-    <%# Productions List %>
-    <div class="">
-      <% if @production_summaries.any? %>
-        <div class="space-y-2">
-          <% @production_summaries.each do |summary| %>
-            <%= render "manage/advances/production_row", summary: summary %>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">No productions yet.</p>
-        </div>
+    <%# Productions — same slim grid + accordion as the financials list. %>
+    <% if @production_summaries.any? %>
+      <%= render layout: "shared/slim_list", locals: { label: "Production", columns: [ "To pay", "To repay" ], min_width: "min-w-[420px]" } do %>
+        <% @production_summaries.each do |summary| %>
+          <%
+            production = summary[:production]
+            to_pay = summary[:unpaid_amount].to_f
+            to_repay = summary[:outstanding_amount].to_f
+            subtitle = "#{summary[:unpaid_count].to_i} to pay · #{summary[:outstanding_count].to_i} to repay"
+          %>
+          <%= render "shared/slim_list_row",
+            title: production.name,
+            subtitle: subtitle,
+            expand_src: manage_money_production_advance_events_path(production),
+            expand_id: "advance-events-#{production.id}",
+            cells: [
+              { value: number_to_currency(to_pay), class: to_pay > 0 ? "text-pink-600 font-medium" : "text-gray-400" },
+              { value: number_to_currency(to_repay), class: to_repay > 0 ? "text-amber-600 font-medium" : "text-gray-400" }
+            ] %>
+        <% end %>
       <% end %>
-    </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">No productions yet.</p>
+      </div>
+    <% end %>
   <% end %>
 </div>
