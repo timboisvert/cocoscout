@@ -140,19 +140,17 @@ module Manage
                                                .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
                                                .count
 
-      awaiting_payouts = @production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil)
-      @awaiting_payout_count = awaiting_payouts.count
-      @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
-      @awaiting_payout_people_count = ShowPayoutLineItem.where(show_payout: awaiting_payouts)
-                                                         .not_already_paid
-                                                         .count
+      # Amounts and people come from the LINE ITEMS (paid vs unpaid), not the
+      # show's coarse total — so partially-paid shows show the right remaining.
+      amounts = net_payout_amounts(@production)
+      @total_awaiting_payout = amounts[:awaiting_amount]
+      @total_paid = amounts[:paid_amount]
+      @awaiting_payout_people_count = amounts[:awaiting_people]
+      @paid_people_count = amounts[:paid_people]
 
-      paid_payouts = @production.show_payouts.paid
-      @paid_shows_count = paid_payouts.count
-      @total_paid = paid_payouts.sum(:total_payout) || 0
-      @paid_people_count = ShowPayoutLineItem.where(show_payout: paid_payouts)
-                                              .already_paid
-                                              .count
+      # Show counts stay at the show level (a partially-paid show is still awaiting).
+      @awaiting_payout_count = @production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil).count
+      @paid_shows_count = @production.show_payouts.paid.count
 
       @missing_payment_info = people_missing_payment_info
     end
@@ -189,12 +187,12 @@ module Manage
       # Get financial summary for consistent data
       financial_summary = FinancialSummaryService.new(production).summary_for_period(:all_time)
 
-      awaiting_payout = production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil)
-      paid_payouts = production.show_payouts.paid
-
       needs_calculation = revenue_shows.left_joins(:show_payout)
                                        .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
                                        .count
+
+      # Amounts from line items (paid vs unpaid); show counts stay show-level.
+      amounts = net_payout_amounts(production)
 
       {
         production: production,
@@ -204,12 +202,27 @@ module Manage
         total_payouts: financial_summary[:total_payouts],
         net_income: financial_summary[:net_income],
         needs_calculation_count: needs_calculation,
-        awaiting_payout_count: awaiting_payout.count,
-        awaiting_payout_amount: awaiting_payout.sum(:total_payout) || 0,
-        paid_count: paid_payouts.count,
-        paid_amount: paid_payouts.sum(:total_payout) || 0,
+        awaiting_payout_count: production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil).count,
+        awaiting_payout_amount: amounts[:awaiting_amount],
+        paid_count: production.show_payouts.paid.count,
+        paid_amount: amounts[:paid_amount],
         outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
         total_advances: production.person_advances.sum(:original_amount)
+      }
+    end
+
+    # Awaiting/paid payout money and people for a production, computed from the
+    # LINE ITEMS (each person's net), so a partially-paid show reflects only its
+    # remaining unpaid people — not the show's full total.
+    def net_payout_amounts(production)
+      calculated_ids = production.show_payouts.where.not(calculated_at: nil).select(:id)
+      items = ShowPayoutLineItem.where(show_payout_id: calculated_ids)
+      net = Arel.sql("COALESCE(show_payout_line_items.amount, 0) - COALESCE(show_payout_line_items.advance_deduction, 0)")
+      {
+        awaiting_amount: items.unpaid.sum(net),
+        paid_amount: items.paid.sum(net),
+        awaiting_people: items.unpaid.count,
+        paid_people: items.paid.count
       }
     end
 

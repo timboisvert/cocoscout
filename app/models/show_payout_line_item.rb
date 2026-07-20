@@ -46,6 +46,11 @@ class ShowPayoutLineItem < ApplicationRecord
   scope :by_name, -> { includes(:payee).sort_by { |li| li.payee.name } }
   scope :already_paid, -> { where(manually_paid: true) }
   scope :not_already_paid, -> { where(manually_paid: false, payout_reference_id: nil) }
+  # The canonical paid/unpaid split (mirrors #paid?): manually marked paid OR
+  # transferred via a Stripe payout run. The `already_paid`/`not_already_paid`
+  # scopes above only see the manual case, so use these for money/people tallies.
+  scope :paid, -> { where("manually_paid OR (payout_reference_id IS NOT NULL AND payout_status = 'success')") }
+  scope :unpaid, -> { where("NOT manually_paid AND (payout_reference_id IS NULL OR payout_status IS DISTINCT FROM 'success')") }
   scope :paid_via_venmo, -> { where(payment_method: "venmo").where.not(payout_reference_id: nil) }
   scope :paid_offline, -> { where(manually_paid: true) }
   scope :payout_pending, -> { where(payout_status: "pending") }
