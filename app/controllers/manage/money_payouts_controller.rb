@@ -73,11 +73,14 @@ module Manage
       return head :not_found unless @production
 
       revenue_types = EventTypes.revenue_event_types
-      @shows = @production.shows.where(event_type: revenue_types)
-                          .includes(:show_payout, show_payout: :line_items)
-                          .order(date_and_time: :desc)
-                          .limit(100)
-                          .select { |s| s.show_payout&.calculated_at.present? }
+      shows = @production.shows.where(event_type: revenue_types)
+                         .includes(:show_payout, show_payout: :line_items)
+                         .order(date_and_time: :desc)
+                         .limit(100)
+                         .select { |s| s.show_payout&.calculated_at.present? }
+      # The Awaiting-Payout accordion only wants shows that still owe someone.
+      shows = shows.select { |s| s.show_payout.line_items.any? { |li| !li.paid? } } if params[:awaiting]
+      @shows = shows
       render layout: false
     end
 
@@ -222,12 +225,21 @@ module Manage
         amount = s[:awaiting_payout_amount].to_f
         next unless amount.positive?
 
-        count = s[:awaiting_payout_count].to_i
-        items << {
+        # Go straight to the payout that needs attention — the show, never the
+        # production page. One awaiting show → link right to it; several → an
+        # accordion of them, each linking to its show payout.
+        shows = awaiting_shows_for(s[:production])
+        item = {
           name: s[:production].name, kind: :production, amount: amount,
-          subtitle: "#{count} #{'show'.pluralize(count)} awaiting",
-          href: manage_money_production_payouts_path(s[:production])
+          subtitle: "#{shows.size} #{'show'.pluralize(shows.size)} awaiting"
         }
+        if shows.size == 1
+          item[:href] = manage_money_show_payout_path(shows.first)
+        else
+          item[:expand_src] = manage_money_production_payout_events_path(s[:production], awaiting: 1)
+          item[:expand_id] = "awaiting-events-#{s[:production].id}"
+        end
+        items << item
       end
 
       Current.user.accessible_productions.courses
@@ -260,6 +272,16 @@ module Manage
       end
 
       items.sort_by { |i| -i[:amount] }
+    end
+
+    # The shows in a production that still have someone unpaid.
+    def awaiting_shows_for(production)
+      calculated_ids = production.show_payouts.where.not(calculated_at: nil).select(:id)
+      unpaid_payout_ids = ShowPayoutLineItem.where(show_payout_id: calculated_ids).unpaid.distinct.pluck(:show_payout_id)
+      return [] if unpaid_payout_ids.empty?
+
+      show_ids = ShowPayout.where(id: unpaid_payout_ids).pluck(:show_id)
+      Show.where(id: show_ids).order(date_and_time: :desc).to_a
     end
 
     # Awaiting/paid payout money and people for a production, computed from the

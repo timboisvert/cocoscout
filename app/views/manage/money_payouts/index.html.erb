@@ -241,13 +241,18 @@
                       when :course   then { text: "Course", color: "purple" }
                       when :contract then { text: "Contract", color: "gray" }
                       end
+              common = {
+                title: item[:name],
+                subtitle: item[:subtitle],
+                badge: badge,
+                cells: [ { value: number_to_currency(item[:amount]), class: "text-pink-600 font-medium" } ]
+              }
             %>
-            <%= render "shared/slim_list_row",
-              title: item[:name],
-              subtitle: item[:subtitle],
-              badge: badge,
-              href: item[:href],
-              cells: [ { value: number_to_currency(item[:amount]), class: "text-pink-600 font-medium" } ] %>
+            <% if item[:expand_src] %>
+              <%= render "shared/slim_list_row", **common, expand_src: item[:expand_src], expand_id: item[:expand_id] %>
+            <% else %>
+              <%= render "shared/slim_list_row", **common, href: item[:href] %>
+            <% end %>
           <% end %>
         <% end %>
       </div>

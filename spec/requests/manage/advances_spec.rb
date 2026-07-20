@@ -39,7 +39,7 @@ RSpec.describe "Manage::Advances", type: :request do
 
     it "shows two amount boxes and a slim grid with an advances accordion" do
       get manage_money_advances_path
-      expect(response.body).to include("Advances to be paid").and include("Advances to be repaid")
+      expect(response.body).to include("Advances to be paid out").and include("Advances awaiting repayment")
       expect(response.body).to include("$100.00").and include("$50.00")
       expect(response.body).not_to include("Issued This Month")
       expect(response.body).to include("advance-events-#{production.id}")

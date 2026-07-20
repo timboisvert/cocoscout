@@ -39,6 +39,33 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     expect(response.body).to include(manage_money_production_payout_events_path(production))
   end
 
+  it "sends a single-awaiting-show item straight to that show's payout (not the production page)" do
+    get manage_money_payouts_path
+    # Only one show is awaiting → the Awaiting item is a direct shortcut to it.
+    expect(response.body).to include(manage_money_show_payout_path(show))
+    expect(response.body).not_to include("awaiting-events-#{production.id}")
+  end
+
+  context "with several shows awaiting in one production" do
+    let!(:show2) { create(:show, production: production, event_type: :show, date_and_time: 5.days.ago) }
+    let!(:payout2) { ShowPayout.create!(show: show2, status: "awaiting_payout", calculated_at: Time.current, total_payout: 40) }
+    let!(:li2) { ShowPayoutLineItem.create!(show_payout: payout2, payee: create(:person), amount: 40) }
+
+    it "shows an accordion of the awaiting shows instead of a direct link" do
+      get manage_money_payouts_path
+      expect(response.body).to include("awaiting-events-#{production.id}")
+      expect(response.body).to include(manage_money_production_payout_events_path(production, awaiting: 1))
+    end
+
+    it "the awaiting accordion lists only shows that still owe someone" do
+      get manage_money_production_payout_events_path(production, awaiting: 1),
+          headers: { "Turbo-Frame" => "awaiting-events-#{production.id}" }
+      expect(response.body).to include("awaiting-events-#{production.id}")
+      expect(response.body).to include(show.display_name).and include(show2.display_name)
+      expect(response.body).to include(manage_money_show_payout_path(show))
+    end
+  end
+
   it "renders the lazy payout-events frame with per-show awaiting/paid" do
     get manage_money_production_payout_events_path(production)
     expect(response).to have_http_status(:ok)
