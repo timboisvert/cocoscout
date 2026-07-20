@@ -80,11 +80,13 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
   end
 
   describe "the course page" do
-    it "shows the revenue/costs/profit boxes with a registrations + platform fee breakdown, no session schedule" do
+    it "shows the revenue/costs/profit boxes and a payouts link — no multi-row breakdown or session schedule" do
       get manage_money_production_financials_path(course_production)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Gross Revenue").and include("Direct Costs").and include("Gross Profit")
-      expect(response.body).to include("Registrations").and include("Platform fee")
+      expect(response.body).to include("Manage course payouts")
+      # The confusing per-line breakdown is gone.
+      expect(response.body).not_to include("Platform fee")
       expect(response.body).not_to include("Session Schedule")
     end
   end

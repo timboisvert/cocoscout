@@ -46,41 +46,15 @@
       profit: @money_profit %>
 
     <% if @course_offering&.contract %>
-      <div class="mb-2"><%= render "manage/money_financials/contract_bar", contract: @course_offering.contract %></div>
+      <div class="mb-3"><%= render "manage/money_financials/contract_bar", contract: @course_offering.contract %></div>
     <% end %>
 
-    <%= render layout: "shared/slim_list", locals: { label: "Course", columns: [ "Revenue", "Costs", "Profit" ] } do %>
-      <%= render "shared/slim_list_row",
-        title: "Registrations",
-        subtitle: "#{@course[:confirmed_count]} confirmed#{@course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : ''}",
-        cells: [
-          { value: number_to_currency((@course[:gross_cents] || 0) / 100.0) },
-          { value: "" },
-          { value: "" }
-        ] %>
-      <%= render "shared/slim_list_row",
-        title: "Platform fee",
-        subtitle: "CocoScout",
-        cells: [
-          { value: "" },
-          { value: "−#{number_to_currency((@course[:fee_cents] || 0) / 100.0)}", class: "text-red-600" },
-          { value: "" }
-        ] %>
-      <% @course_offering&.course_offering_payout&.line_items&.each do |li| %>
-        <%= render "shared/slim_list_row",
-          title: li.payee_name,
-          subtitle: "Instructor payout#{li.paid? ? ' · paid' : ''}",
-          cells: [
-            { value: "" },
-            { value: "−#{number_to_currency(li.amount_cents / 100.0)}", class: "text-red-600" },
-            { value: "" }
-          ] %>
-      <% end %>
-    <% end %>
-
+    <%# Registrations in, instructor pay + platform fee out, profit — that's the
+        three boxes above. The only extra detail worth a click is the payouts. %>
     <% if @course_offering %>
-      <div class="mt-3">
-        <%= link_to "Manage course payouts →", manage_course_offering_payout_path(@course_offering), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      <div class="text-sm text-gray-600">
+        <%= @course[:confirmed_count] %> confirmed<%= @course[:refunded_count].to_i.positive? ? " · #{@course[:refunded_count]} refunded" : '' %>.
+        <%= link_to "Manage course payouts →", manage_course_offering_payout_path(@course_offering), class: "font-medium text-pink-600 hover:text-pink-700" %>
       </div>
     <% end %>
 
