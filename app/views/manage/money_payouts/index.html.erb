@@ -1,5 +1,19 @@
 <% content_for :title, @production ? "#{@production.name} Payouts" : "Payouts" %>
 
+<%
+  payouts_description = <<~HTML
+    <p>
+      Manage cast and crew payments. Calculate payouts from show revenue, track what's owed, and process payments.
+    </p>
+  HTML
+
+  payouts_actions = [
+    { icon: "dollar-sign", text: "Payout Runs", description: "Pay connected banks at once", path: manage_payout_batches_path },
+    { icon: "banknotes", text: "Advances", description: "Pre-show payments", path: manage_money_advances_path },
+    { icon: "puzzle-piece", text: "Payout Schemes", description: "Configure calculation rules", path: manage_money_payout_schemes_path }
+  ]
+%>
+
 <div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
@@ -210,15 +224,18 @@
   <% else %>
     <%# All Productions View %>
 
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [ [ "Money", manage_money_index_path ] ],
-      text: "Payouts",
-      links: [
-        { text: "Payout Runs", icon: "dollar-sign", path: manage_payout_batches_path },
-        { text: "Advances", icon: "banknotes", path: manage_money_advances_path },
-        { text: "Payout Schemes", icon: "puzzle-piece", path: manage_money_payout_schemes_path }
-      ]
-    } %>
+    <%# Breadcrumb back to the money hub — small, above the module header. %>
+    <div class="mb-3 text-sm">
+      <%= link_to "Money", manage_money_index_path, class: "font-medium text-pink-500 hover:text-pink-600 underline" %>
+      <span class="text-gray-400 mx-1">/</span>
+      <span class="text-gray-500">Payouts</span>
+    </div>
+
+    <%= render "shared/module_header",
+      title: "Payouts",
+      description: payouts_description,
+      actions: payouts_actions
+    %>
 
     <%# Awaiting Payout — address these first. Productions, courses, and contracts. %>
     <% if @awaiting_items.any? %>
