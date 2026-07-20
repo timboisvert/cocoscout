@@ -1,0 +1,5 @@
+<%# Slim per-show payout rows for one production, loaded lazily into the accordion
+    on the payouts list. Columns line up with the parent (Awaiting / Paid). %>
+<%= turbo_frame_tag "payout-events-#{@production.id}" do %>
+  <%= render "manage/money_payouts/payout_event_rows", shows: @shows, href_data: { turbo_frame: "_top" } %>
+<% end %>

@@ -67,6 +67,20 @@ module Manage
                   notice: "Payment setup reminders sent to #{sent_count} #{"person".pluralize(sent_count)}."
     end
 
+    # Slim inline list of a production's shows + their payout status, loaded lazily
+    # into the accordion on the payouts list (Turbo frame).
+    def events
+      return head :not_found unless @production
+
+      revenue_types = EventTypes.revenue_event_types
+      @shows = @production.shows.where(event_type: revenue_types)
+                          .includes(:show_payout, show_payout: :line_items)
+                          .order(date_and_time: :desc)
+                          .limit(100)
+                          .select { |s| s.show_payout&.calculated_at.present? }
+      render layout: false
+    end
+
     private
 
     def set_production
@@ -158,24 +172,11 @@ module Manage
     def load_all_productions
       # Show all productions the user has access to (excludes courses which use different scheduling)
       @productions = Current.user.accessible_productions.schedulable.order(:name)
-      all_summaries = @productions.map { |p| build_payout_summary(p) }
+      @production_summaries = @productions.map { |p| build_payout_summary(p) }
 
-      # Organization-wide stats (always computed from all productions)
-      @org_awaiting_payout = all_summaries.sum { |s| s[:awaiting_payout_amount] }
-      @org_paid           = all_summaries.sum { |s| s[:paid_amount] }
-      @org_awaiting_count = all_summaries.sum { |s| s[:awaiting_payout_count] }
-      @org_paid_count     = all_summaries.sum { |s| s[:paid_count] }
-
-      # Apply org-level filter to the list
-      @org_filter = params[:filter].presence
-      @production_summaries = case @org_filter
-      when "awaiting_payout"
-        all_summaries.select { |s| s[:awaiting_payout_amount] > 0 }
-      when "paid"
-        all_summaries.select { |s| s[:paid_amount] > 0 }
-      else
-        all_summaries
-      end
+      # "Awaiting Payout" — everything we still need to pay, across productions,
+      # courses, and contracts. This is the address-first to-do list.
+      @awaiting_items = build_awaiting_payout_items
 
       @missing_payment_info = []
     end
@@ -209,6 +210,56 @@ module Manage
         outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
         total_advances: production.person_advances.sum(:original_amount)
       }
+    end
+
+    # The heterogeneous "to pay" list: productions with unpaid performer payouts,
+    # courses with unpaid instructor payouts, and contracts with outstanding
+    # outgoing payments. Highest amount first.
+    def build_awaiting_payout_items
+      items = []
+
+      @production_summaries.each do |s|
+        amount = s[:awaiting_payout_amount].to_f
+        next unless amount.positive?
+
+        count = s[:awaiting_payout_count].to_i
+        items << {
+          name: s[:production].name, kind: :production, amount: amount,
+          subtitle: "#{count} #{'show'.pluralize(count)} awaiting",
+          href: manage_money_production_payouts_path(s[:production])
+        }
+      end
+
+      Current.user.accessible_productions.courses
+             .includes(course_offerings: { course_offering_payout: :line_items }).each do |course|
+        offering = course.course_offerings.first
+        payout = offering&.course_offering_payout
+        next unless payout
+
+        unpaid = payout.line_items.reject(&:paid?)
+        amount = unpaid.sum(&:amount_cents) / 100.0
+        next unless amount.positive?
+
+        items << {
+          name: offering.title, kind: :course, amount: amount,
+          subtitle: "#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)}",
+          href: manage_course_offering_payout_path(offering)
+        }
+      end
+
+      Current.organization.contracts.includes(:contract_payments, :contractor).each do |contract|
+        pending = contract.contract_payments.select { |p| p.direction_outgoing? && p.status_pending? }
+        amount = pending.sum { |p| p.amount.to_f }
+        next unless amount.positive?
+
+        items << {
+          name: contract.contractor_name, kind: :contract, amount: amount,
+          subtitle: "#{pending.count} contract #{'payment'.pluralize(pending.count)} due",
+          href: manage_contract_path(contract)
+        }
+      end
+
+      items.sort_by { |i| -i[:amount] }
     end
 
     # Awaiting/paid payout money and people for a production, computed from the

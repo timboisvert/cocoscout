@@ -1262,6 +1262,8 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
 
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"
+    # Slim inline accordion of a production's shows + their payout status (Turbo-frame, lazy).
+    get "money/payouts/:production_id/events", to: "money_payouts#events", as: "money_production_payout_events"
     get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"
     post "money/payouts/:production_id/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"
 

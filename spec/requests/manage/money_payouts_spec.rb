@@ -28,9 +28,24 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     expect(response.body).to match(/1\s*people/)     # 1 already paid
   end
 
-  it "nets the org-wide awaiting total to the remaining amount" do
+  it "shows an Awaiting Payout section and an All Productions accordion on the org page" do
     get manage_money_payouts_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("$80.00")
+    expect(response.body).to include("Awaiting Payout").and include("All Productions")
+    expect(response.body).to include("Payout Prod")
+    expect(response.body).to include("$80.00") # remaining awaiting
+    # All-productions rows expand to a lazy payout-events frame.
+    expect(response.body).to include("payout-events-#{production.id}")
+    expect(response.body).to include(manage_money_production_payout_events_path(production))
+  end
+
+  it "renders the lazy payout-events frame with per-show awaiting/paid" do
+    get manage_money_production_payout_events_path(production)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("payout-events-#{production.id}")
+    expect(response.body).to include(show.display_name)
+    expect(response.body).to include(manage_money_show_payout_path(show))
+    expect(response.body).to include("$80.00").and include("$70.00") # awaiting / paid
+    expect(response.body).to include("1 of 3 paid")
   end
 end
