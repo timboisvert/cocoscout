@@ -65,15 +65,15 @@
 
 <div class="grid grid-cols-3 gap-4 mb-6">
   <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Money In</div>
+    <div class="text-sm text-gray-500 mb-1">Gross Revenue</div>
     <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(money_in) %></div>
   </div>
   <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Money Out</div>
+    <div class="text-sm text-gray-500 mb-1">Direct Costs</div>
     <div class="text-2xl font-semibold text-red-600 tabular-nums"><%= number_to_currency(money_out) %></div>
   </div>
   <div class="bg-white rounded-lg border border-gray-200 p-5">
-    <div class="text-sm text-gray-500 mb-1">Profit</div>
+    <div class="text-sm text-gray-500 mb-1">Gross Profit</div>
     <div class="text-2xl font-semibold tabular-nums <%= profit_class %>"><%= number_to_currency(profit) %></div>
   </div>
 </div>

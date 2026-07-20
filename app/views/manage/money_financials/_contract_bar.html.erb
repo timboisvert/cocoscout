@@ -1,26 +1,31 @@
 <%#
-  A small bar shown above a production's/course's events when it's governed by a
-  contract — from our perspective it's still just a production (or course) we
-  don't own outright. Says who it's with, the basic terms, and links to the
-  contract. Replaces the "Contract" pill on the list line.
+  Shown above a production's/course's events when it's governed by a contract —
+  from our side it's still just a production (or course) we don't own outright.
+  Shows the contract type, its financial value, and a link to the contract.
 
   Locals:
     contract: Contract
 %>
 <%
-  terms =
-    if contract.respond_to?(:revenue_share?) && contract.revenue_share?
-      "Revenue share · you keep #{contract.revenue_share_percentage.to_i}%"
-    elsif contract.respond_to?(:ticket_revenue_minus_fee?) && contract.ticket_revenue_minus_fee?
-      "Flat fee #{number_to_currency(contract.flat_fee_amount)}"
-    else
-      "Flat fee"
-    end
+  if contract.respond_to?(:revenue_share?) && contract.revenue_share?
+    contract_type = "Revenue share"
+    contract_value = "you keep #{contract.revenue_share_percentage.to_i}%"
+  elsif contract.respond_to?(:ticket_revenue_minus_fee?) && contract.ticket_revenue_minus_fee?
+    contract_type = "Flat fee"
+    contract_value = number_to_currency(contract.flat_fee_amount)
+  else
+    contract_type = "Flat fee"
+    contract_value = nil
+  end
 %>
-<div class="flex items-center justify-between gap-3 px-3 py-2 bg-amber-50 border-b border-amber-100 text-sm">
-  <div class="min-w-0">
-    <span class="font-medium text-amber-900">Contract with <%= contract.contractor_name %></span>
-    <span class="text-amber-700">· <%= terms %></span>
+<div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+  <div class="flex items-center gap-2 min-w-0 text-sm">
+    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 flex-shrink-0"><%= contract_type %></span>
+    <span class="font-medium text-gray-900 truncate"><%= contract.contractor_name %></span>
+    <% if contract_value %>
+      <span class="text-gray-400">·</span>
+      <span class="text-gray-600 tabular-nums whitespace-nowrap"><%= contract_value %></span>
+    <% end %>
   </div>
-  <%= link_to "View contract →", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "flex-shrink-0 font-medium text-amber-800 hover:text-amber-900" %>
+  <%= link_to "View contract", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "flex-shrink-0 text-sm font-medium text-pink-600 hover:text-pink-700" %>
 </div>

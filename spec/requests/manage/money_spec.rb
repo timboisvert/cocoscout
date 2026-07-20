@@ -19,10 +19,10 @@ RSpec.describe "Manage::Money (hub)", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "shows the 3 money boxes (no Contract Revenue card) and the slim grid" do
+  it "shows the 3 summary boxes (no Contract Revenue card) and the slim grid" do
     get manage_money_index_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Money In").and include("Money Out").and include("Profit")
+    expect(response.body).to include("Gross Revenue").and include("Direct Costs").and include("Gross Profit")
     expect(response.body).not_to include("Contract Revenue")
     # Slim grid: production expands to events, course listed too.
     expect(response.body).to include("Hub Revue")
