@@ -82,7 +82,9 @@ class CourseOffering < ApplicationRecord
   def financials_summary
     confirmed = course_registrations.confirmed
     refunded = course_registrations.refunded
-    gross_cents = confirmed.sum(:amount_cents) - refunded.sum(:amount_cents)
+    # Refunded registrations already leave the `confirmed` scope, so the money we
+    # actually kept is just the confirmed sum — don't subtract refunds again.
+    gross_cents = confirmed.sum(:amount_cents)
     owed_cents = OrgPayout.owed_cents_for_course(self)
     payout_cents = course_offering_payout&.line_items&.sum(:amount_cents).to_i
 
