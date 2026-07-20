@@ -1,31 +1,47 @@
 <%#
   Shown above a production's/course's events when it's governed by a contract —
   from our side it's still just a production (or course) we don't own outright.
-  Shows the contract type, its financial value, and a link to the contract.
+  A small, content-width box: who it's with, the type, the value, and a link to
+  the contract.
 
   Locals:
     contract: Contract
 %>
 <%
+  contractor = contract.contractor
+
   if contract.respond_to?(:revenue_share?) && contract.revenue_share?
-    contract_type = "Revenue share"
-    contract_value = "you keep #{contract.revenue_share_percentage.to_i}%"
-  elsif contract.respond_to?(:ticket_revenue_minus_fee?) && contract.ticket_revenue_minus_fee?
-    contract_type = "Flat fee"
-    contract_value = number_to_currency(contract.flat_fee_amount)
+    type_label = "Revenue share (you keep #{contract.revenue_share_percentage.to_i}%)"
+    value = "TBD"
+    range = contract.respond_to?(:projected_our_revenue_range) ? contract.projected_our_revenue_range : nil
+    projection = range ? "#{number_to_currency(range[:low])}–#{number_to_currency(range[:high])} projected" : nil
   else
-    contract_type = "Flat fee"
-    contract_value = nil
+    type_label = "Flat fee"
+    fee = contract.flat_fee_amount
+    value = fee.to_f.positive? ? number_to_currency(fee) : "TBD"
+    projection = nil
   end
 %>
-<div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
-  <div class="flex items-center gap-2 min-w-0 text-sm">
-    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 flex-shrink-0"><%= contract_type %></span>
-    <span class="font-medium text-gray-900 truncate"><%= contract.contractor_name %></span>
-    <% if contract_value %>
-      <span class="text-gray-400">·</span>
-      <span class="text-gray-600 tabular-nums whitespace-nowrap"><%= contract_value %></span>
-    <% end %>
-  </div>
-  <%= link_to "View contract", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "flex-shrink-0 text-sm font-medium text-pink-600 hover:text-pink-700" %>
+<div class="inline-block rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+  <dl class="space-y-0.5">
+    <div>
+      <dt class="inline text-gray-500">Contractor:</dt>
+      <dd class="inline">
+        <% if contractor %>
+          <%= link_to contract.contractor_name, manage_contractor_path(contractor), class: "font-medium text-pink-600 hover:text-pink-700" %>
+        <% else %>
+          <span class="font-medium text-gray-900"><%= contract.contractor_name %></span>
+        <% end %>
+      </dd>
+    </div>
+    <div>
+      <dt class="inline text-gray-500">Type:</dt>
+      <dd class="inline text-gray-900"><%= type_label %></dd>
+    </div>
+    <div>
+      <dt class="inline text-gray-500">Contract value:</dt>
+      <dd class="inline text-gray-900 tabular-nums"><%= value %><% if projection %> <span class="text-gray-500">(<%= projection %>)</span><% end %></dd>
+    </div>
+  </dl>
+  <%= link_to "View contract →", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "inline-block mt-1.5 font-medium text-pink-600 hover:text-pink-700" %>
 </div>

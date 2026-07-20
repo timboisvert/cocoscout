@@ -3,7 +3,7 @@
     contract, a small contract bar sits at the top. %>
 <%= turbo_frame_tag "prod-events-#{@production.id}" do %>
   <% if @contract %>
-    <%= render "manage/money_financials/contract_bar", contract: @contract %>
+    <div class="px-3 pt-2 pb-1"><%= render "manage/money_financials/contract_bar", contract: @contract %></div>
   <% end %>
   <%= render "manage/money_financials/event_rows", shows: @shows, href_data: { turbo_frame: "_top" } %>
 <% end %>
