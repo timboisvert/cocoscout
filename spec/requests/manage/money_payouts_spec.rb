@@ -34,6 +34,8 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     expect(response.body).to include("Awaiting Payout").and include("All Productions")
     expect(response.body).to include("Payout Prod")
     expect(response.body).to include("$80.00") # remaining awaiting
+    # Breadcrumb back to the money hub (like the financials page).
+    expect(response.body).to include(manage_money_index_path)
     # All-productions rows expand to a lazy payout-events frame.
     expect(response.body).to include("payout-events-#{production.id}")
     expect(response.body).to include(manage_money_production_payout_events_path(production))
@@ -57,12 +59,15 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       expect(response.body).to include(manage_money_production_payout_events_path(production, awaiting: 1))
     end
 
-    it "the awaiting accordion lists only shows that still owe someone" do
+    it "the awaiting accordion lists only shows that still owe someone, one column" do
       get manage_money_production_payout_events_path(production, awaiting: 1),
           headers: { "Turbo-Frame" => "awaiting-events-#{production.id}" }
       expect(response.body).to include("awaiting-events-#{production.id}")
       expect(response.body).to include(show.display_name).and include(show2.display_name)
       expect(response.body).to include(manage_money_show_payout_path(show))
+      # Single "Awaiting" column — the paid amount ($70) is not shown here.
+      expect(response.body).to include("$80.00")
+      expect(response.body).not_to include("$70.00")
     end
   end
 

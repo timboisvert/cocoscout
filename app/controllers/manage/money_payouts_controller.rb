@@ -78,8 +78,10 @@ module Manage
                          .order(date_and_time: :desc)
                          .limit(100)
                          .select { |s| s.show_payout&.calculated_at.present? }
-      # The Awaiting-Payout accordion only wants shows that still owe someone.
-      shows = shows.select { |s| s.show_payout.line_items.any? { |li| !li.paid? } } if params[:awaiting]
+      # The Awaiting-Payout accordion only wants shows that still owe someone, and
+      # matches that section's single "Awaiting" column.
+      @awaiting_only = params[:awaiting].present?
+      shows = shows.select { |s| s.show_payout.line_items.any? { |li| !li.paid? } } if @awaiting_only
       @shows = shows
       render layout: false
     end

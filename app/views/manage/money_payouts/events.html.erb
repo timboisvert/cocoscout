@@ -2,5 +2,5 @@
     on the payouts list. The same endpoint feeds two accordions (all-productions
     and Awaiting Payout), so match whichever frame requested it. %>
 <%= turbo_frame_tag(request.headers["Turbo-Frame"].presence || "payout-events-#{@production.id}") do %>
-  <%= render "manage/money_payouts/payout_event_rows", shows: @shows, href_data: { turbo_frame: "_top" } %>
+  <%= render "manage/money_payouts/payout_event_rows", shows: @shows, awaiting_only: @awaiting_only, href_data: { turbo_frame: "_top" } %>
 <% end %>
