@@ -49,26 +49,21 @@
             </div>
           </div>
 
+          <%
+            org_keeps_cents = @payout.net_revenue_cents.to_i - @payout.total_payout_cents.to_i
+          %>
           <div class="mt-4 border-t border-gray-100 pt-4 space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-600">Gross Revenue</span>
+              <span class="text-sm text-gray-600">Revenue<% if @payout.total_revenue_override_cents.present? %> <span class="text-amber-600">(adjusted)</span><% end %></span>
               <span class="text-sm font-semibold text-gray-900"><%= @payout.formatted_total_revenue %></span>
             </div>
-            <% if @payout.total_revenue_override_cents.present? %>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Revenue Override</span>
-                <span class="text-sm font-semibold text-amber-600">
-                  <%= number_to_currency(@payout.total_revenue_override_cents / 100.0) %>
-                </span>
-              </div>
-            <% end %>
             <div class="flex justify-between items-center">
               <span class="text-sm text-gray-600">
-                Platform Fee
+                Platform fee
                 <% if @coverage_type == "full" %>
                   <span class="text-green-600 font-medium">(waived)</span>
                 <% elsif @coverage_type == "platform_only" %>
-                  <span class="text-green-600 font-medium">(Stripe only)</span>
+                  <span class="text-green-600 font-medium">(processing only)</span>
                 <% else %>
                   (5%)
                 <% end %>
@@ -76,47 +71,38 @@
               <span class="text-sm text-gray-900">−<%= @payout.formatted_platform_fee %></span>
             </div>
             <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-              <span class="text-sm font-semibold text-gray-900">Net to Organization</span>
-              <span class="text-lg font-bold text-gray-900"><%= @payout.formatted_net_revenue %></span>
+              <span class="text-sm text-gray-600">Net revenue</span>
+              <span class="text-sm font-semibold text-gray-900"><%= @payout.formatted_net_revenue %></span>
+            </div>
+            <% if @payout.total_payout_cents.to_i > 0 %>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">Payments to others</span>
+                <span class="text-sm text-gray-900">−<%= @payout.formatted_total_payout %></span>
+              </div>
+            <% end %>
+            <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+              <span class="text-sm font-semibold text-gray-900">Organization keeps</span>
+              <span class="text-lg font-bold <%= org_keeps_cents >= 0 ? 'text-gray-900' : 'text-red-600' %>"><%= number_to_currency(org_keeps_cents / 100.0) %></span>
             </div>
           </div>
 
           <% if @has_contract %>
             <div class="mt-4 bg-gray-50 rounded-lg p-3">
               <div class="flex items-center gap-2 text-sm text-gray-600">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
-                </svg>
-                <span>Contract: <strong><%= @contract.contractor_name %></strong> ·
+                <%= icon("file-text", class: "w-4 h-4 flex-shrink-0") %>
+                <span>Contract with <strong><%= @contract.contractor_name %></strong> ·
                   <% if @contract.revenue_share? %>
-                    Revenue Share (<%= @contract.contractor_share_percentage.to_i %>% contractor / <%= @contract.revenue_share_percentage.to_i %>% org)
+                    <%= @contract.contractor_share_percentage.to_i %>% to them / <%= @contract.revenue_share_percentage.to_i %>% to you
                   <% elsif @contract.ticket_revenue_minus_fee? %>
                     Revenue minus <%= number_to_currency(@contract.flat_fee_amount) %> fee
                   <% end %>
                 </span>
               </div>
-              <% if @contractor&.any_payment_method_configured? %>
-                <div class="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                  <% if @contractor.venmo_configured? %>
-                    <span class="inline-flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 3c.9 1.5 1.3 3 1.3 5 0 5.5-4.7 12.7-8.5 17H5.2L2.8 3.5l6.3-.6 1.3 10.5c1.2-2 2.7-5.2 2.7-7.4 0-1.8-.3-3-0.8-4L19.5 3z"/></svg>
-                      Venmo: <strong><%= @contractor.formatted_venmo_identifier %></strong>
-                    </span>
-                  <% end %>
-                  <% if @contractor.zelle_configured? %>
-                    <span class="inline-flex items-center gap-1">
-                      💲 Zelle: <strong><%= @contractor.formatted_zelle_identifier %></strong>
-                    </span>
-                  <% end %>
-                </div>
-              <% end %>
             </div>
           <% else %>
-            <div class="mt-4 bg-blue-50 rounded-lg p-3">
-              <p class="text-sm text-blue-700">
-                The organization receives <strong><%= @payout.formatted_net_revenue %></strong> from Stripe automatically. Use this page to track any payments you make to others (e.g., instructors).
-              </p>
-            </div>
+            <p class="mt-4 text-sm text-gray-500">
+              Your organization keeps the net revenue. Use the Payments below to record anyone you pay out of it — like the instructor.
+            </p>
           <% end %>
         </div>
       </div>
@@ -215,18 +201,23 @@
             <% end %>
           </div>
         <% else %>
-          <div class="px-6 py-8 text-center text-gray-500">
-            No payments added yet.
+          <div class="px-6 py-8 text-center text-gray-500 text-sm">
+            No payments yet. Add anyone you're paying out of this course — like the instructor.
           </div>
         <% end %>
 
-        <%# Add manual payment form %>
+        <%# Add a payment — guide toward the course instructor when there is one. %>
         <% unless @payout.paid? %>
+          <% instructor = @course_offering.instructor_person %>
+          <% paying_instructor_already = instructor && @line_items.any? { |li| li.payee_name == instructor.name } %>
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <% if instructor && !paying_instructor_already %>
+              <p class="text-sm text-gray-600 mb-3">Paying the instructor, <strong><%= instructor.name %></strong>? Enter the amount and add it.</p>
+            <% end %>
             <%= form_with url: manage_course_offering_payout_add_line_item_path(@course_offering), method: :post, class: "flex items-end gap-3" do |f| %>
               <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Payee Name</label>
-                <%= f.text_field :label, placeholder: "e.g., Instructor name", class: "w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Who are you paying?</label>
+                <%= f.text_field :label, value: (instructor && !paying_instructor_already ? instructor.name : nil), placeholder: "e.g., the instructor", class: "w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
               </div>
               <div class="w-32">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
@@ -282,26 +273,27 @@
         </div>
       </div>
 
-      <!-- Revenue Override Card -->
+      <!-- Adjust revenue (advanced, collapsed) -->
       <% unless @payout.paid? %>
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200">
-            <h3 class="text-sm font-semibold text-gray-900">Revenue Override</h3>
-          </div>
-          <div class="p-4">
-            <p class="text-xs text-gray-500 mb-3">Override the calculated revenue amount if needed (e.g. for off-platform payments).</p>
+        <details class="bg-white rounded-xl border border-gray-200 overflow-hidden group" <%= "open" if @payout.total_revenue_override_cents.present? %>>
+          <summary class="px-4 py-3 cursor-pointer text-sm font-semibold text-gray-900 flex items-center justify-between list-none [&::-webkit-details-marker]:hidden">
+            Adjust revenue
+            <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div class="px-4 pb-4 border-t border-gray-100 pt-3">
+            <p class="text-xs text-gray-500 mb-3">Only if you collected money for this course outside CocoScout — set the real total here to override what registrations show.</p>
             <%= form_with url: manage_course_offering_payout_revenue_override_path(@course_offering), method: :patch, class: "space-y-2" do |f| %>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <%= f.text_field :total_revenue_override_cents,
                   value: @payout.total_revenue_override_cents ? ("%.2f" % (@payout.total_revenue_override_cents / 100.0)) : "",
-                  placeholder: "Leave blank to use calculated",
+                  placeholder: "Leave blank to use registrations",
                   class: "w-full pl-7 text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
               </div>
-              <%= render "shared/button", text: "Update Override", variant: "secondary", size: "small", type: :submit %>
+              <%= render "shared/button", text: "Update", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           </div>
-        </div>
+        </details>
       <% end %>
 
       <!-- Details Card -->

@@ -6,6 +6,11 @@ module Manage
     before_action :load_payout, except: [ :calculate ]
 
     def show
+      # Keep the revenue summary current with registrations (safe: no line-item
+      # changes) so a stale calculation doesn't show the wrong revenue/net.
+      CoursePayoutCalculator.new(@course_offering).refresh_summary!
+      @payout.reload
+
       @registrations = @course_offering.course_registrations
         .where.not(status: :cancelled)
         .includes(:person)

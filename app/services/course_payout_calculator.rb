@@ -22,6 +22,22 @@ class CoursePayoutCalculator
     @course_offering = course_offering
   end
 
+  # Keep the revenue summary (revenue / fee / net) current with registrations,
+  # without regenerating line items — safe to run on every payout-page view so a
+  # stale calculation doesn't linger. No-op if there's no payout or it's paid.
+  def refresh_summary!
+    payout = course_offering.course_offering_payout
+    return if payout.nil? || payout.paid?
+
+    result = compute
+    payout.update!(
+      total_revenue_cents: result[:total_revenue_cents],
+      platform_fee_cents: result[:platform_fee_cents],
+      net_revenue_cents: result[:net_revenue_cents]
+    )
+    payout
+  end
+
   def calculate!
     payout = course_offering.course_offering_payout ||
       course_offering.build_course_offering_payout
@@ -100,25 +116,25 @@ class CoursePayoutCalculator
   end
 
   def compute_total_revenue
-    confirmed = course_offering.course_registrations.confirmed.sum(:amount_cents)
-    refunded = course_offering.course_registrations.refunded.sum(:amount_cents)
-    confirmed - refunded
+    # Refunded registrations already leave the `confirmed` scope, so the money we
+    # actually kept is just the confirmed sum — don't subtract refunds again.
+    course_offering.course_registrations.confirmed.sum(:amount_cents)
   end
 
   # Determine the platform fee based on coverage_type from any promo code
-  def compute_platform_fee(effective_revenue)
+  def compute_platform_fee(_effective_revenue)
     case coverage_type
     when "full"
       # Promo covers all fees — org gets 100%
       0
     when "platform_only"
-      # Promo covers CocoScout fee — only actual Stripe processing fees apply
-      confirmed_stripe_fees = course_offering.course_registrations.confirmed.sum(:stripe_fee_cents)
-      refunded_stripe_fees = course_offering.course_registrations.refunded.sum(:stripe_fee_cents)
-      confirmed_stripe_fees - refunded_stripe_fees
+      # Promo covers the CocoScout fee — only actual processing fees apply.
+      course_offering.course_registrations.confirmed.sum(:stripe_fee_cents)
     else
-      # Standard 5% platform fee
-      (effective_revenue * PLATFORM_FEE_PERCENTAGE / 100.0).round
+      # The CocoScout fee ACTUALLY charged on these registrations (stored per
+      # registration), not a re-computed rate — so it reflects what was really
+      # taken, even as the rate changes over time.
+      course_offering.course_registrations.confirmed.sum(:cocoscout_fee_cents)
     end
   end
 
