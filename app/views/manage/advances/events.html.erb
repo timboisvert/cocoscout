@@ -2,4 +2,7 @@
     accordion on the advances list. Columns line up with the parent (To pay / To repay). %>
 <%= turbo_frame_tag "advance-events-#{@production.id}" do %>
   <%= render "manage/advances/advance_rows", advances: @advances, production: @production, href_data: { turbo_frame: "_top" } %>
+  <div class="px-3 py-2 border-t border-gray-100">
+    <%= link_to "Issue an advance →", manage_new_money_production_advance_path(@production), data: { turbo_frame: "_top" }, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+  </div>
 <% end %>

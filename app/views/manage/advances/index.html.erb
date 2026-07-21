@@ -11,7 +11,10 @@
         ["Payouts", manage_money_payouts_path],
         ["Advances", manage_money_advances_path]
       ],
-      text: @production.name
+      text: @production.name,
+      links: [
+        { text: "Issue Advance", icon: "plus", path: manage_new_money_production_advance_path(@production) }
+      ]
     } %>
 
     <%# Stats Cards %>
