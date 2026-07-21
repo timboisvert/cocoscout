@@ -1,6 +1,6 @@
 <% content_for :title, @contract.production_name.presence || @contract.contractor_name %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%# Status badge helper %>
@@ -454,9 +454,8 @@
               variant: "primary",
               size: "small",
               icon: "edit",
-              path: reopen_manage_contract_path(@contract),
-              method: :post,
-              data: { turbo_confirm: "Reopen this contract so you can add new dates and amend its terms?" },
+              type: :button,
+              data: { action: "click->modal#open", "modal-id": "reopen-contract-modal" },
               classes: "w-full" %>
             <p class="text-xs text-gray-500">Extend this contract — reopen it to add new dates (e.g. an August run) and amend terms. Once active again, you can select it when creating a course.</p>
           </div>
@@ -477,4 +476,42 @@
       <% end %>
     </div>
   </div>
+
+  <%# Reopen contract confirmation modal %>
+  <% if @contract.status_completed? %>
+    <div id="reopen-contract-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/40" data-action="click->modal#close"></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Reopen this contract?</h3>
+          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 py-5">
+          <p class="text-sm text-gray-600 mb-4">Here's what happens when you reopen it:</p>
+          <ul class="space-y-3 text-sm text-gray-700">
+            <li class="flex items-start gap-2.5">
+              <%= icon("check-circle", class: "w-5 h-5 text-green-500 flex-shrink-0") %>
+              <span>The contract goes back to <strong>Active</strong>, and its production is un-archived.</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <%= icon("check-circle", class: "w-5 h-5 text-green-500 flex-shrink-0") %>
+              <span>You'll be taken to the <strong>amend flow</strong> to add new dates (e.g. an August run) and adjust terms.</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <%= icon("check-circle", class: "w-5 h-5 text-green-500 flex-shrink-0") %>
+              <span>Once active again, you can <strong>select it when creating a course</strong>.</span>
+            </li>
+          </ul>
+          <p class="text-xs text-gray-500 mt-4">Nothing is deleted, and your existing dates, payments, and documents stay put. You can complete it again later.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-2">
+          <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <%= render "shared/button", text: "Reopen contract", variant: "primary", size: "medium",
+            path: reopen_manage_contract_path(@contract), method: :post %>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>
