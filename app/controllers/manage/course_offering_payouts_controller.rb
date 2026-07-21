@@ -166,7 +166,14 @@ module Manage
 
     def load_payout
       @payout = @course_offering.course_offering_payout
-      unless @payout
+      return if @payout
+
+      # No payout record yet — for the payout page itself, set one up on the fly so
+      # there's always a page to manage (works with or without a contract, and is
+      # safe to re-run). Other actions still need an existing payout.
+      if action_name == "show"
+        @payout = CoursePayoutCalculator.new(@course_offering).calculate!
+      else
         redirect_to manage_course_offering_path(@course_offering),
           alert: "No payout has been calculated yet."
       end
