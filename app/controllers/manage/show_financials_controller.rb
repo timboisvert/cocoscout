@@ -44,13 +44,13 @@ module Manage
     def mark_non_revenue
       @show_financials.update!(non_revenue_override: true, data_confirmed: true)
       redirect_to manage_money_show_financials_path(@show),
-                  notice: "#{show_display_name(@show)} marked as non-revenue event."
+                  notice: "#{@show.display_name} marked as non-revenue event."
     end
 
     def unmark_non_revenue
       @show_financials.update!(non_revenue_override: false)
       redirect_to manage_money_show_financials_path(@show),
-                  notice: "#{show_display_name(@show)} restored as revenue event."
+                  notice: "#{@show.display_name} restored as revenue event."
     end
 
     private
