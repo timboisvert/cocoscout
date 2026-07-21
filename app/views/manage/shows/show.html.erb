@@ -678,6 +678,9 @@
         <% end %>
       <% end %>
 
+      <%# Money — bridge to this show's financials, payouts, and advances (Pro). %>
+      <%= render "manage/shows/money_section", show: @show, production: @production %>
+
       <% if @show.is_online && !@show.canceled %>
         <!-- Online Event Card -->
         <div class="border border-gray-200 rounded-lg overflow-hidden">
