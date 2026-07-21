@@ -1477,6 +1477,13 @@ Rails.application.routes.draw do
     patch "courses/:id/questionnaire",        to: "course_offerings#update_questionnaire_settings", as: "update_course_offering_questionnaire"
 
     # Course offering payouts
+    # Course payout settings — how the ORG gets paid its course revenue. Lives in
+    # Courses (not the Pro-only Money section) since courses are free.
+    get    "courses/payouts/settings",         to: "course_payout_settings#show",           as: "course_payout_settings"
+    post   "courses/payouts/settings/connect", to: "course_payout_settings#connect",         as: "course_payout_settings_connect"
+    get    "courses/payouts/settings/return",  to: "course_payout_settings#connect_return",  as: "course_payout_settings_return"
+    get    "courses/payouts/settings/refresh", to: "course_payout_settings#connect_refresh", as: "course_payout_settings_refresh"
+
     get  "courses/:course_offering_id/payout",                  to: "course_offering_payouts#show",                    as: "course_offering_payout"
     post "courses/:course_offering_id/payout/calculate",        to: "course_offering_payouts#calculate",               as: "course_offering_payout_calculate"
     post "courses/:course_offering_id/payout/recalculate",      to: "course_offering_payouts#recalculate",             as: "course_offering_payout_recalculate"

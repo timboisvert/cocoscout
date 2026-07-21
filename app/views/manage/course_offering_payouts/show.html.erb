@@ -27,6 +27,19 @@
     links: []
   } %>
 
+  <% unless Current.organization.can_receive_payouts? %>
+    <div class="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
+      <%= icon("exclamation-circle", class: "w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5") %>
+      <div class="flex-1">
+        <p class="text-sm font-medium text-amber-900">Connect your organization's bank to get paid</p>
+        <p class="text-sm text-amber-700 mt-0.5">Your organization can't receive course payouts until you connect a bank account.</p>
+      </div>
+      <%= link_to manage_course_payout_settings_path, class: "flex-shrink-0" do %>
+        <%= render "shared/button", text: "Set up payouts", variant: "primary", size: "small" %>
+      <% end %>
+    </div>
+  <% end %>
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
