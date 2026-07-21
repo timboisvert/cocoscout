@@ -35,7 +35,7 @@
           <option value="">Choose a contract...</option>
           <% @contracts.each do |c| %>
             <%
-              contract_shows = Show.joins(:production).where(productions: { contract_id: c.id }).order(:date_and_time)
+              contract_shows = c.contract_shows.order(:date_and_time)
               event_type_configs = YAML.load_file(Rails.root.join("config/event_types.yml"))["event_types"]
             %>
             <option value="<%= c.id %>"
