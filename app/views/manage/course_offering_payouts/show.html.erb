@@ -366,14 +366,14 @@
                   <div class="text-xs text-gray-500">Instructor</div>
                 </div>
                 <div class="w-32 relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
                   <input type="number" step="0.01" min="0" inputmode="decimal"
                     name="instructor_amounts[<%= person.id %>]"
                     value="<%= existing ? ('%.2f' % (existing.amount_cents / 100.0)) : '' %>"
                     placeholder="0.00"
                     data-instructor-payments-target="amount"
                     data-action="input->instructor-payments#recalculate"
-                    class="w-full pl-7 text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+                    class="block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
                 </div>
               </div>
             <% end %>
