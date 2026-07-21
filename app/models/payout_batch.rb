@@ -4,10 +4,13 @@
 class PayoutBatch < ApplicationRecord
   STATUSES = %w[draft funding funded processing completed failed canceled].freeze
   TRIGGERS = %w[manual scheduled].freeze
-  # Run kinds. "staff_pay" = staffing hours; "performer" = show payouts. They run
+  # Run kinds. "staff_pay" = staffing hours; "performer" = show payouts; "course"
+  # = course settlements (instructor pay + the org's leftover revenue). They run
   # on separate schedules, so an org can have one open run of each kind at a time.
-  # ("balance" is the legacy generic kind.)
-  KINDS = %w[staff_pay performer balance].freeze
+  # A "course" run is special: the money is already in CocoScout's balance, so it
+  # skips funding entirely and just transfers held funds out. ("balance" is the
+  # legacy generic kind.)
+  KINDS = %w[staff_pay performer course balance].freeze
 
   belongs_to :organization
   belongs_to :created_by, class_name: "User", optional: true
@@ -39,8 +42,15 @@ class PayoutBatch < ApplicationRecord
     case kind
     when "performer" then "Performer payouts"
     when "staff_pay" then "Staffing"
+    when "course" then "Course payouts"
     else "Payouts"
     end
+  end
+
+  # A course run pays out money CocoScout already holds, so there's no funding
+  # (ACH/card) step — it goes straight to transferring held funds out.
+  def skips_funding?
+    kind == "course"
   end
 
   def recalculate_total!
