@@ -445,6 +445,22 @@
               classes: "w-full" %>
           </div>
         </div>
+      <% elsif @contract.status_completed? %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: "Actions" %>
+          <div class="p-4 space-y-2">
+            <%= render "shared/button",
+              text: "Reopen to Amend",
+              variant: "primary",
+              size: "small",
+              icon: "edit",
+              path: reopen_manage_contract_path(@contract),
+              method: :post,
+              data: { turbo_confirm: "Reopen this contract so you can add new dates and amend its terms?" },
+              classes: "w-full" %>
+            <p class="text-xs text-gray-500">Extend this contract — reopen it to add new dates (e.g. an August run) and amend terms. Once active again, you can select it when creating a course.</p>
+          </div>
+        </div>
       <% elsif @contract.status_cancelled? %>
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Actions" %>

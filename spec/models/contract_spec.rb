@@ -164,6 +164,28 @@ RSpec.describe Contract, type: :model do
       end
     end
 
+    describe "#reopen!" do
+      it "flips a completed contract back to active and clears completed_at" do
+        contract = create(:contract, :completed)
+        expect(contract.reopen!).to be(true)
+        expect(contract.reload.status).to eq("active")
+        expect(contract.completed_at).to be_nil
+      end
+
+      it "un-archives the production that was archived on completion" do
+        production = create(:production, organization: create(:organization), archived_at: Time.current)
+        contract = create(:contract, :completed, organization: production.organization, production: production)
+        contract.reopen!
+        expect(production.reload.archived_at).to be_nil
+      end
+
+      it "does nothing for a contract that isn't completed" do
+        contract = create(:contract, :active)
+        expect(contract.reopen!).to be(false)
+        expect(contract.reload.status).to eq("active")
+      end
+    end
+
     describe "#cancel!" do
       let(:contract) { create(:contract, :active) }
 

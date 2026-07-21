@@ -229,6 +229,15 @@ module Manage
       end
     end
 
+    def reopen
+      if @contract.reopen!
+        redirect_to amend_bookings_manage_contract_path(@contract),
+          notice: "Contract reopened. Add your new dates, then review to apply your changes."
+      else
+        redirect_to manage_contract_path(@contract), alert: "Could not reopen this contract."
+      end
+    end
+
     def cancel
       # GET action - show cancellation page
       @shows = @contract.contract_shows.order(:date_and_time).to_a
