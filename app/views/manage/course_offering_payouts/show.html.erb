@@ -16,7 +16,7 @@
   end
 %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -53,10 +53,25 @@
             org_keeps_cents = @payout.net_revenue_cents.to_i - @payout.total_payout_cents.to_i
           %>
           <div class="mt-4 border-t border-gray-100 pt-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-600">Revenue<% if @payout.total_revenue_override_cents.present? %> <span class="text-amber-600">(adjusted)</span><% end %></span>
-              <span class="text-sm font-semibold text-gray-900"><%= @payout.formatted_total_revenue %></span>
-            </div>
+            <% if @refunds_cents.to_i > 0 && @payout.total_revenue_override_cents.blank? %>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">Gross revenue</span>
+                <span class="text-sm text-gray-900"><%= number_to_currency(@gross_cents / 100.0) %></span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">Refunds</span>
+                <span class="text-sm text-gray-900">−<%= number_to_currency(@refunds_cents / 100.0) %></span>
+              </div>
+              <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+                <span class="text-sm text-gray-600">Revenue</span>
+                <span class="text-sm font-semibold text-gray-900"><%= @payout.formatted_total_revenue %></span>
+              </div>
+            <% else %>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">Revenue<% if @payout.total_revenue_override_cents.present? %> <span class="text-amber-600">(adjusted)</span><% end %></span>
+                <span class="text-sm font-semibold text-gray-900"><%= @payout.formatted_total_revenue %></span>
+              </div>
+            <% end %>
             <div class="flex justify-between items-center">
               <span class="text-sm text-gray-600">
                 Platform fee
@@ -76,12 +91,15 @@
             </div>
             <% if @payout.total_payout_cents.to_i > 0 %>
               <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Payments to others</span>
+                <span class="text-sm text-gray-600">Instructor &amp; other payments</span>
                 <span class="text-sm text-gray-900">−<%= @payout.formatted_total_payout %></span>
               </div>
             <% end %>
             <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-              <span class="text-sm font-semibold text-gray-900">Organization keeps</span>
+              <div>
+                <span class="text-sm font-semibold text-gray-900">Organization keeps</span>
+                <p class="text-xs text-gray-500">Paid to your organization's bank</p>
+              </div>
               <span class="text-lg font-bold <%= org_keeps_cents >= 0 ? 'text-gray-900' : 'text-red-600' %>"><%= number_to_currency(org_keeps_cents / 100.0) %></span>
             </div>
           </div>
@@ -144,6 +162,8 @@
                         Contract · <%= line_item.calculation_details["share_percentage"].to_i %>% share
                       <% elsif line_item.calculation_details["type"] == "contract_flat_fee" %>
                         Contract · Revenue minus <%= number_to_currency(line_item.calculation_details["flat_fee_cents"].to_i / 100.0) %>
+                      <% elsif line_item.calculation_details["type"] == "instructor" %>
+                        Instructor<% unless line_item.paid? %> · Not yet in a payout run<% end %>
                       <% else %>
                         Manual payment
                       <% end %>
@@ -206,29 +226,18 @@
           </div>
         <% end %>
 
-        <%# Add a payment — guide toward the course instructor when there is one. %>
+        <%# Pay instructors — a guided modal instead of a free-text name box. %>
         <% unless @payout.paid? %>
-          <% instructor = @course_offering.instructor_person %>
-          <% paying_instructor_already = instructor && @line_items.any? { |li| li.payee_name == instructor.name } %>
-          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-            <% if instructor && !paying_instructor_already %>
-              <p class="text-sm text-gray-600 mb-3">Paying the instructor, <strong><%= instructor.name %></strong>? Enter the amount and add it.</p>
-            <% end %>
-            <%= form_with url: manage_course_offering_payout_add_line_item_path(@course_offering), method: :post, class: "flex items-end gap-3" do |f| %>
-              <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Who are you paying?</label>
-                <%= f.text_field :label, value: (instructor && !paying_instructor_already ? instructor.name : nil), placeholder: "e.g., the instructor", class: "w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
-              </div>
-              <div class="w-32">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                  <%= f.text_field :amount, placeholder: "0.00", class: "w-full pl-7 text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
-                </div>
-              </div>
-              <%= render "shared/button", text: "Add Payment", variant: "secondary", size: "small", type: :submit %>
-            <% end %>
-          </div>
+          <% if @instructors.any? %>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button type="button"
+                data-action="click->modal#open" data-modal-id="pay-instructors-modal"
+                class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700">
+                <%= icon("plus-circle", class: "w-5 h-5") %>
+                <%= @line_items.any? { |li| li.calculation_details["type"] == "instructor" } ? "Edit instructor payments" : "Pay instructors" %>
+              </button>
+            </div>
+          <% end %>
         <% end %>
       </div>
     </div>
@@ -326,4 +335,62 @@
       </div>
     </div>
   </div>
+
+  <%# Pay instructors modal %>
+  <% if @instructors.any? && !@payout.paid? %>
+    <div id="pay-instructors-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/40" data-action="click->modal#close"></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+           data-controller="instructor-payments">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Pay instructors</h3>
+          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+
+        <%= form_with url: manage_course_offering_payout_pay_instructors_path(@course_offering), method: :post, class: "flex flex-col flex-1 overflow-hidden" do %>
+          <div class="px-6 py-4 overflow-y-auto space-y-3">
+            <p class="text-sm text-gray-600">Enter what you're paying each instructor for this course. Leave anyone at $0 to skip them.</p>
+            <% @instructors.each do |person| %>
+              <% existing = @line_items.find { |li| li.payee_type == "Person" && li.payee_id == person.id } %>
+              <div class="flex items-center gap-3">
+                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= person.initials %></div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 truncate"><%= person.name %></div>
+                  <div class="text-xs text-gray-500">Instructor</div>
+                </div>
+                <div class="w-32 relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input type="number" step="0.01" min="0" inputmode="decimal"
+                    name="instructor_amounts[<%= person.id %>]"
+                    value="<%= existing ? ('%.2f' % (existing.amount_cents / 100.0)) : '' %>"
+                    placeholder="0.00"
+                    data-instructor-payments-target="amount"
+                    data-action="input->instructor-payments#recalculate"
+                    class="w-full pl-7 text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+            <div>
+              <span class="text-sm text-gray-600">Subtotal</span>
+              <span data-instructor-payments-target="subtotal" class="ml-2 text-lg font-bold text-gray-900">$0.00</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <%= render "shared/button", text: "Save Payments", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 </div>

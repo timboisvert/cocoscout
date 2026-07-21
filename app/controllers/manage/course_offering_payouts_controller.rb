@@ -19,10 +19,63 @@ module Manage
       @has_contract = @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
       @coverage_type = @course_offering.feature_credit_redemption&.feature_credit&.coverage_type
 
+      # Gross (before refunds) and the refunded portion, so the revenue summary
+      # can show "$120 gross − $80 refunds = $40 kept" rather than just the net.
+      @gross_cents = @course_offering.course_registrations.confirmed.sum(:amount_cents) +
+        @course_offering.course_registrations.refunded.sum(:amount_cents)
+      @refunds_cents = @course_offering.course_registrations.refunded.sum(:amount_cents)
+
+      # Instructors we can guide the org to pay (Persons on the payout rail).
+      @instructors = @course_offering.instructor_people.to_a
+      @instructors = [ @course_offering.instructor_person ].compact if @instructors.empty?
+
       # Load contractor for payment UX
       if @has_contract
         @contractor = @contract.contractor
       end
+    end
+
+    # Record what the org is paying each instructor. These become "calculated"
+    # payout line items (payee = the instructor Person) — money set aside, but not
+    # yet in a payout run. They get paid the same way performers do: added to the
+    # org's performer payout run later.
+    def pay_instructors
+      amounts = params[:instructor_amounts] || {}
+
+      CourseOfferingPayout.transaction do
+        amounts.each do |person_id, dollars|
+          cents = (dollars.to_f * 100).round
+          person = @course_offering.instructor_people.find_by(id: person_id) ||
+            (@course_offering.instructor_person if @course_offering.instructor_person_id.to_s == person_id.to_s)
+          next unless person
+
+          line = @payout.line_items.find_by(payee: person)
+
+          if cents <= 0
+            line&.destroy! unless line&.paid?
+            next
+          end
+
+          if line
+            line.update!(amount_cents: cents) unless line.paid?
+          else
+            @payout.line_items.create!(
+              payee: person,
+              amount_cents: cents,
+              label: person.name,
+              calculation_details: { type: "instructor", person_id: person.id }
+            )
+          end
+        end
+
+        @payout.update!(
+          total_payout_cents: @payout.line_items.sum(:amount_cents),
+          status: "calculated"
+        )
+      end
+
+      redirect_to manage_course_offering_payout_path(@course_offering),
+        notice: "Instructor payments saved."
     end
 
     def calculate

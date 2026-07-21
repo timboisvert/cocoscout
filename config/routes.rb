@@ -1482,6 +1482,7 @@ Rails.application.routes.draw do
     post "courses/:course_offering_id/payout/recalculate",      to: "course_offering_payouts#recalculate",             as: "course_offering_payout_recalculate"
     patch "courses/:course_offering_id/payout/revenue_override", to: "course_offering_payouts#update_revenue_override", as: "course_offering_payout_revenue_override"
     post "courses/:course_offering_id/payout/line_items",       to: "course_offering_payouts#add_line_item",           as: "course_offering_payout_add_line_item"
+    post "courses/:course_offering_id/payout/pay_instructors",  to: "course_offering_payouts#pay_instructors",         as: "course_offering_payout_pay_instructors"
     delete "courses/:course_offering_id/payout/line_items/:line_item_id", to: "course_offering_payouts#remove_line_item", as: "course_offering_payout_remove_line_item"
     post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
     post "courses/:course_offering_id/payout/mark_all_paid",    to: "course_offering_payouts#mark_all_paid",           as: "course_offering_payout_mark_all_paid"
