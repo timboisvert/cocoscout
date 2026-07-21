@@ -8,6 +8,15 @@ module Manage
   class CoursePayoutSettingsController < Manage::ManageController
     def show
       @organization = Current.organization
+      # Re-sync from Stripe so a just-finished (or still-verifying) account is
+      # reflected here even when the account.updated webhook didn't reach us.
+      if @organization.connect_account_started? && Stripe.api_key.present?
+        begin
+          @account_status = StripeConnectService.new(@organization).refresh_status
+        rescue StripeConnectService::Error => e
+          Rails.logger.warn("Course payout settings: status refresh failed — #{e.message}")
+        end
+      end
     end
 
     # Kick off (or resume) Stripe Express onboarding for the organization.

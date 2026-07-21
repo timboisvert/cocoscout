@@ -64,19 +64,45 @@
               path: manage_course_payout_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
           </div>
         <% else %>
-          <p class="text-sm text-gray-600 mb-4">
-            <% if started %>
-              You've started connecting a bank but haven't finished. Pick up where you left off — it only takes a minute.
-            <% else %>
-              Connect a bank account so your organization can receive course payouts. Your details are collected
-              securely; CocoScout never sees or stores your bank credentials.
+          <%
+            due = (@account_status ? (@account_status[:currently_due] + @account_status[:past_due]) : []).uniq
+            pending = @account_status ? @account_status[:pending_verification] : []
+            humanize_req = ->(key) { key.to_s.tr(".", " ").tr("_", " ").sub(/\bid\b/, "ID").capitalize }
+            # "Being verified" = nothing left for the user to enter, Stripe is just reviewing.
+            verifying = started && due.empty? && pending.any?
+          %>
+
+          <% if verifying %>
+            <p class="text-sm text-gray-600 mb-1">Your details were submitted and are being verified. This usually takes a few minutes.</p>
+            <p class="text-sm text-gray-500 mb-4">Check back shortly — this page updates automatically once you're cleared to receive payouts.</p>
+            <%= link_to manage_course_payout_settings_path do %>
+              <%= render "shared/button", text: "Refresh status", variant: "secondary", size: "small" %>
             <% end %>
-          </p>
-          <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
-          <%= render "shared/button",
-            text: started ? "Finish connecting your bank" : "Connect your bank",
-            variant: "primary", size: "medium",
-            path: manage_course_payout_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+          <% else %>
+            <p class="text-sm text-gray-600 mb-3">
+              <% if started %>
+                You've started connecting a bank but there are still a few details to finish before you can be paid.
+              <% else %>
+                Connect a bank account so your organization can receive course payouts. Your details are collected
+                securely; CocoScout never sees or stores your bank credentials.
+              <% end %>
+            </p>
+            <% if due.any? %>
+              <div class="mb-4 text-sm text-gray-700">
+                <p class="font-medium mb-1">Still needed:</p>
+                <ul class="list-disc list-inside text-gray-600 space-y-0.5">
+                  <% due.first(6).each do |key| %>
+                    <li><%= humanize_req.call(key) %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
+            <%= render "shared/button",
+              text: started ? "Finish connecting your bank" : "Connect your bank",
+              variant: "primary", size: "medium",
+              path: manage_course_payout_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+          <% end %>
         <% end %>
       </div>
     </div>

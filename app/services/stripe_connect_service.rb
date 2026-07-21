@@ -94,6 +94,29 @@ class StripeConnectService
     raise Error, e.message
   end
 
+  # Refresh from Stripe (persisting payouts_enabled/status) and return a detail
+  # hash of what's still outstanding, for display. One API call. This is how the
+  # settings page stays correct even when the account.updated webhook doesn't
+  # reach us (common locally) or when Stripe enabled payouts after the redirect.
+  def refresh_status
+    return nil if @payee.stripe_account_id.blank?
+
+    account = Stripe::Account.retrieve(@payee.stripe_account_id)
+    sync_account(account)
+    reqs = account.requirements
+
+    {
+      payouts_enabled: account.payouts_enabled,
+      details_submitted: account.details_submitted,
+      disabled_reason: reqs&.disabled_reason,
+      currently_due: Array(reqs&.currently_due),
+      past_due: Array(reqs&.past_due),
+      pending_verification: Array(reqs&.pending_verification)
+    }
+  rescue Stripe::StripeError => e
+    raise Error, e.message
+  end
+
   # Pull the current account state from Stripe into our columns. Pass a Stripe
   # Account (e.g. from an account.updated webhook) to avoid a re-fetch.
   def sync_account(stripe_account = nil)
