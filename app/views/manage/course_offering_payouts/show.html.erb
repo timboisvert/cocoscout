@@ -4,17 +4,32 @@
   registrations_count = @registrations.where(status: :confirmed).count
   refunded_count = @registrations.where(status: :refunded).count
 
-  if @payout.paid?
-    status_label = "Paid"
-    status_class = "bg-green-100 text-green-700"
-  elsif @payout.calculated?
-    status_label = "Awaiting Payment"
-    status_class = "bg-pink-100 text-pink-700"
+  rows = @payout_rows || []
+  ready_rows = rows.select { |r| r[:status] == :ready }
+  needs_bank_rows = rows.select { |r| r[:status] == :needs_bank }
+  in_run_rows = rows.select { |r| r[:status] == :in_run }
+  ready_total_cents = ready_rows.sum { |r| r[:amount_cents] }
+
+  if rows.any? && rows.all? { |r| r[:status] == :paid }
+    status_label, status_class = "Paid", "bg-green-100 text-green-700"
+  elsif in_run_rows.any?
+    status_label, status_class = "In payout run", "bg-pink-100 text-pink-700"
+  elsif ready_rows.any?
+    status_label, status_class = "Ready to pay", "bg-amber-100 text-amber-700"
   else
-    status_label = "Pending"
-    status_class = "bg-gray-100 text-gray-700"
+    status_label, status_class = "Not settled", "bg-gray-100 text-gray-700"
   end
 %>
+
+<%# One payout row: headshot/initials + name + kind, amount, and run-status badge. %>
+<% row_badge = ->(status) do
+     case status
+     when :paid then ['Paid', 'bg-green-100 text-green-700']
+     when :in_run then ['In payout run', 'bg-pink-100 text-pink-700']
+     when :needs_bank then ['Needs bank', 'bg-amber-100 text-amber-700']
+     else ['Ready', 'bg-gray-100 text-gray-600']
+     end
+   end %>
 
 <div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -132,125 +147,74 @@
             </div>
           <% else %>
             <p class="mt-4 text-sm text-gray-500">
-              Your organization keeps the net revenue. Use the Payments below to record anyone you pay out of it — like the instructor.
+              Your organization keeps the net revenue, after paying anyone below — like the instructor. Add everyone to a payout run to get them paid to their bank.
             </p>
           <% end %>
         </div>
       </div>
 
-      <!-- Payments -->
+      <!-- Payouts -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900">Payments</h2>
-          <% if @line_items.any? %>
-            <span class="text-sm text-gray-500">
-              <%= @payout.formatted_total_payout %> total
-            </span>
-          <% end %>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Payouts</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Everyone who gets paid from this course — added to a payout run and paid to their bank.</p>
+          </div>
         </div>
 
-        <% if @line_items.any? %>
+        <% if rows.any? %>
           <div class="divide-y divide-gray-100">
-            <% @line_items.each do |line_item| %>
-              <div class="px-6 py-4 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <% if line_item.payee.respond_to?(:safe_headshot_variant) %>
-                    <% headshot_variant = line_item.payee.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: line_item.payee_name, class: "w-10 h-10 rounded-lg object-cover" %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
-                        <%= line_item.payee.respond_to?(:initials) ? line_item.payee.initials : line_item.payee_name[0..1].upcase %>
-                      </div>
-                    <% end %>
+            <% rows.each do |row| %>
+              <% payee = row[:payee] %>
+              <% label, badge_class = row_badge.call(row[:status]) %>
+              <div class="px-6 py-4 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <% if row[:is_org] %>
+                    <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <%= icon("dollar-sign", class: "w-5 h-5 text-pink-600") %>
+                    </div>
+                  <% elsif payee.respond_to?(:safe_headshot_variant) && payee.safe_headshot_variant(:thumb) %>
+                    <%= image_tag payee.safe_headshot_variant(:thumb), alt: row[:name], class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
                   <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
-                      <%= line_item.payee_name[0..1].upcase %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                      <%= payee.respond_to?(:initials) ? payee.initials : row[:name].to_s[0..1].upcase %>
                     </div>
                   <% end %>
-                  <div>
-                    <div class="font-medium text-gray-900"><%= line_item.payee_name %></div>
-                    <div class="text-sm text-gray-500">
-                      <% if line_item.calculation_details["type"] == "contract_revenue_share" %>
-                        Contract · <%= line_item.calculation_details["share_percentage"].to_i %>% share
-                      <% elsif line_item.calculation_details["type"] == "contract_flat_fee" %>
-                        Contract · Revenue minus <%= number_to_currency(line_item.calculation_details["flat_fee_cents"].to_i / 100.0) %>
-                      <% elsif line_item.calculation_details["type"] == "instructor" %>
-                        Instructor<% unless line_item.paid? %> · Not yet in a payout run<% end %>
-                      <% else %>
-                        Manual payment
-                      <% end %>
-                    </div>
+                  <div class="min-w-0">
+                    <div class="font-medium text-gray-900 truncate"><%= row[:name] %></div>
+                    <div class="text-sm text-gray-500"><%= row[:kind] %></div>
                   </div>
                 </div>
-                <div class="flex items-center gap-3">
-                  <span class="text-lg font-semibold text-gray-900"><%= line_item.formatted_amount %></span>
-                  <% if line_item.paid? %>
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                      </svg>
-                      Paid
-                      <% if line_item.payment_method %>
-                        (<%= line_item.payment_method.titleize %>)
-                      <% end %>
-                    </span>
-                  <% elsif !@payout.paid? %>
-                    <div class="flex items-center gap-2">
-                      <%# Show Venmo pay button if contractor has Venmo configured %>
-                      <% if line_item.payee.is_a?(Contractor) && line_item.payee.venmo_configured? %>
-                        <% pay_amount = line_item.amount_cents / 100.0 %>
-                        <% pay_note = "#{@course_offering.title} — course payout" %>
-                        <a href="<%= line_item.payee.venmo_payment_link(pay_amount, pay_note) %>"
-                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-                           title="Open Venmo to pay <%= line_item.payee_name %>">
-                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19.5 3c.9 1.5 1.3 3 1.3 5 0 5.5-4.7 12.7-8.5 17H5.2L2.8 3.5l6.3-.6 1.3 10.5c1.2-2 2.7-5.2 2.7-7.4 0-1.8-.3-3-0.8-4L19.5 3z"/>
-                          </svg>
-                          Pay <%= number_to_currency(pay_amount) %>
-                        </a>
-                      <% end %>
-                      <%= form_with url: manage_course_offering_payout_mark_line_item_paid_path(@course_offering, line_item_id: line_item.id), method: :post, class: "inline-flex items-center gap-2" do |f| %>
-                        <% default_method = line_item.payee.is_a?(Contractor) && line_item.payee.venmo_configured? ? "venmo" : nil %>
-                        <%= f.select :payment_method,
-                          CourseOfferingPayout::PAYMENT_METHODS.map { |m| [m.titleize, m] },
-                          { selected: default_method },
-                          class: "text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
-                        <%= render "shared/button", text: "Mark Paid", variant: "secondary", size: "small", type: :submit %>
-                      <% end %>
-                      <% unless line_item.calculation_details["type"]&.start_with?("contract_") %>
-                        <%= form_with url: manage_course_offering_payout_remove_line_item_path(@course_offering, line_item_id: line_item.id), method: :delete, class: "inline" do %>
-                          <button type="submit" class="text-gray-400 hover:text-red-500 p-1" title="Remove">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                          </button>
-                        <% end %>
-                      <% end %>
-                    </div>
-                  <% end %>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  <span class="text-lg font-semibold text-gray-900"><%= number_to_currency(row[:amount_cents] / 100.0) %></span>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= badge_class %>"><%= label %></span>
                 </div>
               </div>
             <% end %>
           </div>
         <% else %>
           <div class="px-6 py-8 text-center text-gray-500 text-sm">
-            No payments yet. Add anyone you're paying out of this course — like the instructor.
+            Nothing to pay out yet.
           </div>
         <% end %>
 
-        <%# Pay instructors — a guided modal instead of a free-text name box. %>
-        <% unless @payout.paid? %>
-          <% if @instructors.any? %>
-            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <button type="button"
-                data-action="click->modal#open" data-modal-id="pay-instructors-modal"
-                class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700">
-                <%= icon("plus-circle", class: "w-5 h-5") %>
-                <%= @line_items.any? { |li| li.calculation_details["type"] == "instructor" } ? "Edit instructor payments" : "Pay instructors" %>
-              </button>
-            </div>
-          <% end %>
+        <% if needs_bank_rows.any? %>
+          <div class="px-6 py-3 border-t border-gray-100 bg-amber-50 text-sm text-amber-800 flex items-start gap-2">
+            <%= icon("exclamation-circle", class: "w-4 h-4 flex-shrink-0 mt-0.5") %>
+            <span><%= pluralize(needs_bank_rows.size, "payee") %> can't be paid until they connect a bank. They stay owed — add them to a later run once they're ready.</span>
+          </div>
+        <% end %>
+
+        <%# Set what each instructor is paid, before adding to the run. %>
+        <% if @instructors.any? %>
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <button type="button"
+              data-action="click->modal#open" data-modal-id="pay-instructors-modal"
+              class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700">
+              <%= icon("plus-circle", class: "w-5 h-5") %>
+              <%= @line_items.any? { |li| li.calculation_details["type"] == "instructor" } ? "Edit instructor payments" : "Pay instructors" %>
+            </button>
+          </div>
         <% end %>
       </div>
     </div>
@@ -269,28 +233,25 @@
             <% end %>
           <% end %>
 
-          <% if !@payout.paid? %>
-            <% if @payout.calculated? && @line_items.any? %>
-              <%= form_with url: manage_course_offering_payout_mark_all_paid_path(@course_offering), method: :post, class: "space-y-2" do |f| %>
-                <%= f.select :payment_method,
-                  CourseOfferingPayout::PAYMENT_METHODS.map { |m| [m.titleize, m] },
-                  {},
-                  class: "w-full text-sm border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500" %>
-                <%= render "shared/button", text: "Mark All Paid", variant: "primary", size: "medium", type: :submit %>
-              <% end %>
+          <% if ready_rows.any? %>
+            <%= form_with url: manage_course_offering_payout_add_to_run_path(@course_offering), method: :post do %>
+              <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "medium", type: :submit %>
             <% end %>
-          <% else %>
-            <div class="text-center py-2">
-              <span class="inline-flex items-center gap-1.5 text-green-600 font-medium">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-                All Paid
+            <p class="text-xs text-gray-500 text-center">
+              <%= pluralize(ready_rows.size, "payout") %> · <%= number_to_currency(ready_total_cents / 100.0) %> ready
+            </p>
+          <% elsif in_run_rows.any? %>
+            <div class="text-center py-1">
+              <span class="inline-flex items-center gap-1.5 text-pink-600 font-medium text-sm">
+                <%= icon("check-circle", class: "w-5 h-5") %>
+                In the payout run
               </span>
-              <% if @payout.paid_at %>
-                <p class="text-xs text-gray-500 mt-1">Paid on <%= @payout.paid_at.strftime("%b %-d, %Y") %></p>
-              <% end %>
+              <p class="text-xs text-gray-500 mt-1">These will be paid when the course payout run is processed.</p>
             </div>
+          <% elsif needs_bank_rows.any? %>
+            <p class="text-sm text-gray-500 text-center py-1">Waiting on payees to connect a bank before they can be added to a run.</p>
+          <% else %>
+            <p class="text-sm text-gray-500 text-center py-1">Nothing to pay out yet.</p>
           <% end %>
         </div>
       </div>
@@ -326,7 +287,7 @@
         <div class="p-4 space-y-2 text-sm text-gray-600">
           <div class="flex justify-between">
             <span>Payout Type</span>
-            <span class="font-medium text-gray-900"><%= @has_contract ? "Contract-based" : "Manual" %></span>
+            <span class="font-medium text-gray-900"><%= @has_contract ? "Contract-based" : "Standard" %></span>
           </div>
           <div class="flex justify-between">
             <span>Last Calculated</span>

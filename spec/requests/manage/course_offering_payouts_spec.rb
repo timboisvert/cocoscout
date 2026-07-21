@@ -13,6 +13,35 @@ RSpec.describe "Manage::CourseOfferingPayouts", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  def make_payable(record)
+    record.update!(stripe_account_id: "acct_#{record.class.name.downcase}_#{record.id}", payouts_enabled: true)
+    record
+  end
+
+  it "renders the run-based payouts page without any mark-paid/venmo cruft" do
+    make_payable(org)
+    get manage_course_offering_payout_path(offering)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Payouts")
+    expect(response.body).to include("Add to payout run")
+    expect(response.body).not_to include("Mark Paid")
+    expect(response.body).not_to include("Venmo")
+  end
+
+  it "adds the org's remainder to a course payout run" do
+    make_payable(org)
+    get manage_course_offering_payout_path(offering) # sets up the payout, as the UI does
+
+    expect {
+      post manage_course_offering_payout_add_to_run_path(offering)
+    }.to change { PayoutBatch.of_kind("course").count }.by(1)
+
+    run = PayoutBatch.of_kind("course").last
+    expect(run.items.find_by(payee: org)).to be_present
+    expect(response).to redirect_to(manage_course_offering_payout_path(offering))
+  end
+
   it "sets up the payout on first visit instead of bouncing with an error" do
     expect(offering.course_offering_payout).to be_nil
 

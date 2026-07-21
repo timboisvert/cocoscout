@@ -29,9 +29,28 @@ module Manage
       @instructors = @course_offering.instructor_people.to_a
       @instructors = [ @course_offering.instructor_person ].compact if @instructors.empty?
 
-      # Load contractor for payment UX
-      if @has_contract
-        @contractor = @contract.contractor
+      # Everyone who gets paid out of this course — the instructor/contract line
+      # items plus the organization's own remainder — each with its run status.
+      @org_keeps_cents = @payout.net_revenue_cents.to_i - @payout.total_payout_cents.to_i
+      @payout_rows = build_payout_rows
+      @course_run = current_course_run
+    end
+
+    # Add this course's payouts (instructors + the org's remainder) to the org's
+    # open course payout run. Payees who haven't connected a bank are left owed
+    # and can be added to a later run once they're ready.
+    def add_to_run
+      result = CoursePayoutRunService.add_to_run!(@payout, added_by: Current.user)
+
+      if result.added.positive?
+        notice = "Added #{result.added} #{'payout'.pluralize(result.added)} to the course payout run."
+        if result.skipped.positive?
+          notice += " #{result.skipped} still can't be paid until a bank is connected."
+        end
+        redirect_to manage_course_offering_payout_path(@course_offering), notice: notice
+      else
+        redirect_to manage_course_offering_payout_path(@course_offering),
+          alert: "Nothing could be added yet — payees need to connect a bank before they can be paid."
       end
     end
 
@@ -173,41 +192,6 @@ module Manage
         notice: "Revenue override updated and payout recalculated."
     end
 
-    def mark_line_item_paid
-      line_item = @payout.line_items.find(params[:line_item_id])
-      line_item.mark_paid!(
-        user: Current.user,
-        method: params[:payment_method],
-        notes: params[:payment_notes]
-      )
-
-      if @payout.all_line_items_paid?
-        @payout.mark_paid!
-        sync_contract_payment_from_payout
-      end
-
-      redirect_to manage_course_offering_payout_path(@course_offering),
-        notice: "#{line_item.payee_name} marked as paid."
-    end
-
-    def mark_all_paid
-      method = params[:payment_method] || "other"
-
-      @payout.line_items.unpaid.each do |line_item|
-        line_item.mark_paid!(
-          user: Current.user,
-          method: method,
-          notes: params[:payment_notes]
-        )
-      end
-
-      @payout.mark_paid!
-      sync_contract_payment_from_payout
-
-      redirect_to manage_course_offering_payout_path(@course_offering),
-        notice: "All line items marked as paid."
-    end
-
     private
 
     def load_course_offering
@@ -237,26 +221,52 @@ module Manage
       end
     end
 
-    # When a course offering payout is marked paid, sync the corresponding
-    # contract payment so it also shows as paid on the contract page.
-    def sync_contract_payment_from_payout
-      contract = @course_offering.contract
-      return unless contract
-
-      total_payout_amount = @payout.total_payout_cents.to_i / 100.0
-      paid_method = @payout.line_items.last&.payment_method
-
-      # Find pending outgoing contract payments (revenue share payouts are outgoing)
-      contract.contract_payments.where(status: "pending").find_each do |payment|
-        payment.update!(
-          status: :paid,
-          paid_date: Date.current,
-          amount: total_payout_amount,
-          amount_tbd: false,
-          payment_method: paid_method,
-          notes: "Auto-synced from course offering payout ##{@payout.id}"
-        )
+    # Everyone paid out of this course: instructor/contract line items, plus the
+    # organization's own remainder. Each row carries its status in the course
+    # payout run.
+    def build_payout_rows
+      rows = @line_items.map do |li|
+        { payee: li.payee, name: li.payee_name, amount_cents: li.amount_cents.to_i,
+          kind: line_item_kind(li), source: li, status: run_status(li, li.payee) }
       end
+
+      if @org_keeps_cents.positive?
+        org = Current.organization
+        rows << { payee: org, name: org.name, amount_cents: @org_keeps_cents,
+                  kind: "Your organization's share", source: @payout, is_org: true,
+                  status: run_status(@payout, org) }
+      end
+
+      rows
+    end
+
+    def line_item_kind(line_item)
+      case line_item.calculation_details["type"]
+      when "contract_revenue_share" then "Contract · #{line_item.calculation_details['share_percentage'].to_i}% share"
+      when "contract_flat_fee" then "Contract"
+      when "instructor" then "Instructor"
+      else "Payment"
+      end
+    end
+
+    # A payee's status in the course payout run: already paid, waiting in the run,
+    # ready to add, or blocked because they haven't connected a bank.
+    def run_status(source, payee)
+      contribution = PayoutContribution.find_by(source: source)
+      if contribution
+        return :paid if contribution.payout_batch_item&.paid?
+
+        return :in_run
+      end
+
+      return :needs_bank unless payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+
+      :ready
+    end
+
+    def current_course_run
+      PayoutBatch.of_kind("course").open_runs
+        .where(organization: Current.organization).order(:created_at).first
     end
   end
 end

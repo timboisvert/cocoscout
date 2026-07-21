@@ -1490,9 +1490,8 @@ Rails.application.routes.draw do
     patch "courses/:course_offering_id/payout/revenue_override", to: "course_offering_payouts#update_revenue_override", as: "course_offering_payout_revenue_override"
     post "courses/:course_offering_id/payout/line_items",       to: "course_offering_payouts#add_line_item",           as: "course_offering_payout_add_line_item"
     post "courses/:course_offering_id/payout/pay_instructors",  to: "course_offering_payouts#pay_instructors",         as: "course_offering_payout_pay_instructors"
+    post "courses/:course_offering_id/payout/add_to_run",       to: "course_offering_payouts#add_to_run",              as: "course_offering_payout_add_to_run"
     delete "courses/:course_offering_id/payout/line_items/:line_item_id", to: "course_offering_payouts#remove_line_item", as: "course_offering_payout_remove_line_item"
-    post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
-    post "courses/:course_offering_id/payout/mark_all_paid",    to: "course_offering_payouts#mark_all_paid",           as: "course_offering_payout_mark_all_paid"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
     # resources :email_groups, only: %i[create update destroy] (moved to communications)
