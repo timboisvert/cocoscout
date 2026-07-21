@@ -2,6 +2,9 @@
 
 class Organization < ApplicationRecord
   include PayoutScheduling
+  # Payee-side Stripe Connect state, so an org can receive its own money (leftover
+  # course revenue CocoScout holds) to its bank — same rail as Person/Contractor.
+  include StripeConnectable
 
   belongs_to :owner, class_name: "User"
   belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true
@@ -128,6 +131,11 @@ class Organization < ApplicationRecord
   # Check if a user is the owner
   def owned_by?(user)
     owner_id == user&.id
+  end
+
+  # Contact email for Stripe Connect onboarding prefill (the owner's login email).
+  def email
+    owner&.email_address
   end
 
   # Get the user's role in this organization

@@ -22,25 +22,50 @@ class StripeConnectService
   def ensure_account
     return @payee if @payee.stripe_account_id.present?
 
-    account = Stripe::Account.create({
-      type: "express",
-      email: @payee.email.presence,
-      business_type: "individual",
-      # These payees are individuals (performers, staff) paid small amounts, not
-      # businesses. Describing the work up front means Stripe doesn't ask them
-      # for a business website — onboarding is just their legal name + bank.
-      business_profile: {
-        mcc: "7929",
-        product_description: "Payments for performing and event/staffing work booked through CocoScout."
-      },
-      individual: individual_prefill,
-      capabilities: { transfers: { requested: true } },
-      metadata: { payee_type: @payee.class.name, payee_id: @payee.id }
-    }.compact)
+    account = Stripe::Account.create(account_params)
     @payee.update!(stripe_account_id: account.id, stripe_account_status: "pending", stripe_account_synced_at: Time.current)
     @payee
   rescue Stripe::StripeError => e
     raise Error, e.message
+  end
+
+  # An Organization is a business receiving its own revenue; Person/Contractor are
+  # individuals paid for work. Only the business_type/profile differ.
+  def account_params
+    if org_payee?
+      {
+        type: "express",
+        email: @payee.email.presence,
+        business_type: "company",
+        business_profile: {
+          mcc: "7929",
+          product_description: "Revenue from events, classes, and productions run through CocoScout."
+        },
+        company: { name: @payee.try(:name).presence }.compact,
+        capabilities: { transfers: { requested: true } },
+        metadata: { payee_type: @payee.class.name, payee_id: @payee.id }
+      }.compact
+    else
+      {
+        type: "express",
+        email: @payee.email.presence,
+        business_type: "individual",
+        # These payees are individuals (performers, staff) paid small amounts, not
+        # businesses. Describing the work up front means Stripe doesn't ask them
+        # for a business website — onboarding is just their legal name + bank.
+        business_profile: {
+          mcc: "7929",
+          product_description: "Payments for performing and event/staffing work booked through CocoScout."
+        },
+        individual: individual_prefill,
+        capabilities: { transfers: { requested: true } },
+        metadata: { payee_type: @payee.class.name, payee_id: @payee.id }
+      }.compact
+    end
+  end
+
+  def org_payee?
+    @payee.is_a?(Organization)
   end
 
   # Prefill the individual's legal name (and email) so they don't retype it.
@@ -85,10 +110,12 @@ class StripeConnectService
     raise Error, e.message
   end
 
-  # Find the payee behind a Connect account id (for webhooks). Checks people then
-  # contractors.
+  # Find the payee behind a Connect account id (for webhooks). Checks people,
+  # contractors, then organizations.
   def self.payee_for_account(account_id)
-    Person.find_by(stripe_account_id: account_id) || Contractor.find_by(stripe_account_id: account_id)
+    Person.find_by(stripe_account_id: account_id) ||
+      Contractor.find_by(stripe_account_id: account_id) ||
+      Organization.find_by(stripe_account_id: account_id)
   end
 
   private

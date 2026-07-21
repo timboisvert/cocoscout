@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_18_020644) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1312,8 +1312,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_18_020644) do
     t.string "payout_funding_method", default: "ach", null: false
     t.string "payout_schedule", default: "manual", null: false
     t.integer "payout_schedule_day"
+    t.boolean "payouts_enabled", default: false, null: false
     t.string "preferred_payment_method"
     t.string "staffing_subscription_id"
+    t.string "stripe_account_id"
+    t.string "stripe_account_status"
+    t.datetime "stripe_account_synced_at"
     t.string "stripe_customer_id"
     t.string "stripe_subscription_id"
     t.datetime "subscription_canceled_at"
@@ -1329,6 +1333,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_18_020644) do
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
     t.index ["staffing_subscription_id"], name: "index_organizations_on_staffing_subscription_id"
+    t.index ["stripe_account_id"], name: "index_organizations_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
     t.index ["stripe_customer_id"], name: "index_organizations_on_stripe_customer_id"
     t.index ["stripe_subscription_id"], name: "index_organizations_on_stripe_subscription_id"
     t.index ["talent_pool_mode"], name: "index_organizations_on_talent_pool_mode"
