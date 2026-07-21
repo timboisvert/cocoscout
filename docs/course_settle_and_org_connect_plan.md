@@ -57,8 +57,44 @@ This is a distinct `PayoutBatch` kind that skips `fund!` entirely.
 - `OrgPayout` becomes the record of the org transfer; reconcile the superadmin
   finances view (`owed_cents_for_course` → net − instructor payments = remitted).
 
+## Settlement math (done)
+`CoursePayoutSettlement` is the single source of truth for who gets paid what,
+used by both the payout page and `CoursePayoutRunService`:
+- **Contract course:** contractor gets their contractual share of net; instructor
+  pay comes out of the CONTRACTOR's half; org keeps net − contractor_share.
+- **No contract:** org keeps net − instructor pay (paying $0 = org keeps all).
+
+## Traceability — what exists vs. gaps
+The connective data mostly already exists; the course is the hub for both sides.
+- **Money in:** `course_registrations` store `stripe_payment_intent_id`,
+  `amount_cents`, `cocoscout_fee_cents`, `stripe_fee_cents`, `refunded_at`. So
+  payments + both fees are already linked to the course.
+- **Money out:** `course_offering_payout` → line items → `PayoutContribution`
+  (polymorphic `source`, unique) → `PayoutBatchItem.stripe_transfer_id`. So a
+  payout traces back to the course and (once executed) to the Stripe transfer.
+- **Gaps to close for true end-to-end tracing:**
+  1. No `stripe_refund_id` on `course_registrations` — we know a reg was refunded
+     and when, but can't click through to the Stripe refund. Add the column +
+     capture it on refund.
+  2. Stamp `metadata: { course_offering_id, payout_id }` on Stripe charges and
+     payout transfers so the Stripe dashboard mirrors CocoScout's linkage.
+  3. Optional: a settled payout should snapshot exactly which registrations'
+     revenue it covered (matters once multiple runs settle a course over time).
+  4. A per-course "Money" view/presenter that assembles payments, refunds, fees,
+     and payouts into one traceable statement (data exists; it's a reader). This
+     is the course-scoped precursor to the deferred double-entry books.
+
+## Execution (next) — fold traceability in
+- `CoursePayoutRunExecutor`: for a `course` batch, transfer each item from the
+  platform balance to the payee's Connect account, stamping course/payout
+  metadata; store `stripe_transfer_id`; `mark_paid!` per item. No `fund!`.
+- A **course-run page** in the Courses section (non-Pro) to view/trigger/track
+  the run — the existing run pages live under `money/` (Pro-gated), so course
+  runs need their own view.
+- Add `stripe_refund_id` + charge/transfer metadata as part of this pass.
+
 ## Risks
 - Org onboarding KYC (company vs individual) differs from performers.
 - History/idempotency: mirror `PayoutContribution` source-uniqueness patterns.
-- Platform-balance transfers must not exceed available held funds — trace to the
-  registration charges via `source_transaction` where possible.
+- Platform-balance transfers must not exceed available held funds.
+- Money movement: build + verify against the Stripe sandbox before enabling.
