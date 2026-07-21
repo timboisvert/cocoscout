@@ -904,11 +904,14 @@
               </div>
             <% else %>
               <%
-                run_eligible = (@line_items || []).select do |li|
+                run_candidates = (@line_items || []).select do |li|
                   !li.paid? && !li.in_payout_run? && li.payee.present? &&
                     li.payee.respond_to?(:can_receive_payouts?) && li.amount.to_f > 0
                 end
-                run_eligible_total = run_eligible.sum(&:net_amount)
+                # Only bank-connected people actually get added to the run.
+                run_ready = run_candidates.select { |li| li.payee.can_receive_payouts? }
+                run_needs_bank = run_candidates.reject { |li| li.payee.can_receive_payouts? }
+                run_ready_total = run_ready.sum(&:net_amount)
               %>
               <div data-controller="modal">
                 <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small", type: :button,
@@ -928,34 +931,37 @@
                       </div>
                       <div class="px-6 py-4">
                         <p class="text-sm text-gray-600 mb-4">These performers get added to your open performer payout run. You stay here — pay everyone at once whenever you're ready from Payout Runs.</p>
-                        <% if run_eligible.any? %>
-                          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-4">
-                            <% run_eligible.each do |li| %>
+                        <% if run_ready.any? %>
+                          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-3">
+                            <% run_ready.each do |li| %>
                               <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                                 <span class="flex items-center gap-2 min-w-0">
                                   <span class="text-gray-900 truncate"><%= li.payee_name %></span>
-                                  <% if li.payee.can_receive_payouts? %>
-                                    <span class="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 flex-shrink-0">Bank ready</span>
-                                  <% else %>
-                                    <span class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 flex-shrink-0">Needs bank</span>
-                                  <% end %>
+                                  <span class="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 flex-shrink-0">Bank ready</span>
                                 </span>
                                 <span class="font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(li.net_amount) %></span>
                               </div>
                             <% end %>
                           </div>
-                          <div class="flex items-center justify-between text-sm font-semibold">
+                          <div class="flex items-center justify-between text-sm font-semibold mb-4">
                             <span class="text-gray-700">Total to add</span>
-                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(run_eligible_total) %></span>
+                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(run_ready_total) %></span>
                           </div>
-                          <p class="text-xs text-gray-500 mt-2">"Needs bank" performers are added too — they'll be paid once they connect a bank.</p>
                         <% else %>
-                          <p class="text-sm text-gray-500">Everyone here is already in a run or paid.</p>
+                          <p class="text-sm text-gray-500 mb-4">No one here is ready to be added yet.</p>
+                        <% end %>
+
+                        <% if run_needs_bank.any? %>
+                          <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                            <p class="text-xs font-medium text-amber-800"><%= pluralize(run_needs_bank.size, "person") %> can't be added yet — no bank connected:</p>
+                            <p class="text-xs text-amber-700 mt-0.5"><%= run_needs_bank.map(&:payee_name).join(", ") %></p>
+                            <p class="text-xs text-amber-700 mt-1">They stay owed and show as still-to-pay until they connect a bank.</p>
+                          </div>
                         <% end %>
                       </div>
                       <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
                         <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-                        <% if run_eligible.any? %>
+                        <% if run_ready.any? %>
                           <%= button_to manage_add_to_run_money_show_payout_path(@show), method: :post, class: "inline-block" do %>
                             <%= render "shared/button", text: "Add to run", variant: "primary", size: "small", type: :submit %>
                           <% end %>

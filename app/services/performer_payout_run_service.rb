@@ -56,10 +56,12 @@ class PerformerPayoutRunService
       )
     end
 
-    # Individuals who carry a Stripe payout account (Person / Contractor). Guests
-    # (no payee) and groups are handled offline for now.
+    # Only add people we can actually pay — someone who hasn't connected a bank
+    # stays owed (unpayable) rather than sitting in a run that can't pay them.
+    # Guests (no payee) and groups are handled offline for now.
     def payable?(line)
-      line.payee.present? && line.payee.respond_to?(:can_receive_payouts?)
+      line.payee.present? && line.payee.respond_to?(:can_receive_payouts?) &&
+        line.payee.can_receive_payouts?
     end
 
     def label_for(show)
