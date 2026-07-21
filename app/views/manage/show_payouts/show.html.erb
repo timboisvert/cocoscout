@@ -875,33 +875,48 @@
       <% if show_payout_breakdown %>
       <!-- Payout Breakdown -->
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-gray-900">Payout Breakdown</h3>
-          <% if @show_payout.total_payout %>
-            <%
-              paid_amount = (@line_items || []).select(&:paid?).sum(&:net_amount)
-              remaining_amount = (@line_items || []).reject(&:paid?).sum(&:net_amount)
-            %>
-            <div class="text-right">
-              <span class="text-lg font-semibold <%= remaining_amount > 0 ? 'text-pink-600' : 'text-green-600' %>">
-                <%= number_to_currency(remaining_amount) %> <%= remaining_amount > 0 ? "to pay" : "fully paid" %>
-              </span>
-              <div class="text-xs text-gray-400">
-                <%= number_to_currency(@show_payout.total_net_payout) %> total<% if paid_amount > 0 %> · <%= number_to_currency(paid_amount) %> paid<% end %>
+        <h3 class="font-semibold text-gray-900 mb-3">Payout Breakdown</h3>
+        <% if @show_payout.total_payout %>
+          <%
+            items = @line_items || []
+            paid_amount = items.select(&:paid?).sum(&:net_amount)
+            remaining_amount = items.reject(&:paid?).sum(&:net_amount)
+            # Who's left, and why: awaiting the run to pay them, ready to add, or
+            # not payable until they connect a bank.
+            in_run_count = items.count { |li| !li.paid? && li.in_payout_run? }
+            ready_count = items.count { |li| !li.paid? && !li.in_payout_run? && li.auto_payout? }
+            needs_bank_count = items.count { |li| !li.paid? && !li.auto_payout? && !li.is_guest? }
+          %>
+          <div class="flex items-end justify-between gap-4 flex-wrap mb-4">
+            <div>
+              <div class="text-2xl font-bold <%= remaining_amount > 0 ? 'text-gray-900' : 'text-green-600' %>">
+                <%= remaining_amount > 0 ? "#{number_to_currency(remaining_amount)} to pay" : "Fully paid" %>
+              </div>
+              <div class="text-sm text-gray-500">
+                of <%= number_to_currency(@show_payout.total_net_payout) %> total<% if paid_amount > 0 %> · <%= number_to_currency(paid_amount) %> paid<% end %>
               </div>
             </div>
-          <% end %>
-        </div>
+            <% if in_run_count + ready_count + needs_bank_count > 0 %>
+              <div class="text-sm text-gray-600 flex items-center gap-x-4 gap-y-1 flex-wrap">
+                <% if in_run_count > 0 %><span><span class="font-semibold text-gray-900"><%= in_run_count %></span> awaiting payout</span><% end %>
+                <% if ready_count > 0 %><span><span class="font-semibold text-gray-900"><%= ready_count %></span> ready to add</span><% end %>
+                <% if needs_bank_count > 0 %><span><span class="font-semibold text-amber-600"><%= needs_bank_count %></span> need a bank</span><% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
         <%# Add these performer payouts to the open performer payout run. %>
         <% if @show_payout.total_payout && has_line_items && !@show_payout.paid? %>
           <div class="mb-4">
             <% if @show_payout.in_payout_run? %>
-              <div class="inline-flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+              <% run = @show_payout.payout_run %>
+              <%= link_to (run ? manage_payout_batch_path(run) : manage_payout_batches_path),
+                    class: "inline-flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm font-medium text-green-800 hover:bg-green-100 transition-colors" do %>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                Added to the performer payout run.
-                <%= link_to "View runs", manage_payout_batches_path, class: "underline hover:text-green-900" %>
-              </div>
+                <span>In the performer payout run</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <% end %>
             <% else %>
               <%
                 run_candidates = (@line_items || []).select do |li|
@@ -998,42 +1013,6 @@
         <% end %>
 
         <% if has_line_items %>
-          <%
-            unpaid_count = line_items.count { |li| !li.paid? }
-            paid_count = line_items.count { |li| li.paid? }
-            payment_ready_count = line_items.count { |li| li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
-            needs_setup_count = line_items.count { |li| !li.payee_has_payment_method? && !li.paid? && !li.auto_payout? }
-            pending_payout_count = line_items.count { |li| li.payout_pending? }
-          %>
-
-          <!-- Payment Summary Bar -->
-          <% if is_calculated && unpaid_count > 0 %>
-            <%
-              # Get unpaid items for the manual pay walkthrough. Auto-pay
-              # (bank-connected) performers are excluded — they're paid by the
-              # standard payout run, not hand-paid here.
-              unpaid_items = line_items.reject { |li| li.paid? || li.auto_payout? }
-              unpaid_total = unpaid_items.sum(&:net_amount)
-            %>
-            <div class="bg-gray-50 rounded-lg p-4 mb-4">
-              <div class="flex items-center justify-between flex-wrap gap-3">
-                <div class="flex items-center gap-4 text-sm">
-                  <span class="text-gray-600">
-                    <span class="font-semibold text-pink-600"><%= paid_count %></span> paid
-                  </span>
-                  <span class="text-gray-600">
-                    <span class="font-semibold text-pink-600"><%= unpaid_count %></span> awaiting payout
-                  </span>
-                  <% if needs_setup_count > 0 %>
-                    <span class="text-gray-600">
-                      <span class="font-semibold text-pink-600"><%= needs_setup_count %></span> need payment setup
-                    </span>
-                  <% end %>
-                </div>
-              </div>
-            </div>
-          <% end %>
-
           <div class="overflow-x-auto -mx-5 px-5 md:mx-0 md:px-0">
             <%
               # Group line items by payee to consolidate multiple cuts (performer payout + individual allocation)
@@ -1253,17 +1232,15 @@
                             <div class="text-xs text-gray-400 mt-0.5">add to a payout run</div>
                           </div>
                         <% else %>
-                          <%# For grouped items, pass comma-separated IDs %>
-                          <%= render "shared/button",
-                              text: "Mark as paid",
-                              variant: "secondary",
-                              size: "small",
-                              type: :button,
-                              data: {
-                                action: "click->payment-actions#showMarkPaidModal",
-                                item_id: items.map(&:id).join(","),
-                                item_name: item.payee_name
-                              } %>
+                          <%# No connected bank — they can't be paid through a run yet.
+                              We don't offer "mark as paid" here: that's a remnant of
+                              the old manual flow, and we shouldn't pretend to pay
+                              someone we can't. They stay owed until they set up how
+                              they get paid. %>
+                          <div class="text-right" title="This person hasn't set up how they get paid, so they can't be paid yet. They'll be paid on a payout run once they connect a bank.">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Needs payment setup</span>
+                            <div class="text-xs text-gray-400 mt-0.5">not payable yet</div>
+                          </div>
                         <% end %>
                       </td>
                     <% end %>

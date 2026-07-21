@@ -118,6 +118,15 @@ class ShowPayout < ApplicationRecord
     PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: line_items.select(:id)).exists?
   end
 
+  # The specific (performer) payout run this show's payouts were added to, if any,
+  # so we can link straight to it instead of the full list of runs.
+  def payout_run
+    PayoutContribution
+      .where(source_type: "ShowPayoutLineItem", source_id: line_items.select(:id))
+      .order(created_at: :desc)
+      .first&.payout_batch
+  end
+
   # Post/refresh each performer line item's `earning` entry on the payout ledger.
   # Idempotent (keyed per line item); called after a payout is calculated and by
   # the ledger backfill. Paid line items also carry an offsetting `payout` entry.
