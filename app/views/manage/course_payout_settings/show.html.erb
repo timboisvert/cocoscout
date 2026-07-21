@@ -59,9 +59,9 @@
             </div>
           </div>
           <div class="mt-4">
-            <%= form_with url: manage_course_payout_settings_connect_path, method: :post do %>
-              <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small", type: :submit %>
-            <% end %>
+            <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
+            <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small",
+              path: manage_course_payout_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
           </div>
         <% else %>
           <p class="text-sm text-gray-600 mb-4">
@@ -72,11 +72,11 @@
               securely; CocoScout never sees or stores your bank credentials.
             <% end %>
           </p>
-          <%= form_with url: manage_course_payout_settings_connect_path, method: :post do %>
-            <%= render "shared/button",
-              text: started ? "Finish connecting your bank" : "Connect your bank",
-              variant: "primary", size: "medium", type: :submit %>
-          <% end %>
+          <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
+          <%= render "shared/button",
+            text: started ? "Finish connecting your bank" : "Connect your bank",
+            variant: "primary", size: "medium",
+            path: manage_course_payout_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
         <% end %>
       </div>
     </div>
