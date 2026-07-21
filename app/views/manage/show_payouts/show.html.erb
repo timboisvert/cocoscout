@@ -911,9 +911,8 @@
                 run_eligible_total = run_eligible.sum(&:net_amount)
               %>
               <div data-controller="modal">
-                <button type="button" data-action="click->modal#open" data-modal-id="add-to-run-modal" class="inline-block cursor-pointer">
-                  <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small" %>
-                </button>
+                <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small", type: :button,
+                      data: { action: "click->modal#open", "modal-id": "add-to-run-modal" } %>
                 <p class="text-xs text-gray-500 mt-1">Review who gets added, then pay everyone at once from your payout run — no need to leave this page.</p>
 
                 <%# Preview / confirm modal (the "add to cart" step, before the run). %>
