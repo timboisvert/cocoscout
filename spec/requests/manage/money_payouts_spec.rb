@@ -20,12 +20,12 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
   end
 
-  it "counts only the remaining unpaid line items as awaiting on the production page" do
+  it "lists the show under Awaiting Payout with the remaining amount, not the full total" do
     get manage_money_production_payouts_path(production)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("$80.00")      # remaining, not the full $150
-    expect(response.body).to match(/2\s*people/)     # 2 still to pay
-    expect(response.body).to match(/1\s*people/)     # 1 already paid
+    expect(response.body).to include("Awaiting Payout").and include("All Shows")
+    expect(response.body).to include("$80.00")     # remaining unpaid, not the full $150
+    expect(response.body).to include("1 of 3 paid")
   end
 
   it "shows an Awaiting Payout section and an All Productions accordion on the org page" do

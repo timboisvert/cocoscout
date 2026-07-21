@@ -1,0 +1,27 @@
+<%#
+  Slim show rows for the per-production payouts page — Awaiting / Paid columns,
+  linking to each show's payout worksheet. Handles shows whose payout hasn't been
+  calculated yet ("Needs calculation").
+
+  Locals: shows
+%>
+<% shows.each do |show| %>
+  <%
+    payout = show.show_payout
+    title = "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}"
+    if payout&.calculated_at
+      items = payout.line_items.to_a
+      awaiting = items.reject(&:paid?).sum(&:net_amount)
+      paid = items.select(&:paid?).sum(&:net_amount)
+      subtitle = "#{items.count(&:paid?)} of #{items.count} paid"
+      cells = [
+        { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600" : "text-gray-400" },
+        { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" }
+      ]
+    else
+      subtitle = "Needs calculation"
+      cells = [ { value: "—", class: "text-gray-400" }, { value: "—", class: "text-gray-400" } ]
+    end
+  %>
+  <%= render "shared/slim_list_row", title: title, subtitle: subtitle, href: manage_money_show_payout_path(show), cells: cells %>
+<% end %>

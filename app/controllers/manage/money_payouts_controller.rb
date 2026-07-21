@@ -172,6 +172,19 @@ module Manage
       @paid_shows_count = @production.show_payouts.paid.count
 
       @missing_payment_info = people_missing_payment_info
+
+      # Prioritised lists (address-first), replacing the status filter:
+      #   1. still needs calculating, 2. calculated but someone's unpaid, 3. all.
+      revenue_types = EventTypes.revenue_event_types
+      all_revenue_shows = @production.shows.where(event_type: revenue_types)
+                                     .where("date_and_time <= ?", 1.day.from_now)
+                                     .includes(:show_financials, :show_payout, show_payout: :line_items)
+                                     .order(date_and_time: :desc).to_a
+      @awaiting_calculation_shows = all_revenue_shows.select { |s| s.show_payout.nil? || s.show_payout.calculated_at.nil? }
+      @awaiting_payout_shows = all_revenue_shows.select do |s|
+        s.show_payout&.calculated_at && s.show_payout.line_items.any? { |li| !li.paid? }
+      end
+      @all_payout_shows = all_revenue_shows
     end
 
     def load_all_productions

@@ -1,12 +1,6 @@
 <% content_for :title, @production ? "#{@production.name} Payouts" : "Payouts" %>
 
 <%
-  payouts_description = <<~HTML
-    <p>
-      Manage cast and crew payments. Calculate payouts from show revenue, track what's owed, and process payments.
-    </p>
-  HTML
-
   payouts_actions = [
     { icon: "dollar-sign", text: "Payout Runs", description: "Pay connected banks at once", path: manage_payout_batches_path },
     { icon: "banknotes", text: "Advances", description: "Pre-show payments", path: manage_money_advances_path },
@@ -29,24 +23,6 @@
       ]
     } %>
 
-    <%# Payout Stats Cards %>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Awaiting Calculation</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= @needs_calculation_count %> shows</div>
-        <div class="text-xs text-gray-500">need financial data or calculation</div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_awaiting_payout) %></div>
-        <div class="text-xs text-gray-500"><%= @awaiting_payout_count %> shows · <%= @awaiting_payout_people_count %> people</div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Paid Out</div>
-        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@total_paid) %></div>
-        <div class="text-xs text-gray-500"><%= @paid_shows_count %> shows · <%= @paid_people_count %> people</div>
-      </div>
-    </div>
 
     <%# Payment Setup Section %>
     <div class="mb-6 bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
@@ -115,52 +91,38 @@
       </div>
     </div>
 
-    <%# Shows List %>
-    <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
-      <%# Filter Bar with toggle %>
-      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-        {
-          label: "Status",
-          filters: [
-            { text: "All", path: manage_money_production_payouts_path(@production, filter: "all"), active: @filter == "all" },
-            { text: "Awaiting Calculation", path: manage_money_production_payouts_path(@production, filter: "awaiting_calculation"), active: @filter == "awaiting_calculation" },
-            { text: "Awaiting Payout", path: manage_money_production_payouts_path(@production, filter: "awaiting_payout"), active: @filter == "awaiting_payout" },
-            { text: "Paid", path: manage_money_production_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
-          ]
-        },
-        { separator: true },
-        {
-          partial: "manage/money_payouts/toggle_filters",
-          locals: {
-            hide_non_revenue: @hide_non_revenue,
-            hide_future_events: @hide_future_events
-          }
-        }
-      ] %>
-
-      <% if @shows.any? %>
-        <div class="space-y-2">
-          <% @shows.each do |show| %>
-            <%= render partial: "manage/money_payouts/show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
+    <%# Prioritised lists — address these first, then everything. %>
+    <div class="pt-6 border-t border-gray-200 space-y-8">
+      <% if @awaiting_calculation_shows.any? %>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Awaiting Calculation</h3>
+          <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [ "Awaiting", "Paid" ] } do %>
+            <%= render "manage/money_payouts/payout_show_rows", shows: @awaiting_calculation_shows %>
           <% end %>
         </div>
-      <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">
-            <% if @filter == "all" %>
-              No past revenue events yet.
-            <% elsif @filter == "awaiting_calculation" %>
-              No shows awaiting calculation.
-            <% elsif @filter == "awaiting_payout" %>
-              No shows awaiting payout.
-            <% elsif @filter == "paid" %>
-              No paid shows yet.
-            <% else %>
-              No shows with this status.
-            <% end %>
-          </p>
+      <% end %>
+
+      <% if @awaiting_payout_shows.any? %>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Awaiting Payout</h3>
+          <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [ "Awaiting", "Paid" ] } do %>
+            <%= render "manage/money_payouts/payout_show_rows", shows: @awaiting_payout_shows %>
+          <% end %>
         </div>
       <% end %>
+
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">All Shows</h3>
+        <% if @all_payout_shows.any? %>
+          <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [ "Awaiting", "Paid" ] } do %>
+            <%= render "manage/money_payouts/payout_show_rows", shows: @all_payout_shows %>
+          <% end %>
+        <% else %>
+          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+            <p class="text-gray-600">No past revenue events yet.</p>
+          </div>
+        <% end %>
+      </div>
     </div>
 
     <%# Notify Modal %>
@@ -222,20 +184,14 @@
     </div>
 
   <% else %>
-    <%# All Productions View %>
-
-    <%# Breadcrumb back to the money hub — small, above the module header. %>
-    <div class="mb-3 text-sm">
-      <%= link_to "Money", manage_money_index_path, class: "font-medium text-pink-500 hover:text-pink-600 underline" %>
-      <span class="text-gray-400 mx-1">/</span>
-      <span class="text-gray-500">Payouts</span>
-    </div>
-
-    <%= render "shared/module_header",
-      title: "Payouts",
-      description: payouts_description,
-      actions: payouts_actions
-    %>
+    <%# All Productions View — breadcrumb like the financials page, then just the
+        three action buttons (no big title / description). %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [ [ "Money", manage_money_index_path ] ],
+      text: "Payouts",
+      links: []
+    } %>
+    <div class="mb-6"><%= render "shared/module_actions", actions: payouts_actions %></div>
 
     <%# Awaiting Payout — address these first. Productions, courses, and contracts. %>
     <% if @awaiting_items.any? %>
