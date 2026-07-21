@@ -324,8 +324,7 @@ module Manage
       if @wizard_state[:contract_id].present?
         @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
         if @contract && @wizard_state[:selected_show_ids].present?
-          @selected_shows = Show.joins(:production)
-            .where(productions: { contract_id: @contract.id })
+          @selected_shows = @contract.contract_shows
             .where(id: @wizard_state[:selected_show_ids])
             .order(:date_and_time)
         end
@@ -536,8 +535,7 @@ module Manage
       if @wizard_state[:contract_id].present?
         @contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
         if @contract && @wizard_state[:selected_show_ids].present?
-          @selected_shows = Show.joins(:production)
-            .where(productions: { contract_id: @contract.id })
+          @selected_shows = @contract.contract_shows
             .where(id: @wizard_state[:selected_show_ids])
             .order(:date_and_time)
         end
@@ -556,8 +554,7 @@ module Manage
     def create_course_sessions!(contract)
       if @wizard_state[:schedule_mode] == "contract" && contract.present? && @wizard_state[:selected_show_ids].present?
         # Move selected shows from the contract's production to the course production
-        shows = Show.joins(:production)
-          .where(productions: { contract_id: contract.id })
+        shows = contract.contract_shows
           .where(id: @wizard_state[:selected_show_ids])
         shows.each do |show|
           show.update!(production: @production, event_type: "class")
