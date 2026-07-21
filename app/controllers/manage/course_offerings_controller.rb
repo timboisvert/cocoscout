@@ -17,6 +17,11 @@ module Manage
         .flat_map(&:course_offerings)
         .sort_by(&:created_at)
         .reverse
+
+      # Payouts overview: active courses, and which ones still owe money that
+      # hasn't been sent to a payout run yet.
+      @active_courses_count = @course_offerings.count { |o| o.status.in?(%w[open closed]) }
+      @awaiting_payout = @course_offerings.select { |o| course_awaiting_payout?(o) }
     end
 
     def show
@@ -442,6 +447,17 @@ module Manage
     end
 
     private
+
+    # A course is "awaiting payout" when it has taken money but the organization's
+    # share hasn't been sent to a payout run yet.
+    def course_awaiting_payout?(offering)
+      return false unless offering.course_registrations.confirmed.exists?
+
+      payout = offering.course_offering_payout
+      return true if payout.nil?
+
+      !PayoutContribution.exists?(source: payout)
+    end
 
     def load_course_offering
       @course_offering = CourseOffering.find(params[:id])
