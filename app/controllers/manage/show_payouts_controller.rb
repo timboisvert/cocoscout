@@ -125,8 +125,10 @@ module Manage
     def add_to_payout_run
       result = PerformerPayoutRunService.add_show_payout!(@show_payout, added_by: Current.user)
       if result.added.positive?
-        redirect_to manage_payout_batch_path(result.batch),
-                    notice: "Added #{helpers.pluralize(result.added, 'performer payout')} to the open performer payout run."
+        # Stay on the payout page — you can keep working here and pay from the run
+        # whenever you're ready (the page shows a "View runs" link once added).
+        redirect_to manage_money_show_payout_path(@show),
+                    notice: "Added #{helpers.pluralize(result.added, 'performer payout')} to your open performer payout run."
       else
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Nothing to add — these payouts are already in a run, or the performers can't be paid through Stripe yet."

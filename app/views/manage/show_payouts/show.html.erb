@@ -878,14 +878,17 @@
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-gray-900">Payout Breakdown</h3>
           <% if @show_payout.total_payout %>
+            <%
+              paid_amount = (@line_items || []).select(&:paid?).sum(&:net_amount)
+              remaining_amount = (@line_items || []).reject(&:paid?).sum(&:net_amount)
+            %>
             <div class="text-right">
-              <% if @show_payout.total_advance_deductions > 0 %>
-                <div class="text-xs text-gray-400">Gross: <%= number_to_currency(@show_payout.total_payout) %></div>
-                <span class="text-lg font-semibold text-pink-600">Net: <%= number_to_currency(@show_payout.total_net_payout) %></span>
-                <div class="text-xs text-amber-600">−<%= number_to_currency(@show_payout.total_advance_deductions) %> advances repaid</div>
-              <% else %>
-                <span class="text-lg font-semibold text-pink-600">Total: <%= number_to_currency(@show_payout.total_payout) %></span>
-              <% end %>
+              <span class="text-lg font-semibold <%= remaining_amount > 0 ? 'text-pink-600' : 'text-green-600' %>">
+                <%= number_to_currency(remaining_amount) %> <%= remaining_amount > 0 ? "to pay" : "fully paid" %>
+              </span>
+              <div class="text-xs text-gray-400">
+                <%= number_to_currency(@show_payout.total_net_payout) %> total<% if paid_amount > 0 %> · <%= number_to_currency(paid_amount) %> paid<% end %>
+              </div>
             </div>
           <% end %>
         </div>
@@ -900,11 +903,69 @@
                 <%= link_to "View runs", manage_payout_batches_path, class: "underline hover:text-green-900" %>
               </div>
             <% else %>
-              <%= button_to manage_add_to_run_money_show_payout_path(@show), method: :post, class: "inline-block",
-                    form: { data: { turbo_confirm: "Add these performer payouts to your open performer payout run?" } } do %>
-                <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small" %>
-              <% end %>
-              <p class="text-xs text-gray-500 mt-1">Adds each performer's payout to your open performer payout run, so you can pay everyone at once.</p>
+              <%
+                run_eligible = (@line_items || []).select do |li|
+                  !li.paid? && !li.in_payout_run? && li.payee.present? &&
+                    li.payee.respond_to?(:can_receive_payouts?) && li.amount.to_f > 0
+                end
+                run_eligible_total = run_eligible.sum(&:net_amount)
+              %>
+              <div data-controller="modal">
+                <button type="button" data-action="click->modal#open" data-modal-id="add-to-run-modal" class="inline-block cursor-pointer">
+                  <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small" %>
+                </button>
+                <p class="text-xs text-gray-500 mt-1">Review who gets added, then pay everyone at once from your payout run — no need to leave this page.</p>
+
+                <%# Preview / confirm modal (the "add to cart" step, before the run). %>
+                <div id="add-to-run-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+                  <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="fixed inset-0 bg-gray-500/75" data-action="click->modal#close"></div>
+                    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg">
+                      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Add to payout run</h3>
+                        <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div class="px-6 py-4">
+                        <p class="text-sm text-gray-600 mb-4">These performers get added to your open performer payout run. You stay here — pay everyone at once whenever you're ready from Payout Runs.</p>
+                        <% if run_eligible.any? %>
+                          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-4">
+                            <% run_eligible.each do |li| %>
+                              <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                                <span class="flex items-center gap-2 min-w-0">
+                                  <span class="text-gray-900 truncate"><%= li.payee_name %></span>
+                                  <% if li.payee.can_receive_payouts? %>
+                                    <span class="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 flex-shrink-0">Bank ready</span>
+                                  <% else %>
+                                    <span class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 flex-shrink-0">Needs bank</span>
+                                  <% end %>
+                                </span>
+                                <span class="font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(li.net_amount) %></span>
+                              </div>
+                            <% end %>
+                          </div>
+                          <div class="flex items-center justify-between text-sm font-semibold">
+                            <span class="text-gray-700">Total to add</span>
+                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(run_eligible_total) %></span>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-2">"Needs bank" performers are added too — they'll be paid once they connect a bank.</p>
+                        <% else %>
+                          <p class="text-sm text-gray-500">Everyone here is already in a run or paid.</p>
+                        <% end %>
+                      </div>
+                      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
+                        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
+                        <% if run_eligible.any? %>
+                          <%= button_to manage_add_to_run_money_show_payout_path(@show), method: :post, class: "inline-block" do %>
+                            <%= render "shared/button", text: "Add to run", variant: "primary", size: "small", type: :submit %>
+                          <% end %>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             <% end %>
           </div>
         <% end %>
