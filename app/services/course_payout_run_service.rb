@@ -26,23 +26,13 @@ class CoursePayoutRunService
 
       ActiveRecord::Base.transaction do
         batch = PayoutBatch.open_for(organization, kind: "course", created_by: added_by)
-        label = "Course: #{offering.title}"
 
-        # Instructor (and other Person) payments recorded on the payout.
-        payout.line_items.includes(:payee).each do |line|
-          next if line.paid?
-
-          if upsert_contribution(batch, line.payee, line, line.amount_cents.to_i, label) == :added
-            added += 1
-          else
-            skipped += 1
-          end
-        end
-
-        # The organization keeps whatever's left after those payments.
-        org_keeps_cents = payout.net_revenue_cents.to_i - payout.total_payout_cents.to_i
-        if org_keeps_cents.positive?
-          if upsert_contribution(batch, organization, payout, org_keeps_cents, "#{label} — organization's share") == :added
+        # CoursePayoutSettlement decides the final amounts (incl. the contract
+        # rule that instructor pay comes out of the contractor's share), so the
+        # run always matches what the payout page shows.
+        CoursePayoutSettlement.new(payout).rows.each do |row|
+          label = row[:is_org] ? "Course: #{offering.title} — organization's share" : "Course: #{offering.title}"
+          if upsert_contribution(batch, row[:payee], row[:source], row[:amount_cents], label) == :added
             added += 1
           else
             skipped += 1

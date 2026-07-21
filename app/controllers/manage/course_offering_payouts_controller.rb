@@ -31,8 +31,9 @@ module Manage
 
       # Everyone who gets paid out of this course — the instructor/contract line
       # items plus the organization's own remainder — each with its run status.
-      @org_keeps_cents = @payout.net_revenue_cents.to_i - @payout.total_payout_cents.to_i
-      @payout_rows = build_payout_rows
+      settlement = CoursePayoutSettlement.new(@payout)
+      @org_keeps_cents = settlement.org_keeps_cents
+      @payout_rows = settlement.rows.map { |row| row.merge(status: run_status(row[:source], row[:payee])) }
       @course_run = current_course_run
     end
 
@@ -218,34 +219,6 @@ module Manage
       else
         redirect_to manage_course_offering_path(@course_offering),
           alert: "No payout has been calculated yet."
-      end
-    end
-
-    # Everyone paid out of this course: instructor/contract line items, plus the
-    # organization's own remainder. Each row carries its status in the course
-    # payout run.
-    def build_payout_rows
-      rows = @line_items.map do |li|
-        { payee: li.payee, name: li.payee_name, amount_cents: li.amount_cents.to_i,
-          kind: line_item_kind(li), source: li, status: run_status(li, li.payee) }
-      end
-
-      if @org_keeps_cents.positive?
-        org = Current.organization
-        rows << { payee: org, name: org.name, amount_cents: @org_keeps_cents,
-                  kind: "Your organization's share", source: @payout, is_org: true,
-                  status: run_status(@payout, org) }
-      end
-
-      rows
-    end
-
-    def line_item_kind(line_item)
-      case line_item.calculation_details["type"]
-      when "contract_revenue_share" then "Contract · #{line_item.calculation_details['share_percentage'].to_i}% share"
-      when "contract_flat_fee" then "Contract"
-      when "instructor" then "Instructor"
-      else "Payment"
       end
     end
 

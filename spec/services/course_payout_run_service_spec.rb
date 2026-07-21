@@ -59,8 +59,10 @@ RSpec.describe CoursePayoutRunService do
     payout = build_payout(net_cents: 3800, total_payout_cents: 0)
 
     described_class.add_to_run!(payout)
-    # Instructor gets added later, shrinking the org's share.
-    payout.update!(total_payout_cents: 1000)
+    # An instructor gets added later, shrinking the org's share.
+    instructor = make_payable(create(:person))
+    payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
+                              calculation_details: { type: "instructor" })
     result = described_class.add_to_run!(payout)
 
     org_items = result.batch.items.where(payee: org)
