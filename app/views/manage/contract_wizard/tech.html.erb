@@ -1,9 +1,54 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Services" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Services</h2>
-  <p class="text-gray-600 mb-6">Optional — add any services this contract includes (like technical services). You don't have to add anything.</p>
+  <p class="text-gray-600 mb-6">Optional — add any services this contract includes, like technical services. You don't have to add anything.</p>
+
+  <%
+    input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+    chosen_by_name = @existing_services.index_by { |s| s["name"] }
+    dir_options = [["They pay us", "incoming"], ["We pay them", "outgoing"]]
+  %>
 
   <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true do |form| %>
-    <%= render "manage/contracts/tech_fields", tech: @existing_tech %>
+    <% if @service_options.any? %>
+      <div class="space-y-3 mb-6">
+        <% @service_options.each_with_index do |option, i| %>
+          <% chosen = chosen_by_name[option.name] %>
+          <div class="border border-gray-200 rounded-lg p-4 has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50/40 transition-colors">
+            <label class="flex items-center gap-2 mb-3 cursor-pointer">
+              <input type="checkbox" name="services[<%= i %>][include]" value="1" class="accent-pink-500 h-4 w-4" <%= "checked" if chosen %>>
+              <span class="font-medium text-gray-900"><%= option.name %></span>
+              <span class="text-xs text-gray-500">default <%= number_to_currency(option.default_price) %><%= option.unit == "hourly" ? "/hr" : "" %></span>
+            </label>
+            <input type="hidden" name="services[<%= i %>][name]" value="<%= option.name %>">
+            <input type="hidden" name="services[<%= i %>][unit]" value="<%= option.unit %>">
+            <div class="flex flex-wrap items-end gap-3 pl-6">
+              <div class="w-24">
+                <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.unit == "hourly" ? "Hours" : "Quantity" %></label>
+                <input type="number" step="0.5" min="0" name="services[<%= i %>][quantity]" value="<%= chosen ? chosen["quantity"] : 1 %>" class="<%= input %>">
+              </div>
+              <div class="w-28">
+                <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.unit == "hourly" ? "Rate/hr" : "Price" %></label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+                  <input type="number" step="0.01" min="0" name="services[<%= i %>][unit_price]" value="<%= '%.2f' % (chosen ? chosen["unit_price"].to_f : option.default_price) %>" class="<%= input %> pl-7">
+                </div>
+              </div>
+              <div class="w-36">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Who pays</label>
+                <%= select_tag "services[#{i}][direction]", options_for_select(dir_options, chosen ? chosen["direction"] : option.default_direction), class: input %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <p class="text-xs text-gray-500 mb-6">Manage your list of services and default prices in <%= link_to "Contract Settings", manage_contract_settings_path, class: "text-pink-600 hover:text-pink-700" %>.</p>
+    <% else %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6 text-sm text-gray-600">
+        You haven't set up any services yet. Add them in
+        <%= link_to "Contract Settings", manage_contract_settings_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>
+        (like technical services at an hourly rate), then they'll show here to add to a contract.
+      </div>
+    <% end %>
 
     <div class="flex items-center justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_payments_contract_wizard_path(@contract) %>

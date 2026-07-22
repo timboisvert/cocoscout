@@ -154,27 +154,31 @@ module Manage
       redirect_to manage_tech_contract_wizard_path(@contract)
     end
 
-    # Step 5: Tech (we provide vs they provide, hourly rate, payment method)
+    # Step 5: Services (optional) — draw from the org catalog, override price/qty.
     def tech
       @step = 5
-      @existing_tech = @contract.draft_tech
+      @service_options = Current.organization.contract_service_options.ordered
+      @existing_services = @contract.draft_services
     end
 
     def save_tech
-      provider = params[:tech_provider].presence || "them"
+      # Collect the chosen service line items into draft_data["services"].
+      services = Array(params[:services]&.values).filter_map do |row|
+        name = row[:name].to_s.strip
+        next if name.blank? || row[:include] != "1"
 
-      tech_data = if provider == "us"
+        quantity = row[:quantity].to_f
+        quantity = 1 if quantity <= 0
         {
-          "provider" => "us",
-          "hourly_rate" => params[:tech_hourly_rate].presence&.to_f,
-          "hours" => params[:tech_hours].presence&.to_f,
-          "payment_method" => params[:tech_payment_method].presence || "cash"
+          "name" => name,
+          "quantity" => quantity,
+          "unit_price" => row[:unit_price].to_f,
+          "unit" => row[:unit].presence || "flat",
+          "direction" => row[:direction].presence || "incoming"
         }
-      else
-        { "provider" => "them" }
       end
 
-      @contract.update_draft_step(:tech, tech_data)
+      @contract.update_draft_step(:services, services)
       @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
       redirect_to manage_documents_contract_wizard_path(@contract)
     end

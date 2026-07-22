@@ -146,6 +146,11 @@ class Contract < ApplicationRecord
     draft_data["tech"] || {}
   end
 
+  # Per-contract service line items: [{ "name", "quantity", "unit_price", "direction" }].
+  def draft_services
+    draft_data["services"] || []
+  end
+
   def update_draft_step(step_name, data)
     self.draft_data = draft_data.merge(step_name.to_s => data)
     save!
@@ -566,6 +571,19 @@ class Contract < ApplicationRecord
         direction: payment["direction"],
         due_date: payment["due_date"],
         notes: payment["notes"]
+      )
+    end
+
+    # Services become their own billable payments (this is what "Tech" never did).
+    draft_services.each do |service|
+      amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
+      next unless amount.positive?
+
+      contract_payments.create!(
+        description: service["name"],
+        amount: amount,
+        direction: service["direction"].presence || "incoming",
+        due_date: contract_end_date || Date.current
       )
     end
 
