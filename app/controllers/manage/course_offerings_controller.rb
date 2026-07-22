@@ -322,10 +322,11 @@ module Manage
       # Process Stripe refund
       if registration.stripe_payment_intent_id.present?
         begin
-          Stripe::Refund.create(payment_intent: registration.stripe_payment_intent_id)
+          refund = Stripe::Refund.create(payment_intent: registration.stripe_payment_intent_id)
           # The webhook will call registration.refund! when the charge.refunded event fires.
-          # But we also mark it here for immediate UI feedback.
-          registration.refund!
+          # But we also mark it here for immediate UI feedback, capturing the refund
+          # id so the course can trace back to the exact Stripe refund.
+          registration.refund!(stripe_refund_id: refund.id)
           redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been refunded and removed."
         rescue Stripe::StripeError => e
           redirect_to manage_course_offering_path(@course_offering), alert: "Refund failed: #{e.message}"

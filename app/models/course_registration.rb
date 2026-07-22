@@ -49,8 +49,12 @@ class CourseRegistration < ApplicationRecord
     cleanup_questionnaire_invitation
   end
 
-  def refund!
-    update!(status: :refunded, refunded_at: Time.current)
+  def refund!(stripe_refund_id: nil)
+    update!(
+      status: :refunded,
+      refunded_at: Time.current,
+      stripe_refund_id: stripe_refund_id.presence || self.stripe_refund_id
+    )
     cleanup_questionnaire_invitation
   end
 

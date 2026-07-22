@@ -92,6 +92,14 @@ module My
           user_id: Current.user.id,
           amount_cents: price_cents,
           currency: @course_offering.currency
+        },
+        # Also stamp the charge itself so the payment is traceable to the course
+        # from the Stripe dashboard (Session metadata doesn't reach the charge).
+        payment_intent_data: {
+          metadata: {
+            course_offering_id: @course_offering.id,
+            person_id: @person.id
+          }
         }
       )
 
