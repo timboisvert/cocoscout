@@ -37,6 +37,22 @@
     <% end %>
   </div>
 
+  <%# An assembled course payout run with money still to send. %>
+  <% if @course_run_pending_cents.to_i > 0 %>
+    <%= link_to manage_course_payout_run_path, class: "flex items-center justify-between gap-3 bg-pink-50 border border-pink-200 rounded-xl px-5 py-4 mb-6 hover:bg-pink-100 transition-colors" do %>
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <%= icon("dollar-sign", class: "w-5 h-5 text-pink-600") %>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-pink-900"><%= number_to_currency(@course_run_pending_cents / 100.0) %> ready to pay out</p>
+          <p class="text-xs text-pink-700">Instructors and your organization are queued in the course payout run.</p>
+        </div>
+      </div>
+      <span class="inline-flex items-center gap-1 text-sm font-medium text-pink-700 flex-shrink-0">Go to run <%= icon("arrow-right", class: "w-4 h-4") %></span>
+    <% end %>
+  <% end %>
+
   <%# Courses awaiting payout — quick links straight to each one's payout page. %>
   <% if @awaiting_payout.any? %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">

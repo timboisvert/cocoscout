@@ -28,6 +28,13 @@ class PayoutBatchItem < ApplicationRecord
   def mark_paid!(transfer_id: nil)
     transaction do
       update!(status: "paid", paid_at: Time.current, stripe_transfer_id: transfer_id || stripe_transfer_id)
+
+      # Course runs distribute money CocoScout already holds (course revenue), not
+      # money the org owes its people — so they don't touch the performer/staff
+      # payout ledger. Posting one here would push the payee's performer balance
+      # negative (a payout with no matching earning).
+      next if payout_batch.kind == "course"
+
       PayoutLedgerEntry.post!(
         organization: organization,
         payee: payee,

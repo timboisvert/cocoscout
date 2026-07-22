@@ -1,0 +1,121 @@
+<% content_for :title, "Course Payout Run" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Courses", manage_course_offerings_path]
+    ],
+    text: "Payout run",
+    links: []
+  } %>
+
+  <% if @run.nil? || @items.empty? %>
+    <div class="bg-white border border-gray-200 rounded-xl p-10 text-center max-w-2xl">
+      <div class="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+        <%= icon("dollar-sign", class: "w-6 h-6 text-gray-400") %>
+      </div>
+      <h2 class="text-lg font-semibold text-gray-900">No course payouts to send</h2>
+      <p class="text-sm text-gray-500 mt-1">When you add a course's payouts to a run, they'll show up here to pay out.</p>
+      <div class="mt-4">
+        <%= link_to manage_course_offerings_path do %>
+          <%= render "shared/button", text: "Back to courses", variant: "secondary", size: "small" %>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <%
+      pending = @items.select { |i| i.status == "pending" }
+      paid = @items.select(&:paid?)
+      failed = pending.select { |i| i.error.present? } # tried, Stripe rejected — retryable
+      pending_total = pending.sum(&:amount_cents)
+      completed = @run.status == "completed"
+    %>
+
+    <div class="max-w-3xl space-y-6">
+      <!-- Summary + action -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div class="text-sm text-gray-500">
+              <%= completed ? "Paid out" : "Ready to pay out" %>
+            </div>
+            <div class="text-2xl font-bold text-gray-900 mt-0.5">
+              <%= number_to_currency((completed ? @run.total_cents : pending_total).to_i / 100.0) %>
+            </div>
+            <div class="text-sm text-gray-500 mt-1">
+              <%= pluralize(@items.size, "payout") %>
+              <% if paid.any? %> · <span class="text-green-600 font-medium"><%= paid.size %> paid</span><% end %>
+              <% if failed.any? %> · <span class="text-red-600 font-medium"><%= failed.size %> failed</span><% end %>
+            </div>
+          </div>
+
+          <% if pending.any? %>
+            <div>
+              <%= render "shared/button", text: "Pay everyone now", variant: "primary", size: "medium",
+                path: manage_course_payout_run_pay_path, method: :post,
+                data: { turbo_confirm: "Send #{number_to_currency(pending_total / 100.0)} to #{pluralize(pending.size, 'recipient')} now? This transfers the money to their banks." } %>
+              <p class="text-xs text-gray-500 mt-1 text-right">Paid from the course money we hold — no funding step.</p>
+            </div>
+          <% elsif completed %>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-full">
+              <%= icon("check-circle", class: "w-4 h-4") %> All paid
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recipients -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-sm font-semibold text-gray-900">Recipients</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% @items.each do |item| %>
+            <% payee = item.payee %>
+            <% is_org = payee.is_a?(Organization) %>
+            <div class="px-6 py-4 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <% if is_org %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                    <%= icon("dollar-sign", class: "w-5 h-5 text-pink-600") %>
+                  </div>
+                <% elsif payee.respond_to?(:safe_headshot_variant) && payee.safe_headshot_variant(:thumb) %>
+                  <%= image_tag payee.safe_headshot_variant(:thumb), alt: payee.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                    <%= payee.respond_to?(:initials) ? payee.initials : payee.try(:name).to_s[0..1].upcase %>
+                  </div>
+                <% end %>
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900 truncate"><%= is_org ? "#{payee.name} (your organization)" : payee.try(:name) %></div>
+                  <div class="text-sm text-gray-500">
+                    <%= item.payout_contributions.first&.label || (is_org ? "Organization's share" : "Course payout") %>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0">
+                <span class="text-lg font-semibold text-gray-900"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+                <% if item.paid? %>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Paid</span>
+                <% elsif item.error.present? %>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full" title="<%= item.error %>">Failed — will retry</span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Awaiting payout</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% if failed.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-800">
+          <p class="font-medium">Some payouts couldn't be sent.</p>
+          <p class="mt-0.5 text-red-700">You can retry — "Pay everyone now" only re-sends the ones that haven't gone out.</p>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

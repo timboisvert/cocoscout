@@ -246,7 +246,10 @@
                 <%= icon("check-circle", class: "w-5 h-5") %>
                 In the payout run
               </span>
-              <p class="text-xs text-gray-500 mt-1">These will be paid when the course payout run is processed.</p>
+              <p class="text-xs text-gray-500 mt-1 mb-3">Pay everyone at once from the course payout run.</p>
+              <%= link_to manage_course_payout_run_path do %>
+                <%= render "shared/button", text: "Go to payout run", variant: "primary", size: "small" %>
+              <% end %>
             </div>
           <% elsif needs_bank_rows.any? %>
             <p class="text-sm text-gray-500 text-center py-1">Waiting on payees to connect a bank before they can be added to a run.</p>
