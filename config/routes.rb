@@ -1480,6 +1480,7 @@ Rails.application.routes.draw do
     # Course offering payouts
     # Course payout settings — how the ORG gets paid its course revenue. Lives in
     # Courses (not the Pro-only Money section) since courses are free.
+    get    "courses/:course_offering_id/money", to: "course_money#show",                    as: "course_money"
     get    "courses/payouts/run",              to: "course_payout_runs#show",               as: "course_payout_run"
     post   "courses/payouts/run/pay",          to: "course_payout_runs#pay",                as: "course_payout_run_pay"
     get    "courses/payouts/settings",         to: "course_payout_settings#show",           as: "course_payout_settings"

@@ -1,0 +1,92 @@
+<% content_for :title, "Money: #{@course_offering.title}" %>
+
+<%
+  t = @statement.totals
+  payments = @statement.payments
+  refunds = @statement.refunds
+  payouts = @statement.payouts
+  org_kept = t[:net_cents] - t[:paid_out_cents]
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Courses", manage_course_offerings_path],
+      [@course_offering.title, manage_course_offering_path(@course_offering)]
+    ],
+    text: "Money",
+    links: [ { text: "Payout", path: manage_course_offering_payout_path(@course_offering) } ]
+  } %>
+
+  <div class="max-w-3xl space-y-6">
+    <!-- Summary -->
+    <div class="bg-white border border-gray-200 rounded-xl p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Money summary</h2>
+      <div class="space-y-2.5 text-sm">
+        <% if t[:refunds_cents] > 0 %>
+          <div class="flex justify-between"><span class="text-gray-600">Gross revenue</span><span class="text-gray-900 tabular-nums"><%= number_to_currency(t[:gross_cents] / 100.0) %></span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Refunds</span><span class="text-gray-900 tabular-nums">−<%= number_to_currency(t[:refunds_cents] / 100.0) %></span></div>
+        <% end %>
+        <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="text-gray-600">Revenue</span><span class="font-medium text-gray-900 tabular-nums"><%= number_to_currency(t[:revenue_cents] / 100.0) %></span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Platform fee</span><span class="text-gray-900 tabular-nums">−<%= number_to_currency(t[:fees_cents] / 100.0) %></span></div>
+        <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="text-gray-600">Net revenue</span><span class="font-medium text-gray-900 tabular-nums"><%= number_to_currency(t[:net_cents] / 100.0) %></span></div>
+        <% if t[:paid_out_cents] > 0 %>
+          <div class="flex justify-between"><span class="text-gray-600">Paid out</span><span class="text-gray-900 tabular-nums">−<%= number_to_currency(t[:paid_out_cents] / 100.0) %></span></div>
+          <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="font-semibold text-gray-900">Still to distribute</span><span class="font-bold text-gray-900 tabular-nums"><%= number_to_currency(org_kept / 100.0) %></span></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%= render layout: "manage/course_money/section", locals: { title: "Payments in", count: payments.size, empty: payments.empty? ? "No payments yet." : nil } do %>
+      <% payments.each do |p| %>
+        <div class="flex items-center justify-between gap-3 px-6 py-3">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 truncate"><%= p.name %></div>
+            <div class="text-xs text-gray-500">
+              <%= p.at&.strftime("%b %-d, %Y") %><% if p.stripe_payment_intent_id %> · <span class="font-mono text-gray-400"><%= p.stripe_payment_intent_id %></span><% end %>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(p.amount_cents / 100.0) %></div>
+            <% if p.fee_cents.positive? %><div class="text-xs text-gray-400">fee <%= number_to_currency(p.fee_cents / 100.0) %></div><% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <% if refunds.any? %>
+      <%= render layout: "manage/course_money/section", locals: { title: "Refunds out", count: refunds.size, empty: nil } do %>
+        <% refunds.each do |r| %>
+          <div class="flex items-center justify-between gap-3 px-6 py-3">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 truncate"><%= r.name %></div>
+              <div class="text-xs text-gray-500">
+                <%= r.at&.strftime("%b %-d, %Y") %><% if r.stripe_refund_id %> · <span class="font-mono text-gray-400"><%= r.stripe_refund_id %></span><% end %>
+              </div>
+            </div>
+            <div class="font-semibold text-gray-900 tabular-nums flex-shrink-0">−<%= number_to_currency(r.amount_cents / 100.0) %></div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%= render layout: "manage/course_money/section", locals: { title: "Payouts out", count: payouts.size, empty: payouts.empty? ? "No payouts yet — add this course to a payout run." : nil } do %>
+      <% payouts.each do |po| %>
+        <div class="flex items-center justify-between gap-3 px-6 py-3">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 truncate"><%= po.name %></div>
+            <div class="text-xs text-gray-500">
+              <%= po.kind %><% if po.stripe_transfer_id %> · <span class="font-mono text-gray-400"><%= po.stripe_transfer_id %></span><% end %>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(po.amount_cents / 100.0) %></div>
+            <div class="text-xs <%= po.status == 'paid' ? 'text-green-600' : (po.status == 'failed' ? 'text-red-600' : 'text-amber-600') %>"><%= po.status.titleize %></div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

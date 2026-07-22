@@ -39,7 +39,7 @@
       [@course_offering.title, manage_course_offering_path(@course_offering)]
     ],
     text: "Payout",
-    links: []
+    links: [ { text: "Money statement", path: manage_course_money_path(@course_offering) } ]
   } %>
 
   <% unless Current.organization.can_receive_payouts? %>

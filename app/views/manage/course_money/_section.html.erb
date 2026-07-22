@@ -1,0 +1,16 @@
+<% if empty %>
+  <div class="bg-white border border-gray-200 rounded-xl px-6 py-6">
+    <h2 class="text-sm font-semibold text-gray-900 mb-1"><%= title %></h2>
+    <p class="text-sm text-gray-500"><%= empty %></p>
+  </div>
+<% else %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-900"><%= title %></h2>
+      <span class="text-xs text-gray-400"><%= pluralize(count, "item") %></span>
+    </div>
+    <div class="divide-y divide-gray-100">
+      <%= yield %>
+    </div>
+  </div>
+<% end %>
