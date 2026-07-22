@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -473,6 +473,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_120000) do
     t.index ["due_date"], name: "index_contract_payments_on_due_date"
     t.index ["show_id"], name: "index_contract_payments_on_show_id"
     t.index ["status"], name: "index_contract_payments_on_status"
+  end
+
+  create_table "contract_service_options", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "default_direction", default: "incoming", null: false
+    t.integer "default_price_cents", default: 0, null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "position", default: 0, null: false
+    t.string "unit", default: "flat", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_contract_service_options_on_organization_id"
   end
 
   create_table "contractors", force: :cascade do |t|
@@ -2793,6 +2805,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_120000) do
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
+  add_foreign_key "contract_service_options", "organizations"
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contractors", "people"
   add_foreign_key "contracts", "contractors"

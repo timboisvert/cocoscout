@@ -1338,6 +1338,13 @@ Rails.application.routes.draw do
     end
 
     # Contracts - third-party productions and venue rentals
+    # Contract settings — org-level services catalog (top of the Contracts section).
+    # Declared before resources :contracts so "settings" isn't captured as an :id.
+    get    "money/contracts/settings",              to: "contract_settings#show",           as: "contract_settings"
+    post   "money/contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
+    patch  "money/contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
+    delete "money/contracts/settings/services/:id", to: "contract_settings#destroy_service"
+
     resources :contracts, path: "money/contracts" do
       collection do
         get :completed

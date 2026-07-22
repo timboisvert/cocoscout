@@ -20,6 +20,7 @@ module Manage
       "manage/show_payouts" => :money,
       "manage/show_financials" => :money,
       "manage/contracts" => :money,
+      "manage/contract_settings" => :money,
       "manage/contract_payments" => :money,
       "manage/contract_wizard" => :money,
       "manage/contract_documents" => :money,
