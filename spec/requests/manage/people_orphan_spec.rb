@@ -25,7 +25,10 @@ RSpec.describe "Manage::People orphaned pool members", type: :request do
 
   it "loads the profile of a person who's in the org's pool but not in org.people" do
     orphan = create(:person)
-    pool.people << orphan # in the pool, never in org.people
+    pool.people << orphan
+    # Simulate a legacy orphan (data from before the pool⇒org invariant): drop
+    # the org link but leave the pool membership.
+    org.people.delete(orphan)
     expect(org.people.exists?(orphan.id)).to be(false)
 
     get manage_person_path(orphan)
