@@ -58,4 +58,33 @@ RSpec.describe TalentPoolMembership, type: :model do
       expect(membership).to be_valid
     end
   end
+
+  describe 'pool membership implies org membership' do
+    let(:org) { create(:organization) }
+    let(:production) { create(:production, organization: org) }
+    let(:pool) { create(:talent_pool, production: production) }
+
+    it 'adds a person to the pool\'s organization when they join the pool' do
+      person = create(:person)
+      expect(org.people.exists?(person.id)).to be(false)
+
+      TalentPoolMembership.create!(talent_pool: pool, member: person)
+
+      expect(org.people.exists?(person.id)).to be(true)
+    end
+
+    it 'works through the association shovel too (pool.people <<)' do
+      person = create(:person)
+      pool.people << person
+      expect(org.people.exists?(person.id)).to be(true)
+    end
+
+    it 'does not duplicate an existing org membership' do
+      person = create(:person)
+      org.people << person
+      expect {
+        TalentPoolMembership.create!(talent_pool: pool, member: person)
+      }.not_to(change { org.people.where(id: person.id).count })
+    end
+  end
 end
