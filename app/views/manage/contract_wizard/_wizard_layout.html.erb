@@ -17,21 +17,23 @@
     <div class="mb-8">
       <div class="flex items-center justify-center">
         <%
-          # Steps now start at 2 since contractor is selected at creation
-          # Display numbers are 1-6 but internal step numbers are 2-7
+          # Settlement-first flow. Schedule merges bookings + preview (internal
+          # steps 2 & 3 both read as "Schedule"); the deal comes before Services;
+          # ticketing is folded into the deal and Tech is now optional Services.
+          persisted = defined?(@contract) && @contract.persisted?
+          # Normalize the schedule-preview sub-step (3) onto the Schedule node (2).
+          current_step = @step == 3 ? 2 : @step
           steps = [
-            { num: 2, display: 1, name: "Bookings", path: defined?(@contract) && @contract.persisted? ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 3, display: 2, name: "Preview", path: defined?(@contract) && @contract.persisted? ? manage_schedule_preview_contract_wizard_path(@contract) : nil },
-            { num: 4, display: 3, name: "Ticketing", path: defined?(@contract) && @contract.persisted? ? manage_ticketing_contract_wizard_path(@contract) : nil },
-            { num: 5, display: 4, name: "Tech", path: defined?(@contract) && @contract.persisted? ? manage_tech_contract_wizard_path(@contract) : nil },
-            { num: 6, display: 5, name: "Payments", path: defined?(@contract) && @contract.persisted? ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 7, display: 6, name: "Documents", path: defined?(@contract) && @contract.persisted? ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 8, display: 7, name: "Review", path: defined?(@contract) && @contract.persisted? ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 2, display: 1, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
+            { num: 4, display: 2, name: "The deal", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 5, display: 3, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil },
+            { num: 6, display: 4, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil },
+            { num: 7, display: 5, name: "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
           ]
         %>
         <% steps.each_with_index do |step, index| %>
-          <% is_current = step[:num] == @step %>
-          <% is_completed = step[:num] < @step %>
+          <% is_current = step[:num] == current_step %>
+          <% is_completed = step[:num] < current_step %>
           <% is_clickable = is_completed && step[:path].present? %>
           <div class="flex items-center">
             <% if is_clickable %>
@@ -54,7 +56,7 @@
           </div>
 
           <% if index < steps.length - 1 %>
-            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < @step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
+            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < current_step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
           <% end %>
         <% end %>
       </div>

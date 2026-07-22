@@ -1,13 +1,16 @@
-<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Tech" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Tech</h2>
-  <p class="text-gray-600 mb-6">Who is providing the tech for these events?</p>
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Services" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Services</h2>
+  <p class="text-gray-600 mb-6">Optional — add any services this contract includes (like technical services). You don't have to add anything.</p>
 
   <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true do |form| %>
     <%= render "manage/contracts/tech_fields", tech: @existing_tech %>
 
-    <div class="flex justify-between">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_ticketing_contract_wizard_path(@contract) %>
-      <%= render "shared/button", text: "Next: Payments", variant: "primary", size: "medium", type: :submit %>
+    <div class="flex items-center justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_payments_contract_wizard_path(@contract) %>
+      <div class="flex items-center gap-3">
+        <%= link_to "Skip — no services", manage_documents_contract_wizard_path(@contract), class: "text-sm text-gray-500 hover:text-gray-700" %>
+        <%= render "shared/button", text: "Next: Documents", variant: "primary", size: "medium", type: :submit %>
+      </div>
     </div>
   <% end %>
 <% end %>

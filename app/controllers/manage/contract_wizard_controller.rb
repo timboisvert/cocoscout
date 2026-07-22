@@ -138,7 +138,7 @@ module Manage
       bookings = generate_bookings_from_rules(rules)
       @contract.update_draft_step(:bookings, bookings)
       @contract.update_column(:wizard_step, [ 4, @contract.wizard_step ].max)
-      redirect_to manage_ticketing_contract_wizard_path(@contract)
+      redirect_to manage_payments_contract_wizard_path(@contract)
     end
 
     # Step 4: Ticketing (tiers/prices + discount code)
@@ -176,15 +176,16 @@ module Manage
 
       @contract.update_draft_step(:tech, tech_data)
       @contract.update_column(:wizard_step, [ 6, @contract.wizard_step ].max)
-      redirect_to manage_payments_contract_wizard_path(@contract)
+      redirect_to manage_documents_contract_wizard_path(@contract)
     end
 
-    # Step 6: Payment schedule
+    # Step 4: The deal — who sells + settlement, with ticketing folded in.
     def payments
-      @step = 6
+      @step = 4
       @existing_payments = @contract.draft_payments
       @existing_payment_structure = @contract.draft_payment_structure
       @existing_payment_config = @contract.draft_payment_config
+      @existing_ticketing = @contract.draft_ticketing
       @bookings = @contract.draft_bookings || []
       @bookings_count = @bookings.count
     end
@@ -194,11 +195,17 @@ module Manage
       payment_structure = params[:payment_structure].presence || "flat_fee"
       payment_config = params[:payment_config].present? ? JSON.parse(params[:payment_config]) : {}
 
-      # v2 dimensions: record who sells tickets (only meaningful for revenue share
-      # — it distinguishes "we sell, we pay them" from "they sell, they pay us")
-      # and the derived settlement basis, so direction is unambiguous.
       who_sells = params[:who_sells_tickets].presence
-      if payment_structure == "revenue_share" && who_sells.in?(%w[org contractor])
+
+      # Ticketing is folded into this step — only kept when WE sell the tickets.
+      if who_sells == "org" && params[:ticketing].present?
+        @contract.update_draft_step(:ticketing, JSON.parse(params[:ticketing]))
+      end
+
+      # v2 dimensions: who sells (distinguishes "we sell, we pay them" from "they
+      # sell, they pay us") + the derived settlement basis, so direction is
+      # unambiguous. who-sells is stored for revenue-based settlements.
+      if who_sells.in?(%w[org contractor])
         payment_config["who_sells_tickets"] = who_sells
       end
       payment_config["settlement_basis"] = settlement_basis_for(payment_structure, payment_config)
@@ -222,13 +229,13 @@ module Manage
         end
       end
 
-      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
-      redirect_to manage_documents_contract_wizard_path(@contract)
+      @contract.update_column(:wizard_step, [ 5, @contract.wizard_step ].max)
+      redirect_to manage_tech_contract_wizard_path(@contract)
     end
 
-    # Step 7: Document upload
+    # Step 6: Document upload
     def documents
-      @step = 7
+      @step = 6
       @documents = @contract.contract_documents.recent
     end
 
@@ -249,7 +256,7 @@ module Manage
         end
       end
 
-      @contract.update_column(:wizard_step, [ 8, @contract.wizard_step ].max)
+      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
       redirect_to manage_review_contract_wizard_path(@contract)
     end
 
@@ -259,9 +266,9 @@ module Manage
       redirect_to manage_documents_contract_wizard_path(@contract), notice: "Document deleted."
     end
 
-    # Step 8: Review and activate
+    # Step 7: Review and activate
     def review
-      @step = 8
+      @step = 7
       @valid_for_activation = @contract.valid_for_activation?
       @validation_errors = @contract.errors.full_messages unless @valid_for_activation
     end
@@ -331,11 +338,10 @@ module Manage
       case step
       when 1, 2 then manage_bookings_contract_wizard_path(@contract)
       when 3 then manage_schedule_preview_contract_wizard_path(@contract)
-      when 4 then manage_ticketing_contract_wizard_path(@contract)
-      when 5 then manage_tech_contract_wizard_path(@contract)
-      when 6 then manage_payments_contract_wizard_path(@contract)
-      when 7 then manage_documents_contract_wizard_path(@contract)
-      when 8 then manage_review_contract_wizard_path(@contract)
+      when 4 then manage_payments_contract_wizard_path(@contract)   # The deal
+      when 5 then manage_tech_contract_wizard_path(@contract)       # Services
+      when 6 then manage_documents_contract_wizard_path(@contract)
+      when 7 then manage_review_contract_wizard_path(@contract)
       else manage_bookings_contract_wizard_path(@contract)
       end
     end

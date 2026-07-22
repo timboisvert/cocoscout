@@ -19,7 +19,9 @@ export default class extends Controller {
         "revenueShareConfig", "revenueSource", "revenueOurShare", "revenueTheirShare",
         "revenueGuarantee", "revenueGuaranteeConfig", "revenueGuaranteeAmount", "revenueSettlement",
         // Custom targets
-        "customConfig"
+        "customConfig",
+        // Ticketing (folded into the deal, shown only when we sell)
+        "ticketingSection"
     ]
     static values = {
         existing: Array,
@@ -49,6 +51,19 @@ export default class extends Controller {
 
         this.renderList()
         this.updateSummary()
+        this.updateTicketingVisibility()
+    }
+
+    // Ticketing is folded into the deal step and only relevant when WE sell.
+    onWhoSellsChange() {
+        this.updateTicketingVisibility()
+    }
+
+    updateTicketingVisibility() {
+        if (!this.hasTicketingSectionTarget) return
+        const checked = this.element.querySelector('input[name="who_sells_tickets"]:checked')
+        const weSell = checked && checked.value === "org"
+        this.ticketingSectionTarget.classList.toggle("hidden", !weSell)
     }
 
     restoreConfig(config) {
