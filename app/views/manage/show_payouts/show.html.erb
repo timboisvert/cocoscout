@@ -266,6 +266,9 @@
     <% end %>
     </div><%# close grid %>
 
+  <% elsif @contract_payout %>
+    <%= render "manage/show_payouts/contract_payments_payout" %>
+
   <% else %>
   <%
     # Prepare payee data for the walkthrough (available to both main content and sidebar)

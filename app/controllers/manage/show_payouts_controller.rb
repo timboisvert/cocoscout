@@ -19,10 +19,15 @@ module Manage
 
     def show
       @is_third_party = @production.third_party?
-      @contract = @production.contract
+      @contract = resolved_contract
+      # Contract payments already logged against this specific show (what we owe /
+      # are owed for it) — a contract show is paid from these, not from casting.
+      @show_contract_payments = @show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
 
       if @is_third_party && @contract&.revenue_share?
         setup_contractor_payout
+      elsif @show_contract_payments.any?
+        setup_contract_payout
       else
         setup_performer_payout
       end
@@ -608,6 +613,23 @@ module Manage
     end
 
     private
+
+    # A contract show whose money is a set of logged contract payments. Show what
+    # we owe (outgoing → payable via the payout run) and what's owed to us
+    # (incoming → expected income), instead of the casting calculation.
+    def setup_contract_payout
+      @contract_payout = true
+      @outgoing_payments = @show_contract_payments.select(&:direction_outgoing?)
+      @incoming_payments = @show_contract_payments.select(&:direction_incoming?)
+    end
+
+    # A show's contract, resolved however it's linked: through a booked space
+    # rental, its production, or the contract payments already logged against it
+    # (so a show that only carries linked payments is still recognized).
+    def resolved_contract
+      @show.space_rental&.contract || @production.contract ||
+        @show.contract_payments.first&.contract
+    end
 
     def setup_performer_payout
       @line_items = @show_payout.line_items.by_amount

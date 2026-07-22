@@ -71,7 +71,7 @@ module Manage
 
     def payment_params
       params.require(:contract_payment).permit(
-        :description, :amount, :amount_tbd, :direction, :due_date, :notes
+        :description, :amount, :amount_tbd, :direction, :due_date, :notes, :show_id
       )
     end
   end
