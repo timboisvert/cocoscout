@@ -81,6 +81,21 @@ class Contract < ApplicationRecord
     true
   end
 
+  # Reverse a completion so the contract can be extended again — e.g. a teacher
+  # ran a course in June and you now want to add August dates and reuse the
+  # contract. Flips completed → active and un-archives the production that was
+  # archived on completion, so amending (and selecting it for a new course) works.
+  def reopen!
+    return false unless status_completed?
+
+    transaction do
+      update!(status: :active, completed_at: nil)
+      production.update!(archived_at: nil) if production&.archived?
+    end
+
+    true
+  end
+
   def cancel!(delete_events: false)
     return false if status_cancelled?
 

@@ -1344,6 +1344,7 @@ Rails.application.routes.draw do
       end
       member do
         post :activate
+        post :reopen
         get :cancel
         post :process_cancel
         patch :update_projection
