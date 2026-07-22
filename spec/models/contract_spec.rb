@@ -476,5 +476,69 @@ RSpec.describe Contract, type: :model do
         expect(contract.date_range).to eq("June 15 - June 20, 2024")
       end
     end
+
+    describe "payment model v2 (who sells + settlement basis → direction)" do
+      def contract_with(config)
+        build(:contract, draft_data: { "payment_config" => config })
+      end
+
+      it "Case 1 — we sell, revenue share → we pay them (outgoing)" do
+        c = contract_with("who_sells_tickets" => "org", "settlement_basis" => "revenue_share")
+        expect(c.settlement_direction).to eq("outgoing")
+      end
+
+      it "Case 2 — they sell, revenue share → they pay us (incoming)" do
+        c = contract_with("who_sells_tickets" => "contractor", "settlement_basis" => "revenue_share")
+        expect(c.settlement_direction).to eq("incoming")
+      end
+
+      it "Case 3 — we sell, revenue minus a flat fee → we pay them (outgoing)" do
+        c = contract_with("who_sells_tickets" => "org", "settlement_basis" => "revenue_minus_fee")
+        expect(c.settlement_direction).to eq("outgoing")
+      end
+
+      it "Case 4 — flat rental → they pay us (incoming)" do
+        c = contract_with("settlement_basis" => "flat", "flat_fee_direction" => "incoming")
+        expect(c.settlement_direction).to eq("incoming")
+        expect(c.who_sells_tickets).to be_nil
+      end
+
+      it "supports a flat rental we pay out (outgoing)" do
+        c = contract_with("settlement_basis" => "flat", "flat_fee_direction" => "outgoing")
+        expect(c.settlement_direction).to eq("outgoing")
+      end
+
+      describe "legacy fallback (no v2 keys set)" do
+        it "legacy revenue_share reads as they-sell / incoming" do
+          c = build(:contract, draft_data: { "payment_structure" => "revenue_share",
+                                             "payment_config" => { "revenue_our_share" => 50 } })
+          expect(c.settlement_basis).to eq("revenue_share")
+          expect(c.who_sells_tickets).to eq("contractor")
+          expect(c.settlement_direction).to eq("incoming")
+        end
+
+        it "legacy ticket_revenue_minus_fee reads as we-sell / outgoing" do
+          c = build(:contract, draft_data: { "payment_structure" => "flat_fee",
+                                             "payment_config" => { "flat_fee_direction" => "ticket_revenue_minus_fee",
+                                                                   "flat_fee_amount" => 500 } })
+          expect(c.settlement_basis).to eq("revenue_minus_fee")
+          expect(c.who_sells_tickets).to eq("org")
+          expect(c.settlement_direction).to eq("outgoing")
+        end
+      end
+
+      describe "#flat_fee_entries" do
+        it "returns per-event entries with individual prices when set" do
+          entries = [ { "amount" => 100, "show_index" => 0 }, { "amount" => 250, "show_index" => 1 } ]
+          c = contract_with("settlement_basis" => "flat", "flat_fee_entries" => entries)
+          expect(c.flat_fee_entries.map { |e| e["amount"] }).to eq([ 100, 250 ])
+        end
+
+        it "falls back to a single whole-contract fee" do
+          c = contract_with("settlement_basis" => "flat", "flat_fee_amount" => 750)
+          expect(c.flat_fee_entries).to eq([ { "amount" => 750.0, "due_date" => nil, "show_index" => nil } ])
+        end
+      end
+    end
   end
 end

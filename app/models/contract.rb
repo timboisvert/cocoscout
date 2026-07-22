@@ -366,6 +366,60 @@ class Contract < ApplicationRecord
     draft_payment_config["revenue_our_share"].to_f
   end
 
+  # --- Payment model v2: who sells tickets + settlement basis ---
+  # Every contract's money flow is two orthogonal choices. Stored in
+  # draft_payment_config; these getters fall back to the legacy payment_structure
+  # so existing contracts keep working until the backfill task migrates them.
+
+  # "org" (we sell tickets), "contractor" (they sell), or nil (flat rental).
+  def who_sells_tickets
+    draft_payment_config["who_sells_tickets"].presence || legacy_who_sells_tickets
+  end
+
+  # "revenue_share" | "revenue_minus_fee" | "flat".
+  def settlement_basis
+    draft_payment_config["settlement_basis"].presence || legacy_settlement_basis
+  end
+
+  # Which way money flows for the core settlement: if WE sell the tickets we hold
+  # the cash and pay them (outgoing); if THEY sell, they pay us (incoming). A flat
+  # rental defaults to incoming but can be set either way via flat_fee_direction.
+  def settlement_direction
+    case who_sells_tickets
+    when "org" then "outgoing"
+    when "contractor" then "incoming"
+    else
+      dir = draft_payment_config["flat_fee_direction"]
+      dir.in?(%w[incoming outgoing]) ? dir : "incoming"
+    end
+  end
+
+  # Flat-fee entries — supports one whole-contract fee, a uniform per-event fee,
+  # or a per-event fee with a different price per event. Returns an array of
+  # { "amount", "due_date", "show_index" } (show_index nil = whole contract).
+  def flat_fee_entries
+    entries = draft_payment_config["flat_fee_entries"]
+    return entries if entries.is_a?(Array) && entries.any?
+
+    [ { "amount" => flat_fee_amount, "due_date" => nil, "show_index" => nil } ]
+  end
+
+  def legacy_settlement_basis
+    case draft_payment_structure
+    when "revenue_share" then "revenue_share"
+    when "flat_fee"
+      draft_payment_config["flat_fee_direction"] == "ticket_revenue_minus_fee" ? "revenue_minus_fee" : "flat"
+    else "flat" # per_event / custom → a list of flat amounts
+    end
+  end
+
+  def legacy_who_sells_tickets
+    case legacy_settlement_basis
+    when "revenue_minus_fee" then "org"     # we sell, keep a fee, pay them the rest
+    when "revenue_share" then "contractor"  # legacy rev-share was generated as incoming (they pay us)
+    end
+  end
+
   def has_revenue_projection?
     revenue_projections.present? && revenue_projections["scenarios"].present?
   end
