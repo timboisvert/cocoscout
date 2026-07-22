@@ -218,5 +218,31 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect { described_class.new(show).call }.not_to raise_error
       end
     end
+
+    context "Case 3 — revenue minus a flat fee (we sell, we pay them the rest)" do
+      let(:contract) do
+        create(:contract, :active, organization: organization, draft_data: {
+                 "payment_structure" => "flat_fee",
+                 "payment_config" => { "flat_fee_direction" => "ticket_revenue_minus_fee", "flat_fee_amount" => 300 }
+               })
+      end
+      let(:production) do
+        create(:production, organization: organization, production_type: "third_party")
+              .tap { |p| contract.update!(production: p) }
+      end
+
+      it "settles the outgoing payment to ticket revenue minus the fee" do
+        show = create(:show, production: production, date_and_time: 1.week.ago)
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)
+        payment = create(:contract_payment, contract: contract, direction: "outgoing",
+                                            amount: 0, amount_tbd: true, due_date: 1.week.ago)
+
+        described_class.new(show).call
+
+        payment.reload
+        expect(payment.amount).to eq(700.0) # 1000 revenue − 300 fee
+        expect(payment.amount_tbd).to be false
+      end
+    end
   end
 end

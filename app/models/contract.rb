@@ -348,13 +348,14 @@ class Contract < ApplicationRecord
     end
   end
 
-  # Revenue projection helpers
+  # Revenue projection helpers. These read the v2 settlement_basis, which falls
+  # back to the legacy payment_structure — so old and migrated contracts both work.
   def revenue_share?
-    draft_payment_structure == "revenue_share"
+    settlement_basis == "revenue_share"
   end
 
   def ticket_revenue_minus_fee?
-    draft_payment_structure == "flat_fee" && draft_payment_config["flat_fee_direction"] == "ticket_revenue_minus_fee"
+    settlement_basis == "revenue_minus_fee"
   end
 
   def flat_fee_amount

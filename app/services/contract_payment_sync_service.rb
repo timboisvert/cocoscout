@@ -17,6 +17,11 @@ class ContractPaymentSyncService
   def call
     return unless should_sync?
 
+    if @contract.ticket_revenue_minus_fee?
+      sync_revenue_minus_fee
+      return
+    end
+
     settlement = @contract.draft_payment_config["revenue_settlement"] || "monthly"
 
     case settlement
@@ -32,7 +37,28 @@ class ContractPaymentSyncService
   private
 
   def should_sync?
-    @contract&.revenue_share? && @production&.type_third_party?
+    return false unless @production&.type_third_party?
+
+    @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
+  end
+
+  # Case 3: we sell, contractor gets all ticket revenue minus our flat fee. One
+  # whole-contract outgoing payment settled from every confirmed show.
+  def sync_revenue_minus_fee
+    summary = @contract.flat_fee_revenue_summary
+    return unless summary
+
+    payment = @contract.contract_payments.where(direction: "outgoing").order(:due_date).first
+    return unless payment
+
+    if summary[:confirmed_count].positive?
+      details = @contract.contract_shows.includes(:show_financials)
+                         .select { |s| s.show_financials&.has_data? }
+                         .map { |s| [ s, s.show_financials.total_revenue ] }
+      update_payment(payment, summary[:contractor_share], details, pending_count: summary[:pending_count])
+    else
+      payment.update(amount: 0, amount_tbd: true)
+    end
   end
 
   def contractor_share_pct
