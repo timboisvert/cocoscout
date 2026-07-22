@@ -194,9 +194,23 @@ module Manage
       payment_structure = params[:payment_structure].presence || "flat_fee"
       payment_config = params[:payment_config].present? ? JSON.parse(params[:payment_config]) : {}
 
-      @contract.update_draft_step(:payments, payments_data)
+      # v2 dimensions: record who sells tickets (only meaningful for revenue share
+      # — it distinguishes "we sell, we pay them" from "they sell, they pay us")
+      # and the derived settlement basis, so direction is unambiguous.
+      who_sells = params[:who_sells_tickets].presence
+      if payment_structure == "revenue_share" && who_sells.in?(%w[org contractor])
+        payment_config["who_sells_tickets"] = who_sells
+      end
+      payment_config["settlement_basis"] = settlement_basis_for(payment_structure, payment_config)
+
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)
+
+      # Stamp every generated payment with the derived direction, so client-side
+      # generation can never produce the wrong direction for the four cases.
+      direction = @contract.settlement_direction
+      payments_data = payments_data.map { |p| p.merge("direction" => direction) }
+      @contract.update_draft_step(:payments, payments_data)
 
       # Auto-set contract dates from bookings
       if @contract.contract_start_date.blank? || @contract.contract_end_date.blank?
@@ -271,6 +285,16 @@ module Manage
     end
 
     private
+
+    # Derive the v2 settlement basis from the wizard's payment structure/config.
+    def settlement_basis_for(structure, config)
+      case structure
+      when "revenue_share" then "revenue_share"
+      when "flat_fee"
+        config["flat_fee_direction"] == "ticket_revenue_minus_fee" ? "revenue_minus_fee" : "flat"
+      else "flat"
+      end
+    end
 
     def set_contract
       @contract = Current.organization.contracts.find(params[:contract_id])
