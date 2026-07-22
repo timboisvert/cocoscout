@@ -803,7 +803,8 @@ Rails.application.routes.draw do
     delete "/casting/tables/new/cancel", to: "casting_table_wizard#cancel", as: "casting_tables_cancel"
 
     # Casting Table (individual)
-    get   "/casting/tables/:id",           to: "casting_tables#show", as: "casting_table"
+    get "/casting/tables/:id",           to: "casting_tables#show", as: "casting_table"
+    delete "/casting/tables/:id",          to: "casting_tables#destroy"
     get   "/casting/tables/:id/edit",      to: "casting_tables#edit_events", as: "edit_casting_table"
     patch "/casting/tables/:id",           to: "casting_tables#update", as: "update_casting_table"
     post  "/casting/tables/:id/assign",    to: "casting_tables#assign", as: "casting_table_assign"
