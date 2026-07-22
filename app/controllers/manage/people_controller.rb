@@ -383,21 +383,34 @@ module Manage
 
     def remove_from_organization
       @person = Current.organization.people.find(params[:id])
+      org = Current.organization
 
-      # Remove the person from the organization
-      Current.organization.people.delete(@person)
+      ActiveRecord::Base.transaction do
+        # Remove the person from the organization
+        org.people.delete(@person)
 
-      # If the person has a user account, clean up their roles and permissions
-      if @person.user
-        # Remove organization_role for this organization
-        @person.user.organization_roles.where(organization: Current.organization).destroy_all
+        # Also remove them from the org's talent pools and any upcoming casting —
+        # org membership and pool membership are separate tables, so without this
+        # the person is stranded in the pools with no org link (an orphaned member
+        # that then breaks org-scoped lookups like their profile and pool removal).
+        org_pool_ids = TalentPool.joins(:production)
+                                 .where(productions: { organization_id: org.id }).pluck(:id)
+        TalentPoolMembership.where(member: @person, talent_pool_id: org_pool_ids).destroy_all
 
-        # Remove production_permissions for all productions in this production company
-        production_ids = Current.organization.productions.pluck(:id)
-        @person.user.production_permissions.where(production_id: production_ids).destroy_all
+        ShowPersonRoleAssignment.joins(:show)
+                                .where(shows: { production_id: org.productions.select(:id) })
+                                .where(assignable_type: "Person", assignable_id: @person.id)
+                                .where("shows.date_and_time >= ?", Time.current)
+                                .destroy_all
+
+        # If the person has a user account, clean up their roles and permissions
+        if @person.user
+          @person.user.organization_roles.where(organization: org).destroy_all
+          @person.user.production_permissions.where(production_id: org.productions.pluck(:id)).destroy_all
+        end
       end
 
-      redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.organization.name}",
+      redirect_to manage_people_path, notice: "#{@person.name} was removed from #{org.name}",
                                       status: :see_other
     end
 
@@ -405,7 +418,18 @@ module Manage
 
     # Use callbacks to share common setup or constraints between actions.
     def set_person
-      @person = Current.organization.people.find(params.expect(:id))
+      id = params.expect(:id)
+      # Resolve a person connected to this org — normally via org membership, but
+      # also via one of the org's talent pools, so an orphaned pool member (in a
+      # pool but no longer in org.people) still resolves instead of 404ing.
+      @person = Current.organization.people.find_by(id: id) || org_pooled_person(id)
+      raise ActiveRecord::RecordNotFound, "Couldn't find Person #{id}" unless @person
+    end
+
+    def org_pooled_person(id)
+      Person.joins(talent_pools: :production)
+            .where(productions: { organization_id: Current.organization.id })
+            .find_by(id: id)
     end
 
     # Only allow a list of trusted parameters through.
