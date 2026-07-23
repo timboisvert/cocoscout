@@ -205,6 +205,30 @@ class Contract < ApplicationRecord
     bill_services!(draft_services)
   end
 
+  # Amend: apply a freshly-edited payment list (the deal-derived payments plus any
+  # by-hand extras, produced by the same Financials editor as create) to an active
+  # contract. Paid payments are history and stay put; every pending payment is
+  # replaced by the staged list, and per-event payments are re-linked to shows.
+  def reconcile_amended_payments!(staged_payments)
+    contract_payments.status_pending.destroy_all
+
+    created = Array(staged_payments).filter_map do |payment|
+      tbd = payment["amount_tbd"] == true || payment["amount_tbd"] == "true"
+      next if payment["amount"].to_f <= 0 && !tbd
+
+      contract_payments.create!(
+        description: payment["description"],
+        amount: payment["amount"].to_f,
+        amount_tbd: tbd,
+        direction: payment["direction"].presence || settlement_direction,
+        due_date: payment["due_date"].present? ? Date.parse(payment["due_date"].to_s) : (contract_end_date || Date.current),
+        notes: payment["notes"]
+      )
+    end
+
+    link_payments_to_shows(created, contract_shows.order(:date_and_time).to_a)
+  end
+
   def update_draft_step(step_name, data)
     self.draft_data = draft_data.merge(step_name.to_s => data)
     save!

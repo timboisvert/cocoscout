@@ -213,10 +213,11 @@ module Manage
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)
 
-      # Stamp every generated payment with the derived direction, so client-side
-      # generation can never produce the wrong direction for the four cases.
+      # Stamp every deal-generated payment with the derived direction, so
+      # client-side generation can never produce the wrong direction for the four
+      # cases. By-hand extras keep the direction chosen in the add-payment modal.
       direction = @contract.settlement_direction
-      payments_data = payments_data.map { |p| p.merge("direction" => direction) }
+      payments_data = payments_data.map { |p| p["extra"] ? p : p.merge("direction" => direction) }
       @contract.update_draft_step(:payments, payments_data)
 
       # Auto-set contract dates from bookings

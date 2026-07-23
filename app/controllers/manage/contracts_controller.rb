@@ -396,45 +396,49 @@ module Manage
     end
 
     # Step 3: Amend Payments
+    # Step 3: The deal — the same Financials editor as the create wizard (who
+    # sells, settlement, the generated payment list, add-a-payment, how they may
+    # pay us). Seeded from the contract's current config and payments (or the
+    # staged edits if you've been here before), applied on Confirm.
     def amend_payments
-      @existing_payments = @contract.contract_payments.order(:due_date)
-      @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
-
-      # Get amend data from contract
       @amend_data = @contract.amend_data
 
-      Rails.logger.info "[AMEND] amend_payments - amend_data keys: #{@amend_data.keys}"
-      Rails.logger.info "[AMEND] amend_payments - new_bookings count: #{(@amend_data["new_bookings"] || []).count}"
+      @existing_payment_structure = @amend_data["payment_structure"].presence || @contract.draft_payment_structure
+      @existing_payment_config = @amend_data["payment_config"].presence || @contract.draft_payment_config
+      @existing_payments = @amend_data["payments"].presence || @contract.draft_payments
 
-      @new_bookings = @amend_data["new_bookings"] || []
-      @removed_rental_ids = @amend_data["removed_rental_ids"] || []
+      offline = Array(@existing_payment_config["accepted_payment_methods"]) - [ "online" ]
+      @offline_payment_methods = offline.presence || @contract.offline_payment_methods
 
-      # Calculate remaining rentals after removals
-      @remaining_rentals = @existing_rentals.reject { |r| @removed_rental_ids.include?(r.id) }
-      @total_events_after = @remaining_rentals.count + @new_bookings.count
-
-      # Initialize payment changes
-      @amend_data["new_payments"] ||= []
-      @amend_data["removed_payment_ids"] ||= []
-
-      @locations = Current.organization.locations.includes(:location_spaces)
-      @locations_map = @locations.index_by(&:id)
-      @spaces_map = @locations.flat_map(&:location_spaces).index_by(&:id)
+      # The per-event count reflects the schedule after this amendment's add/removes.
+      @bookings = effective_amend_bookings
+      @bookings_count = @bookings.count
     end
 
     def save_amend_payments
-      new_payments = params[:new_payments].present? ? JSON.parse(params[:new_payments]) : []
-      payment_structure = params[:payment_structure].presence || "custom"
+      payments_data = params[:payments].present? ? JSON.parse(params[:payments]) : []
+      payment_structure = params[:payment_structure].presence || "flat_fee"
       payment_config = params[:payment_config].present? ? JSON.parse(params[:payment_config]) : {}
-      removed_payment_ids = params[:removed_payment_ids].present? ? params[:removed_payment_ids].map(&:to_i) : []
 
-      # Update contract's amend_data
+      # Who sells is its own question; settlement basis derives from the structure.
+      who_sells = params[:who_sells_tickets].presence
+      payment_config["who_sells_tickets"] = who_sells.in?(%w[org contractor]) ? who_sells : nil
+      payment_config["settlement_basis"] = settlement_basis_for(payment_structure, payment_config)
+
+      # How they may pay us — online always, plus whatever offline methods are ticked.
+      offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
+      payment_config["accepted_payment_methods"] = [ "online" ] + offline
+
+      # Stamp every payment with the derived direction so the four cases can't
+      # produce a wrong-way payment.
+      direction = derived_settlement_direction(payment_structure, payment_config)
+      payments_data = payments_data.map { |p| p["extra"] ? p : p.merge("direction" => direction) }
+
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(
-        "new_payments" => new_payments,
         "payment_structure" => payment_structure,
         "payment_config" => payment_config,
-        "removed_payment_ids" => removed_payment_ids
+        "payments" => payments_data
       ))
 
       redirect_to amend_ticketing_tech_manage_contract_path(@contract)
@@ -518,12 +522,15 @@ module Manage
       @amend_data = @contract.amend_data
       new_bookings = @amend_data["new_bookings"] || []
       removed_rental_ids = @amend_data["removed_rental_ids"] || []
-      new_payments = @amend_data["new_payments"] || []
-      removed_payment_ids = @amend_data["removed_payment_ids"] || []
 
       staged_production_name = @amend_data["production_name"].to_s.strip
 
       success = @contract.transaction do
+        # The deal config (who sells + settlement) — write it through before
+        # reconciling payments so their derived direction is correct.
+        @contract.update_draft_step(:payment_structure, @amend_data["payment_structure"]) if @amend_data.key?("payment_structure")
+        @contract.update_draft_step(:payment_config, @amend_data["payment_config"]) if @amend_data.key?("payment_config")
+
         # Ticketing is plain config — write it straight through.
         @contract.update_draft_step(:ticketing, @amend_data["ticketing"]) if @amend_data.key?("ticketing")
 
@@ -589,20 +596,9 @@ module Manage
         # slot, and move the linked show to match.
         apply_event_time_edits(@amend_data["event_times"] || {})
 
-        # Remove payments
-        @contract.contract_payments.where(id: removed_payment_ids).destroy_all if removed_payment_ids.any?
-
-        # Add new payments
-        new_payments.each do |payment|
-          @contract.contract_payments.create!(
-            description: payment["description"],
-            amount: payment["amount"].to_f,
-            direction: payment["direction"] || "incoming",
-            due_date: Date.parse(payment["due_date"]),
-            notes: payment["notes"],
-            status: "pending"
-          )
-        end
+        # Reconcile the payment list from the Financials editor. Runs after shows
+        # exist so per-event payments can re-link; paid payments are preserved.
+        @contract.reconcile_amended_payments!(@amend_data["payments"]) if @amend_data.key?("payments")
 
         # Update contract dates if needed
         all_rentals = @contract.space_rentals.reload
@@ -647,6 +643,41 @@ module Manage
 
       if production.contracts.where.not(id: contract.id).none? && production.shows.reload.none?
         production.destroy
+      end
+    end
+
+    # The bookings the Financials step's per-event count should reflect: the
+    # rentals that survive this amendment plus any newly-added ones. Shaped like
+    # draft bookings ({ "starts_at" => iso }) for the shared partial.
+    def effective_amend_bookings
+      amend = @contract.amend_data
+      removed = amend["removed_rental_ids"] || []
+      remaining = @contract.space_rentals.where.not(id: removed).order(:starts_at)
+      remaining.map { |r| { "starts_at" => r.starts_at.iso8601 } } +
+        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"] } }
+    end
+
+    # Basis a structure/config settles on — mirrors the create wizard.
+    def settlement_basis_for(structure, config)
+      case structure
+      when "revenue_share" then "revenue_share"
+      when "flat_fee"
+        config["flat_fee_direction"] == "ticket_revenue_minus_fee" ? "revenue_minus_fee" : "flat"
+      else "flat"
+      end
+    end
+
+    # The derived money direction for a staged deal, without mutating the live
+    # contract — mirrors Contract#settlement_direction.
+    def derived_settlement_direction(structure, config)
+      case settlement_basis_for(structure, config)
+      when "revenue_share"
+        config["who_sells_tickets"] == "org" ? "outgoing" : "incoming"
+      when "revenue_minus_fee"
+        "outgoing"
+      else
+        dir = config["flat_fee_direction"]
+        %w[incoming outgoing].include?(dir) ? dir : "incoming"
       end
     end
 
