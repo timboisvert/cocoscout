@@ -6,7 +6,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Organizations", manage_organizations_path],
-      [Current.organization.name, manage_organization_path(Current.organization, anchor: "tab-2")]
+      [Current.organization.name, section_manage_organization_path(Current.organization, section: "locations")]
     ],
     text: "Cannot Delete Location",
     links: []
@@ -105,7 +105,7 @@
       <div class="pt-4 border-t border-gray-200">
         <div class="flex gap-2">
           <%= render "shared/button", text: "Back to Location", variant: "secondary", path: manage_location_path(@location) %>
-          <%= render "shared/button", text: "Back to Organization", variant: "primary", path: manage_organization_path(Current.organization, anchor: "tab-2") %>
+          <%= render "shared/button", text: "Back to Organization", variant: "primary", path: section_manage_organization_path(Current.organization, section: "locations") %>
         </div>
       </div>
     </div>

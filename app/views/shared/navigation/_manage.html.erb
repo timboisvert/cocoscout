@@ -11,7 +11,7 @@
           <% used = Current.organization.events_in_month.count %>
           <% limit = Organization::FREE_MONTHLY_EVENT_LIMIT %>
           <% can_manage_billing = Current.user&.superadmin? || Current.organization.manageable_by?(Current.user) %>
-          <% upgrade_link = can_manage_billing ? manage_organization_path(Current.organization, anchor: "tab-4") : pricing_path %>
+          <% upgrade_link = can_manage_billing ? section_manage_organization_path(Current.organization, section: "billing") : pricing_path %>
           <%= link_to upgrade_link, class: "block mx-3 mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 hover:border-pink-300 transition-colors" do %>
             <div class="flex items-center justify-between text-xs font-semibold text-gray-700">
               <span>Producer plan</span>

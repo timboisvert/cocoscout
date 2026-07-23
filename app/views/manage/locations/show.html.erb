@@ -6,7 +6,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Organizations", manage_organizations_path],
-      [Current.organization.name, manage_organization_path(Current.organization, anchor: "tab-2")]
+      [Current.organization.name, section_manage_organization_path(Current.organization, section: "locations")]
     ],
     text: @location.name,
     links: (@is_owner || @role == "manager") ? [

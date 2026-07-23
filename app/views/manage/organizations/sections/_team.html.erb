@@ -1,0 +1,214 @@
+<div class="mt-4 space-y-1">
+  <% @team_members.each do |member| %>
+    <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
+    <% next unless organization_role&.company_role.in?(%w[manager viewer]) %>
+    <% all_profiles = member.people.where(archived_at: nil).order(:created_at) %>
+    <% primary_profile = organization_role.display_person %>
+    <div class="group flex items-stretch px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+      <%# Left Section: Person Info %>
+      <div class="w-1/2 flex items-center gap-3">
+        <% if all_profiles.size > 1 %>
+          <%# Multiple profiles - show stacked headshots %>
+          <div class="flex -space-x-2 flex-shrink-0">
+            <% all_profiles.limit(3).each_with_index do |profile, idx| %>
+              <% if profile.headshot&.attached? %>
+                <%= image_tag profile.safe_headshot_variant(:thumb),
+                    class: "w-10 h-10 rounded-lg object-cover border-2 border-white",
+                    style: "z-index: #{3 - idx}",
+                    title: profile.name %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center border-2 border-white"
+                     style="z-index: <%= 3 - idx %>"
+                     title="<%= profile.name %>">
+                  <span class="text-sm font-semibold text-gray-600"><%= profile.name&.first&.upcase || "?" %></span>
+                </div>
+              <% end %>
+            <% end %>
+            <% if all_profiles.size > 3 %>
+              <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center border-2 border-white">
+                <span class="text-xs font-semibold text-gray-600">+<%= all_profiles.size - 3 %></span>
+              </div>
+            <% end %>
+          </div>
+        <% elsif primary_profile&.headshot&.attached? %>
+          <%= image_tag primary_profile.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <span class="text-sm font-semibold text-gray-600">
+              <%= (primary_profile&.name || member.email_address).first.upcase %>
+            </span>
+          </div>
+        <% end %>
+        <div class="min-w-0">
+          <% if all_profiles.size > 1 %>
+            <div class="font-medium text-sm text-gray-900 truncate">
+              <%= all_profiles.map(&:name).compact.join(", ") %>
+              <% if member == Current.user %>
+                <span class="text-gray-500">(Me)</span>
+              <% end %>
+            </div>
+            <div class="text-xs text-gray-500 truncate"><%= all_profiles.size %> profiles · <%= member.email_address %></div>
+          <% else %>
+            <div class="font-medium text-sm text-gray-900 truncate">
+              <%= primary_profile&.name || member.email_address %>
+              <% if member == Current.user %>
+                <span class="text-gray-500">(Me)</span>
+              <% end %>
+            </div>
+            <div class="text-xs text-gray-500 truncate"><%= member.email_address %></div>
+          <% end %>
+        </div>
+      </div>
+      <%# Right Section: Role %>
+      <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide">Global Role</div>
+          <div class="text-sm font-medium text-pink-500">
+            <% if member.id == @organization.owner_id %>Owner, <% end %><%= organization_role&.company_role&.capitalize %>
+          </div>
+        </div>
+        <% if (@is_owner || @role == "manager") && member != Current.user && member.id != @organization.owner_id %>
+          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+            <%= render "shared/button",
+                text: "Manage",
+                variant: "primary",
+                size: "small",
+                type: :button,
+                data: {
+                  action: "click->org-team-modals#openPermissionsModal",
+                  "member-id": member.id,
+                  "member-name": primary_profile&.name || member.email_address,
+                  "permissions-url": permissions_manage_team_path(id: member.id)
+                } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @is_owner || @role == "manager" %>
+    <% @team_invitations.each do |invite| %>
+      <div class="group flex items-stretch px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+        <%# Left Section: Person Info %>
+        <div class="w-1/2 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+            <span class="text-sm font-semibold text-yellow-600">
+              <%= invite.email.first.upcase %>
+            </span>
+          </div>
+          <div class="min-w-0">
+            <div class="font-medium text-sm text-gray-900 truncate"><%= invite.email %></div>
+            <div class="text-xs text-gray-500">Invited <%= time_ago_in_words(invite.created_at) %> ago</div>
+          </div>
+        </div>
+        <%# Right Section: Status %>
+        <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">Status</div>
+            <div class="text-sm font-medium text-yellow-600">Pending</div>
+            <div class="text-xs text-gray-500">Awaiting response</div>
+          </div>
+          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+            <%= form_with url: revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, turbo_confirm: "Are you sure you want to revoke this invitation?" } do %>
+              <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :submit %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<% if @is_owner || @role == "manager" %>
+  <div class="border-t border-gray-200 pt-5 mt-8">
+    <%= render "shared/button", text: "Invite Organization Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
+  </div>
+
+  <!-- Invite Organization Team Member Modal -->
+  <div data-org-team-modals-target="inviteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->org-team-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite an Organization Team Member</h2>
+      </div>
+      <div class="p-6" data-controller="team-invite-search" data-team-invite-search-url-value="<%= search_manage_team_index_path %>">
+        <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
+          <input type="hidden" name="team_invitation[person_id]" value="" data-team-invite-search-target="personIdField">
+
+          <%# Step 1: Search %>
+          <div data-team-invite-search-target="searchSection">
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Search for a person</label>
+              <input type="text"
+                     placeholder="Search by name or email..."
+                     autocomplete="off"
+                     class="block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                     data-team-invite-search-target="searchInput"
+                     data-action="input->team-invite-search#search">
+            </div>
+            <div data-team-invite-search-target="searchResults" class="max-h-64 overflow-y-auto">
+              <p class="text-gray-500 text-sm p-4">Type at least 2 characters to search by name or email...</p>
+            </div>
+          </div>
+
+          <%# Selected person display %>
+          <div data-team-invite-search-target="selectedSection" class="hidden">
+            <div class="flex items-center justify-between p-3 bg-pink-50 border border-pink-200 rounded-lg mb-4">
+              <div>
+                <span data-team-invite-search-target="selectedName" class="font-medium text-sm text-gray-900"></span>
+                <span data-team-invite-search-target="selectedEmail" class="text-xs text-gray-500 block"></span>
+              </div>
+              <button type="button"
+                      class="text-sm text-pink-600 hover:text-pink-700 font-medium cursor-pointer"
+                      data-action="team-invite-search#backToSearch">
+                Change
+              </button>
+            </div>
+          </div>
+
+          <%# Step 2: Email & Message (shown after selection) %>
+          <div data-team-invite-search-target="formSection" class="hidden space-y-4">
+            <div>
+              <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { team_invite_search_target: "emailField" } %>
+            </div>
+
+            <div>
+              <%= f.label :invitation_subject, "Email Subject", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= f.text_field :invitation_subject, value: "You've been invited to join #{@organization.name}'s team on CocoScout", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+
+            <div>
+              <%= f.label :invitation_message, "Email Message", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= f.text_area :invitation_message, rows: 5, value: "Welcome to CocoScout!\n\n#{@organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account.", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closeInviteModal" } %>
+              <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          </div>
+
+          <%# Cancel button when in search mode %>
+          <div data-team-invite-search-target="searchCancel" class="flex justify-end gap-3 pt-4">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closeInviteModal" } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Permissions Modal -->
+  <div data-org-team-modals-target="permissionsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->org-team-modals#closePermissionsModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" data-action="click->org-team-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <h2 data-org-team-modals-target="permissionsTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Manage Permissions</h2>
+      </div>
+      <div data-org-team-modals-target="permissionsContent" class="p-6 overflow-y-auto">
+        <p class="text-gray-500 text-center py-8">Loading...</p>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+        <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closePermissionsModal" } %>
+      </div>
+    </div>
+  </div>
+<% end %>

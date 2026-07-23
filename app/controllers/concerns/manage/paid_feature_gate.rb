@@ -201,7 +201,7 @@ module Manage
 
     # Canonical billing location: the org's "Billing & Plan" tab (index 4).
     def org_billing_tab_path
-      manage_organization_path(Current.organization, anchor: "tab-4")
+      section_manage_organization_path(Current.organization, section: "billing")
     end
 
     # before_action for Show-creation actions: redirect free orgs that have hit

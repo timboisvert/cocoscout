@@ -69,9 +69,9 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it "redirects the legacy billing page to the org's Billing & Plan tab" do
+    it "redirects the legacy billing page to the org's Billing & Plan section" do
       get manage_billing_path
-      expect(response).to redirect_to(manage_organization_path(organization, anchor: "tab-4"))
+      expect(response).to redirect_to(section_manage_organization_path(organization, section: "billing"))
     end
   end
 

@@ -979,6 +979,8 @@ Rails.application.routes.draw do
         get :confirm_delete
         post :transfer_ownership
         delete :remove_logo
+        # Named settings sections, so a link never depends on tab position.
+        get "section/:section", action: :show, as: :section
       end
     end
 

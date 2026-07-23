@@ -1,0 +1,64 @@
+<!-- Transfer Ownership Section -->
+<% if @team_members.count > 1 %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-yellow-50 px-4 py-3 border-b border-yellow-200">
+      <h2 class="text-lg font-semibold text-yellow-800 coustard-regular">Transfer Ownership</h2>
+    </div>
+    <div class="p-6 bg-white">
+      <p class="text-sm text-gray-600 mb-4">
+        Transfer ownership of this organization to another manager. You will remain a manager but will lose owner privileges.
+      </p>
+
+      <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post, class: "space-y-4" do |f| %>
+        <div class="sm:w-1/2">
+          <%= f.label :new_owner_id, "New Owner", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= f.select :new_owner_id,
+              options_from_collection_for_select(
+                @team_members.select { |u| u.organization_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
+                :id,
+                ->(u) { u.person&.name || u.email_address }
+              ),
+              { prompt: "Select new owner..." },
+              { class: "block w-full rounded-lg border border-gray-400 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" } %>
+        </div>
+
+        <div class="pt-2">
+          <%= render "shared/button",
+                     text: "Transfer Ownership",
+                     variant: "secondary",
+                     size: "medium",
+                     type: :submit,
+                     data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<!-- Delete Organization Section -->
+<div class="bg-red-50 border border-red-200 rounded-lg p-6">
+  <div class="flex items-start gap-4">
+    <div class="flex-shrink-0">
+      <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+    </div>
+    <div class="flex-1">
+      <h3 class="text-lg font-semibold text-red-800 mb-2">Delete this Organization</h3>
+      <p class="text-sm text-red-700 mb-4">
+        Deleting this organization is <strong>permanent and cannot be undone</strong>. This action will remove the organization and all associated productions, shows, talent pool, and data from the system.
+      </p>
+      <p class="text-sm text-red-700 mb-4">
+        Before deleting, please review what will be removed. You'll be asked to confirm on the next page.
+      </p>
+      <div class="mt-6">
+        <%= render "shared/button",
+            text: "Delete this organization",
+            variant: "danger",
+            size: "medium",
+            path: confirm_delete_manage_organization_path(@organization),
+            icon: "trash" %>
+      </div>
+    </div>
+  </div>
+</div>

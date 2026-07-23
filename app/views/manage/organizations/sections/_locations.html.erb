@@ -1,0 +1,98 @@
+<% if @locations.any? %>
+  <div class="grid grid-cols-1 gap-3 mt-4">
+    <% @locations.each do |location| %>
+      <%= link_to manage_location_path(location), class: "block p-4 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:shadow-sm transition-all" do %>
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-md text-gray-900"><%= location.name %></span>
+              <% if location.default? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Default</span>
+              <% end %>
+            </div>
+            <div class="text-sm text-gray-500 mt-1">
+              <%= location.address1 %><%= ", #{location.address2}" if location.address2.present? %><br>
+              <%= location.city %>, <%= location.state %> <%= location.postal_code %>
+            </div>
+
+            <%# Show spaces if any %>
+            <% spaces = location.location_spaces.by_name %>
+            <% if spaces.any? %>
+              <div class="mt-3 pt-3 border-t border-gray-100">
+                <div class="text-xs font-medium text-gray-500 mb-1.5">Spaces:</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <% spaces.each do |space| %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs <%= space.default? ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-gray-100 text-gray-600' %>">
+                      <%= space.name %>
+                      <% if space.capacity.present? && space.capacity > 0 %>
+                        <span class="text-gray-400 ml-1">(<%= space.capacity %>)</span>
+                      <% end %>
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="text-gray-400 ml-4">
+            <%= icon("arrow-right", class: "w-5 h-5") %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <p class="text-gray-500 text-sm">No locations have been added yet.</p>
+<% end %>
+
+<% if @is_owner || @role == "manager" %>
+  <div class="border-t border-gray-200 pt-5 mt-8">
+    <%= render "shared/button", text: "Add Location", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#openAddModal" } %>
+  </div>
+
+  <!-- Add Location Modal -->
+  <div data-org-locations-settings-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->org-locations-settings#stopPropagation">
+      <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add a Location</h2>
+      </div>
+      <div class="p-6">
+        <form data-org-locations-settings-target="addForm" action="<%= manage_locations_path %>" method="post" data-action="submit->org-locations-settings#submitAddForm">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          <div data-org-locations-settings-target="addErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+            <ul data-org-locations-settings-target="addErrorList" class="list-disc ml-6"></ul>
+          </div>
+          <%= render "manage/organizations/location_form_fields" %>
+          <div class="flex justify-end gap-3 pt-4">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#closeAddModal" } %>
+            <%= render "shared/button", text: "Add Location", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Location Modal -->
+  <div data-org-locations-settings-target="editModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->org-locations-settings#stopPropagation">
+      <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Location</h2>
+      </div>
+      <div class="p-6">
+        <form data-org-locations-settings-target="editForm" action="" method="post" data-action="submit->org-locations-settings#submitEditForm">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          <input type="hidden" name="_method" value="patch">
+          <input type="hidden" data-org-locations-settings-target="editLocationId" name="location[id]" value="">
+          <div data-org-locations-settings-target="editErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+            <ul data-org-locations-settings-target="editErrorList" class="list-disc ml-6"></ul>
+          </div>
+          <%= render "manage/organizations/location_form_fields", prefix: "edit" %>
+          <div class="flex justify-end gap-3 pt-4">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#closeEditModal" } %>
+            <%= render "shared/button", text: "Update Location", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+<% end %>

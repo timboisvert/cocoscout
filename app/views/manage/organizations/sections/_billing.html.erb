@@ -1,0 +1,12 @@
+<div class="border border-gray-200 rounded-lg overflow-hidden">
+  <%= render "shared/card_header", title: "Billing & Plan" %>
+  <div class="p-6 bg-white">
+    <%= render "manage/billing/plan_summary", organization: @organization %>
+    <%= render "manage/billing/staffing_usage", organization: @organization %>
+    <%= render "manage/billing/performer_usage", organization: @organization %>
+    <div class="mt-6">
+      <%= render "manage/funding_source", org: @organization,
+            return_to: section_manage_organization_path(@organization, section: "billing") %>
+    </div>
+  </div>
+</div>

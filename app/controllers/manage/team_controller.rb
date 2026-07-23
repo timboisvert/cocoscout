@@ -6,7 +6,7 @@ module Manage
 
     def index
       # Redirect to organization settings page with team tab
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
+      redirect_to section_manage_organization_path(Current.organization, section: "team")
     end
 
     def search
@@ -84,7 +84,7 @@ module Manage
         Manage::TeamMailer.invite(team_invitation, invitation_subject, invitation_message).deliver_later
 
         expire_team_cache
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "#{person.name} has been added to the team"
+        redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: "#{person.name} has been added to the team"
         return
       end
 
@@ -107,9 +107,9 @@ module Manage
       if @team_invitation.save
         expire_team_cache
         Manage::TeamMailer.invite(@team_invitation, invitation_subject, invitation_message).deliver_later
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Invitation sent"
+        redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: "Invitation sent"
       else
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+        redirect_to section_manage_organization_path(Current.organization, section: "team"),
                     alert: "Could not send invitation. Please check the email address."
       end
     end
@@ -138,9 +138,9 @@ module Manage
       if team_invitation
         team_invitation.destroy
         expire_team_cache
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Invitation revoked"
+        redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: "Invitation revoked"
       else
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+        redirect_to section_manage_organization_path(Current.organization, section: "team"),
                     alert: "Invitation not found or already accepted"
       end
     end
@@ -155,14 +155,14 @@ module Manage
           respond_to do |format|
             format.json { render json: { success: true } }
             format.html do
-              redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Team member removed"
+              redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: "Team member removed"
             end
           end
         else
           respond_to do |format|
             format.json { render json: { success: false }, status: :unprocessable_entity }
             format.html do
-              redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+              redirect_to section_manage_organization_path(Current.organization, section: "team"),
                           alert: "Could not remove Team member"
             end
           end
@@ -171,7 +171,7 @@ module Manage
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
           format.html do
-            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+            redirect_to section_manage_organization_path(Current.organization, section: "team"),
                         alert: "Unable to remove team member"
           end
         end
@@ -183,7 +183,7 @@ module Manage
 
       # Don't let users access their own permissions page
       if @user == Current.user
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+        redirect_to section_manage_organization_path(Current.organization, section: "team"),
                     alert: "You cannot manage your own permissions."
         return
       end
@@ -197,7 +197,7 @@ module Manage
                locals: { user: @user, productions: @productions, organization_role: @organization_role }, layout: false
       else
         # Redirect to organization settings with team tab for direct access
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
+        redirect_to section_manage_organization_path(Current.organization, section: "team")
       end
     end
 
@@ -224,7 +224,7 @@ module Manage
                      status: :unprocessable_entity
             end
             format.html do
-              redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+              redirect_to section_manage_organization_path(Current.organization, section: "team"),
                           alert: "Could not update role"
             end
           end
@@ -234,7 +234,7 @@ module Manage
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
           format.html do
-            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Invalid role"
+            redirect_to section_manage_organization_path(Current.organization, section: "team"), alert: "Invalid role"
           end
         end
         return
@@ -243,7 +243,7 @@ module Manage
       expire_team_cache
       respond_to do |format|
         format.json { render json: { success: true } }
-        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: message }
+        format.html { redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: message }
       end
     end
 
@@ -263,7 +263,7 @@ module Manage
         respond_to do |format|
           format.json { render json: { success: true } }
           format.html do
-            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+            redirect_to section_manage_organization_path(Current.organization, section: "team"),
                         notice: "Global role updated to #{role_display}"
           end
         end
@@ -271,7 +271,7 @@ module Manage
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
           format.html do
-            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+            redirect_to section_manage_organization_path(Current.organization, section: "team"),
                         alert: "Could not update global role"
           end
         end

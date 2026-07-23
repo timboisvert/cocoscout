@@ -1,0 +1,65 @@
+<% unless @organization.on_paid_plan? %>
+  <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+    <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mx-auto mb-4">
+      <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+    </div>
+    <h3 class="text-lg font-semibold text-gray-900">Performer Agreements is a Pro feature</h3>
+    <p class="mt-1 text-sm text-gray-600 max-w-md mx-auto">Create reusable agreement templates, collect e-signatures, and track who's signed across your productions.</p>
+    <button type="button" data-action="click->upgrade-modal#open" data-upgrade-feature="agreements"
+            class="mt-5 inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors cursor-pointer bg-pink-500 text-white hover:bg-pink-600 text-sm px-4 py-2">
+      Upgrade to Pro
+    </button>
+  </div>
+<% else %>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <%= render "shared/card_header", title: "Agreement Templates", action_text: "New Template", action_path: new_manage_agreement_template_path %>
+  <div class="p-6">
+    <% if @agreement_templates.any? %>
+      <div class="space-y-3">
+        <% @agreement_templates.each do |template| %>
+          <%= link_to edit_manage_agreement_template_path(template), class: "block bg-gray-50 rounded-lg border border-gray-200 p-4 hover:bg-gray-100 hover:border-gray-300 transition-colors" do %>
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-gray-900"><%= template.name %></h3>
+                  <% unless template.active? %>
+                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600">Inactive</span>
+                  <% end %>
+                  <span class="text-xs text-gray-400">v<%= template.version %></span>
+                </div>
+                <% if template.description.present? %>
+                  <p class="text-sm text-gray-600 mt-1"><%= template.description %></p>
+                <% end %>
+                <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  <span>
+                    <% production_count = template.productions.count %>
+                    <%= production_count %> <%= "production".pluralize(production_count) %>
+                  </span>
+                  <span>
+                    <% signature_count = template.total_signatures %>
+                    <%= signature_count %> <%= "signature".pluralize(signature_count) %>
+                  </span>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-8">
+        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No agreement templates</h3>
+        <p class="text-sm text-gray-600 mb-4">Create templates for performer agreements that can be used across productions.</p>
+        <%= link_to new_manage_agreement_template_path do %>
+          <%= render "shared/button", text: "Create Template", variant: "primary", size: "medium" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+<% end %>

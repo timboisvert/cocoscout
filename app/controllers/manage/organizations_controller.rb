@@ -18,15 +18,26 @@ module Manage
       end
     end
 
+    # The organization page is a settings page: each topic is a routed section,
+    # so only that section's data loads and links name the section they want.
+    SECTIONS = %w[basic team locations agreements billing danger].freeze
+    SECTION_LABELS = {
+      "basic" => "Basic Information",
+      "team" => "Team Members",
+      "locations" => "Locations",
+      "agreements" => "Agreements",
+      "billing" => "Billing & Plan",
+      "danger" => "Danger Zone"
+    }.freeze
+    DEFAULT_SECTION = "basic"
+
     def show
       @role = @organization.role_for(Current.user)
       @is_owner = @organization.owned_by?(Current.user)
-      @team_members = @organization.users.includes(:default_person, :organization_roles)
-      @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
-      @locations = @organization.locations.order(:created_at)
-      @team_invitation = TeamInvitation.new
-      @productions = @organization.productions.order(:name)
-      @agreement_templates = @organization.agreement_templates.order(:name)
+      @section = requested_section
+      return if performed?
+
+      load_section_data
     end
 
     def new
@@ -151,6 +162,43 @@ module Manage
     def setup_guide; end
 
     private
+
+    # Danger Zone is the owner's alone, so it isn't even in the strip for anyone else.
+    def available_sections
+      @is_owner ? SECTIONS : SECTIONS - [ "danger" ]
+    end
+
+    def sections
+      available_sections.map do |key|
+        { key: key, label: SECTION_LABELS[key],
+          path: section_manage_organization_path(@organization, section: key) }
+      end
+    end
+    helper_method :sections
+
+    def requested_section
+      section = params[:section].presence || DEFAULT_SECTION
+      return section if section.in?(available_sections)
+
+      redirect_to manage_organization_path(@organization)
+      DEFAULT_SECTION
+    end
+
+    def load_section_data
+      case @section
+      when "team"
+        @team_members = @organization.users.includes(:default_person, :organization_roles)
+        @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
+        @team_invitation = TeamInvitation.new
+      when "locations"
+        @locations = @organization.locations.order(:created_at)
+      when "agreements"
+        @agreement_templates = @organization.agreement_templates.order(:name)
+      when "danger"
+        # Transfer Ownership only offers itself when there's someone to transfer to.
+        @team_members = @organization.users.includes(:default_person, :organization_roles)
+      end
+    end
 
     def set_organization
       @organization = Organization.find(params[:id])

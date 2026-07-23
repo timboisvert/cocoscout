@@ -7,7 +7,7 @@ module Manage
 
     def index
       # Redirect to organization settings page with locations tab
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-2")
+      redirect_to section_manage_organization_path(Current.organization, section: "locations")
     end
 
     def show
@@ -17,11 +17,11 @@ module Manage
     end
 
     def new
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-2")
+      redirect_to section_manage_organization_path(Current.organization, section: "locations")
     end
 
     def edit
-      redirect_to manage_organization_path(Current.organization, anchor: "tab-2")
+      redirect_to section_manage_organization_path(Current.organization, section: "locations")
     end
 
     def create
@@ -33,14 +33,14 @@ module Manage
         if request.accept == "application/json" || request.xhr?
           render json: { id: @location.id, name: @location.name }, status: :created
         else
-          redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
+          redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                       notice: "Location was successfully created"
         end
       elsif request.accept == "application/json" || request.xhr?
         # Handle AJAX error requests
         render json: { errors: @location.errors.messages }, status: :unprocessable_entity
       else
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
+        redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                     alert: "Could not create location"
       end
     end
@@ -52,14 +52,14 @@ module Manage
         if request.accept == "application/json" || request.xhr?
           render json: { id: @location.id, name: @location.name }, status: :ok
         else
-          redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
+          redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                       notice: "Location was successfully updated", status: :see_other
         end
       elsif request.accept == "application/json" || request.xhr?
         # Handle AJAX error requests
         render json: { errors: @location.errors.messages }, status: :unprocessable_entity
       else
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
+        redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                     alert: "Could not update location"
       end
     end
@@ -70,7 +70,7 @@ module Manage
       else
         @location.destroy!
         expire_locations_cache
-        redirect_to manage_organization_path(Current.organization, anchor: "tab-2"),
+        redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                     notice: "Location was successfully deleted", status: :see_other
       end
     end

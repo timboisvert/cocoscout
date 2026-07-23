@@ -77,11 +77,11 @@ module Manage
 
     # Canonical billing location: the org's "Billing & Plan" tab (index 4).
     def org_billing_tab_path
-      manage_organization_path(@organization, anchor: "tab-4")
+      section_manage_organization_path(@organization, section: "billing")
     end
 
     def org_billing_tab_url
-      manage_organization_url(@organization, anchor: "tab-4")
+      section_manage_organization_url(@organization, section: "billing")
     end
 
     # Create a subscription Checkout Session for the given interval and redirect
