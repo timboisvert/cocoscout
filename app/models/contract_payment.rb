@@ -69,6 +69,54 @@ class ContractPayment < ApplicationRecord
     payout_contribution.present?
   end
 
+  # --- Paying us online -------------------------------------------------------
+
+  # Whether this payment can be collected through a pay link: money owed TO us,
+  # still outstanding, and with a settled amount to charge.
+  def collectable_online?
+    direction_incoming? && status_pending? && !amount_tbd? && amount.to_f.positive?
+  end
+
+  # The secret in the shareable /pay/contract/:token link. Minted on first use
+  # and then stable, so a link the org already sent keeps working.
+  def payment_token!
+    return payment_token if payment_token.present?
+
+    # Retry rather than trust a single draw — the column is uniquely indexed.
+    begin
+      update!(payment_token: SecureRandom.urlsafe_base64(24))
+    rescue ActiveRecord::RecordNotUnique
+      retry
+    end
+    payment_token
+  end
+
+  def amount_cents
+    (amount.to_f * 100).round
+  end
+
+  # Records an online payment. Idempotent on the checkout session, so a webhook
+  # arriving twice (or racing the success page) settles this once.
+  def mark_paid_online!(checkout_session_id:, payment_intent_id: nil)
+    return false if status_paid?
+
+    update!(
+      status: :paid,
+      paid_date: Date.current,
+      payment_method: "online",
+      reference_number: payment_intent_id,
+      stripe_checkout_session_id: checkout_session_id,
+      stripe_payment_intent_id: payment_intent_id
+    )
+    true
+  end
+
+  # What CocoScout owes the organization for this payment: what the contractor
+  # paid, less what Stripe took to process it. CocoScout keeps no margin here.
+  def remittable_cents
+    [ amount_cents - stripe_fee_cents.to_i, 0 ].max
+  end
+
   # Marks this payment paid when its payout run pays out (called from
   # PayoutBatchService.settle_item_sources!). Display-only for traceability —
   # the PayoutBatchItem posts the single debiting ledger entry, so this must not

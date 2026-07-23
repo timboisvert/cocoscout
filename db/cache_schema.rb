@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -464,15 +464,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_000000) do
     t.text "notes"
     t.date "paid_date"
     t.string "payment_method"
+    t.string "payment_token"
     t.string "reference_number"
     t.bigint "show_id"
     t.string "status", default: "pending", null: false
+    t.string "stripe_checkout_session_id"
+    t.integer "stripe_fee_cents"
+    t.string "stripe_payment_intent_id"
     t.datetime "updated_at", null: false
     t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
     t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
     t.index ["due_date"], name: "index_contract_payments_on_due_date"
+    t.index ["payment_token"], name: "index_contract_payments_on_payment_token", unique: true
     t.index ["show_id"], name: "index_contract_payments_on_show_id"
     t.index ["status"], name: "index_contract_payments_on_status"
+    t.index ["stripe_checkout_session_id"], name: "index_contract_payments_on_stripe_checkout_session_id", unique: true
   end
 
   create_table "contract_service_options", force: :cascade do |t|

@@ -115,6 +115,13 @@ class StripeWebhooksController < ApplicationController
 
   def handle_checkout_completed(session)
     metadata = session.metadata
+
+    # A contractor paying us under a contract (see ContractPaymentCheckout).
+    if metadata["contract_payment_id"].present?
+      handle_contract_payment_completed(session, metadata)
+      return
+    end
+
     course_offering_id = metadata["course_offering_id"]
     person_id = metadata["person_id"]
 
@@ -156,6 +163,16 @@ class StripeWebhooksController < ApplicationController
   rescue ActiveRecord::RecordNotUnique
     # Success page beat us to it — that's fine, it's already confirmed
     Rails.logger.info "Course registration already created for session #{session.id}"
+  end
+
+  # Money owed to an organization under a contract, paid through the public pay
+  # link. Settling also queues the org's remittance; it's idempotent, so this
+  # racing the success page is fine.
+  def handle_contract_payment_completed(session, metadata)
+    payment = ContractPayment.find_by(id: metadata["contract_payment_id"])
+    return unless payment
+
+    ContractPaymentCollection.settle!(payment, session)
   end
 
   def handle_charge_refunded(charge)

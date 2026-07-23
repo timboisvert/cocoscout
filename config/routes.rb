@@ -63,6 +63,11 @@ Rails.application.routes.draw do
   post "/pay/setup/:token/connect", to: "payee_onboarding#connect",         as: "payee_onboarding_connect"
   get  "/pay/setup/:token/return", to: "payee_onboarding#return_from_stripe", as: "payee_onboarding_return"
 
+  # Public, no-login contract payment link. The token names one payment.
+  get  "/pay/contract/:token",          to: "contract_payment_checkout#show",     as: "pay_contract"
+  post "/pay/contract/:token/checkout", to: "contract_payment_checkout#checkout", as: "pay_contract_checkout"
+  get  "/pay/contract/:token/success",  to: "contract_payment_checkout#success",  as: "pay_contract_success"
+
   # ------------------------------------------------------------------
   # Open Mic Finder — public surface
   # ------------------------------------------------------------------

@@ -62,7 +62,7 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(response.body).not_to include("Add to payout run")
     end
 
-    it "lets an incoming payment be recorded when the contract allows a check" do
+    it "leads with the pay link, and still allows a check when the contract does" do
       contract = contract_for(payable_person)
       contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online check] })
       create(:contract_payment, contract: contract, direction: "incoming",
@@ -70,22 +70,33 @@ RSpec.describe "Manage contract payment actions", type: :request do
 
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Record payment")
+      expect(response.body).to include("Copy pay link")
+      expect(response.body).to include("Record Payment Received")
       expect(response.body).to include("Check")
       # Only what this contract accepts — no bank transfer, and never Venmo/Zelle.
       expect(response.body).not_to include("Bank transfer")
       expect(response.body).not_to match(/venmo|zelle|paypal/i)
     end
 
-    it "offers no hand-recording at all on an online-only contract" do
+    it "offers only the pay link on an online-only contract" do
       contract = contract_for(payable_person)
       create(:contract_payment, contract: contract, direction: "incoming",
                                 status: "pending", amount: 300, amount_tbd: false, due_date: Date.current)
 
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Awaiting payment")
-      expect(response.body).not_to include("Record payment")
+      expect(response.body).to include("Copy pay link")
+      expect(response.body).not_to include("Record Payment Received")
+    end
+
+    it "has nothing to offer on an unsettled incoming amount" do
+      contract = contract_for(payable_person)
+      create(:contract_payment, contract: contract, direction: "incoming", description: "Revenue share",
+                                status: "pending", amount: 0, amount_tbd: true, due_date: Date.current)
+
+      get manage_contract_path(contract)
+
+      expect(response.body).not_to include("Copy pay link")
     end
   end
 

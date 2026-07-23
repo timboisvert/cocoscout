@@ -26,6 +26,8 @@
           outgoing = contract.contract_payments.select(&:direction_outgoing?)
           received = outgoing.select(&:status_paid?)
           pending = outgoing.reject(&:status_paid?)
+          # What they owe the organization, payable right here.
+          to_pay = contract.contract_payments.select(&:collectable_online?).sort_by(&:due_date)
           received_total = received.sum { |p| p.amount.to_f }
           pending_total = pending.sum { |p| p.amount.to_f }
           status_class = { "active" => "bg-green-100 text-green-700", "draft" => "bg-gray-100 text-gray-600",
@@ -64,6 +66,26 @@
 
           <div class="mt-3 text-sm font-medium text-pink-600">View full contract →</div>
         </div>
+
+        <%# What they owe. Same link the organization can send directly. %>
+        <% if to_pay.any? %>
+          <div class="mt-2 bg-white rounded-lg border border-pink-200 divide-y divide-pink-100">
+            <% to_pay.each do |payment| %>
+              <div class="flex items-center justify-between gap-3 px-5 py-3">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate"><%= payment.description.presence || "Payment due" %></div>
+                  <div class="text-xs <%= payment.overdue? ? 'text-pink-600 font-medium' : 'text-gray-500' %>">
+                    <%= payment.overdue? ? "Was due" : "Due" %> <%= payment.due_date.strftime("%b %-d, %Y") %>
+                  </div>
+                </div>
+                <%= link_to pay_contract_path(token: payment.payment_token!),
+                      class: "inline-flex items-center rounded-md bg-pink-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-pink-700 transition-colors flex-shrink-0" do %>
+                  Pay <%= number_to_currency(payment.amount) %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
         <%= render "my/contracts/contract_summary_modal", contract: contract %>
         </div>

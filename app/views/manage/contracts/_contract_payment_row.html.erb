@@ -117,6 +117,24 @@
           <% if in_run %>
             <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                   class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
+          <% elsif is_incoming && payment.collectable_online? %>
+            <%# Copy the pay link and send it however they like — no login needed. %>
+            <div class="flex items-center gap-1" data-controller="clipboard">
+              <input type="hidden" data-clipboard-target="textField"
+                     value="<%= pay_contract_url(token: payment.payment_token!) %>">
+              <button type="button" data-action="click->clipboard#copy"
+                class="inline-flex items-center rounded-md bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-700 transition-colors cursor-pointer">
+                <%= icon("link", class: "w-3 h-3 mr-1 inline") %>
+                Copy pay link
+              </button>
+              <% if offline_allowed %>
+                <button type="button" data-action="click->payment-modal#open"
+                  class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer"
+                  title="Record a payment that arrived another way">
+                  <%= icon("check-circle", class: "w-3 h-3 inline") %>
+                </button>
+              <% end %>
+            </div>
           <% elsif is_incoming && offline_allowed %>
             <%# Phase 5 adds a Stripe pay link here; this records money that arrived offline. %>
             <button type="button" data-action="click->payment-modal#open"

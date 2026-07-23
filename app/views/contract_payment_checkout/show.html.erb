@@ -1,0 +1,49 @@
+<% content_for :title, "Pay #{@organization.name}" %>
+
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl coustard-regular text-gray-900">Pay <%= @organization.name %></h1>
+      <p class="mt-2 text-sm text-gray-600">
+        <%= @contract.contractor_name %> — <%= @contract.production_name.presence || "contract payment" %>
+      </p>
+    </div>
+
+    <% if flash[:alert] %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p class="text-sm text-red-600"><%= flash[:alert] %></p>
+      </div>
+    <% end %>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="px-6 py-8 text-center border-b border-gray-100">
+        <div class="text-sm text-gray-500"><%= @payment.description.presence || "Amount due" %></div>
+        <div class="mt-1 text-4xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@payment.amount) %></div>
+        <div class="mt-2 text-sm <%= @payment.overdue? ? 'text-pink-600 font-medium' : 'text-gray-500' %>">
+          <% if @payment.overdue? %>
+            Was due <%= @payment.due_date.strftime("%B %-d, %Y") %>
+          <% else %>
+            Due <%= @payment.due_date.strftime("%B %-d, %Y") %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="px-6 py-6">
+        <% if @payment.collectable_online? %>
+          <%# turbo: false so the browser follows the redirect out to Stripe. %>
+          <%= render "shared/button", text: "Pay #{number_to_currency(@payment.amount)}",
+                variant: "primary", size: "large", classes: "w-full justify-center",
+                path: pay_contract_checkout_path(token: @token), method: :post,
+                form: { data: { turbo: false } } %>
+          <p class="mt-4 text-xs text-gray-400 text-center">
+            Payments are processed securely by Stripe. You don't need a CocoScout account.
+          </p>
+        <% else %>
+          <p class="text-sm text-gray-600 text-center">
+            This payment isn't ready to be paid yet. Check with <%= @organization.name %>.
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
