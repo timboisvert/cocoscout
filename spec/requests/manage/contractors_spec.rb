@@ -34,13 +34,54 @@ RSpec.describe "Manage::Contractors", type: :request do
       expect(response).to redirect_to(manage_contractor_path(contractor))
     end
 
-    it "invites a brand-new person by email and links them (with a login + invitation)" do
+    it "links a brand-new person by email, but leaves inviting as a separate, previewed step" do
+      # Linking just links — no login and no invitation until you send from the
+      # preview modal, so nothing goes out without being seen first.
       expect {
         post link_person_manage_contractor_path(contractor), params: { invite_name: "New Person", invite_email: "new@example.com" }
-      }.to change(PersonInvitation, :count).by(1)
+      }.not_to change(PersonInvitation, :count)
       person = contractor.reload.person
       expect(person.email).to eq("new@example.com")
-      expect(person.user).to be_present
+      expect(person.user).to be_nil
+    end
+  end
+
+  describe "inviting the associated person to CocoScout" do
+    it "creates the login + invitation and mails it when sent from the preview" do
+      person = create(:person, name: "Sam Sound", email: "sam@example.com")
+      org.people << person
+      contractor.update!(person: person)
+
+      expect {
+        post invite_manage_contractor_path(contractor)
+      }.to change(PersonInvitation, :count).by(1)
+
+      expect(person.reload.user).to be_present
+      expect(response).to redirect_to(manage_contractor_path(contractor))
+    end
+
+    it "shows the rendered invitation preview on the contractor page" do
+      person = create(:person, name: "Sam Sound", email: "sam@example.com")
+      org.people << person
+      contractor.update!(person: person)
+
+      get manage_contractor_path(contractor)
+
+      expect(response.body).to include("Invite to CocoScout")
+      expect(response.body).to include("invite-preview-modal")
+      # The real template copy, interpolated with the org name.
+      expect(response.body).to include("been invited to join #{org.name}")
+    end
+
+    it "shows an on-CocoScout state, not an invite button, once they have a login" do
+      person = create(:person, name: "Sam Sound", email: "sam@example.com", user: create(:user))
+      org.people << person
+      contractor.update!(person: person)
+
+      get manage_contractor_path(contractor)
+
+      expect(response.body).to include("On CocoScout")
+      expect(response.body).not_to include("invite-preview-modal")
     end
   end
 
@@ -53,13 +94,13 @@ RSpec.describe "Manage::Contractors", type: :request do
       expect(created.person).to eq(person)
     end
 
-    it "invites a new person entered on the create form" do
+    it "links a new person entered on the create form without auto-inviting them" do
       expect {
         post manage_contractors_path, params: { contractor: { name: "Fresh Co" }, invite_name: "Newton Bell", invite_email: "fresh@example.com" }
-      }.to change(PersonInvitation, :count).by(1)
+      }.not_to change(PersonInvitation, :count)
       created = org.contractors.find_by(name: "Fresh Co")
       expect(created.person.email).to eq("fresh@example.com")
-      expect(created.person.user).to be_present
+      expect(created.person.user).to be_nil
     end
 
     it "creates a contractor with no person when none is chosen" do

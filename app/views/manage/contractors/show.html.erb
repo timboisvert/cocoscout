@@ -63,19 +63,44 @@
     <%= render "shared/card_header", title: "Associated person" %>
     <div class="p-4">
       <% if @person %>
-        <div class="flex items-center justify-between gap-3 mb-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <% variant = @person.safe_headshot_variant(:thumb) %>
-            <% if variant %>
-              <%= image_tag variant, alt: @person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-            <% else %>
-              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0"><%= @person.initials %></div>
-            <% end %>
-            <div class="min-w-0">
-              <div class="font-medium text-gray-900 truncate"><%= @person.name %></div>
-              <div class="text-sm text-gray-500 truncate"><%= @person.email %></div>
-            </div>
+        <div class="flex items-center gap-3 min-w-0 mb-3">
+          <% variant = @person.safe_headshot_variant(:thumb) %>
+          <% if variant %>
+            <%= image_tag variant, alt: @person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0"><%= @person.initials %></div>
+          <% end %>
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900 truncate"><%= @person.name %></div>
+            <div class="text-sm text-gray-500 truncate"><%= @person.email %></div>
           </div>
+        </div>
+
+        <%# CocoScout access — this person IS who we invite, so it lives right here. %>
+        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 mb-3">
+          <% if @has_cocoscout_access %>
+            <div class="flex items-center gap-2 text-sm text-green-700">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><span class="font-medium">On CocoScout.</span> They can log in to see their contracts and set up payment.</span>
+            </div>
+          <% else %>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="text-sm text-gray-600 min-w-0">
+                <% if @pending_invitation %>
+                  <span class="font-medium text-gray-900">Invited <%= @pending_invitation.created_at.strftime("%b %-d") %>.</span>
+                  Waiting for them to accept — they haven't set up a login yet.
+                <% else %>
+                  <span class="font-medium text-gray-900">Not on CocoScout yet.</span>
+                  Invite them so they can log in, view their contracts, and connect their bank.
+                <% end %>
+              </p>
+              <% if @invite_preview %>
+                <button type="button" class="flex-shrink-0" data-controller="modal" data-action="click->modal#open" data-modal-id="invite-preview-modal">
+                  <%= render "shared/button", text: @pending_invitation ? "Preview & resend" : "Invite to CocoScout", variant: @pending_invitation ? "secondary" : "primary", size: "small" %>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
         </div>
       <% else %>
         <p class="text-sm text-gray-600 mb-3">
@@ -179,34 +204,6 @@
     </div>
   </div>
 
-  <%# CocoScout access — invite the contractor to log in and see their contracts %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-    <%= render "shared/card_header", title: "CocoScout access" %>
-    <div class="p-4">
-      <% if @person.nil? %>
-        <p class="text-sm text-gray-600">Link a person above first — then you can invite them to CocoScout.</p>
-      <% elsif @person.user.present? %>
-        <div class="flex items-center gap-2 text-sm text-green-700">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          <span class="font-medium">Has access.</span>
-          <span class="text-gray-600">They can log in to see their contracts and set up payment.</span>
-        </div>
-      <% else %>
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="text-sm text-gray-600 max-w-md">
-            <% if @pending_invitation %>
-              Invited <%= @pending_invitation.created_at.strftime("%b %-d") %> — waiting for them to accept. They'll be able to see their contracts and set up payment.
-            <% else %>
-              Invite this contractor to CocoScout so they can log in, view their contracts, and connect their bank. They only see their own contracts — not your producer views.
-            <% end %>
-          </p>
-          <%= button_to invite_manage_contractor_path(@contractor), method: :post, class: "flex-shrink-0" do %>
-            <%= render "shared/button", text: @pending_invitation ? "Resend invite" : "Invite to CocoScout", variant: @pending_invitation ? "secondary" : "primary", size: "small" %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  </div>
 
   <%# Active Contracts %>
   <% if @active_contracts.any? || @draft_contracts.any? %>
@@ -246,6 +243,56 @@
       <%= link_to manage_new_contract_wizard_path(contractor_id: @contractor.id) do %>
         <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus" %>
       <% end %>
+    </div>
+  <% end %>
+
+  <%# Invitation preview — the exact email this person would get, before it sends. %>
+  <% if @person && @invite_preview %>
+    <div id="invite-preview-modal"
+         class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+         data-controller="modal"
+         data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto"
+           data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between px-6 py-4 bg-pink-600 rounded-t-xl">
+          <h3 class="text-lg font-bold text-white"><%= @pending_invitation ? "Resend invitation" : "Invite to CocoScout" %></h3>
+          <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white">
+            <%= icon("x-mark", class: "w-5 h-5") %>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-600">
+            This is exactly what <span class="font-medium text-gray-900"><%= @person.name %></span> will receive.
+            Sending gives them a login so they can see their contracts and set up payment.
+          </p>
+
+          <dl class="rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+            <div class="flex gap-3 px-4 py-2.5">
+              <dt class="w-16 flex-shrink-0 text-gray-500">To</dt>
+              <dd class="text-gray-900 min-w-0 truncate"><%= @person.name %> &lt;<%= @person.email %>&gt;</dd>
+            </div>
+            <div class="flex gap-3 px-4 py-2.5">
+              <dt class="w-16 flex-shrink-0 text-gray-500">Subject</dt>
+              <dd class="text-gray-900 min-w-0"><%= @invite_preview[:subject] %></dd>
+            </div>
+          </dl>
+
+          <div class="rounded-lg border border-gray-200 p-4 bg-gray-50 prose prose-sm max-w-none text-gray-800">
+            <%= raw @invite_preview[:body] %>
+          </div>
+        </div>
+
+        <div class="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button type="button" data-action="click->modal#close"
+                  class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+          <%= button_to invite_manage_contractor_path(@contractor), method: :post, class: "flex-1" do %>
+            <%= render "shared/button",
+                  text: @pending_invitation ? "Resend invitation" : "Send invitation",
+                  variant: "primary", size: "medium", classes: "w-full justify-center" %>
+          <% end %>
+        </div>
+      </div>
     </div>
   <% end %>
 </div>

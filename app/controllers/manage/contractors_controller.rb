@@ -45,6 +45,8 @@ module Manage
       @person = @contractor.person
       @payment_setup_url = @person && payee_onboarding_url(token: PayeeOnboardingToken.generate(@person))
       @pending_invitation = @person && PersonInvitation.pending.find_by(email: @person.email, organization: Current.organization)
+      @has_cocoscout_access = @person&.user.present?
+      @invite_preview = @person && !@has_cocoscout_access ? invitation_preview(@person) : nil
     end
 
     def new
@@ -169,7 +171,8 @@ module Manage
         person = Person.where("LOWER(email) = ?", email).first || Person.create!(name: name, email: email)
         add_to_org(person)
         contractor.update!(person: person)
-        send_cocoscout_invitation!(person)
+        # Linking just links — the invite is a separate, previewed step, so you
+        # always see what's going out before it sends.
         person
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -179,6 +182,22 @@ module Manage
 
     def add_to_org(person)
       Current.organization.people << person unless Current.organization.people.include?(person)
+    end
+
+    # The exact invitation this person would receive, rendered from the
+    # person_invitation content template so the manager can preview it before
+    # sending. Read-only — the real setup link is stamped in at send time.
+    def invitation_preview(person)
+      pending = PersonInvitation.pending.find_by(email: person.email, organization: Current.organization)
+      setup_url = pending ? manage_accept_person_invitations_url(pending.token) : "#"
+      rendered = ContentTemplateService.render("person_invitation", {
+        organization_name: Current.organization.name,
+        setup_url: setup_url
+      })
+      { subject: rendered[:subject], body: rendered[:body] }
+    rescue ContentTemplateService::TemplateNotFoundError => e
+      Rails.logger.warn("Contractor invite preview failed: #{e.message}")
+      nil
     end
 
     # Give the person a login (if needed) and send them the CocoScout invitation
