@@ -250,7 +250,7 @@
     <% if contract_payments.any? %>
       <div class="space-y-2">
         <% contract_payments.each do |payment| %>
-          <%= render partial: "manage/contracts/contract_payment_row", locals: { payment: payment, show_mark_received: true } %>
+          <%= render partial: "manage/contracts/contract_payment_row", locals: { payment: payment, show_actions: true } %>
         <% end %>
       </div>
     <% else %>

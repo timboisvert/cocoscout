@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid flip_direction add_to_payout_run]
+    before_action :set_payment, only: %i[update destroy mark_paid add_to_payout_run]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -28,21 +28,22 @@ module Manage
       redirect_to manage_contract_path(@contract), notice: "Payment deleted."
     end
 
+    # Records money that reached us outside CocoScout (a check, a direct bank
+    # transfer). Outgoing money is never marked paid by hand — it's paid through
+    # the contractor payout run, which marks it paid when the transfer settles.
     def mark_paid
+      unless @payment.direction_incoming?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "Money you owe is paid through your payout run, not marked paid by hand."
+      end
+
       @payment.mark_paid!(
         paid_on: params[:paid_date].present? ? Date.parse(params[:paid_date]) : Date.current,
         method: params[:payment_method],
         reference: params[:reference_number],
         amount: params[:payment_amount]
       )
-      redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment marked as paid."
-    end
-
-    def flip_direction
-      new_direction = @payment.direction_incoming? ? "outgoing" : "incoming"
-      @payment.update!(direction: new_direction)
-      redirect_back fallback_location: manage_contract_path(@contract),
-                    notice: "Payment direction changed to #{new_direction}."
+      redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment recorded."
     end
 
     # Add this outgoing payment to the org's open contractor payout run, to be

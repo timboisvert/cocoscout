@@ -3,21 +3,32 @@
 
   A show_row-style row for displaying a contract payment.
 
+  Outgoing payments (we pay them) are paid one way: added to the org's
+  contractor payout run and sent to their bank via Stripe, alongside
+  performers. There is no manual "mark paid" for outgoing money.
+
+  Incoming payments (they pay us) can be recorded by hand for money that
+  arrived offline (a check, a bank transfer).
+
   Required params:
     - payment: ContractPayment object
 
   Optional params:
-    - show_mark_received: Whether to show the "Mark Received" button (default: true)
+    - show_actions: Whether to show action buttons/modals (default: true)
 %>
 <%
-  show_mark_received = local_assigns.fetch(:show_mark_received, true)
+  show_actions = local_assigns.fetch(:show_actions) { local_assigns.fetch(:show_mark_received, true) }
   contract = payment.contract
   contractor = contract.contractor
   is_late = payment.overdue?
   is_incoming = payment.direction_incoming?
   contractor_person = contractor&.person
-  can_pay_via_run = !is_incoming && payment.status_pending? && payment.amount.to_f > 0 &&
-    contractor_person&.can_receive_payouts?
+  amount_set = !payment.amount_tbd? && payment.amount.to_f.positive?
+  in_run = payment.in_payout_run?
+  payable = contractor_person&.can_receive_payouts?
+  # Ticket-linked amounts land on their own once show financials are in.
+  awaits_financials = payment.amount_tbd? &&
+    (payment.revenue_share? || contract.revenue_share? || contract.ticket_revenue_minus_fee?)
 %>
 
 <div data-controller="payment-modal">
@@ -50,9 +61,7 @@
             <%= contract.contractor_name %> &middot;
           <% end %>
           <%= payment.description.presence || "Payment" %>
-          <% unless is_incoming %>
-            <span class="text-red-600">(outgoing)</span>
-          <% end %>
+          <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
         </div>
       </div>
     </div>
@@ -92,7 +101,8 @@
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
             Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %>
           </span>
-          <% if show_mark_received %>
+          <%# Amounts settled through a payout run are fixed by the transfer. %>
+          <% if show_actions && !in_run %>
             <button type="button" data-action="click->payment-modal#open"
               class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
               <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
@@ -100,12 +110,30 @@
             </button>
           <% end %>
         </div>
-      <% elsif show_mark_received && payment.status_pending? %>
+      <% elsif show_actions && payment.status_pending? %>
         <div class="flex items-center gap-2">
-          <% if payment.in_payout_run? %>
+          <% if in_run %>
             <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                   class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
-          <% elsif can_pay_via_run %>
+          <% elsif is_incoming %>
+            <%# Phase 5 adds a Stripe pay link here; this records money that arrived offline. %>
+            <button type="button" data-action="click->payment-modal#open"
+              class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer">
+              <%= icon("check-circle", class: "w-3 h-3 mr-1 inline") %>
+              Record payment
+            </button>
+          <% elsif awaits_financials && !amount_set %>
+            <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
+                  title="This settles once you enter ticket sales for the shows on this contract.">
+              Awaiting ticket sales
+            </span>
+          <% elsif !amount_set %>
+            <button type="button" data-action="click->payment-modal#open"
+              class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
+              <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
+              Set amount
+            </button>
+          <% elsif payable %>
             <%= button_to add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post, class: "inline-block",
                   form: { data: { turbo_confirm: "Add this payment to your contractor payout run?" } } do %>
@@ -114,12 +142,13 @@
                 Add to payout run
               </span>
             <% end %>
+          <% else %>
+            <%= link_to contractor ? manage_contractor_path(contractor) : "#",
+                  class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
+                  title: "They need to connect a bank account before you can pay them." do %>
+              Needs bank
+            <% end %>
           <% end %>
-          <button type="button" data-action="click->payment-modal#open"
-            class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer">
-            <%= icon("check-circle", class: "w-3 h-3 mr-1 inline") %>
-            <%= is_incoming ? "Mark Received" : "Mark Paid" %>
-          </button>
         </div>
       <% end %>
     </div>
@@ -129,29 +158,34 @@
 <%# Compute suggested amount for TBD payments (used by both modals) %>
 <% suggestion = payment.amount_tbd? ? payment.suggested_amount_from_financials : nil %>
 
-<%# Modal for marking payment received %>
-<% if show_mark_received && payment.status_pending? %>
+<%# Modal for recording an incoming payment that arrived outside Stripe %>
+<% if show_actions && payment.status_pending? && is_incoming %>
   <div id="mark-payment-received-<%= payment.id %>" class="hidden fixed inset-0 z-50" data-payment-modal-target="modal">
     <div class="fixed inset-0 bg-black/50" data-action="click->payment-modal#close"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6" data-payment-modal-target="content">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-gray-900"><%= is_incoming ? "Mark Payment Received" : "Mark Payment Paid" %></h3>
-          <button type="button" data-action="click->payment-modal#close" class="text-gray-400 hover:text-gray-600">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden" data-payment-modal-target="content">
+        <div class="flex items-center justify-between px-6 py-4 bg-pink-600">
+          <h3 class="text-lg font-bold text-white">Record Payment Received</h3>
+          <button type="button" data-action="click->payment-modal#close" class="text-white/80 hover:text-white">
             <%= icon("x-mark", class: "w-5 h-5") %>
           </button>
         </div>
+
+        <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">
+          For money that arrived outside CocoScout — a check or a direct bank transfer.
+        </p>
 
         <div class="mb-6">
           <div class="bg-gray-50 rounded-lg p-4 text-center">
             <div class="text-sm text-gray-500 mb-1">Payment Amount</div>
             <% if payment.amount_tbd? && suggestion %>
-              <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>"><%= number_to_currency(suggestion[:amount]) %></div>
+              <div class="text-3xl font-bold text-green-600"><%= number_to_currency(suggestion[:amount]) %></div>
               <div class="text-xs text-gray-500 mt-1"><%= suggestion[:explanation] %></div>
             <% elsif payment.amount_tbd? && payment.amount.to_f == 0 %>
               <div class="text-3xl font-bold text-gray-400">TBD</div>
             <% else %>
-              <div class="text-3xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>"><%= number_to_currency(payment.amount) %></div>
+              <div class="text-3xl font-bold text-green-600"><%= number_to_currency(payment.amount) %></div>
             <% end %>
             <div class="text-sm text-gray-600 mt-2">
               <%= contract.contractor_name %> · <%= payment.description.presence || "Payment" %>
@@ -186,43 +220,39 @@
           %>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"><%= is_incoming ? "Amount Received" : "Amount Paid" %></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Amount Received</label>
               <div class="relative">
-                <span class="absolute left-3 top-2 text-gray-500">$</span>
-                <%= number_field_tag :payment_amount, prefilled_amount, step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <span class="absolute left-3 top-2.5 text-gray-500">$</span>
+                <%= number_field_tag :payment_amount, prefilled_amount, step: 0.01, min: 0, placeholder: "0.00", class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
               </div>
               <% if payment.amount_tbd? && suggestion %>
                 <div class="text-xs text-gray-500 mt-1">Pre-filled from contract terms · <%= suggestion[:explanation] %></div>
               <% elsif !payment.amount_tbd? && expected_amount > 0 %>
-                <div class="text-xs text-gray-500 mt-1">Expected: <%= number_to_currency(expected_amount) %>. Adjust if a different amount was actually <%= is_incoming ? "received" : "paid" %>.</div>
+                <div class="text-xs text-gray-500 mt-1">Expected: <%= number_to_currency(expected_amount) %>. Adjust if a different amount actually arrived.</div>
               <% end %>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"><%= is_incoming ? "Date Received" : "Date Paid" %></label>
-              <%= date_field_tag :paid_date, Date.current, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date Received</label>
+              <%= date_field_tag :paid_date, Date.current, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">How it arrived</label>
               <%= select_tag :payment_method,
                 options_for_select([
                   ["Select method...", ""],
-                  ["Cash", "cash"],
                   ["Check", "check"],
-                  ["Credit Card", "credit_card"],
-                  ["Bank Transfer", "bank_transfer"],
-                  ["Venmo", "venmo"],
-                  ["PayPal", "paypal"],
-                  ["Zelle", "zelle"],
+                  ["Bank transfer", "bank_transfer"],
+                  ["Cash", "cash"],
                   ["Other", "other"]
                 ]),
-                class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Reference/Check # (optional)</label>
-              <%= text_field_tag :reference_number, nil, placeholder: "e.g., Check #1234", class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <%= text_field_tag :reference_number, nil, placeholder: "e.g., Check #1234", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
             </div>
           </div>
 
@@ -230,38 +260,29 @@
             <button type="button" data-action="click->payment-modal#close" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
               Cancel
             </button>
-            <%= render "shared/button", text: is_incoming ? "Mark Received" : "Mark Paid", variant: "primary", size: "medium", type: :submit, classes: "flex-1" %>
+            <%= render "shared/button", text: "Record Payment", variant: "primary", size: "medium", type: :submit, classes: "flex-1" %>
           </div>
         <% end %>
-
-        <div class="mt-4 pt-4 border-t border-gray-100 text-center">
-          <span class="text-xs text-gray-400">
-            Currently: <%= is_incoming ? "they pay us (incoming)" : "we pay them (outgoing)" %> ·
-          </span>
-          <%= button_to "Switch direction",
-              flip_direction_manage_contract_contract_payment_path(contract, payment),
-              method: :post,
-              class: "text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer bg-transparent border-0 p-0",
-              data: { turbo: false } %>
         </div>
       </div>
     </div>
   </div>
 <% end %>
 
-<%# Modal for editing amount on already-paid payment %>
-<% if payment.status_paid? %>
+<%# Modal for setting/editing the amount (pending outgoing, or an already-recorded payment) %>
+<% if show_actions && ((payment.status_pending? && !is_incoming) || payment.status_paid?) %>
   <div id="set-amount-<%= payment.id %>" class="hidden fixed inset-0 z-50" data-payment-modal-target="modal">
     <div class="fixed inset-0 bg-black/50" data-action="click->payment-modal#close"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-gray-900"><%= payment.amount_tbd? ? "Set Payment Amount" : "Edit Payment Amount" %></h3>
-          <button type="button" data-action="click->payment-modal#close" class="text-gray-400 hover:text-gray-600">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden" data-payment-modal-target="content">
+        <div class="flex items-center justify-between px-6 py-4 bg-pink-600">
+          <h3 class="text-lg font-bold text-white"><%= payment.amount_tbd? ? "Set Payment Amount" : "Edit Payment Amount" %></h3>
+          <button type="button" data-action="click->payment-modal#close" class="text-white/80 hover:text-white">
             <%= icon("x-mark", class: "w-5 h-5") %>
           </button>
         </div>
 
+        <div class="p-6">
         <div class="mb-4 text-sm text-gray-600">
           <%= contract.contractor_name %> · <%= payment.description.presence || "Payment" %>
           <% if payment.paid_date %> · Paid <%= payment.paid_date.strftime("%b %-d") %><% end %>
@@ -294,8 +315,8 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
               <div class="relative">
-                <span class="absolute left-3 top-2 text-gray-500">$</span>
-                <%= f.number_field :amount, value: (suggestion ? suggestion[:amount] : (payment.amount.to_f > 0 ? payment.amount : nil)), step: 0.01, min: 0, placeholder: "0.00", class: "w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <span class="absolute left-3 top-2.5 text-gray-500">$</span>
+                <%= f.number_field :amount, value: (suggestion ? suggestion[:amount] : (payment.amount.to_f > 0 ? payment.amount : nil)), step: 0.01, min: 0, placeholder: "0.00", class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
               </div>
               <% if suggestion %>
                 <div class="text-xs text-gray-500 mt-1">Pre-filled from contract terms · <%= suggestion[:explanation] %></div>
@@ -312,6 +333,7 @@
             <%= render "shared/button", text: "Save Amount", variant: "primary", size: "medium", type: :submit, classes: "flex-1" %>
           </div>
         <% end %>
+        </div>
       </div>
     </div>
   </div>
