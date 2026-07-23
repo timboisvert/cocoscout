@@ -11,7 +11,8 @@
     links: []
   } %>
 
-  <div class="max-w-2xl mx-auto">
+  <%# Steps are 2xl by default; a step with a side panel asks for more room. %>
+  <div class="<%= local_assigns[:width].presence || "max-w-2xl" %> mx-auto">
     <!-- Progress Steps -->
     <div class="mb-8">
       <div class="flex items-center justify-center">

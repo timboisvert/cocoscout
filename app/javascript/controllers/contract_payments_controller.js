@@ -52,6 +52,28 @@ export default class extends Controller {
         this.renderList()
         this.updateSummary()
         this.updateNextLabel()
+        this.syncChoiceCards()
+    }
+
+    // The radio-card groups mirror their selection into a hidden input, so the
+    // rest of this controller keeps reading and writing a plain `.value` and
+    // doesn't care that these are cards rather than a <select>.
+    onChoiceChange(event) {
+        const group = event.target.closest("[data-choice-group]")
+        if (!group) return
+        const hidden = group.querySelector('input[type="hidden"]')
+        if (hidden) hidden.value = event.target.value
+    }
+
+    // The reverse: after restoring saved config (which writes the hidden
+    // inputs), check the card that matches.
+    syncChoiceCards() {
+        this.element.querySelectorAll("[data-choice-group]").forEach((group) => {
+            const hidden = group.querySelector('input[type="hidden"]')
+            if (!hidden) return
+            const radio = group.querySelector(`input[type="radio"][value="${CSS.escape(hidden.value)}"]`)
+            if (radio) radio.checked = true
+        })
     }
 
     // Ticketing is its own step, and only when WE sell — so what comes next

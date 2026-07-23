@@ -1,0 +1,42 @@
+<%#
+  A row of radio cards — bordered box, radio, bold title, a line of plain
+  English. The same treatment as "Who sells the tickets?", for the settings
+  that read better as a choice you can see all of than as a dropdown.
+
+  The selection is mirrored into a hidden input carrying the Stimulus target,
+  so contract_payments_controller keeps reading and writing a plain `.value`
+  and doesn't need to know these are radios.
+
+  Locals:
+    name     - radio group name, unique on the page
+    target   - contract-payments target name for the hidden input
+    options  - [{ value:, title:, help: }]
+    selected - currently selected value
+    action   - optional extra Stimulus action to fire on change
+    columns  - 1 (default), 2 or 3 across on wider screens
+%>
+<%
+  columns = local_assigns[:columns] || 1
+  grid = { 1 => "grid-cols-1", 2 => "grid-cols-1 sm:grid-cols-2", 3 => "grid-cols-1 sm:grid-cols-3" }[columns]
+  extra_action = local_assigns[:action]
+  change_actions = [ "change->contract-payments#onChoiceChange", extra_action ].compact.join(" ")
+%>
+<div data-choice-group>
+  <input type="hidden" data-contract-payments-target="<%= target %>" value="<%= selected %>">
+  <div class="grid <%= grid %> gap-2">
+    <% options.each do |option| %>
+      <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+        <input type="radio" name="<%= name %>" value="<%= option[:value] %>"
+               class="mt-0.5 accent-pink-500"
+               data-action="<%= change_actions %>"
+               <%= "checked" if option[:value].to_s == selected.to_s %>>
+        <span class="text-sm text-gray-700">
+          <span class="block font-medium text-gray-900"><%= option[:title] %></span>
+          <% if option[:help].present? %>
+            <span class="block text-xs text-gray-500 mt-0.5"><%= option[:help] %></span>
+          <% end %>
+        </span>
+      </label>
+    <% end %>
+  </div>
+</div>
