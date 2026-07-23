@@ -12,14 +12,27 @@ RSpec.describe "Manage home summary boxes", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  context "with no sign-up forms" do
+  context "on Pro with nothing going on" do
     let!(:org) { create(:organization, :pro, owner: owner) }
 
-    it "hides the Event Registrations box" do
+    it "hides both boxes" do
       get manage_path
 
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include("Event Registrations")
+      expect(response.body).not_to include("Audition Sign-ups")
+    end
+  end
+
+  context "on Pro with an open audition cycle" do
+    let!(:org) { create(:organization, :pro, owner: owner) }
+    let!(:cycle) { create(:audition_cycle, production: production, active: true) }
+    let!(:request_record) { create(:audition_request, audition_cycle: cycle) }
+
+    it "shows the Audition Sign-ups box" do
+      get manage_path
+
+      expect(response.body).to include("Audition Sign-ups")
     end
   end
 

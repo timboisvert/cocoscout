@@ -34,8 +34,9 @@
       soonest_form = all_sign_up_forms.first
 
       # A summary box with nothing in it is just noise — only show each one
-      # when there's something to summarize.
-      show_auditions_box = Current.organization&.on_paid_plan?
+      # when there's something to summarize. (Auditions additionally needs Pro,
+      # since that's a paid feature.)
+      show_auditions_box = Current.organization&.on_paid_plan? && all_open_calls.any?
       show_registrations_box = all_sign_up_forms.any?
     %>
 
