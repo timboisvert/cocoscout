@@ -77,9 +77,15 @@ export default class extends Controller {
         this.multipleModeContentTarget.classList.remove("hidden")
         this.singleModeContentTarget.classList.add("hidden")
 
-        // If no bookings yet, add one single event to start
-        if (this.bookingsListTarget.children.length === 0 && this.rules.length === 0) {
-            // Don't auto-add, let user click
+        // Carry a filled-in single event over as the first booking, so switching
+        // to multiple never throws away what you already entered — a single
+        // event is just the first item in a multi-event list. Only when the
+        // list is empty, so we never duplicate on repeated toggles.
+        if (this.bookingsListTarget.children.length === 0) {
+            const single = this.collectSingleModeRules()
+            if (single && single.length) {
+                this.addSingleWithData(single[0])
+            }
         }
     }
 
