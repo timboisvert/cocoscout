@@ -179,6 +179,32 @@ class Contract < ApplicationRecord
     draft_data["services"] || []
   end
 
+  # Turn a set of service line items into billable ContractPayments (one per line
+  # with a positive amount). Used at activation.
+  def bill_services!(services)
+    Array(services).each do |service|
+      amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
+      next unless amount.positive?
+
+      contract_payments.create!(
+        description: service["name"],
+        amount: amount,
+        direction: service["direction"].presence || "incoming",
+        due_date: contract_end_date || Date.current
+      )
+    end
+  end
+
+  # Re-bill services when a contract is amended: drop the still-pending payments
+  # for the current set, record the new set, and bill it. Paid service payments
+  # are never touched, so nothing that's already been settled is disturbed.
+  def reconcile_service_payments!(new_services)
+    old_names = draft_services.map { |s| s["name"] }.compact
+    contract_payments.status_pending.where(description: old_names).destroy_all if old_names.any?
+    update_draft_step(:services, Array(new_services))
+    bill_services!(draft_services)
+  end
+
   def update_draft_step(step_name, data)
     self.draft_data = draft_data.merge(step_name.to_s => data)
     save!
@@ -731,17 +757,7 @@ class Contract < ApplicationRecord
     end
 
     # Services become their own billable payments (this is what "Tech" never did).
-    draft_services.each do |service|
-      amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
-      next unless amount.positive?
-
-      contract_payments.create!(
-        description: service["name"],
-        amount: amount,
-        direction: service["direction"].presence || "incoming",
-        due_date: contract_end_date || Date.current
-      )
-    end
+    bill_services!(draft_services)
 
     # Always create a production and shows for all bookings
     created_shows = []

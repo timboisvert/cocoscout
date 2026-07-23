@@ -423,36 +423,40 @@ module Manage
       redirect_to amend_ticketing_tech_manage_contract_path(@contract)
     end
 
-    # Step 4: Amend Ticketing & Tech. Unlike bookings/payments these are plain
-    # config on draft_data (no records to create), so we stage the edited values
-    # in amend_data and write them straight to draft_data on apply.
+    # Step 4: Amend the production name, ticketing, and services. Ticketing is
+    # plain config on draft_data; services are catalog line items that become
+    # billable payments, reconciled on apply. Staged in amend_data.
     def amend_ticketing_tech
       @amend_data = @contract.amend_data
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
-      @tech = @amend_data["tech"] || @contract.draft_tech
+      @service_options = Current.organization.contract_service_options.ordered
+      @existing_services = @amend_data["services"] || @contract.draft_services
       @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.production&.name
     end
 
     def save_amend_ticketing_tech
       ticketing_data = params[:ticketing].present? ? (JSON.parse(params[:ticketing]) rescue {}) : {}
 
-      provider = params[:tech_provider].presence || "them"
-      tech_data = if provider == "us"
+      services = Array(params[:services]&.values).filter_map do |row|
+        name = row[:name].to_s.strip
+        next if name.blank? || row[:include] != "1"
+
+        quantity = row[:quantity].to_f
+        quantity = 1 if quantity <= 0
         {
-          "provider" => "us",
-          "hourly_rate" => params[:tech_hourly_rate].presence&.to_f,
-          "hours" => params[:tech_hours].presence&.to_f,
-          "payment_method" => params[:tech_payment_method].presence || "cash"
+          "name" => name,
+          "quantity" => quantity,
+          "unit_price" => row[:unit_price].to_f,
+          "unit" => row[:unit].presence || "flat",
+          "direction" => row[:direction].presence || "incoming"
         }
-      else
-        { "provider" => "them" }
       end
 
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(
         "production_name" => params[:production_name].to_s.strip,
         "ticketing" => ticketing_data,
-        "tech" => tech_data
+        "services" => services
       ))
 
       redirect_to amend_review_manage_contract_path(@contract)
@@ -477,12 +481,12 @@ module Manage
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
       @payments_to_remove = @existing_payments.select { |p| @removed_payment_ids.include?(p.id) }
 
-      # Ticketing & tech: staged values (present only if the user visited that step),
-      # compared against the contract's current values for the change summary.
+      # Ticketing & services: staged values (present only if the user visited that
+      # step), compared against the contract's current values for the summary.
       @ticketing_changed = @amend_data.key?("ticketing") && @amend_data["ticketing"] != @contract.draft_ticketing
-      @tech_changed = @amend_data.key?("tech") && @amend_data["tech"] != @contract.draft_tech
+      @services_changed = @amend_data.key?("services") && @amend_data["services"] != @contract.draft_services
       @new_ticketing = @amend_data["ticketing"] if @ticketing_changed
-      @new_tech = @amend_data["tech"] if @tech_changed
+      @new_services = @amend_data["services"] if @services_changed
 
       # Production name change (blank means "no change" — we never wipe the name).
       staged_name = @amend_data["production_name"].to_s.strip
@@ -490,7 +494,7 @@ module Manage
       @new_production_name = staged_name if @production_name_changed
 
       @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @new_payments.any? ||
-                     @removed_payment_ids.any? || @ticketing_changed || @tech_changed || @production_name_changed
+                     @removed_payment_ids.any? || @ticketing_changed || @services_changed || @production_name_changed
     end
 
     def apply_amendments
@@ -503,9 +507,15 @@ module Manage
       staged_production_name = @amend_data["production_name"].to_s.strip
 
       success = @contract.transaction do
-        # Ticketing & tech are plain config — write staged values straight through.
+        # Ticketing is plain config — write it straight through.
         @contract.update_draft_step(:ticketing, @amend_data["ticketing"]) if @amend_data.key?("ticketing")
-        @contract.update_draft_step(:tech, @amend_data["tech"]) if @amend_data.key?("tech")
+
+        # Services are billable line items. Reconcile: drop the pending payments
+        # for the old set, save the new set, and bill the new set. Paid service
+        # payments are left alone.
+        if @amend_data.key?("services")
+          @contract.reconcile_service_payments!(@amend_data["services"])
+        end
 
         # Rename the contract's production and propagate to the linked Production
         # record(s) so the contract and the show stay in sync.

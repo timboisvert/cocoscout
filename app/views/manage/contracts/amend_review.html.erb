@@ -183,11 +183,11 @@
       </div>
     <% end %>
 
-    <%# Ticketing & Tech Changes %>
-    <% if @ticketing_changed || @tech_changed %>
+    <%# Ticketing & Services Changes %>
+    <% if @ticketing_changed || @services_changed %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="text-sm font-semibold text-gray-700">Ticketing &amp; Tech Changes</h3>
+          <h3 class="text-sm font-semibold text-gray-700">Ticketing &amp; Services Changes</h3>
         </div>
         <div class="p-4 space-y-4">
           <% if @ticketing_changed %>
@@ -217,17 +217,23 @@
             </div>
           <% end %>
 
-          <% if @tech_changed %>
+          <% if @services_changed %>
             <div>
-              <h4 class="text-sm font-medium text-gray-900 mb-2">New tech</h4>
-              <% if @new_tech["provider"] == "us" %>
-                <p class="text-sm text-gray-700">
-                  We provide tech: <span class="font-medium"><%= @new_tech["hours"] %> hr × <%= number_to_currency(@new_tech["hourly_rate"]) %>
-                  = <%= number_to_currency(@new_tech["hours"].to_f * @new_tech["hourly_rate"].to_f) %></span>
-                  · <%= @new_tech["payment_method"] == "from_cut" ? "taken out of their cut" : "paid in cash" %>
-                </p>
+              <h4 class="text-sm font-medium text-gray-900 mb-2">Services</h4>
+              <% if @new_services.any? %>
+                <ul class="space-y-1 text-sm text-gray-700">
+                  <% @new_services.each do |service| %>
+                    <% qty = service["quantity"].to_f %>
+                    <% total = qty * service["unit_price"].to_f %>
+                    <% incoming = (service["direction"].presence || "incoming") == "incoming" %>
+                    <li class="flex items-center justify-between gap-3">
+                      <span><%= service["name"] %> <span class="text-xs text-gray-500"><%= qty %><%= service["unit"] == "hourly" ? " hr" : "" %> × <%= number_to_currency(service["unit_price"]) %></span></span>
+                      <span class="font-medium <%= incoming ? 'text-green-600' : 'text-red-600' %>"><%= incoming ? "They pay us" : "We pay them" %> <%= number_to_currency(total) %></span>
+                    </li>
+                  <% end %>
+                </ul>
               <% else %>
-                <p class="text-sm text-gray-700">Contractor provides their own tech.</p>
+                <p class="text-sm text-gray-500">No services on this contract.</p>
               <% end %>
             </div>
           <% end %>
@@ -264,8 +270,8 @@
           <span class="font-medium text-pink-900"><%= @ticketing_changed ? "Updated" : "No changes" %></span>
         </div>
         <div>
-          <span class="text-pink-700">Tech:</span>
-          <span class="font-medium text-pink-900"><%= @tech_changed ? "Updated" : "No changes" %></span>
+          <span class="text-pink-700">Services:</span>
+          <span class="font-medium text-pink-900"><%= @services_changed ? "Updated" : "No changes" %></span>
         </div>
       </div>
     </div>
