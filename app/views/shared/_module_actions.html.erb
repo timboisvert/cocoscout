@@ -7,9 +7,7 @@
 %>
 <% actions ||= [] %>
 <% if actions.any? %>
-  <%# One or two actions get half-width cards rather than stranding them in a 4-col grid. %>
-  <% grid_cols = actions.size <= 2 ? "md:grid-cols-2" : "md:grid-cols-4" %>
-  <div class="grid grid-cols-2 <%= grid_cols %> gap-3">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <% actions.each do |action| %>
       <% action_data = action[:data] || {} %>
       <% if action[:locked] && action[:feature].present? %>
