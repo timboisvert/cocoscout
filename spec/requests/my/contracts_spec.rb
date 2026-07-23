@@ -23,9 +23,10 @@ RSpec.describe "My::Contracts", type: :request do
     get my_contracts_path
     expect(response.body).to include("contract-modal-#{contract.id}")
     expect(response.body).to include("View full contract")
-    # Modal frames the payment from the contractor's point of view, with clear timing.
-    expect(response.body).to include("What we pay you")
-    expect(response.body).to include("Next payment to you")
+    # Modal frames the payment from the contractor's point of view — "we" is the
+    # org they're looking at, named, not an abstract "we".
+    expect(response.body).to include("#{org.name} pays you")
+    expect(response.body).not_to include("What we pay you")
     expect(response.body).to include(org.name)
   end
 
