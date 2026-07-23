@@ -743,6 +743,13 @@ export default class extends Controller {
         return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     }
 
+    // A per-event payment is named for the event it pays for, e.g. "Jul 1 event",
+    // so the payment reads as the thing it's for rather than "Event 1".
+    eventDateLabel(bookingDate) {
+        const date = new Date(bookingDate)
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    }
+
     updateHiddenField() {
         if (this.hasPaymentsJsonTarget) {
             this.paymentsJsonTarget.value = JSON.stringify(this.payments)
@@ -811,7 +818,7 @@ export default class extends Controller {
                         }
                     } else {
                         payments.push({
-                            description: "Flat fee payment",
+                            description: "Contract payment",
                             source: "Flat fee",
                             amount: flatAmount,
                             direction: flatDirection,
@@ -873,7 +880,7 @@ export default class extends Controller {
                             }
 
                             payments.push({
-                                description: `Event ${index + 1} fee`,
+                                description: `${this.eventDateLabel(bookingDate)} event`,
                                 source: "Per event",
                                 amount: perEventFinalAmount,
                                 direction: perEventDirection2,
@@ -961,7 +968,7 @@ export default class extends Controller {
                             }
 
                             payments.push({
-                                description: `Event ${index + 1} — ${ourShare}% to us`,
+                                description: `${this.eventDateLabel(bookingDate)} — ${ourShare}% to us`,
                                 source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,

@@ -799,7 +799,9 @@ class Contract < ApplicationRecord
 
     # Sort both by date and pair 1:1
     sorted_shows = shows.sort_by(&:date_and_time)
-    sorted_payments = payments.select { |p| p.amount_tbd? || p.description&.include?("Event") || p.description&.include?("Revenue Share") }
+    # Per-event payments are named for their event date now (e.g. "Jul 1 event"),
+    # so match the word case-insensitively; revenue-share ones are amount_tbd.
+    sorted_payments = payments.select { |p| p.amount_tbd? || p.description&.downcase&.include?("event") || p.description&.downcase&.include?("revenue share") }
                               .sort_by(&:due_date)
 
     sorted_payments.each_with_index do |payment, i|
