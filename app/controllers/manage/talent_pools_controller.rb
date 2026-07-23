@@ -163,10 +163,12 @@ module Manage
     # This controller manages membership in that pool (no index view - managed via casting settings tab)
 
     def show
-      # Full page view for direct navigation to a production's talent pool
-      # If XHR request, just return the members partial for refresh
+      # XHR is the inline controller refreshing the member list.
       if request.xhr?
         render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+      else
+        # The pool is managed as a casting-settings section; there's no separate page.
+        redirect_to manage_casting_settings_section_path(production_id: @production, section: "talent_pool")
       end
     end
 

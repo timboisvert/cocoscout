@@ -17,11 +17,14 @@
                   when there's only one, so a single-topic page looks plain
     current     — key of the section being shown
     intro       — optional sentence under the title, for the whole page
+    width       — optional max-width class for the body (default max-w-2xl);
+                  pass something wider for sections holding tables or lists
 %>
 <%
   sections ||= []
   breadcrumbs ||= []
   intro = local_assigns[:intro]
+  width = local_assigns[:width].presence || "max-w-2xl"
 %>
 
 <div class="w-full mb-10">
@@ -53,7 +56,7 @@
     </nav>
   <% end %>
 
-  <div class="max-w-2xl space-y-6">
+  <div class="<%= width %> space-y-6">
     <%= yield %>
   </div>
 </div>

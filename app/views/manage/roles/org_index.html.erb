@@ -14,7 +14,7 @@
   <% if @productions.any? %>
     <div class="space-y-1">
       <% @productions.each do |production| %>
-        <%= link_to "#{manage_casting_settings_path(production)}#tab-1", class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+        <%= link_to manage_casting_settings_section_path(production_id: production, section: "roles"), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
           <%# Left Section: Production Logo + Name %>
           <div class="w-1/2 flex items-center gap-4 pr-4">
             <div class="flex-shrink-0">

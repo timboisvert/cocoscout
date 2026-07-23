@@ -1,14 +1,22 @@
 # frozen_string_literal: true
 
 module Manage
+  # Per-production casting settings, on the shared settings layout: each topic
+  # is its own routed section, so only that section's data loads.
   class CastingSettingsController < ManageController
-    before_action :set_production
-    before_action :load_roles_data, only: [ :show ]
-    before_action :load_talent_pool_data, only: [ :show ]
+    SECTIONS = %w[source roles talent_pool].freeze
+    SECTION_LABELS = {
+      "source" => "Casting Source",
+      "roles" => "Roles",
+      "talent_pool" => "Talent Pool"
+    }.freeze
+    DEFAULT_SECTION = "source"
 
-    def show
-      # Main casting settings page with tabs
-    end
+    before_action :set_production
+    before_action :set_section, only: [ :show ]
+    before_action :load_section_data, only: [ :show ]
+
+    def show; end
 
     def update
       if @production.update(casting_settings_params)
@@ -17,13 +25,38 @@ module Manage
           format.turbo_stream { head :ok }
         end
       else
-        load_roles_data
-        load_talent_pool_data
+        @section = DEFAULT_SECTION
+        load_section_data
         render :show, status: :unprocessable_entity
       end
     end
 
     private
+
+    def sections
+      SECTIONS.map do |key|
+        { key: key, label: SECTION_LABELS[key],
+          path: manage_casting_settings_section_path(production_id: @production, section: key) }
+      end
+    end
+    helper_method :sections
+
+    def set_section
+      @section = params[:section].presence || DEFAULT_SECTION
+      redirect_to manage_casting_settings_path(@production) unless @section.in?(SECTIONS)
+    end
+
+    # The source section needs nothing but the production; the others need the
+    # roster and/or the pool they cast from.
+    def load_section_data
+      case @section
+      when "roles"
+        load_roles_data
+        load_talent_pool_data
+      when "talent_pool"
+        load_talent_pool_data
+      end
+    end
 
     def set_production
       unless Current.organization

@@ -73,7 +73,7 @@
         <%= link_to "Manage Custom Roles", manage_edit_show_path(production, show, anchor: "tab-3"), class: "text-pink-500 underline" %>
       <% else %>
         You haven't added any roles to this production yet.
-        <%= link_to "Add Roles", "#{manage_casting_settings_path(production)}#tab-1", class: "text-pink-500 underline" %>
+        <%= link_to "Add Roles", manage_casting_settings_section_path(production_id: production, section: "roles"), class: "text-pink-500 underline" %>
       <% end %>
     </div>
   <% end %>

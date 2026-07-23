@@ -881,6 +881,7 @@ Rails.application.routes.draw do
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
     get  "/casting/:production_id/settings", to: "casting_settings#show", as: "casting_settings"
     patch "/casting/:production_id/settings", to: "casting_settings#update", as: "update_casting_settings"
+    get  "/casting/:production_id/settings/:section", to: "casting_settings#show", as: "casting_settings_section"
     get  "/casting/:production_id/search_people", to: "casting#search_people", as: "casting_search_people"
 
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)

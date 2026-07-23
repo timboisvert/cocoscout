@@ -8,7 +8,7 @@
     breadcrumbs: [
       ["Casting", manage_casting_path],
       [@production.name, manage_casting_production_path(@production)],
-      ["Talent Pool", "#{manage_casting_settings_path(@production)}#tab-2"]
+      ["Talent Pool", manage_casting_settings_section_path(production_id: @production, section: "talent_pool")]
     ],
     text: "Remove from Talent Pool",
     links: []
@@ -64,7 +64,7 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: "#{manage_casting_settings_path(@production)}#tab-2" %>
+            path: manage_casting_settings_section_path(production_id: @production, section: "talent_pool") %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",
@@ -94,7 +94,7 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: "#{manage_casting_settings_path(@production)}#tab-2" %>
+            path: manage_casting_settings_section_path(production_id: @production, section: "talent_pool") %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",
