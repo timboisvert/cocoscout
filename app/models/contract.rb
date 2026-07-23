@@ -468,6 +468,37 @@ class Contract < ApplicationRecord
     offline_payment_methods.any?
   end
 
+  # A plain-English summary of the deal for the review step — every term that
+  # was set on Financials, so nobody has to click back to check. Returns an
+  # array of { label:, value: } with money pre-formatted.
+  def deal_summary
+    cfg = draft_payment_config
+    lines = []
+
+    who_sells_label = case who_sells_tickets
+    when "org" then "We do"
+    when "contractor" then "They do — they report their sales"
+    else "No tickets on this deal"
+    end
+    lines << { label: "Who sells the tickets", value: who_sells_label }
+
+    case draft_payment_structure
+    when "flat_fee"
+      deal_summary_flat_fee(cfg, lines)
+    when "per_event"
+      deal_summary_per_event(cfg, lines)
+    when "revenue_share"
+      deal_summary_revenue_share(cfg, lines)
+    end
+
+    methods = accepted_payment_methods.map do |m|
+      m == "online" ? "online" : OFFLINE_PAYMENT_METHOD_LABELS[m]&.downcase
+    end.compact
+    lines << { label: "They may pay us by", value: methods.to_sentence }
+
+    lines
+  end
+
   # Flat-fee entries — supports one whole-contract fee, a uniform per-event fee,
   # or a per-event fee with a different price per event. Returns an array of
   # { "amount", "due_date", "show_index" } (show_index nil = whole contract).
@@ -571,6 +602,63 @@ class Contract < ApplicationRecord
   end
 
   private
+
+  def deal_money(value)
+    format("$%.2f", value.to_f)
+  end
+
+  def deal_summary_flat_fee(cfg, lines)
+    if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
+      lines << { label: "How the money works",
+                 value: "They keep the ticket revenue, less our #{deal_money(cfg['flat_fee_amount'])} fee" }
+      return
+    end
+
+    direction = cfg["flat_fee_direction"] == "outgoing" ? "we pay them" : "they pay us"
+    lines << { label: "How the money works", value: "Flat fee of #{deal_money(cfg['flat_fee_amount'])} — #{direction}" }
+
+    return unless cfg["flat_fee_has_deposit"].to_s == "true"
+
+    deposit = if cfg["flat_fee_deposit_amount"].to_f.positive?
+      deal_money(cfg["flat_fee_deposit_amount"])
+    elsif cfg["flat_fee_deposit_percent"].to_f.positive?
+      "#{cfg['flat_fee_deposit_percent']}%"
+    end
+    lines << { label: "Deposit", value: [ deposit, "upfront" ].compact.join(" ") } if deposit
+  end
+
+  def deal_summary_per_event(cfg, lines)
+    direction = cfg["per_event_direction"] == "outgoing" ? "we pay them" : "they pay us"
+    lines << { label: "How the money works", value: "#{deal_money(cfg['per_event_amount'])} per event — #{direction}" }
+
+    timing = cfg["per_event_timing"] == "upfront" ? "All upfront" : "Event by event"
+    lines << { label: "Paid", value: timing }
+
+    if cfg["per_event_has_discount"].to_s == "true" && cfg["per_event_discount_percent"].to_f.positive?
+      lines << { label: "Volume discount", value: "#{cfg['per_event_discount_percent']}% off" }
+    end
+  end
+
+  def deal_summary_revenue_share(cfg, lines)
+    our = cfg["revenue_our_share"].presence || 50
+    their = cfg["revenue_their_share"].presence || (100 - our.to_i)
+    source = {
+      "ticket_sales" => "ticket sales", "door_sales" => "door sales",
+      "bar_sales" => "bar and concessions", "merchandise" => "merchandise",
+      "total_revenue" => "all revenue"
+    }[cfg["revenue_source"]] || "ticket sales"
+    lines << { label: "How the money works", value: "Revenue share on #{source} — we keep #{our}%, they keep #{their}%" }
+
+    if cfg["revenue_guarantee"].to_s == "true" && cfg["revenue_guarantee_amount"].to_f.positive?
+      lines << { label: "Minimum guarantee", value: "They take home at least #{deal_money(cfg['revenue_guarantee_amount'])}" }
+    end
+
+    settlement = {
+      "same_day" => "Settled same day", "next_day" => "Settled next business day",
+      "weekly" => "Settled weekly", "monthly" => "Settled monthly"
+    }[cfg["revenue_settlement"]]
+    lines << { label: "Settlement", value: settlement } if settlement
+  end
 
   def sync_contractor_info
     return unless contractor_id.present?
