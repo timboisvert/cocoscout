@@ -16,7 +16,8 @@ RSpec.describe "Financials step choice cards", type: :request do
 
     expect(response).to have_http_status(:ok)
     %w[flat_fee_direction_choice per_event_direction_choice
-       per_event_timing_choice per_event_terms_choice].each do |group|
+       per_event_timing_choice per_event_terms_choice
+       revenue_source_choice revenue_settlement_choice].each do |group|
       expect(response.body).to include(%(name="#{group}")), "expected #{group} cards"
     end
     # Each still mirrors into the hidden input the controller reads.
@@ -32,10 +33,25 @@ RSpec.describe "Financials step choice cards", type: :request do
     expect(response.body).to match(/name="flat_fee_direction_choice" value="outgoing"[^>]*checked/m)
   end
 
-  it "keeps the payment summary beside the form, not inside it" do
+  it "defaults a revenue share to an even split" do
     get manage_payments_contract_wizard_path(contract)
 
-    expect(response.body).to include("Payment Summary")
-    expect(response.body).to include("lg:sticky")
+    expect(response.body).to match(/data-contract-payments-target="revenueOurShare"[^>]*value="50"/)
+    expect(response.body).to match(/data-contract-payments-target="revenueTheirShare"[^>]*value="50"/)
+  end
+
+  it "keeps a saved split rather than resetting it to even" do
+    contract.update_draft_step(:payment_config,
+                               { "revenue_our_share" => "30", "revenue_their_share" => "70" })
+
+    get manage_payments_contract_wizard_path(contract)
+
+    expect(response.body).to match(/data-contract-payments-target="revenueOurShare"[^>]*value="30"/)
+  end
+
+  it "carries no running payment summary — the review step covers that" do
+    get manage_payments_contract_wizard_path(contract)
+
+    expect(response.body).not_to include("Payment Summary")
   end
 end
