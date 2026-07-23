@@ -1,13 +1,13 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Ticketing" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Ticketing</h2>
-  <p class="text-gray-600 mb-6">Set the ticket tiers and prices, and any discount code (optional).</p>
+  <p class="text-gray-600 mb-6">You're selling the tickets for this one — set the tiers and prices, and any discount code.</p>
 
   <%= form_with url: manage_ticketing_contract_wizard_path(@contract), method: :post, local: true do |form| %>
     <%= render "manage/contracts/ticketing_fields", ticketing: @existing_ticketing %>
 
     <div class="flex justify-between">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_schedule_preview_contract_wizard_path(@contract) %>
-      <%= render "shared/button", text: "Next: Tech", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_payments_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Next: Services", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
 <% end %>

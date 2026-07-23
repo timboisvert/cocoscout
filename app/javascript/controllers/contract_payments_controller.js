@@ -21,7 +21,7 @@ export default class extends Controller {
         // Custom targets
         "customConfig",
         // Ticketing (folded into the deal, shown only when we sell)
-        "ticketingSection"
+        "nextButton"
     ]
     static values = {
         existing: Array,
@@ -51,19 +51,22 @@ export default class extends Controller {
 
         this.renderList()
         this.updateSummary()
-        this.updateTicketingVisibility()
+        this.updateNextLabel()
     }
 
-    // Ticketing is folded into the deal step and only relevant when WE sell.
+    // Ticketing is its own step, and only when WE sell — so what comes next
+    // changes with this answer. Keep the button honest about where it goes.
     onWhoSellsChange() {
-        this.updateTicketingVisibility()
+        this.updateNextLabel()
     }
 
-    updateTicketingVisibility() {
-        if (!this.hasTicketingSectionTarget) return
+    updateNextLabel() {
+        if (!this.hasNextButtonTarget) return
+        const button = this.nextButtonTarget.querySelector("button")
+        if (!button) return
         const checked = this.element.querySelector('input[name="who_sells_tickets"]:checked')
         const weSell = checked && checked.value === "org"
-        this.ticketingSectionTarget.classList.toggle("hidden", !weSell)
+        button.textContent = weSell ? "Next: Ticketing" : "Next: Services"
     }
 
     restoreConfig(config) {

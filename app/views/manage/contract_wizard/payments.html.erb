@@ -12,28 +12,31 @@
     <%# The whole deal is one form so the who-sells radio + folded ticketing submit together. %>
     <%= form_with url: manage_payments_contract_wizard_path(@contract), method: :post, local: true, data: { action: "submit->contract-payments#preparePaymentsForSubmit" } do |form| %>
 
-    <%# Who sells the tickets? — the top-level question that frames everything. %>
+    <%# Who holds the ticket money. Separate from how the deal settles — we might
+        sell the tickets on a deal that's simply a flat rental. %>
     <div class="mb-6">
-      <h3 class="text-sm font-semibold text-gray-900 mb-3">Who sells the tickets?</h3>
+      <h3 class="text-sm font-semibold text-gray-900 mb-1">Who sells the tickets?</h3>
+      <p class="text-xs text-gray-500 mb-3">Just who takes the ticket money. How the deal settles is the next question.</p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
           <input type="radio" name="who_sells_tickets" value="org" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if @existing_payment_config["who_sells_tickets"] == "org" %>>
-          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">We sell them</span> — we hold the money and pay them their share</span>
+          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">We do</span> — we set up ticketing and take the money</span>
         </label>
         <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
           <input type="radio" name="who_sells_tickets" value="contractor" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if @existing_payment_config["who_sells_tickets"] == "contractor" %>>
-          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">They sell them</span> — they report sales and pay us our share</span>
+          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">They do</span> — they sell and report their sales</span>
         </label>
         <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
           <input type="radio" name="who_sells_tickets" value="" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if @existing_payment_config["who_sells_tickets"].blank? %>>
-          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">It's a flat rental</span> — no ticket split</span>
+          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">No tickets</span> — this deal doesn't involve them</span>
         </label>
       </div>
     </div>
 
     <%# Payment Structure Selection %>
     <div class="mb-6">
-      <h3 class="text-sm font-semibold text-gray-900 mb-3">Payment Structure</h3>
+      <h3 class="text-sm font-semibold text-gray-900 mb-1">How does the money work?</h3>
+      <p class="text-xs text-gray-500 mb-3">Split the ticket revenue with them, or a set fee either way — whoever sold the tickets.</p>
       <div class="grid grid-cols-2 gap-3">
         <button type="button" data-action="click->contract-payments#selectStructureBtn" data-structure="flat_fee"
                 data-contract-payments-target="flatFeeBtn"
@@ -397,12 +400,6 @@
       </div>
     </div>
 
-    <%# Ticket tiers — folded into the deal, shown only when WE sell the tickets. %>
-    <div data-contract-payments-target="ticketingSection" class="hidden mb-6">
-      <h3 class="text-sm font-semibold text-gray-900 mb-3">Ticketing</h3>
-      <%= render "manage/contracts/ticketing_fields", ticketing: @existing_ticketing %>
-    </div>
-
     <%# How they may pay us. Online is always on; anything else has to be allowed
         here before a payment can be recorded by hand. Starts from org settings. %>
     <div class="mb-6 rounded-xl border border-gray-200 p-5">
@@ -413,7 +410,7 @@
           <input type="checkbox" checked disabled class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
           <span>
             <span class="block text-sm font-medium text-gray-900">Online (card or bank)</span>
-            <span class="block text-xs text-gray-500">You send a payment link. Always available.</span>
+            <span class="block text-xs text-gray-500">Pay through CocoScout. Always available.</span>
           </span>
         </label>
         <% Contract::OFFLINE_PAYMENT_METHODS.each do |method| %>
@@ -433,7 +430,12 @@
 
     <div class="flex justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_schedule_preview_contract_wizard_path(@contract) %>
-      <%= render "shared/button", text: "Next: Services", variant: "primary", size: "medium", type: :submit %>
+      <%# What's next depends on who's selling, so the label follows the choice. %>
+      <div data-contract-payments-target="nextButton">
+        <%= render "shared/button",
+              text: @contract.org_sells_tickets? ? "Next: Ticketing" : "Next: Services",
+              variant: "primary", size: "medium", type: :submit %>
+      </div>
     </div>
     <% end %>
   </div>

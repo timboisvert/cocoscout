@@ -52,7 +52,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     post manage_schedule_preview_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_payments_contract_wizard_path(contract))
 
-    # the deal → services
+    # the deal → services (nobody's selling tickets here, so Ticketing is skipped)
     post manage_payments_contract_wizard_path(contract),
          params: { payments: [].to_json, payment_structure: "flat_fee", payment_config: {}.to_json }
     expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
@@ -60,5 +60,52 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     # services → documents
     post manage_tech_contract_wizard_path(contract), params: { tech_provider: "them" }
     expect(response).to redirect_to(manage_documents_contract_wizard_path(contract))
+  end
+
+  describe "the Ticketing step" do
+    def choose_who_sells(who)
+      post manage_payments_contract_wizard_path(contract), params: {
+        payments: [].to_json, payment_structure: "flat_fee", payment_config: {}.to_json,
+        who_sells_tickets: who
+      }
+    end
+
+    it "slots in between Financials and Services when we're the ones selling" do
+      choose_who_sells("org")
+
+      expect(response).to redirect_to(manage_ticketing_contract_wizard_path(contract))
+      expect(contract.reload).to be_org_sells_tickets
+
+      # ...and leads on to Services.
+      post manage_ticketing_contract_wizard_path(contract), params: { ticketing: {}.to_json }
+      expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
+    end
+
+    it "is skipped entirely when they sell, or when there are no tickets" do
+      choose_who_sells("contractor")
+      expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
+
+      choose_who_sells("")
+      expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
+    end
+
+    it "only appears in the step strip once we're selling" do
+      choose_who_sells("contractor")
+      get manage_payments_contract_wizard_path(contract)
+      expect(response.body).not_to include("Ticketing")
+
+      choose_who_sells("org")
+      get manage_payments_contract_wizard_path(contract)
+      expect(response.body).to include("Ticketing")
+    end
+
+    it "is no longer folded into the Financials step" do
+      choose_who_sells("org")
+
+      get manage_payments_contract_wizard_path(contract)
+
+      # The tier fields live on their own step now.
+      expect(response.body).not_to include("Ticket Tiers")
+    end
   end
 end

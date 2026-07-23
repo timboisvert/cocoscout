@@ -393,9 +393,20 @@ class Contract < ApplicationRecord
   # draft_payment_config; these getters fall back to the legacy payment_structure
   # so existing contracts keep working until the backfill task migrates them.
 
-  # "org" (we sell tickets), "contractor" (they sell), or nil (flat rental).
+  # Who sells the tickets: "org" (we do), "contractor" (they do), or nil (this
+  # deal doesn't involve tickets at all).
+  #
+  # This is a separate question from how the deal settles. We might sell the
+  # tickets and keep every penny while they simply pay us a flat rental — so
+  # this says who holds the ticket money and whether we need ticket tiers, not
+  # who owes whom.
   def who_sells_tickets
     draft_payment_config["who_sells_tickets"].presence || legacy_who_sells_tickets
+  end
+
+  # True when we're the ones selling, so this contract needs ticketing set up.
+  def org_sells_tickets?
+    who_sells_tickets == "org"
   end
 
   # "revenue_share" | "revenue_minus_fee" | "flat".
@@ -403,13 +414,19 @@ class Contract < ApplicationRecord
     draft_payment_config["settlement_basis"].presence || legacy_settlement_basis
   end
 
-  # Which way money flows for the core settlement: if WE sell the tickets we hold
-  # the cash and pay them (outgoing); if THEY sell, they pay us (incoming). A flat
-  # rental defaults to incoming but can be set either way via flat_fee_direction.
+  # Which way money flows for the core settlement.
+  #
+  # For a ticket split, it follows whoever holds the ticket money: we sell, so we
+  # pay them their share (outgoing); they sell, so they pay us ours (incoming).
+  # Ticket-revenue-minus-fee is always us selling and handing back the remainder.
+  # A flat fee is independent of ticketing — a rental where we still sell the
+  # tickets is money coming IN — so it uses its own stated direction.
   def settlement_direction
-    case who_sells_tickets
-    when "org" then "outgoing"
-    when "contractor" then "incoming"
+    case settlement_basis
+    when "revenue_share"
+      who_sells_tickets == "org" ? "outgoing" : "incoming"
+    when "revenue_minus_fee"
+      "outgoing"
     else
       dir = draft_payment_config["flat_fee_direction"]
       dir.in?(%w[incoming outgoing]) ? dir : "incoming"

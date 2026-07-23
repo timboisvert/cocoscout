@@ -17,18 +17,25 @@
       <div class="flex items-center justify-center">
         <%
           # Settlement-first flow. Schedule merges bookings + preview (internal
-          # steps 2 & 3 both read as "Schedule"); the deal comes before Services;
-          # ticketing is folded into the deal and Tech is now optional Services.
+          # steps 2 & 3 both read as "Schedule"); Financials comes before
+          # everything downstream, and Ticketing only appears once you've said
+          # we're the ones selling.
           persisted = defined?(@contract) && @contract.persisted?
           # Normalize the schedule-preview sub-step (3) onto the Schedule node (2).
           current_step = @step == 3 ? 2 : @step
           steps = [
-            { num: 2, display: 1, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 4, display: 2, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil },
-            { num: 5, display: 3, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil },
-            { num: 6, display: 4, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 7, display: 5, name: "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
+            { num: 2, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
+            { num: 4, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil }
           ]
+          if persisted && @contract.org_sells_tickets?
+            steps << { num: 5, name: "Ticketing", path: manage_ticketing_contract_wizard_path(@contract) }
+          end
+          steps += [
+            { num: 6, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil },
+            { num: 7, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil },
+            { num: 8, name: "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
+          ]
+          steps.each_with_index { |step, i| step[:display] = i + 1 }
         %>
         <% steps.each_with_index do |step, index| %>
           <% is_current = step[:num] == current_step %>

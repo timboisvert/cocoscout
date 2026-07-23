@@ -508,6 +508,31 @@ RSpec.describe Contract, type: :model do
         expect(c.settlement_direction).to eq("outgoing")
       end
 
+      # Who sells the tickets and how the deal settles are separate questions:
+      # we can run the box office and still just be collecting a rental fee.
+      it "we sell the tickets AND they pay us a flat rental → incoming" do
+        c = contract_with("who_sells_tickets" => "org", "settlement_basis" => "flat",
+                          "flat_fee_direction" => "incoming")
+
+        expect(c.settlement_direction).to eq("incoming")
+        expect(c).to be_org_sells_tickets
+      end
+
+      it "we sell the tickets AND we pay them a flat guarantee → outgoing" do
+        c = contract_with("who_sells_tickets" => "org", "settlement_basis" => "flat",
+                          "flat_fee_direction" => "outgoing")
+
+        expect(c.settlement_direction).to eq("outgoing")
+      end
+
+      it "they sell the tickets AND still owe us a flat fee → incoming" do
+        c = contract_with("who_sells_tickets" => "contractor", "settlement_basis" => "flat",
+                          "flat_fee_direction" => "incoming")
+
+        expect(c.settlement_direction).to eq("incoming")
+        expect(c).not_to be_org_sells_tickets
+      end
+
       describe "legacy fallback (no v2 keys set)" do
         it "legacy revenue_share reads as they-sell / incoming" do
           c = build(:contract, draft_data: { "payment_structure" => "revenue_share",
