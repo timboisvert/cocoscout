@@ -1,6 +1,6 @@
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Ticketing" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Ticketing</h2>
-  <p class="text-gray-600 mb-6">You're selling the tickets for this one — set the tiers and prices, and any discount code.</p>
+  <p class="text-gray-600 mb-6">You're selling the tickets for this one — set the tiers and prices, and any discount codes.</p>
 
   <%= form_with url: manage_ticketing_contract_wizard_path(@contract), method: :post, local: true do |form| %>
     <%= render "manage/contracts/ticketing_fields", ticketing: @existing_ticketing %>

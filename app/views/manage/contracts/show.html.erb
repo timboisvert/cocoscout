@@ -128,8 +128,8 @@
 
       <%# Ticketing %>
       <% tiers = (@ticketing["tiers"] || []) %>
-      <% discount = (@ticketing["discount"] || {}) %>
-      <% if tiers.any? || discount["code"].present? %>
+      <% discounts = Contract.ticketing_discounts(@ticketing) %>
+      <% if tiers.any? || discounts.any? %>
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Ticketing" %>
           <div class="p-4">
@@ -143,7 +143,7 @@
                 <% end %>
               </ul>
             <% end %>
-            <% if discount["code"].present? %>
+            <% discounts.each do |discount| %>
               <p class="text-sm text-gray-600 mt-3">
                 Discount <span class="font-medium text-gray-900"><%= discount["code"] %></span>:
                 <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>

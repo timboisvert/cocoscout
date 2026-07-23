@@ -158,6 +158,18 @@ class Contract < ApplicationRecord
     draft_data["ticketing"] || {}
   end
 
+  # Discount codes on a ticketing hash, as an array. Ticketing used to hold one
+  # `discount`; it now holds a `discounts` list. Normalizes either shape so
+  # readers don't have to care which a given contract was saved with.
+  def self.ticketing_discounts(ticketing)
+    ticketing ||= {}
+    list = ticketing["discounts"]
+    return list if list.is_a?(Array) && list.any?
+
+    single = ticketing["discount"]
+    single.is_a?(Hash) && single["code"].present? ? [ single ] : []
+  end
+
   def draft_tech
     draft_data["tech"] || {}
   end

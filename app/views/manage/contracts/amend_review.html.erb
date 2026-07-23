@@ -192,7 +192,7 @@
         <div class="p-4 space-y-4">
           <% if @ticketing_changed %>
             <% tiers = @new_ticketing["tiers"] || [] %>
-            <% discount = @new_ticketing["discount"] || {} %>
+            <% discounts = Contract.ticketing_discounts(@new_ticketing) %>
             <div>
               <h4 class="text-sm font-medium text-gray-900 mb-2">New ticketing</h4>
               <% if tiers.any? %>
@@ -207,7 +207,7 @@
               <% else %>
                 <p class="text-sm text-gray-500">No ticket tiers.</p>
               <% end %>
-              <% if discount["code"].present? %>
+              <% discounts.each do |discount| %>
                 <p class="text-sm text-gray-600 mt-2">
                   Discount <span class="font-medium"><%= discount["code"] %></span>:
                   <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>
