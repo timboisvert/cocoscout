@@ -1,15 +1,32 @@
 <% content_for :title, "Documents" %>
 
+<%
+  documents_description = <<~HTML
+    <p class="mb-2">
+      Everything your company needs to read in one place — handbooks, house rules,
+      rehearsal notes, safety info.
+    </p>
+    <p>
+      A document can be shared across as many productions as you like, and you choose
+      who sees it: performers, staff, or your whole team.
+    </p>
+  HTML
+
+  documents_actions = [
+    { icon: "document-text", text: "New document", description: "Write something for your team", path: manage_new_org_document_path }
+  ]
+%>
+
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Documents",
-    links: [
-      { text: "New document", icon: "plus", path: manage_new_org_document_path }
-    ]
-  } %>
 
+  <%= render "shared/module_header",
+    title: "Documents",
+    description: documents_description,
+    actions: documents_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-6 mt-2">
   <% if @documents.any? %>
     <div class="space-y-2">
       <% @documents.each do |doc| %>
@@ -37,7 +54,7 @@
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
       <p class="text-sm text-gray-600 mb-3">
         <% if @managed_productions.any? %>
-          No documents yet. Create a performer handbook or any document your team needs — and share it across as many productions as you like.
+          No documents yet. Start with a performer handbook, or anything else your team needs to read.
         <% else %>
           You don't manage any productions yet, so there are no documents to show.
         <% end %>
@@ -49,4 +66,5 @@
       <% end %>
     </div>
   <% end %>
+  </div>
 </div>

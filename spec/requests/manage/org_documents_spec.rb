@@ -57,4 +57,13 @@ RSpec.describe "Manage::OrgDocuments", type: :request do
     post manage_org_documents_path, params: { production_document: { title: "No Prod" } }
     expect(response).to redirect_to(manage_new_org_document_path)
   end
+
+  it "leads with a module hub header rather than a top-nav link" do
+    get manage_org_documents_path
+
+    expect(response.body).to include("New document")
+    expect(response.body).to include(manage_new_org_document_path)
+    # The hub explains what the section is for.
+    expect(response.body).to include("Everything your company needs to read")
+  end
 end
