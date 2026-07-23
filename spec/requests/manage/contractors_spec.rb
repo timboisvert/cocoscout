@@ -23,7 +23,7 @@ RSpec.describe "Manage::Contractors", type: :request do
     it "shows the search-or-invite picker when no person is linked" do
       get manage_contractor_path(contractor)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Associated person").and include("Link a person")
+      expect(response.body).to include("Associated person").and include("Add a person")
     end
 
     it "links an existing CocoScout person via the picker" do
@@ -114,6 +114,53 @@ RSpec.describe "Manage::Contractors", type: :request do
       expect(org.contractors.find_by(name: "Trip Co").person).to be_nil
       follow_redirect!
       expect(response.body).to include("couldn&#39;t link a person").or include("couldn't link a person")
+    end
+  end
+
+  describe "the add-a-person modal flow" do
+    it "previews an invitation for someone new, without creating anything" do
+      expect {
+        get preview_person_manage_contractor_path(contractor), params: { invite_name: "Newby", invite_email: "newby@example.com" }
+      }.to change(Person, :count).by(0).and change(PersonInvitation, :count).by(0)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("isn't on CocoScout yet")
+      expect(response.body).to include("Add &amp; invite")
+      expect(response.body).to include("been invited to join #{org.name}")
+    end
+
+    it "previews a notification for an existing member" do
+      person = create(:person, name: "Member Mo", email: "mo@example.com", user: create(:user))
+      org.people << person
+
+      get preview_person_manage_contractor_path(contractor), params: { person_id: person.id }
+
+      expect(response.body).to include("already on CocoScout")
+      expect(response.body).to include("Add &amp; notify")
+      expect(response.body).to include("added you to a contract")
+    end
+
+    it "links + invites a new person in one confirmed step" do
+      expect {
+        post add_person_manage_contractor_path(contractor), params: { invite_name: "Newby", invite_email: "newby@example.com" }
+      }.to change(PersonInvitation, :count).by(1)
+
+      person = contractor.reload.person
+      expect(person.email).to eq("newby@example.com")
+      expect(person.user).to be_present
+      expect(flash[:notice]).to include("invited")
+    end
+
+    it "links + notifies an existing member in one confirmed step, no new invitation" do
+      person = create(:person, name: "Member Mo", email: "mo@example.com", user: create(:user))
+      org.people << person
+
+      expect {
+        post add_person_manage_contractor_path(contractor), params: { person_id: person.id }
+      }.not_to change(PersonInvitation, :count)
+
+      expect(contractor.reload.person).to eq(person)
+      expect(flash[:notice]).to include("notified")
     end
   end
 

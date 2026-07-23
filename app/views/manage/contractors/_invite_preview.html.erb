@@ -1,0 +1,53 @@
+<%#
+  Fetched into the add-person modal's step 2. Shows exactly what the selected
+  person will be sent, then a form that links + sends in one confirmed step.
+  Ivars from ContractorsController#preview_person.
+%>
+<div class="p-6 space-y-4">
+  <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900" data-action="click->invite-search#backToStep1">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    Back
+  </button>
+
+  <p class="text-sm text-gray-600">
+    <% if @preview_is_member %>
+      <span class="font-medium text-gray-900"><%= @preview_person_name %></span> is already on CocoScout.
+      Adding them sends this notification so they know.
+    <% else %>
+      <span class="font-medium text-gray-900"><%= @preview_person_name %></span> isn't on CocoScout yet.
+      Adding them sends this invitation so they can log in and get set up.
+    <% end %>
+  </p>
+
+  <% if @preview %>
+    <dl class="rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+      <div class="flex gap-3 px-4 py-2.5">
+        <dt class="w-16 flex-shrink-0 text-gray-500">To</dt>
+        <dd class="text-gray-900 min-w-0 truncate"><%= @preview_person_name %> &lt;<%= @preview_person_email %>&gt;</dd>
+      </div>
+      <div class="flex gap-3 px-4 py-2.5">
+        <dt class="w-16 flex-shrink-0 text-gray-500">Subject</dt>
+        <dd class="text-gray-900 min-w-0"><%= @preview[:subject] %></dd>
+      </div>
+    </dl>
+    <div class="rounded-lg border border-gray-200 p-4 bg-gray-50 prose prose-sm max-w-none text-gray-800">
+      <%= raw @preview[:body] %>
+    </div>
+  <% end %>
+
+  <%= form_with url: add_person_manage_contractor_path(@contractor), method: :post do %>
+    <% if @preview_person_id.present? %>
+      <%= hidden_field_tag :person_id, @preview_person_id %>
+    <% else %>
+      <%= hidden_field_tag :invite_name, @preview_person_name %>
+      <%= hidden_field_tag :invite_email, @preview_person_email %>
+    <% end %>
+    <div class="flex gap-3 pt-1">
+      <button type="button" data-action="click->invite-search#backToStep1"
+              class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back</button>
+      <%= render "shared/button",
+            text: @preview_is_member ? "Add & notify" : "Add & invite",
+            variant: "primary", size: "medium", type: :submit, classes: "flex-1 justify-center" %>
+    </div>
+  <% end %>
+</div>

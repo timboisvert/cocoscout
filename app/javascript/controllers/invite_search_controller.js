@@ -1,8 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["input", "results", "inviteForm", "inviteName", "inviteEmail", "searchSection", "selectedPerson", "selectedPersonName", "selectedPersonEmail", "selectedPersonIdInput", "personDetailsSection"]
-    static values = { url: String }
+    static targets = ["input", "results", "inviteForm", "inviteName", "inviteEmail", "searchSection", "selectedPerson", "selectedPersonName", "selectedPersonEmail", "selectedPersonIdInput", "personDetailsSection",
+        // Add-a-person modal: a preview step between picking someone and sending.
+        "step1", "step2", "previewContainer", "previewError"]
+    static values = { url: String, previewUrl: String }
 
     connect() {
         this.timeout = null
@@ -101,5 +103,50 @@ export default class extends Controller {
         this.inputTarget.value = ""
         this.resultsTarget.innerHTML = ""
         this.inputTarget.focus()
+    }
+
+    // --- Add-a-person modal: preview before anything is committed ----------
+
+    // Move from picking someone to previewing what they'll be sent. Nothing is
+    // linked or sent yet — the preview's own form does that on confirm.
+    toPreview() {
+        const personId = this.hasSelectedPersonIdInputTarget ? this.selectedPersonIdInputTarget.value : ""
+        const name = this.hasInviteNameTarget ? this.inviteNameTarget.value.trim() : ""
+        const email = this.hasInviteEmailTarget ? this.inviteEmailTarget.value.trim() : ""
+
+        if (!personId && !email) {
+            this.showPreviewError("Pick someone, or enter a name and email.")
+            return
+        }
+        this.hidePreviewError()
+
+        const params = new URLSearchParams()
+        if (personId) params.set("person_id", personId)
+        if (name) params.set("invite_name", name)
+        if (email) params.set("invite_email", email)
+
+        const sep = this.previewUrlValue.includes("?") ? "&" : "?"
+        fetch(`${this.previewUrlValue}${sep}${params.toString()}`, { headers: { "Accept": "text/html" } })
+            .then(r => r.text())
+            .then(html => {
+                this.previewContainerTarget.innerHTML = html
+                this.step1Target.classList.add("hidden")
+                this.step2Target.classList.remove("hidden")
+            })
+    }
+
+    backToStep1() {
+        this.step2Target.classList.add("hidden")
+        this.step1Target.classList.remove("hidden")
+    }
+
+    showPreviewError(message) {
+        if (!this.hasPreviewErrorTarget) return
+        this.previewErrorTarget.textContent = message
+        this.previewErrorTarget.classList.remove("hidden")
+    }
+
+    hidePreviewError() {
+        if (this.hasPreviewErrorTarget) this.previewErrorTarget.classList.add("hidden")
     }
 }

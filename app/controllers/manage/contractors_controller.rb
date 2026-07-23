@@ -2,7 +2,7 @@
 
 module Manage
   class ContractorsController < ManageController
-    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :link_person ]
+    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :link_person, :preview_person, :add_person ]
 
     def index
       @query = params[:q].to_s.strip
@@ -113,6 +113,37 @@ module Manage
       redirect_to manage_contractor_path(@contractor), notice: "Invitation sent to #{person.email}."
     end
 
+    # Step 2 of the add-a-person modal: show exactly what this person will be
+    # sent — an invitation if they're new to CocoScout, a "you've been added"
+    # notification if they're already a member — before anything is committed.
+    def preview_person
+      target = resolve_person_target
+      return render_preview_error("Pick a person, or enter a name and email.") unless target
+
+      @preview_person_name = target[:name]
+      @preview_person_email = target[:email]
+      @preview_person_id = target[:person_id]
+      @preview_is_member = target[:person]&.user.present?
+      @preview = @preview_is_member ? member_notification_preview(target[:person]) : invitation_preview_for(target[:name], target[:email])
+      render partial: "manage/contractors/invite_preview"
+    end
+
+    # Confirm from the preview: link the person AND send them the message, in one
+    # step. Nothing is created until this is confirmed.
+    def add_person
+      person = link_or_invite_person!(@contractor)
+      return redirect_to(manage_contractor_path(@contractor), alert: @person_link_error || "Pick a person to add.") unless person
+
+      if person.user.present?
+        notify_member_added!(person)
+        notice = "#{person.name} was added and notified."
+      else
+        send_cocoscout_invitation!(person)
+        notice = "#{person.name} was added and invited to CocoScout."
+      end
+      redirect_to manage_contractor_path(@contractor), notice: notice
+    end
+
     # Link the contractor to a Person: an existing CocoScout person (person_id) or
     # a brand-new invite (invite_name + invite_email). The reusable search-or-
     # invite picker posts here.
@@ -188,7 +219,11 @@ module Manage
     # person_invitation content template so the manager can preview it before
     # sending. Read-only — the real setup link is stamped in at send time.
     def invitation_preview(person)
-      pending = PersonInvitation.pending.find_by(email: person.email, organization: Current.organization)
+      invitation_preview_for(person.name, person.email)
+    end
+
+    def invitation_preview_for(_name, email)
+      pending = PersonInvitation.pending.find_by(email: email, organization: Current.organization)
       setup_url = pending ? manage_accept_person_invitations_url(pending.token) : "#"
       rendered = ContentTemplateService.render("person_invitation", {
         organization_name: Current.organization.name,
@@ -198,6 +233,50 @@ module Manage
     rescue ContentTemplateService::TemplateNotFoundError => e
       Rails.logger.warn("Contractor invite preview failed: #{e.message}")
       nil
+    end
+
+    # What an existing CocoScout member gets when added to a contract — a
+    # notification, not an invitation to join.
+    def member_notification_preview(_person)
+      rendered = ContentTemplateService.render("contract_person_added", {
+        organization_name: Current.organization.name,
+        contracts_url: my_contracts_url
+      })
+      { subject: rendered[:subject], body: rendered[:body] }
+    rescue ContentTemplateService::TemplateNotFoundError => e
+      Rails.logger.warn("Contractor member-notification preview failed: #{e.message}")
+      nil
+    end
+
+    # Post it as an in-app message (which also rolls into their unread-email
+    # digest) so an existing member knows they've been added.
+    def notify_member_added!(person)
+      copy = member_notification_preview(person)
+      return unless copy
+
+      MessageService.send_direct(
+        sender: Current.user, recipient_person: person,
+        subject: copy[:subject], body: copy[:body],
+        organization: Current.organization, system_generated: true
+      )
+    end
+
+    # Resolve the modal's selection into a target: an existing Person by id, or a
+    # name/email pair for someone new. Returns nil when neither is usable.
+    def resolve_person_target
+      if params[:person_id].present?
+        person = Person.find_by(id: params[:person_id])
+        person && { person: person, name: person.name, email: person.email, person_id: person.id }
+      elsif params[:invite_email].present?
+        email = params[:invite_email].to_s.strip.downcase
+        name = params[:invite_name].to_s.strip.presence || email.split("@").first
+        existing = Person.where("LOWER(email) = ?", email).first
+        { person: existing, name: existing&.name || name, email: email, person_id: existing&.id }
+      end
+    end
+
+    def render_preview_error(message)
+      render partial: "manage/contractors/invite_preview_error", locals: { message: message }, status: :unprocessable_entity
     end
 
     # Give the person a login (if needed) and send them the CocoScout invitation

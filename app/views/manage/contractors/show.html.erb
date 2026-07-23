@@ -57,9 +57,10 @@
     </div>
   </div>
 
-  <%# Associated person — who this contractor IS (search existing or invite new) %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8"
-       data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path(mode: "link") %>">
+  <%# Associated person — who this contractor IS. The person and their CocoScout
+      access are the same thing, so they live together; adding one is a single
+      previewed step in the modal below. %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
     <%= render "shared/card_header", title: "Associated person" %>
     <div class="p-4">
       <% if @person %>
@@ -70,14 +71,15 @@
           <% else %>
             <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0"><%= @person.initials %></div>
           <% end %>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <div class="font-medium text-gray-900 truncate"><%= @person.name %></div>
             <div class="text-sm text-gray-500 truncate"><%= @person.email %></div>
           </div>
+          <button type="button" class="flex-shrink-0 text-sm font-medium text-pink-600 hover:text-pink-700" data-controller="modal" data-action="click->modal#open" data-modal-id="add-person-modal">Change</button>
         </div>
 
         <%# CocoScout access — this person IS who we invite, so it lives right here. %>
-        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 mb-3">
+        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3">
           <% if @has_cocoscout_access %>
             <div class="flex items-center gap-2 text-sm text-green-700">
               <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -103,75 +105,17 @@
           <% end %>
         </div>
       <% else %>
-        <p class="text-sm text-gray-600 mb-3">
-          This contractor isn't linked to a person yet. Link who they are so they can log in, see their contracts, and get paid.
-        </p>
-      <% end %>
-
-      <details class="group">
-        <summary class="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-pink-600 hover:text-pink-700 list-none [&::-webkit-details-marker]:hidden">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          <%= @person ? "Change person" : "Link a person" %>
-        </summary>
-
-        <div class="mt-4 border-t border-gray-100 pt-4">
-          <%= form_with url: link_person_manage_contractor_path(@contractor), method: :post do %>
-            <input type="hidden" name="person_id" data-invite-search-target="selectedPersonIdInput">
-
-            <%# Step 1: search %>
-            <div data-invite-search-target="searchSection">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Search CocoScout by name or email</label>
-              <input type="text"
-                     data-invite-search-target="input"
-                     data-action="input->invite-search#search"
-                     placeholder="Search by name or email…"
-                     class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-              <div data-invite-search-target="results" class="mt-3"></div>
-              <div class="mt-3">
-                <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700" data-action="invite-search#showInviteForm">
-                  <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %> Can't find them? Invite by email
-                </button>
-              </div>
-            </div>
-
-            <%# Selected existing person %>
-            <div data-invite-search-target="selectedPerson" class="hidden">
-              <div class="flex items-center justify-between gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
-                <div class="min-w-0">
-                  <div class="font-medium text-gray-900 truncate" data-invite-search-target="selectedPersonName"></div>
-                  <div class="text-sm text-gray-500 truncate" data-invite-search-target="selectedPersonEmail"></div>
-                </div>
-                <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" data-action="invite-search#backToSearch">Change</button>
-              </div>
-            </div>
-
-            <%# Invite-new details (hidden until "Invite by email" or selecting a person) %>
-            <div data-invite-search-target="inviteForm" class="hidden mt-3">
-              <div data-invite-search-target="personDetailsSection">
-                <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-3" data-action="invite-search#backToSearch">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                  Back to search
-                </button>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
-                  <input type="text" name="invite_name" data-invite-search-target="inviteName"
-                         class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                  <input type="email" name="invite_email" data-invite-search-target="inviteEmail" autocapitalize="none"
-                         class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                </div>
-                </div>
-              </div>
-              <div class="flex justify-end mt-3">
-                <%= render "shared/button", text: "Link person", variant: "primary", size: "small", type: :submit %>
-              </div>
-            </div>
-          <% end %>
+        <%# Empty state — same treatment as the tiers / services lists. %>
+        <div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+          <p class="text-gray-500 text-sm">No one is linked yet.</p>
+          <p class="text-gray-400 text-xs mt-1">Link who this contractor is so they can log in, see their contracts, and get paid.</p>
         </div>
-      </details>
+        <div class="mt-4">
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="add-person-modal">
+            <%= render "shared/button", text: "Add a person", variant: "primary", size: "medium", icon: "user-plus" %>
+          </button>
+        </div>
+      <% end %>
     </div>
   </div>
 
@@ -295,4 +239,87 @@
       </div>
     </div>
   <% end %>
+
+  <%# Add-a-person modal: search or enter someone, preview what they'll be sent,
+      then link + send in one confirmed step. Nothing is created until you send. %>
+  <div id="add-person-modal"
+       class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+       data-controller="modal invite-search"
+       data-invite-search-url-value="<%= search_for_invite_manage_people_path(mode: "link") %>"
+       data-invite-search-preview-url-value="<%= preview_person_manage_contractor_path(@contractor) %>"
+       data-action="click->modal#closeOnBackdrop keydown.escape->modal#close">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between px-6 py-4 bg-pink-600 rounded-t-xl">
+        <h3 class="text-lg font-bold text-white">Add a person</h3>
+        <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white">
+          <%= icon("x-mark", class: "w-5 h-5") %>
+        </button>
+      </div>
+
+      <%# Step 1 — pick who they are %>
+      <div data-invite-search-target="step1" class="p-6">
+        <input type="hidden" name="person_id" data-invite-search-target="selectedPersonIdInput">
+
+        <div data-invite-search-target="searchSection">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search CocoScout by name or email</label>
+          <input type="text"
+                 data-invite-search-target="input"
+                 data-action="input->invite-search#search"
+                 placeholder="Search by name or email…"
+                 class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+          <div data-invite-search-target="results" class="mt-3"></div>
+          <div class="mt-3">
+            <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700" data-action="invite-search#showInviteForm">
+              <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %> Can't find them? Enter them manually
+            </button>
+          </div>
+        </div>
+
+        <%# Selected existing person %>
+        <div data-invite-search-target="selectedPerson" class="hidden">
+          <div class="flex items-center justify-between gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 truncate" data-invite-search-target="selectedPersonName"></div>
+              <div class="text-sm text-gray-500 truncate" data-invite-search-target="selectedPersonEmail"></div>
+            </div>
+            <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" data-action="invite-search#backToSearch">Change</button>
+          </div>
+        </div>
+
+        <%# Manual entry %>
+        <div data-invite-search-target="inviteForm" class="hidden mt-3">
+          <div data-invite-search-target="personDetailsSection">
+            <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-3" data-action="invite-search#backToSearch">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              Back to search
+            </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                <input type="text" data-invite-search-target="inviteName"
+                       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <input type="email" data-invite-search-target="inviteEmail" autocapitalize="none"
+                       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p data-invite-search-target="previewError" class="hidden text-sm text-red-600 mt-3"></p>
+
+        <div class="flex justify-end mt-5">
+          <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :button,
+                data: { action: "click->invite-search#toPreview" } %>
+        </div>
+      </div>
+
+      <%# Step 2 — preview of exactly what they'll be sent, filled in on Continue %>
+      <div data-invite-search-target="step2" class="hidden">
+        <div data-invite-search-target="previewContainer"></div>
+      </div>
+    </div>
+  </div>
 </div>

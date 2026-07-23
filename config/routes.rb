@@ -1342,6 +1342,10 @@ Rails.application.routes.draw do
       member do
         post :invite
         post :link_person
+        # The add-a-person modal: preview what a person will be sent, then link
+        # + send in one confirmed step.
+        get  :preview_person
+        post :add_person
       end
     end
 
