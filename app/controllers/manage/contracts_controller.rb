@@ -488,8 +488,6 @@ module Manage
       @amend_data = @contract.amend_data
       @new_bookings = @amend_data["new_bookings"] || []
       @removed_rental_ids = @amend_data["removed_rental_ids"] || []
-      @new_payments = @amend_data["new_payments"] || []
-      @removed_payment_ids = @amend_data["removed_payment_ids"] || []
 
       @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @existing_payments = @contract.contract_payments.order(:due_date)
@@ -500,7 +498,17 @@ module Manage
 
       # Calculate summary
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
-      @payments_to_remove = @existing_payments.select { |p| @removed_payment_ids.include?(p.id) }
+
+      # Financials: the deal config and/or payment list changed. Staged only if
+      # the user visited that step; compared against the contract's live values.
+      @financials_changed =
+        (@amend_data.key?("payment_structure") && @amend_data["payment_structure"] != @contract.draft_payment_structure) ||
+        (@amend_data.key?("payment_config") && @amend_data["payment_config"] != @contract.draft_payment_config) ||
+        (@amend_data.key?("payments") && @amend_data["payments"] != @contract.draft_payments)
+
+      # Real scheduling conflicts the new events would create (same room, same
+      # time) — surfaced for explicit acknowledgement before applying.
+      @conflicts = detect_amend_conflicts(@new_bookings, @removed_rental_ids)
 
       # Ticketing & services: staged values (present only if the user visited that
       # step), compared against the contract's current values for the summary.
@@ -514,8 +522,8 @@ module Manage
       @production_name_changed = staged_name.present? && staged_name != @contract.production_name.to_s
       @new_production_name = staged_name if @production_name_changed
 
-      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @new_payments.any? ||
-                     @removed_payment_ids.any? || @ticketing_changed || @services_changed || @production_name_changed
+      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @financials_changed ||
+                     @ticketing_changed || @services_changed || @production_name_changed
     end
 
     def apply_amendments
@@ -655,6 +663,61 @@ module Manage
       remaining = @contract.space_rentals.where.not(id: removed).order(:starts_at)
       remaining.map { |r| { "starts_at" => r.starts_at.iso8601 } } +
         (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"] } }
+    end
+
+    # The real scheduling conflicts this amendment's new events would create: a
+    # new booking in a specific room that overlaps (in time) an existing booking
+    # in that same room, or another new booking in the batch. Entire-venue
+    # bookings are never checked (matching SpaceRental's own rule), and rentals
+    # being removed in this same amendment don't count. Returns a list shaped for
+    # the review's conflict modal.
+    def detect_amend_conflicts(new_bookings, removed_rental_ids)
+      buffer = 1.minute
+
+      pending = new_bookings.filter_map do |b|
+        next if b["space_id"].blank?
+
+        starts = (Time.zone.parse(b["starts_at"]) rescue nil)
+        next unless starts
+
+        ends = starts + (b["duration"] || 2).to_f.hours
+        { space_id: b["space_id"].to_i, starts: starts, ends: ends }
+      end
+
+      pending.map do |nb|
+        against = []
+
+        SpaceRental.joins(:contract)
+                   .where(location_space_id: nb[:space_id])
+                   .where.not(id: removed_rental_ids)
+                   .where.not(contracts: { status: "cancelled" })
+                   .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", nb[:ends] - buffer, nb[:starts] + buffer)
+                   .includes(:contract).each do |rental|
+          who = rental.contract_id == @contract.id ? "This contract" : (rental.contract.contractor_name.presence || "Another contract")
+          against << { label: who, when: conflict_window(rental.starts_at, rental.ends_at) }
+        end
+
+        pending.each do |other|
+          next if other.equal?(nb) || other[:space_id] != nb[:space_id]
+          next unless other[:starts] < nb[:ends] - buffer && other[:ends] > nb[:starts] + buffer
+
+          against << { label: "Another new event", when: conflict_window(other[:starts], other[:ends]) }
+        end
+
+        next if against.empty?
+
+        space = @spaces_map[nb[:space_id]]
+        {
+          space_name: space&.name || "Room",
+          location_name: space&.location&.name,
+          when: conflict_window(nb[:starts], nb[:ends]),
+          against: against
+        }
+      end.compact
+    end
+
+    def conflict_window(starts, ends)
+      "#{starts.strftime('%b %-d, %-l:%M %p').strip} – #{ends.strftime('%-l:%M %p').strip}"
     end
 
     # Basis a structure/config settles on — mirrors the create wizard.

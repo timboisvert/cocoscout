@@ -12,7 +12,7 @@
     links: []
   } %>
 
-  <div class="max-w-4xl mx-auto mt-6">
+  <div class="max-w-2xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Review and confirm your changes before applying.</p>
 
     <%= render "manage/contracts/amend_steps", current: 5 %>
@@ -87,84 +87,38 @@
       </div>
     </div>
 
-    <%# Payment Changes %>
+    <%# Payment Changes — the full set of payments after this amendment (paid
+        payments are preserved; the pending ones are replaced by this list). %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700">Payment Changes</h3>
+        <h3 class="text-sm font-semibold text-gray-700">Payments</h3>
       </div>
-      <div class="p-4 space-y-4">
-        <% if @payments_to_remove.any? %>
-          <div>
-            <h4 class="text-sm font-medium text-red-600 mb-2 flex items-center gap-2">
-              <%= icon("minus-circle", class: "w-4 h-4") %>
-              Payments to Remove (<%= @payments_to_remove.count %>)
-            </h4>
-            <div class="space-y-2">
-              <% @payments_to_remove.each do |payment| %>
-                <div class="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div class="flex items-center gap-3">
-                    <div class="flex-shrink-0">
-                      <% if payment.direction == "incoming" %>
-                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                          <%= icon("arrow-down-left", class: "w-4 h-4 text-green-600") %>
-                        </div>
-                      <% else %>
-                        <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                          <%= icon("arrow-up-right", class: "w-4 h-4 text-red-600") %>
-                        </div>
-                      <% end %>
-                    </div>
-                    <div>
-                      <div class="font-medium text-gray-900"><%= payment.description %></div>
-                      <div class="text-sm text-gray-500">Due: <%= payment.due_date.strftime("%b %-d, %Y") %></div>
-                    </div>
+      <div class="p-4 space-y-2">
+        <% if @financials_changed %>
+          <% staged_payments = @amend_data["payments"] || [] %>
+          <% if staged_payments.any? %>
+            <% staged_payments.each do |payment| %>
+              <% incoming = payment["direction"] == "incoming" %>
+              <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center <%= incoming ? 'bg-green-100' : 'bg-red-100' %>">
+                    <%= icon(incoming ? "arrow-down-left" : "arrow-up-right", class: "w-4 h-4 #{incoming ? 'text-green-600' : 'text-red-600'}") %>
                   </div>
-                  <div class="font-semibold <%= payment.direction == 'incoming' ? 'text-green-600' : 'text-red-600' %>">
-                    <%= payment.direction == 'incoming' ? '+' : '-' %><% if payment.respond_to?(:amount_tbd?) && payment.amount_tbd? && payment.amount.to_f == 0 %>TBD<% else %><%= number_to_currency(payment.amount) %><% end %>
+                  <div>
+                    <div class="font-medium text-gray-900"><%= payment["description"] %></div>
+                    <div class="text-sm text-gray-500">Due: <%= Date.parse(payment["due_date"].to_s).strftime("%b %-d, %Y") rescue "TBD" %></div>
                   </div>
                 </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-
-        <% if @new_payments.any? %>
-          <div>
-            <h4 class="text-sm font-medium text-green-600 mb-2 flex items-center gap-2">
-              <%= icon("plus-circle", class: "w-4 h-4") %>
-              Payments to Add (<%= @new_payments.count %>)
-            </h4>
-            <div class="space-y-2">
-              <% @new_payments.each do |payment| %>
-                <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div class="flex items-center gap-3">
-                    <div class="flex-shrink-0">
-                      <% if payment["direction"] == "incoming" %>
-                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                          <%= icon("arrow-down-left", class: "w-4 h-4 text-green-600") %>
-                        </div>
-                      <% else %>
-                        <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                          <%= icon("arrow-up-right", class: "w-4 h-4 text-red-600") %>
-                        </div>
-                      <% end %>
-                    </div>
-                    <div>
-                      <div class="font-medium text-gray-900"><%= payment["description"] %></div>
-                      <div class="text-sm text-gray-500">Due: <%= Date.parse(payment["due_date"]).strftime("%b %-d, %Y") rescue "TBD" %></div>
-                    </div>
-                  </div>
-                  <div class="font-semibold <%= payment["direction"] == 'incoming' ? 'text-green-600' : 'text-red-600' %>">
-                    <%= payment["direction"] == 'incoming' ? '+' : '-' %><% if payment["amount_tbd"] %>TBD<% else %><%= number_to_currency(payment["amount"].to_f) %><% end %>
-                  </div>
+                <div class="font-semibold <%= incoming ? 'text-green-600' : 'text-red-600' %>">
+                  <%= incoming ? '+' : '-' %><% if payment["amount_tbd"] %>TBD<% else %><%= number_to_currency(payment["amount"].to_f) %><% end %>
                 </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-
-        <% if @removed_payment_ids.empty? && @new_payments.empty? %>
-          <p class="text-sm text-gray-500">No changes to payments.</p>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500">No payments on this contract.</p>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-gray-500">No changes to the financials.</p>
         <% end %>
       </div>
     </div>
@@ -254,12 +208,8 @@
           </span>
         </div>
         <div>
-          <span class="text-pink-700">Payments:</span>
-          <span class="font-medium text-pink-900">
-            <% if @removed_payment_ids.any? %>-<%= @removed_payment_ids.count %><% end %>
-            <% if @new_payments.any? %><%= @removed_payment_ids.any? ? ', ' : '' %>+<%= @new_payments.count %><% end %>
-            <% if @removed_payment_ids.empty? && @new_payments.empty? %>No changes<% end %>
-          </span>
+          <span class="text-pink-700">Financials:</span>
+          <span class="font-medium text-pink-900"><%= @financials_changed ? "Updated" : "No changes" %></span>
         </div>
         <div>
           <span class="text-pink-700">Production name:</span>
@@ -276,17 +226,87 @@
       </div>
     </div>
 
-    <%# Navigation %>
-    <div class="flex justify-between items-end pt-4 border-t border-gray-200">
-      <%= render "shared/button", text: "Back: Details", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
-      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
-        <% if @new_bookings.any? %>
-          <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mb-3">
-            <%= check_box_tag :force_overlap, "1", false, class: "h-4 w-4 rounded border-gray-300 accent-pink-500" %>
-            <span>I know there's a scheduling conflict — proceed anyway</span>
-          </label>
+    <%# Navigation. When the new events genuinely collide with something already
+        booked, Apply is locked behind a "view the conflict" modal that has to be
+        acknowledged first. %>
+    <div<%= ' data-controller="contract-conflict"'.html_safe if @conflicts.any? %>>
+      <% if @conflicts.any? %>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <div class="flex items-center gap-2 text-sm text-amber-900">
+            <%= icon("alert-triangle", class: "w-5 h-5 text-amber-500 flex-shrink-0") %>
+            <span>
+              <span class="font-semibold"><%= pluralize(@conflicts.sum { |c| c[:against].size }, "scheduling conflict") %>.</span>
+              A new event lands in a room that's already booked at that time.
+            </span>
+          </div>
+          <button type="button" data-action="contract-conflict#open"
+                  class="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors flex-shrink-0">
+            <%= icon("eye", class: "w-4 h-4") %>
+            View the conflict
+          </button>
+        </div>
+      <% end %>
+
+      <div class="flex justify-between items-end pt-4 border-t border-gray-200">
+        <%= render "shared/button", text: "Back: Ticketing & Services", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
+        <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
+          <input type="hidden" name="force_overlap" value="" data-contract-conflict-target="flag">
+          <div data-contract-conflict-target="submit">
+            <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit %>
+          </div>
         <% end %>
-        <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit %>
+      </div>
+
+      <%# Conflict modal — lists exactly what's double-booked, and the acknowledge
+          checkbox that unlocks Apply. %>
+      <% if @conflicts.any? %>
+        <div data-contract-conflict-target="modal" class="hidden fixed inset-0 z-50">
+          <div class="fixed inset-0 bg-black/50" data-action="click->contract-conflict#closeOnBackdrop">
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+              <div class="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden pointer-events-auto max-h-[85vh] flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 bg-pink-600 flex-shrink-0">
+                  <h3 class="text-lg font-bold text-white">Scheduling conflicts</h3>
+                  <button type="button" data-action="contract-conflict#close" class="text-white/80 hover:text-white">
+                    <%= icon("x", class: "w-5 h-5") %>
+                  </button>
+                </div>
+
+                <div class="p-6 space-y-4 overflow-y-auto">
+                  <p class="text-sm text-gray-600">These new events are booked into a room that already has something scheduled at the same time:</p>
+                  <% @conflicts.each do |conflict| %>
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <div class="text-sm font-semibold text-gray-900">
+                        <%= conflict[:space_name] %><% if conflict[:location_name] %> <span class="text-gray-500 font-normal">· <%= conflict[:location_name] %></span><% end %>
+                      </div>
+                      <div class="text-sm text-gray-700 mt-0.5">New event: <span class="font-medium"><%= conflict[:when] %></span></div>
+                      <div class="mt-2 pt-2 border-t border-amber-200 space-y-1">
+                        <% conflict[:against].each do |clash| %>
+                          <div class="flex items-center justify-between gap-3 text-sm">
+                            <span class="text-gray-600"><%= clash[:label] %></span>
+                            <span class="text-gray-900 font-medium"><%= clash[:when] %></span>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+
+                  <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 cursor-pointer">
+                    <input type="checkbox" data-action="change->contract-conflict#toggle"
+                           class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                    <span class="text-sm text-gray-700">I understand these events will be double-booked in the same room at the same time, and I want to schedule them anyway.</span>
+                  </label>
+                </div>
+
+                <div class="flex gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0">
+                  <button type="button" data-action="contract-conflict#close"
+                          class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       <% end %>
     </div>
   <% else %>
