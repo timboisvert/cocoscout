@@ -14,14 +14,14 @@ export default class extends Controller {
         "perEventTermsConfig", "perEventDiscount", "perEventDiscountConfig", "perEventDiscountPercent", "perEventTerms",
         "perEventTermsDaysConfig", "perEventTermsDays", "perEventTermsDaysLabel",
         // Structure buttons
-        "flatFeeBtn", "perEventBtn", "revenueShareBtn", "customBtn",
+        "flatFeeBtn", "perEventBtn", "revenueShareBtn",
         // Revenue share targets
         "revenueShareConfig", "revenueSource", "revenueOurShare", "revenueTheirShare",
         "revenueGuarantee", "revenueGuaranteeConfig", "revenueGuaranteeAmount", "revenueSettlement",
         // Custom targets
         "customConfig",
         // Ticketing (folded into the deal, shown only when we sell)
-        "nextButton"
+        "nextButton", "paymentModal", "paymentModalError"
     ]
     static values = {
         existing: Array,
@@ -34,8 +34,14 @@ export default class extends Controller {
     connect() {
         this.payments = this.existingValue || []
         this.currentStructure = this.existingStructureValue || "flat_fee"
+        // Custom is gone as a choice; treat any leftover as a flat fee.
+        if (this.currentStructure === "custom") this.currentStructure = "flat_fee"
         this.eventCount = this.bookingsCountValue || 0
         this.bookingDates = this.bookingsValue || []
+
+        // Payments added by hand live separately from the ones the deal
+        // generates, so editing the deal never wipes them out.
+        this.extraPayments = (this.existingValue || []).filter((p) => p.extra)
 
         // Restore saved config first
         this.restoreConfig(this.existingConfigValue || {})
@@ -49,10 +55,10 @@ export default class extends Controller {
         this.updateStructureButtons()
         this.showConfigPanel(this.currentStructure)
 
-        this.renderList()
+        // Cards first, so the list and totals read the restored answers.
+        this.syncChoiceCards()
         this.updateSummary()
         this.updateNextLabel()
-        this.syncChoiceCards()
     }
 
     // The radio-card groups mirror their selection into a hidden input, so the
@@ -74,6 +80,44 @@ export default class extends Controller {
             const radio = group.querySelector(`input[type="radio"][value="${CSS.escape(hidden.value)}"]`)
             if (radio) radio.checked = true
         })
+
+        // Panels revealed by a yes/no group have to match the restored answer.
+        if (this.hasFlatFeeDepositConfigTarget) {
+            this.flatFeeDepositConfigTarget.classList.toggle("hidden", !this.depositOn)
+        }
+        if (this.hasPerEventDiscountConfigTarget) {
+            this.perEventDiscountConfigTarget.classList.toggle("hidden", !this.volumeDiscountOn)
+        }
+        if (this.hasRevenueGuaranteeConfigTarget) {
+            this.revenueGuaranteeConfigTarget.classList.toggle("hidden", !this.guaranteeOn)
+        }
+    }
+
+    // --- The add-a-payment modal ------------------------------------------
+
+    openPaymentModal() {
+        if (!this.hasPaymentModalTarget) return
+        this.hidePaymentModalError()
+        this.paymentModalTarget.classList.remove("hidden")
+        document.body.classList.add("overflow-hidden")
+        if (this.hasDescriptionTarget) this.descriptionTarget.focus()
+    }
+
+    closePaymentModal() {
+        if (!this.hasPaymentModalTarget) return
+        this.paymentModalTarget.classList.add("hidden")
+        document.body.classList.remove("overflow-hidden")
+    }
+
+    showPaymentModalError(message) {
+        if (!this.hasPaymentModalErrorTarget) return
+        this.paymentModalErrorTarget.textContent = message
+        this.paymentModalErrorTarget.classList.remove("hidden")
+    }
+
+    hidePaymentModalError() {
+        if (!this.hasPaymentModalErrorTarget) return
+        this.paymentModalErrorTarget.classList.add("hidden")
     }
 
     // Ticketing is its own step, and only when WE sell — so what comes next
@@ -110,7 +154,7 @@ export default class extends Controller {
             }
         }
         if (this.hasFlatFeeDepositTarget && config.flat_fee_has_deposit) {
-            this.flatFeeDepositTarget.checked = config.flat_fee_has_deposit
+            this.flatFeeDepositTarget.value = config.flat_fee_has_deposit ? "yes" : "no"
             if (this.hasFlatFeeDepositConfigTarget) {
                 this.flatFeeDepositConfigTarget.classList.toggle("hidden", !config.flat_fee_has_deposit)
             }
@@ -168,7 +212,7 @@ export default class extends Controller {
             this.perEventUpfrontDueTarget.value = config.per_event_upfront_due
         }
         if (this.hasPerEventDiscountTarget && config.per_event_has_discount) {
-            this.perEventDiscountTarget.checked = config.per_event_has_discount
+            this.perEventDiscountTarget.value = config.per_event_has_discount ? "yes" : "no"
             if (this.hasPerEventDiscountConfigTarget) {
                 this.perEventDiscountConfigTarget.classList.toggle("hidden", !config.per_event_has_discount)
             }
@@ -188,7 +232,7 @@ export default class extends Controller {
             this.revenueTheirShareTarget.value = config.revenue_their_share
         }
         if (this.hasRevenueGuaranteeTarget && config.revenue_has_guarantee) {
-            this.revenueGuaranteeTarget.checked = config.revenue_has_guarantee
+            this.revenueGuaranteeTarget.value = config.revenue_has_guarantee ? "yes" : "no"
             if (this.hasRevenueGuaranteeConfigTarget) {
                 this.revenueGuaranteeConfigTarget.classList.toggle("hidden", !config.revenue_has_guarantee)
             }
@@ -209,7 +253,7 @@ export default class extends Controller {
             // Flat fee config
             flat_fee_amount: this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : "",
             flat_fee_direction: this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming",
-            flat_fee_has_deposit: this.hasFlatFeeDepositTarget ? this.flatFeeDepositTarget.checked : false,
+            flat_fee_has_deposit: this.depositOn,
             flat_fee_deposit_amount: this.hasFlatFeeDepositAmountTarget ? this.flatFeeDepositAmountTarget.value : "",
             flat_fee_deposit_percent: this.hasFlatFeeDepositPercentTarget ? this.flatFeeDepositPercentTarget.value : "",
             flat_fee_deposit_due: this.hasFlatFeeDepositDueTarget ? this.flatFeeDepositDueTarget.value : "",
@@ -222,14 +266,14 @@ export default class extends Controller {
             per_event_terms: this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : "same_day",
             per_event_terms_days: this.hasPerEventTermsDaysTarget ? this.perEventTermsDaysTarget.value : "7",
             per_event_upfront_due: this.hasPerEventUpfrontDueTarget ? this.perEventUpfrontDueTarget.value : "",
-            per_event_has_discount: this.hasPerEventDiscountTarget ? this.perEventDiscountTarget.checked : false,
+            per_event_has_discount: this.volumeDiscountOn,
             per_event_discount_percent: this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : "",
 
             // Revenue share config
             revenue_source: this.hasRevenueSourceTarget ? this.revenueSourceTarget.value : "ticket_sales",
             revenue_our_share: this.hasRevenueOurShareTarget ? this.revenueOurShareTarget.value : "50",
             revenue_their_share: this.hasRevenueTheirShareTarget ? this.revenueTheirShareTarget.value : "50",
-            revenue_has_guarantee: this.hasRevenueGuaranteeTarget ? this.revenueGuaranteeTarget.checked : false,
+            revenue_has_guarantee: this.guaranteeOn,
             revenue_guarantee_amount: this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : "",
             revenue_settlement: this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "after_event"
         }
@@ -251,8 +295,7 @@ export default class extends Controller {
         const buttons = [
             { target: "flatFeeBtn", structure: "flat_fee" },
             { target: "perEventBtn", structure: "per_event" },
-            { target: "revenueShareBtn", structure: "revenue_share" },
-            { target: "customBtn", structure: "custom" }
+            { target: "revenueShareBtn", structure: "revenue_share" }
         ]
 
         buttons.forEach(({ target, structure }) => {
@@ -324,9 +367,13 @@ export default class extends Controller {
 
     toggleDeposit(event) {
         if (this.hasFlatFeeDepositConfigTarget) {
-            this.flatFeeDepositConfigTarget.classList.toggle("hidden", !event.target.checked)
+            this.flatFeeDepositConfigTarget.classList.toggle("hidden", event.target.value !== "yes")
         }
         this.updateSummaryFromConfig()
+    }
+
+    get depositOn() {
+        return this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.value === "yes"
     }
 
     onFlatFeeDirectionChange() {
@@ -348,15 +395,24 @@ export default class extends Controller {
 
     toggleVolumeDiscount(event) {
         if (this.hasPerEventDiscountConfigTarget) {
-            this.perEventDiscountConfigTarget.classList.toggle("hidden", !event.target.checked)
+            this.perEventDiscountConfigTarget.classList.toggle("hidden", event.target.value !== "yes")
         }
         this.updateSummaryFromConfig()
     }
 
     toggleGuarantee(event) {
         if (this.hasRevenueGuaranteeConfigTarget) {
-            this.revenueGuaranteeConfigTarget.classList.toggle("hidden", !event.target.checked)
+            this.revenueGuaranteeConfigTarget.classList.toggle("hidden", event.target.value !== "yes")
         }
+    }
+
+    // Both are yes/no card groups mirroring into a hidden input.
+    get volumeDiscountOn() {
+        return this.hasPerEventDiscountTarget && this.perEventDiscountTarget.value === "yes"
+    }
+
+    get guaranteeOn() {
+        return this.hasRevenueGuaranteeTarget && this.revenueGuaranteeTarget.value === "yes"
     }
 
     toggleUpfrontPayment(event) {
@@ -442,7 +498,7 @@ export default class extends Controller {
                 }
 
                 // Check for deposit
-                const hasDeposit = this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.checked
+                const hasDeposit = this.depositOn
                 let depositAmount = 0
                 let remainingAmount = flatAmount
 
@@ -481,7 +537,7 @@ export default class extends Controller {
                 this.updatePerEventTotal()
 
                 // Check for volume discount
-                const hasDiscount = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
+                const hasDiscount = this.volumeDiscountOn
                 let discountAmount = 0
 
                 if (hasDiscount && perEventTotal > 0) {
@@ -555,6 +611,9 @@ export default class extends Controller {
                 this.netAmountTarget.classList.add("text-pink-600")
             }
         }
+
+        // The list previews what the deal generates, so it follows every change.
+        this.renderList()
     }
 
     addPayment() {
@@ -566,32 +625,32 @@ export default class extends Controller {
         const dueDate = this.hasDueDateTarget ? this.dueDateTarget.value : ""
 
         if (!amount || isNaN(amount) || amount <= 0) {
-            alert("Please enter a valid amount")
+            this.showPaymentModalError("Enter an amount greater than zero.")
             return
         }
 
         if (!dueDate) {
-            alert("Please select a due date")
+            this.showPaymentModalError("Pick a date this payment is due.")
             return
         }
 
-        this.payments.push({
+        this.extraPayments.push({
             description: description || "Payment",
             amount: amount,
             direction: direction,
-            due_date: dueDate
+            due_date: dueDate,
+            extra: true
         })
 
         this.clearForm()
-        this.renderList()
+        this.closePaymentModal()
         this.updateSummary()
         this.updateHiddenField()
     }
 
     removePayment(event) {
         const index = parseInt(event.currentTarget.dataset.index)
-        this.payments.splice(index, 1)
-        this.renderList()
+        this.extraPayments.splice(index, 1)
         this.updateSummary()
         this.updateHiddenField()
     }
@@ -614,49 +673,65 @@ export default class extends Controller {
         if (this.hasDescriptionTarget) this.descriptionTarget.value = ""
         if (this.hasAmountTarget) this.amountTarget.value = ""
         if (this.hasDueDateTarget) this.dueDateTarget.value = ""
+        if (this.hasDirectionTarget) {
+            this.directionTarget.value = "incoming"
+            this.syncChoiceCards()
+        }
     }
 
     renderList() {
         if (!this.hasListTarget) return
 
-        if (this.payments.length === 0) {
+        const generated = this.buildGeneratedPayments()
+        const extras = this.extraPayments
+
+        if (generated.length === 0 && extras.length === 0) {
             this.listTarget.innerHTML = `
         <div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-          <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-          </svg>
-          <p class="text-gray-500 text-sm">No payments scheduled yet.</p>
-          <p class="text-gray-400 text-xs mt-1">Add payments above to create a custom schedule.</p>
+          <p class="text-gray-500 text-sm">No payments yet.</p>
+          <p class="text-gray-400 text-xs mt-1">Fill in the deal above, or add a payment by hand.</p>
         </div>
       `
             return
         }
 
-        this.listTarget.innerHTML = this.payments.map((payment, index) => `
-      <div class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <span class="font-medium text-gray-900">${payment.description}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium ${payment.direction === 'incoming' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-              ${payment.direction === 'incoming' ? 'incoming' : 'outgoing'}
-            </span>
-          </div>
-          <div class="text-sm text-gray-500 mt-1">
-            Due: ${this.formatDate(payment.due_date)}
-          </div>
+        const rows = generated.map((payment) => this.paymentRow(payment, null))
+            .concat(extras.map((payment, index) => this.paymentRow(payment, index)))
+
+        this.listTarget.innerHTML = rows.join("")
+    }
+
+    // One row. `removeIndex` is null for payments the deal generates — those
+    // change by editing the deal, not by deleting them here.
+    paymentRow(payment, removeIndex) {
+        const incoming = payment.direction === "incoming"
+        // Keep TBD prefixed with a dollar sign so it reads as "an amount we
+        // don't know yet", not a status.
+        const amountText = payment.amount_tbd
+            ? "$TBD"
+            : `${incoming ? "+" : "-"}$${Number(payment.amount || 0).toFixed(2)}`
+        const directionLabel = incoming ? "They pay us" : "We pay them"
+
+        const removeButton = removeIndex === null ? "" : `
+        <button type="button" data-action="click->contract-payments#removePayment" data-index="${removeIndex}" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" aria-label="Remove payment">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>`
+
+        return `
+      <div class="flex items-center justify-between gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex-1 min-w-0">
+          <div class="text-[11px] uppercase tracking-wide font-semibold ${incoming ? "text-green-700" : "text-red-700"}">${directionLabel}</div>
+          <div class="font-medium text-gray-900 mt-0.5 truncate">${payment.description}</div>
+          <div class="text-sm text-gray-500">Due ${this.formatDate(payment.due_date)}</div>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="font-semibold text-lg ${payment.direction === 'incoming' ? 'text-green-600' : 'text-red-600'}">
-            ${payment.direction === 'incoming' ? '+' : '-'}$${payment.amount.toFixed(2)}
-          </span>
-          <button type="button" data-action="click->contract-payments#removePayment" data-index="${index}" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="font-semibold text-lg ${payment.amount_tbd ? "text-gray-400" : incoming ? "text-green-600" : "text-red-600"}">${amountText}</span>
+          ${removeButton}
         </div>
       </div>
-    `).join("")
+    `
     }
 
     updateSummary() {
@@ -681,7 +756,9 @@ export default class extends Controller {
     }
 
     // Called before form submission to generate payment line items from the current config
-    preparePaymentsForSubmit() {
+    // What the deal above produces, recomputed on demand so the list can show a
+    // live preview and the submit path can use exactly the same thing.
+    buildGeneratedPayments() {
         const payments = []
 
         switch (this.currentStructure) {
@@ -689,12 +766,13 @@ export default class extends Controller {
                 const flatAmount = parseFloat(this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : 0) || 0
                 const flatDirection = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
                 const flatFinalDue = this.hasFlatFeeFinalDueTarget ? this.flatFeeFinalDueTarget.value : ""
-                const hasDeposit = this.hasFlatFeeDepositTarget && this.flatFeeDepositTarget.checked
+                const hasDeposit = this.depositOn
 
                 if (flatDirection === "ticket_revenue_minus_fee") {
                     // Ticket revenue minus our fee: generate outgoing payment (TBD amount)
                     payments.push({
                         description: `Ticket revenue minus $${flatAmount.toFixed(2)} fee`,
+                        source: "Ticket revenue minus fee",
                         amount: 0,
                         amount_tbd: true,
                         direction: "outgoing",
@@ -716,6 +794,7 @@ export default class extends Controller {
                         if (depositAmount > 0) {
                             payments.push({
                                 description: "Deposit",
+                                source: "Flat fee",
                                 amount: depositAmount,
                                 direction: flatDirection,
                                 due_date: depositDue || this.getDateDaysFromNow(7)
@@ -724,6 +803,7 @@ export default class extends Controller {
                         if (remainingAmount > 0) {
                             payments.push({
                                 description: "Final Payment",
+                                source: "Flat fee",
                                 amount: remainingAmount,
                                 direction: flatDirection,
                                 due_date: flatFinalDue || this.getDateDaysFromNow(30)
@@ -731,7 +811,8 @@ export default class extends Controller {
                         }
                     } else {
                         payments.push({
-                            description: "Contract Payment",
+                            description: "Flat fee payment",
+                            source: "Flat fee",
                             amount: flatAmount,
                             direction: flatDirection,
                             due_date: flatFinalDue || this.getDateDaysFromNow(30)
@@ -750,7 +831,7 @@ export default class extends Controller {
                 const perEventTermsDays = perEventTermsDaysRaw !== "" ? parseInt(perEventTermsDaysRaw) : 7
 
                 // Apply discount if enabled
-                const hasDiscount2 = this.hasPerEventDiscountTarget && this.perEventDiscountTarget.checked
+                const hasDiscount2 = this.volumeDiscountOn
                 let discountMultiplier = 1
                 if (hasDiscount2) {
                     const discountPercent2 = parseFloat(this.hasPerEventDiscountPercentTarget ? this.perEventDiscountPercentTarget.value : 0) || 0
@@ -766,7 +847,8 @@ export default class extends Controller {
                         // Pay all upfront as single payment
                         const upfrontDue = this.hasPerEventUpfrontDueTarget ? this.perEventUpfrontDueTarget.value : ""
                         payments.push({
-                            description: `${perEventCount2} Events @ $${perEventFinalAmount.toFixed(2)} each (Upfront)`,
+                            description: `${perEventCount2} events @ $${perEventFinalAmount.toFixed(2)} each, paid upfront`,
+                            source: "Per event",
                             amount: perEventFinalAmount * perEventCount2,
                             direction: perEventDirection2,
                             due_date: upfrontDue || this.getDateDaysFromNow(7)
@@ -791,7 +873,8 @@ export default class extends Controller {
                             }
 
                             payments.push({
-                                description: `Event ${index + 1} Fee`,
+                                description: `Event ${index + 1} fee`,
+                                source: "Per event",
                                 amount: perEventFinalAmount,
                                 direction: perEventDirection2,
                                 due_date: this.formatDateForInput(dueDate),
@@ -804,7 +887,7 @@ export default class extends Controller {
 
             case "revenue_share":
                 const ourShare = parseInt(this.hasRevenueOurShareTarget ? this.revenueOurShareTarget.value : 0) || 0
-                const hasGuarantee = this.hasRevenueGuaranteeTarget && this.revenueGuaranteeTarget.checked
+                const hasGuarantee = this.guaranteeOn
                 const guaranteeAmount = parseFloat(this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : 0) || 0
                 const settlement = this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "same_day"
 
@@ -829,7 +912,8 @@ export default class extends Controller {
                             const monthName = firstEventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
                             payments.push({
-                                description: `Revenue Share - ${monthName} (${ourShare}% to venue)`,
+                                description: `${monthName} — ${ourShare}% to us`,
+                                source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
                                 direction: "incoming",
@@ -858,7 +942,8 @@ export default class extends Controller {
                             dueDate.setDate(dueDate.getDate() + 7)
 
                             payments.push({
-                                description: `Revenue Share - Week ${index + 1} (${ourShare}% to venue)`,
+                                description: `Week ${index + 1} — ${ourShare}% to us`,
+                                source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
                                 direction: "incoming",
@@ -876,7 +961,8 @@ export default class extends Controller {
                             }
 
                             payments.push({
-                                description: `Revenue Share - Event ${index + 1} (${ourShare}% to venue)`,
+                                description: `Event ${index + 1} — ${ourShare}% to us`,
+                                source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
                                 direction: "incoming",
@@ -887,7 +973,8 @@ export default class extends Controller {
                 }
                 if (hasGuarantee && guaranteeAmount > 0) {
                     payments.push({
-                        description: "Minimum Guarantee",
+                        description: "Minimum guarantee",
+                        source: "Minimum guarantee",
                         amount: guaranteeAmount,
                         direction: "incoming",
                         due_date: this.getDateDaysFromNow(7)
@@ -896,12 +983,16 @@ export default class extends Controller {
                 break
 
             case "custom":
-                // For custom, we already have the payments array managed manually
-                this.updateConfigJson()
-                return // Don't update, use the existing this.payments
+                // Nothing is generated — a custom schedule is entirely by hand.
+                break
         }
 
-        this.payments = payments
+        return payments
+    }
+
+    preparePaymentsForSubmit() {
+        // The deal's payments, then anything added by hand.
+        this.payments = this.buildGeneratedPayments().concat(this.extraPayments)
         this.updateHiddenField()
         this.updateConfigJson()
     }

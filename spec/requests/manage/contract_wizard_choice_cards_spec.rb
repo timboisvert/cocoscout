@@ -54,4 +54,54 @@ RSpec.describe "Financials step choice cards", type: :request do
 
     expect(response.body).not_to include("Payment Summary")
   end
+
+  describe "the yes/no options" do
+    it "offers the volume discount as cards once there's more than one date" do
+      contract.update_draft_step(:bookings, [
+        { "starts_at" => 1.week.from_now.iso8601 },
+        { "starts_at" => 2.weeks.from_now.iso8601 }
+      ])
+
+      get manage_payments_contract_wizard_path(contract)
+
+      expect(response.body).to include(%(name="per_event_discount_choice"))
+      expect(response.body).to include("Discount for booking several")
+    end
+
+    it "doesn't mention a volume discount for a single date" do
+      contract.update_draft_step(:bookings, [ { "starts_at" => 1.week.from_now.iso8601 } ])
+
+      get manage_payments_contract_wizard_path(contract)
+
+      expect(response.body).not_to include(%(name="per_event_discount_choice"))
+      expect(response.body).not_to include("Volume discount")
+    end
+
+    it "offers the minimum guarantee as cards" do
+      get manage_payments_contract_wizard_path(contract)
+
+      expect(response.body).to include(%(name="revenue_guarantee_choice"))
+      expect(response.body).to include("Guarantee a minimum")
+      # No stray checkbox left behind — it's a hidden input plus cards now.
+      expect(response.body).not_to include(%(type="checkbox" data-contract-payments-target="revenueGuarantee"))
+    end
+  end
+
+  describe "the payments list" do
+    it "shows the payments the deal creates, with an Add another payment button" do
+      get manage_payments_contract_wizard_path(contract)
+
+      expect(response.body).to include("Payments on this contract")
+      expect(response.body).to include("Add another payment")
+      expect(response.body).to include(%(data-contract-payments-target="list"))
+    end
+
+    it "adds payments through a modal, with direction as cards" do
+      get manage_payments_contract_wizard_path(contract)
+
+      expect(response.body).to include(%(data-contract-payments-target="paymentModal"))
+      expect(response.body).to include(%(name="extra_payment_direction_choice"))
+      expect(response.body).to include("Add a payment")
+    end
+  end
 end
