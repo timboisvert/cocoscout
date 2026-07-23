@@ -33,9 +33,9 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     end
   end
 
-  it "the deal step is titled 'The deal' and asks who sells, with Services next" do
+  it "the financials step is titled 'Financials' and asks who sells, with Services next" do
     get manage_payments_contract_wizard_path(contract)
-    expect(response.body).to include("The deal")
+    expect(response.body).to include("Financials")
     expect(response.body).to include("Who sells the tickets?")
     expect(response.body).to include("Next: Services")
   end
@@ -47,7 +47,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     expect(response.body).not_to include(">Tech<")
   end
 
-  it "reorders the redirect chain: schedule → deal → services → documents → review" do
+  it "reorders the redirect chain: schedule → financials → services → documents → review" do
     # schedule preview → the deal
     post manage_schedule_preview_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_payments_contract_wizard_path(contract))

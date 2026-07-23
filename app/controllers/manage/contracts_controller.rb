@@ -599,6 +599,14 @@ module Manage
     # contract still uses it and it has no remaining shows (productions are shared).
     def detach_and_maybe_delete_production(contract)
       production = contract.production
+
+      # Unlink any contract payments that reference these shows BEFORE destroying
+      # them — contract_payments.show_id has a FK that blocks deleting a
+      # referenced show. Payments can belong to other contracts, so we only drop
+      # the show link, never the payment itself.
+      show_ids = contract.contract_shows.pluck(:id)
+      ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
+
       contract.contract_shows.destroy_all
       return unless production
 

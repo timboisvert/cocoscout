@@ -1,5 +1,5 @@
-<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "The deal" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">The deal</h2>
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Financials" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Financials</h2>
   <p class="text-gray-600 mb-6">Who sells the tickets, and how does the money work?</p>
 
   <% booking_dates = @bookings.map { |b| b["starts_at"] }.compact.sort %>

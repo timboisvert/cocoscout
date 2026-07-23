@@ -43,3 +43,23 @@ RSpec.describe "Contract services → payments", type: :model do
     expect(contract.contract_payments.find_by(description: "Freebie")).to be_nil
   end
 end
+
+RSpec.describe "Contract cancel with payments referencing shows", type: :model do
+  let(:org) { create(:organization) }
+  let(:location) { create(:location, organization: org) }
+
+  it "cancels and deletes events without tripping the contract_payments FK" do
+    contract = create(:contract, :active, organization: org,
+                                          contract_start_date: Date.current, contract_end_date: Date.current + 7.days)
+    production = create(:production, organization: org, production_type: "third_party")
+    contract.update!(production: production)
+    show = create(:show, production: production)
+    payment = create(:contract_payment, contract: contract, show: show, due_date: Date.current)
+
+    expect { contract.cancel!(delete_events: true) }.not_to raise_error
+
+    expect(Show.exists?(show.id)).to be(false)
+    # The payment survives, just unlinked from the deleted show.
+    expect(payment.reload.show_id).to be_nil
+  end
+end

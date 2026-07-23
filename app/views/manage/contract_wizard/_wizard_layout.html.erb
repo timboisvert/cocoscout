@@ -25,7 +25,7 @@
           current_step = @step == 3 ? 2 : @step
           steps = [
             { num: 2, display: 1, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 4, display: 2, name: "The deal", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil },
+            { num: 4, display: 2, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil },
             { num: 5, display: 3, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil },
             { num: 6, display: 4, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil },
             { num: 7, display: 5, name: "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }

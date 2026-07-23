@@ -103,6 +103,11 @@ class Contract < ApplicationRecord
       if delete_events
         # Remove only THIS contract's shows (the production may be shared with
         # other contracts, so we never destroy the whole production here).
+        # Unlink referencing payments first — contract_payments.show_id has a FK
+        # that blocks deleting a referenced show (and those payments may belong
+        # to other contracts, so we drop the link, not the payment).
+        show_ids = contract_shows.pluck(:id)
+        ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
         contract_shows.destroy_all
       else
         contract_shows.update_all(canceled: true)
