@@ -22,6 +22,17 @@ class Contract < ApplicationRecord
 
   validates :contractor_name, presence: true
 
+  # Ways money can reach us that aren't the online pay link. Each must be
+  # allowed on the contract before a manager may record one.
+  OFFLINE_PAYMENT_METHODS = %w[check bank_transfer cash].freeze
+
+  # Labels for the offline methods, in the order they're offered.
+  OFFLINE_PAYMENT_METHOD_LABELS = {
+    "check" => "Check",
+    "bank_transfer" => "Bank transfer",
+    "cash" => "Cash"
+  }.freeze
+
   # Callbacks to sync contractor data
   before_save :sync_contractor_info
 
@@ -403,6 +414,29 @@ class Contract < ApplicationRecord
       dir = draft_payment_config["flat_fee_direction"]
       dir.in?(%w[incoming outgoing]) ? dir : "incoming"
     end
+  end
+
+  # --- How they're allowed to pay us -----------------------------------------
+  # Online is always available (that's the Stripe pay link). The rest are ways
+  # money can reach us outside CocoScout, and each has to be allowed explicitly
+  # before we'll let anyone record one by hand.
+
+  # Ways a contractor may pay us, defaulting to the org's policy.
+  def accepted_payment_methods
+    configured = draft_payment_config["accepted_payment_methods"]
+    configured = organization&.default_contract_payment_methods if configured.blank?
+    ([ "online" ] + (Array(configured) & OFFLINE_PAYMENT_METHODS)).uniq
+  end
+
+  # The allowed offline methods, in the order they're offered.
+  def offline_payment_methods
+    accepted_payment_methods - [ "online" ]
+  end
+
+  # True when this contract allows money to reach us outside Stripe, so a
+  # manager may record a payment by hand.
+  def offline_payments_allowed?
+    offline_payment_methods.any?
   end
 
   # Flat-fee entries — supports one whole-contract fee, a uniform per-event fee,

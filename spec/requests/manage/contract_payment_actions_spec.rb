@@ -62,16 +62,30 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(response.body).not_to include("Add to payout run")
     end
 
-    it "lets an incoming payment be recorded, with no Venmo/Zelle among the methods" do
+    it "lets an incoming payment be recorded when the contract allows a check" do
       contract = contract_for(payable_person)
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online check] })
       create(:contract_payment, contract: contract, direction: "incoming",
                                 status: "pending", amount: 300, amount_tbd: false, due_date: Date.current)
 
       get manage_contract_path(contract)
 
       expect(response.body).to include("Record payment")
-      expect(response.body).to include("Bank transfer")
+      expect(response.body).to include("Check")
+      # Only what this contract accepts — no bank transfer, and never Venmo/Zelle.
+      expect(response.body).not_to include("Bank transfer")
       expect(response.body).not_to match(/venmo|zelle|paypal/i)
+    end
+
+    it "offers no hand-recording at all on an online-only contract" do
+      contract = contract_for(payable_person)
+      create(:contract_payment, contract: contract, direction: "incoming",
+                                status: "pending", amount: 300, amount_tbd: false, due_date: Date.current)
+
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("Awaiting payment")
+      expect(response.body).not_to include("Record payment")
     end
   end
 
@@ -89,8 +103,9 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(flash[:alert]).to include("payout run")
     end
 
-    it "records an incoming payment that arrived offline" do
+    it "records an incoming payment that arrived by an allowed method" do
       contract = contract_for(payable_person)
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online check] })
       payment = create(:contract_payment, contract: contract, direction: "incoming",
                                           status: "pending", amount: 300, amount_tbd: false,
                                           due_date: Date.current)
@@ -99,6 +114,73 @@ RSpec.describe "Manage contract payment actions", type: :request do
            params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "check" }
 
       expect(payment.reload).to be_status_paid
+    end
+
+    it "refuses a method the contract doesn't accept" do
+      contract = contract_for(payable_person)
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online check] })
+      payment = create(:contract_payment, contract: contract, direction: "incoming",
+                                          status: "pending", amount: 300, amount_tbd: false,
+                                          due_date: Date.current)
+
+      post mark_paid_manage_contract_contract_payment_path(contract, payment),
+           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "cash" }
+
+      expect(payment.reload).to be_status_pending
+      expect(flash[:alert]).to include("doesn't accept")
+    end
+
+    it "refuses to record anything by hand on an online-only contract" do
+      contract = contract_for(payable_person)
+      payment = create(:contract_payment, contract: contract, direction: "incoming",
+                                          status: "pending", amount: 300, amount_tbd: false,
+                                          due_date: Date.current)
+
+      post mark_paid_manage_contract_contract_payment_path(contract, payment),
+           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "check" }
+
+      expect(payment.reload).to be_status_pending
+      expect(flash[:alert]).to include("online payment only")
+    end
+  end
+
+  describe "the accepted-methods policy" do
+    it "inherits the org default and lets a contract override it" do
+      org.update!(default_contract_payment_methods: %w[online check])
+      contract = contract_for(payable_person)
+
+      expect(contract.accepted_payment_methods).to eq(%w[online check])
+      expect(contract).to be_offline_payments_allowed
+
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => [ "online" ] })
+      expect(contract.reload.offline_payment_methods).to be_empty
+      expect(contract).not_to be_offline_payments_allowed
+    end
+
+    it "always keeps online available and ignores anything unrecognized" do
+      org.update!(default_contract_payment_methods: %w[venmo zelle])
+      contract = contract_for(payable_person)
+
+      expect(contract.accepted_payment_methods).to eq([ "online" ])
+    end
+
+    it "saves the per-contract choice from the Financials step" do
+      contract = create(:contract, organization: org, contractor_name: "Lighting Co", status: "draft")
+
+      post manage_payments_contract_wizard_path(contract), params: {
+        payment_structure: "flat_fee",
+        payment_config: { flat_fee_amount: 500 }.to_json,
+        payments: [].to_json,
+        offline_payment_methods: %w[check cash]
+      }
+
+      expect(contract.reload.offline_payment_methods).to contain_exactly("check", "cash")
+    end
+
+    it "stores the org default from the Contract Settings page" do
+      patch manage_contract_settings_payment_methods_path, params: { offline_payment_methods: [ "bank_transfer" ] }
+
+      expect(org.reload.default_contract_payment_methods).to eq(%w[online bank_transfer])
     end
   end
 

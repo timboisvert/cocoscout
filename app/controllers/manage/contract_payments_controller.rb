@@ -37,9 +37,20 @@ module Manage
                              alert: "Money you owe is paid through your payout run, not marked paid by hand."
       end
 
+      unless @contract.offline_payments_allowed?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "This contract is online payment only. Allow another method on the contract first."
+      end
+
+      method = params[:payment_method].presence
+      if method.present? && !method.in?(@contract.offline_payment_methods)
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "This contract doesn't accept payment by #{method.humanize.downcase}."
+      end
+
       @payment.mark_paid!(
         paid_on: params[:paid_date].present? ? Date.parse(params[:paid_date]) : Date.current,
-        method: params[:payment_method],
+        method: method,
         reference: params[:reference_number],
         amount: params[:payment_amount]
       )

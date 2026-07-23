@@ -71,6 +71,17 @@ class Organization < ApplicationRecord
 
   validates :name, presence: true
 
+  # The org's default answer to "how may a contractor pay us?" Online (the
+  # Stripe pay link) is always available; this is the offline methods the org
+  # normally accepts on top of it. Each contract inherits and can override.
+  def default_contract_payment_methods
+    ([ "online" ] + (Array(self[:default_contract_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS)).uniq
+  end
+
+  def default_offline_payment_methods
+    default_contract_payment_methods - [ "online" ]
+  end
+
   PREFERRED_PAYMENT_METHODS = %w[venmo zelle].freeze
   validates :preferred_payment_method, inclusion: { in: PREFERRED_PAYMENT_METHODS }, allow_nil: true
 

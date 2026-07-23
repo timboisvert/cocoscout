@@ -403,6 +403,30 @@
       <%= render "manage/contracts/ticketing_fields", ticketing: @existing_ticketing %>
     </div>
 
+    <%# How they may pay us. Online is always on; anything else has to be allowed
+        here before a payment can be recorded by hand. Starts from org settings. %>
+    <div class="mb-6 rounded-xl border border-gray-200 p-5">
+      <h3 class="text-sm font-semibold text-gray-900">How may they pay us?</h3>
+      <p class="text-xs text-gray-500 mt-1 mb-3">Pre-filled from your <%= link_to "contract settings", manage_contract_settings_path, class: "text-pink-600 hover:text-pink-700 underline" %>. Change it here if this deal is different.</p>
+      <div class="space-y-2.5">
+        <label class="flex items-start gap-3 opacity-60">
+          <input type="checkbox" checked disabled class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span>
+            <span class="block text-sm font-medium text-gray-900">Online (card or bank)</span>
+            <span class="block text-xs text-gray-500">You send a payment link. Always available.</span>
+          </span>
+        </label>
+        <% Contract::OFFLINE_PAYMENT_METHODS.each do |method| %>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <%= check_box_tag "offline_payment_methods[]", method,
+                  @offline_payment_methods.include?(method), id: "contract_offline_method_#{method}",
+                  class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+            <span class="block text-sm font-medium text-gray-900"><%= Contract::OFFLINE_PAYMENT_METHOD_LABELS[method] %></span>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
     <input type="hidden" name="payment_structure" data-contract-payments-target="structureJson" value="<%= @existing_payment_structure %>">
     <input type="hidden" name="payment_config" data-contract-payments-target="configJson" value="<%= @existing_payment_config.to_json %>">
     <input type="hidden" name="payments" data-contract-payments-target="paymentsJson" value="<%= @existing_payments.to_json %>">

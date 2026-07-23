@@ -190,6 +190,7 @@ module Manage
       @existing_payment_structure = @contract.draft_payment_structure
       @existing_payment_config = @contract.draft_payment_config
       @existing_ticketing = @contract.draft_ticketing
+      @offline_payment_methods = @contract.offline_payment_methods
       @bookings = @contract.draft_bookings || []
       @bookings_count = @bookings.count
     end
@@ -213,6 +214,11 @@ module Manage
         payment_config["who_sells_tickets"] = who_sells
       end
       payment_config["settlement_basis"] = settlement_basis_for(payment_structure, payment_config)
+
+      # How they may pay us. Online is always allowed; the offline methods are
+      # whatever this deal ticks, starting from the org's default.
+      offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
+      payment_config["accepted_payment_methods"] = [ "online" ] + offline
 
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)

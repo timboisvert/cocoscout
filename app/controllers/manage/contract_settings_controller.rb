@@ -10,6 +10,15 @@ module Manage
     def show
       @services = Current.organization.contract_service_options.ordered
       @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
+      @offline_payment_methods = Current.organization.default_offline_payment_methods
+    end
+
+    # The org's default policy for how contractors may pay us. Online is always
+    # available, so only the offline methods are stored.
+    def update_payment_methods
+      offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
+      Current.organization.update!(default_contract_payment_methods: [ "online" ] + offline)
+      redirect_to manage_contract_settings_path, notice: "Payment methods updated."
     end
 
     def create_service

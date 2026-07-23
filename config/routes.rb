@@ -1341,6 +1341,8 @@ Rails.application.routes.draw do
     # Contract settings — org-level services catalog (top of the Contracts section).
     # Declared before resources :contracts so "settings" isn't captured as an :id.
     get    "contracts/settings",              to: "contract_settings#show",           as: "contract_settings"
+    patch  "contracts/settings/payment-methods", to: "contract_settings#update_payment_methods",
+                                                 as: "contract_settings_payment_methods"
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"

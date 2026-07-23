@@ -18,6 +18,36 @@
   } %>
 
   <div class="max-w-2xl space-y-6">
+    <!-- How contractors may pay us -->
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">How contractors may pay you</h2>
+        <p class="text-sm text-gray-600 mt-1">Everyone can pay online — you send a payment link and the money lands in your account. Tick anything else you're willing to accept, and you'll be able to record those payments by hand. Each contract starts here and can be changed on its own.</p>
+      </div>
+      <%= form_with url: manage_contract_settings_payment_methods_path, method: :patch, class: "px-6 py-5" do %>
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 opacity-60">
+            <input type="checkbox" checked disabled class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <span>
+              <span class="block text-sm font-medium text-gray-900">Online (card or bank)</span>
+              <span class="block text-xs text-gray-500">Always available.</span>
+            </span>
+          </label>
+          <% Contract::OFFLINE_PAYMENT_METHODS.each do |method| %>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <%= check_box_tag "offline_payment_methods[]", method,
+                    @offline_payment_methods.include?(method), id: "offline_method_#{method}",
+                    class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <span class="block text-sm font-medium text-gray-900"><%= Contract::OFFLINE_PAYMENT_METHOD_LABELS[method] %></span>
+            </label>
+          <% end %>
+        </div>
+        <div class="mt-5">
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+
     <div class="bg-white border border-gray-200 rounded-xl p-6">
       <h2 class="text-lg font-semibold text-gray-900 mb-1">Services catalog</h2>
       <p class="text-sm text-gray-600">Services your organization can offer on a contract — like technical services or booth tech — with a default price. Each contract draws from this list and can add its own or change the price.</p>
