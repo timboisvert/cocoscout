@@ -30,6 +30,20 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       expect(response.body).to include("Auditions")
     end
 
+    it "gates Contracts as its own feature rather than as part of Money" do
+      get manage_contracts_path
+      expect(response).to have_http_status(:payment_required)
+      expect(response.body).to include("Contracts")
+      expect(response.body).not_to include("Money &amp; Payments")
+
+      get manage_contract_settings_path
+      expect(response).to have_http_status(:payment_required)
+
+      get manage_billing_upgrade_path(feature: "contracts")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Book the run")
+    end
+
     it "serves rich upgrade content at the modal endpoint" do
       get manage_billing_upgrade_path(feature: "money")
       expect(response).to have_http_status(:ok)

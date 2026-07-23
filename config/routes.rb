@@ -1340,12 +1340,12 @@ Rails.application.routes.draw do
     # Contracts - third-party productions and venue rentals
     # Contract settings — org-level services catalog (top of the Contracts section).
     # Declared before resources :contracts so "settings" isn't captured as an :id.
-    get    "money/contracts/settings",              to: "contract_settings#show",           as: "contract_settings"
-    post   "money/contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
-    patch  "money/contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
-    delete "money/contracts/settings/services/:id", to: "contract_settings#destroy_service"
+    get    "contracts/settings",              to: "contract_settings#show",           as: "contract_settings"
+    post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
+    patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
+    delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"
 
-    resources :contracts, path: "money/contracts" do
+    resources :contracts, path: "contracts" do
       collection do
         get :completed
       end
@@ -1378,27 +1378,27 @@ Rails.application.routes.draw do
     end
 
     # Contract wizard
-    get  "money/contracts/wizard/new", to: "contract_wizard#new", as: "new_contract_wizard"
-    post "money/contracts/wizard/create_draft", to: "contract_wizard#create_draft", as: "create_draft_contract_wizard"
-    get  "money/contracts/:contract_id/wizard/resume", to: "contract_wizard#resume", as: "resume_contract_wizard"
-    get  "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
-    post "money/contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
-    get  "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
-    post "money/contracts/:contract_id/wizard/bookings", to: "contract_wizard#save_bookings"
-    get  "money/contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#schedule_preview", as: "schedule_preview_contract_wizard"
-    post "money/contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#save_schedule_preview"
-    get  "money/contracts/:contract_id/wizard/ticketing", to: "contract_wizard#ticketing", as: "ticketing_contract_wizard"
-    post "money/contracts/:contract_id/wizard/ticketing", to: "contract_wizard#save_ticketing"
-    get  "money/contracts/:contract_id/wizard/tech", to: "contract_wizard#tech", as: "tech_contract_wizard"
-    post "money/contracts/:contract_id/wizard/tech", to: "contract_wizard#save_tech"
-    get  "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#payments", as: "payments_contract_wizard"
-    post "money/contracts/:contract_id/wizard/payments", to: "contract_wizard#save_payments"
-    get  "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#documents", as: "documents_contract_wizard"
-    post "money/contracts/:contract_id/wizard/documents", to: "contract_wizard#save_documents"
-    delete "money/contracts/:contract_id/wizard/documents/:document_id", to: "contract_wizard#delete_document", as: "delete_document_contract_wizard"
-    get  "money/contracts/:contract_id/wizard/review", to: "contract_wizard#review", as: "review_contract_wizard"
-    post "money/contracts/:contract_id/wizard/activate", to: "contract_wizard#activate", as: "activate_contract_wizard"
-    delete "money/contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
+    get  "contracts/wizard/new", to: "contract_wizard#new", as: "new_contract_wizard"
+    post "contracts/wizard/create_draft", to: "contract_wizard#create_draft", as: "create_draft_contract_wizard"
+    get  "contracts/:contract_id/wizard/resume", to: "contract_wizard#resume", as: "resume_contract_wizard"
+    get  "contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
+    post "contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
+    get  "contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
+    post "contracts/:contract_id/wizard/bookings", to: "contract_wizard#save_bookings"
+    get  "contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#schedule_preview", as: "schedule_preview_contract_wizard"
+    post "contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#save_schedule_preview"
+    get  "contracts/:contract_id/wizard/ticketing", to: "contract_wizard#ticketing", as: "ticketing_contract_wizard"
+    post "contracts/:contract_id/wizard/ticketing", to: "contract_wizard#save_ticketing"
+    get  "contracts/:contract_id/wizard/tech", to: "contract_wizard#tech", as: "tech_contract_wizard"
+    post "contracts/:contract_id/wizard/tech", to: "contract_wizard#save_tech"
+    get  "contracts/:contract_id/wizard/payments", to: "contract_wizard#payments", as: "payments_contract_wizard"
+    post "contracts/:contract_id/wizard/payments", to: "contract_wizard#save_payments"
+    get  "contracts/:contract_id/wizard/documents", to: "contract_wizard#documents", as: "documents_contract_wizard"
+    post "contracts/:contract_id/wizard/documents", to: "contract_wizard#save_documents"
+    delete "contracts/:contract_id/wizard/documents/:document_id", to: "contract_wizard#delete_document", as: "delete_document_contract_wizard"
+    get  "contracts/:contract_id/wizard/review", to: "contract_wizard#review", as: "review_contract_wizard"
+    post "contracts/:contract_id/wizard/activate", to: "contract_wizard#activate", as: "activate_contract_wizard"
+    delete "contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
 
     # Location spaces
     scope "locations/:location_id" do

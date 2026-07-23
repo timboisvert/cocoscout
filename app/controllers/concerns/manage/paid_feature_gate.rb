@@ -19,12 +19,12 @@ module Manage
       "manage/money_payouts" => :money,
       "manage/show_payouts" => :money,
       "manage/show_financials" => :money,
-      "manage/contracts" => :money,
-      "manage/contract_settings" => :money,
-      "manage/contract_payments" => :money,
-      "manage/contract_wizard" => :money,
-      "manage/contract_documents" => :money,
-      "manage/contractors" => :money,
+      "manage/contracts" => :contracts,
+      "manage/contract_settings" => :contracts,
+      "manage/contract_payments" => :contracts,
+      "manage/contract_wizard" => :contracts,
+      "manage/contract_documents" => :contracts,
+      "manage/contractors" => :contracts,
       "manage/payout_schemes" => :money,
       "manage/payout_batches" => :money,
       "manage/advances" => :money,
@@ -76,6 +76,20 @@ module Manage
           { title: "Contracts & advances", body: "Track third-party contracts and revenue shares, and issue performer advances that recover automatically from future payouts." }
         ],
         outcome: "Close every show knowing exactly what came in, what went out, and who's been paid — for $3 a performer, only when you pay them."
+      },
+      contracts: {
+        name: "Contracts",
+        icon: "clipboard-list",
+        headline: "Put every deal in writing — and keep the whole run straight",
+        subhead: "Book the dates, agree how the money works, and track what's owed, all in one contract.",
+        description: "Contracts hold the agreements behind your shows: who's presenting, which dates they've booked, how ticket revenue or a flat fee is split, and what services you're providing. The events on your calendar and everything you owe or are owed flow from the contract.",
+        capabilities: [
+          { title: "Book the run", body: "Set up single or recurring dates and review the whole schedule before you commit." },
+          { title: "However the deal works", body: "Revenue share, a flat fee, a straight rental, or ticket revenue minus your fee — whoever sells the tickets." },
+          { title: "Services", body: "Add technical services and anything else you provide, priced from your own reusable catalog." },
+          { title: "Amend as things change", body: "Add or drop dates and payments as the run evolves, without losing the history." }
+        ],
+        outcome: "Every booking, every dollar, and every change to the deal — in one place both sides can rely on."
       },
       staffing: {
         name: "Staffing",

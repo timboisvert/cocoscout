@@ -66,6 +66,9 @@ module NavigationHelper
         active: %w[directory people groups questionnaires].include?(controller_name) },
       { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
         active: %w[money money_financials money_payouts show_payouts show_financials].include?(controller_name) },
+      # Contracts is its own Pro module — a deal with someone doesn't require Money.
+      { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts,
+        active: %w[contracts contract_wizard contract_payments contract_documents contractors contract_settings].include?(controller_name) },
       { label: "Reports", path: manage_reports_path, icon: "reports", locked: !on_paid_plan, feature: :reports,
         active: controller_name == "reports" }
     ]
