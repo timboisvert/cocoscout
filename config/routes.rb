@@ -1346,6 +1346,9 @@ Rails.application.routes.draw do
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"
+    # Sections are named, never positional — declared last so the specific
+    # routes above win.
+    get    "contracts/settings/:section",     to: "contract_settings#show",           as: "contract_settings_section"
 
     resources :contracts, path: "contracts" do
       collection do
@@ -1443,6 +1446,19 @@ Rails.application.routes.draw do
     delete "money/shows/:id/payouts/reset_calculation", to: "show_payouts#reset_calculation", as: "reset_calculation_money_show_payout"
 
     # Course Offerings (top-level)
+    # Course settings — declared before the courses/:id routes below so
+    # "settings" is never captured as a course id.
+    get    "courses/settings",                 to: "course_settings#show",           as: "course_settings"
+    post   "courses/settings/connect",         to: "course_settings#connect",        as: "course_settings_connect"
+    get    "courses/settings/return",          to: "course_settings#connect_return", as: "course_settings_return"
+    get    "courses/settings/refresh",         to: "course_settings#connect_refresh", as: "course_settings_refresh"
+    # Named sections, declared last so the specific routes above win.
+    get    "courses/settings/:section",        to: "course_settings#show",           as: "course_settings_section"
+    # Stripe has live onboarding links pointing at the old return/refresh URLs.
+    get    "courses/payouts/settings",         to: redirect("/manage/courses/settings")
+    get    "courses/payouts/settings/return",  to: "course_settings#connect_return"
+    get    "courses/payouts/settings/refresh", to: "course_settings#connect_refresh"
+
     get "courses",              to: "course_offerings#index",   as: "course_offerings"
 
     # Course Offering Wizard (must be before :id routes so "wizard" isn't captured as :id)
@@ -1491,10 +1507,6 @@ Rails.application.routes.draw do
     get    "courses/:course_offering_id/money", to: "course_money#show",                    as: "course_money"
     get    "courses/payouts/run",              to: "course_payout_runs#show",               as: "course_payout_run"
     post   "courses/payouts/run/pay",          to: "course_payout_runs#pay",                as: "course_payout_run_pay"
-    get    "courses/payouts/settings",         to: "course_payout_settings#show",           as: "course_payout_settings"
-    post   "courses/payouts/settings/connect", to: "course_payout_settings#connect",         as: "course_payout_settings_connect"
-    get    "courses/payouts/settings/return",  to: "course_payout_settings#connect_return",  as: "course_payout_settings_return"
-    get    "courses/payouts/settings/refresh", to: "course_payout_settings#connect_refresh", as: "course_payout_settings_refresh"
 
     get  "courses/:course_offering_id/payout",                  to: "course_offering_payouts#show",                    as: "course_offering_payout"
     post "courses/:course_offering_id/payout/calculate",        to: "course_offering_payouts#calculate",               as: "course_offering_payout_calculate"

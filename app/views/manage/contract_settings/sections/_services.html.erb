@@ -1,0 +1,87 @@
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  unit_options = ContractServiceOption::UNITS.map { |u| [u == "hourly" ? "Per hour" : "Flat", u] }
+  dir_options = [["They pay us", "incoming"], ["We pay them", "outgoing"]]
+%>
+
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">Services catalog</h2>
+  <p class="text-sm text-gray-600">Services your organization can offer on a contract — like technical services or booth tech — with a default price. Each contract draws from this list and can add its own or change the price.</p>
+</div>
+
+<!-- Existing services -->
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Your services</h3>
+  </div>
+  <% if @services.any? %>
+    <div class="divide-y divide-gray-100">
+      <% @services.each do |service| %>
+        <%= form_with url: manage_contract_settings_service_path(service), method: :patch, class: "px-6 py-4" do %>
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[10rem]">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+              <input type="text" name="contract_service_option[name]" value="<%= service.name %>" class="<%= input %>">
+            </div>
+            <div class="w-28">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Default price</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+                <input type="number" step="0.01" min="0" name="contract_service_option[default_price]" value="<%= '%.2f' % service.default_price %>" class="<%= input %> pl-7">
+              </div>
+            </div>
+            <div class="w-28">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+              <%= select_tag "contract_service_option[unit]", options_for_select(unit_options, service.unit), class: input %>
+            </div>
+            <div class="w-36">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
+              <%= select_tag "contract_service_option[default_direction]", options_for_select(dir_options, service.default_direction), class: input %>
+            </div>
+            <div class="flex items-center gap-2">
+              <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+            </div>
+          </div>
+        <% end %>
+        <div class="px-6 pb-3 -mt-2">
+          <%= render "shared/button", text: "Remove", variant: "danger", size: "small",
+                path: manage_contract_settings_service_path(service), method: :delete,
+                data: { turbo_confirm: "Remove “#{service.name}” from your services?" } %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="px-6 py-8 text-center text-sm text-gray-500">No services yet. Add one below.</div>
+  <% end %>
+</div>
+
+<!-- Add service -->
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Add a service</h3>
+  </div>
+  <%= form_with url: manage_contract_settings_services_path, method: :post, class: "px-6 py-5" do %>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[10rem]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+        <input type="text" name="contract_service_option[name]" placeholder="e.g. Technical services" class="<%= input %>">
+      </div>
+      <div class="w-28">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Default price</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+          <input type="number" step="0.01" min="0" name="contract_service_option[default_price]" placeholder="0.00" class="<%= input %> pl-7">
+        </div>
+      </div>
+      <div class="w-28">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+        <%= select_tag "contract_service_option[unit]", options_for_select(unit_options, "hourly"), class: input %>
+      </div>
+      <div class="w-36">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
+        <%= select_tag "contract_service_option[default_direction]", options_for_select(dir_options, "incoming"), class: input %>
+      </div>
+      <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

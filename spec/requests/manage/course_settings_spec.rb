@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe "Manage::CoursePayoutSettings", type: :request do
+RSpec.describe "Manage::CourseSettings", type: :request do
   let(:password) { "Password123!" }
 
   def sign_in(user)
@@ -15,7 +15,7 @@ RSpec.describe "Manage::CoursePayoutSettings", type: :request do
     create(:organization_role, :manager, user: manager, organization: org)
     sign_in(manager)
 
-    get manage_course_payout_settings_path
+    get manage_course_settings_path
 
     expect(response).to have_http_status(:ok)
     # The real settings page rendered (not the Pro paywall template).
@@ -30,9 +30,32 @@ RSpec.describe "Manage::CoursePayoutSettings", type: :request do
     create(:organization_role, :manager, user: manager, organization: org)
     sign_in(manager)
 
-    get manage_course_payout_settings_path
+    get manage_course_settings_path
 
     expect(response.body).to include("Connected")
     expect(response.body).to include("is set up to get paid")
+  end
+
+  it "hides the section strip while there's only one section" do
+    org = create(:organization)
+    manager = create(:user, password: password)
+    create(:organization_role, :manager, user: manager, organization: org)
+    sign_in(manager)
+
+    get manage_course_settings_path
+
+    expect(response.body).to include("Course Settings")
+    expect(response.body).not_to include(%(aria-label="Settings sections"))
+  end
+
+  it "still answers the old payouts-settings URL Stripe was given" do
+    org = create(:organization)
+    manager = create(:user, password: password)
+    create(:organization_role, :manager, user: manager, organization: org)
+    sign_in(manager)
+
+    get "/manage/courses/payouts/settings"
+
+    expect(response).to redirect_to("/manage/courses/settings")
   end
 end

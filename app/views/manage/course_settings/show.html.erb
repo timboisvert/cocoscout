@@ -1,0 +1,12 @@
+<% content_for :title, "Course Settings" %>
+
+<%= render layout: "shared/settings_layout", locals: {
+  title: "Course Settings",
+  breadcrumbs: [
+    ["Courses", manage_course_offerings_path]
+  ],
+  sections: sections,
+  current: @section
+} do %>
+  <%= render "manage/course_settings/sections/#{@section}" %>
+<% end %>

@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
 module Manage
-  # How the organization gets paid its course revenue. CocoScout collects course
-  # registration money and remits the org's share to the org's own Stripe Connect
-  # account — this is where the org connects that bank. Lives in Courses (a free
-  # module), not the Pro-only Money section.
-  class CoursePayoutSettingsController < Manage::ManageController
+  # Org-level course settings. Today the only topic is how the organization gets
+  # paid its course revenue — CocoScout collects registration money and remits
+  # the org's share to its own Stripe Connect account, and this is where that
+  # bank gets connected. Lives in Courses (a free module), not the Pro-only
+  # Money section. Uses the shared settings layout, so a second topic (refund
+  # policy, instructor defaults) is just a new entry in SECTIONS.
+  class CourseSettingsController < Manage::ManageController
+    SECTIONS = %w[payments].freeze
+    DEFAULT_SECTION = "payments"
+
+    before_action :set_section, only: %i[show]
+
     def show
       @organization = Current.organization
       # Re-sync from Stripe so a just-finished (or still-verifying) account is
@@ -14,7 +21,7 @@ module Manage
         begin
           @account_status = StripeConnectService.new(@organization).refresh_status
         rescue StripeConnectService::Error => e
-          Rails.logger.warn("Course payout settings: status refresh failed — #{e.message}")
+          Rails.logger.warn("Course settings: status refresh failed — #{e.message}")
         end
       end
     end
@@ -37,22 +44,34 @@ module Manage
       else
         "Almost there — finish the remaining steps so your organization can get paid."
       end
-      redirect_to manage_course_payout_settings_path, notice: notice
+      redirect_to manage_course_settings_path, notice: notice
     rescue StripeConnectService::Error
-      redirect_to manage_course_payout_settings_path,
+      redirect_to manage_course_settings_path,
         alert: "We couldn't confirm your bank setup. Please try again."
     end
 
     private
 
+    def sections
+      SECTIONS.map do |key|
+        { key: key, label: key.titleize, path: manage_course_settings_section_path(section: key) }
+      end
+    end
+    helper_method :sections
+
+    def set_section
+      @section = params[:section].presence || DEFAULT_SECTION
+      redirect_to manage_course_settings_path unless @section.in?(SECTIONS)
+    end
+
     def start_bank_onboarding
       url = StripeConnectService.new(Current.organization).onboarding_link(
-        return_url: manage_course_payout_settings_return_url,
-        refresh_url: manage_course_payout_settings_refresh_url
+        return_url: manage_course_settings_return_url,
+        refresh_url: manage_course_settings_refresh_url
       )
       redirect_to url, allow_other_host: true
     rescue StripeConnectService::Error => e
-      redirect_to manage_course_payout_settings_path, alert: "Couldn't start bank setup: #{e.message}"
+      redirect_to manage_course_settings_path, alert: "Couldn't start bank setup: #{e.message}"
     end
   end
 end

@@ -14,7 +14,7 @@
 
   courses_actions = [
     { icon: "clipboard-list", text: "New Course", description: "Set up a class or workshop", path: manage_course_wizard_basics_path },
-    { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_payout_settings_path }
+    { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_settings_path }
   ]
 %>
 
@@ -40,7 +40,7 @@
       <div class="text-sm text-gray-500">Awaiting payout</div>
       <div class="text-2xl font-bold <%= @awaiting_payout.any? ? 'text-pink-600' : 'text-gray-900' %> mt-1"><%= @awaiting_payout.size %></div>
     </div>
-    <%= link_to manage_course_payout_settings_path, class: "bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-gray-300 transition-colors block" do %>
+    <%= link_to manage_course_settings_path, class: "bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-gray-300 transition-colors block" do %>
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-500">Payouts to your bank</div>
         <%= icon("arrow-right", class: "w-4 h-4 text-gray-400") %>

@@ -10,12 +10,31 @@ RSpec.describe "Manage::ContractSettings", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "renders the services catalog" do
-    org.contract_service_options.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly")
+  it "opens on the payments section, with a tab strip to the rest" do
     get manage_contract_settings_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("How contractors may pay you")
+    expect(response.body).to include(manage_contract_settings_section_path(section: "services"))
+    # Sections load only their own data.
+    expect(response.body).not_to include("Services catalog")
+  end
+
+  it "renders the services catalog in its own section" do
+    org.contract_service_options.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly")
+
+    get manage_contract_settings_section_path(section: "services")
+
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Services catalog")
     expect(response.body).to include("Technical services")
+    expect(response.body).not_to include("How contractors may pay you")
+  end
+
+  it "sends an unknown section back to the default rather than blowing up" do
+    get manage_contract_settings_section_path(section: "nonsense")
+
+    expect(response).to redirect_to(manage_contract_settings_section_path(section: "payments"))
   end
 
   it "adds a service (dollars → cents)" do

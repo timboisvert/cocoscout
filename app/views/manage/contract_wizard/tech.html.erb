@@ -41,11 +41,11 @@
           </div>
         <% end %>
       </div>
-      <p class="text-xs text-gray-500 mb-6">Manage your list of services and default prices in <%= link_to "Contract Settings", manage_contract_settings_path, class: "text-pink-600 hover:text-pink-700" %>.</p>
+      <p class="text-xs text-gray-500 mb-6">Manage your list of services and default prices in <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700" %>.</p>
     <% else %>
       <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6 text-sm text-gray-600">
         You haven't set up any services yet. Add them in
-        <%= link_to "Contract Settings", manage_contract_settings_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>
+        <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
         (like technical services at an hourly rate), then they'll show here to add to a contract.
       </div>
     <% end %>

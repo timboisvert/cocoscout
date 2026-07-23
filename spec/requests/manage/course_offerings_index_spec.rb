@@ -37,7 +37,7 @@ RSpec.describe "Manage::CourseOfferings index payouts overview", type: :request 
     expect(response.body).to include("New Course")
     expect(response.body).to include("Course Settings")
     expect(response.body).to include(manage_course_wizard_basics_path)
-    expect(response.body).to include(manage_course_payout_settings_path)
+    expect(response.body).to include(manage_course_settings_path)
     # The old pink top-nav link label is gone.
     expect(response.body).not_to include("Payout Settings")
   end

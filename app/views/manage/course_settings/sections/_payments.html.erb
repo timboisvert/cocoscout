@@ -1,0 +1,96 @@
+<%
+  connected = @organization.can_receive_payouts?
+  started = @organization.connect_account_started?
+%>
+
+<!-- What this is -->
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-2">Getting paid for your courses</h2>
+  <p class="text-sm text-gray-600 leading-relaxed">
+    When students register for your courses, CocoScout collects the money and holds it for you.
+    Connect your organization's bank account here so we can send your share straight to you after
+    each course — and pay your instructors directly, too.
+  </p>
+</div>
+
+<!-- Connection status + action -->
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-sm font-semibold text-gray-900">Bank account</h3>
+    <% if connected %>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Connected
+      </span>
+    <% elsif started %>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        Finishing setup
+      </span>
+    <% else %>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+        Not connected
+      </span>
+    <% end %>
+  </div>
+
+  <div class="px-6 py-5">
+    <% if connected %>
+      <div class="flex items-start gap-3">
+        <%= icon("check-circle", class: "w-6 h-6 text-green-500 flex-shrink-0") %>
+        <div>
+          <p class="text-sm text-gray-900 font-medium"><%= @organization.name %> is set up to get paid.</p>
+          <p class="text-sm text-gray-500 mt-1">Course payouts will be sent to your connected bank automatically once a course is settled.</p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
+        <%= render "shared/button", text: "Update bank details", variant: "secondary", size: "small",
+          path: manage_course_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+      </div>
+    <% else %>
+      <%
+        due = (@account_status ? (@account_status[:currently_due] + @account_status[:past_due]) : []).uniq
+        pending = @account_status ? @account_status[:pending_verification] : []
+        humanize_req = ->(key) { key.to_s.tr(".", " ").tr("_", " ").sub(/\bid\b/, "ID").capitalize }
+        # "Being verified" = nothing left for the user to enter, Stripe is just reviewing.
+        verifying = started && due.empty? && pending.any?
+      %>
+
+      <% if verifying %>
+        <p class="text-sm text-gray-600 mb-1">Your details were submitted and are being verified. This usually takes a few minutes.</p>
+        <p class="text-sm text-gray-500 mb-4">Check back shortly — this page updates automatically once you're cleared to receive payouts.</p>
+        <%= link_to manage_course_settings_path do %>
+          <%= render "shared/button", text: "Refresh status", variant: "secondary", size: "small" %>
+        <% end %>
+      <% else %>
+        <p class="text-sm text-gray-600 mb-3">
+          <% if started %>
+            You've started connecting a bank but there are still a few details to finish before you can be paid.
+          <% else %>
+            Connect a bank account so your organization can receive course payouts. Your details are collected
+            securely; CocoScout never sees or stores your bank credentials.
+          <% end %>
+        </p>
+        <% if due.any? %>
+          <div class="mb-4 text-sm text-gray-700">
+            <p class="font-medium mb-1">Still needed:</p>
+            <ul class="list-disc list-inside text-gray-600 space-y-0.5">
+              <% due.first(6).each do |key| %>
+                <li><%= humanize_req.call(key) %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <%# turbo: false so the browser follows the redirect out to the hosted onboarding. %>
+        <%= render "shared/button",
+          text: started ? "Finish connecting your bank" : "Connect your bank",
+          variant: "primary", size: "medium",
+          path: manage_course_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<p class="text-xs text-gray-400 text-center">Bank onboarding and payouts are handled securely.</p>
