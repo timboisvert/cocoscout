@@ -32,12 +32,18 @@
       # Sort sign-up forms by next event date (soonest first)
       all_sign_up_forms.sort_by! { |f| f[:instance]&.show&.date_and_time || 100.years.from_now }
       soonest_form = all_sign_up_forms.first
+
+      # A summary box with nothing in it is just noise — only show each one
+      # when there's something to summarize.
+      show_auditions_box = Current.organization&.on_paid_plan?
+      show_registrations_box = all_sign_up_forms.any?
     %>
 
     <!-- Row 1: Summary Boxes -->
+    <% if show_auditions_box || show_registrations_box %>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       <%# Audition Sign-ups — accordion (Pro-tier only; auditions are a paid feature) %>
-      <% if Current.organization&.on_paid_plan? %>
+      <% if show_auditions_box %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
         <details class="group">
           <summary class="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors [&::-webkit-details-marker]:hidden">
@@ -93,7 +99,8 @@
       </div>
       <% end %>
 
-      <%# Event Registrations — accordion %>
+      <%# Event Registrations — accordion (only once there's a sign-up form) %>
+      <% if show_registrations_box %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
         <details class="group">
           <summary class="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors [&::-webkit-details-marker]:hidden">
@@ -158,7 +165,9 @@
           </div>
         </details>
       </div>
+      <% end %>
     </div>
+    <% end %>
 
     <!-- Row 2: Vacancy Alerts -->
     <% if all_open_vacancies.any? %>
