@@ -376,6 +376,23 @@ module Manage
 
       # Build a unified list of all events for display
       @all_events_after = build_unified_event_list(@remaining_rentals, @new_bookings, @locations_map, @spaces_map)
+
+      # Any event-time edits already staged for existing rentals.
+      @staged_event_times = @amend_data["event_times"] || {}
+    end
+
+    # Stage per-rental event times (the show may run at a different time than the
+    # whole booked slot). params[:event_times] is { rental_id => { enabled, starts_at, ends_at } }.
+    def save_amend_events
+      staged = {}
+      (params[:event_times] || {}).each do |rental_id, times|
+        next unless times[:enabled] == "1" && times[:starts_at].present? && times[:ends_at].present?
+
+        staged[rental_id.to_s] = { "starts_at" => times[:starts_at], "ends_at" => times[:ends_at] }
+      end
+
+      @contract.update_amend_data(@contract.amend_data.merge("event_times" => staged))
+      redirect_to amend_payments_manage_contract_path(@contract)
     end
 
     # Step 3: Amend Payments
@@ -546,16 +563,20 @@ module Manage
             location_space_id: booking["space_id"].presence,
             starts_at: starts_at,
             ends_at: ends_at,
+            # The actual event may run at a different time within the slot.
+            event_starts_at: booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil,
+            event_ends_at: booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil,
             notes: booking["notes"],
             confirmed: true,
             allow_overlap: params[:force_overlap] == "1"
           )
 
-          # Create a show for the new rental so it appears in Shows & Events
+          # Create a show for the new rental so it appears in Shows & Events. It
+          # runs at the event time, not necessarily the whole booked slot.
           if production
             production.shows.create!(
-              date_and_time: rental.starts_at,
-              duration_minutes: (duration_hours * 60).to_i,
+              date_and_time: rental.effective_event_starts_at,
+              duration_minutes: rental.effective_duration_minutes,
               location: rental.location,
               location_space: rental.location_space,
               space_rental: rental,
@@ -563,6 +584,10 @@ module Manage
             )
           end
         end
+
+        # Event-time edits on existing rentals: set the event window within the
+        # slot, and move the linked show to match.
+        apply_event_time_edits(@amend_data["event_times"] || {})
 
         # Remove payments
         @contract.contract_payments.where(id: removed_payment_ids).destroy_all if removed_payment_ids.any?
@@ -622,6 +647,30 @@ module Manage
 
       if production.contracts.where.not(id: contract.id).none? && production.shows.reload.none?
         production.destroy
+      end
+    end
+
+    # Set the event window on existing rentals and move each linked show to
+    # match. Times outside the rental slot are rejected by SpaceRental's own
+    # validation, so a bad edit raises and rolls back the amendment.
+    def apply_event_time_edits(event_times)
+      return if event_times.blank?
+
+      rentals = @contract.space_rentals.where(id: event_times.keys).index_by(&:id)
+      event_times.each do |rental_id, times|
+        rental = rentals[rental_id.to_i]
+        next unless rental
+
+        rental.update!(
+          event_starts_at: Time.zone.parse(times["starts_at"]),
+          event_ends_at: Time.zone.parse(times["ends_at"])
+        )
+        Show.where(space_rental_id: rental.id).find_each do |show|
+          show.update!(
+            date_and_time: rental.effective_event_starts_at,
+            duration_minutes: rental.effective_duration_minutes
+          )
+        end
       end
     end
 

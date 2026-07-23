@@ -781,10 +781,11 @@ class Contract < ApplicationRecord
 
       rentals.each do |info|
         rental = info[:rental]
-        duration_minutes = ((rental.ends_at - rental.starts_at) / 60).to_i
+        # The show represents the event, so it runs at the event time when one
+        # was set within the booked slot — not the whole slot.
         show = production.shows.create!(
-          date_and_time: rental.starts_at,
-          duration_minutes: duration_minutes,
+          date_and_time: rental.effective_event_starts_at,
+          duration_minutes: rental.effective_duration_minutes,
           location: rental.location,
           location_space: rental.location_space,
           space_rental: rental,

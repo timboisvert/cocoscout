@@ -49,6 +49,12 @@ class SpaceRental < ApplicationRecord
     event_ends_at || ends_at
   end
 
+  # The event's own length in minutes — what the show should run for, not the
+  # whole booked slot.
+  def effective_duration_minutes
+    ((effective_event_ends_at - effective_event_starts_at) / 60).to_i
+  end
+
   # Display helpers
   def date_display
     starts_at.strftime("%B %d, %Y")
