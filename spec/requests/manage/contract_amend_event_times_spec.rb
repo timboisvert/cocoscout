@@ -60,6 +60,43 @@ RSpec.describe "Manage::Contracts amend event times", type: :request do
     expect(show.duration_minutes).to eq(90)
   end
 
+  it "carries a separate event time on a newly added booking through to its show" do
+    new_date = 2.months.from_now.to_date
+
+    post save_amend_bookings_manage_contract_path(contract), params: {
+      booking_mode: "multiple",
+      booking_rules_json: [
+        {
+          mode: "single",
+          location_id: location.id,
+          space_id: "",
+          starts_at: "#{new_date}T18:00",
+          duration: "3",
+          notes: "",
+          event_type: "show",
+          event_starts_at: "#{new_date}T19:00",
+          event_ends_at: "#{new_date}T20:30"
+        }
+      ].to_json,
+      removed_rental_ids: "[]"
+    }
+
+    staged = contract.reload.amend_data["new_bookings"]
+    expect(staged.size).to eq(1)
+    expect(staged.first["event_starts_at"]).to include("T19:00")
+
+    expect { post apply_amendments_manage_contract_path(contract) }
+      .to change { contract.space_rentals.count }.by(1)
+
+    new_rental = contract.space_rentals.order(:created_at).last
+    expect(new_rental.event_starts_at.hour).to eq(19)
+    expect(new_rental.event_ends_at.hour).to eq(20)
+
+    new_show = new_rental.shows.first
+    expect(new_show.date_and_time.hour).to eq(19)
+    expect(new_show.duration_minutes).to eq(90)
+  end
+
   it "rejects an event time outside the booked slot and rolls back" do
     contract.update_amend_data(
       "event_times" => { rental.id.to_s => { "starts_at" => "#{slot_start.strftime('%Y-%m-%d')}T17:00", "ends_at" => "#{slot_start.strftime('%Y-%m-%d')}T18:30" } }

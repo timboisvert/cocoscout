@@ -170,6 +170,31 @@
               </div>
             </div>
 
+            <%# Event time toggle — the show can run at a different time within the booked slot %>
+            <div class="border-t border-gray-200 pt-4">
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                       class="sr-only peer">
+                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+              </label>
+              <div data-event-time-row class="hidden mt-3">
+                <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                    <input type="datetime-local" data-field="event_starts_at"
+                           class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                    <input type="datetime-local" data-field="event_ends_at"
+                           class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
               <input type="text" data-field="notes" placeholder="e.g., Setup time included"
@@ -294,6 +319,31 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Until <span class="text-pink-500">*</span></label>
                 <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
                        class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              </div>
+            </div>
+
+            <%# Event time toggle — the show can run at a different time within each occurrence's slot %>
+            <div class="border-t border-gray-200 pt-4">
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                       class="sr-only peer">
+                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+              </label>
+              <div data-event-time-row class="hidden mt-3">
+                <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+                    <input type="time" data-field="event_time"
+                           class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+                    <input type="time" data-field="event_end_time"
+                           class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  </div>
+                </div>
               </div>
             </div>
 

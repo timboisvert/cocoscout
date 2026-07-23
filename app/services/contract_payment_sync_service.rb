@@ -61,8 +61,16 @@ class ContractPaymentSyncService
     end
   end
 
-  def contractor_share_pct
-    @contract.contractor_share_percentage
+  # The slice of ticket revenue this payment settles. When the contractor sells
+  # their own tickets (Case 2, v2 config), they hold the money and owe us our
+  # cut, so the payment settles OUR share. Otherwise we hold the money and owe
+  # them theirs (Case 1), so it settles the contractor's share.
+  def share_pct_for(_payment)
+    if @contract.draft_payment_config["who_sells_tickets"] == "contractor"
+      @contract.revenue_share_percentage
+    else
+      @contract.contractor_share_percentage
+    end
   end
 
   # For per-event settlement: each show maps to one ContractPayment
@@ -72,8 +80,8 @@ class ContractPaymentSyncService
 
     financials = @show.show_financials
     if financials&.has_data?
-      contractor_amount = (financials.total_revenue * contractor_share_pct / 100.0).round(2)
-      update_payment(payment, contractor_amount, [ [ @show, financials.total_revenue ] ])
+      settled_amount = (financials.total_revenue * share_pct_for(payment) / 100.0).round(2)
+      update_payment(payment, settled_amount, [ [ @show, financials.total_revenue ] ])
     else
       # Reset to TBD if financial data removed
       payment.update(amount: 0, amount_tbd: true) if payment.amount_tbd? == false
@@ -99,9 +107,9 @@ class ContractPaymentSyncService
 
       if confirmed_shows.any?
         total_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
-        contractor_amount = (total_revenue * contractor_share_pct / 100.0).round(2)
+        settled_amount = (total_revenue * share_pct_for(payment) / 100.0).round(2)
         show_details = confirmed_shows.map { |s| [ s, s.show_financials.total_revenue ] }
-        update_payment(payment, contractor_amount, show_details, pending_count: period_shows.size - confirmed_shows.size)
+        update_payment(payment, settled_amount, show_details, pending_count: period_shows.size - confirmed_shows.size)
       elsif payment.revenue_share?
         # All shows still pending — keep TBD
         payment.update(amount: 0, amount_tbd: true)

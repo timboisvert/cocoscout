@@ -21,6 +21,12 @@ class ShowFinancials < ApplicationRecord
   # Contract payment sync - update revenue-share contract payments if financial data is removed
   after_destroy :sync_contract_payments_on_destroy
 
+  # True when a contractor self-reported these figures (Case 2), rather than a
+  # manager entering them.
+  def contractor_reported?
+    contractor_reported_at.present?
+  end
+
   # Revenue type helpers
   def ticket_sales?
     revenue_type.nil? || revenue_type == "ticket_sales"

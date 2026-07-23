@@ -447,6 +447,13 @@ class Contract < ApplicationRecord
     who_sells_tickets == "org"
   end
 
+  # Case 2: the contractor sells their own tickets on a revenue split, so they
+  # self-report the sales and then owe us our cut. This is the only case where a
+  # contractor enters ticket numbers themselves.
+  def contractor_reports_sales?
+    who_sells_tickets == "contractor" && revenue_share?
+  end
+
   # "revenue_share" | "revenue_minus_fee" | "flat".
   def settlement_basis
     draft_payment_config["settlement_basis"].presence || legacy_settlement_basis

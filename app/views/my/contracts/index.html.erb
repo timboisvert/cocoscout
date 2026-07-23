@@ -67,6 +67,18 @@
           <div class="mt-3 text-sm font-medium text-pink-600">View full contract →</div>
         </div>
 
+        <%# Case 2: they sell their own tickets, so they report the sales here. %>
+        <% if contract.contractor_reports_sales? %>
+          <div class="mt-2 bg-white rounded-lg border border-pink-200 flex items-center justify-between gap-3 px-5 py-3">
+            <div class="min-w-0 flex items-center gap-2 text-sm text-gray-700">
+              <%= icon("ticket", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
+              <span>You sell the tickets — report your sales so we can settle up.</span>
+            </div>
+            <%= link_to "Report ticket sales", my_report_contract_sales_path(contract),
+                  class: "inline-flex items-center rounded-md bg-pink-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-pink-700 transition-colors flex-shrink-0" %>
+          </div>
+        <% end %>
+
         <%# What they owe. Same link the organization can send directly. %>
         <% if to_pay.any? %>
           <div class="mt-2 bg-white rounded-lg border border-pink-200 divide-y divide-pink-100">

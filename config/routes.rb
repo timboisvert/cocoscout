@@ -386,6 +386,9 @@ Rails.application.routes.draw do
 
     # Contracts held by this person (as a contractor's backing Person).
     get    "/contracts",                    to: "contracts#index",          as: "contracts"
+    # Case 2: the contractor self-reports their own ticket sales.
+    get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
+    patch  "/contracts/:id/report-sales",   to: "contracts#save_sales_report"
 
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
