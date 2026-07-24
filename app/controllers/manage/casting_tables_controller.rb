@@ -5,7 +5,7 @@ module Manage
     before_action :ensure_user_is_manager, except: [ :index, :show ]
     before_action :set_casting_table, only: [
       :show, :update, :assign, :unassign, :summary, :finalize, :unfinalize, :resend_notifications,
-      :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member
+      :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member, :destroy
     ]
 
     def index
@@ -75,6 +75,25 @@ module Manage
       else
         redirect_back fallback_location: manage_edit_casting_table_path(@casting_table), alert: @casting_table.errors.full_messages.join(", ")
       end
+    end
+
+    # Delete a DRAFT casting table. A draft only holds suggested (draft)
+    # assignments — it never created real ShowPersonRoleAssignments (those come
+    # only from finalize!) — so destroying it (cascade removes the draft
+    # assignments, members, events, production links) puts everything back to how
+    # it was before the table, without touching any real casting. Finalized tables
+    # must be unfinalized first (which removes their real assignments).
+    def destroy
+      unless @casting_table.draft?
+        redirect_to manage_casting_table_path(@casting_table),
+                    alert: "Only draft casting tables can be deleted. Unfinalize this one first to remove its assignments, then delete it."
+        return
+      end
+
+      name = @casting_table.name
+      @casting_table.destroy!
+      redirect_to manage_casting_tables_path,
+                  notice: "Casting table “#{name}” deleted. Its suggested assignments were discarded."
     end
 
     # AJAX: Add a draft assignment

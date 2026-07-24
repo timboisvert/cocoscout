@@ -9,7 +9,7 @@ servers:
   web:
     hosts:
       - ec2-3-17-132-233.us-east-2.compute.amazonaws.com # CocoScout Web 1
-      - ec2-18-223-235-71.us-east-2.compute.amazonaws.com # CocoScout Web 2
+      - ec2-3-144-170-130.us-east-2.compute.amazonaws.com # CocoScout Web 2
     options:
       memory: 3g  # Limit to leave headroom on 4GB instance
     env:

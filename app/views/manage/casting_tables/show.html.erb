@@ -1,6 +1,6 @@
 <% content_for :title, @casting_table.name %>
 
-<div class="w-full mb-10" data-controller="casting-table" data-casting-table-table-id-value="<%= @casting_table.id %>">
+<div class="w-full mb-10" data-controller="casting-table modal" data-casting-table-table-id-value="<%= @casting_table.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <% top_menu_links = [{ text: "Edit", path: manage_edit_casting_table_path(@casting_table) }] %>
@@ -232,7 +232,32 @@
           <span class="font-medium" data-casting-table-target="draftAssignmentCount"><%= @casting_table.casting_table_draft_assignments.count %></span> draft assignments
         </div>
         <div class="flex items-center gap-3">
+          <%= render "shared/button", text: "Delete", variant: "secondary", size: "medium", type: :button,
+                data: { action: "click->modal#open", "modal-id": "delete-casting-table-modal" } %>
           <%= render "shared/button", text: "Review & Finalize", variant: "primary", size: "medium", path: manage_casting_table_summary_path(@casting_table) %>
+        </div>
+      </div>
+    </div>
+
+    <%# Delete confirmation modal %>
+    <div id="delete-casting-table-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/40" data-action="click->modal#close"></div>
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Delete this casting table?</h3>
+          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 py-5 text-sm text-gray-600 space-y-3">
+          <p>This deletes <strong><%= @casting_table.name %></strong> and discards its
+            <strong><%= pluralize(@casting_table.casting_table_draft_assignments.count, "suggested assignment") %></strong>.</p>
+          <p>Everything goes back to how it was before this table. Any casting you've <strong>finalized elsewhere is unaffected</strong> — nothing on the real casting board is removed.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-2">
+          <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <%= render "shared/button", text: "Delete casting table", variant: "danger", size: "medium",
+                path: manage_casting_table_path(@casting_table), method: :delete %>
         </div>
       </div>
     </div>
