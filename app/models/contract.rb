@@ -261,6 +261,40 @@ class Contract < ApplicationRecord
     errors.empty?
   end
 
+  # How this contract's money maps into the org's Money totals, so contract money
+  # isn't siloed — it flows into revenue and payout totals like everything else.
+  #
+  # Gross model: when WE sell the tickets, the full ticket revenue is money coming
+  # in and the contractor's share is a payout going out (profit = our cut). When
+  # THEY sell, we only ever see our cut (money in, nothing out). Flat deals fall
+  # back to the contract's own payments by direction.
+  #
+  # Returns { money_in:, money_out: } in dollars.
+  def money_summary
+    if revenue_share?
+      summary = revenue_share_summary
+      return { money_in: 0.0, money_out: 0.0 } unless summary
+
+      if who_sells_tickets == "org"
+        { money_in: summary[:confirmed_revenue], money_out: summary[:contractor_share] }
+      else
+        { money_in: summary[:our_share], money_out: 0.0 }
+      end
+    elsif ticket_revenue_minus_fee?
+      summary = flat_fee_revenue_summary
+      return { money_in: 0.0, money_out: 0.0 } unless summary
+
+      # We sell, keep a fee, hand back the rest: full revenue in, their remainder out.
+      { money_in: summary[:confirmed_revenue], money_out: summary[:contractor_share] }
+    else
+      # Flat deals: the contract's own payments are the money, by direction.
+      {
+        money_in: contract_payments.where(direction: "incoming").sum(:amount).to_f,
+        money_out: contract_payments.where(direction: "outgoing").sum(:amount).to_f
+      }
+    end
+  end
+
   # Financial summary
   def total_incoming
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)

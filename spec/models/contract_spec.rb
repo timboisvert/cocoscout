@@ -565,5 +565,42 @@ RSpec.describe Contract, type: :model do
         end
       end
     end
+
+    # How contract money maps into the Money section's revenue/payout totals so it
+    # isn't siloed — the gross model (see Contract#money_summary).
+    describe "#money_summary" do
+      let(:org) { create(:organization) }
+      let(:production) { create(:production, organization: org, production_type: "third_party") }
+
+      def contract_for(config)
+        c = create(:contract, organization: org, production: production,
+          draft_data: { "payment_structure" => config["settlement_basis"] == "revenue_share" ? "revenue_share" : "flat_fee",
+                        "payment_config" => config })
+        show = create(:show, :online, production: production, date_and_time: 1.week.ago, duration_minutes: 90)
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)
+        c
+      end
+
+      it "we sell (Case 1): full revenue in, contractor share out" do
+        c = contract_for("who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                         "revenue_our_share" => 30, "revenue_their_share" => 70)
+        expect(c.money_summary).to eq(money_in: 1000.0, money_out: 700.0)
+      end
+
+      it "they sell (Case 2): only our cut in, nothing out" do
+        c = contract_for("who_sells_tickets" => "contractor", "settlement_basis" => "revenue_share",
+                         "revenue_our_share" => 30, "revenue_their_share" => 70)
+        expect(c.money_summary).to eq(money_in: 300.0, money_out: 0.0)
+      end
+
+      it "flat deal: the contract's own payments by direction" do
+        c = create(:contract, organization: org, production: production,
+          draft_data: { "payment_structure" => "flat_fee", "payment_config" => { "flat_fee_direction" => "incoming" } })
+        create(:contract_payment, contract: c, direction: "incoming", amount: 500)
+        create(:contract_payment, contract: c, direction: "outgoing", amount: 120)
+
+        expect(c.money_summary).to eq(money_in: 500.0, money_out: 120.0)
+      end
+    end
   end
 end

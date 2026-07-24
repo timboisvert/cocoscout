@@ -66,7 +66,6 @@ class FinancialSummaryService
     # (their revenue comes through contracts, not show ticket sales)
     in_house_productions = @productions.reject(&:type_third_party?)
     production_ids = in_house_productions.map(&:id)
-    all_production_ids = @productions.map(&:id)
     scope = Show.where(production_id: production_ids)
                 .where(event_type: revenue_event_types)
                 .where("date_and_time < ?", Time.current) # Only past shows
@@ -125,6 +124,22 @@ class FinancialSummaryService
     show_ids = scope.pluck(:id)
     total_payouts = ShowPayout.where(show_id: show_ids).sum(:total_payout) || 0
 
+    # Fold in contract money so third-party/contract deals aren't siloed: their
+    # revenue lands in money-in and their contractor payouts land in money-out,
+    # the same as any show. (Gross model — see Contract#money_summary.)
+    contract_money_in = 0.0
+    contract_money_out = 0.0
+    @productions.select(&:type_third_party?).each do |production|
+      contract = production.contract
+      next unless contract
+
+      money = contract.money_summary
+      contract_money_in += money[:money_in]
+      contract_money_out += money[:money_out]
+    end
+    gross_revenue += contract_money_in
+    total_payouts += contract_money_out
+
     # Also include production expenses for shows that may not have financial data yet
     # (production expenses are allocated to all shows regardless of whether financials are entered)
     if production_expenses == 0 && @productions.any?
@@ -146,9 +161,9 @@ class FinancialSummaryService
     # In future, operating_expenses would be subtracted here
     net_income = gross_profit
 
-    # Contract revenue (incoming payments from contracts, including third-party fees)
-    # Only calculate at the org level (multiple productions), not for individual productions
-    contract_revenue = @productions.size > 1 ? calculate_contract_revenue(all_production_ids, date_range) : 0.0
+    # Contract revenue is now folded into gross_revenue above (gross model). Keep
+    # the breakdown key pointing at that same money-in figure.
+    contract_revenue = contract_money_in
 
     {
       show_count: scope.count,
@@ -175,31 +190,5 @@ class FinancialSummaryService
       profit_margin: gross_margin,
       retained: net_income
     }
-  end
-
-  def calculate_contract_revenue(production_ids, date_range)
-    # Contracts belong to organizations, not productions.
-    # Get the organization IDs from the productions.
-    org_ids = Production.where(id: production_ids).pluck(:organization_id).uniq
-    scope = Contract.where(organization_id: org_ids).where(status: :active)
-
-    if date_range
-      # Only include contracts that overlap with the date range
-      scope = scope.where("contract_start_date <= ? OR contract_start_date IS NULL", date_range.last)
-                   .where("contract_end_date >= ? OR contract_end_date IS NULL", date_range.first)
-    end
-
-    scope.sum do |contract|
-      if contract.ticket_revenue_minus_fee?
-        # For ticket_revenue_minus_fee contracts, the org's revenue is the flat fee they keep
-        fee_summary = contract.flat_fee_revenue_summary
-        fee_summary && fee_summary[:confirmed_count] > 0 ? contract.flat_fee_amount : 0.0
-      else
-        # Standard: count paid incoming payments
-        contract.contract_payments.where(direction: "incoming").status_paid.sum(:amount)
-      end
-    end
-  rescue
-    0.0
   end
 end

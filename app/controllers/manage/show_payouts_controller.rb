@@ -13,7 +13,7 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments, :quick_payment_info, :contractor_payment_info, :issue_advances, :reset_calculation,
+      :update_guest_payments, :quick_payment_info, :issue_advances, :reset_calculation,
       :promote_guest
     ]
 
@@ -63,16 +63,13 @@ module Manage
     end
 
     def calculate
-      # Third-party contract payouts are auto-calculated from financials
+      # Third-party revenue-share settles through the contract (financials sync to
+      # the contract payment automatically), so there's nothing to calculate here.
       if @production.third_party? && @production.contract&.revenue_share?
         @contract = @production.contract
-        @contractor = @contract.contractor
-        @show_financials = @show.show_financials
-
-        if @show_financials&.has_data?
-          sync_contractor_line_item
+        if @show.show_financials&.has_data?
           redirect_to manage_money_show_payout_path(@show),
-                      notice: "Contractor payout calculated: #{helpers.number_to_currency(@show_payout.total_payout)}."
+                      notice: "This show settles through the contract — the contractor's share is on the contract's payments."
         else
           redirect_to manage_money_show_payout_path(@show),
                       alert: "Please enter financial data before calculating payouts."
@@ -523,18 +520,6 @@ module Manage
                   notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
     end
 
-    def contractor_payment_info
-      contractor = Contractor.find(params[:contractor_id])
-      venmo_handle = params[:venmo_handle]&.strip.presence
-      zelle_id = params[:zelle_email]&.strip.presence
-
-      contractor.update!(venmo_identifier: venmo_handle&.delete("@")) if venmo_handle
-      contractor.update!(zelle_identifier: zelle_id) if zelle_id
-
-      redirect_to manage_money_show_payout_path(@show),
-                  notice: "Payment info updated for #{contractor.name}."
-    end
-
     def quick_payment_info
       person = Person.find(params[:person_id])
 
@@ -648,48 +633,14 @@ module Manage
       end
     end
 
+    # Third-party revenue-share shows are settled through the Contracts system now
+    # (the contractor's cut becomes a ContractPayment that rides the Stripe payout
+    # run), so this screen only DISPLAYS the split for the show — no line item, no
+    # Venmo/Zelle. Payment happens on the contract.
     def setup_contractor_payout
       @show_financials = @show.show_financials
       @contractor = @contract.contractor
-
-      if @show_financials&.has_data?
-        sync_contractor_line_item
-      end
-
-      @line_items = @show_payout.line_items.by_amount
-      @contractor_line_item = @show_payout.line_items.find_by(payee_type: "Contractor")
-      @advances_by_person = {}
-    end
-
-    def sync_contractor_line_item
-      contractor_pct = @contract.contractor_share_percentage
-      return unless contractor_pct
-
-      total_revenue = @show_financials.total_revenue
-      contractor_amount = (total_revenue * contractor_pct / 100.0).round(2)
-
-      line_item = @show_payout.line_items.find_or_initialize_by(
-        payee_type: "Contractor",
-        payee_id: @contractor&.id
-      )
-
-      unless line_item.paid?
-        line_item.assign_attributes(
-          amount: contractor_amount,
-          calculation_details: {
-            "total_revenue" => total_revenue.to_f,
-            "contractor_share_pct" => contractor_pct,
-            "formula" => "#{helpers.number_to_currency(total_revenue)} × #{contractor_pct}%"
-          }
-        )
-        line_item.save!
-
-        @show_payout.update!(
-          calculated_at: Time.current,
-          total_payout: contractor_amount,
-          status: line_item.paid? ? "paid" : "awaiting_payout"
-        )
-      end
+      @contractor_share_summary = @contract.revenue_share_summary
     end
 
     def set_production

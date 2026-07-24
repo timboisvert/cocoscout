@@ -188,17 +188,12 @@ module Manage
         end
       end
 
-      # Calculate gross_revenue and net_income based on contract type
-      if is_revenue_share
-        gross_revenue = show_revenue
-        net_income = (show_revenue * (our_share || 0) / 100.0).round(2)
-      elsif is_ticket_revenue_minus_fee
-        gross_revenue = show_revenue
-        net_income = contract.flat_fee_amount
-      else
-        gross_revenue = received
-        net_income = received
-      end
+      # Gross model: the contract's money flows into revenue and payout totals
+      # like any show's would, rather than being siloed in the contract system.
+      money = contract.money_summary
+      gross_revenue = money[:money_in]
+      total_payouts = money[:money_out]
+      net_income = (gross_revenue - total_payouts).round(2)
 
       {
         production: production,
@@ -220,7 +215,7 @@ module Manage
         # Zero out in-house specific fields
         show_expenses: 0,
         production_expenses: 0,
-        total_payouts: 0,
+        total_payouts: total_payouts,
         net_income: net_income
       }
     end
