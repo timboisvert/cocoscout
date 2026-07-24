@@ -1380,7 +1380,6 @@ Rails.application.routes.draw do
         get "amend/bookings", action: :amend_bookings, as: :amend_bookings
         post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings
         get "amend/events", action: :amend_events, as: :amend_events
-        post "amend/events", action: :save_amend_events, as: :save_amend_events
         get "amend/payments", action: :amend_payments, as: :amend_payments
         post "amend/payments", action: :save_amend_payments, as: :save_amend_payments
         get "amend/ticketing_tech", action: :amend_ticketing_tech, as: :amend_ticketing_tech

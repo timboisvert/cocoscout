@@ -318,6 +318,7 @@ module Manage
       @amend_data["booking_rules"] ||= {}
       @amend_data["new_bookings"] ||= []
       @amend_data["removed_rental_ids"] ||= []
+      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.production&.name
     end
 
     def save_amend_bookings
@@ -350,7 +351,8 @@ module Manage
       @contract.update_amend_data(existing_amend.merge(
         "booking_rules" => booking_rules,
         "new_bookings" => new_bookings,
-        "removed_rental_ids" => removed_rental_ids
+        "removed_rental_ids" => removed_rental_ids,
+        "production_name" => params[:production_name].to_s.strip
       ))
 
       Rails.logger.info "[AMEND] amend_data saved for contract #{@contract.id}"
@@ -376,26 +378,8 @@ module Manage
 
       # Build a unified list of all events for display
       @all_events_after = build_unified_event_list(@remaining_rentals, @new_bookings, @locations_map, @spaces_map)
-
-      # Any event-time edits already staged for existing rentals.
-      @staged_event_times = @amend_data["event_times"] || {}
     end
 
-    # Stage per-rental event times (the show may run at a different time than the
-    # whole booked slot). params[:event_times] is { rental_id => { enabled, starts_at, ends_at } }.
-    def save_amend_events
-      staged = {}
-      (params[:event_times] || {}).each do |rental_id, times|
-        next unless times[:enabled] == "1" && times[:starts_at].present? && times[:ends_at].present?
-
-        staged[rental_id.to_s] = { "starts_at" => times[:starts_at], "ends_at" => times[:ends_at] }
-      end
-
-      @contract.update_amend_data(@contract.amend_data.merge("event_times" => staged))
-      redirect_to amend_payments_manage_contract_path(@contract)
-    end
-
-    # Step 3: Amend Payments
     # Step 3: The deal — the same Financials editor as the create wizard (who
     # sells, settlement, the generated payment list, add-a-payment, how they may
     # pay us). Seeded from the contract's current config and payments (or the
@@ -452,7 +436,6 @@ module Manage
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
       @service_options = Current.organization.contract_service_options.ordered
       @existing_services = @amend_data["services"] || @contract.draft_services
-      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.production&.name
     end
 
     def save_amend_ticketing_tech
@@ -475,7 +458,6 @@ module Manage
 
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(
-        "production_name" => params[:production_name].to_s.strip,
         "ticketing" => ticketing_data,
         "services" => services
       ))
@@ -599,10 +581,6 @@ module Manage
             )
           end
         end
-
-        # Event-time edits on existing rentals: set the event window within the
-        # slot, and move the linked show to match.
-        apply_event_time_edits(@amend_data["event_times"] || {})
 
         # Reconcile the payment list from the Financials editor. Runs after shows
         # exist so per-event payments can re-link; paid payments are preserved.
@@ -741,30 +719,6 @@ module Manage
       else
         dir = config["flat_fee_direction"]
         %w[incoming outgoing].include?(dir) ? dir : "incoming"
-      end
-    end
-
-    # Set the event window on existing rentals and move each linked show to
-    # match. Times outside the rental slot are rejected by SpaceRental's own
-    # validation, so a bad edit raises and rolls back the amendment.
-    def apply_event_time_edits(event_times)
-      return if event_times.blank?
-
-      rentals = @contract.space_rentals.where(id: event_times.keys).index_by(&:id)
-      event_times.each do |rental_id, times|
-        rental = rentals[rental_id.to_i]
-        next unless rental
-
-        rental.update!(
-          event_starts_at: Time.zone.parse(times["starts_at"]),
-          event_ends_at: Time.zone.parse(times["ends_at"])
-        )
-        Show.where(space_rental_id: rental.id).find_each do |show|
-          show.update!(
-            date_and_time: rental.effective_event_starts_at,
-            duration_minutes: rental.effective_duration_minutes
-          )
-        end
       end
     end
 
@@ -930,7 +884,8 @@ module Manage
     def build_unified_event_list(remaining_rentals, new_bookings, locations_map, spaces_map)
       events = []
 
-      # Add existing (kept) rentals
+      # Add existing (kept) rentals. If the show runs at a different time within
+      # the booked slot, surface that alternate window for display.
       remaining_rentals.each do |rental|
         events << {
           type: :existing,
@@ -938,16 +893,20 @@ module Manage
           ends_at: rental.ends_at,
           location_name: rental.location&.name,
           space_name: rental.location_space&.name,
-          duration: ((rental.ends_at - rental.starts_at) / 1.hour).round(1)
+          duration: ((rental.ends_at - rental.starts_at) / 1.hour).round(1),
+          event_starts_at: rental.has_separate_event_time? ? rental.effective_event_starts_at : nil,
+          event_ends_at: rental.has_separate_event_time? ? rental.effective_event_ends_at : nil
         }
       end
 
-      # Add new bookings
+      # Add new bookings, carrying the alternate show time set on the bookings step.
       new_bookings.each do |booking|
         starts_at = Time.zone.parse(booking["starts_at"])
         location = locations_map[booking["location_id"].to_i]
         space = spaces_map[booking["space_id"].to_i]
         duration = booking["duration"].to_f
+        event_starts_at = (Time.zone.parse(booking["event_starts_at"]) if booking["event_starts_at"].present?)
+        event_ends_at = (Time.zone.parse(booking["event_ends_at"]) if booking["event_ends_at"].present?)
 
         events << {
           type: :new,
@@ -955,7 +914,9 @@ module Manage
           ends_at: starts_at + duration.hours,
           location_name: location&.name,
           space_name: space&.name,
-          duration: duration
+          duration: duration,
+          event_starts_at: event_starts_at,
+          event_ends_at: event_ends_at
         }
       end
 

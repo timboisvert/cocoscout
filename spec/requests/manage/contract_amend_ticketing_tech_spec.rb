@@ -83,22 +83,23 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
     expect(ContractPayment.exists?(paid.id)).to be(true)
   end
 
-  describe "production name" do
+  # Production name is edited on the bookings (Events) step now, not here.
+  describe "production name (on the bookings step)" do
     let!(:production) { create(:production, organization: org, name: "Music & Improv Show").tap { |p| contract.update!(production: p) } }
 
-    it "prefills the amend step with the current name" do
+    it "prefills the bookings step with the current name" do
       contract.update!(production_name: "Music & Improv Show")
-      get amend_ticketing_tech_manage_contract_path(contract)
+      get amend_bookings_manage_contract_path(contract)
       expect(response.body).to include("Music &amp; Improv Show")
     end
 
     it "renames the contract and the linked production on apply" do
       contract.update!(production_name: "Music & Improv Show")
 
-      post save_amend_ticketing_tech_manage_contract_path(contract), params: {
+      post save_amend_bookings_manage_contract_path(contract), params: {
         production_name: "The Midnight Riot",
-        ticketing: { tiers: [], discount: {} }.to_json,
-        tech_provider: "them"
+        booking_rules_json: "[]",
+        removed_rental_ids: "[]"
       }
       post apply_amendments_manage_contract_path(contract)
 
@@ -109,10 +110,10 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
     it "leaves the name untouched when the field is left blank" do
       contract.update!(production_name: "Music & Improv Show")
 
-      post save_amend_ticketing_tech_manage_contract_path(contract), params: {
+      post save_amend_bookings_manage_contract_path(contract), params: {
         production_name: "",
-        ticketing: { tiers: [], discount: {} }.to_json,
-        tech_provider: "them"
+        booking_rules_json: "[]",
+        removed_rental_ids: "[]"
       }
       post apply_amendments_manage_contract_path(contract)
 

@@ -17,6 +17,41 @@
 
     <%= render "manage/contracts/amend_steps", current: 1 %>
 
+  <%
+    # Parse existing amend rules
+    existing_rules = @amend_data["booking_rules"] || {}
+    if existing_rules.is_a?(Hash) && existing_rules["rules"].is_a?(Array)
+      booking_rules = existing_rules["rules"]
+    else
+      booking_rules = []
+    end
+
+    default_location = @locations.find(&:default) || @locations.first
+    default_location_id = default_location&.id
+  %>
+
+  <%= form_with url: save_amend_bookings_manage_contract_path(@contract), method: :post, local: true, data: {
+    controller: "contract-bookings",
+    "contract-bookings-locations-value": @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json,
+    "contract-bookings-existing-rules-value": booking_rules.to_json,
+    "contract-bookings-initial-mode-value": "multiple",
+    "contract-bookings-default-location-id-value": default_location_id
+  } do |form| %>
+
+  <input type="hidden" name="booking_rules_json" data-contract-bookings-target="rulesJson" value="<%= booking_rules.to_json %>">
+  <input type="hidden" name="booking_mode" data-contract-bookings-target="bookingMode" value="multiple">
+  <input type="hidden" name="removed_rental_ids" id="removed-rental-ids" value="<%= (@amend_data["removed_rental_ids"] || []).to_json %>">
+
+  <%# Production Name — renaming here updates the linked production too. %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Production Name</h3>
+    <label class="block text-xs font-medium text-gray-700 mb-1">Name shown on the contract and the show</label>
+    <input type="text" name="production_name" value="<%= @production_name %>"
+           placeholder="e.g. Music &amp; Improv Show"
+           class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+    <p class="text-xs text-gray-500 mt-2">Renaming here updates the linked production in CocoScout too.</p>
+  </div>
+
   <%# Existing Events Section %>
   <% if @existing_rentals.any? %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -55,33 +90,6 @@
       <h3 class="text-sm font-semibold text-gray-700">Add New Events</h3>
     </div>
     <div class="p-4">
-      <%
-        # Parse existing amend rules
-        existing_rules = @amend_data["booking_rules"] || {}
-        if existing_rules.is_a?(Hash) && existing_rules["rules"].is_a?(Array)
-          booking_rules = existing_rules["rules"]
-        else
-          booking_rules = []
-        end
-
-        initial_mode = existing_rules["booking_mode"] || "multiple"
-
-        default_location = @locations.find(&:default) || @locations.first
-        default_location_id = default_location&.id
-      %>
-
-      <%= form_with url: save_amend_bookings_manage_contract_path(@contract), method: :post, local: true, data: {
-        controller: "contract-bookings",
-        "contract-bookings-locations-value": @locations.map { |l| { id: l.id, name: l.name, spaces: l.location_spaces.map { |s| { id: s.id, name: s.name } } } }.to_json,
-        "contract-bookings-existing-rules-value": booking_rules.to_json,
-        "contract-bookings-initial-mode-value": "multiple",
-        "contract-bookings-default-location-id-value": default_location_id
-      } do |form| %>
-
-        <input type="hidden" name="booking_rules_json" data-contract-bookings-target="rulesJson" value="<%= booking_rules.to_json %>">
-        <input type="hidden" name="booking_mode" data-contract-bookings-target="bookingMode" value="multiple">
-        <input type="hidden" name="removed_rental_ids" id="removed-rental-ids" value="<%= (@amend_data["removed_rental_ids"] || []).to_json %>">
-
         <%# Multiple events mode (always show this for amending) %>
         <div data-contract-bookings-target="multipleModeContent">
           <%# List of new bookings being added %>
@@ -354,8 +362,9 @@
             </div>
           </div>
         </template>
-      <% end %>
+      </div>
     </div>
+  <% end %>
   </div>
 </div>
 
