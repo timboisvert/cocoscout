@@ -10,7 +10,7 @@
     gap_meta = {
       contact:  { title: "Add a phone number", desc: "So your team can reach you about shows and shifts." },
       headshot: { title: "Add a headshot",      desc: "Helps producers recognize you in casting and at the door." },
-      payment:  { title: "Set up payment",      desc: "Add Zelle or Venmo so you get paid faster." }
+      payment:  { title: "Set up payment",      desc: "Connect your bank so productions can pay you directly." }
     }
   %>
   <div data-controller="profile-completion" class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
@@ -30,10 +30,15 @@
               <div class="text-sm font-medium text-gray-900"><%= meta[:title] %></div>
               <div class="text-xs text-gray-500"><%= meta[:desc] %></div>
             </div>
-            <button type="button" data-action="click->profile-completion#open" data-gap="<%= gap %>"
-                    class="flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-1.5 text-sm cursor-pointer transition-colors">
-              Add
-            </button>
+            <% if gap == :payment %>
+              <%= link_to "Set up", my_payments_setup_path,
+                    class: "flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-1.5 text-sm cursor-pointer transition-colors" %>
+            <% else %>
+              <button type="button" data-action="click->profile-completion#open" data-gap="<%= gap %>"
+                      class="flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-1.5 text-sm cursor-pointer transition-colors">
+                Add
+              </button>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -89,67 +94,6 @@
             <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
               <button type="button" data-action="click->profile-completion#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
               <%= render "shared/button", text: "Upload", variant: "primary", size: "small", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <%# ===== Payment modal ===== %>
-    <div data-profile-completion-target="paymentModal" data-profile-completion-modal
-         class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-         data-action="click->profile-completion#backdropClose keydown.esc@window->profile-completion#close">
-      <div class="flex min-h-full items-start justify-center p-4 py-12">
-        <div class="relative w-full max-w-sm bg-white rounded-xl shadow-2xl" data-action="click->profile-completion#stopPropagation">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-            <h3 class="text-base font-semibold text-gray-900">Set up payment</h3>
-            <button type="button" data-action="click->profile-completion#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <%= form_with url: my_profile_completion_payment_path, method: :patch do %>
-            <div class="px-5 py-4 space-y-3">
-              <div class="flex gap-2">
-                <label class="flex-1 flex items-center gap-2 border border-gray-300 rounded px-3 py-2 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-                  <input type="radio" name="preferred_payment_method" value="zelle" checked
-                         data-action="change->profile-completion#switchPaymentMethod"
-                         class="accent-pink-500">
-                  <span class="text-sm font-medium text-gray-800">Zelle</span>
-                </label>
-                <label class="flex-1 flex items-center gap-2 border border-gray-300 rounded px-3 py-2 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-                  <input type="radio" name="preferred_payment_method" value="venmo"
-                         data-action="change->profile-completion#switchPaymentMethod"
-                         class="accent-pink-500">
-                  <span class="text-sm font-medium text-gray-800">Venmo</span>
-                </label>
-              </div>
-
-              <div data-profile-completion-target="zelleFields" class="space-y-2">
-                <label class="block text-xs font-medium text-gray-700">Zelle identifier</label>
-                <input type="text" name="person[zelle_identifier]" placeholder="phone or email"
-                       class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
-                <select name="person[zelle_identifier_type]"
-                        class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
-                  <option value="PHONE">Phone</option>
-                  <option value="EMAIL">Email</option>
-                </select>
-              </div>
-
-              <div data-profile-completion-target="venmoFields" class="space-y-2 hidden">
-                <label class="block text-xs font-medium text-gray-700">Venmo identifier</label>
-                <input type="text" name="person[venmo_identifier]" placeholder="@username, phone, or email"
-                       class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
-                <select name="person[venmo_identifier_type]"
-                        class="block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
-                  <option value="USER_HANDLE">Username</option>
-                  <option value="PHONE">Phone</option>
-                  <option value="EMAIL">Email</option>
-                </select>
-              </div>
-            </div>
-            <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-              <button type="button" data-action="click->profile-completion#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-              <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
             </div>
           <% end %>
         </div>

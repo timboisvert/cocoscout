@@ -425,7 +425,6 @@ Rails.application.routes.draw do
 
     # Inline profile-completion updates from the dashboard panel (talent-pool nudge).
     patch "/profile_completion/contact",  to: "profile_completion#update_contact",  as: "profile_completion_contact"
-    patch "/profile_completion/payment",  to: "profile_completion#update_payment",  as: "profile_completion_payment"
     patch "/profile_completion/headshot", to: "profile_completion#update_headshot", as: "profile_completion_headshot"
 
     # Open Requests (consolidated: availability + sign-ups + questionnaires)
@@ -497,10 +496,6 @@ Rails.application.routes.draw do
     # Payments (for talent to manage Venmo/Zelle settings and view history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
-    patch  "/payments/venmo",                    to: "payments#update_venmo",              as: "payments_update_venmo"
-    delete "/payments/venmo",                    to: "payments#remove_venmo",              as: "payments_remove_venmo"
-    patch  "/payments/zelle",                    to: "payments#update_zelle",              as: "payments_update_zelle"
-    delete "/payments/zelle",                    to: "payments#remove_zelle",              as: "payments_remove_zelle"
     # Stripe Connect bank onboarding (get paid directly to your bank).
     post   "/payments/connect",                  to: "payments#connect_bank",              as: "payments_connect_bank"
     get    "/payments/connect/return",           to: "payments#connect_return",            as: "payments_connect_return"

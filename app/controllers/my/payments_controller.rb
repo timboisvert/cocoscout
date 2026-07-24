@@ -26,48 +26,6 @@ module My
       # during onboarding, so there's no name step here).
     end
 
-    def update_venmo
-      if @person.update(venmo_params)
-        @person.update(venmo_verified_at: Time.current) if @person.venmo_identifier.present?
-        redirect_to my_payments_setup_path, notice: "Venmo settings saved successfully!"
-      else
-        flash.now[:alert] = "Please fix the errors below."
-        render :setup, status: :unprocessable_entity
-      end
-    end
-
-    def remove_venmo
-      @person.update!(
-        venmo_identifier: nil,
-        venmo_identifier_type: nil,
-        venmo_verified_at: nil
-      )
-      redirect_to my_payments_setup_path, notice: "Venmo information removed."
-    end
-
-    def update_zelle
-      if @person.update(zelle_params)
-        @person.update(zelle_verified_at: Time.current) if @person.zelle_identifier.present?
-        redirect_to my_payments_setup_path, notice: "Zelle settings saved successfully!"
-      else
-        flash.now[:alert] = "Please fix the errors below."
-        render :setup, status: :unprocessable_entity
-      end
-    end
-
-    def remove_zelle
-      @person.update!(
-        zelle_identifier: nil,
-        zelle_identifier_type: nil,
-        zelle_verified_at: nil
-      )
-      # If Zelle was preferred, switch to venmo if available
-      if @person.preferred_payment_method == "zelle"
-        @person.update!(preferred_payment_method: @person.venmo_configured? ? "venmo" : nil)
-      end
-      redirect_to my_payments_setup_path, notice: "Zelle information removed."
-    end
-
     # Start (or resume) Stripe Connect bank onboarding.
     def connect_bank
       start_bank_onboarding
@@ -117,14 +75,6 @@ module My
       return if @person
 
       redirect_to profile_path, alert: "Please complete your profile to view payments."
-    end
-
-    def venmo_params
-      params.require(:person).permit(:venmo_identifier, :venmo_identifier_type)
-    end
-
-    def zelle_params
-      params.require(:person).permit(:zelle_identifier, :zelle_identifier_type)
     end
   end
 end

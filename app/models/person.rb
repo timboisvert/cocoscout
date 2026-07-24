@@ -436,7 +436,7 @@ class Person < ApplicationRecord
     gaps = []
     gaps << :contact  if phone.blank?
     gaps << :headshot unless profile_headshots.exists?
-    gaps << :payment  unless any_payment_method_configured?
+    gaps << :payment  unless can_receive_payouts?
     gaps
   end
 

@@ -1,10 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Drives the dashboard "complete your info" panel for talent-pool members.
-// Each gap (contact / headshot / payment) opens its own modal. Modals submit
-// normal forms to My::ProfileCompletionController and redirect back here.
+// The contact and headshot gaps open a modal; the payment gap is a link to the
+// bank-setup page. Modals submit normal forms and redirect back here.
 export default class extends Controller {
-    static targets = ["contactModal", "headshotModal", "paymentModal", "venmoFields", "zelleFields"]
+    static targets = ["contactModal", "headshotModal"]
 
     open(event) {
         if (event) event.preventDefault()
@@ -27,27 +27,18 @@ export default class extends Controller {
         event.stopPropagation()
     }
 
-    // Toggle Venmo vs Zelle field groups in the payment modal.
-    switchPaymentMethod(event) {
-        const method = event.currentTarget.value
-        if (this.hasVenmoFieldsTarget) this.venmoFieldsTarget.classList.toggle("hidden", method !== "venmo")
-        if (this.hasZelleFieldsTarget) this.zelleFieldsTarget.classList.toggle("hidden", method !== "zelle")
-    }
-
     // ----- private -----
 
     modalFor(which) {
         if (which === "contact" && this.hasContactModalTarget) return this.contactModalTarget
         if (which === "headshot" && this.hasHeadshotModalTarget) return this.headshotModalTarget
-        if (which === "payment" && this.hasPaymentModalTarget) return this.paymentModalTarget
         return null
     }
 
     allModals() {
         return [
             this.hasContactModalTarget && this.contactModalTarget,
-            this.hasHeadshotModalTarget && this.headshotModalTarget,
-            this.hasPaymentModalTarget && this.paymentModalTarget
+            this.hasHeadshotModalTarget && this.headshotModalTarget
         ].filter(Boolean)
     }
 }

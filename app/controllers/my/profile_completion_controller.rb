@@ -15,24 +15,6 @@ module My
       end
     end
 
-    def update_payment
-      method = params[:preferred_payment_method].to_s
-      attrs =
-        case method
-        when "venmo" then params.require(:person).permit(:venmo_identifier, :venmo_identifier_type)
-        when "zelle" then params.require(:person).permit(:zelle_identifier, :zelle_identifier_type)
-        else {}
-        end
-
-      if @person.update(attrs.to_h.merge(preferred_payment_method: method.presence))
-        @person.update(venmo_verified_at: Time.current) if method == "venmo" && @person.venmo_identifier.present?
-        @person.update(zelle_verified_at: Time.current) if method == "zelle" && @person.zelle_identifier.present?
-        redirect_to my_dashboard_path, notice: "Payment info saved."
-      else
-        redirect_to my_dashboard_path, alert: "Couldn't save payment info: #{@person.errors.full_messages.to_sentence}"
-      end
-    end
-
     def update_headshot
       image = params.dig(:person, :image)
       if image.blank?
