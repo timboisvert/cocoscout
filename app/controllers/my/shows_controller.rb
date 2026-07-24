@@ -102,6 +102,27 @@ module My
       # Merge sign-up shows into the main set
       all_talent_pool_show_ids.merge(sign_up_show_ids)
 
+      # Step 1c: Shows where the person or group is directly cast (a role
+      # assignment) even without talent-pool membership — a one-off casting still
+      # belongs here, the same way the homepage calendar shows it.
+      if selected_person_ids.any?
+        person_assigned_show_ids = Show.joins(:show_person_role_assignments, :production)
+                                       .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: selected_person_ids })
+                                       .where("date_and_time >= ?", Time.current)
+                                       .where.not(productions: { production_type: "course" })
+                                       .pluck(:id)
+        all_talent_pool_show_ids.merge(person_assigned_show_ids)
+      end
+
+      if selected_group_ids.any?
+        group_assigned_show_ids = Show.joins(:show_person_role_assignments, :production)
+                                      .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: selected_group_ids })
+                                      .where("date_and_time >= ?", Time.current)
+                                      .where.not(productions: { production_type: "course" })
+                                      .pluck(:id)
+        all_talent_pool_show_ids.merge(group_assigned_show_ids)
+      end
+
       # Load all shows from talent pool with includes
       all_shows = Show.where(id: all_talent_pool_show_ids)
                       .includes(:production, :location, :event_linkage)
