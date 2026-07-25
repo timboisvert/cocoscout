@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -507,8 +507,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.string "stripe_account_status"
     t.datetime "stripe_account_synced_at"
     t.datetime "updated_at", null: false
-    t.string "venmo_identifier"
-    t.string "zelle_identifier"
     t.index ["organization_id", "name"], name: "index_contractors_on_organization_id_and_name"
     t.index ["organization_id"], name: "index_contractors_on_organization_id"
     t.index ["person_id"], name: "index_contractors_on_person_id"
@@ -881,9 +879,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
     t.datetime "updated_at", null: false
-    t.string "venmo_identifier"
-    t.string "venmo_identifier_type"
-    t.datetime "venmo_verified_at"
     t.boolean "videos_visible", default: true, null: false
     t.string "website"
     t.index ["archived_at"], name: "index_groups_on_archived_at"
@@ -1333,7 +1328,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.string "payout_schedule", default: "manual", null: false
     t.integer "payout_schedule_day"
     t.boolean "payouts_enabled", default: false, null: false
-    t.string "preferred_payment_method"
     t.string "staffing_subscription_id"
     t.string "stripe_account_id"
     t.string "stripe_account_status"
@@ -1347,8 +1341,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.string "subscription_tier", default: "free", null: false
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
-    t.string "venmo_identifier"
-    t.string "zelle_identifier"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -1487,7 +1479,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.boolean "payouts_enabled", default: false, null: false
     t.boolean "performance_credits_visible", default: true, null: false
     t.string "phone"
-    t.string "preferred_payment_method"
     t.boolean "profile_skills_visible", default: true, null: false
     t.text "profile_visibility_settings", default: "{}"
     t.datetime "profile_welcomed_at"
@@ -1503,13 +1494,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.boolean "training_credits_visible", default: true, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.string "venmo_identifier"
-    t.string "venmo_identifier_type"
-    t.datetime "venmo_verified_at"
     t.boolean "videos_visible", default: true, null: false
-    t.string "zelle_identifier"
-    t.string "zelle_identifier_type"
-    t.datetime "zelle_verified_at"
     t.index ["archived_at"], name: "index_people_on_archived_at"
     t.index ["created_at"], name: "index_people_on_created_at"
     t.index ["email"], name: "index_people_on_email"
@@ -2153,8 +2138,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_130000) do
     t.jsonb "calculation_details", default: {}
     t.datetime "created_at", null: false
     t.string "guest_name"
-    t.string "guest_venmo"
-    t.string "guest_zelle"
     t.boolean "is_guest", default: false, null: false
     t.boolean "is_individual_allocation", default: false, null: false
     t.boolean "manually_paid", default: false, null: false
