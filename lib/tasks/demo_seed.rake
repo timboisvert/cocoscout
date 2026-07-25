@@ -1637,7 +1637,7 @@ class DemoSeeder
               payee: person,
               amount: amount,
               shares: 1,
-              payment_method: person.preferred_payment_method || [ "venmo", "cash", "check" ].sample,
+              payment_method: [ "cash", "check" ].sample,
               paid_at: payout.status == "paid" ? 1.day.ago : nil
             )
           end

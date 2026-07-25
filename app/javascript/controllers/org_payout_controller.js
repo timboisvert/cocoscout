@@ -39,21 +39,4 @@ export default class extends Controller {
             this.paymentInfoFormTarget.classList.toggle("hidden")
         }
     }
-
-    // Open Venmo deep link (mirrors payment_actions_controller)
-    openVenmo(event) {
-        event.preventDefault()
-        const button = event.currentTarget
-        const handle = (button.dataset.venmoHandle || "").replace(/^@/, "")
-        const amount = button.dataset.venmoAmount
-        const note = button.dataset.venmoNote || ""
-
-        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle)}&amount=${encodeURIComponent(amount)}&note=${encodeURIComponent(note)}`
-        const webUrl = `https://venmo.com/${encodeURIComponent(handle)}?txn=pay&amount=${encodeURIComponent(amount)}&note=${encodeURIComponent(note)}`
-
-        window.location.href = venmoUrl
-        setTimeout(() => {
-            window.open(webUrl, '_blank')
-        }, 1500)
-    }
 }

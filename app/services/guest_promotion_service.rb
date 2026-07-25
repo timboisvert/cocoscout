@@ -32,7 +32,7 @@ class GuestPromotionService
 
       # Convert the payout line item in place, preserving its amount, and post the
       # earning to the ledger now that it's a real (ledger-eligible) payee.
-      line_item.update!(payee: person, is_guest: false, guest_name: nil, guest_venmo: nil, guest_zelle: nil)
+      line_item.update!(payee: person, is_guest: false, guest_name: nil)
       line_item.sync_earning_ledger_entry!
     end
 

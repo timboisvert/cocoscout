@@ -13,7 +13,7 @@ class SuperadminController < ApplicationController
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
                          agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
                          promo_codes promo_code_new promo_code_create promo_code_deactivate
-                         finances finances_org_detail finances_org_record_payment finances_org_update_payment_info finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
+                         finances finances_org_detail finances_org_record_payment finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
   before_action :use_superadmin_sidebar
 
   # Render superadmin pages inside the dashboard chrome with a dedicated Super
@@ -1278,10 +1278,9 @@ class SuperadminController < ApplicationController
     @without_bio = @active_profiles - @with_bio
     @bio_percent = @active_profiles.positive? ? (@with_bio.to_f / @active_profiles * 100).round(1) : 0
 
-    # Payment setup
-    @with_venmo = non_demo_active.where.not(venmo_identifier: [ nil, "" ]).count
-    @with_zelle = non_demo_active.where.not(zelle_identifier: [ nil, "" ]).count
-    @with_payment = non_demo_active.where("venmo_identifier IS NOT NULL AND venmo_identifier != '' OR zelle_identifier IS NOT NULL AND zelle_identifier != ''").count
+    # Payment setup — everyone is paid on the Stripe rail now, so "set up" means a
+    # connected bank (Stripe Connect with payouts enabled).
+    @with_payment = non_demo_active.where.not(stripe_account_id: [ nil, "" ]).where(payouts_enabled: true).count
     @payment_percent = @active_profiles.positive? ? (@with_payment.to_f / @active_profiles * 100).round(1) : 0
 
     # Public profiles
@@ -2457,33 +2456,6 @@ class SuperadminController < ApplicationController
 
     redirect_to finances_org_detail_path(org_id: @org.id),
       notice: "Payment of #{payout.formatted_amount} recorded."
-  end
-
-  def finances_org_update_payment_info
-    @org = Organization.find(params[:org_id])
-
-    venmo = params[:venmo_identifier].to_s.strip.presence
-    zelle = params[:zelle_identifier].to_s.strip.presence
-
-    # Strip @ from venmo handle if present
-    venmo = venmo.delete("@") if venmo
-
-    # Auto-set preferred method
-    preferred = if venmo.present? && zelle.blank?
-      "venmo"
-    elsif zelle.present? && venmo.blank?
-      "zelle"
-    elsif venmo.present? && zelle.present?
-      @org.preferred_payment_method || "venmo"
-    end
-
-    @org.update!(
-      venmo_identifier: venmo,
-      zelle_identifier: zelle,
-      preferred_payment_method: preferred
-    )
-
-    redirect_to finances_org_detail_path(org_id: @org.id), notice: "Payment info updated."
   end
 
   def finances_course_detail

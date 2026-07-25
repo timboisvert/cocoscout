@@ -331,7 +331,7 @@ module Manage
                                       .uniq
 
       Person.where(id: person_ids)
-            .select { |p| !p.venmo_configured? && !p.zelle_configured? }
+            .reject(&:can_receive_payouts?)
     end
 
     def default_payment_reminder_subject

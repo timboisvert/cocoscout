@@ -285,7 +285,6 @@ Rails.application.routes.draw do
     get    "/finances",          to: "superadmin#finances",            as: "finances"
     get    "/finances/orgs/:org_id", to: "superadmin#finances_org_detail", as: "finances_org_detail"
     post   "/finances/orgs/:org_id/pay", to: "superadmin#finances_org_record_payment", as: "finances_org_record_payment"
-    patch  "/finances/orgs/:org_id/payment_info", to: "superadmin#finances_org_update_payment_info", as: "finances_org_update_payment_info"
     get    "/finances/courses/:course_offering_id", to: "superadmin#finances_course_detail", as: "finances_course_detail"
     post   "/finances/courses/:course_offering_id/pay", to: "superadmin#finances_record_payment", as: "finances_record_payment"
     delete "/finances/payments/:id", to: "superadmin#finances_delete_payment", as: "finances_delete_payment"
@@ -493,7 +492,7 @@ Rails.application.routes.draw do
     get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
     post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
 
-    # Payments (for talent to manage Venmo/Zelle settings and view history)
+    # Payments (for talent to connect a bank and view payout history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
     # Stripe Connect bank onboarding (get paid directly to your bank).

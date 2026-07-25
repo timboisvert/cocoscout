@@ -1,6 +1,5 @@
-<%# "Connect your bank by Aug 1" nudge. Shows to anyone who hasn't finished
-    connecting a bank; the Venmo/Zelle line only appears if they use one. Works on
-    any "my" page (uses Current.user's person). %>
+<%# "Connect your bank" nudge. Shows to anyone who hasn't finished connecting a
+    bank. Works on any "my" page (uses Current.user's person). %>
 <% banner_person = @person || Current.user&.person %>
 <% if banner_person&.needs_bank_connection? %>
   <div class="mb-6 rounded-lg border border-pink-200 bg-gradient-to-r from-pink-50 to-white p-4">

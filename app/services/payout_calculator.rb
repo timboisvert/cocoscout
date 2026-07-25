@@ -157,15 +157,6 @@ class PayoutCalculator
     # Persist line items
     payout = @show.show_payout
     ActiveRecord::Base.transaction do
-      # Preserve existing guest payment info before destroying line items
-      existing_guest_payment_info = {}
-      payout.line_items.where(is_guest: true).each do |li|
-        existing_guest_payment_info[li.guest_name] = {
-          venmo: li.guest_venmo,
-          zelle: li.guest_zelle
-        }
-      end
-
       # Clear existing line items (also clears advance recoveries via dependent: :destroy)
       payout.line_items.destroy_all
 
@@ -182,14 +173,11 @@ class PayoutCalculator
         # advances net against them on the payout ledger (see AdvancePayoutService).
       end
 
-      # Create line items for guests (restoring payment info if it existed)
+      # Create line items for guests
       guest_line_items.each do |item|
-        existing_info = existing_guest_payment_info[item[:guest_name]] || {}
         payout.line_items.create!(
           is_guest: true,
           guest_name: item[:guest_name],
-          guest_venmo: existing_info[:venmo],
-          guest_zelle: existing_info[:zelle],
           amount: item[:amount],
           shares: item[:shares],
           calculation_details: item[:calculation_details]
