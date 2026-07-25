@@ -5,7 +5,7 @@ FactoryBot.define do
     association :organization
     association :course_offering
     amount_cents { 4750 }
-    payment_method { "zelle" }
+    payment_method { "check" }
     status { "paid" }
     paid_at { Time.current }
     payout_type { "full_course" }

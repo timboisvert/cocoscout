@@ -86,7 +86,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect {
         post finances_record_payment_path(course_offering_id: course_offering.id), params: {
           payout_type: "full_course",
-          payment_method: "zelle",
+          payment_method: "check",
           notes: "Full course payment"
         }
       }.to change(OrgPayout, :count).by(1)
@@ -94,7 +94,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       payout = OrgPayout.last
       expect(payout.amount_cents).to eq(9500) # 95% of 10000
       expect(payout.payout_type).to eq("full_course")
-      expect(payout.payment_method).to eq("zelle")
+      expect(payout.payment_method).to eq("check")
       expect(payout.status).to eq("paid")
       expect(response).to redirect_to(finances_course_detail_path(course_offering_id: course_offering.id))
     end
@@ -104,7 +104,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
         post finances_record_payment_path(course_offering_id: course_offering.id), params: {
           payout_type: "custom",
           amount: "50.00",
-          payment_method: "venmo",
+          payment_method: "cash",
           notes: "Partial"
         }
       }.to change(OrgPayout, :count).by(1)

@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe "Contractor payout line item creation" do
   let(:organization) { create(:organization) }
-  let(:contractor) { create(:contractor, organization: organization, venmo_identifier: "danvenmo") }
+  let(:contractor) { create(:contractor, organization: organization) }
   let(:contract) { create(:contract, :active, :revenue_share, :with_contractor, organization: organization, contractor: contractor) }
   let(:production) { create(:production, organization: organization, production_type: "third_party").tap { |p| contract.update!(production: p) } }
   let(:show) { create(:show, production: production, date_and_time: 1.day.ago) }
@@ -43,30 +43,6 @@ RSpec.describe "Contractor payout line item creation" do
       expect(line_item.payee_name).to eq(contractor.name)
     end
 
-    it "detects contractor payment methods via polymorphic interface" do
-      line_item = create(:show_payout_line_item,
-        show_payout: show_payout,
-        payee: contractor,
-        amount: expected_contractor_amount
-      )
-
-      expect(line_item.payee_venmo_ready?).to be true
-      expect(line_item.payee_has_payment_method?).to be true
-    end
-
-    it "handles contractor without payment method" do
-      no_payment_contractor = create(:contractor, organization: organization)
-      line_item = create(:show_payout_line_item,
-        show_payout: show_payout,
-        payee: no_payment_contractor,
-        amount: expected_contractor_amount
-      )
-
-      expect(line_item.payee_venmo_ready?).to be false
-      expect(line_item.payee_zelle_ready?).to be false
-      expect(line_item.payee_has_payment_method?).to be false
-    end
-
     it "marks the show payout as paid when contractor line item is paid" do
       line_item = create(:show_payout_line_item,
         show_payout: show_payout,
@@ -75,7 +51,7 @@ RSpec.describe "Contractor payout line item creation" do
       )
 
       user = create(:user)
-      line_item.mark_as_already_paid!(user, method: "venmo")
+      line_item.mark_as_already_paid!(user, method: "cash")
 
       show_payout.reload
       expect(show_payout.paid?).to be true
@@ -103,17 +79,6 @@ RSpec.describe "Contractor payout line item creation" do
 
       expect(contractor_pct).to eq(40.0)
       expect(contractor_amount).to eq(400.0)
-    end
-
-    it "returns preferred_payment_info for the contractor payee" do
-      line_item = create(:show_payout_line_item,
-        show_payout: show_payout,
-        payee: contractor,
-        amount: expected_contractor_amount
-      )
-
-      payment_info = line_item.payee_preferred_payment
-      expect(payment_info).to eq({ method: "venmo", identifier: "@danvenmo" })
     end
   end
 end

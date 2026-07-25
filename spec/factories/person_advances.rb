@@ -15,7 +15,7 @@ FactoryBot.define do
     trait :paid do
       paid_at { Time.current }
       association :paid_by, factory: :user
-      payment_method { "venmo" }
+      payment_method { "cash" }
     end
 
     trait :partial do

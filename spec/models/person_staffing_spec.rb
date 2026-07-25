@@ -33,35 +33,9 @@ RSpec.describe Person, type: :model do
       expect(person.reload.pool_profile_gaps).not_to include(:headshot)
     end
 
-    it "drops :payment once a payment method is configured" do
-      person = create(:person, zelle_identifier: "a@b.com", zelle_identifier_type: "EMAIL")
+    it "drops :payment once a bank is connected" do
+      person = create(:person, stripe_account_id: "acct_test123", payouts_enabled: true)
       expect(person.pool_profile_gaps).not_to include(:payment)
-    end
-  end
-
-  describe "#preferred_payment_info (Zelle preferred)" do
-    it "prefers Zelle when both are configured and no explicit preference is set" do
-      person = create(:person,
-                      zelle_identifier: "z@b.com", zelle_identifier_type: "EMAIL",
-                      venmo_identifier: "veebartender", venmo_identifier_type: "USER_HANDLE")
-      expect(person.preferred_payment_info[:method]).to eq("zelle")
-    end
-
-    it "honors an explicit Venmo preference" do
-      person = create(:person,
-                      preferred_payment_method: "venmo",
-                      zelle_identifier: "z@b.com", zelle_identifier_type: "EMAIL",
-                      venmo_identifier: "veebartender", venmo_identifier_type: "USER_HANDLE")
-      expect(person.preferred_payment_info[:method]).to eq("venmo")
-    end
-
-    it "falls back to Venmo when only Venmo is configured" do
-      person = create(:person, venmo_identifier: "veebartender", venmo_identifier_type: "USER_HANDLE")
-      expect(person.preferred_payment_info[:method]).to eq("venmo")
-    end
-
-    it "is nil when nothing is configured" do
-      expect(create(:person).preferred_payment_info).to be_nil
     end
   end
 end

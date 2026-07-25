@@ -171,11 +171,11 @@ RSpec.describe PersonAdvance do
       payer = create(:user)
       advance = create(:person_advance)
 
-      advance.mark_paid!(payer, method: "venmo")
+      advance.mark_paid!(payer, method: "cash")
 
       expect(advance.paid_at).to be_present
       expect(advance.paid_by).to eq(payer)
-      expect(advance.payment_method).to eq("venmo")
+      expect(advance.payment_method).to eq("cash")
     end
   end
 
