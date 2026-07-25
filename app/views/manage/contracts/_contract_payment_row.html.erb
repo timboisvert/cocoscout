@@ -105,11 +105,9 @@
           </span>
           <%# Amounts settled through a payout run are fixed by the transfer. %>
           <% if show_actions && !in_run %>
-            <button type="button" data-action="click->payment-modal#open"
-              class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
-              <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
-              <%= payment.amount_tbd? ? "Set Amount" : "Edit" %>
-            </button>
+            <%= render "shared/button", text: (payment.amount_tbd? ? "Set Amount" : "Edit"),
+                  variant: "secondary", size: "xs", icon: "pencil", type: :button,
+                  data: { action: "click->payment-modal#open" } %>
           <% end %>
         </div>
       <% elsif show_actions && payment.status_pending? %>
@@ -122,26 +120,19 @@
             <div class="flex items-center gap-1" data-controller="clipboard">
               <input type="hidden" data-clipboard-target="textField"
                      value="<%= pay_contract_url(token: payment.payment_token!) %>">
-              <button type="button" data-action="click->clipboard#copy"
-                class="inline-flex items-center rounded-md bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-700 transition-colors cursor-pointer">
-                <%= icon("link", class: "w-3 h-3 mr-1 inline") %>
-                Copy pay link
-              </button>
+              <%= render "shared/button", text: "Copy pay link", variant: "primary", size: "xs",
+                    icon: "link", type: :button, data: { action: "click->clipboard#copy" } %>
               <% if offline_allowed %>
-                <button type="button" data-action="click->payment-modal#open"
-                  class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer"
-                  title="Record a payment that arrived another way">
-                  <%= icon("check-circle", class: "w-3 h-3 inline") %>
-                </button>
+                <%= render "shared/button", text: "", variant: "outline-pink", size: "xs",
+                      icon: "check-circle", type: :button,
+                      data: { action: "click->payment-modal#open" },
+                      classes: "!gap-0", title: "Record a payment that arrived another way" %>
               <% end %>
             </div>
           <% elsif is_incoming && offline_allowed %>
-            <%# Phase 5 adds a Stripe pay link here; this records money that arrived offline. %>
-            <button type="button" data-action="click->payment-modal#open"
-              class="inline-flex items-center rounded-md bg-pink-100 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 transition-colors cursor-pointer">
-              <%= icon("check-circle", class: "w-3 h-3 mr-1 inline") %>
-              Record payment
-            </button>
+            <%# Records money that arrived offline (cash/check). %>
+            <%= render "shared/button", text: "Record payment", variant: "outline-pink", size: "xs",
+                  icon: "check-circle", type: :button, data: { action: "click->payment-modal#open" } %>
           <% elsif is_incoming %>
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
                   title="This contract is online payment only. Allow another method on the contract to record one by hand.">
@@ -153,20 +144,15 @@
               Awaiting ticket sales
             </span>
           <% elsif !amount_set %>
-            <button type="button" data-action="click->payment-modal#open"
-              class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
-              <%= icon("pencil", class: "w-3 h-3 mr-1 inline") %>
-              Set amount
-            </button>
+            <%= render "shared/button", text: "Set amount", variant: "secondary", size: "xs",
+                  icon: "pencil", type: :button, data: { action: "click->payment-modal#open" } %>
           <% elsif payable %>
-            <%= button_to add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
-                  method: :post, class: "inline-block",
-                  form: { data: { turbo_confirm: "Add this payment to your contractor payout run?" } } do %>
-              <span class="inline-flex items-center rounded-md bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-700 transition-colors cursor-pointer">
-                <%= icon("banknotes", class: "w-3 h-3 mr-1 inline") %>
-                Add to payout run
-              </span>
-            <% end %>
+            <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "xs",
+                  icon: "banknotes",
+                  path: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
+                  method: :post,
+                  form: { data: { turbo_confirm: "Add this payment to your contractor payout run?" } } %>
+          <% end %>
           <% else %>
             <%= link_to contractor ? manage_contractor_path(contractor) : "#",
                   class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
