@@ -24,8 +24,12 @@ class ShowPayoutLineItem < ApplicationRecord
   # Payee types that carry a company-wide payout balance (guests do not).
   LEDGER_PAYEE_TYPES = %w[Person Contractor Group].freeze
 
-  # Payment methods for tracking how payments were made
-  PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a stripe].freeze
+  # Payment methods for tracking how payments were made. "stripe" is the internal
+  # marker for a line paid through a payout run and "n/a" for $0 lines — both are
+  # stored, never hand-picked. MANUAL_PAYMENT_METHODS is what a manager can choose
+  # when recording an offline payment.
+  PAYMENT_METHODS = %w[cash check other historical n/a stripe].freeze
+  MANUAL_PAYMENT_METHODS = %w[cash check other historical].freeze
 
   # Payout statuses for tracking payment state
   PAYOUT_STATUSES = %w[pending success failed].freeze
@@ -51,7 +55,6 @@ class ShowPayoutLineItem < ApplicationRecord
   # scopes above only see the manual case, so use these for money/people tallies.
   scope :paid, -> { where("manually_paid OR (payout_reference_id IS NOT NULL AND payout_status = 'success')") }
   scope :unpaid, -> { where("NOT manually_paid AND (payout_reference_id IS NULL OR payout_status IS DISTINCT FROM 'success')") }
-  scope :paid_via_venmo, -> { where(payment_method: "venmo").where.not(payout_reference_id: nil) }
   scope :paid_offline, -> { where(manually_paid: true) }
   scope :payout_pending, -> { where(payout_status: "pending") }
   scope :payout_failed, -> { where(payout_status: "failed") }
@@ -199,18 +202,6 @@ class ShowPayoutLineItem < ApplicationRecord
     manually_paid? || (payout_reference_id.present? && payout_status == "success")
   end
 
-  def paid_via_venmo?
-    return false unless payment_method == "venmo"
-    # Paid via automated Venmo payout OR manually marked as paid via Venmo
-    (payout_reference_id.present? && payout_status == "success") || manually_paid?
-  end
-
-  def paid_via_zelle?
-    return false unless payment_method == "zelle"
-    # Manually marked as paid via Zelle (no automated Zelle, so just check manually_paid)
-    manually_paid?
-  end
-
   def payout_pending?
     payout_status == "pending"
   end
@@ -226,13 +217,12 @@ class ShowPayoutLineItem < ApplicationRecord
   def payment_method_label
     return nil unless payment_method
     case payment_method
-    when "venmo" then "Venmo"
     when "cash" then "Cash"
-    when "zelle" then "Zelle"
     when "check" then "Check"
     when "historical" then "Historical"
     when "n/a" then "N/A"
     when "other" then "Other"
+    when "stripe" then "CocoScout" # paid through a payout run — provider isn't user-facing
     else payment_method.titleize
     end
   end
@@ -293,68 +283,6 @@ class ShowPayoutLineItem < ApplicationRecord
     when "Person" then "Individual"
     when "Group" then "Group"
     else payee_type
-    end
-  end
-
-  # Guest payment methods
-  def guest_venmo_configured?
-    is_guest? && guest_venmo.present?
-  end
-
-  def guest_zelle_configured?
-    is_guest? && guest_zelle.present?
-  end
-
-  def guest_has_payment_method?
-    guest_venmo_configured? || guest_zelle_configured?
-  end
-
-  # Get guest's preferred payment info
-  def guest_preferred_payment
-    return nil unless is_guest?
-    if guest_venmo.present?
-      { method: "venmo", identifier: guest_venmo }
-    elsif guest_zelle.present?
-      { method: "zelle", identifier: guest_zelle }
-    end
-  end
-
-  # Override payee_has_payment_method? to handle guests
-  def payee_has_payment_method?
-    if is_guest?
-      guest_has_payment_method?
-    else
-      payee_venmo_ready? || payee_zelle_ready?
-    end
-  end
-
-  # Override payee_venmo_ready? to handle guests
-  def payee_venmo_ready?
-    if is_guest?
-      guest_venmo_configured?
-    else
-      return false unless payee.respond_to?(:venmo_ready_for_payouts?)
-      payee.venmo_ready_for_payouts?
-    end
-  end
-
-  # Override payee_zelle_ready? to handle guests
-  def payee_zelle_ready?
-    if is_guest?
-      guest_zelle_configured?
-    else
-      return false unless payee.respond_to?(:zelle_ready_for_payouts?)
-      payee.zelle_ready_for_payouts?
-    end
-  end
-
-  # Get payee's preferred payment info (handles both guests and regular payees)
-  def payee_preferred_payment
-    if is_guest?
-      guest_preferred_payment
-    else
-      return nil unless payee.respond_to?(:preferred_payment_info)
-      payee.preferred_payment_info
     end
   end
 

@@ -12,7 +12,11 @@
 class PersonAdvance < ApplicationRecord
   STATUSES = %w[pending partial settled written_off].freeze
   ADVANCE_TYPES = %w[show general].freeze
+  # "stripe" is the internal marker for an advance settled through a payout run;
+  # it is stored, never hand-picked. MANUAL_PAYMENT_METHODS is what a manager can
+  # choose when recording an offline payment.
   PAYMENT_METHODS = %w[cash check other stripe].freeze
+  MANUAL_PAYMENT_METHODS = %w[cash check other].freeze
 
   belongs_to :person
   belongs_to :production

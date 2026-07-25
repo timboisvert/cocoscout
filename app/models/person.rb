@@ -399,12 +399,12 @@ class Person < ApplicationRecord
       priority: 2
     }
 
-    # Task 3: Set up payment info (Zelle/Venmo)
+    # Task 3: Connect a bank for payouts
     tasks << {
       key: :payment,
       title: "Set up payment info",
-      description: "Add Zelle or Venmo for faster payouts",
-      completed: any_payment_method_configured?,
+      description: "Connect your bank to get paid directly",
+      completed: can_receive_payouts?,
       priority: 3
     }
 
@@ -446,23 +446,6 @@ class Person < ApplicationRecord
     (tasks.count { |t| t[:completed] }.to_f / tasks.count * 100).round
   end
 
-  # Venmo payout methods
-  VENMO_IDENTIFIER_TYPES = %w[PHONE EMAIL USER_HANDLE].freeze
-
-  validates :venmo_identifier_type, inclusion: { in: VENMO_IDENTIFIER_TYPES }, allow_nil: true
-  validate :venmo_identifier_format, if: -> { venmo_identifier.present? && venmo_identifier_type.present? }
-
-  def venmo_configured?
-    venmo_identifier.present? && venmo_identifier_type.present?
-  end
-
-  # Nudge legacy Venmo/Zelle users to connect a bank for automatic payouts.
-  # Auto-clears once they've connected (needs_bank_connection? comes from
-  # StripeConnectable).
-  def needs_bank_migration_prompt?
-    (venmo_configured? || zelle_configured?) && needs_bank_connection?
-  end
-
   # Total amount currently owed to this person across every organization they
   # work for, in cents (sum of their payout ledger — earnings minus payouts and
   # advance recoveries). Positive = we owe them.
@@ -474,131 +457,7 @@ class Person < ApplicationRecord
     payout_balance_cents.positive?
   end
 
-  def venmo_ready_for_payouts?
-    venmo_configured?
-  end
-
-  def needs_venmo_setup?
-    !venmo_configured?
-  end
-
-  def venmo_status_label
-    venmo_configured? ? "Connected" : "Not Set Up"
-  end
-
-  def venmo_status_color
-    venmo_configured? ? "green" : "gray"
-  end
-
-  def formatted_venmo_identifier
-    return nil unless venmo_identifier.present?
-
-    case venmo_identifier_type
-    when "PHONE"
-      digits = venmo_identifier.gsub(/\D/, "")
-      return venmo_identifier unless digits.length == 10
-
-      "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
-    when "EMAIL"
-      venmo_identifier
-    when "USER_HANDLE"
-      "@#{venmo_identifier.delete('@')}"
-    else
-      venmo_identifier
-    end
-  end
-
-  # Generate Venmo payment URL for mobile deep linking
-  def venmo_payment_link(amount, note = nil)
-    return nil unless venmo_configured? && venmo_identifier_type == "USER_HANDLE"
-
-    username = venmo_identifier.delete("@")
-    params = {
-      txn: "pay",
-      recipients: username,
-      amount: amount.to_f,
-      note: note
-    }.compact
-
-    "venmo://paycharge?#{params.to_query}"
-  end
-
-  # Zelle payout methods
-  ZELLE_IDENTIFIER_TYPES = %w[PHONE EMAIL].freeze
-  PREFERRED_PAYMENT_METHODS = %w[venmo zelle].freeze
-
-  validates :zelle_identifier_type, inclusion: { in: ZELLE_IDENTIFIER_TYPES }, allow_nil: true
-  validates :preferred_payment_method, inclusion: { in: PREFERRED_PAYMENT_METHODS }, allow_nil: true
-  validate :zelle_identifier_format, if: -> { zelle_identifier.present? && zelle_identifier_type.present? }
-
-  def zelle_configured?
-    zelle_identifier.present? && zelle_identifier_type.present?
-  end
-
-  def zelle_ready_for_payouts?
-    zelle_configured?
-  end
-
-  def formatted_zelle_identifier
-    return nil unless zelle_identifier.present?
-
-    case zelle_identifier_type
-    when "PHONE"
-      digits = zelle_identifier.gsub(/\D/, "")
-      return zelle_identifier unless digits.length == 10
-
-      "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
-    when "EMAIL"
-      zelle_identifier
-    else
-      zelle_identifier
-    end
-  end
-
-  def any_payment_method_configured?
-    zelle_configured? || venmo_configured?
-  end
-
-  def preferred_payment_info
-    case preferred_payment_method
-    when "zelle"
-      { method: "zelle", identifier: formatted_zelle_identifier } if zelle_configured?
-    when "venmo"
-      { method: "venmo", identifier: formatted_venmo_identifier } if venmo_configured?
-    else
-      # Return whichever is configured, preferring Zelle.
-      if zelle_configured?
-        { method: "zelle", identifier: formatted_zelle_identifier }
-      elsif venmo_configured?
-        { method: "venmo", identifier: formatted_venmo_identifier }
-      end
-    end
-  end
-
   private
-
-  def venmo_identifier_format
-    case venmo_identifier_type
-    when "PHONE"
-      digits = venmo_identifier.gsub(/\D/, "")
-      errors.add(:venmo_identifier, "must be a valid 10-digit US phone number") unless digits.length == 10
-    when "EMAIL"
-      errors.add(:venmo_identifier, "must be a valid email address") unless venmo_identifier.match?(URI::MailTo::EMAIL_REGEXP)
-    when "USER_HANDLE"
-      handle = venmo_identifier.delete("@")
-      errors.add(:venmo_identifier, "must be a valid Venmo username (5-30 characters)") unless handle.match?(/\A[a-zA-Z0-9_-]{5,30}\z/)
-    end
-  end
-
-  def zelle_identifier_format
-    case zelle_identifier_type
-    when "PHONE"
-      digits = zelle_identifier.gsub(/\D/, "")
-      errors.add(:zelle_identifier, "must be a valid 10-digit US phone number") unless digits.length == 10
-    when "EMAIL"
-      errors.add(:zelle_identifier, "must be a valid email address") unless zelle_identifier.match?(URI::MailTo::EMAIL_REGEXP)
-    end
-  end
 
   def phone_format
     return if phone.blank?

@@ -3,7 +3,7 @@
 class OrgPayout < ApplicationRecord
   STATUSES = %w[pending paid].freeze
   PAYOUT_TYPES = %w[full_course per_session custom].freeze
-  PAYMENT_METHODS = %w[venmo zelle cash check bank_transfer other].freeze
+  PAYMENT_METHODS = %w[cash check bank_transfer other].freeze
 
   belongs_to :organization
   belongs_to :course_offering, optional: true

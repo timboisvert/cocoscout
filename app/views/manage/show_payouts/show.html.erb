@@ -621,7 +621,7 @@
                   </div>
 
                   <div class="grid grid-cols-2 gap-2">
-                    <% PersonAdvance::PAYMENT_METHODS.each do |method| %>
+                    <% PersonAdvance::MANUAL_PAYMENT_METHODS.each do |method| %>
                       <%= form_with url: manage_mark_paid_money_advance_path(@production, advance), method: :post do %>
                         <input type="hidden" name="payment_method" value="<%= method %>">
                         <%= render "shared/button",
@@ -1032,7 +1032,7 @@
               <h3 class="text-lg font-semibold text-gray-900 mb-2">Mark as Paid</h3>
               <p class="text-sm text-gray-600 mb-4">Recording payment for <span data-payment-actions-target="markPaidName" class="font-medium"></span></p>
               <div class="space-y-2">
-                <% ShowPayoutLineItem::PAYMENT_METHODS.each do |method| %>
+                <% ShowPayoutLineItem::MANUAL_PAYMENT_METHODS.each do |method| %>
                   <%= form_with url: "#", method: :post, local: true, class: "mark-paid-form", data: { "payment-actions-target": "markPaidForm", method: method } do %>
                     <%= render "shared/button", text: method.titleize, variant: "secondary", size: "small", classes: "w-full", type: :submit %>
                   <% end %>

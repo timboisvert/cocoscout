@@ -3,7 +3,7 @@
 class CourseOfferingPayout < ApplicationRecord
   STATUSES = %w[pending calculated paid].freeze
   PAYOUT_MODES = %w[lump_sum per_session].freeze
-  PAYMENT_METHODS = %w[venmo cash zelle check other].freeze
+  PAYMENT_METHODS = %w[cash check bank_transfer other].freeze
 
   belongs_to :course_offering
 
