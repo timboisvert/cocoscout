@@ -90,8 +90,8 @@
                         Already advanced: <%= number_to_currency(total_advanced) %>
                         <span class="text-gray-400">(<%= person_advances.count %> advance<%= person_advances.count == 1 ? '' : 's' %>)</span>
                       </div>
-                    <% elsif person.formatted_venmo_identifier.present? %>
-                      <div class="text-xs text-gray-500 truncate"><%= person.formatted_venmo_identifier %></div>
+                    <% elsif person.can_receive_payouts? %>
+                      <div class="text-xs text-green-600 truncate">Bank connected</div>
                     <% end %>
                   </div>
 

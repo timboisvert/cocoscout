@@ -340,14 +340,14 @@ module Manage
     end
 
     def send_payment_reminders
-      # Find performers without Venmo set up who have unpaid line items
+      # Find performers who haven't connected a bank yet and have unpaid line items
       line_items_needing_setup = @show_payout.line_items.not_already_paid.select do |li|
-        li.payee.respond_to?(:needs_venmo_setup?) && li.payee.needs_venmo_setup?
+        li.payee.respond_to?(:can_receive_payouts?) && !li.payee.can_receive_payouts?
       end
 
       if line_items_needing_setup.empty?
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "All performers have Venmo set up!"
+                    notice: "Everyone has connected a bank!"
         return
       end
 
@@ -496,58 +496,6 @@ module Manage
       redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
-    # Update payment info for guest performers
-    def update_guest_payments
-      guests_params = params[:guests] || {}
-      updated_count = 0
-
-      guests_params.each do |_key, guest_data|
-        line_item = @show_payout.line_items.find_by(id: guest_data[:id], is_guest: true)
-        next unless line_item
-
-        # Normalize Venmo handle (remove @ prefix if present)
-        venmo = guest_data[:venmo]&.strip
-        venmo = venmo[1..] if venmo&.start_with?("@")
-
-        line_item.update!(
-          guest_venmo: venmo.presence,
-          guest_zelle: guest_data[:zelle]&.strip.presence
-        )
-        updated_count += 1
-      end
-
-      redirect_to manage_money_show_payout_path(@show),
-                  notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
-    end
-
-    def quick_payment_info
-      person = Person.find(params[:person_id])
-
-      venmo_handle = params[:venmo_handle]&.strip.presence
-      zelle_email = params[:zelle_email]&.strip.presence
-
-      if venmo_handle
-        # Normalize: remove @ prefix
-        venmo_handle = venmo_handle.delete("@")
-        person.update!(
-          venmo_identifier: venmo_handle,
-          venmo_identifier_type: "USER_HANDLE",
-          preferred_payment_method: "venmo"
-        )
-      end
-
-      if zelle_email
-        identifier_type = zelle_email.include?("@") ? "EMAIL" : "PHONE"
-        person.update!(
-          zelle_identifier: zelle_email,
-          zelle_identifier_type: identifier_type,
-          preferred_payment_method: person.venmo_configured? ? person.preferred_payment_method : "zelle"
-        )
-      end
-
-      redirect_to manage_money_show_payout_path(@show),
-                  notice: "Payment info updated for #{person.name}."
-    end
 
     # Issue advances to cast members for this show
     def issue_advances

@@ -12,7 +12,7 @@
 class PersonAdvance < ApplicationRecord
   STATUSES = %w[pending partial settled written_off].freeze
   ADVANCE_TYPES = %w[show general].freeze
-  PAYMENT_METHODS = %w[venmo zelle cash check other stripe].freeze
+  PAYMENT_METHODS = %w[cash check other stripe].freeze
 
   belongs_to :person
   belongs_to :production

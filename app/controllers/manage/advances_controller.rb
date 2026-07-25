@@ -88,7 +88,7 @@ module Manage
     end
 
     def mark_paid
-      method = params[:payment_method] || "venmo"
+      method = params[:payment_method] || "cash"
       notes = params[:notes]
 
       @advance.mark_paid!(Current.user, method: method, notes: notes)
