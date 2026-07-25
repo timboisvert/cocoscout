@@ -13,7 +13,7 @@ module Manage
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
       :add_line_item, :remove_line_item, :add_missing_cast,
-      :update_guest_payments, :quick_payment_info, :issue_advances, :reset_calculation,
+      :issue_advances, :reset_calculation,
       :promote_guest
     ]
 
