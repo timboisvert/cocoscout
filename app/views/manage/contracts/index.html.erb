@@ -96,11 +96,7 @@
 
       <%# Active Contracts Tab %>
       <div data-tabs-target="panel">
-        <div class="space-y-2">
-          <% @sorted_contracts.each do |contract| %>
-            <%= render "contract_list_row", contract: contract %>
-          <% end %>
-        </div>
+        <%= render "contract_slim_list", contracts: @sorted_contracts %>
       </div>
 
       <%# Timeline Tab %>
