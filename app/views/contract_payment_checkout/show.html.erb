@@ -5,7 +5,7 @@
     <div class="text-center mb-8">
       <h1 class="text-3xl coustard-regular text-gray-900">Pay <%= @organization.name %></h1>
       <p class="mt-2 text-sm text-gray-600">
-        <%= @contract.contractor_name %> — <%= @contract.production_name.presence || "contract payment" %>
+        <%= @contract.contractor_name %> — <%= @contract.production_name.presence || @contract.production&.name || "contract payment" %>
       </p>
     </div>
 
@@ -26,6 +26,41 @@
             Due <%= @payment.due_date.strftime("%B %-d, %Y") %>
           <% end %>
         </div>
+      </div>
+
+      <%# What this payment is for — a specific event, or the contract in general. %>
+      <div class="px-6 py-4 border-b border-gray-100 text-left">
+        <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">What this is for</div>
+        <% if @payment.show.present? %>
+          <% show = @payment.show %>
+          <div class="flex items-center gap-3">
+            <%# Calendar chip %>
+            <div class="flex-shrink-0 w-12 rounded-lg border border-gray-200 overflow-hidden text-center leading-none">
+              <div class="bg-pink-500 text-white text-[10px] font-semibold uppercase py-1"><%= show.date_and_time.strftime("%b") %></div>
+              <div class="text-xl font-bold text-gray-900 py-1"><%= show.date_and_time.strftime("%-d") %></div>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-gray-900 truncate"><%= show.display_name %></div>
+              <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%A, %b %-d · %-l:%M %p") %></div>
+              <% if show.location.present? %>
+                <div class="text-xs text-gray-400 truncate"><%= show.location.name %></div>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <% prod_name = @contract.production_name.presence || @contract.production&.name %>
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-gray-900 truncate"><%= prod_name.presence || "Your contract" %></div>
+              <div class="text-xs text-gray-500">Part of your agreement with <%= @organization.name %> — not a single event.</div>
+            </div>
+          </div>
+        <% end %>
       </div>
 
       <div class="px-6 py-6">
