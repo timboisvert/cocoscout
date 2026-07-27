@@ -67,7 +67,9 @@
                 <% blocks << { start: slot[:start], finish: slot[:finish], count: 1, dur: slot[:dur], cap: slot[:cap] } %>
               <% end %>
             <% end %>
-            <p><%= pluralize(@wizard_state[:audition_sessions].size, "slot") %><%= blocks.size > 1 ? " across #{pluralize(blocks.size, "block")}" : "" %></p>
+            <% if blocks.size > 1 %>
+              <p><%= pluralize(@wizard_state[:audition_sessions].size, "slot") %> across <%= pluralize(blocks.size, "block") %></p>
+            <% end %>
             <ul class="mt-1 space-y-1">
               <% blocks.each do |b| %>
                 <li>• <strong><%= pluralize(b[:count], "slot") %></strong> on <%= b[:start].strftime("%A, %b %-d") %>, <%= b[:start].strftime("%-I:%M %p") %>–<%= b[:finish].strftime("%-I:%M %p") %><%= b[:cap] ? " · #{pluralize(b[:cap], "spot")} each" : "" %></li>
