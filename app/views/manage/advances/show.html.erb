@@ -205,42 +205,54 @@
               </button>
             <% end %>
 
-            <%= form_with url: manage_destroy_money_advance_path(@production, @advance), method: :delete, data: { turbo_confirm: "Cancel this advance? This will remove it entirely." }, class: "block" do %>
-              <button type="submit"
-                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors w-full text-left cursor-pointer">
-                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900">Cancel Advance</div>
-                  <div class="text-xs text-gray-500">Remove this advance entirely</div>
-                </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-cancel-advance-<%= @advance.id %>"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors w-full text-left cursor-pointer">
+              <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
-              </button>
-            <% end %>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Cancel Advance</div>
+                <div class="text-xs text-gray-500">Remove this advance entirely</div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <%= render "shared/confirm_modal",
+                  id: "confirm-cancel-advance-#{@advance.id}",
+                  title: "Cancel advance?",
+                  message: "Cancel this advance? This will remove it entirely.",
+                  confirm_text: "Cancel Advance",
+                  url: manage_destroy_money_advance_path(@production, @advance),
+                  method: :delete %>
           <% elsif @advance.outstanding? %>
             <%# Paid but not recovered - show Write Off option %>
-            <%= form_with url: manage_write_off_money_advance_path(@production, @advance), method: :post, data: { turbo_confirm: "Write off the remaining #{number_to_currency(@advance.remaining_balance)}? This forgives the debt and cannot be undone." }, class: "block" do %>
-              <button type="submit"
-                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
-                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900">Write Off Balance</div>
-                  <div class="text-xs text-gray-500">Forgive remaining <%= number_to_currency(@advance.remaining_balance) %></div>
-                </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-writeoff-advance-<%= @advance.id %>"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+              <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-              </button>
-            <% end %>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Write Off Balance</div>
+                <div class="text-xs text-gray-500">Forgive remaining <%= number_to_currency(@advance.remaining_balance) %></div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <%= render "shared/confirm_modal",
+                  id: "confirm-writeoff-advance-#{@advance.id}",
+                  title: "Write off balance?",
+                  message: "Write off the remaining #{number_to_currency(@advance.remaining_balance)}? This forgives the debt and cannot be undone.",
+                  confirm_text: "Write Off Balance",
+                  url: manage_write_off_money_advance_path(@production, @advance),
+                  method: :post %>
           <% elsif @advance.fully_repaid? %>
             <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
               <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">

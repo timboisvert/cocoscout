@@ -96,11 +96,16 @@
                     data-audition-cycle-id="<%= audition_cycle.id %>">
               Edit
             </button>
-            <%= link_to "Delete",
-                manage_signups_auditions_cycle_session_path(production, audition_cycle, session),
-                method: :delete,
-                data: { turbo_method: :delete, turbo_confirm: "Delete this session? Auditionees scheduled in it will be unscheduled." },
-                class: "text-gray-500 hover:text-red-600 font-medium" %>
+            <button type="button"
+                data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-session-list-<%= session.id %>"
+                class="text-gray-500 hover:text-red-600 font-medium bg-transparent border-0 cursor-pointer p-0">Delete</button>
+            <%= render "shared/confirm_modal",
+                id: "confirm-delete-session-list-#{session.id}",
+                title: "Delete session?",
+                message: "Delete this session? Auditionees scheduled in it will be unscheduled.",
+                confirm_text: "Delete",
+                url: manage_signups_auditions_cycle_session_path(production, audition_cycle, session),
+                method: :delete %>
           </div>
         </div>
       </div>

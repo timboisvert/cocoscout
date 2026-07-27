@@ -155,17 +155,35 @@
         <% end %>
         <div class="flex flex-wrap gap-2">
           <% if @audition_request.archived? %>
-            <%= link_to manage_unarchive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to restore this sign-up? It will appear in the active sign-ups list again." } do %>
-              <%= render "shared/button", text: "Restore Sign-up", variant: "outline", size: "small" %>
-            <% end %>
+            <%= render "shared/button", text: "Restore Sign-up", variant: "outline", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-signup-restore-#{@audition_request.id}" } %>
+            <%= render "shared/confirm_modal",
+                  id: "confirm-signup-restore-#{@audition_request.id}",
+                  title: "Restore sign-up?",
+                  message: "Are you sure you want to restore this sign-up? It will appear in the active sign-ups list again.",
+                  confirm_text: "Restore",
+                  url: manage_unarchive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                  method: :post %>
           <% else %>
-            <%= link_to manage_archive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to archive this sign-up? They will be removed from the active sign-ups list but their request will be preserved." } do %>
-              <%= render "shared/button", text: "Archive Sign-up", variant: "outline", size: "small" %>
-            <% end %>
+            <%= render "shared/button", text: "Archive Sign-up", variant: "outline", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-signup-archive-#{@audition_request.id}" } %>
+            <%= render "shared/confirm_modal",
+                  id: "confirm-signup-archive-#{@audition_request.id}",
+                  title: "Archive sign-up?",
+                  message: "Are you sure you want to archive this sign-up? They will be removed from the active sign-ups list but their request will be preserved.",
+                  confirm_text: "Archive",
+                  url: manage_archive_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                  method: :post %>
           <% end %>
-          <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), data: { turbo_method: :delete, turbo_confirm: "⚠️ PERMANENTLY DELETE this sign-up?\n\nThis will completely remove their audition request, answers, votes, and all associated data. This cannot be undone.\n\nIf you just want to remove them from the active list, use 'Archive' instead." } do %>
-            <%= render "shared/button", text: "Delete Sign-up", variant: "outline", size: "small" %>
-          <% end %>
+          <%= render "shared/button", text: "Delete Sign-up", variant: "outline", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-signup-delete-#{@audition_request.id}" } %>
+          <%= render "shared/confirm_modal",
+                id: "confirm-signup-delete-#{@audition_request.id}",
+                title: "Permanently delete sign-up?",
+                message: "This will completely remove their audition request, answers, votes, and all associated data. This cannot be undone. If you just want to remove them from the active list, use 'Archive' instead.",
+                confirm_text: "Delete",
+                url: manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                method: :delete %>
           <% if Current.user&.superadmin? && @requestable.is_a?(Person) && @requestable.user %>
             <%= button_to impersonate_user_path, method: :post, params: { email: @requestable.user.email_address }, class: "inline-block" do %>
               <%= render "shared/button", text: "Impersonate User", variant: "outline", size: "small" %>
