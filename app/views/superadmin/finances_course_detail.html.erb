@@ -140,13 +140,19 @@
                     <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900"><%= p.formatted_amount %></td>
                     <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate"><%= p.notes %></td>
                     <td class="px-4 py-3 text-right">
-                      <%= form_with url: finances_delete_payment_path(id: p.id), method: :delete, class: "inline", data: { turbo_confirm: "Delete this payment record?" } do %>
-                        <button type="submit" class="text-gray-400 hover:text-red-500 p-1" title="Delete">
-                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                          </svg>
-                        </button>
-                      <% end %>
+                      <% cid = "confirm-delete-payment-#{p.id}" %>
+                      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                              class="text-gray-400 hover:text-red-500 p-1 bg-transparent border-0 cursor-pointer" title="Delete">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                      </button>
+                      <%= render "shared/confirm_modal", id: cid,
+                            title: "Delete payment?",
+                            message: "Delete this payment record?",
+                            confirm_text: "Delete",
+                            url: finances_delete_payment_path(id: p.id),
+                            method: :delete %>
                     </td>
                   </tr>
                 <% end %>

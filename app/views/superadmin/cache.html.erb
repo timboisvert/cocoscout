@@ -155,10 +155,15 @@
           <p class="text-sm text-gray-600 mb-3">
             Clear all cached data. The cache will be rebuilt automatically as pages are accessed.
           </p>
-          <%= form_with url: cache_clear_path, method: :post do %>
-            <%= render "shared/button", text: "Clear All Cache", variant: "danger", size: "small", type: :submit,
-                data: { turbo_confirm: "This will clear all #{number_with_delimiter(@entry_count)} cache entries. Continue?" } %>
-          <% end %>
+          <% cid = "confirm-clear-all-cache" %>
+          <%= render "shared/button", text: "Clear All Cache", variant: "danger", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+          <%= render "shared/confirm_modal", id: cid,
+              title: "Clear all cache?",
+              message: "This will clear all #{number_with_delimiter(@entry_count)} cache entries. Continue?",
+              confirm_text: "Clear All Cache",
+              url: cache_clear_path,
+              method: :post %>
         </div>
       </div>
 
@@ -169,10 +174,37 @@
           <p class="text-sm text-gray-600 mb-3">
             Clear cache entries matching a pattern (e.g., "person_card", "dashboard", "views/manage").
           </p>
+          <% pattern_cid = "confirm-clear-pattern" %>
           <%= form_with url: cache_clear_pattern_path, method: :post, class: "flex gap-2" do |f| %>
             <%= f.text_field :pattern, placeholder: "Enter pattern...", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400 text-sm" %>
-            <%= render "shared/button", text: "Clear Pattern", variant: "warning", size: "small", type: :submit,
-                data: { turbo_confirm: "This will clear cache entries matching the pattern. Continue?" } %>
+            <%= render "shared/button", text: "Clear Pattern", variant: "warning", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: pattern_cid } %>
+
+            <%# Confirmation modal — the confirm button submits the enclosing form (preserving the pattern input) %>
+            <div id="<%= pattern_cid %>"
+                 class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                 data-controller="modal"
+                 data-action="click->modal#closeOnBackdrop">
+              <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+                   data-action="click->modal#stopPropagation">
+                <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                  <h3 class="text-lg font-semibold text-white">Clear cache by pattern?</h3>
+                  <button type="button" data-action="click->modal#close"
+                          class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="px-6 py-5 text-sm text-gray-600">
+                  This will clear cache entries matching the pattern. Continue?
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+                  <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+                  <%= render "shared/button", text: "Clear Pattern", variant: "primary", size: "medium", type: :submit %>
+                </div>
+              </div>
+            </div>
           <% end %>
         </div>
       </div>

@@ -138,10 +138,15 @@
             </ul>
           </div>
 
-          <%= form_with url: storage_cleanup_orphans_path, method: :post do %>
-            <%= render "shared/button", text: "Purge All Orphans", variant: "danger", size: "small", type: :submit,
-                data: { turbo_confirm: "This will permanently delete #{@orphaned_count} orphaned blobs. Continue?" } %>
-          <% end %>
+          <% cid = "confirm-purge-orphans" %>
+          <%= render "shared/button", text: "Purge All Orphans", variant: "danger", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+          <%= render "shared/confirm_modal", id: cid,
+              title: "Purge all orphans?",
+              message: "This will permanently delete #{@orphaned_count} orphaned blobs. Continue?",
+              confirm_text: "Purge All Orphans",
+              url: storage_cleanup_orphans_path,
+              method: :post %>
         <% else %>
           <p class="text-sm text-green-600">✓ No orphaned blobs</p>
         <% end %>
@@ -169,10 +174,15 @@
         <% if @legacy_count > 0 %>
           <p class="text-sm mb-3"><strong>Count:</strong> <%= @legacy_count %></p>
 
-          <%= form_with url: storage_cleanup_legacy_path, method: :post do %>
-            <%= render "shared/button", text: "Delete Legacy Attachments", variant: "danger", size: "small", type: :submit,
-                data: { turbo_confirm: "This will delete #{@legacy_count} legacy attachment records. The blobs will remain. Continue?" } %>
-          <% end %>
+          <% cid = "confirm-delete-legacy" %>
+          <%= render "shared/button", text: "Delete Legacy Attachments", variant: "danger", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+          <%= render "shared/confirm_modal", id: cid,
+              title: "Delete legacy attachments?",
+              message: "This will delete #{@legacy_count} legacy attachment records. The blobs will remain. Continue?",
+              confirm_text: "Delete Legacy Attachments",
+              url: storage_cleanup_legacy_path,
+              method: :post %>
         <% else %>
           <p class="text-sm text-green-600">✓ No legacy attachments</p>
         <% end %>
@@ -213,17 +223,30 @@
       <% if @flat_keys_count > 0 %>
         <% @flat_keys_by_service.each do |service, count| %>
           <div class="mb-2">
-            <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block mr-2" do %>
-              <%= hidden_field_tag :service, service %>
-              <%= hidden_field_tag :limit, 5 %>
-              <%= render "shared/button", text: "Test Migrate 5 #{service} Keys", variant: "secondary", size: "small", type: :submit,
-                  data: { turbo_confirm: "This will copy 5 files to new hierarchical paths as a test. Old files will be kept. Continue?" } %>
-            <% end %>
-            <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block" do %>
-              <%= hidden_field_tag :service, service %>
-              <%= render "shared/button", text: "Migrate All #{service} Keys (#{count})", variant: "primary", size: "small", type: :submit,
-                  data: { turbo_confirm: "This will copy #{count} files to new hierarchical paths. Old files will be kept. Continue?" } %>
-            <% end %>
+            <% test_cid = "confirm-migrate-test-#{service.to_s.parameterize}" %>
+            <span class="inline-block mr-2">
+              <%= render "shared/button", text: "Test Migrate 5 #{service} Keys", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: test_cid } %>
+            </span>
+            <%= render "shared/confirm_modal", id: test_cid,
+                title: "Test migrate keys?",
+                message: "This will copy 5 files to new hierarchical paths as a test. Old files will be kept. Continue?",
+                confirm_text: "Test Migrate",
+                url: storage_migrate_keys_path,
+                method: :post,
+                params: { service: service, limit: 5 } %>
+            <% all_cid = "confirm-migrate-all-#{service.to_s.parameterize}" %>
+            <span class="inline-block">
+              <%= render "shared/button", text: "Migrate All #{service} Keys (#{count})", variant: "primary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: all_cid } %>
+            </span>
+            <%= render "shared/confirm_modal", id: all_cid,
+                title: "Migrate all keys?",
+                message: "This will copy #{count} files to new hierarchical paths. Old files will be kept. Continue?",
+                confirm_text: "Migrate All",
+                url: storage_migrate_keys_path,
+                method: :post,
+                params: { service: service } %>
           </div>
         <% end %>
         <p class="text-xs text-gray-500 mt-2">Note: Old files are preserved. You can delete them later after verifying the migration.</p>
@@ -246,10 +269,15 @@
         verifying all blob keys are correct.
       </p>
 
-      <%= form_with url: storage_cleanup_s3_orphans_path, method: :post do %>
-        <%= render "shared/button", text: "Clean Up Orphaned S3 Files", variant: "danger", size: "small", type: :submit,
-            data: { turbo_confirm: "This will permanently delete S3 files that don't have matching blob records. This cannot be undone. Continue?" } %>
-      <% end %>
+      <% cid = "confirm-cleanup-s3" %>
+      <%= render "shared/button", text: "Clean Up Orphaned S3 Files", variant: "danger", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+      <%= render "shared/confirm_modal", id: cid,
+          title: "Clean up orphaned S3 files?",
+          message: "This will permanently delete S3 files that don't have matching blob records. This cannot be undone. Continue?",
+          confirm_text: "Clean Up",
+          url: storage_cleanup_s3_orphans_path,
+          method: :post %>
     </div>
   </div>
 

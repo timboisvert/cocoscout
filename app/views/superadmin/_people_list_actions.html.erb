@@ -1,12 +1,18 @@
 <% if suspicious_count > 0 %>
-  <%= button_to destroy_all_suspicious_people_path,
-      method: :delete,
-      form: { data: { turbo_confirm: "Are you sure you want to delete ALL #{suspicious_count} suspicious people? This cannot be undone." } } do %>
-    <%= render "shared/button",
-        text: "Delete All Suspicious",
-        variant: "danger",
-        size: "small",
-        icon: "trash",
-        type: :button %>
-  <% end %>
+  <% cid = "confirm-delete-suspicious" %>
+  <%= render "shared/button",
+      text: "Delete All Suspicious",
+      variant: "danger",
+      size: "small",
+      icon: "trash",
+      type: :button,
+      data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+  <%= render "shared/confirm_modal",
+      id: cid,
+      title: "Delete all suspicious people?",
+      message: "Are you sure you want to delete ALL #{suspicious_count} suspicious people? This cannot be undone.",
+      confirm_text: "Delete All",
+      confirm_icon: "trash",
+      url: destroy_all_suspicious_people_path,
+      method: :delete %>
 <% end %>

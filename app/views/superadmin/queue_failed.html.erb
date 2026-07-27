@@ -53,10 +53,17 @@
                   </div>
                 </div>
 
-                <%= button_to "Retry", queue_retry_path(failed_execution.id),
-                    method: :post,
-                    class: "ml-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded font-medium cursor-pointer",
-                    data: { confirm: "Retry this job?" } %>
+                <% cid = "confirm-retry-job-#{failed_execution.id}" %>
+                <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                        class="ml-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded font-medium cursor-pointer">
+                  Retry
+                </button>
+                <%= render "shared/confirm_modal", id: cid,
+                      title: "Retry this job?",
+                      message: "Retry this job?",
+                      confirm_text: "Retry",
+                      url: queue_retry_path(failed_execution.id),
+                      method: :post %>
               </div>
 
               <!-- Arguments -->

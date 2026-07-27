@@ -192,31 +192,65 @@
                     full_width: true %>
             </button>
             <div data-show-toggle-target="content" class="hidden mt-3 p-3 bg-gray-50 rounded-lg">
+              <% merge_cid = "confirm-merge-person" %>
               <%= form_with url: merge_person_path(@person), method: :post, local: true do |f| %>
                 <div class="mb-3">
                   <%= f.label :target_person_id, "Merge into Person ID", class: "block text-xs font-medium text-gray-700 mb-1" %>
                   <%= f.number_field :target_person_id, required: true, placeholder: "Enter Person ID to merge into", class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-300 text-sm" %>
                   <p class="text-xs text-gray-500 mt-1">This person's data will be merged into the target, then this person will be deleted.</p>
                 </div>
-                <%= f.submit "Merge Person", class: "w-full rounded-lg px-3 py-2 text-white bg-amber-500 hover:bg-amber-600 font-medium text-sm cursor-pointer", data: { turbo_confirm: "Are you sure? This will merge all data from #{@person.name} into the target person, then delete this person record. This cannot be undone." } %>
+                <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= merge_cid %>"
+                        class="w-full rounded-lg px-3 py-2 text-white bg-amber-500 hover:bg-amber-600 font-medium text-sm cursor-pointer">
+                  Merge Person
+                </button>
+
+                <%# Confirmation modal — the confirm button submits the enclosing merge form (preserving the target_person_id input) %>
+                <div id="<%= merge_cid %>"
+                     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                     data-controller="modal"
+                     data-action="click->modal#closeOnBackdrop">
+                  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+                       data-action="click->modal#stopPropagation">
+                    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                      <h3 class="text-lg font-semibold text-white">Merge person?</h3>
+                      <button type="button" data-action="click->modal#close"
+                              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="px-6 py-5 text-sm text-gray-600">
+                      Are you sure? This will merge all data from <%= @person.name %> into the target person, then delete this person record. This cannot be undone.
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+                      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+                      <%= render "shared/button", text: "Merge Person", variant: "primary", size: "medium", type: :submit %>
+                    </div>
+                  </div>
+                </div>
               <% end %>
             </div>
           </div>
 
           <hr class="border-gray-200">
 
+          <% delete_cid = "confirm-delete-person" %>
           <%= render "shared/button",
                 text: "Delete Person",
                 variant: "danger",
                 size: "small",
                 icon: "trash",
-                path: destroy_person_path(@person),
+                type: :button,
                 full_width: true,
-                data: {
-                  turbo_method: :delete,
-                  turbo_confirm: "Are you sure you want to permanently delete #{@person.name}? This will remove them from ALL organizations and cannot be undone."
-                }
-          %>
+                data: { controller: "modal", action: "click->modal#open", modal_id: delete_cid } %>
+          <%= render "shared/confirm_modal", id: delete_cid,
+                title: "Delete person?",
+                message: "Are you sure you want to permanently delete #{@person.name}? This will remove them from ALL organizations and cannot be undone.",
+                confirm_text: "Delete Person",
+                confirm_icon: "trash",
+                url: destroy_person_path(@person),
+                method: :delete %>
         </div>
       </div>
 

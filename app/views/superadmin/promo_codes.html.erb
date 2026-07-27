@@ -68,9 +68,17 @@
                   </td>
                   <td class="px-4 py-3 text-right text-sm">
                     <% if pc.active? %>
-                      <%= button_to "Deactivate", promo_code_deactivate_path(pc), method: :patch,
-                          class: "text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer",
-                          data: { turbo_confirm: "Deactivate promo code #{pc.code}?" } %>
+                      <% cid = "confirm-deactivate-promo-#{pc.id}" %>
+                      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                              class="text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer bg-transparent border-0">
+                        Deactivate
+                      </button>
+                      <%= render "shared/confirm_modal", id: cid,
+                            title: "Deactivate promo code?",
+                            message: "Deactivate promo code #{pc.code}?",
+                            confirm_text: "Deactivate",
+                            url: promo_code_deactivate_path(pc),
+                            method: :patch %>
                     <% end %>
                   </td>
                 </tr>
