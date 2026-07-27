@@ -8,7 +8,7 @@ There are TWO levels of management pages:
 
 ### Org-level pages (NO production ID in URL)
 - `/manage/shows` → `org_shows_controller` → `views/manage/org_shows/`
-- `/manage/casting` → `org_casting_controller` → `views/manage/org_casting/`
+- `/manage/casting` → `casting_controller#org_index` → `views/manage/casting/org_index.html.erb` (NOTE: an action on the production-level `casting_controller`, NOT an `org_casting_controller` — that controller/view do not exist)
 - `/manage/signups` → `org_signups_controller` → `views/manage/org_signups/`
 - `/manage/auditions` → `org_auditions_controller` → `views/manage/org_auditions/`
 - `/manage/roles` → `org_roles_controller` → `views/manage/org_roles/`

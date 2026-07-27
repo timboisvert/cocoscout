@@ -55,7 +55,7 @@ module NavigationHelper
       { label: "Shows & Events", path: manage_shows_path, icon: "shows",
         active: %w[shows org_shows vacancies show_wizard].include?(controller_name) },
       { label: "Casting", path: manage_casting_path, icon: "casting",
-        active: %w[casting org_casting casting_availability roles talent_pools casting_tables org_roles org_talent_pools org_availability].include?(controller_name) },
+        active: %w[casting casting_availability roles talent_pools casting_tables org_roles org_talent_pools org_availability].include?(controller_name) },
       { label: "Sign-ups", path: manage_signups_path, icon: "signups",
         active: %w[signups org_signups sign_up_forms auditions audition_cycles audition_requests audition_sessions sign_up_form_wizard audition_cycle_wizard org_auditions org_forms].include?(controller_name) },
       { label: "Courses", path: manage_course_offerings_path, icon: "courses",
