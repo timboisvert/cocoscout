@@ -92,11 +92,15 @@
                           data-form-action-url="<%= manage_move_registration_signups_form_path(production, sign_up_form, registration_id: registration.id) %>">
                     Move
                   </button>
-                  <%= link_to manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id),
-                      class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
-                      data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
+                  <% remove_reg_cid = "confirm-remove-reg-multi-#{slot.id}-#{registration.id}" %>
+                  <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_reg_cid %>"
+                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors bg-transparent border-0 cursor-pointer">
                     Remove
-                  <% end %>
+                  </button>
+                  <%= render "shared/confirm_modal", id: remove_reg_cid, title: "Remove registration?",
+                        message: "Remove this registration?", confirm_text: "Remove",
+                        url: manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id), method: :delete %>
                 </div>
               </div>
             <% end %>
@@ -163,11 +167,15 @@
                       Move
                     </button>
                   <% end %>
-                  <%= link_to manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id),
-                      class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
-                      data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
+                  <% remove_reg_single_cid = "confirm-remove-reg-single-#{slot.id}-#{registration.id}" %>
+                  <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_reg_single_cid %>"
+                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors bg-transparent border-0 cursor-pointer">
                     Remove
-                  <% end %>
+                  </button>
+                  <%= render "shared/confirm_modal", id: remove_reg_single_cid, title: "Remove registration?",
+                        message: "Remove this registration?", confirm_text: "Remove",
+                        url: manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id), method: :delete %>
                 </div>
               </div>
             <% end %>

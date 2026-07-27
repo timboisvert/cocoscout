@@ -686,16 +686,15 @@
 
                     <%# Delete button for single advance - only if unpaid %>
                     <% if advance.unpaid? %>
-                      <%= form_with url: manage_destroy_money_advance_path(@production, advance),
-                                    method: :delete,
-                                    data: { turbo_confirm: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?" },
-                                    class: "inline" do %>
-                        <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      <% end %>
+                      <% delete_advance_cid = "confirm-delete-advance-#{advance.id}" %>
+                      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_advance_cid %>" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                      <%= render "shared/confirm_modal", id: delete_advance_cid, title: "Remove advance?",
+                            message: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?", confirm_text: "Remove",
+                            url: manage_destroy_money_advance_path(@production, advance), method: :delete %>
                     <% end %>
                   <% else %>
                     <%# Multiple advances - show total on main row %>
@@ -730,16 +729,15 @@
 
                         <%# Delete button for each advance - only if unpaid %>
                         <% if advance.unpaid? %>
-                          <%= form_with url: manage_destroy_money_advance_path(@production, advance),
-                                        method: :delete,
-                                        data: { turbo_confirm: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?" },
-                                        class: "inline" do %>
-                            <button type="submit" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                            </button>
-                          <% end %>
+                          <% delete_advance_multi_cid = "confirm-delete-advance-multi-#{advance.id}" %>
+                          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_advance_multi_cid %>" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          </button>
+                          <%= render "shared/confirm_modal", id: delete_advance_multi_cid, title: "Remove advance?",
+                                message: "Remove this #{number_to_currency(advance.original_amount)} advance for #{person.name}?", confirm_text: "Remove",
+                                url: manage_destroy_money_advance_path(@production, advance), method: :delete %>
                         <% end %>
                       </div>
                     <% end %>
@@ -1109,15 +1107,18 @@
                             </div>
                             <% unless @show_payout.paid? %>
                               <% items.each do |li| %>
-                                <%= button_to manage_unmark_line_item_paid_money_show_payout_path(@show, li),
-                                    method: :delete,
-                                    class: "text-gray-400 hover:text-gray-600",
-                                    title: "Unmark as paid",
-                                    data: { turbo_confirm: "Unmark #{li.payee_name} as paid?" } do %>
+                                <% unmark_li_cid = "confirm-unmark-li-#{li.id}" %>
+                                <button type="button"
+                                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= unmark_li_cid %>"
+                                    class="text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer"
+                                    title="Unmark as paid">
                                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                   </svg>
-                                <% end %>
+                                </button>
+                                <%= render "shared/confirm_modal", id: unmark_li_cid, title: "Unmark as paid?",
+                                      message: "Unmark #{li.payee_name} as paid?", confirm_text: "Unmark",
+                                      url: manage_unmark_line_item_paid_money_show_payout_path(@show, li), method: :delete %>
                               <% end %>
                             <% end %>
                           </div>
@@ -1472,24 +1473,26 @@
             </div>
 
             <%# Reopen and Add Person options for paid payouts %>
-            <%= form_with url: manage_reopen_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
-              <button type="submit"
-                      data-turbo-confirm="Reopen this payout? You'll be able to add more people or make changes."
-                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
-                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900">Reopen Payout</div>
-                  <div class="text-xs text-gray-500">Add more people or make changes</div>
-                </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            <% reopen_payout_cid = "confirm-reopen-payout-#{@show.id}" %>
+            <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reopen_payout_cid %>"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
                 </svg>
-              </button>
-            <% end %>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Reopen Payout</div>
+                <div class="text-xs text-gray-500">Add more people or make changes</div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <%= render "shared/confirm_modal", id: reopen_payout_cid, title: "Reopen payout?",
+                  message: "Reopen this payout? You'll be able to add more people or make changes.", confirm_text: "Reopen",
+                  url: manage_reopen_money_show_payout_path(@show), method: :post %>
 
             <button type="button"
                     data-action="click->payment-actions#showAddPersonModal"
@@ -1568,24 +1571,26 @@
 
             <%# Reset Calculation - for future shows where calculation was accidental %>
             <% if @show.date_and_time >= Time.current %>
-              <%= form_with url: manage_reset_calculation_money_show_payout_path(@show), method: :delete, local: true, class: "block",
-                            data: { turbo_confirm: "Are you sure? This will delete all payout line items and reset the calculation. Advances will not be affected." } do %>
-                <button type="submit"
-                        class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
-                  <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <div class="font-medium text-gray-900">Reset Calculation</div>
-                    <div class="text-xs text-gray-500">Clear line items, keep advances</div>
-                  </div>
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              <% reset_calc_cid = "confirm-reset-calculation-#{@show.id}" %>
+              <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reset_calc_cid %>"
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
-                </button>
-              <% end %>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Reset Calculation</div>
+                  <div class="text-xs text-gray-500">Clear line items, keep advances</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <%= render "shared/confirm_modal", id: reset_calc_cid, title: "Reset calculation?",
+                    message: "Are you sure? This will delete all payout line items and reset the calculation. Advances will not be affected.", confirm_text: "Reset",
+                    url: manage_reset_calculation_money_show_payout_path(@show), method: :delete %>
             <% end %>
 
             <button type="button"

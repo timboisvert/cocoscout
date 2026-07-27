@@ -36,10 +36,10 @@
         </div>
       </div>
 
-      <%= button_to manage_unmark_line_item_paid_money_show_payout_path(@show, contractor_line_item),
-          method: :delete,
-          class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer",
-          data: { turbo_confirm: "Unmark as paid?" } do %>
+      <% unmark_paid_cid = "confirm-unmark-paid-#{contractor_line_item.id}" %>
+      <button type="button"
+          data-controller="modal" data-action="click->modal#open" data-modal-id="<%= unmark_paid_cid %>"
+          class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
         <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
@@ -52,7 +52,10 @@
         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
-      <% end %>
+      </button>
+      <%= render "shared/confirm_modal", id: unmark_paid_cid, title: "Unmark as paid?",
+            message: "Unmark as paid?", confirm_text: "Unmark as Paid",
+            url: manage_unmark_line_item_paid_money_show_payout_path(@show, contractor_line_item), method: :delete %>
 
     <% elsif is_calculated %>
       <%# Calculated but not paid %>

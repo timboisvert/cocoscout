@@ -327,10 +327,15 @@
             <h4 class="font-medium text-gray-900">This event didn't generate revenue</h4>
             <p class="text-sm text-gray-500 mt-0.5">Mark this as a non-revenue event to exclude it from payout calculations.</p>
           </div>
-          <%= button_to "Mark as Non-Revenue", manage_mark_non_revenue_money_show_financials_path(@show),
-              method: :post,
-              class: "inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2",
-              data: { turbo_confirm: "Are you sure? This will mark this event as non-revenue and exclude it from payouts." } %>
+          <% mark_nonrev_cid = "confirm-#{SecureRandom.hex(6)}" %>
+          <button type="button"
+              data-controller="modal" data-action="click->modal#open" data-modal-id="<%= mark_nonrev_cid %>"
+              class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 cursor-pointer">
+            Mark as Non-Revenue
+          </button>
+          <%= render "shared/confirm_modal", id: mark_nonrev_cid, title: "Mark as non-revenue?",
+                message: "Are you sure? This will mark this event as non-revenue and exclude it from payouts.", confirm_text: "Mark as Non-Revenue",
+                url: manage_mark_non_revenue_money_show_financials_path(@show), method: :post %>
         </div>
       </div>
     </div>

@@ -62,6 +62,8 @@
             </div>
           </div>
           <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
+          <% invite_staff_cid = "confirm-invite-staff-#{member.id}" %>
+          <% remove_staff_cid = "confirm-remove-staff-#{member.id}" %>
           <div class="flex items-center gap-2 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <% if person.user.nil? %>
               <% if person.email.present? %>
@@ -69,9 +71,8 @@
                       text: "Invite",
                       variant: "primary",
                       size: "small",
-                      path: manage_invite_staffing_staff_path(member),
-                      method: :post,
-                      data: { turbo_confirm: "Email #{person.name} an invite to set up a CocoScout account so they can be notified?" } %>
+                      type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: invite_staff_cid } %>
               <% else %>
                 <span class="text-[11px] text-gray-400 italic px-1" title="Add an email to this person before you can invite them.">No email on file</span>
               <% end %>
@@ -94,10 +95,17 @@
                   text: "Remove",
                   variant: "danger",
                   size: "small",
-                  path: manage_destroy_staffing_staff_path(member),
-                  method: :delete,
-                  data: { turbo_confirm: "Remove #{person.name} from the staff list? Existing shift assignments will be kept." } %>
+                  type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_staff_cid } %>
           </div>
+          <% if person.user.nil? && person.email.present? %>
+            <%= render "shared/confirm_modal", id: invite_staff_cid, title: "Send invite?",
+                  message: "Email #{person.name} an invite to set up a CocoScout account so they can be notified?", confirm_text: "Invite",
+                  url: manage_invite_staffing_staff_path(member), method: :post %>
+          <% end %>
+          <%= render "shared/confirm_modal", id: remove_staff_cid, title: "Remove from staff?",
+                message: "Remove #{person.name} from the staff list? Existing shift assignments will be kept.", confirm_text: "Remove",
+                url: manage_destroy_staffing_staff_path(member), method: :delete %>
         </div>
       <% end %>
     </div>

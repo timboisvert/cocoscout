@@ -166,13 +166,17 @@
 
             <div class="space-y-1.5">
               <% series_panel[:available_series].each do |series| %>
-                <%= link_to manage_add_to_series_show_path(series_panel[:production], show, recurrence_group_id: series[:group_id]),
-                      data: { turbo_method: :patch, turbo_confirm: "Add this #{show.event_type.downcase} to the #{series[:event_type]} series?" },
-                      class: "block w-full px-3 py-2 rounded-md border border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 transition-colors group" do %>
+                <% add_series_cid = "confirm-add-series-#{show.id}-#{series[:group_id]}" %>
+                <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= add_series_cid %>"
+                      class="block w-full text-left px-3 py-2 rounded-md border border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 transition-colors group cursor-pointer">
                   <div class="text-xs font-medium text-gray-900 group-hover:text-pink-700"><%= series[:event_type] %></div>
                   <div class="text-[10px] text-gray-400"><%= series[:pattern] %> at <%= series[:time] %></div>
                   <div class="text-[10px] text-gray-400"><%= series[:count] %> events in series</div>
-                <% end %>
+                </button>
+                <%= render "shared/confirm_modal", id: add_series_cid, title: "Add to series?",
+                      message: "Add this #{show.event_type.downcase} to the #{series[:event_type]} series?", confirm_text: "Add to Series",
+                      url: manage_add_to_series_show_path(series_panel[:production], show, recurrence_group_id: series[:group_id]), method: :patch %>
               <% end %>
             </div>
           </div>

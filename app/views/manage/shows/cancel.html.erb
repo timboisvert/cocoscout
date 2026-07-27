@@ -74,10 +74,13 @@
               <%= render "shared/button", text: "Uncancel Only This Occurrence", variant: "success", size: "medium", type: :submit %>
             <% end %>
 
-            <%= button_to manage_uncancel_show_path(@production, @show, scope: "this_and_future"), method: :patch,
-                data: { turbo_confirm: "Uncancel this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)}?" } do %>
-              <%= render "shared/button", text: "Uncancel This & Future (#{@future_count})", variant: "success", size: "medium", type: :submit %>
-            <% end %>
+            <% uncancel_future_cid = "confirm-#{SecureRandom.hex(6)}" %>
+            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= uncancel_future_cid %>">
+              <%= render "shared/button", text: "Uncancel This & Future (#{@future_count})", variant: "success", size: "medium", type: :button %>
+            </button>
+            <%= render "shared/confirm_modal", id: uncancel_future_cid, title: "Uncancel occurrences?",
+                  message: "Uncancel this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)}?", confirm_text: "Uncancel",
+                  url: manage_uncancel_show_path(@production, @show, scope: "this_and_future"), method: :patch %>
 
             <%= button_to manage_uncancel_show_path(@production, @show, scope: "all"), method: :patch do %>
               <%= render "shared/button", text: "Uncancel All Canceled Occurrences", variant: "success", size: "medium", type: :submit %>
@@ -97,7 +100,7 @@
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-6">Mark as canceled but keep it visible in the calendar. You can uncancel it later if needed.</p>
 
-        <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, data: { "cancel-show-target": "cancelForm" } do |f| %>
+        <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, id: "cancel-show-form", data: { "cancel-show-target": "cancelForm" } do |f| %>
           <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
           <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
           <% @role_categories.each do |category| %>
@@ -233,8 +236,8 @@
           </div>
 
           <div class="mt-6">
-            <%= render "shared/button", text: "Cancel #{@show.event_type.titleize}", variant: "warning", size: "medium", type: :submit,
-                data: { "cancel-show-target": "submitButton", "turbo-confirm": "Are you sure you want to cancel this #{@show.event_type.downcase}?" } %>
+            <%= render "shared/button", text: "Cancel #{@show.event_type.titleize}", variant: "warning", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-show" } %>
           </div>
         <% end %>
       </div>
@@ -257,27 +260,60 @@
 
       <% if @show.recurring? %>
         <div class="flex flex-wrap gap-2">
-          <%= button_to manage_delete_show_path(@production, @show, scope: "this"), method: :delete,
-              data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } do %>
-            <%= render "shared/button", text: "Delete Only This Occurrence", variant: "danger", size: "medium", type: :submit %>
-          <% end %>
+          <% delete_this_cid = "confirm-#{SecureRandom.hex(6)}" %>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_this_cid %>">
+            <%= render "shared/button", text: "Delete Only This Occurrence", variant: "danger", size: "medium", type: :button %>
+          </button>
+          <%= render "shared/confirm_modal", id: delete_this_cid, title: "Delete occurrence?",
+                message: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone.", confirm_text: "Delete",
+                url: manage_delete_show_path(@production, @show, scope: "this"), method: :delete %>
 
-          <%= button_to manage_delete_show_path(@production, @show, scope: "this_and_future"), method: :delete,
-              data: { turbo_confirm: "Are you sure you want to permanently delete this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)} (#{@future_count} total)? Past events will be kept. This cannot be undone." } do %>
-            <%= render "shared/button", text: "Delete This & Future (#{@future_count})", variant: "danger", size: "medium", type: :submit %>
-          <% end %>
+          <% delete_future_cid = "confirm-#{SecureRandom.hex(6)}" %>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_future_cid %>">
+            <%= render "shared/button", text: "Delete This & Future (#{@future_count})", variant: "danger", size: "medium", type: :button %>
+          </button>
+          <%= render "shared/confirm_modal", id: delete_future_cid, title: "Delete occurrences?",
+                message: "Are you sure you want to permanently delete this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)} (#{@future_count} total)? Past events will be kept. This cannot be undone.", confirm_text: "Delete",
+                url: manage_delete_show_path(@production, @show, scope: "this_and_future"), method: :delete %>
 
-          <%= button_to manage_delete_show_path(@production, @show, scope: "all"), method: :delete,
-              data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } do %>
-            <%= render "shared/button", text: "Delete All #{@show.recurrence_group.count} Occurrences", variant: "danger", size: "medium", type: :submit %>
-          <% end %>
+          <% delete_all_cid = "confirm-#{SecureRandom.hex(6)}" %>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_all_cid %>">
+            <%= render "shared/button", text: "Delete All #{@show.recurrence_group.count} Occurrences", variant: "danger", size: "medium", type: :button %>
+          </button>
+          <%= render "shared/confirm_modal", id: delete_all_cid, title: "Delete all occurrences?",
+                message: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone.", confirm_text: "Delete",
+                url: manage_delete_show_path(@production, @show, scope: "all"), method: :delete %>
         </div>
       <% else %>
-        <%= button_to manage_delete_show_path(@production, @show, scope: "this"), method: :delete,
-            data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } do %>
-          <%= render "shared/button", text: "Delete This #{@show.event_type.titleize}", variant: "danger", size: "medium", type: :submit %>
-        <% end %>
+        <% delete_single_cid = "confirm-#{SecureRandom.hex(6)}" %>
+        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_single_cid %>">
+          <%= render "shared/button", text: "Delete This #{@show.event_type.titleize}", variant: "danger", size: "medium", type: :button %>
+        </button>
+        <%= render "shared/confirm_modal", id: delete_single_cid, title: "Delete #{@show.event_type.downcase}?",
+              message: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone.", confirm_text: "Delete",
+              url: manage_delete_show_path(@production, @show, scope: "this"), method: :delete %>
       <% end %>
+    </div>
+  </div>
+
+  <%# Confirmation for the cancel form above. The message tracks the selected scope (cancel-show#toggleScope keeps
+      confirmMessage in sync); the confirm submits the real cancelForm via form= so its scope/notify/category fields ride along. %>
+  <div id="confirm-cancel-show" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-white">Cancel <%= @show.event_type.downcase %>?</h3>
+        <button type="button" class="text-white/80 hover:text-white" data-action="click->modal#close" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-600" data-cancel-show-target="confirmMessage">Are you sure you want to cancel this <%= @show.event_type.downcase %> on <%= @show.date_and_time.strftime('%B %-d, %Y') %>?</p>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+        <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <button type="submit" form="cancel-show-form" class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10">Cancel <%= @show.event_type.titleize %></button>
+      </div>
     </div>
   </div>
 </div>

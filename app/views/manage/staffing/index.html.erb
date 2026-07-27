@@ -239,11 +239,13 @@
                         <span class="truncate"><%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
                         <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
                       </button>
-                      <%= button_to manage_destroy_staffing_shift_path(shift),
-                            method: :delete,
-                            class: "text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 leading-none text-xl w-8 h-8 inline-flex items-center justify-center flex-shrink-0",
-                            form_class: "inline-block leading-none",
-                            data: { turbo_confirm: "Remove this #{role.name} shift?" } do %>×<% end %>
+                      <% remove_shift_cid = "confirm-remove-shift-#{shift.id}" %>
+                      <button type="button"
+                            data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_shift_cid %>"
+                            class="text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 leading-none text-xl w-8 h-8 inline-flex items-center justify-center flex-shrink-0">×</button>
+                      <%= render "shared/confirm_modal", id: remove_shift_cid, title: "Remove shift?",
+                            message: "Remove this #{role.name} shift?", confirm_text: "Remove",
+                            url: manage_destroy_staffing_shift_path(shift), method: :delete %>
                     </div>
 
                     <%# Show-specific shifts name the show they're tied to. %>
@@ -277,11 +279,13 @@
                               <% end %>
                               <span class="truncate text-gray-900"><%= a.person.name %></span>
                             </div>
-                            <%= button_to manage_unassign_staffing_shift_path(shift, person_id: a.person_id),
-                                  method: :delete,
-                                  class: "text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0 leading-none flex-shrink-0 w-5 h-5 inline-flex items-center justify-center text-base",
-                                  form_class: "inline-block leading-none",
-                                  data: { turbo_confirm: "Remove #{a.person.name} from this shift?" } do %>×<% end %>
+                            <% unassign_cid = "confirm-unassign-shift-#{shift.id}-#{a.person_id}" %>
+                            <button type="button"
+                                  data-controller="modal" data-action="click->modal#open" data-modal-id="<%= unassign_cid %>"
+                                  class="text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0 leading-none flex-shrink-0 w-5 h-5 inline-flex items-center justify-center text-base">×</button>
+                            <%= render "shared/confirm_modal", id: unassign_cid, title: "Remove from shift?",
+                                  message: "Remove #{a.person.name} from this shift?", confirm_text: "Remove",
+                                  url: manage_unassign_staffing_shift_path(shift, person_id: a.person_id), method: :delete %>
                           </div>
                         <% end %>
                         <% shift.remaining_slots.times do %>
@@ -346,11 +350,13 @@
                         Split
                       </button>
                       <% if has_mergeable_next %>
-                        <%= button_to manage_merge_with_next_staffing_shift_path(shift),
-                              method: :post,
-                              class: "hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0",
-                              form_class: "inline-block",
-                              data: { turbo_confirm: "Merge with the next #{role.name} shift?" } do %>Merge next<% end %>
+                        <% merge_next_cid = "confirm-merge-next-#{shift.id}" %>
+                        <button type="button"
+                              data-controller="modal" data-action="click->modal#open" data-modal-id="<%= merge_next_cid %>"
+                              class="hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Merge next</button>
+                        <%= render "shared/confirm_modal", id: merge_next_cid, title: "Merge shifts?",
+                              message: "Merge with the next #{role.name} shift?", confirm_text: "Merge",
+                              url: manage_merge_with_next_staffing_shift_path(shift), method: :post %>
                       <% end %>
                     </div>
                   </div>

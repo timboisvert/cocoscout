@@ -35,12 +35,15 @@
                         class: "px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors" do %>
               Restore
             <% end %>
-            <%= button_to manage_signups_form_path(@production, form),
-                          method: :delete,
-                          form: { data: { turbo_confirm: "Permanently delete this sign-up form? This cannot be undone and all registrations will be lost." } },
-                          class: "px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" do %>
+            <% delete_form_cid = "confirm-delete-form-#{form.id}" %>
+            <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_form_cid %>"
+                    class="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors bg-transparent border-0 cursor-pointer">
               Delete
-            <% end %>
+            </button>
+            <%= render "shared/confirm_modal", id: delete_form_cid, title: "Delete sign-up form?",
+                  message: "Permanently delete this sign-up form? This cannot be undone and all registrations will be lost.", confirm_text: "Delete",
+                  url: manage_signups_form_path(@production, form), method: :delete %>
           </div>
         </div>
       <% end %>
