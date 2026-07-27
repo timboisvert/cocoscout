@@ -1,24 +1,14 @@
 <%#
   Reusable in-page confirmation modal (replaces native browser confirms).
 
-  Pair it with a trigger element somewhere on the page that opens it:
+  Usage: place a trigger element on the page with data-controller="modal",
+  data-action="click->modal#open", and data-modal-id set to the same id you
+  pass here. Then render this partial (usually right next to the trigger) with
+  that matching id, e.g. render "shared/confirm_modal", id: "confirm-delete",
+  title: "Delete this?", url: some_path, method: :delete.
 
-    <button type="button"
-            data-controller="modal"
-            data-action="click->modal#open"
-            data-modal-id="<%= confirm_id %>">
-      Delete
-    </button>
-
-  ...and render this modal (usually right next to the trigger):
-
-    <%= render "shared/confirm_modal",
-          id: confirm_id,
-          title: "Delete this thing?",
-          message: "This can't be undone.",
-          confirm_text: "Delete",
-          url: some_path,
-          method: :delete %>
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
 
   Locals:
     id              (required) unique DOM id, must match the trigger's data-modal-id
