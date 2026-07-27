@@ -6,11 +6,11 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: @production ? [
       ["Money", manage_money_index_path],
-      ["Incoming", manage_money_incoming_path]
+      ["Incoming Payments", manage_money_incoming_path]
     ] : [
       ["Money", manage_money_index_path]
     ],
-    text: @production ? @production.name : "Incoming",
+    text: @production ? @production.name : "Incoming Payments",
     links: []
   } %>
 

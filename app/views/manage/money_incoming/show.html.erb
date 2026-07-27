@@ -14,8 +14,8 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Money", manage_money_index_path],
-      ["Incoming", manage_money_incoming_path],
-      (@contract.production_id? ? [@contract.production_name, manage_money_production_incoming_path(@contract.production)] : nil)
+      ["Incoming Payments", manage_money_incoming_path],
+      (@contract.production.present? ? [@contract.production.name.presence || "Production", manage_money_production_incoming_path(@contract.production)] : nil)
     ].compact,
     text: @contract.contractor_name.presence || "Payment",
     links: []
@@ -46,8 +46,9 @@
             From <%= link_to @contract.contractor_name.presence || "payer", (@contractor ? manage_contractor_path(@contractor) : manage_contract_path(@contract)), class: "text-pink-600 hover:text-pink-700 font-medium" %>
             · <%= link_to "View contract", manage_contract_path(@contract), class: "text-pink-600 hover:text-pink-700" %>
           </div>
-          <% if @contract.production_name.present? %>
-            <div class="text-sm text-gray-500 mt-0.5"><%= @contract.production_name %></div>
+          <% prod_name = @contract.production_name.presence || @contract.production&.name %>
+          <% if prod_name.present? %>
+            <div class="text-sm text-gray-500 mt-0.5"><%= prod_name %></div>
           <% end %>
         </div>
         <div class="text-right flex-shrink-0">

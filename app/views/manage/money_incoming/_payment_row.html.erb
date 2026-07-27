@@ -33,8 +33,9 @@
         <span class="font-medium text-gray-900 truncate"><%= contract.contractor_name.presence || "Payer" %></span>
       </div>
       <div class="text-sm text-gray-600 truncate">
-        <% if show_production && contract.production_name.present? %>
-          <%= contract.production_name %> &middot;
+        <% prod_name = contract.production_name.presence || contract.production&.name %>
+        <% if show_production && prod_name.present? %>
+          <%= prod_name %> &middot;
         <% end %>
         <%= payment.description.presence || "Payment" %>
       </div>
