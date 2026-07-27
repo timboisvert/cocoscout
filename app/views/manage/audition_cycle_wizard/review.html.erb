@@ -48,17 +48,40 @@
           <%= link_to "Edit", manage_signups_auditions_wizard_sessions_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
         </div>
         <div class="mt-2 text-sm text-gray-600">
-          <% if @wizard_state[:audition_sessions].present? %>
-            <p><%= pluralize(@wizard_state[:audition_sessions].size, open_mode ? "slot" : "session") %> scheduled</p>
+          <% if @wizard_state[:audition_sessions].blank? %>
+            <p class="text-amber-600">⚠ No <%= open_mode ? "slots" : "sessions" %> configured</p>
+          <% elsif open_mode %>
+            <%# Roll contiguous, same-length, same-capacity slots up into blocks so
+                a 6-hour run of 15-min slots reads as one line, and separate
+                morning/afternoon runs each get their own. %>
+            <% slots = @wizard_state[:audition_sessions].map { |s|
+                 st = Time.zone.parse(s[:start_at]); dm = (s[:duration_minutes] || 0).to_i
+                 { start: st, finish: st + dm.minutes, dur: dm, cap: s[:capacity].presence&.to_i }
+               }.sort_by { |s| s[:start] } %>
+            <% blocks = [] %>
+            <% slots.each do |slot| %>
+              <% last = blocks.last %>
+              <% if last && slot[:start] == last[:finish] && slot[:dur] == last[:dur] && slot[:cap] == last[:cap] %>
+                <% last[:finish] = slot[:finish]; last[:count] += 1 %>
+              <% else %>
+                <% blocks << { start: slot[:start], finish: slot[:finish], count: 1, dur: slot[:dur], cap: slot[:cap] } %>
+              <% end %>
+            <% end %>
+            <p><%= pluralize(@wizard_state[:audition_sessions].size, "slot") %><%= blocks.size > 1 ? " across #{pluralize(blocks.size, "block")}" : "" %></p>
+            <ul class="mt-1 space-y-1">
+              <% blocks.each do |b| %>
+                <li>• <strong><%= pluralize(b[:count], "slot") %></strong> on <%= b[:start].strftime("%A, %b %-d") %>, <%= b[:start].strftime("%-I:%M %p") %>–<%= b[:finish].strftime("%-I:%M %p") %><%= b[:cap] ? " · #{pluralize(b[:cap], "spot")} each" : "" %></li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p><%= pluralize(@wizard_state[:audition_sessions].size, "session") %> scheduled</p>
             <% if @wizard_state[:audition_sessions].size <= 3 %>
               <ul class="mt-1 space-y-1">
                 <% @wizard_state[:audition_sessions].each do |session| %>
-                  <li>• <%= Time.parse(session[:start_at]).strftime("%b %-d at %-I:%M %p") %> (<%= format_duration(session[:duration_minutes]) %><%= session[:capacity].present? ? ", #{pluralize(session[:capacity].to_i, 'spot')}" : "" %>)</li>
+                  <li>• <%= Time.parse(session[:start_at]).strftime("%b %-d at %-I:%M %p") %> (<%= format_duration(session[:duration_minutes]) %>)</li>
                 <% end %>
               </ul>
             <% end %>
-          <% else %>
-            <p class="text-amber-600">⚠ No <%= open_mode ? "slots" : "sessions" %> configured</p>
           <% end %>
         </div>
       </div>
