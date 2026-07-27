@@ -14,12 +14,18 @@
     links: []
   } %>
 
+  <%# ---- Window filter ---------------------------------------------------- %>
+  <% window_path = ->(key) { @production ? manage_money_production_incoming_path(@production, window: key) : manage_money_incoming_path(window: key) } %>
+  <%= render "shared/filters/filter_bar", filter_groups: [
+        { label: "Show next", filters: @windows.map { |w| { text: w[:label], path: window_path.call(w[:key]), active: @window_key == w[:key] } } }
+      ] %>
+
   <%# ---- Summary ---------------------------------------------------------- %>
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2 mb-6">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 mb-6">
     <div class="bg-white rounded-lg border border-gray-200 p-4">
       <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Outstanding</div>
       <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@total_outstanding) %></div>
-      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@payments.size, "payment") %> awaiting collection</div>
+      <div class="text-xs text-gray-400 mt-0.5">total still owed to you</div>
     </div>
     <div class="bg-white rounded-lg border <%= @overdue_count.positive? ? 'border-red-200' : 'border-gray-200' %> p-4">
       <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Overdue</div>
@@ -27,10 +33,50 @@
       <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@overdue_count, "payment") %> past due</div>
     </div>
     <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Where it comes from</div>
-      <div class="text-sm text-gray-600 mt-2">Almost all incoming money is contract payments — rental fees, deposits, and revenue shares owed to you.</div>
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Expected · <%= @window_end ? "next #{@window_label.downcase}" : "all upcoming" %></div>
+      <div class="text-2xl font-bold text-green-600 mt-1 tabular-nums"><%= number_to_currency(@expected_in_window) %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@upcoming_count, "payment") %> upcoming</div>
     </div>
   </div>
+
+  <%# ---- Cash-flow forecast (by month) ------------------------------------ %>
+  <% if @monthly_forecast.any? || @total_overdue.positive? %>
+    <% max_bar = [ (@monthly_forecast.map { |m| m[:total] }.max || 0), @total_overdue ].max %>
+    <% max_bar = 1 if max_bar <= 0 %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Expected income by month</h3>
+      <div class="space-y-1.5">
+        <% if @total_overdue.positive? %>
+          <div class="flex items-center gap-3">
+            <div class="w-20 sm:w-24 flex-shrink-0 text-sm font-medium text-red-600">Overdue</div>
+            <div class="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
+              <div class="h-full bg-red-400 rounded" style="width: <%= [ (@total_overdue / max_bar * 100).round, 2 ].max %>%"></div>
+            </div>
+            <div class="w-24 sm:w-28 flex-shrink-0 text-right text-sm font-semibold text-red-600 tabular-nums"><%= number_to_currency(@total_overdue) %></div>
+          </div>
+        <% end %>
+        <% @monthly_forecast.each do |m| %>
+          <div class="flex items-center gap-3">
+            <div class="w-20 sm:w-24 flex-shrink-0 text-sm text-gray-700"><%= m[:month].strftime("%b %Y") %></div>
+            <div class="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
+              <% if m[:total].positive? %>
+                <div class="h-full bg-green-400 rounded" style="width: <%= [ (m[:total] / max_bar * 100).round, 2 ].max %>%"></div>
+              <% end %>
+            </div>
+            <div class="w-24 sm:w-28 flex-shrink-0 text-right text-sm tabular-nums <%= m[:total].positive? ? 'text-gray-900 font-medium' : 'text-gray-300' %>">
+              <%= m[:total].positive? ? number_to_currency(m[:total]) : "—" %>
+              <% if m[:tbd_count].positive? %>
+                <span class="block text-[10px] text-amber-600 font-normal"><%= pluralize(m[:tbd_count], "TBD") %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <% if @monthly_forecast.any? { |m| m[:tbd_count].positive? } %>
+        <p class="text-xs text-gray-400 mt-4">TBD = revenue-share payments whose amount settles once show sales are entered — not included in the totals.</p>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if @production %>
     <%# ---- Single production: list its incoming payments ------------------ %>
@@ -40,6 +86,8 @@
           <%= render "payment_row", payment: payment, show_production: false %>
         <% end %>
       </div>
+    <% elsif @total_outstanding.positive? %>
+      <%= render "windowed_empty", show_all_path: window_path.call("all") %>
     <% else %>
       <%= render "empty" %>
     <% end %>
@@ -72,7 +120,11 @@
     <% end %>
 
     <% if @production_summaries.empty? && @orphan_payments.empty? %>
-      <%= render "empty" %>
+      <% if @total_outstanding.positive? %>
+        <%= render "windowed_empty", show_all_path: window_path.call("all") %>
+      <% else %>
+        <%= render "empty" %>
+      <% end %>
     <% end %>
   <% end %>
 </div>

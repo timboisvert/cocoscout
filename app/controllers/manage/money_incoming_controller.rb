@@ -11,30 +11,58 @@ module Manage
   class MoneyIncomingController < Manage::ManageController
     include ActionView::Helpers::NumberHelper
 
+    # Forward-looking windows for the "what's coming in" view.
+    WINDOWS = [
+      { key: "1m",  label: "30 days",   months: 1 },
+      { key: "3m",  label: "3 months",  months: 3 },
+      { key: "6m",  label: "6 months",  months: 6 },
+      { key: "12m", label: "12 months", months: 12 },
+      { key: "all", label: "All",       months: nil }
+    ].freeze
+
     before_action :set_production, only: :index
 
     # Org-wide list grouped by production (mirrors money_payouts#index), or a
     # single production's incoming payments when a production_id is present.
+    # A forward window (?window=) focuses the list + forecast on money expected
+    # in the next N months; overdue money always shows regardless of window.
     def index
-      if @production
-        @payments = incoming_scope
-                      .where(contracts: { production_id: @production.id })
-                      .includes(contract: :contractor)
-                      .by_due_date.to_a
-      else
-        all = incoming_scope
-                .includes(contract: [ :contractor, :production ])
-                .by_due_date.to_a
+      @windows = WINDOWS
+      window = WINDOWS.find { |w| w[:key] == params[:window] } || WINDOWS.find { |w| w[:key] == "3m" }
+      @window_key = window[:key]
+      @window_label = window[:label]
+      @window_end = window[:months] ? (Date.current >> window[:months]) : nil
 
-        with_production, @orphan_payments = all.partition { |p| p.contract.production_id.present? }
+      scope = incoming_scope.includes(contract: [ :contractor, :production ])
+      scope = scope.where(contracts: { production_id: @production.id }) if @production
+      all_pending = scope.by_due_date.to_a
+
+      # Grand totals — everything still owed, independent of the window.
+      @total_outstanding = all_pending.sum { |p| p.amount.to_f }
+      overdue_all = all_pending.select(&:overdue?)
+      @overdue_count = overdue_all.size
+      @total_overdue = overdue_all.sum { |p| p.amount.to_f }
+
+      # Windowed set for the list + breakdown: overdue (always) + due within window.
+      @payments = if @window_end
+                    all_pending.select { |p| p.overdue? || p.due_date <= @window_end }
+      else
+                    all_pending
+      end
+
+      # Forecast: upcoming (not overdue) money, bucketed by month.
+      upcoming = @payments.reject(&:overdue?)
+      @upcoming_count = upcoming.size
+      @expected_in_window = upcoming.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
+      @monthly_forecast = build_monthly_forecast(upcoming, @window_end)
+
+      unless @production
+        with_production, @orphan_payments = @payments.partition { |p| p.contract.production_id.present? }
         @production_summaries = with_production
                                   .group_by { |p| p.contract.production }
                                   .map { |production, payments| build_summary(production, payments) }
                                   .sort_by { |s| [ -s[:overdue_count], -s[:outstanding] ] }
-        @payments = all
       end
-
-      assign_totals(@payments)
     end
 
     # A single receivable: its status, the collect-in-person QR, the reminder
@@ -122,11 +150,33 @@ module Manage
       }
     end
 
-    def assign_totals(payments)
-      overdue = payments.select(&:overdue?)
-      @total_outstanding = payments.sum { |p| p.amount.to_f }
-      @overdue_count     = overdue.size
-      @total_overdue     = overdue.sum { |p| p.amount.to_f }
+    # Continuous month-by-month buckets from this month to the window end (or the
+    # last upcoming payment when the window is "All", capped at 24 months so the
+    # timeline stays readable). Empty months are included so the cadence reads well.
+    # TBD-amount payments (revenue shares) are counted but not summed.
+    def build_monthly_forecast(payments, window_end)
+      start_month = Date.current.beginning_of_month
+      last = window_end || payments.map(&:due_date).max
+      return [] if last.nil?
+
+      last = [ last, start_month >> 24 ].min
+      last_month = last.beginning_of_month
+
+      months = []
+      m = start_month
+      while m <= last_month
+        next_m = m >> 1
+        in_month = payments.select { |p| p.due_date >= m && p.due_date < next_m }
+        settled = in_month.reject(&:amount_tbd?)
+        months << {
+          month: m,
+          total: settled.sum { |p| p.amount.to_f },
+          count: in_month.size,
+          tbd_count: in_month.count(&:amount_tbd?)
+        }
+        m = next_m
+      end
+      months
     end
   end
 end

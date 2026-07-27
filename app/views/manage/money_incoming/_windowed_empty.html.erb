@@ -1,0 +1,13 @@
+<%#
+  Shown when the selected window hides all outstanding money (there's still money
+  owed, just further out). Locals: show_all_path.
+%>
+<div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-10 text-center">
+  <p class="text-gray-700 font-medium">Nothing due in the <%= @window_end ? "next #{@window_label.downcase}" : "selected window" %></p>
+  <p class="text-gray-500 text-sm mt-1">You're owed <%= number_to_currency(@total_outstanding) %> further out.</p>
+  <div class="mt-4">
+    <%= link_to show_all_path do %>
+      <%= render "shared/button", text: "Show all upcoming", variant: "secondary", size: "small" %>
+    <% end %>
+  </div>
+</div>
