@@ -332,23 +332,28 @@ module My
         slot = AuditionSession.lock.find(target.id)
         existing = existing_open_signup_audition
 
-        if existing&.audition_session_id == slot.id
-          # Already in this slot — just make sure it's linked to the request.
-          existing.update!(audition_request: request) if existing.audition_request_id.nil?
-        elsif existing && !@audition_cycle.allow_slot_changes
-          # Slot changes are locked — keep their original booking, ignore the new pick.
-          existing.update!(audition_request: request) if existing.audition_request_id.nil?
-        else
-          if slot.maximum_auditionees.present? && slot.auditions.count >= slot.maximum_auditionees
-            raise SlotFull
+        audition =
+          if existing&.audition_session_id == slot.id
+            existing
+          elsif existing && !@audition_cycle.allow_slot_changes
+            # Slot changes are locked — keep their original booking, ignore the new pick.
+            existing
+          else
+            if slot.maximum_auditionees.present? && slot.auditions.count >= slot.maximum_auditionees
+              raise SlotFull
+            end
+
+            if existing
+              existing.update!(audition_session: slot)
+              existing
+            else
+              Audition.create!(auditionable: @requestable, audition_session: slot)
+            end
           end
 
-          if existing
-            existing.update!(audition_session: slot, audition_request: request)
-          else
-            Audition.create!(auditionable: @requestable, audition_session: slot, audition_request: request)
-          end
-        end
+        # Open sign-up: the performer picked the slot themselves, so it's confirmed —
+        # there's no separate accept step. Link the request and mark it accepted.
+        audition.update!(audition_request: request, accepted_at: audition.accepted_at || Time.current)
       end
     end
 
