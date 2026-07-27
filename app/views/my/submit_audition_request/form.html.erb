@@ -323,13 +323,27 @@
       </div>
     <% end %>
 
-    <!-- Open sign-up: pick an actual slot. Curated: rate session availability. -->
+    <!-- Open sign-up: pick a date, then a time. Curated: rate session availability. -->
     <% if @audition_cycle.signup_mode_open? %>
       <% if @audition_sessions.present? %>
-        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
-          <p class="text-sm text-gray-500 mb-4">
-            Choose your audition slot. <span class="text-sm text-pink-500">(required)</span>
-          </p>
+        <%
+          sessions_by_date = @audition_sessions.group_by { |s| s.start_at.to_date }
+          slot_dates = sessions_by_date.keys.sort
+          booked_session = @current_booking&.audition_session
+          selected_date = (booked_session&.start_at&.to_date if slot_dates.include?(booked_session&.start_at&.to_date)) || slot_dates.first
+          # These are usually all at one venue — show it once, not on every row.
+          slot_locations = @audition_sessions.filter_map { |s| s.location&.name }.uniq
+          shared_location = slot_locations.size == 1 ? slot_locations.first : nil
+        %>
+        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5" data-controller="audition-slot-picker">
+          <div class="flex items-baseline justify-between gap-3 mb-4">
+            <p class="text-sm text-gray-500">
+              Choose your audition slot. <span class="text-sm text-pink-500">(required)</span>
+            </p>
+            <% if shared_location %>
+              <span class="text-xs font-medium text-gray-600 flex-shrink-0"><%= shared_location %></span>
+            <% end %>
+          </div>
 
           <% if @missing_slot %>
             <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -342,35 +356,76 @@
             </div>
           <% end %>
 
-          <div class="space-y-3">
-            <% @audition_sessions.each do |session| %>
-              <% currently_booked = @current_booking&.audition_session_id == session.id %>
-              <% is_full = session.full? && !currently_booked %>
-              <label class="block <%= is_full ? 'cursor-not-allowed' : 'cursor-pointer' %>">
-                <%= radio_button_tag "audition_session_id", session.id, currently_booked,
-                      class: "peer sr-only", required: true, disabled: is_full %>
-                <div class="flex items-center gap-4 px-3 py-2 border rounded-lg transition-all <%= is_full ? 'opacity-50 bg-gray-50 border-gray-200' : 'bg-white border-gray-200 hover:border-pink-400 peer-checked:border-pink-500 peer-checked:bg-pink-50 peer-checked:ring-1 peer-checked:ring-pink-500' %>">
-                  <%# Date box %>
-                  <div class="flex-shrink-0 w-14 text-center">
-                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                    <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                    <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                  </div>
-                  <%# Time + location %>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm font-medium text-gray-900"><%= session.start_at.strftime("%l:%M %p") %></div>
-                    <% if session.location.present? %>
-                      <div class="text-xs text-gray-600 truncate"><%= session.location.name %></div>
-                    <% end %>
-                  </div>
-                  <%# Status tag %>
-                  <% if is_full %>
-                    <span class="flex-shrink-0 text-xs font-medium text-gray-500">Full</span>
-                  <% elsif currently_booked %>
-                    <span class="flex-shrink-0 text-xs font-medium text-pink-600">Your slot</span>
-                  <% end %>
-                </div>
-              </label>
+          <%# Section 1 — Date. A single visible strip of pressable date pills that
+              scrolls left/right (arrows appear only when they overflow). One date
+              collapses to a plain label. %>
+          <% if slot_dates.size > 1 %>
+            <div class="relative">
+              <button type="button" data-audition-slot-picker-target="leftArrow" data-action="audition-slot-picker#scrollLeft"
+                      class="hidden absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-pink-600 hover:border-pink-300" aria-label="Scroll dates left">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="flex gap-2 overflow-x-auto scroll-smooth py-1 px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                   data-audition-slot-picker-target="scroller" data-action="scroll->audition-slot-picker#updateArrows">
+                <% slot_dates.each do |date| %>
+                  <% is_selected = date == selected_date %>
+                  <button type="button"
+                          data-audition-slot-picker-target="dateTab"
+                          data-date="<%= date.iso8601 %>"
+                          data-selected="<%= is_selected %>"
+                          data-action="audition-slot-picker#selectDate"
+                          aria-pressed="<%= is_selected %>"
+                          class="flex-shrink-0 w-14 rounded-lg border py-2 text-center transition-colors hover:border-pink-400 <%= is_selected ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200' %>">
+                    <span class="block text-[10px] font-semibold uppercase leading-none"><%= date.strftime("%a") %></span>
+                    <span class="block text-lg font-bold leading-tight"><%= date.strftime("%-d") %></span>
+                    <span class="block text-[10px] uppercase leading-none"><%= date.strftime("%b") %></span>
+                  </button>
+                <% end %>
+              </div>
+              <button type="button" data-audition-slot-picker-target="rightArrow" data-action="audition-slot-picker#scrollRight"
+                      class="hidden absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-pink-600 hover:border-pink-300" aria-label="Scroll dates right">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          <% else %>
+            <p class="text-sm font-semibold text-gray-900"><%= slot_dates.first.strftime("%A, %B %-d") %></p>
+          <% end %>
+
+          <%# Section 2 — Times for the chosen date. Slim rows: time + how many spots
+              are open. Only the selected date's group is shown. %>
+          <div class="mt-4">
+            <% sessions_by_date.sort.each do |date, day_sessions| %>
+              <div data-audition-slot-picker-target="timesGroup" data-date="<%= date.iso8601 %>" class="<%= 'hidden' unless date == selected_date %> space-y-2">
+                <% day_sessions.sort_by(&:start_at).each do |session| %>
+                  <% currently_booked = booked_session&.id == session.id %>
+                  <% is_full = session.full? && !currently_booked %>
+                  <% remaining = session.spots_remaining %>
+                  <label class="block <%= is_full ? 'cursor-not-allowed' : 'cursor-pointer' %>">
+                    <%= radio_button_tag "audition_session_id", session.id, currently_booked,
+                          class: "peer sr-only", disabled: is_full %>
+                    <div class="flex items-center justify-between gap-3 px-3 py-2 border rounded-lg transition-all <%= is_full ? 'opacity-60 bg-gray-50 border-gray-200' : 'bg-white border-gray-200 hover:border-pink-400 peer-checked:border-pink-500 peer-checked:bg-pink-50 peer-checked:ring-1 peer-checked:ring-pink-500' %>">
+                      <span class="min-w-0">
+                        <span class="text-sm font-medium text-gray-900"><%= session.start_at.strftime("%l:%M %p").strip %></span>
+                        <%# Only shown here when slots span different venues; otherwise it's in the header. %>
+                        <% if shared_location.nil? && session.location.present? %>
+                          <span class="block text-xs text-gray-500 truncate"><%= session.location.name %></span>
+                        <% end %>
+                      </span>
+                      <span class="text-xs flex-shrink-0 <%= currently_booked ? 'text-pink-600 font-medium' : 'text-gray-500' %>">
+                        <% if is_full %>
+                          Full
+                        <% elsif currently_booked %>
+                          Your slot
+                        <% elsif remaining.nil? %>
+                          Available
+                        <% else %>
+                          <%= remaining %> available
+                        <% end %>
+                      </span>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
             <% end %>
           </div>
         </div>
