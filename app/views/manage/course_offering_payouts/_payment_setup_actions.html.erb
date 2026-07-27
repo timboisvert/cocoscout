@@ -1,0 +1,34 @@
+<%#
+  Copy-link + QR for a payee who still needs to connect a bank. The link is a
+  no-login, expiring onboarding URL they can open on their phone. Local: setup_url.
+%>
+<div class="flex items-center gap-1" data-controller="qr-code clipboard" data-qr-code-url-value="<%= setup_url %>">
+  <input type="hidden" data-clipboard-target="textField" value="<%= setup_url %>">
+  <%= render "shared/button", text: "Copy setup link", variant: "secondary", size: "xs", icon: "link", type: :button,
+        data: { action: "click->clipboard#copy" } %>
+  <%= render "shared/button", text: "", variant: "outline", size: "xs", icon: "qr-code", type: :button, title: "Show QR code",
+        data: { action: "click->qr-code#open" } %>
+
+  <%# Per-payee QR modal %>
+  <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+       data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden" data-action="click->qr-code#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Scan to set up bank payment</h3>
+        <button type="button" data-action="click->qr-code#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-6 text-center">
+        <p class="text-sm text-gray-600 mb-4">They scan this to connect their bank — no CocoScout login needed. Or copy the link and send it however you like.</p>
+        <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+          <canvas data-qr-code-target="canvas" width="240" height="240"></canvas>
+        </div>
+        <button type="button" data-action="click->qr-code#download" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
