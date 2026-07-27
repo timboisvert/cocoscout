@@ -43,21 +43,20 @@
       <p class="text-gray-600 mb-6">Select the production this show or event will belong to.</p>
 
       <%= form_with url: manage_shows_new_wizard_path, method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": "" } do |form| %>
-        <div class="space-y-3 max-h-96 overflow-y-auto">
+        <div class="space-y-2">
           <% @productions.each do |production| %>
-            <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
+            <% upcoming_count = production.shows.where("date_and_time > ?", Time.current).count %>
+            <div class="flex items-center justify-between gap-4 cursor-pointer px-4 py-3 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
                  data-option-select-target="option"
                  data-value="<%= production.id %>"
                  data-action="click->option-select#select">
               <input type="radio" name="production_id" value="<%= production.id %>"
                      class="sr-only"
                      data-option-select-target="input">
-              <p class="font-medium text-gray-900"><%= production.name %></p>
-              <p class="text-sm text-gray-500 mt-1">
-                <% show_count = production.shows.count %>
-                <% upcoming_count = production.shows.where("date_and_time > ?", Time.current).count %>
-                <%= pluralize(show_count, "show") %> total · <%= pluralize(upcoming_count, "upcoming") %>
-              </p>
+              <p class="font-medium text-gray-900 truncate min-w-0"><%= production.name %></p>
+              <span class="text-sm flex-shrink-0 whitespace-nowrap <%= upcoming_count.positive? ? 'text-pink-600 font-medium' : 'text-gray-400' %>">
+                <%= pluralize(upcoming_count, "upcoming") %>
+              </span>
             </div>
           <% end %>
         </div>

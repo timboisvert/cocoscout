@@ -20,6 +20,7 @@
 
     <%# ===== Sign-up Mode ===== %>
     <% current_mode = @audition_cycle.signup_mode.presence || "curated" %>
+    <% open_mode = current_mode == "open" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <%= render "shared/card_header", title: "Sign-up Mode" %>
       <div class="p-5 space-y-3">
@@ -49,29 +50,39 @@
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <%= render "shared/card_header", title: "Audition Format" %>
       <div class="p-5">
-        <p class="text-sm text-gray-500 mb-4">Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.</p>
+        <p class="text-sm text-gray-500 mb-4">
+          <% if open_mode %>
+            Open sign-up runs as in-person session booking — performers pick a published slot themselves. Change the sign-up mode above to switch back to curated auditions.
+          <% else %>
+            Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.
+          <% end %>
+        </p>
 
-        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-          <div>
-            <h4 class="font-medium text-gray-900">Scheduled Sessions</h4>
-            <p class="text-sm text-gray-500">Manage in-person audition sessions</p>
+        <%# Scheduled Sessions + Video Submissions don't apply to open sign-up
+            (it's always in-person slot booking). %>
+        <% unless open_mode %>
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <h4 class="font-medium text-gray-900">Scheduled Sessions</h4>
+              <p class="text-sm text-gray-500">Manage in-person audition sessions</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.check_box :allow_in_person_auditions, class: "sr-only peer", checked: @audition_cycle.allow_in_person_auditions %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <%= form.check_box :allow_in_person_auditions, class: "sr-only peer", checked: @audition_cycle.allow_in_person_auditions %>
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-          </label>
-        </div>
 
-        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-          <div>
-            <h4 class="font-medium text-gray-900">Video Submissions</h4>
-            <p class="text-sm text-gray-500">Allow performers to submit video auditions</p>
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <h4 class="font-medium text-gray-900">Video Submissions</h4>
+              <p class="text-sm text-gray-500">Allow performers to submit video auditions</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.check_box :allow_video_submissions, class: "sr-only peer", checked: @audition_cycle.allow_video_submissions %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <%= form.check_box :allow_video_submissions, class: "sr-only peer", checked: @audition_cycle.allow_video_submissions %>
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-          </label>
-        </div>
+        <% end %>
 
         <div class="flex items-center justify-between py-3">
           <div>
@@ -88,9 +99,9 @@
 
     <%# ===== Request Window ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Request Window" %>
+      <%= render "shared/card_header", title: open_mode ? "Sign-up Window" : "Request Window" %>
       <div class="p-5">
-        <p class="text-sm text-gray-500 mb-5">When should the request window open? Optionally set a close date, or leave it open-ended.</p>
+        <p class="text-sm text-gray-500 mb-5">When should <%= open_mode ? "sign-ups" : "the request window" %> open? Optionally set a close date, or leave it open-ended.</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
@@ -124,7 +135,8 @@
       </div>
     </div>
 
-    <%# ===== Review Team (inside the same form) ===== %>
+    <%# ===== Review Team (curated only — open sign-up has no review/voting) ===== %>
+    <% unless open_mode %>
     <%
       reviewer_type = @audition_cycle.reviewer_access_type.presence || "managers"
       selected_reviewer_ids = @audition_cycle.reviewer_people.pluck(:id).map(&:to_s)
@@ -217,6 +229,7 @@
         </div>
       </div>
     </div>
+    <% end %>
 
     <div class="mb-6">
       <%= render "shared/button", text: "Save Settings", variant: "primary", size: "medium", type: :submit %>
