@@ -5,26 +5,26 @@
 
   <%= form_with url: manage_signups_auditions_wizard_save_format_path(@production), method: :post, local: true do |form| %>
     <div data-controller="audition-mode">
-      <%# ---- Mode selection (the first, load-bearing choice) ---- %>
-      <div class="space-y-3 mb-6">
-        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
-          <input type="radio" name="signup_mode" value="curated" <%= "checked" if mode == "curated" %>
-                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
-                 data-action="change->audition-mode#update">
-          <span class="flex-1">
-            <span class="block font-medium text-gray-900">Curated auditions</span>
-            <span class="block text-sm text-gray-500 mt-0.5">People apply, your team reviews and votes, then you schedule them into sessions. Best when you're selecting who gets to audition.</span>
+      <%# ---- Mode selection (the first, load-bearing choice) — two side-by-side cards ---- %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <label class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition <%= mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+          <span class="flex items-center gap-2">
+            <input type="radio" name="signup_mode" value="curated" <%= "checked" if mode == "curated" %>
+                   class="text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                   data-action="change->audition-mode#update">
+            <span class="font-medium text-gray-900">Curated auditions</span>
           </span>
+          <span class="block text-sm text-gray-500 mt-2">People apply, your team reviews and votes, then you schedule them into sessions.</span>
         </label>
 
-        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
-          <input type="radio" name="signup_mode" value="open" <%= "checked" if mode == "open" %>
-                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
-                 data-action="change->audition-mode#update">
-          <span class="flex-1">
-            <span class="block font-medium text-gray-900">Open sign-up</span>
-            <span class="block text-sm text-gray-500 mt-0.5">Publish audition slots and let performers book an open one themselves, open-mic style. No applications, voting, or scheduling — the slot they pick is their audition.</span>
+        <label class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition <%= mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+          <span class="flex items-center gap-2">
+            <input type="radio" name="signup_mode" value="open" <%= "checked" if mode == "open" %>
+                   class="text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                   data-action="change->audition-mode#update">
+            <span class="font-medium text-gray-900">Open sign-up</span>
           </span>
+          <span class="block text-sm text-gray-500 mt-2">Publish slots and let performers book one themselves, open-mic style. No applications or voting.</span>
         </label>
       </div>
 
