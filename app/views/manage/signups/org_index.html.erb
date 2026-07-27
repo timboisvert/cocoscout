@@ -11,13 +11,11 @@
     </p>
   HTML
 
-  auditions_locked = !Current.organization&.on_paid_plan?
-
   signup_actions = [
     { icon: "calendar", text: "Event Registrations", description: "Sign up for specific events", path: manage_signups_all_forms_path(filter: "registrations") },
     { icon: "queue-list", text: "Waitlists", description: "Not tied to specific lists", path: manage_signups_all_forms_path(filter: "waitlists") },
-    { icon: "users", text: "In-person Auditions", description: "Apply for live audition sessions", path: manage_signups_all_auditions_path(filter: "in_person"), locked: auditions_locked, feature: :auditions },
-    { icon: "video-camera", text: "Video Auditions", description: "Submit video auditions", path: manage_signups_all_auditions_path(filter: "video"), locked: auditions_locked, feature: :auditions }
+    { icon: "users", text: "In-person Auditions", description: "Apply for live audition sessions", path: manage_signups_all_auditions_path(filter: "in_person") },
+    { icon: "video-camera", text: "Video Auditions", description: "Submit video auditions", path: manage_signups_all_auditions_path(filter: "video") }
   ]
 %>
 

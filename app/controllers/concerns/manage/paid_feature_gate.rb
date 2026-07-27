@@ -30,13 +30,6 @@ module Manage
       "manage/advances" => :money,
       # Reports
       "manage/reports" => :reports,
-      # Auditions (both in-person and video formats)
-      "manage/auditions" => :auditions,
-      "manage/audition_cycles" => :auditions,
-      "manage/audition_cycle_wizard" => :auditions,
-      "manage/audition_requests" => :auditions,
-      "manage/audition_sessions" => :auditions,
-      "manage/audition_email_assignments" => :auditions,
       # Casting Table
       "manage/casting_tables" => :casting_table,
       "manage/casting_table_wizard" => :casting_table,
@@ -48,7 +41,7 @@ module Manage
     PRO_INCLUDES = [
       "Unlimited productions and shows/events",
       "Money: financials, payouts, contracts & advances",
-      "Staffing, in-person & video Auditions, and Casting Tables",
+      "Staffing and Casting Tables",
       "Company-wide Reports",
       "Everything in Producer, with no monthly limits"
     ].freeze
@@ -105,21 +98,6 @@ module Manage
           { title: "Tax forms", body: "Generate the tax forms you need — W-9, 1099-NEC, 1096, and more." }
         ],
         outcome: "Keep your team scheduled, paid, and compliant — without leaving CocoScout, and without paying for people who aren't working."
-      },
-      auditions: {
-        name: "Auditions",
-        icon: "user-group",
-        headline: "Run in-person and video auditions from first call to final cast",
-        subhead: "Collect submissions, schedule sessions, review, vote, and notify — in one flow.",
-        description: "Auditions handles the entire casting funnel. Put out a call, collect video submissions or book live audition slots, review as a team, and move your favorites straight into casting.",
-        capabilities: [
-          { title: "Video audition submissions", body: "Let performers submit video auditions online, organized by cycle and role." },
-          { title: "In-person audition sessions", body: "Publish available slots and let auditionees book the time that works for them." },
-          { title: "Team review & voting", body: "Invite reviewers, leave notes, and vote to reach a decision together." },
-          { title: "Automatic notifications", body: "Invite, remind, and follow up with auditionees automatically." },
-          { title: "Straight into casting", body: "Move the people you love directly into your talent pool and casting board." }
-        ],
-        outcome: "Cast faster, with a clear record of everyone who auditioned and why you chose them."
       },
       casting_table: {
         name: "Casting Table",
