@@ -110,7 +110,19 @@
             </div>
 
             <div class="mt-4 text-center">
-              <%= button_to "Decline invitation", manage_decline_person_invitations_path(token: @person_invitation.token), method: :post, class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition", data: { turbo_confirm: "Are you sure you want to decline this invitation?" } %>
+              <% decline_invite_cid = "confirm-decline-invite-signedin" %>
+              <button type="button"
+                      data-controller="modal"
+                      data-action="click->modal#open"
+                      data-modal-id="<%= decline_invite_cid %>"
+                      class="text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition bg-transparent border-0">Decline invitation</button>
+              <%= render "shared/confirm_modal",
+                    id: decline_invite_cid,
+                    title: "Decline invitation?",
+                    message: "Are you sure you want to decline this invitation?",
+                    confirm_text: "Decline invitation",
+                    url: manage_decline_person_invitations_path(token: @person_invitation.token),
+                    method: :post %>
             </div>
           <% else %>
             <!-- New user or not signed in - show password form -->
@@ -218,7 +230,19 @@
 
             <% if @person_invitation.organization %>
               <div class="mt-4 text-center">
-                <%= button_to "Decline invitation", manage_decline_person_invitations_path(token: @person_invitation.token), method: :post, class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition", data: { turbo_confirm: "Are you sure you want to decline this invitation?" } %>
+                <% decline_invite_newuser_cid = "confirm-decline-invite-newuser" %>
+                <button type="button"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-id="<%= decline_invite_newuser_cid %>"
+                        class="text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition bg-transparent border-0">Decline invitation</button>
+                <%= render "shared/confirm_modal",
+                      id: decline_invite_newuser_cid,
+                      title: "Decline invitation?",
+                      message: "Are you sure you want to decline this invitation?",
+                      confirm_text: "Decline invitation",
+                      url: manage_decline_person_invitations_path(token: @person_invitation.token),
+                      method: :post %>
               </div>
             <% end %>
 

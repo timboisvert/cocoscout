@@ -35,7 +35,20 @@
                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                 <span class="ms-3 text-sm font-medium text-gray-900" data-questionnaire-status-target="statusLabel"><%= @questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %></span>
               </label>
-              <%= link_to "Archive this Questionnaire", manage_archive_contacts_questionnaire_path(@questionnaire), method: :patch, data: { confirm: "Are you sure you want to archive this questionnaire?", "questionnaire-status-target": "archiveButton", turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600 #{'hidden' if @questionnaire.accepting_responses}" %>
+              <% archive_q_cid = "confirm-archive-questionnaire-#{@questionnaire.id}" %>
+              <button type="button"
+                      data-controller="modal"
+                      data-action="click->modal#open"
+                      data-modal-id="<%= archive_q_cid %>"
+                      data-questionnaire-status-target="archiveButton"
+                      class="text-xs text-pink-500 hover:text-pink-600 bg-transparent border-0 cursor-pointer p-0 text-left <%= 'hidden' if @questionnaire.accepting_responses %>">Archive this Questionnaire</button>
+              <%= render "shared/confirm_modal",
+                    id: archive_q_cid,
+                    title: "Archive questionnaire?",
+                    message: "Are you sure you want to archive this questionnaire?",
+                    confirm_text: "Archive",
+                    url: manage_archive_contacts_questionnaire_path(@questionnaire),
+                    method: :patch %>
             <% end %>
           </div>
         </div>

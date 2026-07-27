@@ -3,6 +3,7 @@
 <div class="w-full mb-10" data-controller="location-spaces">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
+  <% delete_location_cid = "confirm-delete-location-#{@location.id}" %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Organizations", manage_organizations_path],
@@ -11,9 +12,20 @@
     text: @location.name,
     links: (@is_owner || @role == "manager") ? [
       { icon: "pencil", text: "Edit Location", path: "#", data: { action: "click->location-spaces#openEditLocationModal" } },
-      { icon: "trash", text: "Delete Location", path: manage_location_path(@location), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this location? This cannot be undone." }, variant: "danger" }
+      { icon: "trash", text: "Delete Location", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: delete_location_cid }, variant: "danger" }
     ] : []
   } %>
+
+  <% if @is_owner || @role == "manager" %>
+    <%= render "shared/confirm_modal",
+          id: delete_location_cid,
+          title: "Delete location?",
+          message: "Are you sure you want to delete this location? This cannot be undone.",
+          confirm_text: "Delete Location",
+          confirm_icon: "trash",
+          url: manage_location_path(@location),
+          method: :delete %>
+  <% end %>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
     <%# Location Details %>

@@ -8,12 +8,19 @@
     </div>
 
     <% if @unsigned.any? %>
+      <% send_reminders_cid = "confirm-send-reminders-#{@production.id}" %>
       <%= render "shared/button",
                  text: "Send Reminder to #{@unsigned.count} Unsigned",
-                 path: send_agreement_reminders_manage_production_path(@production),
-                 method: :post,
+                 type: :button,
                  variant: "primary",
-                 data: { turbo_confirm: "Send a reminder message to all #{@unsigned.count} #{'performer'.pluralize(@unsigned.count)} who haven't signed yet?" } %>
+                 data: { controller: "modal", action: "click->modal#open", modal_id: send_reminders_cid } %>
+      <%= render "shared/confirm_modal",
+            id: send_reminders_cid,
+            title: "Send reminders?",
+            message: "Send a reminder message to all #{@unsigned.count} #{'performer'.pluralize(@unsigned.count)} who haven't signed yet?",
+            confirm_text: "Send Reminder",
+            url: send_agreement_reminders_manage_production_path(@production),
+            method: :post %>
     <% end %>
   </div>
 

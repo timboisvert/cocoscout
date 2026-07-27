@@ -121,9 +121,16 @@
       <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
       <div class="flex flex-wrap gap-2">
         <% if current_user_can_manage? && @person.organizations.include?(Current.organization) %>
-          <%= link_to remove_from_organization_manage_person_path(@person), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to remove #{@person.name} from #{Current.organization.name}?" } do %>
-            <%= render "shared/button", text: "Remove from org", variant: "outline", size: "small" %>
-          <% end %>
+          <% remove_person_cid = "confirm-remove-person-#{@person.id}" %>
+          <%= render "shared/button", text: "Remove from org", variant: "outline", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: remove_person_cid } %>
+          <%= render "shared/confirm_modal",
+                id: remove_person_cid,
+                title: "Remove from organization?",
+                message: "Are you sure you want to remove #{@person.name} from #{Current.organization.name}?",
+                confirm_text: "Remove",
+                url: remove_from_organization_manage_person_path(@person),
+                method: :post %>
         <% end %>
         <% if Current.user&.superadmin? && @person.user %>
           <%= button_to impersonate_user_path, method: :post, params: { email: @person.user.email_address }, class: "inline-block" do %>

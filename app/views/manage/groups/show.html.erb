@@ -122,9 +122,16 @@
         <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
         <div class="flex flex-wrap gap-2">
           <% if current_user_can_manage? && @group.organizations.include?(Current.organization) %>
-            <%= link_to remove_from_organization_manage_group_path(@group), data: { turbo_method: :post, turbo_confirm: "Are you sure you want to remove #{@group.name} from #{Current.organization.name}?" } do %>
-              <%= render "shared/button", text: "Remove from org", variant: "outline", size: "small" %>
-            <% end %>
+            <% remove_group_cid = "confirm-remove-group-#{@group.id}" %>
+            <%= render "shared/button", text: "Remove from org", variant: "outline", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_group_cid } %>
+            <%= render "shared/confirm_modal",
+                  id: remove_group_cid,
+                  title: "Remove from organization?",
+                  message: "Are you sure you want to remove #{@group.name} from #{Current.organization.name}?",
+                  confirm_text: "Remove",
+                  url: remove_from_organization_manage_group_path(@group),
+                  method: :post %>
           <% end %>
         </div>
       </div>

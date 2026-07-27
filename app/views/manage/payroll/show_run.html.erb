@@ -49,21 +49,45 @@
             <%= form_with url: manage_start_money_payroll_run_path(@payroll_run), method: :post, data: { turbo: false }, class: "inline" do %>
               <%= render "shared/button", text: "Start Processing", variant: "primary", size: "medium", type: :submit %>
             <% end %>
-            <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Cancel this payroll run? The line items will be available for future runs." } do %>
-              <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
-            <% end %>
+            <% cancel_run_pending_cid = "confirm-cancel-run-pending-#{@payroll_run.id}" %>
+            <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: cancel_run_pending_cid } %>
+            <%= render "shared/confirm_modal",
+                  id: cancel_run_pending_cid,
+                  title: "Cancel payroll run?",
+                  message: "Cancel this payroll run? The line items will be available for future runs.",
+                  confirm_text: "Cancel Run",
+                  url: manage_cancel_money_payroll_run_path(@payroll_run),
+                  method: :post,
+                  form_data: { turbo: false } %>
           <% elsif @payroll_run.processing? %>
             <% if @paid_count == @line_items.count %>
               <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, data: { turbo: false }, class: "inline" do %>
                 <%= render "shared/button", text: "Mark Complete", variant: "primary", size: "medium", type: :submit %>
               <% end %>
             <% else %>
-              <%= form_with url: manage_complete_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Mark complete with #{@unpaid_count} unpaid items? Unpaid items will be available for future runs." } do %>
-                <%= render "shared/button", text: "Mark Complete", variant: "outline", size: "medium", type: :submit %>
-              <% end %>
-              <%= form_with url: manage_cancel_money_payroll_run_path(@payroll_run), method: :post, class: "inline", data: { turbo: false, turbo_confirm: "Cancel this payroll run?" } do %>
-                <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :submit %>
-              <% end %>
+              <% complete_run_cid = "confirm-complete-run-#{@payroll_run.id}" %>
+              <%= render "shared/button", text: "Mark Complete", variant: "outline", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: complete_run_cid } %>
+              <%= render "shared/confirm_modal",
+                    id: complete_run_cid,
+                    title: "Mark run complete?",
+                    message: "Mark complete with #{@unpaid_count} unpaid items? Unpaid items will be available for future runs.",
+                    confirm_text: "Mark Complete",
+                    url: manage_complete_money_payroll_run_path(@payroll_run),
+                    method: :post,
+                    form_data: { turbo: false } %>
+              <% cancel_run_processing_cid = "confirm-cancel-run-processing-#{@payroll_run.id}" %>
+              <%= render "shared/button", text: "Cancel Run", variant: "outline", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: cancel_run_processing_cid } %>
+              <%= render "shared/confirm_modal",
+                    id: cancel_run_processing_cid,
+                    title: "Cancel payroll run?",
+                    message: "Cancel this payroll run?",
+                    confirm_text: "Cancel Run",
+                    url: manage_cancel_money_payroll_run_path(@payroll_run),
+                    method: :post,
+                    form_data: { turbo: false } %>
             <% end %>
           <% end %>
         </div>

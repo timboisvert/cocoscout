@@ -925,9 +925,16 @@
             </div>
 
             <div class="flex items-center gap-3 pt-2 border-t border-gray-200">
-              <%= link_to manage_course_offering_disable_questionnaire_path(@course_offering), method: :post, data: { turbo_method: :post, turbo_confirm: "This will unlink the questionnaire from this course. The questionnaire itself will not be deleted." } do %>
-                <%= render "shared/button", text: "Disable Questionnaire", variant: "ghost-cancel", size: "small" %>
-              <% end %>
+              <% disable_q_cid = "confirm-#{SecureRandom.hex(6)}" %>
+              <%= render "shared/button", text: "Disable Questionnaire", variant: "ghost-cancel", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: disable_q_cid } %>
+              <%= render "shared/confirm_modal",
+                    id: disable_q_cid,
+                    title: "Disable questionnaire?",
+                    message: "This will unlink the questionnaire from this course. The questionnaire itself will not be deleted.",
+                    confirm_text: "Disable Questionnaire",
+                    url: manage_course_offering_disable_questionnaire_path(@course_offering),
+                    method: :post %>
             </div>
           <% else %>
             <p class="text-sm text-gray-600 mb-3">
