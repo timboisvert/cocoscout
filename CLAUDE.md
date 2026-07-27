@@ -237,6 +237,54 @@ The show_row partial displays a single show/event in a list. It's highly configu
 - `:cast_summary` - Shows count of assignments and vacancies
 - `:countdown` - Shows countdown timer to closes_at
 
+## Modals & Confirmation Dialogs
+
+**HARD RULE: Never use native browser confirms.** No `data: { turbo_confirm: ... }`,
+no Rails `confirm:` / `data: { confirm: ... }`, no `window.confirm()` / `confirm()`
+in JS. They cannot be styled and Tim will not accept them. Always confirm via an
+in-page modal.
+
+### Confirmation modals
+Use the shared partial `shared/confirm_modal` for a destructive/confirm action.
+Pair it with a trigger that opens it:
+
+```erb
+<% cid = "confirm-#{SecureRandom.hex(6)}" %>  <%# or a record-scoped id inside loops %>
+<%= render "shared/button", text: "Delete", variant: "primary", type: :button,
+      data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+<%= render "shared/confirm_modal", id: cid,
+      title: "Delete this thing?",
+      message: "This can't be undone.",
+      confirm_text: "Delete",
+      url: some_path, method: :delete %>
+```
+
+For a form that carries its own inputs (`shared/confirm_modal` builds its own
+param-only form and would drop them), keep the real `form_with` (give it an
+`id:`), turn its submit into a modal trigger, and render an inline modal whose
+confirm button is `<button type="submit" form="that-form-id">`.
+
+In JS, replace `window.confirm` with the promise-based helper:
+`import { confirmDialog } from "controllers/lib/confirm_dialog"` then
+`if (await confirmDialog({ title, message, confirmText })) { ... }`.
+
+### The pink standard (applies to ALL modals, custom ones too)
+- Header: pink gradient `bg-gradient-to-r from-pink-500 to-pink-600`, white title,
+  white close X. (`shared/confirm_modal` already does this.)
+- The one key/confirm button is **pink** (`variant: "primary"`), **never red**
+  (`variant: "danger"` / `bg-red-600`). This includes the page trigger button.
+- Cancel is white (`variant: "secondary"`).
+- No red warning icon in the header/body.
+- Red (`bg-red-*` / `text-red-*`) is allowed ONLY on non-buttons: status badges,
+  danger-zone/alert banners, validation-error text, money-direction icons,
+  progress bars, and gray icons that only tint red on hover.
+
+Many confirmation modals are hand-rolled (`fixed inset-0` overlays, `<dialog>`,
+`data-*-target="modal"`) rather than using `shared/confirm_modal`. They must meet
+the same standard. When enforcing this app-wide, audit ALL modal-defining views
+(grep `fixed inset-0`, `<dialog`, `data-controller=".*modal"`) — a
+`turbo_confirm`-only sweep misses every already-in-page modal.
+
 ## Routes
 
 ### Money Routes
