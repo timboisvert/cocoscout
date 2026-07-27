@@ -152,7 +152,6 @@
                   path: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post,
                   form: { data: { turbo_confirm: "Add this payment to your contractor payout run?" } } %>
-          <% end %>
           <% else %>
             <%= link_to contractor ? manage_contractor_path(contractor) : "#",
                   class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
