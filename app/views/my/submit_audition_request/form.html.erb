@@ -457,7 +457,7 @@
     <%
       existing_request = @audition_cycle.audition_requests.exists?(requestable: @requestable)
       if @audition_cycle.signup_mode_open?
-        submit_text = @current_booking ? "Update booking" : "Book audition"
+        submit_text = @current_booking ? "Update audition" : "Book audition"
       elsif @audition_cycle.video_only?
         submit_text = existing_request ? "Update video audition" : "Submit video audition"
       else
