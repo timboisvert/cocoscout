@@ -421,18 +421,16 @@
         <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
           <% if @show_financials.non_revenue_override? %>
             <% restore_cid = "confirm-#{SecureRandom.hex(6)}" %>
-            <button type="button" class="w-full" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= restore_cid %>">
-              <%= render "shared/button", text: "Restore as Revenue Event", variant: "secondary", size: "small", classes: "w-full" %>
-            </button>
+            <%= render "shared/button", text: "Restore as Revenue Event", variant: "secondary", size: "small", classes: "w-full", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: restore_cid } %>
             <%= render "shared/confirm_modal", id: restore_cid, title: "Restore as revenue event?",
                   message: "Restore this as a revenue event?", confirm_text: "Restore",
                   url: manage_unmark_non_revenue_money_show_financials_path(@show), method: :post %>
             <div class="text-xs text-gray-500 mt-2 text-center">This event is marked as non-revenue</div>
           <% else %>
             <% mark_cid = "confirm-#{SecureRandom.hex(6)}" %>
-            <button type="button" class="w-full" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= mark_cid %>">
-              <%= render "shared/button", text: "Mark as Non-Revenue", variant: "ghost", size: "small", classes: "w-full" %>
-            </button>
+            <%= render "shared/button", text: "Mark as Non-Revenue", variant: "ghost", size: "small", classes: "w-full", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: mark_cid } %>
             <%= render "shared/confirm_modal", id: mark_cid, title: "Mark as non-revenue?",
                   message: "Mark this as a non-revenue event? This will remove any payout calculations.", confirm_text: "Mark as Non-Revenue",
                   url: manage_mark_non_revenue_money_show_financials_path(@show), method: :post %>
@@ -453,9 +451,8 @@
 
         <% if @show_financials.non_revenue_override? %>
           <% restore2_cid = "confirm-#{SecureRandom.hex(6)}" %>
-          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= restore2_cid %>">
-            <%= render "shared/button", text: "Restore as Revenue Event", variant: "outline-pink", size: "medium" %>
-          </button>
+          <%= render "shared/button", text: "Restore as Revenue Event", variant: "outline-pink", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: restore2_cid } %>
           <%= render "shared/confirm_modal", id: restore2_cid, title: "Restore as revenue event?",
                 message: "Restore this as a revenue event?", confirm_text: "Restore",
                 url: manage_unmark_non_revenue_money_show_financials_path(@show), method: :post %>

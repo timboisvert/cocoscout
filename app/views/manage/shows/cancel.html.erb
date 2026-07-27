@@ -75,9 +75,8 @@
             <% end %>
 
             <% uncancel_future_cid = "confirm-#{SecureRandom.hex(6)}" %>
-            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= uncancel_future_cid %>">
-              <%= render "shared/button", text: "Uncancel This & Future (#{@future_count})", variant: "success", size: "medium", type: :button %>
-            </button>
+            <%= render "shared/button", text: "Uncancel This & Future (#{@future_count})", variant: "success", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: uncancel_future_cid } %>
             <%= render "shared/confirm_modal", id: uncancel_future_cid, title: "Uncancel occurrences?",
                   message: "Uncancel this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)}?", confirm_text: "Uncancel",
                   url: manage_uncancel_show_path(@production, @show, scope: "this_and_future"), method: :patch %>
@@ -261,34 +260,30 @@
       <% if @show.recurring? %>
         <div class="flex flex-wrap gap-2">
           <% delete_this_cid = "confirm-#{SecureRandom.hex(6)}" %>
-          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_this_cid %>">
-            <%= render "shared/button", text: "Delete Only This Occurrence", variant: "primary", size: "medium", type: :button %>
-          </button>
+          <%= render "shared/button", text: "Delete Only This Occurrence", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: delete_this_cid } %>
           <%= render "shared/confirm_modal", id: delete_this_cid, title: "Delete occurrence?",
                 message: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone.", confirm_text: "Delete",
                 url: manage_delete_show_path(@production, @show, scope: "this"), method: :delete %>
 
           <% delete_future_cid = "confirm-#{SecureRandom.hex(6)}" %>
-          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_future_cid %>">
-            <%= render "shared/button", text: "Delete This & Future (#{@future_count})", variant: "primary", size: "medium", type: :button %>
-          </button>
+          <%= render "shared/button", text: "Delete This & Future (#{@future_count})", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: delete_future_cid } %>
           <%= render "shared/confirm_modal", id: delete_future_cid, title: "Delete occurrences?",
                 message: "Are you sure you want to permanently delete this and #{@future_count - 1} future #{'occurrence'.pluralize(@future_count - 1)} (#{@future_count} total)? Past events will be kept. This cannot be undone.", confirm_text: "Delete",
                 url: manage_delete_show_path(@production, @show, scope: "this_and_future"), method: :delete %>
 
           <% delete_all_cid = "confirm-#{SecureRandom.hex(6)}" %>
-          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_all_cid %>">
-            <%= render "shared/button", text: "Delete All #{@show.recurrence_group.count} Occurrences", variant: "primary", size: "medium", type: :button %>
-          </button>
+          <%= render "shared/button", text: "Delete All #{@show.recurrence_group.count} Occurrences", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: delete_all_cid } %>
           <%= render "shared/confirm_modal", id: delete_all_cid, title: "Delete all occurrences?",
                 message: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone.", confirm_text: "Delete",
                 url: manage_delete_show_path(@production, @show, scope: "all"), method: :delete %>
         </div>
       <% else %>
         <% delete_single_cid = "confirm-#{SecureRandom.hex(6)}" %>
-        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_single_cid %>">
-          <%= render "shared/button", text: "Delete This #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :button %>
-        </button>
+        <%= render "shared/button", text: "Delete This #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: delete_single_cid } %>
         <%= render "shared/confirm_modal", id: delete_single_cid, title: "Delete #{@show.event_type.downcase}?",
               message: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone.", confirm_text: "Delete",
               url: manage_delete_show_path(@production, @show, scope: "this"), method: :delete %>

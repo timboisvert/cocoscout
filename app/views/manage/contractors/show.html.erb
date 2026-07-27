@@ -97,9 +97,8 @@
                 <% end %>
               </p>
               <% if @invite_preview %>
-                <button type="button" class="flex-shrink-0" data-controller="modal" data-action="click->modal#open" data-modal-id="invite-preview-modal">
-                  <%= render "shared/button", text: @pending_invitation ? "Preview & resend" : "Invite to CocoScout", variant: @pending_invitation ? "secondary" : "primary", size: "small" %>
-                </button>
+                <%= render "shared/button", text: @pending_invitation ? "Preview & resend" : "Invite to CocoScout", variant: @pending_invitation ? "secondary" : "primary", size: "small", type: :button, classes: "flex-shrink-0",
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "invite-preview-modal" } %>
               <% end %>
             </div>
           <% end %>
@@ -111,9 +110,8 @@
           <p class="text-gray-400 text-xs mt-1">Link who this contractor is so they can log in, see their contracts, and get paid.</p>
         </div>
         <div class="mt-4">
-          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="add-person-modal">
-            <%= render "shared/button", text: "Add a person", variant: "primary", size: "medium", icon: "user-plus" %>
-          </button>
+          <%= render "shared/button", text: "Add a person", variant: "primary", size: "medium", icon: "user-plus", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "add-person-modal" } %>
         </div>
       <% end %>
     </div>

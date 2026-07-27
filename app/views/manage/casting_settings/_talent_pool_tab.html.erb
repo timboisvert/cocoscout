@@ -49,9 +49,8 @@
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h4 class="text-sm font-semibold text-gray-900">Share talent pool</h4>
-            <button type="button" data-action="click->modal#open" data-modal-id="share-talent-pool-modal" class="cursor-pointer">
-              <%= render "shared/button", text: (shared_with.any? ? "Manage sharing" : "Share pool"), variant: "secondary", size: "small", tag: :span %>
-            </button>
+            <%= render "shared/button", text: (shared_with.any? ? "Manage sharing" : "Share pool"), variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "share-talent-pool-modal" } %>
           </div>
           <div class="p-4">
             <% if shared_with.any? %>

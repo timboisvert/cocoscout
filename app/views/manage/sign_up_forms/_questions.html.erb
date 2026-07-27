@@ -40,9 +40,8 @@
                   "update-path": manage_update_question_signups_form_path(@production, @sign_up_form, question_id: question.id)
                 } %>
               <% delete_question_cid = "confirm-delete-question-#{question.id}" %>
-              <button type="button" class="cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_question_cid %>">
-                <%= render "shared/button", text: "Delete", variant: "primary", size: "small", type: :button %>
-              </button>
+              <%= render "shared/button", text: "Delete", variant: "primary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: delete_question_cid } %>
               <%= render "shared/confirm_modal", id: delete_question_cid, title: "Delete question?",
                     message: "Are you sure you want to delete this question?", confirm_text: "Delete",
                     url: manage_destroy_question_signups_form_path(@production, @sign_up_form, question_id: question.id), method: :delete %>
