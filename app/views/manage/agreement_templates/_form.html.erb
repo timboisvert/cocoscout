@@ -95,7 +95,7 @@
       <% if agreement_template.persisted? && agreement_template.productions.empty? %>
         <button type="button"
             data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-template-<%= agreement_template.id %>"
-            class="text-sm text-red-600 hover:text-red-700 bg-transparent border-0 cursor-pointer p-0">Delete Template</button>
+            class="text-sm text-pink-600 hover:text-pink-700 bg-transparent border-0 cursor-pointer p-0">Delete Template</button>
         <%= render "shared/confirm_modal",
             id: "confirm-delete-template-#{agreement_template.id}",
             title: "Delete template?",

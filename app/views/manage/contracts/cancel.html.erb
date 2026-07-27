@@ -114,7 +114,7 @@
       <%# Actions %>
       <div class="flex justify-between">
         <%= render "shared/button", text: "Keep Contract", variant: "secondary", size: "medium", path: manage_contract_path(@contract) %>
-        <%= render "shared/button", text: "Cancel Contract", variant: "danger", size: "medium", icon: "x-circle", type: :button,
+        <%= render "shared/button", text: "Cancel Contract", variant: "primary", size: "medium", icon: "x-circle", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-contract-#{@contract.id}" } %>
       </div>
 

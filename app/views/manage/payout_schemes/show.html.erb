@@ -237,7 +237,7 @@
 
           <% if @payout_scheme.show_payouts.paid.none? %>
             <% delete_scheme_cid = "confirm-delete-scheme-#{@payout_scheme.id}" %>
-            <%= render "shared/button", text: "Delete Scheme", variant: "ghost", size: "small", classes: "w-full text-red-600", type: :button,
+            <%= render "shared/button", text: "Delete Scheme", variant: "ghost", size: "small", classes: "w-full text-pink-600", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: delete_scheme_cid } %>
             <%= render "shared/confirm_modal",
                   id: delete_scheme_cid,

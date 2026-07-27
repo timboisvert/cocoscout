@@ -12,7 +12,7 @@
     text: @location.name,
     links: (@is_owner || @role == "manager") ? [
       { icon: "pencil", text: "Edit Location", path: "#", data: { action: "click->location-spaces#openEditLocationModal" } },
-      { icon: "trash", text: "Delete Location", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: delete_location_cid }, variant: "danger" }
+      { icon: "trash", text: "Delete Location", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: delete_location_cid }, variant: "primary" }
     ] : []
   } %>
 

@@ -27,7 +27,7 @@
             method: :post %>
       <% clear_failed_cid = "confirm-clear-all-failed" %>
       <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= clear_failed_cid %>"
-              class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm cursor-pointer">
+              class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-medium text-sm cursor-pointer">
         Clear All Failed Jobs (<%= @failed_jobs %>)
       </button>
       <%= render "shared/confirm_modal", id: clear_failed_cid,
@@ -245,7 +245,7 @@
                   <% unless job.finished_at %>
                     <% cid = "confirm-delete-recent-job-#{job.id}" %>
                     <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
-                            class="text-red-600 hover:text-red-800 font-medium cursor-pointer bg-transparent border-0">
+                            class="text-pink-600 hover:text-pink-700 font-medium cursor-pointer bg-transparent border-0">
                       Delete
                     </button>
                     <%= render "shared/confirm_modal", id: cid,

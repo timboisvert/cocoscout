@@ -73,7 +73,7 @@
                 <% remove_event_message = draft_count > 0 && @casting_table.draft? ?
                      "Remove \"#{show.display_name}\" from this casting table? This will also delete #{draft_count} draft assignment(s)." :
                      "Remove \"#{show.display_name}\" from this casting table?" %>
-                <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash", type: :button,
+                <%= render "shared/button", text: "Remove", variant: "primary", size: "small", icon: "trash", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-event-#{show.id}" } %>
                 <%= render "shared/confirm_modal",
                       id: "confirm-remove-event-#{show.id}",

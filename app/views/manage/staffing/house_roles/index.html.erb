@@ -75,7 +75,7 @@
             <% remove_role_cid = "confirm-remove-house-role-#{role.id}" %>
             <%= render "shared/button",
                   text: "Remove",
-                  variant: "danger",
+                  variant: "primary",
                   size: "small",
                   type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: remove_role_cid } %>

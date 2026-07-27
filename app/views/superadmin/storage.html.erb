@@ -139,7 +139,7 @@
           </div>
 
           <% cid = "confirm-purge-orphans" %>
-          <%= render "shared/button", text: "Purge All Orphans", variant: "danger", size: "small", type: :button,
+          <%= render "shared/button", text: "Purge All Orphans", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
           <%= render "shared/confirm_modal", id: cid,
               title: "Purge all orphans?",
@@ -175,7 +175,7 @@
           <p class="text-sm mb-3"><strong>Count:</strong> <%= @legacy_count %></p>
 
           <% cid = "confirm-delete-legacy" %>
-          <%= render "shared/button", text: "Delete Legacy Attachments", variant: "danger", size: "small", type: :button,
+          <%= render "shared/button", text: "Delete Legacy Attachments", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
           <%= render "shared/confirm_modal", id: cid,
               title: "Delete legacy attachments?",
@@ -270,7 +270,7 @@
       </p>
 
       <% cid = "confirm-cleanup-s3" %>
-      <%= render "shared/button", text: "Clean Up Orphaned S3 Files", variant: "danger", size: "small", type: :button,
+      <%= render "shared/button", text: "Clean Up Orphaned S3 Files", variant: "primary", size: "small", type: :button,
           data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
       <%= render "shared/confirm_modal", id: cid,
           title: "Clean up orphaned S3 files?",

@@ -48,7 +48,7 @@
                     } %>
                 <%= render "shared/button",
                     text: "Remove",
-                    variant: "danger",
+                    variant: "primary",
                     size: "small",
                     type: :button,
                     data: {
@@ -285,7 +285,7 @@
           <input type="hidden" name="user_id" data-production-team-modals-target="removeUserId">
           <div class="flex justify-end gap-3">
             <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeRemoveModal" } %>
-            <%= render "shared/button", text: "Remove", variant: "danger", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Remove", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>

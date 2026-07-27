@@ -512,7 +512,7 @@
             <% delete_mic_cid = "confirm-delete-mic" %>
             <button type="button"
                     data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_mic_cid %>"
-                    class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded">
+                    class="cursor-pointer px-4 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded">
               Delete this mic
             </button>
             <%= render "shared/confirm_modal", id: delete_mic_cid,
@@ -610,7 +610,7 @@
     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
       <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
               class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-      <%= render "shared/button", text: "Cancel this date", variant: "danger", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Cancel this date", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
 <% end %>

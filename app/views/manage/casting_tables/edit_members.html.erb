@@ -81,7 +81,7 @@
                 <% remove_person_message = draft_count > 0 && @casting_table.draft? ?
                      "Remove \"#{person.name}\" from this casting table? This will also delete #{draft_count} draft assignment(s)." :
                      "Remove \"#{person.name}\" from this casting table?" %>
-                <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash", type: :button,
+                <%= render "shared/button", text: "Remove", variant: "primary", size: "small", icon: "trash", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-member-person-#{person.id}" } %>
                 <%= render "shared/confirm_modal",
                       id: "confirm-remove-member-person-#{person.id}",
@@ -120,7 +120,7 @@
                 <% remove_group_message = draft_count > 0 && @casting_table.draft? ?
                      "Remove \"#{group.name}\" from this casting table? This will also delete #{draft_count} draft assignment(s)." :
                      "Remove \"#{group.name}\" from this casting table?" %>
-                <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash", type: :button,
+                <%= render "shared/button", text: "Remove", variant: "primary", size: "small", icon: "trash", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-member-group-#{group.id}" } %>
                 <%= render "shared/confirm_modal",
                       id: "confirm-remove-member-group-#{group.id}",

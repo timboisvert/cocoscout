@@ -31,7 +31,7 @@
     unless @course_offering.contract_id?
       top_links << { text: "Delete Course", type: :button,
                      data: { controller: "modal", action: "click->modal#open", modal_id: delete_course_cid },
-                     variant: "danger" }
+                     variant: "primary" }
     end
   %>
 

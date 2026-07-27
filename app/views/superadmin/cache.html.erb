@@ -156,7 +156,7 @@
             Clear all cached data. The cache will be rebuilt automatically as pages are accessed.
           </p>
           <% cid = "confirm-clear-all-cache" %>
-          <%= render "shared/button", text: "Clear All Cache", variant: "danger", size: "small", type: :button,
+          <%= render "shared/button", text: "Clear All Cache", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
           <%= render "shared/confirm_modal", id: cid,
               title: "Clear all cache?",
