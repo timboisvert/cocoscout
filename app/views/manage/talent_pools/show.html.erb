@@ -65,7 +65,9 @@
 
   <%# Sharing Section - only show in per-production mode %>
   <% if current_user_can_manage?(@production) && !single_pool_mode %>
-    <% sibling_productions = @production.sibling_productions.reject(&:type_third_party?) %>
+    <%# Only in-house (castable) productions can share a talent pool — courses have
+        attendees, not cast, so they're never share targets. %>
+    <% sibling_productions = @production.sibling_productions.castable %>
 
     <% if @production.uses_shared_pool? %>
       <%# This production uses a shared pool from another production %>

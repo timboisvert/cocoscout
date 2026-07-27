@@ -15,85 +15,118 @@
     <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
   </div>
 
-  <%# Sharing Section %>
+  <%# ---- Sharing ---- %>
   <% if current_user_can_manage?(Current.production) %>
-    <% sibling_productions = @production.sibling_productions.reject(&:type_third_party?) %>
+    <%# Only in-house (castable) productions can share a talent pool. Courses are
+        productions too, but their people are attendees, not cast — so they are
+        never valid share targets. %>
+    <% sibling_productions = @production.sibling_productions.castable %>
 
-    <% if @production.uses_shared_pool? %>
-      <%# This production uses a shared pool from another production %>
-      <% all_sharing_productions = @production.shared_pool_productions %>
-      <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h4 class="text-sm font-semibold text-gray-900">Shared Talent Pool</h4>
-          <%= link_to manage_casting_talent_pool_leave_shared_pool_confirm_path(@production),
-              data: { turbo_frame: "leave_pool_modal" } do %>
-            <%= render "shared/button", text: "Leave Shared Pool", variant: "secondary", size: "small", tag: :span %>
-          <% end %>
-        </div>
-        <div class="p-4">
-          <p class="text-sm text-gray-600">
-            This talent pool is shared with: <strong><%= all_sharing_productions.map(&:name).to_sentence %></strong>.
-          </p>
-          <p class="mt-2 text-sm text-gray-500">
-            Any changes to the talent pool will affect all productions sharing it.
-          </p>
-        </div>
-      </div>
-    <% elsif sibling_productions.any? %>
-      <%# This production owns its pool - show sharing options %>
-      <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="talent-pool-sharing">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h4 class="text-sm font-semibold text-gray-900">Share Talent Pool</h4>
-          <p class="text-sm text-gray-500 mt-0.5">Share this talent pool with other productions in your organization.</p>
-        </div>
-
-        <%= form_with url: manage_casting_talent_pool_update_shares_path(@production), method: :patch, data: { turbo: false, talent_pool_sharing_target: "form" } do |f| %>
-          <div class="divide-y divide-gray-100">
-            <% sibling_productions.each do |sibling| %>
-              <% is_shared = @production.talent_pool.shared_productions.include?(sibling) %>
-              <% sibling_uses_other_pool = sibling.uses_shared_pool? && sibling.effective_talent_pool != @production.talent_pool %>
-              <% sibling_member_count = sibling.effective_talent_pool.cached_member_counts[:total] %>
-
-              <label class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer <%= sibling_uses_other_pool ? 'opacity-50 cursor-not-allowed' : '' %>">
-                <% if sibling_uses_other_pool %>
-                  <div class="w-5 h-5 rounded border-2 border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-gray-400">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                  </div>
-                <% else %>
-                  <input type="checkbox"
-                         name="shared_production_ids[]"
-                         value="<%= sibling.id %>"
-                         <%= 'checked' if is_shared %>
-                         class="w-5 h-5 rounded border-gray-300 text-pink-600 accent-pink-600 focus:ring-pink-500 focus:ring-offset-0 cursor-pointer"
-                         data-action="change->talent-pool-sharing#markChanged"
-                         data-original-checked="<%= is_shared %>"
-                         data-production-id="<%= sibling.id %>"
-                         data-production-name="<%= sibling.name %>"
-                         data-member-count="<%= sibling_member_count %>">
-                <% end %>
-                <div class="flex-1 min-w-0">
-                  <span class="text-sm font-medium text-gray-900"><%= sibling.name %></span>
-                  <% if sibling_uses_other_pool %>
-                    <span class="text-xs text-gray-500 ml-2">(uses another shared pool)</span>
-                  <% elsif !is_shared && sibling_member_count > 0 %>
-                    <span class="text-xs text-gray-500 ml-2">(<%= pluralize(sibling_member_count, "member") %> in their pool)</span>
-                  <% end %>
-                </div>
-              </label>
+    <div class="mt-8" data-controller="modal">
+      <% if @production.uses_shared_pool? %>
+        <%# This production draws from another production's shared pool. %>
+        <% all_sharing_productions = @production.shared_pool_productions %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h4 class="text-sm font-semibold text-gray-900">Shared talent pool</h4>
+            <%= link_to manage_casting_talent_pool_leave_shared_pool_confirm_path(@production),
+                data: { turbo_frame: "leave_pool_modal" } do %>
+              <%= render "shared/button", text: "Leave shared pool", variant: "secondary", size: "small", tag: :span %>
             <% end %>
           </div>
-
-          <%# Hidden field to handle unchecking all boxes %>
-          <input type="hidden" name="shared_production_ids[]" value="">
-
-          <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-end" data-talent-pool-sharing-target="saveSection">
-            <%= render "shared/button", text: "Save Sharing Settings", variant: "primary", size: "small", type: :submit %>
+          <div class="p-4">
+            <p class="text-sm text-gray-600">
+              This talent pool is shared with <strong><%= all_sharing_productions.map(&:name).to_sentence %></strong>.
+            </p>
+            <p class="mt-2 text-sm text-gray-500">Any changes to the talent pool affect every production sharing it.</p>
           </div>
-        <% end %>
-      </div>
-    <% end %>
+        </div>
+
+      <% elsif sibling_productions.any? %>
+        <%# This production owns its pool — show the current sharing state, and open a
+            modal to change it. %>
+        <% shared_with = @production.talent_pool.shared_productions.to_a %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h4 class="text-sm font-semibold text-gray-900">Share talent pool</h4>
+            <button type="button" data-action="click->modal#open" data-modal-id="share-talent-pool-modal" class="cursor-pointer">
+              <%= render "shared/button", text: (shared_with.any? ? "Manage sharing" : "Share pool"), variant: "secondary", size: "small", tag: :span %>
+            </button>
+          </div>
+          <div class="p-4">
+            <% if shared_with.any? %>
+              <p class="text-sm text-gray-600">
+                Currently shared with <strong><%= shared_with.map(&:name).to_sentence %></strong>.
+              </p>
+              <p class="mt-2 text-sm text-gray-500">These productions all cast from the same pool — changes affect them all.</p>
+            <% else %>
+              <p class="text-sm text-gray-600">This pool isn't shared with any other production.</p>
+              <p class="mt-2 text-sm text-gray-500">Share it so another production can cast from the same people and groups.</p>
+            <% end %>
+          </div>
+        </div>
+
+        <%# ---- Sharing modal (pink header) ---- %>
+        <div id="share-talent-pool-modal"
+             class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50"
+             data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+          <div class="relative top-16 mx-auto mb-16 w-full max-w-md shadow-lg rounded-lg bg-white"
+               data-action="click->modal#stopPropagation">
+            <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-lg">
+              <h3 class="text-lg font-semibold text-white">Share talent pool</h3>
+              <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="modal#close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <%= form_with url: manage_casting_talent_pool_update_shares_path(@production), method: :patch, data: { turbo: false } do %>
+              <p class="text-sm text-gray-500 px-5 pt-4">Select the productions that should share this talent pool.</p>
+              <div class="mt-3 max-h-80 overflow-y-auto border-y border-gray-100 divide-y divide-gray-100">
+                <% sibling_productions.each do |sibling| %>
+                  <% is_shared = @production.talent_pool.shared_productions.include?(sibling) %>
+                  <% sibling_uses_other_pool = sibling.uses_shared_pool? && sibling.effective_talent_pool != @production.talent_pool %>
+                  <% sibling_member_count = sibling.effective_talent_pool.cached_member_counts[:total] %>
+
+                  <label class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer <%= sibling_uses_other_pool ? 'opacity-50 cursor-not-allowed' : '' %>">
+                    <% if sibling_uses_other_pool %>
+                      <div class="w-5 h-5 rounded border-2 border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-gray-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                      </div>
+                    <% else %>
+                      <input type="checkbox"
+                             name="shared_production_ids[]"
+                             value="<%= sibling.id %>"
+                             <%= 'checked' if is_shared %>
+                             class="w-5 h-5 rounded border-gray-300 text-pink-600 accent-pink-500 focus:ring-pink-500 focus:ring-offset-0 cursor-pointer">
+                    <% end %>
+                    <div class="flex-1 min-w-0">
+                      <span class="text-sm font-medium text-gray-900"><%= sibling.name %></span>
+                      <% if sibling_uses_other_pool %>
+                        <span class="text-xs text-gray-500 ml-2">(uses another shared pool)</span>
+                      <% elsif !is_shared && sibling_member_count > 0 %>
+                        <span class="text-xs text-gray-500 ml-2">(<%= pluralize(sibling_member_count, "member") %> in their pool)</span>
+                      <% end %>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
+
+              <%# Ensures unchecking every box still submits an (empty) value. %>
+              <input type="hidden" name="shared_production_ids[]" value="">
+
+              <div class="px-5 py-4 bg-gray-50 rounded-b-lg flex justify-end gap-2">
+                <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "modal#close" } %>
+                <%= render "shared/button", text: "Save sharing", variant: "primary", size: "small", type: :submit %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
   <% end %>
 
   <%# Turbo frames for modals %>
