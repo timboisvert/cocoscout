@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["modal", "form", "list", "ongoingCheckbox", "yearEndContainer"]
@@ -168,9 +169,9 @@ export default class extends Controller {
         }, 50)
     }
 
-    remove(event) {
+    async remove(event) {
         event.preventDefault()
-        if (!confirm('Remove this training?')) return
+        if (!(await confirmDialog({ title: "Remove training?", message: "Remove this training?", confirmText: "Remove" }))) return
 
         const trainingId = event.currentTarget.dataset.trainingId
         const trainingEl = document.querySelector(`[data-training-id="${trainingId}"]`)

@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
-    setPrimaryHeadshot(event) {
+    async setPrimaryHeadshot(event) {
         event.preventDefault()
 
-        if (!confirm('Set this as your primary headshot?')) {
+        if (!(await confirmDialog({ title: "Set primary headshot?", message: "Set this as your primary headshot?", confirmText: "Set as primary" }))) {
             return
         }
 
@@ -133,10 +134,10 @@ export default class extends Controller {
         input.value = ''
     }
 
-    removeHeadshot(event) {
+    async removeHeadshot(event) {
         event.preventDefault()
 
-        if (!confirm('Remove this headshot?')) {
+        if (!(await confirmDialog({ title: "Remove headshot?", message: "Remove this headshot?", confirmText: "Remove" }))) {
             return
         }
 

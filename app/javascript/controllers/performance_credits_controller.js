@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["sectionModal", "creditModal", "sectionForm", "creditForm", "sectionsList", "creditsList", "yearEndInput", "ongoingCheckbox"]
@@ -137,9 +138,9 @@ export default class extends Controller {
         this.closeSectionModal()
     }
 
-    removeSection(event) {
+    async removeSection(event) {
         event.preventDefault()
-        if (!confirm('Remove this section and all its credits?')) return
+        if (!(await confirmDialog({ title: "Remove section?", message: "Remove this section and all its credits?", confirmText: "Remove" }))) return
 
         const sectionId = event.currentTarget.dataset.sectionId
         const sectionEl = document.querySelector(`[data-section-id="${sectionId}"]`)
@@ -288,9 +289,9 @@ export default class extends Controller {
         this.closeCreditModal()
     }
 
-    removeCredit(event) {
+    async removeCredit(event) {
         event.preventDefault()
-        if (!confirm('Remove this credit?')) return
+        if (!(await confirmDialog({ title: "Remove credit?", message: "Remove this credit?", confirmText: "Remove" }))) return
 
         const creditId = event.currentTarget.dataset.creditId
         const creditEl = document.querySelector(`[data-credit-id="${creditId}"]`)

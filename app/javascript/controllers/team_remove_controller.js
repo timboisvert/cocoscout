@@ -1,15 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["removeButton", "row"]
 
-    remove(event) {
+    async remove(event) {
         event.preventDefault()
         const button = event.currentTarget
         const url = button.dataset.url
         const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content')
 
-        if (!confirm("Are you sure you want to remove this team member?")) return
+        if (!(await confirmDialog({ title: "Remove team member?", message: "Are you sure you want to remove this team member?", confirmText: "Remove" }))) return
 
         fetch(url, {
             method: 'DELETE',

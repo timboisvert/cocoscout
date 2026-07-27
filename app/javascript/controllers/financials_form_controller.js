@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
   static targets = [
@@ -602,7 +603,7 @@ export default class extends Controller {
   async removeReceipt(event) {
     event.preventDefault()
 
-    if (!confirm("Remove this receipt?")) {
+    if (!(await confirmDialog({ title: "Remove receipt?", message: "Remove this receipt?", confirmText: "Remove" }))) {
       return
     }
 

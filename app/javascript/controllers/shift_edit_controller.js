@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 // Opens a modal for editing a single shift's start/end times.
 // The user only sees time inputs (HH:MM). The shift's original date is kept
@@ -109,11 +110,11 @@ export default class extends Controller {
     }
 
     // Confirms, then submits a DELETE to /unassign via a one-off hidden form.
-    removePerson(event) {
+    async removePerson(event) {
         if (event) event.preventDefault()
         if (!this.currentShiftId || !this.currentPersonId || !this.hasUnassignUrlTemplateValue) return
         const name = this.hasRemovePersonNameTarget ? this.removePersonNameTarget.textContent : "this person"
-        if (!window.confirm(`Remove ${name} from this shift?`)) return
+        if (!(await confirmDialog({ title: "Remove from shift?", message: `Remove ${name} from this shift?`, confirmText: "Remove" }))) return
 
         const url = this.unassignUrlTemplateValue
             .replace("SHIFT_ID", this.currentShiftId)
