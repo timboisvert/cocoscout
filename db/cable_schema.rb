@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -131,6 +131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
   create_table "audition_cycles", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.boolean "allow_in_person_auditions", default: false, null: false
+    t.boolean "allow_slot_changes", default: true, null: false
     t.boolean "allow_video_submissions", default: false, null: false
     t.string "audition_type", default: "in_person", null: false
     t.boolean "audition_voting_enabled", default: true, null: false
