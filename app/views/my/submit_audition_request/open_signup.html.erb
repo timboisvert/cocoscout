@@ -1,0 +1,82 @@
+<% content_for :title, "Sign up for an audition" %>
+
+<div class="min-h-screen bg-gray-50 py-12">
+  <div class="max-w-2xl mx-auto px-4">
+    <!-- Header -->
+    <div class="mb-8">
+      <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">Audition sign-up</p>
+      <h1 class="text-2xl font-bold text-gray-900 coustard-regular"><%= @production.name %></h1>
+      <% if @audition_cycle.instruction_text.present? %>
+        <div class="text-gray-600 mt-2"><%= @audition_cycle.instruction_text %></div>
+      <% else %>
+        <p class="text-gray-600 mt-2">Pick an open slot below to book your audition time.</p>
+      <% end %>
+    </div>
+
+    <!-- Current booking -->
+    <% if @current_booking&.audition_session %>
+      <div class="mb-6 rounded-xl border border-pink-200 bg-pink-50 p-5">
+        <p class="text-xs font-medium text-pink-600 uppercase tracking-wide mb-1">You're booked</p>
+        <p class="text-lg font-semibold text-gray-900">
+          <%= @current_booking.audition_session.start_at.strftime("%A, %b %-d · %-I:%M %p") %>
+        </p>
+        <% if @current_booking.audition_session.location %>
+          <p class="text-sm text-gray-600 mt-0.5"><%= @current_booking.audition_session.location.name %></p>
+        <% end %>
+        <p class="text-sm text-gray-500 mt-2">Need a different time? Pick another open slot below to move your booking.</p>
+      </div>
+    <% end %>
+
+    <!-- Slots -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Available slots</h2>
+      </div>
+
+      <% if @audition_sessions.any? %>
+        <div class="divide-y divide-gray-100">
+          <% @audition_sessions.each do |session| %>
+            <% is_mine = @current_booking&.audition_session_id == session.id %>
+            <% remaining = session.spots_remaining %>
+            <% is_full = session.full? && !is_mine %>
+            <div class="flex items-center justify-between gap-4 px-5 py-4 <%= is_mine ? 'bg-pink-50' : '' %>">
+              <div class="min-w-0">
+                <p class="font-medium text-gray-900"><%= session.start_at.strftime("%A, %b %-d · %-I:%M %p") %></p>
+                <p class="text-sm text-gray-500 mt-0.5">
+                  <%= session.location&.name || "Location TBA" %>
+                  <% if remaining.present? %>
+                    · <%= is_full ? "Full" : pluralize(remaining, "spot") + " left" %>
+                  <% end %>
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                <% if is_mine %>
+                  <span class="inline-flex items-center rounded-lg bg-pink-100 text-pink-700 text-sm font-medium px-3 py-1.5">Your slot</span>
+                <% elsif is_full %>
+                  <span class="inline-flex items-center rounded-lg bg-gray-100 text-gray-400 text-sm font-medium px-3 py-1.5">Full</span>
+                <% else %>
+                  <%= form_with url: my_book_audition_slot_path(token: @audition_cycle.token), method: :post do %>
+                    <%= hidden_field_tag :audition_session_id, session.id %>
+                    <%= render "shared/button", text: (@current_booking ? "Move here" : "Book"), variant: "primary", size: "small", type: :submit %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="px-5 py-10 text-center">
+          <p class="text-sm text-gray-500">No audition slots are open right now. Please check back soon.</p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- CocoScout Footer -->
+    <div class="mt-8 pb-8 text-center">
+      <%= link_to root_path, class: "inline-flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors" do %>
+        <%= image_tag "cocoscoutsmall.png", class: "h-5 w-5", alt: "CocoScout" %>
+        <span class="text-sm font-medium">CocoScout</span>
+      <% end %>
+    </div>
+  </div>
+</div>

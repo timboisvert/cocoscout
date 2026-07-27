@@ -39,6 +39,19 @@ class AuditionCycle < ApplicationRecord
     video_upload: "video_upload"
   }
 
+  # How performers get into this cycle:
+  #   curated – the full pipeline: people apply (AuditionRequest), the team
+  #             reviews/votes, then managers schedule them into sessions.
+  #   open    – open-mic style: the org publishes session slots and performers
+  #             book an open slot themselves at sign-up. No application, voting,
+  #             availability step, or manual scheduling — the booked slot IS the
+  #             audition.
+  enum :signup_mode, { curated: "curated", open: "open" }, default: "curated", prefix: :signup_mode
+
+  def open_signup?
+    signup_mode_open?
+  end
+
   # New boolean-based methods that should be used going forward
   # These check the new columns, with fallback to the enum for existing records
   def accepts_video_submissions?

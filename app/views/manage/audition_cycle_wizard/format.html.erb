@@ -1,41 +1,70 @@
-<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 1, step_name: "Audition Format" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How will people audition?</h2>
-  <p class="text-gray-600 mb-6">Choose how you'd like to collect auditions. You can enable both options.</p>
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 1, current_step_key: "format", step_name: "Audition Format" } do %>
+  <% mode = (@wizard_state[:signup_mode].presence || "curated").to_s %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How do you want to run auditions?</h2>
+  <p class="text-gray-600 mb-6">This sets up the rest of the wizard. You can change it later in the audition's settings.</p>
 
   <%= form_with url: manage_signups_auditions_wizard_save_format_path(@production), method: :post, local: true do |form| %>
-    <div class="space-y-4">
-      <!-- Scheduled Sessions Toggle -->
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <div class="flex-1 mr-4">
-          <p class="font-medium text-gray-900">Scheduled Sessions</p>
-          <p class="text-sm text-gray-500 mt-1">Schedule audition time slots (in-person or virtual) that people can sign up for</p>
-        </div>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="hidden" name="allow_in_person_auditions" value="0">
-          <input type="checkbox" name="allow_in_person_auditions" value="1"
-                 <%= "checked" if @wizard_state[:allow_in_person_auditions] %>
-                 class="sr-only peer">
-          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+    <div data-controller="audition-mode">
+      <%# ---- Mode selection (the first, load-bearing choice) ---- %>
+      <div class="space-y-3 mb-6">
+        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+          <input type="radio" name="signup_mode" value="curated" <%= "checked" if mode == "curated" %>
+                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                 data-action="change->audition-mode#update">
+          <span class="flex-1">
+            <span class="block font-medium text-gray-900">Curated auditions</span>
+            <span class="block text-sm text-gray-500 mt-0.5">People apply, your team reviews and votes, then you schedule them into sessions. Best when you're selecting who gets to audition.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+          <input type="radio" name="signup_mode" value="open" <%= "checked" if mode == "open" %>
+                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
+                 data-action="change->audition-mode#update">
+          <span class="flex-1">
+            <span class="block font-medium text-gray-900">Open sign-up</span>
+            <span class="block text-sm text-gray-500 mt-0.5">Publish audition slots and let performers book an open one themselves, open-mic style. No applications, voting, or scheduling — the slot they pick is their audition.</span>
+          </span>
         </label>
       </div>
 
-      <!-- Video Submissions Toggle -->
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <div class="flex-1 mr-4">
-          <p class="font-medium text-gray-900">Video Submissions</p>
-          <p class="text-sm text-gray-500 mt-1">Allow people to submit a video as part of their audition</p>
+      <%# ---- Curated-only format options (hidden by JS when Open sign-up is chosen) ---- %>
+      <div data-audition-mode-target="curatedOptions" class="space-y-4 <%= "hidden" if mode == "open" %>">
+        <p class="text-sm font-medium text-gray-700">Curated format options</p>
+
+        <!-- Scheduled Sessions Toggle -->
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex-1 mr-4">
+            <p class="font-medium text-gray-900">Scheduled Sessions</p>
+            <p class="text-sm text-gray-500 mt-1">Schedule audition time slots (in-person or virtual) that people can sign up for</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="allow_in_person_auditions" value="0">
+            <input type="checkbox" name="allow_in_person_auditions" value="1"
+                   <%= "checked" if @wizard_state[:allow_in_person_auditions] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="hidden" name="allow_video_submissions" value="0">
-          <input type="checkbox" name="allow_video_submissions" value="1"
-                 <%= "checked" if @wizard_state[:allow_video_submissions] %>
-                 class="sr-only peer">
-          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-        </label>
+
+        <!-- Video Submissions Toggle -->
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex-1 mr-4">
+            <p class="font-medium text-gray-900">Video Submissions</p>
+            <p class="text-sm text-gray-500 mt-1">Allow people to submit a video as part of their audition</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="allow_video_submissions" value="0">
+            <input type="checkbox" name="allow_video_submissions" value="1"
+                   <%= "checked" if @wizard_state[:allow_video_submissions] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
       </div>
 
-      <!-- Directory Listing Toggle -->
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <!-- Directory Listing Toggle (applies to both modes) -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 mt-4">
         <div class="flex-1 mr-4">
           <p class="font-medium text-gray-900">List in Auditions Directory</p>
           <p class="text-sm text-gray-500 mt-1">Make this audition discoverable in the public "Find an Audition" directory</p>
@@ -48,7 +77,6 @@
           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
         </label>
       </div>
-
     </div>
 
     <div class="mt-8 flex justify-end">

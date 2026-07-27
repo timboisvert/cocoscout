@@ -5,11 +5,13 @@
   cycle = local_assigns[:audition_cycle] || @audition_cycle
   is_manager = current_user_can_manage?(@production)
   show_sessions = cycle.present? && cycle.accepts_in_person_auditions?
+  # Open sign-up has no application/review stage, so there are no "Requests".
+  open_mode = cycle.present? && cycle.signup_mode_open?
 
   primary = []
   primary << { key: :form,     label: "Form",     path: manage_form_signups_auditions_cycle_path(@production, cycle) }
-  primary << { key: :requests, label: "Requests", path: manage_signups_auditions_cycle_requests_path(@production, cycle) }
-  primary << { key: :sessions, label: "Sessions", path: manage_signups_auditions_cycle_sessions_path(@production, cycle) } if show_sessions
+  primary << { key: :requests, label: "Requests", path: manage_signups_auditions_cycle_requests_path(@production, cycle) } unless open_mode
+  primary << { key: :sessions, label: open_mode ? "Sign-ups" : "Sessions", path: manage_signups_auditions_cycle_sessions_path(@production, cycle) } if show_sessions
   primary << { key: :casting,  label: "Casting",  path: manage_casting_signups_auditions_cycle_path(@production, cycle) } if is_manager
 %>
 

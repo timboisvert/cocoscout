@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -151,6 +151,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
     t.boolean "require_all_availability", default: false
     t.boolean "resume_required", default: true, null: false
     t.string "reviewer_access_type", default: "managers", null: false
+    t.string "signup_mode", default: "curated", null: false
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false
@@ -257,7 +258,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
 
   create_table "auditions", force: :cascade do |t|
     t.datetime "accepted_at"
-    t.bigint "audition_request_id", null: false
+    t.bigint "audition_request_id"
     t.bigint "audition_session_id"
     t.integer "auditionable_id"
     t.string "auditionable_type"

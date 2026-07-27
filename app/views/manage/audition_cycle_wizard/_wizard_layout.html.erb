@@ -17,21 +17,31 @@
     <div class="mb-8">
       <div class="flex items-center justify-center">
         <%
-          # Build steps dynamically based on wizard state
+          # Build steps dynamically based on wizard state. Open sign-up mode skips
+          # availability / reviewers / voting / form — the slot IS the audition.
+          open_mode = @wizard_state && @wizard_state[:signup_mode].to_s == "open"
+
           all_steps = []
           all_steps << { key: "format", name: "Format", path: manage_signups_auditions_wizard_path(@production) }
           all_steps << { key: "schedule", name: "Schedule", path: manage_signups_auditions_wizard_schedule_path(@production) }
           if @wizard_state && @wizard_state[:allow_in_person_auditions]
-            all_steps << { key: "sessions", name: "Sessions", path: manage_signups_auditions_wizard_sessions_path(@production) }
+            all_steps << { key: "sessions", name: open_mode ? "Slots" : "Sessions", path: manage_signups_auditions_wizard_sessions_path(@production) }
           end
-          all_steps << { key: "availability", name: "Availability", path: manage_signups_auditions_wizard_availability_path(@production) }
-          all_steps << { key: "reviewers", name: "Reviewers", path: manage_signups_auditions_wizard_reviewers_path(@production) }
-          all_steps << { key: "voting", name: "Voting", path: manage_signups_auditions_wizard_voting_path(@production) }
-          all_steps << { key: "form_starter", name: "Form", path: manage_signups_auditions_wizard_form_starter_path(@production) }
+          unless open_mode
+            all_steps << { key: "availability", name: "Availability", path: manage_signups_auditions_wizard_availability_path(@production) }
+            all_steps << { key: "reviewers", name: "Reviewers", path: manage_signups_auditions_wizard_reviewers_path(@production) }
+            all_steps << { key: "voting", name: "Voting", path: manage_signups_auditions_wizard_voting_path(@production) }
+            all_steps << { key: "form_starter", name: "Form", path: manage_signups_auditions_wizard_form_starter_path(@production) }
+          end
           all_steps << { key: "review", name: "Review", path: manage_signups_auditions_wizard_review_path(@production) }
 
           # Assign step numbers
           steps = all_steps.each_with_index.map { |step, i| step.merge(num: i + 1) }
+
+          # Views may pass current_step_key so the highlighted step stays correct
+          # even when the step list changes by mode. Fall back to the passed integer.
+          step_key = local_assigns[:current_step_key]
+          current_step = (step_key && steps.find { |s| s[:key] == step_key.to_s }&.dig(:num)) || current_step
         %>
         <% steps.each_with_index do |step, index| %>
           <% is_current = step[:num] == current_step %>

@@ -18,6 +18,33 @@
 
   <%= form_with(model: @audition_cycle, url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch) do |form| %>
 
+    <%# ===== Sign-up Mode ===== %>
+    <% current_mode = @audition_cycle.signup_mode.presence || "curated" %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <%= render "shared/card_header", title: "Sign-up Mode" %>
+      <div class="p-5 space-y-3">
+        <p class="text-sm text-gray-500">How performers get into this audition.</p>
+
+        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= current_mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
+          <%= form.radio_button :signup_mode, "curated", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer" %>
+          <span class="flex-1">
+            <span class="block font-medium text-gray-900">Curated auditions</span>
+            <span class="block text-sm text-gray-500 mt-0.5">People apply, your team reviews and votes, then you schedule them into sessions.</span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= current_mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
+          <%= form.radio_button :signup_mode, "open", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer" %>
+          <span class="flex-1">
+            <span class="block font-medium text-gray-900">Open sign-up</span>
+            <span class="block text-sm text-gray-500 mt-0.5">Performers book an open session slot themselves, open-mic style. No applications or voting.</span>
+          </span>
+        </label>
+
+        <p class="text-xs text-gray-500">Switching modes changes what performers see. Existing sign-ups and requests aren't deleted, but they may not apply to the other mode.</p>
+      </div>
+    </div>
+
     <%# ===== Audition Format ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <%= render "shared/card_header", title: "Audition Format" %>

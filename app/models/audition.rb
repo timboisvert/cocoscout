@@ -2,7 +2,9 @@
 
 class Audition < ApplicationRecord
   belongs_to :auditionable, polymorphic: true
-  belongs_to :audition_request
+  # Optional: open-signup auditions are booked directly from a slot pick and have
+  # no AuditionRequest behind them. Curated auditions always set it.
+  belongs_to :audition_request, optional: true
   belongs_to :audition_session
   has_many :audition_votes, dependent: :destroy
 

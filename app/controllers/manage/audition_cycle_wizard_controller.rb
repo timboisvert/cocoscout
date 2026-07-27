@@ -40,13 +40,21 @@ module Manage
     end
 
     def save_format
-      @wizard_state[:allow_video_submissions] = params[:allow_video_submissions] == "1"
-      @wizard_state[:allow_in_person_auditions] = params[:allow_in_person_auditions] == "1"
+      @wizard_state[:signup_mode] = params[:signup_mode].presence_in(%w[curated open]) || "curated"
       @wizard_state[:listed_in_directory] = params[:listed_in_directory] == "1"
 
-      unless @wizard_state[:allow_video_submissions] || @wizard_state[:allow_in_person_auditions]
-        flash.now[:alert] = "Please select at least one audition format"
-        render :format, status: :unprocessable_entity and return
+      if @wizard_state[:signup_mode] == "open"
+        # Open sign-up is scheduled-slot booking — always in-person, never video.
+        @wizard_state[:allow_in_person_auditions] = true
+        @wizard_state[:allow_video_submissions] = false
+      else
+        @wizard_state[:allow_video_submissions] = params[:allow_video_submissions] == "1"
+        @wizard_state[:allow_in_person_auditions] = params[:allow_in_person_auditions] == "1"
+
+        unless @wizard_state[:allow_video_submissions] || @wizard_state[:allow_in_person_auditions]
+          flash.now[:alert] = "Please select at least one audition format"
+          render :format, status: :unprocessable_entity and return
+        end
       end
 
       save_wizard_state
@@ -93,7 +101,12 @@ module Manage
     def save_sessions
       # Just move to next step - sessions are already saved in wizard state
       save_wizard_state
-      redirect_to manage_signups_auditions_wizard_availability_path(@production)
+      if open_signup_wizard?
+        # Open sign-up skips availability/reviewers/voting/form — the slot IS the audition.
+        redirect_to manage_signups_auditions_wizard_review_path(@production)
+      else
+        redirect_to manage_signups_auditions_wizard_availability_path(@production)
+      end
     end
 
     def generate_sessions
@@ -103,6 +116,7 @@ module Manage
       is_online = ActiveModel::Type::Boolean.new.cast(params[:is_online])
       location_id = is_online ? nil : params[:location_id]
       online_location_info = is_online ? params[:online_location_info].presence : nil
+      capacity = params[:capacity].presence&.to_i
 
       if count <= 0 || count > 20
         flash.now[:alert] = "Please enter a valid number of sessions (1-20)"
@@ -144,7 +158,8 @@ module Manage
             duration_minutes: duration,
             location_id: location_id,
             is_online: is_online,
-            online_location_info: online_location_info
+            online_location_info: online_location_info,
+            capacity: capacity
           }
           existing_start_times << iso
           added += 1
@@ -171,6 +186,7 @@ module Manage
       is_online = ActiveModel::Type::Boolean.new.cast(params[:is_online])
       location_id = is_online ? nil : params[:location_id]
       online_location_info = is_online ? params[:online_location_info].presence : nil
+      capacity = params[:capacity].presence&.to_i
 
       if start_at.blank? || duration <= 0 || (!is_online && location_id.blank?)
         flash[:alert] = "Please fill in all session details"
@@ -183,7 +199,8 @@ module Manage
         duration_minutes: duration,
         location_id: location_id,
         is_online: is_online,
-        online_location_info: online_location_info
+        online_location_info: online_location_info,
+        capacity: capacity
       }
 
       save_wizard_state
@@ -231,6 +248,8 @@ module Manage
 
     # Step 4: Availability Requirements
     def availability
+      redirect_to(manage_signups_auditions_wizard_review_path(@production)) and return if open_signup_wizard?
+
       @shows = @production.shows.where(canceled: false)
                           .where("date_and_time >= ?", Time.current)
                           .order(:date_and_time)
@@ -251,6 +270,8 @@ module Manage
 
     # Step 4: Reviewer Team
     def reviewers
+      redirect_to(manage_signups_auditions_wizard_review_path(@production)) and return if open_signup_wizard?
+
       @people = @production.effective_talent_pool&.people&.order(:name) || []
       @selected_reviewer_ids = @wizard_state[:reviewer_person_ids] || []
 
@@ -273,6 +294,7 @@ module Manage
 
     # Step 5: Voting
     def voting
+      redirect_to(manage_signups_auditions_wizard_review_path(@production)) and return if open_signup_wizard?
     end
 
     def save_voting
@@ -285,6 +307,8 @@ module Manage
 
     # Step 6: Form Starter (build the form's questions)
     def form_starter
+      redirect_to(manage_signups_auditions_wizard_review_path(@production)) and return if open_signup_wizard?
+
       @wizard_state[:form_starter_questions] ||= []
     end
 
@@ -379,9 +403,12 @@ module Manage
     end
 
     def create_cycle
+      open_signup = @wizard_state[:signup_mode].to_s == "open"
+
       @audition_cycle = AuditionCycle.new(
         production: @production,
         active: true,
+        signup_mode: @wizard_state[:signup_mode].presence || "curated",
         # The wizard's form_starter step IS the form review — anyone who finished
         # the wizard has explicitly designed the questions. Default to ready
         # rather than making them click an extra "Mark Ready" button afterwards.
@@ -400,8 +427,9 @@ module Manage
         include_audition_availability_section: @wizard_state[:include_audition_availability_section],
         require_all_audition_availability: @wizard_state[:require_all_audition_availability],
         reviewer_access_type: @wizard_state[:reviewer_access_type] || "managers",
-        voting_enabled: @wizard_state[:voting_enabled].nil? ? true : @wizard_state[:voting_enabled],
-        audition_voting_enabled: @wizard_state[:audition_voting_enabled].nil? ? true : @wizard_state[:audition_voting_enabled]
+        # Open sign-up has no review/vote stage.
+        voting_enabled: open_signup ? false : (@wizard_state[:voting_enabled].nil? ? true : @wizard_state[:voting_enabled]),
+        audition_voting_enabled: open_signup ? false : (@wizard_state[:audition_voting_enabled].nil? ? true : @wizard_state[:audition_voting_enabled])
       )
 
       # Set the audition_type for backward compatibility
@@ -426,12 +454,15 @@ module Manage
             end
           end
 
-          # Create audition sessions if in-person auditions are enabled
+          # Create audition sessions if in-person auditions are enabled.
+          # In open sign-up mode these are the bookable slots; capacity maps to
+          # maximum_auditionees (nil = unlimited).
           if @wizard_state[:allow_in_person_auditions] && @wizard_state[:audition_sessions].present?
             @wizard_state[:audition_sessions].each do |session_data|
               @audition_cycle.audition_sessions.create!(
                 start_at: Time.zone.parse(session_data[:start_at]),
-                location_id: session_data[:location_id]
+                location_id: session_data[:location_id],
+                maximum_auditionees: session_data[:capacity].presence&.to_i
               )
             end
           end
@@ -457,8 +488,13 @@ module Manage
           # Clear wizard state
           clear_wizard_state
 
-          redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle),
-                      notice: "Audition cycle created! Now customize your sign-up form."
+          if open_signup
+            redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
+                        notice: "Open sign-up auditions created! Performers can now book the slots you published."
+          else
+            redirect_to manage_form_signups_auditions_cycle_path(@production, @audition_cycle),
+                        notice: "Audition cycle created! Now customize your sign-up form."
+          end
         else
           flash.now[:alert] = @audition_cycle.errors.full_messages.to_sentence
           render :review, status: :unprocessable_entity
@@ -479,6 +515,12 @@ module Manage
     end
 
     private
+
+    # True once the producer has chosen the open sign-up (open-mic style) mode on
+    # the Format step. Drives which later wizard steps are shown/skipped.
+    def open_signup_wizard?
+      @wizard_state[:signup_mode].to_s == "open"
+    end
 
     def set_production
       unless Current.organization
