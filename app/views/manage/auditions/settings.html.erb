@@ -16,7 +16,7 @@
   <%= render "topical_nav", current_topic: :settings %>
   <%= render partial: "archived_banner" %>
 
-  <%= form_with(model: @audition_cycle, url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch) do |form| %>
+  <%= form_with(model: @audition_cycle, url: manage_update_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, data: { controller: "audition-mode" }) do |form| %>
 
     <%# ===== Sign-up Mode ===== %>
     <% current_mode = @audition_cycle.signup_mode.presence || "curated" %>
@@ -26,16 +26,16 @@
       <div class="p-5 space-y-3">
         <p class="text-sm text-gray-500">How performers get into this audition.</p>
 
-        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= current_mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
-          <%= form.radio_button :signup_mode, "curated", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer" %>
+        <label data-audition-mode-target="modeCard" class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition hover:border-pink-300 <%= current_mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200' %>">
+          <%= form.radio_button :signup_mode, "curated", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer", data: { action: "change->audition-mode#update" } %>
           <span class="flex-1">
             <span class="block font-medium text-gray-900">Curated auditions</span>
             <span class="block text-sm text-gray-500 mt-0.5">People apply, your team reviews and votes, then you schedule them into sessions.</span>
           </span>
         </label>
 
-        <label class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition <%= current_mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
-          <%= form.radio_button :signup_mode, "open", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer" %>
+        <label data-audition-mode-target="modeCard" class="flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition hover:border-pink-300 <%= current_mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200' %>">
+          <%= form.radio_button :signup_mode, "open", class: "mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer", data: { action: "change->audition-mode#update" } %>
           <span class="flex-1">
             <span class="block font-medium text-gray-900">Open sign-up</span>
             <span class="block text-sm text-gray-500 mt-0.5">Performers book an open session slot themselves, open-mic style. No applications or voting.</span>
@@ -51,16 +51,13 @@
       <%= render "shared/card_header", title: "Audition Format" %>
       <div class="p-5">
         <p class="text-sm text-gray-500 mb-4">
-          <% if open_mode %>
-            Open sign-up runs as in-person session booking — performers pick a published slot themselves. Change the sign-up mode above to switch back to curated auditions.
-          <% else %>
-            Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.
-          <% end %>
+          <span data-audition-mode-target="curatedOptions" class="<%= 'hidden' if open_mode %>">Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.</span>
+          <span data-audition-mode-target="openOptions" class="<%= 'hidden' unless open_mode %>">Open sign-up runs as in-person session booking — performers pick a published slot themselves.</span>
         </p>
 
         <%# Scheduled Sessions + Video Submissions don't apply to open sign-up
             (it's always in-person slot booking). %>
-        <% unless open_mode %>
+        <div data-audition-mode-target="curatedOptions" class="<%= 'hidden' if open_mode %>">
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <div>
               <h4 class="font-medium text-gray-900">Scheduled Sessions</h4>
@@ -82,7 +79,22 @@
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
-        <% end %>
+        </div>
+
+        <%# Open sign-up only: may performers move to a different slot after booking? %>
+        <div data-audition-mode-target="openOptions" class="<%= 'hidden' unless open_mode %>">
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <h4 class="font-medium text-gray-900">Allow slot changes</h4>
+              <p class="text-sm text-gray-500">Let performers move to a different slot after they've booked. Off means a booked slot is final.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="audition_cycle[allow_slot_changes]" value="0">
+              <input type="checkbox" name="audition_cycle[allow_slot_changes]" value="1" class="sr-only peer" <%= "checked" if @audition_cycle.allow_slot_changes %>>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+        </div>
 
         <div class="flex items-center justify-between py-3">
           <div>
@@ -136,12 +148,11 @@
     </div>
 
     <%# ===== Review Team (curated only — open sign-up has no review/voting) ===== %>
-    <% unless open_mode %>
     <%
       reviewer_type = @audition_cycle.reviewer_access_type.presence || "managers"
       selected_reviewer_ids = @audition_cycle.reviewer_people.pluck(:id).map(&:to_s)
     %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-controller="reviewer-wizard">
+    <div data-audition-mode-target="curatedOptions" class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6 <%= 'hidden' if open_mode %>" data-controller="reviewer-wizard">
       <%= render "shared/card_header", title: "Review Team" %>
       <div class="p-5 space-y-3">
         <p class="text-sm text-gray-500">Who can view and vote on submissions and auditions.</p>
@@ -229,7 +240,6 @@
         </div>
       </div>
     </div>
-    <% end %>
 
     <div class="mb-6">
       <%= render "shared/button", text: "Save Settings", variant: "primary", size: "medium", type: :submit %>

@@ -47,6 +47,7 @@ module Manage
         # Open sign-up is scheduled-slot booking — always in-person, never video.
         @wizard_state[:allow_in_person_auditions] = true
         @wizard_state[:allow_video_submissions] = false
+        @wizard_state[:allow_slot_changes] = params[:allow_slot_changes] == "1"
       else
         @wizard_state[:allow_video_submissions] = params[:allow_video_submissions] == "1"
         @wizard_state[:allow_in_person_auditions] = params[:allow_in_person_auditions] == "1"
@@ -409,6 +410,8 @@ module Manage
         production: @production,
         active: true,
         signup_mode: @wizard_state[:signup_mode].presence || "curated",
+        # Open sign-up: may performers move to a different slot after booking? Default yes.
+        allow_slot_changes: @wizard_state[:allow_slot_changes] != false,
         # The wizard's form_starter step IS the form review — anyone who finished
         # the wizard has explicitly designed the questions. Default to ready
         # rather than making them click an extra "Mark Ready" button afterwards.

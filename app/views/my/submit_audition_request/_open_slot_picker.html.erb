@@ -13,7 +13,26 @@
   # shown once in the left column instead.
   slot_locations = @audition_sessions.filter_map { |s| s.location&.name }.uniq
   shared_location = slot_locations.size == 1 ? slot_locations.first : nil
+  # Once booked, the slot is final unless the org allows changes.
+  locked = booked_session.present? && !@audition_cycle.allow_slot_changes
 %>
+<% if locked %>
+  <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
+    <p class="text-sm text-gray-500 mb-3">Your audition slot</p>
+    <div class="flex items-center justify-between gap-3 px-3 py-2 border rounded-lg bg-pink-50 border-pink-300">
+      <div class="min-w-0">
+        <div class="text-sm font-medium text-gray-900"><%= booked_session.start_at.strftime("%A, %B %-d · %l:%M %p").gsub("  ", " ") %></div>
+        <% if booked_session.location.present? %>
+          <div class="text-xs text-gray-500 truncate"><%= booked_session.location.name %></div>
+        <% end %>
+      </div>
+      <span class="text-xs font-medium text-pink-600 flex-shrink-0">Booked</span>
+    </div>
+    <%# Keep the booking on submit (so they can still update other answers). %>
+    <input type="hidden" name="audition_session_id" value="<%= booked_session.id %>">
+    <p class="text-xs text-gray-500 mt-3">Slot changes aren't allowed for this audition — contact the organizer if you need to move.</p>
+  </div>
+<% else %>
 <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5" data-controller="audition-slot-picker">
   <p class="text-sm text-gray-500 mb-4">
     Choose your audition slot. <span class="text-sm text-pink-500">(required)</span>
@@ -103,3 +122,4 @@
     <% end %>
   </div>
 </div>
+<% end %>

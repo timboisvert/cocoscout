@@ -7,7 +7,7 @@
     <div data-controller="audition-mode">
       <%# ---- Mode selection (the first, load-bearing choice) — two side-by-side cards ---- %>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-        <label class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition <%= mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+        <label data-audition-mode-target="modeCard" class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition hover:border-pink-300 <%= mode == 'curated' ? 'border-pink-400 bg-pink-50' : 'border-gray-200' %>">
           <span class="flex items-center gap-2">
             <input type="radio" name="signup_mode" value="curated" <%= "checked" if mode == "curated" %>
                    class="text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
@@ -17,7 +17,7 @@
           <span class="block text-sm text-gray-500 mt-2">People apply, your team reviews and votes, then you schedule them into sessions.</span>
         </label>
 
-        <label class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition <%= mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200 bg-white hover:border-pink-300' %>">
+        <label data-audition-mode-target="modeCard" class="flex flex-col h-full p-4 rounded-lg border cursor-pointer transition hover:border-pink-300 <%= mode == 'open' ? 'border-pink-400 bg-pink-50' : 'border-gray-200' %>">
           <span class="flex items-center gap-2">
             <input type="radio" name="signup_mode" value="open" <%= "checked" if mode == "open" %>
                    class="text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
@@ -57,6 +57,23 @@
             <input type="hidden" name="allow_video_submissions" value="0">
             <input type="checkbox" name="allow_video_submissions" value="1"
                    <%= "checked" if @wizard_state[:allow_video_submissions] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+      </div>
+
+      <%# ---- Open-sign-up-only options (shown by JS only when Open is chosen) ---- %>
+      <div data-audition-mode-target="openOptions" class="space-y-4 <%= "hidden" unless mode == "open" %>">
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex-1 mr-4">
+            <p class="font-medium text-gray-900">Allow slot changes</p>
+            <p class="text-sm text-gray-500 mt-1">Let performers move to a different slot after they've booked. Off means a booked slot is final.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="allow_slot_changes" value="0">
+            <input type="checkbox" name="allow_slot_changes" value="1"
+                   <%= "checked" unless @wizard_state[:allow_slot_changes] == false %>
                    class="sr-only peer">
             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
           </label>

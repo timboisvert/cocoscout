@@ -335,6 +335,9 @@ module My
         if existing&.audition_session_id == slot.id
           # Already in this slot — just make sure it's linked to the request.
           existing.update!(audition_request: request) if existing.audition_request_id.nil?
+        elsif existing && !@audition_cycle.allow_slot_changes
+          # Slot changes are locked — keep their original booking, ignore the new pick.
+          existing.update!(audition_request: request) if existing.audition_request_id.nil?
         else
           if slot.maximum_auditionees.present? && slot.auditions.count >= slot.maximum_auditionees
             raise SlotFull

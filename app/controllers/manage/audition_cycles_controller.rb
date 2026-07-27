@@ -84,14 +84,24 @@ module Manage
 
       @audition_cycle.assign_attributes(params_to_update)
 
+      # Open sign-up normalization (mirrors the wizard): always in-person slot
+      # booking, never video, no session-availability rating, and no review team.
+      # The settings form keeps those curated controls in the DOM (just hidden),
+      # so ignore any stale values they submit when the mode is open.
+      if @audition_cycle.signup_mode_open?
+        @audition_cycle.allow_in_person_auditions = true
+        @audition_cycle.allow_video_submissions = false
+        @audition_cycle.include_audition_availability_section = false
+      end
+
       # Reviewer fields are submitted top-level (not nested under :audition_cycle)
-      if params[:reviewer_access_type].present?
+      if params[:reviewer_access_type].present? && !@audition_cycle.signup_mode_open?
         @audition_cycle.reviewer_access_type = params[:reviewer_access_type]
       end
 
       if @audition_cycle.save
         # Sync specific reviewers if reviewer_access_type was submitted
-        if params[:reviewer_access_type].present?
+        if params[:reviewer_access_type].present? && !@audition_cycle.signup_mode_open?
           @audition_cycle.audition_reviewers.destroy_all
           if params[:reviewer_access_type] == "specific"
             (params[:reviewer_person_ids] || []).each do |person_id|
@@ -290,7 +300,7 @@ module Manage
 
     def audition_cycle_params
       params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type,
-                                             :signup_mode,
+                                             :signup_mode, :allow_slot_changes,
                                              :allow_video_submissions, :allow_in_person_auditions,
                                              :listed_in_directory, :resume_required,
                                              :instruction_text, :notify_on_submission,
