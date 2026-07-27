@@ -134,11 +134,17 @@
             You are the last member, so leaving will automatically archive this group.
           <% end %>
         </p>
-        <%= button_to "Archive Group",
-            archive_group_path(@group),
-            method: :patch,
-            data: { turbo_confirm: "Are you sure you want to archive #{@group.name}? It will no longer appear in searches or directories." },
-            class: "px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer" %>
+        <% archive_group_cid = "confirm-archive-group" %>
+        <button type="button"
+                data-controller="modal" data-action="click->modal#open" data-modal-id="<%= archive_group_cid %>"
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer">
+          Archive Group
+        </button>
+        <%= render "shared/confirm_modal", id: archive_group_cid,
+              title: "Archive group?",
+              message: "Are you sure you want to archive #{@group.name}? It will no longer appear in searches or directories.",
+              confirm_text: "Archive Group",
+              url: archive_group_path(@group), method: :patch %>
       </div>
     </div>
   <% end %>

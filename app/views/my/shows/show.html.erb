@@ -318,14 +318,19 @@
               <% if can_show_cant_make_it %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
                   <% if has_unresolved_vacancy && unresolved_vacancy %>
+                    <% reclaim_cid = "confirm-reclaim-vacancy-#{unresolved_vacancy.id}" %>
                     <%= render "shared/button",
                         text: "Actually, I can make it",
-                        path: my_reclaim_vacancy_path(@show, unresolved_vacancy),
-                        method: :post,
                         variant: "secondary",
                         size: "small",
-                        data: { turbo_confirm: "Are you sure? This will cancel the vacancy and restore your assignment." }
+                        type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: reclaim_cid }
                     %>
+                    <%= render "shared/confirm_modal", id: reclaim_cid,
+                          title: "Restore your assignment?",
+                          message: "Are you sure? This will cancel the vacancy and restore your assignment.",
+                          confirm_text: "Actually, I can make it",
+                          url: my_reclaim_vacancy_path(@show, unresolved_vacancy), method: :post %>
                   <% else %>
                     <%= render "shared/button", text: "Can't make it?", path: vacancy_link_for(cant_make_it_person, @show), variant: "secondary", size: "small" %>
                   <% end %>
@@ -357,14 +362,19 @@
               </div>
               <% if !@show.canceled && @show.date_and_time > Time.current %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
+                  <% reclaim_open_cid = "confirm-reclaim-vacancy-#{my_open_vacancy.id}" %>
                   <%= render "shared/button",
                       text: "Actually, I can make it",
-                      path: my_reclaim_vacancy_path(@show, my_open_vacancy),
-                      method: :post,
                       variant: "secondary",
                       size: "small",
-                      data: { turbo_confirm: "Are you sure? This will cancel the vacancy and restore your assignment." }
+                      type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: reclaim_open_cid }
                   %>
+                  <%= render "shared/confirm_modal", id: reclaim_open_cid,
+                        title: "Restore your assignment?",
+                        message: "Are you sure? This will cancel the vacancy and restore your assignment.",
+                        confirm_text: "Actually, I can make it",
+                        url: my_reclaim_vacancy_path(@show, my_open_vacancy), method: :post %>
                 </div>
               <% end %>
             </div>

@@ -83,14 +83,19 @@
         <% end %>
 
         <% if @sign_up_form.allow_cancel %>
+          <% cancel_regs_cid = "confirm-cancel-registrations" %>
           <%= render "shared/button",
             text: "Cancel Registration#{@my_registrations.count > 1 ? 's' : ''}",
-            path: my_cancel_sign_up_registration_path(@code),
-            method: :post,
             variant: "outline",
             icon: "x-mark",
-            data: { turbo_confirm: "Are you sure? This will cancel all your registrations." }
+            type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: cancel_regs_cid }
           %>
+          <%= render "shared/confirm_modal", id: cancel_regs_cid,
+                title: "Cancel registration?",
+                message: "Are you sure? This will cancel all your registrations.",
+                confirm_text: "Cancel Registration#{@my_registrations.count > 1 ? 's' : ''}",
+                url: my_cancel_sign_up_registration_path(@code), method: :post %>
         <% end %>
       </div>
     </div>

@@ -1,3 +1,4 @@
+<% disconnect_cid = "confirm-disconnect-calendar-#{subscription.id}" %>
 <%= form_with url: my_calendar_sync_update_path(subscription), method: :patch, local: true, class: "space-y-4" do |form| %>
   <% if subscription.provider != "ical" %>
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -59,6 +60,14 @@
       <%= render "shared/button", text: "Sync Now", path: my_calendar_sync_sync_now_path(subscription), variant: "outline", size: "small", data: { turbo_method: :post } %>
     <% end %>
 
-    <%= render "shared/button", text: "Disconnect", path: my_calendar_sync_disconnect_path(subscription), variant: "ghost", size: "small", data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to disconnect this calendar? Any synced events will remain in your calendar but will no longer be updated." } %>
+    <%= render "shared/button", text: "Disconnect", variant: "ghost", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: disconnect_cid } %>
   </div>
 <% end %>
+
+<%# Rendered outside the settings form above so the modal's own form is not nested. %>
+<%= render "shared/confirm_modal", id: disconnect_cid,
+      title: "Disconnect calendar?",
+      message: "Are you sure you want to disconnect this calendar? Any synced events will remain in your calendar but will no longer be updated.",
+      confirm_text: "Disconnect",
+      url: my_calendar_sync_disconnect_path(subscription), method: :delete %>

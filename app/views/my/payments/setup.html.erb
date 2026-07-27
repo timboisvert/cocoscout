@@ -126,9 +126,14 @@
         <% end %>
         <% if @person.zelle_configured? %>
           <div class="mt-3">
-            <%= button_to my_payments_remove_zelle_path, method: :delete, data: { turbo_confirm: "Remove your Zelle information?" }, class: "inline-block" do %>
-              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
-            <% end %>
+            <% remove_zelle_cid = "confirm-remove-zelle" %>
+            <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_zelle_cid } %>
+            <%= render "shared/confirm_modal", id: remove_zelle_cid,
+                  title: "Remove Zelle?",
+                  message: "Remove your Zelle information?",
+                  confirm_text: "Remove",
+                  url: my_payments_remove_zelle_path, method: :delete %>
           </div>
         <% end %>
       </div>
@@ -206,9 +211,14 @@
         <% end %>
         <% if @person.venmo_configured? %>
           <div class="mt-3">
-            <%= button_to my_payments_remove_venmo_path, method: :delete, data: { turbo_confirm: "Remove your Venmo information?" }, class: "inline-block" do %>
-              <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium" %>
-            <% end %>
+            <% remove_venmo_cid = "confirm-remove-venmo" %>
+            <%= render "shared/button", text: "Remove", variant: "ghost", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_venmo_cid } %>
+            <%= render "shared/confirm_modal", id: remove_venmo_cid,
+                  title: "Remove Venmo?",
+                  message: "Remove your Venmo information?",
+                  confirm_text: "Remove",
+                  url: my_payments_remove_venmo_path, method: :delete %>
           </div>
         <% end %>
       </div>

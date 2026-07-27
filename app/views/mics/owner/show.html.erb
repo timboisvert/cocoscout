@@ -457,13 +457,29 @@
                           class: "cursor-pointer px-2 py-1 text-xs bg-gray-900 hover:bg-black text-white font-bold rounded" %>
                   <% end %>
                   <% if mp.user_id == Current.user&.id %>
-                    <%= button_to "Leave this mic", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
-                          data: { turbo_confirm: "Step down as an owner of #{@mic.name}? If you're the last owner, the mic becomes unclaimed and anyone can claim it." },
-                          class: "cursor-pointer px-2 py-1 text-xs bg-white border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 font-bold" %>
+                    <% leave_cid = "confirm-leave-mic-#{mp.id}" %>
+                    <button type="button"
+                            data-controller="modal" data-action="click->modal#open" data-modal-id="<%= leave_cid %>"
+                            class="cursor-pointer px-2 py-1 text-xs bg-white border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 font-bold">
+                      Leave this mic
+                    </button>
+                    <%= render "shared/confirm_modal", id: leave_cid,
+                          title: "Leave this mic?",
+                          message: "Step down as an owner of #{@mic.name}? If you're the last owner, the mic becomes unclaimed and anyone can claim it.",
+                          confirm_text: "Leave this mic",
+                          url: mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete %>
                   <% else %>
-                    <%= button_to "Remove", mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete,
-                          data: { turbo_confirm: "Remove #{mp.user.email_address} from #{@mic.name}?" },
-                          class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
+                    <% remove_owner_cid = "confirm-remove-owner-#{mp.id}" %>
+                    <button type="button"
+                            data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_owner_cid %>"
+                            class="cursor-pointer text-xs text-gray-500 hover:text-red-600 underline bg-transparent border-0">
+                      Remove
+                    </button>
+                    <%= render "shared/confirm_modal", id: remove_owner_cid,
+                          title: "Remove owner?",
+                          message: "Remove #{mp.user.email_address} from #{@mic.name}?",
+                          confirm_text: "Remove",
+                          url: mics_owner_remove_owner_path(@mic.slug, owner_id: mp.id), method: :delete %>
                   <% end %>
                 </div>
               </li>
@@ -493,9 +509,17 @@
                 Permanently delete <strong><%= @mic.name %></strong> and everything attached to it (suggestions, announcements, claims, owner links, edit history). Use this for spam or duplicate listings — not for one-off pauses (use "Pause this mic" on the Schedule tab instead).
               </p>
             </div>
-            <%= button_to "Delete this mic", mics_owner_destroy_mic_path(@mic.slug), method: :delete,
-                  data: { turbo_confirm: "Permanently delete \"#{@mic.name}\"? This can't be undone." },
-                  class: "cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded" %>
+            <% delete_mic_cid = "confirm-delete-mic" %>
+            <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= delete_mic_cid %>"
+                    class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-sm transition-colors duration-100 shrink-0 rounded">
+              Delete this mic
+            </button>
+            <%= render "shared/confirm_modal", id: delete_mic_cid,
+                  title: "Delete this mic?",
+                  message: "Permanently delete \"#{@mic.name}\"? This can't be undone.",
+                  confirm_text: "Delete this mic",
+                  url: mics_owner_destroy_mic_path(@mic.slug), method: :delete %>
           </div>
         </section>
       <% end %>
@@ -595,10 +619,9 @@
   <p class="text-sm text-gray-600 mb-4">
     Use this when the mic itself is relocating (e.g. the host moved venues). If the venue you're going to already exists in CocoScout, we'll reuse it; otherwise we'll create it.
   </p>
-  <%= form_with url: mics_owner_move_venue_path(@mic.slug), method: :post,
+  <%= form_with url: mics_owner_move_venue_path(@mic.slug), method: :post, id: "move-venue-form",
         data: { controller: "venue-finder",
-                "venue-finder-url-value": mics_venues_lookup_path,
-                turbo_confirm: "Move this mic to a different venue? Existing schedule + owners stay the same." } do %>
+                "venue-finder-url-value": mics_venues_lookup_path } do %>
 
     <%= hidden_field_tag "venue_id", nil, data: { venue_finder_target: "venueIdInput" } %>
 
@@ -634,10 +657,31 @@
     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
       <button type="button" data-controller="mics-modal" data-action="click->mics-modal#close"
               class="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-      <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Move this mic", variant: "secondary", size: "medium", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-move-venue" } %>
     </div>
   <% end %>
 <% end %>
+
+<%# Confirmation for the move-venue form above (form carries venue fields, so the confirm submits it via form=) %>
+<div id="confirm-move-venue" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-white">Move this mic?</h3>
+      <button type="button" class="text-white/80 hover:text-white" data-action="click->modal#close" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-gray-600">Move this mic to a different venue? Existing schedule + owners stay the same.</p>
+    </div>
+    <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <button type="submit" form="move-venue-form" class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10">Move this mic</button>
+    </div>
+  </div>
+</div>
 
 <%= render "mics/owner/modal", id: "modal-add-owner", title: "Add an owner" do %>
   <p class="text-sm text-gray-600 mb-4">

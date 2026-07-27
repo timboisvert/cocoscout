@@ -456,14 +456,19 @@
             Removing yourself from this production's talent pool will remove you from future scheduling.
             Your existing assignments will remain, but you won't be considered for new ones.
           </p>
+          <% leave_pool_cid = "confirm-leave-talent-pool" %>
           <%= render "shared/button",
               text: "Leave Talent Pool",
-              path: my_leave_production_path(@production),
-              method: :delete,
               variant: "danger",
               icon: "arrow-right-start-on-rectangle",
-              data: { turbo_confirm: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin." }
+              type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: leave_pool_cid }
           %>
+          <%= render "shared/confirm_modal", id: leave_pool_cid,
+                title: "Leave talent pool?",
+                message: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin.",
+                confirm_text: "Leave Talent Pool",
+                url: my_leave_production_path(@production), method: :delete %>
         </div>
       </div>
     </div>

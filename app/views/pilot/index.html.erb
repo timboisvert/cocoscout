@@ -32,9 +32,17 @@
               <h2 class="text-xl font-semibold text-gray-900 mb-2">Set Up Pilot Producer/Theater</h2>
               <p class="text-gray-600 text-sm">Create a complete theater setup with a step-by-step process.</p>
             </div>
-            <%= button_to "Start Over", pilot_reset_producer_path, method: :delete,
-              class: "cursor-pointer text-sm text-gray-600 hover:text-gray-900 underline",
-              data: { turbo_confirm: "Are you sure? This will clear all progress." } %>
+            <% reset_producer_cid = "confirm-reset-producer" %>
+            <button type="button"
+              data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reset_producer_cid %>"
+              class="cursor-pointer text-sm text-gray-600 hover:text-gray-900 underline bg-transparent border-0">
+              Start Over
+            </button>
+            <%= render "shared/confirm_modal", id: reset_producer_cid,
+              title: "Start over?",
+              message: "Are you sure? This will clear all progress.",
+              confirm_text: "Start Over",
+              url: pilot_reset_producer_path, method: :delete %>
           </div>
 
           <!-- Producer Setup Steps -->
@@ -157,9 +165,17 @@
               <h2 class="text-xl font-semibold text-gray-900 mb-2">Set Up Pilot Talent</h2>
               <p class="text-gray-600 text-sm">Create a new talent user with a person profile. They will not be associated with any organization.</p>
             </div>
-            <%= button_to "Start Over", pilot_reset_talent_path, method: :delete,
-              class: "cursor-pointer text-sm text-gray-600 hover:text-gray-900 underline",
-              data: { turbo_confirm: "Are you sure? This will clear all progress." } %>
+            <% reset_talent_cid = "confirm-reset-talent" %>
+            <button type="button"
+              data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reset_talent_cid %>"
+              class="cursor-pointer text-sm text-gray-600 hover:text-gray-900 underline bg-transparent border-0">
+              Start Over
+            </button>
+            <%= render "shared/confirm_modal", id: reset_talent_cid,
+              title: "Start over?",
+              message: "Are you sure? This will clear all progress.",
+              confirm_text: "Start Over",
+              url: pilot_reset_talent_path, method: :delete %>
           </div>
 
           <!-- Talent Setup Steps -->
