@@ -176,7 +176,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <%= form_with url: manage_mark_received_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
+      <%= form_with url: manage_mark_received_money_incoming_payment_path(@payment), method: :post, data: { turbo: false, controller: "require-choice" } do %>
         <div class="p-6 space-y-4">
           <p class="text-sm text-gray-600">Money that arrived outside CocoScout. This records it as received — just like a card payment would.</p>
           <div>
@@ -192,7 +192,7 @@
             <div class="grid grid-cols-3 gap-2">
               <% @received_methods.each do |label, value| %>
                 <label class="block cursor-pointer">
-                  <input type="radio" name="payment_method" value="<%= value %>" class="peer sr-only">
+                  <input type="radio" name="payment_method" value="<%= value %>" class="peer sr-only" data-action="change->require-choice#update">
                   <div class="text-center text-sm px-2 py-2 border rounded-lg bg-white border-gray-200 text-gray-700 hover:border-pink-400 peer-checked:border-pink-500 peer-checked:bg-pink-50 peer-checked:text-pink-700 peer-checked:font-medium transition-all">
                     <%= label %>
                   </div>
@@ -213,7 +213,9 @@
         </div>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
           <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-          <%= render "shared/button", text: "Mark received", variant: "primary", size: "medium", type: :submit, icon: "check-circle" %>
+          <%= render "shared/button", text: "Mark received", variant: "primary", size: "medium", type: :submit, icon: "check-circle",
+                disabled: true, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+                data: { require_choice_target: "submit" } %>
         </div>
       <% end %>
     </div>
