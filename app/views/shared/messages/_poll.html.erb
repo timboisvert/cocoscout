@@ -187,11 +187,22 @@
         </span>
 
         <% if show_close_button %>
-          <%= button_to close_path, method: :post,
-              class: "text-xs font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer",
-              data: { turbo_frame: "_top", turbo_confirm: "Close this poll? No more votes will be accepted." } do %>
+          <% close_poll_confirm_id = "confirm-close-poll-#{poll.id}" %>
+          <button type="button"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-id="<%= close_poll_confirm_id %>"
+              class="text-xs font-medium text-gray-500 hover:text-pink-600 transition-colors cursor-pointer bg-transparent border-0">
             Close Poll
-          <% end %>
+          </button>
+          <%= render "shared/confirm_modal",
+                id: close_poll_confirm_id,
+                title: "Close poll?",
+                message: "Close this poll? No more votes will be accepted.",
+                confirm_text: "Close Poll",
+                url: close_path,
+                method: :post,
+                form_data: { turbo_frame: "_top" } %>
         <% end %>
       </div>
     <% end %>

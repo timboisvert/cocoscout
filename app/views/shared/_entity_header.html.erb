@@ -102,16 +102,33 @@
         <% actions.each do |action| %>
           <%
             variant = action[:variant] || "secondary"
-            data = action[:confirm] ? { turbo_confirm: action[:confirm] } : {}
           %>
-          <%= render "shared/button",
-            text: action[:text],
-            icon: action[:icon],
-            variant: variant,
-            size: "small",
-            path: action[:path],
-            method: action[:method],
-            data: data %>
+          <% if action[:confirm] %>
+            <% confirm_id = "confirm-#{SecureRandom.hex(6)}" %>
+            <%= render "shared/button",
+              text: action[:text],
+              icon: action[:icon],
+              variant: variant,
+              size: "small",
+              type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: confirm_id } %>
+            <%= render "shared/confirm_modal",
+              id: confirm_id,
+              title: action[:text],
+              message: action[:confirm],
+              confirm_text: action[:text],
+              confirm_icon: action[:icon],
+              url: action[:path],
+              method: action[:method] || :post %>
+          <% else %>
+            <%= render "shared/button",
+              text: action[:text],
+              icon: action[:icon],
+              variant: variant,
+              size: "small",
+              path: action[:path],
+              method: action[:method] %>
+          <% end %>
         <% end %>
       </div>
     <% end %>
