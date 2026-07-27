@@ -400,6 +400,16 @@
                   <% currently_booked = booked_session&.id == session.id %>
                   <% is_full = session.full? && !currently_booked %>
                   <% remaining = session.spots_remaining %>
+                  <%# Count only matters when a slot holds more than one — a plain
+                      one-per-slot slot needs no "1 available" label. %>
+                  <% multi_capacity = session.capacity.present? && session.capacity > 1 %>
+                  <% status_label = if currently_booked
+                                      "Your slot"
+                                    elsif is_full
+                                      "Full"
+                                    elsif multi_capacity
+                                      "#{remaining} available"
+                                    end %>
                   <label class="block <%= is_full ? 'cursor-not-allowed' : 'cursor-pointer' %>">
                     <%= radio_button_tag "audition_session_id", session.id, currently_booked,
                           class: "peer sr-only", disabled: is_full %>
@@ -411,17 +421,9 @@
                           <span class="block text-xs text-gray-500 truncate"><%= session.location.name %></span>
                         <% end %>
                       </span>
-                      <span class="text-xs flex-shrink-0 <%= currently_booked ? 'text-pink-600 font-medium' : 'text-gray-500' %>">
-                        <% if is_full %>
-                          Full
-                        <% elsif currently_booked %>
-                          Your slot
-                        <% elsif remaining.nil? %>
-                          Available
-                        <% else %>
-                          <%= remaining %> available
-                        <% end %>
-                      </span>
+                      <% if status_label %>
+                        <span class="text-xs flex-shrink-0 <%= currently_booked ? 'text-pink-600 font-medium' : 'text-gray-500' %>"><%= status_label %></span>
+                      <% end %>
                     </div>
                   </label>
                 <% end %>
