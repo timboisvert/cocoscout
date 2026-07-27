@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :set_show_payout, only: [
       :show, :update, :edit_financials, :update_financials,
-      :calculate, :mark_paid, :reopen, :add_to_payout_run,
+      :calculate, :mark_paid, :reopen, :add_to_payout_run, :remove_from_run,
       :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
       :change_scheme, :apply_scheme_change,
@@ -134,6 +134,32 @@ module Manage
       else
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Nothing to add — these payouts are already in a run, or the performers can't be paid through Stripe yet."
+      end
+    end
+
+    # Pull a payee back out of the open performer payout run for this show. Their
+    # earning stays on the ledger (they're still owed) — this only cancels the
+    # pending transfer, so they can be re-added anytime. Grouped by payee so a
+    # multi-allocation payee comes out together. Destroying each PayoutContribution
+    # re-settles or drops the batch item and re-totals the run (see the model);
+    # already-paid items are skipped so settled money is never disturbed.
+    def remove_from_run
+      line_item = @show_payout.line_items.find(params[:line_item_id])
+      line_ids = @show_payout.line_items
+                             .where(payee_type: line_item.payee_type, payee_id: line_item.payee_id)
+                             .ids
+      contributions = PayoutContribution
+                        .where(source_type: "ShowPayoutLineItem", source_id: line_ids)
+                        .includes(:payout_batch_item)
+                        .reject { |c| c.payout_batch_item&.paid? }
+
+      if contributions.any?
+        contributions.each(&:destroy)
+        redirect_to manage_money_show_payout_path(@show),
+                    notice: "Removed #{line_item.payee_name} from the payout run. They're still owed — add them back anytime."
+      else
+        redirect_to manage_money_show_payout_path(@show),
+                    alert: "#{line_item.payee_name} isn't in an open payout run."
       end
     end
 

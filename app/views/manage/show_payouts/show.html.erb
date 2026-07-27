@@ -989,6 +989,12 @@
                           <div class="text-right" title="Added to a payout run. Pay the run to send this to their bank.">
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run</span>
                             <div class="text-xs text-gray-400 mt-0.5">awaiting payment</div>
+                            <%= button_to manage_remove_line_item_from_run_money_show_payout_path(@show, item),
+                                  method: :delete,
+                                  class: "text-xs text-gray-400 hover:text-red-600 underline mt-0.5",
+                                  data: { turbo_confirm: "Remove #{item.payee_name} from the payout run for this show? They'll stay owed and can be added back anytime." } do %>
+                              Remove from run
+                            <% end %>
                           </div>
                         <% elsif item.auto_payout? %>
                           <%# Bank connected but not yet added — adding to a run is a manual step. %>
