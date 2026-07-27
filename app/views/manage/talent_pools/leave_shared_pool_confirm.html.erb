@@ -1,18 +1,18 @@
 <%= turbo_frame_tag "leave_pool_modal" do %>
   <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-    <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white mx-4">
-      <div class="flex items-center justify-between pb-3 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">Leave Shared Pool</h3>
+    <div class="relative border w-full max-w-md shadow-lg rounded-xl bg-white mx-4 overflow-hidden">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Leave Shared Pool</h3>
         <%= link_to manage_casting_settings_section_path(production_id: @production, section: "talent_pool"),
-            class: "text-gray-400 hover:text-gray-600 cursor-pointer",
+            class: "rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer",
             data: { turbo_frame: "_top" } do %>
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         <% end %>
       </div>
 
-      <div class="mt-4">
+      <div class="px-6 py-5">
         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
           <div class="flex gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
