@@ -96,8 +96,17 @@
               </summary>
               <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
                 <% contributions.each do |c| %>
+                  <% source_path = payout_contribution_source_path(c) %>
                   <div class="flex items-center justify-between gap-4 py-1.5 text-sm">
-                    <span class="text-gray-600 truncate"><%= c.label %></span>
+                    <% if source_path %>
+                      <%# Trace back to what created this payment (show, advance, contract, course). %>
+                      <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
+                        <span class="truncate group-hover/trace:underline"><%= c.label %></span>
+                        <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                      <% end %>
+                    <% else %>
+                      <span class="text-gray-600 truncate"><%= c.label %></span>
+                    <% end %>
                     <span class="text-gray-800 tabular-nums flex-shrink-0"><%= number_to_currency(c.amount_cents / 100.0) %></span>
                   </div>
                 <% end %>

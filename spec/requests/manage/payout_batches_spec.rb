@@ -81,6 +81,20 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     expect(response).to redirect_to(manage_payout_batch_path(batch))
   end
 
+  it "links a payment component back to the show payout that created it" do
+    show = create(:show, production: create(:production, organization: org), event_type: :show, date_and_time: 3.days.ago)
+    payout = ShowPayout.create!(show: show, status: "awaiting_payout", calculated_at: Time.current, total_payout: 40)
+    ShowPayoutLineItem.create!(show_payout: payout, payee: ready, amount: 40)
+    PerformerPayoutRunService.add_show_payout!(payout)
+
+    batch = PayoutBatch.where(kind: "performer").order(:id).last
+    get manage_payout_batch_path(batch)
+
+    expect(response).to have_http_status(:ok)
+    # The contribution row traces back to the show's payout page.
+    expect(response.body).to include(manage_money_show_payout_path(show))
+  end
+
   it "is gated to the Pro plan" do
     free_owner = create(:user, password: password)
     free_org = create(:organization, owner: free_owner)
