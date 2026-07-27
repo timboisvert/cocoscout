@@ -148,7 +148,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <%= form_with url: remind_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
+      <%= form_with url: manage_remind_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
         <div class="p-6 space-y-4">
           <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
             Reminding <strong><%= @contract.contractor_name.presence || "the payer" %></strong> about
