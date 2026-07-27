@@ -1,12 +1,12 @@
 <%#
   Slim, spreadsheet-style contracts list — mirrors the production list on
-  manage/money. Left column is the contractor; the three right columns carry the
-  same data as the old segmented row (Production, Type, Value + status).
+  manage/money. Left column is the contractor (production shown underneath their
+  name); the three right columns carry Dates, Type, and Value + status.
 
   Locals:
     contracts: array of Contract objects
 %>
-<%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Production", "Type", "Value" ], col_class: "w-32", min_width: "min-w-[640px]" } do %>
+<%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Dates", "Type", "Value" ], col_class: "w-32", min_width: "min-w-[640px]" } do %>
   <% contracts.each do |contract| %>
     <%
       is_draft = contract.status_draft?
@@ -30,8 +30,11 @@
       bookings_count = contract.space_rentals.count.positive? ? contract.space_rentals.count : contract.draft_bookings.count
       has_space_rental = bookings_count > 0
 
-      # ---- Column 1: Production ----
-      production_label = contract.production_name.presence || contract.production&.name || "—"
+      # ---- Column 1: Dates ----
+      dates_label = contract.date_range.presence || "—"
+
+      # Production now sits under the contractor name (subtitle), not in a column.
+      production_label = contract.production_name.presence || contract.production&.name
 
       # ---- Column 2: Type ----
       type_label = if has_space_rental
@@ -71,7 +74,7 @@
       end
 
       badge = is_draft ? { text: (contract.wizard_step > 1 ? "Draft · Step #{contract.wizard_step}/8" : "Draft"), color: "gray" } : nil
-      subtitle = contract.date_range.presence || contract.contractor_email.presence
+      subtitle = production_label.presence || contract.contractor_email.presence
     %>
     <%= render "shared/slim_list_row",
           title: contract.contractor_name,
@@ -80,7 +83,7 @@
           col_class: "w-32",
           href: contract_path,
           cells: [
-            { value: production_label, class: "text-gray-600 truncate" },
+            { value: dates_label, class: "text-gray-600 truncate" },
             { value: type_label, class: "text-gray-600" },
             { value: value_label, class: value_class }
           ] %>
