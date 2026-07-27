@@ -21,6 +21,11 @@ class AuditionCycle < ApplicationRecord
 
   belongs_to :production
 
+  # Collecting show & event availability is on by default for every new cycle,
+  # in every sign-up mode. Overrides the (legacy false) DB column default at the
+  # Rails layer so we don't need a migration; explicit assignment still wins.
+  attribute :include_availability_section, :boolean, default: true
+
   validates :opens_at, presence: true
   validate :form_must_be_reviewed_before_opening
   validate :closes_at_after_opens_at

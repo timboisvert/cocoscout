@@ -106,7 +106,9 @@
           </span>
         </div>
 
-        <% if @audition_cycle.accepts_in_person_auditions? %>
+        <%# Open sign-up performers pick their own slot, so there's no session
+            availability to ask about. %>
+        <% if @audition_cycle.accepts_in_person_auditions? && !@audition_cycle.signup_mode_open? %>
           <div class="flex items-center justify-between border-t border-gray-100 pt-3">
             <div>
               <div class="text-sm font-medium text-gray-900">Audition Session Availability</div>
@@ -201,7 +203,7 @@
                   </div>
                 </div>
 
-                <% if @audition_cycle.accepts_in_person_auditions? %>
+                <% if @audition_cycle.accepts_in_person_auditions? && !@audition_cycle.signup_mode_open? %>
                   <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div class="flex items-center justify-between">
                       <div class="flex-1 mr-4">

@@ -3,8 +3,9 @@
 module Manage
   class SelectController < Manage::ManageController
     before_action :set_current_organization, except: %i[organization set_organization]
-    skip_before_action :show_manage_sidebar
-    before_action :show_manage_header_only
+    # Use the standard manage sidebar (with its bottom account menu) rather than
+    # the old top-right header — the org picker should feel like the dashboard.
+    # The sidebar renders safely with no organization selected yet.
     before_action :hide_production_selector
 
     def organization

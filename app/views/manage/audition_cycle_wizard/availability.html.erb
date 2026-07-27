@@ -28,7 +28,8 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="hidden" name="include_availability_section" value="0">
             <input type="checkbox" name="include_availability_section" value="1"
-                   <%= "checked" if @wizard_state[:include_availability_section] %>
+                   <%# On by default — only unchecked if the manager explicitly turned it off. %>
+                   <%= "checked" unless @wizard_state[:include_availability_section] == false %>
                    class="sr-only peer"
                    data-action="change->availability-wizard#toggleSection"
                    data-availability-wizard-target="showAvailabilityToggle">
@@ -36,7 +37,7 @@
           </label>
         </div>
 
-        <div data-availability-wizard-target="showAvailabilitySection" class="<%= 'hidden' unless @wizard_state[:include_availability_section] %> mt-4 pt-4 border-t border-gray-200">
+        <div data-availability-wizard-target="showAvailabilitySection" class="<%= 'hidden' if @wizard_state[:include_availability_section] == false %> mt-4 pt-4 border-t border-gray-200">
           <div class="flex items-center justify-between mb-3">
             <p class="text-sm font-medium text-gray-700">Select shows & events to ask about:</p>
             <%= link_to "Manage shows", manage_production_shows_path(@production), target: "_blank", class: "text-sm text-pink-500 hover:text-pink-600" %>

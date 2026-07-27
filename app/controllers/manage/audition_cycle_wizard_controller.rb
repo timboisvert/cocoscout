@@ -421,10 +421,14 @@ module Manage
         resume_required: @wizard_state[:resume_required] != false,
         opens_at: @wizard_state[:opens_at],
         closes_at: @wizard_state[:closes_at],
-        include_availability_section: @wizard_state[:include_availability_section],
+        # Show & event availability is on by default in every mode — open sign-up
+        # skips the availability step, so nil there means "leave the default on".
+        include_availability_section: @wizard_state[:include_availability_section] != false,
         require_all_availability: @wizard_state[:require_all_availability],
         availability_show_ids: @wizard_state[:availability_show_ids],
-        include_audition_availability_section: @wizard_state[:include_audition_availability_section],
+        # Open sign-up performers book their own slot, so there's never session
+        # availability to collect.
+        include_audition_availability_section: open_signup ? false : @wizard_state[:include_audition_availability_section],
         require_all_audition_availability: @wizard_state[:require_all_audition_availability],
         reviewer_access_type: @wizard_state[:reviewer_access_type] || "managers",
         # Open sign-up has no review/vote stage.

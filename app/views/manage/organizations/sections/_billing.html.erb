@@ -2,8 +2,13 @@
   <%= render "shared/card_header", title: "Billing & Plan" %>
   <div class="p-6 bg-white">
     <%= render "manage/billing/plan_summary", organization: @organization %>
-    <%= render "manage/billing/staffing_usage", organization: @organization %>
-    <%= render "manage/billing/performer_usage", organization: @organization %>
+    <%# Staffing ($5/staff) and Performer ($3/performer) usage are Pro-only meters —
+        the features that generate them are unavailable on the Producer plan, so
+        there's nothing to bill or show a free org here. %>
+    <% if @organization.on_paid_plan? %>
+      <%= render "manage/billing/staffing_usage", organization: @organization %>
+      <%= render "manage/billing/performer_usage", organization: @organization %>
+    <% end %>
     <div class="mt-6">
       <%= render "manage/funding_source", org: @organization,
             return_to: section_manage_organization_path(@organization, section: "billing") %>
