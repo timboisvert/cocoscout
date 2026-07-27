@@ -1,29 +1,18 @@
-<%# Staff hub: searchable, toggleable roster split into active staff and people
-    still pending onboarding. Rendered inside a data-controller="invite-preview"
-    wrapper. Uses @active_staff, @pending_staff. Editing a member opens a full
-    page (not a modal); the only modal here is the onboarding email preview. %>
+<%# Staff hub: a single searchable, compact roster (no list/grid toggle) that
+    mirrors the slim production/contract lists. Split into active staff and
+    people still pending onboarding. Rendered inside a data-controller="invite-preview"
+    wrapper. Uses @active_staff, @pending_staff. A row links to the staff edit
+    page; the only modal here is the onboarding email preview. %>
 
 <div data-controller="staff-hub">
-  <%# ---- Toolbar: search + list/grid toggle ---- %>
-  <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-    <div class="relative flex-1">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-      <input type="text"
-             data-staff-hub-target="search"
-             data-action="input->staff-hub#search"
-             placeholder="Search staff by name, email, or title…"
-             class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-    </div>
-    <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden self-start">
-      <button type="button" data-action="click->staff-hub#showList" data-staff-hub-target="listBtn"
-              class="px-3 py-2 text-sm text-gray-700 bg-pink-50 flex items-center gap-1.5" title="List view">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
-      <button type="button" data-action="click->staff-hub#showGrid" data-staff-hub-target="gridBtn"
-              class="px-3 py-2 text-sm text-gray-500 bg-white flex items-center gap-1.5 border-l border-gray-300" title="Grid view">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-      </button>
-    </div>
+  <%# ---- Search ---- %>
+  <div class="relative mb-4">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <input type="text"
+           data-staff-hub-target="search"
+           data-action="input->staff-hub#search"
+           placeholder="Search staff by name, email, or title…"
+           class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
   </div>
 
   <%# ---- Pending onboarding (people still setting up their account) ---- %>
@@ -34,10 +23,17 @@
         <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium"><%= @pending_staff.size %></span>
       </div>
       <p class="text-xs text-gray-500 mb-2">Invited but haven't finished signing up. They'll move to your roster once they create their account.</p>
-      <div data-staff-hub-target="container" class="flex flex-col gap-2">
-        <% @pending_staff.each do |member| %>
-          <%= render "manage/staffing/staff_card", member: member, pending: true %>
-        <% end %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div class="overflow-x-auto">
+          <div class="min-w-[560px]">
+            <%= render "manage/staffing/staff_list_header" %>
+            <div class="divide-y divide-gray-100">
+              <% @pending_staff.each do |member| %>
+                <%= render "manage/staffing/staff_row", member: member, pending: true %>
+              <% end %>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   <% end %>
@@ -48,10 +44,17 @@
       <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Staff</h3>
       <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium"><%= @active_staff.size %></span>
     </div>
-    <div data-staff-hub-target="container" class="flex flex-col gap-2">
-      <% @active_staff.each do |member| %>
-        <%= render "manage/staffing/staff_card", member: member, pending: false %>
-      <% end %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div class="overflow-x-auto">
+        <div class="min-w-[560px]">
+          <%= render "manage/staffing/staff_list_header" %>
+          <div class="divide-y divide-gray-100">
+            <% @active_staff.each do |member| %>
+              <%= render "manage/staffing/staff_row", member: member, pending: false %>
+            <% end %>
+          </div>
+        </div>
+      </div>
     </div>
   <% elsif @pending_staff.empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -63,7 +66,7 @@
   <% end %>
 
   <%# Shown by JS when a search matches nobody. %>
-  <div data-staff-hub-target="empty" class="hidden bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
+  <div data-staff-hub-target="empty" class="hidden bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-2">
     <p class="text-sm text-gray-500">No staff match your search.</p>
   </div>
 </div>

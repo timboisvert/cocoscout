@@ -1,0 +1,78 @@
+<%# One compact staff row — mirrors the slim production/contract lists. Photo +
+    name on the left, the roles they're available for, and their invitation
+    status. The whole row links to the staff edit page (no edit button). For
+    people still onboarding, a trailing "Send invite" action sits outside the
+    row link so it doesn't trigger navigation.
+    Locals: member, pending (bool). %>
+<% person = member.person %>
+<% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
+<% onboarding = member.onboarding_state.presence || "added" %>
+<% resend_label = onboarding == "invited" ? "Resend email" : "Send email" %>
+<% search_key = [ person.name, person.email, member.personal_email, member.title ].compact.join(" ").downcase %>
+<%
+  status_badge = case member.onboarding_status
+    when :no_account   then { text: "No account", color: "gray",  title: "No CocoScout account yet — they need to accept the invite and sign up." }
+    when :invited      then { text: "Invited", color: "amber", title: "Invited — waiting on them to accept onboarding." }
+    when :awaiting_bank then { text: "Awaiting bank", color: "amber", title: "Accepted onboarding — still needs to connect a bank to get paid." }
+    when :onboarded    then { text: "Onboarded", color: "green", title: "Onboarded — accepted and bank connected, ready to be paid." }
+  end
+%>
+<div class="group relative flex items-center hover:bg-gray-50 transition-colors"
+     data-staff-hub-target="item"
+     data-search="<%= search_key %>">
+  <%= link_to manage_edit_staffing_staff_path(member), class: "flex items-center gap-3 px-3 py-2.5 flex-1 min-w-0" do %>
+    <%# Photo + name %>
+    <% if headshot %>
+      <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+    <% end %>
+    <span class="flex-1 min-w-0">
+      <span class="block font-medium text-gray-900 text-sm truncate"><%= member.display_name %></span>
+      <span class="block text-[11px] text-gray-400 truncate mt-0.5"><%= member.title.presence || person.email %></span>
+    </span>
+
+    <%# Roles they're available for %>
+    <span class="hidden sm:flex w-48 flex-shrink-0 flex-wrap gap-1 content-center">
+      <% if member.house_roles.any? %>
+        <% member.house_roles.first(4).each do |role| %>
+          <span class="px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 text-[10px] truncate max-w-full"><%= role.name %></span>
+        <% end %>
+        <% if member.house_roles.size > 4 %>
+          <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-[10px]">+<%= member.house_roles.size - 4 %></span>
+        <% end %>
+      <% else %>
+        <span class="text-[11px] text-gray-300">—</span>
+      <% end %>
+    </span>
+
+    <%# Invitation status %>
+    <span class="w-28 flex-shrink-0 flex justify-end">
+      <% if status_badge %>
+        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-<%= status_badge[:color] %>-100 text-<%= status_badge[:color] %>-700"
+              title="<%= status_badge[:title] %>"><%= status_badge[:text] %></span>
+      <% end %>
+    </span>
+  <% end %>
+
+  <%# Trailing quick-invite for people who haven't onboarded (outside the row link). %>
+  <% if pending && (person.email.present? || member.personal_email.present?) %>
+    <% preview = StaffOnboardingInviter.preview(staff_member: member) %>
+    <div class="pr-3 flex-shrink-0">
+      <%= render "shared/button",
+            text: (onboarding == "invited" ? "Resend" : "Invite"),
+            variant: "outline-pink",
+            size: "xs",
+            type: :button,
+            data: {
+              action: "click->invite-preview#open",
+              "invite-path": manage_invite_staffing_staff_path(member),
+              "to-name": person.name,
+              "to-email": preview[:to_email],
+              "email-subject": preview[:subject],
+              "email-body": preview[:body],
+              "send-label": resend_label
+            } %>
+    </div>
+  <% end %>
+</div>
