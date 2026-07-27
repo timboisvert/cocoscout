@@ -11,6 +11,19 @@ module Manage
   class MoneyIncomingController < Manage::ManageController
     include ActionView::Helpers::NumberHelper
 
+    # Ways an incoming payment can arrive outside CocoScout's Stripe rail. Recorded
+    # for the org's own books — the label is stored, nothing settles through Stripe.
+    # (Venmo/Zelle kept here on purpose for historic hand-recording, even though
+    # they're gone from the payout/payee side.)
+    RECEIVED_METHODS = [
+      [ "Cash", "cash" ],
+      [ "Check", "check" ],
+      [ "Zelle", "zelle" ],
+      [ "Venmo", "venmo" ],
+      [ "Bank transfer", "bank_transfer" ],
+      [ "Other", "other" ]
+    ].freeze
+
     # Forward-looking windows for the "what's coming in" view.
     WINDOWS = [
       { key: "1m",  label: "30 days",   months: 1 },
@@ -73,6 +86,7 @@ module Manage
       @contractor = @contract.contractor
       # Only mint/expose a pay link when there's actually a settled amount to charge.
       @pay_url = @payment.collectable_online? ? pay_contract_url(token: @payment.payment_token!) : nil
+      @received_methods = RECEIVED_METHODS
     end
 
     # Nudge the payer about this receivable. Renders the seeded
@@ -113,6 +127,37 @@ module Manage
 
       redirect_to manage_money_incoming_payment_path(@payment),
                   notice: "Reminder sent to #{person.email}."
+    end
+
+    # Mark an incoming payment as received outside CocoScout (cash, check, Zelle,
+    # Venmo, bank transfer…). Unlike the contract's offline-payment flow, this
+    # isn't gated on the contract's allowed methods — the money already reached
+    # the org, so we just record it as paid (as if it had settled via Stripe).
+    def mark_received
+      @payment = find_payment
+
+      unless @payment.status_pending?
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    alert: "This payment is already marked #{@payment.status}."
+        return
+      end
+
+      paid_on =
+        begin
+          params[:paid_date].present? ? Date.parse(params[:paid_date]) : Date.current
+        rescue ArgumentError
+          Date.current
+        end
+
+      @payment.mark_paid!(
+        paid_on: paid_on,
+        method: params[:payment_method].presence,
+        reference: params[:reference_number].presence,
+        amount: params[:payment_amount].presence
+      )
+
+      redirect_to manage_money_incoming_payment_path(@payment),
+                  notice: "Payment recorded as received."
     end
 
     private
