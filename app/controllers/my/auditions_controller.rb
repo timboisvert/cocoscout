@@ -44,11 +44,14 @@ module My
       # ========================================
       # SCHEDULED AUDITIONS (have audition session)
       # ========================================
+      # Join via the session's cycle (every scheduled audition has a session; not
+      # all have a request). Curated auditions show once invitations are finalized;
+      # open sign-up bookings show immediately — the booking IS the audition.
       @auditions = if auditionable_conditions.any?
                      Audition
                        .includes(:audition_session, :audition_request)
-                       .joins(audition_request: :audition_cycle)
-                       .where(audition_cycles: { finalize_audition_invitations: true })
+                       .joins(audition_session: :audition_cycle)
+                       .where("audition_cycles.finalize_audition_invitations = ? OR audition_cycles.signup_mode = ?", true, "open")
                        .where(auditionable_conditions.join(" OR "), *auditionable_params)
                        .to_a
       else
@@ -122,6 +125,9 @@ module My
       @audition_requests = @audition_requests.select do |req|
         cycle = req.audition_cycle
         next false unless cycle.active && cycle.form_reviewed
+        # Open sign-up bookings appear as actual (upcoming) auditions, not as
+        # pending "requests" — don't list them here too.
+        next false if cycle.signup_mode_open?
         next false if cycle.closes_at.present? && cycle.closes_at <= Time.current
 
         # If casting was finalized more than 30 days ago, don't show

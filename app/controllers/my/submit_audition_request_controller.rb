@@ -277,7 +277,13 @@ module My
       end
     end
 
-    def success; end
+    def success
+      # Open sign-up: show the confirmed slot (and a change link if allowed).
+      if @audition_cycle.signup_mode_open?
+        @requestable = get_requestable_entity
+        @current_booking = existing_open_signup_audition
+      end
+    end
 
     def inactive
       return unless @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed && params[:force].blank?

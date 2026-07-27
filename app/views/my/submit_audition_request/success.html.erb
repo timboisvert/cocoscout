@@ -1,4 +1,4 @@
-<% content_for :title, "Audition Request Submitted" %>
+<% content_for :title, @audition_cycle.signup_mode_open? ? "You've Got an Audition" : "Audition Request Submitted" %>
 
 <div class="min-h-screen bg-gray-50 py-12">
   <div class="max-w-2xl mx-auto px-4">
@@ -14,6 +14,8 @@
       </div>
       <% if @audition_cycle.success_text.present? %>
         <div class="text-gray-600"><%= @audition_cycle.success_text %></div>
+      <% elsif @audition_cycle.signup_mode_open? %>
+        <p class="text-gray-600">You've got an audition — your slot is booked.</p>
       <% else %>
         <p class="text-gray-600">Your audition request has been received.</p>
       <% end %>
@@ -25,7 +27,9 @@
         <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">Production</p>
         <p class="text-lg font-semibold text-gray-900"><%= @production.name %></p>
         <p class="text-gray-600 mt-1">
-          <% if @audition_cycle.hybrid_auditions? %>
+          <% if @audition_cycle.signup_mode_open? %>
+            Open sign-up · your slot is booked
+          <% elsif @audition_cycle.hybrid_auditions? %>
             Audition sign-up
           <% elsif @audition_cycle.video_only? %>
             Video audition submission
@@ -35,24 +39,53 @@
         </p>
       </div>
 
-      <!-- What's Next -->
-      <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">What happens next?</p>
-        <ul class="space-y-2">
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span class="text-sm text-gray-600">You'll receive updates about your audition via email</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span class="text-sm text-gray-600">View your audition status anytime in your dashboard</span>
-          </li>
-        </ul>
-      </div>
+      <% if @audition_cycle.signup_mode_open? && @current_booking&.audition_session %>
+        <%# Open sign-up: show the confirmed slot and let them change it if allowed. %>
+        <% slot = @current_booking.audition_session %>
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Your audition slot</p>
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0 w-12 text-center">
+              <div class="text-xs font-semibold text-pink-600 uppercase"><%= slot.start_at.strftime("%b") %></div>
+              <div class="text-2xl font-bold text-gray-900"><%= slot.start_at.strftime("%-d") %></div>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-gray-900"><%= slot.start_at.strftime("%A · %l:%M %p").gsub("  ", " ") %></div>
+              <% if slot.location.present? %>
+                <div class="text-xs text-gray-500 truncate"><%= slot.location.name %></div>
+              <% end %>
+            </div>
+          </div>
+          <% if @audition_cycle.allow_slot_changes %>
+            <div class="mt-4">
+              <%= link_to my_submit_audition_request_form_path(token: @audition_cycle.token) do %>
+                <%= render "shared/button", text: "Change my slot", variant: "secondary", size: "small", icon: "pencil" %>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-xs text-gray-500 mt-3">This slot is final. Contact the organizer if you need to change it.</p>
+          <% end %>
+        </div>
+      <% else %>
+        <!-- What's Next -->
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">What happens next?</p>
+          <ul class="space-y-2">
+            <li class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span class="text-sm text-gray-600">You'll receive updates about your audition via email</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="text-sm text-gray-600">View your audition status anytime in your dashboard</span>
+            </li>
+          </ul>
+        </div>
+      <% end %>
     </div>
 
     <!-- Profile CTA -->

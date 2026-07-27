@@ -1,5 +1,7 @@
 <div class="bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-  <% production = audition.audition_request.audition_cycle.production %>
+  <%# Reach the cycle via the session (always present) rather than the request. %>
+  <% cycle = audition.audition_session.audition_cycle %>
+  <% production = cycle.production %>
 
   <div class="p-4">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -103,9 +105,18 @@
     <% end %>
   </div>
 
-  <%# Accept/Decline action buttons %>
+  <%# Action buttons. Open sign-up: they chose the slot, so no accept/decline —
+      just let them change it when the audition allows slot changes. %>
   <% show_change_buttons = local_assigns.fetch(:show_change_buttons, false) %>
-  <% if audition.pending_response? || show_change_buttons %>
+  <% if cycle.signup_mode_open? %>
+    <% if cycle.allow_slot_changes %>
+      <div class="px-4 pb-4 pt-4 border-t border-gray-100">
+        <%= link_to my_submit_audition_request_form_path(token: cycle.token) do %>
+          <%= render "shared/button", text: "Change my slot", variant: "secondary", size: "small" %>
+        <% end %>
+      </div>
+    <% end %>
+  <% elsif audition.pending_response? || show_change_buttons %>
     <div class="px-4 pb-4 pt-4 border-t border-gray-100 flex flex-wrap gap-3">
       <%= form_with url: my_accept_audition_path(audition), method: :post, local: true, class: "inline" do %>
         <%= render "shared/button", text: "I'll Be There", variant: "primary", size: "small", type: :submit %>
