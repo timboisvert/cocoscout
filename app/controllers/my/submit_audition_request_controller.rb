@@ -10,9 +10,9 @@ module My
 
     skip_before_action :show_my_sidebar
 
-    before_action :ensure_user_is_signed_in, only: %i[form submitform success book_slot]
+    before_action :ensure_user_is_signed_in, only: %i[form submitform success]
     before_action :get_audition_cycle_and_questions
-    before_action :ensure_audition_cycle_is_open, only: %i[entry form submitform success book_slot]
+    before_action :ensure_audition_cycle_is_open, only: %i[entry form submitform success]
 
     def entry
       # If the user is already signed in, redirect them to the form
@@ -39,13 +39,6 @@ module My
       # Determine requestable entity (person or group)
       @requestable = get_requestable_entity
 
-      # Open sign-up: skip the whole application form — performers just book an
-      # open slot. Render the slot picker instead.
-      if @audition_cycle.signup_mode_open?
-        load_open_signup_slots
-        render :open_signup and return
-      end
-
       # Load shows for availability section if enabled
       if @audition_cycle.include_availability_section
         @production = @audition_cycle.production
@@ -63,8 +56,13 @@ module My
         end
       end
 
-      # Load audition sessions for audition availability section if enabled
-      if @audition_cycle.include_audition_availability_section
+      if @audition_cycle.signup_mode_open?
+        # Open sign-up: same form as curated, but instead of rating each session's
+        # availability they pick one actual slot to book. Load the bookable slots
+        # and their current booking (if any).
+        load_open_signup_slots
+      elsif @audition_cycle.include_audition_availability_section
+        # Curated: load audition sessions for the availability-rating section.
         @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
 
         # Load existing audition availability data
@@ -107,6 +105,17 @@ module My
         @requestable.organizations << organization
       elsif @requestable.is_a?(Group) && !@requestable.organizations.include?(organization)
         @requestable.organizations << organization
+      end
+
+      # Load shows + existing availability so the availability section survives an
+      # error re-render (the require_all check below reuses @shows too).
+      if @audition_cycle.include_availability_section
+        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
+        @availability = {}
+        ShowAvailability.where(available_entity: @requestable, show_id: @shows.pluck(:id)).each do |sa|
+          @availability[sa.show_id.to_s] = sa.status.to_s
+        end
       end
 
       # We may be updating an existing response, so check for that first
@@ -186,8 +195,12 @@ module My
         end
       end
 
+      # Open sign-up: they must pick a slot to book.
+      @missing_slot = @audition_cycle.signup_mode_open? && params[:audition_session_id].blank?
+
       # Validate and save
-      if @missing_required_questions.any? || @missing_availability || @missing_audition_availability
+      if @missing_required_questions.any? || @missing_availability || @missing_audition_availability || @missing_slot
+        load_open_signup_slots if @audition_cycle.signup_mode_open?
         render :form, status: :unprocessable_entity
       elsif @audition_request.valid?
 
@@ -246,62 +259,21 @@ module My
           end
         end
 
-        redirect_to my_submit_audition_request_success_path(token: @audition_cycle.token), status: :see_other
-      else
-        render :form
-      end
-    end
-
-    # Open sign-up: book (or move to) a specific slot.
-    def book_slot
-      unless @audition_cycle.signup_mode_open?
-        redirect_to my_submit_audition_request_form_path(token: @audition_cycle.token), status: :see_other
-        return
-      end
-
-      @requestable = get_requestable_entity
-
-      # Associate the requestable with the organization if not already
-      organization = @audition_cycle.production.organization
-      if @requestable.is_a?(Person) && !@requestable.organizations.include?(organization)
-        @requestable.organizations << organization
-      elsif @requestable.is_a?(Group) && !@requestable.organizations.include?(organization)
-        @requestable.organizations << organization
-      end
-
-      target = @audition_cycle.audition_sessions.find_by(id: params[:audition_session_id])
-      unless target
-        redirect_to my_submit_audition_request_form_path(token: @audition_cycle.token),
-                    alert: "That slot is no longer available.", status: :see_other
-        return
-      end
-
-      begin
-        Audition.transaction do
-          # Lock the slot row so concurrent bookings can't oversell it.
-          slot = AuditionSession.lock.find(target.id)
-
-          existing = existing_open_signup_audition
-
-          if existing&.audition_session_id == slot.id
-            # Already booked this exact slot — nothing to do.
-          else
-            if slot.maximum_auditionees.present? && slot.auditions.count >= slot.maximum_auditionees
-              raise SlotFull
-            end
-
-            if existing
-              existing.update!(audition_session: slot)
-            else
-              Audition.create!(auditionable: @requestable, audition_session: slot)
-            end
+        # Open sign-up: book (or move to) the chosen slot, linked to this request.
+        if @audition_cycle.signup_mode_open?
+          begin
+            book_open_signup_slot!(@audition_request)
+          rescue SlotFull
+            load_open_signup_slots
+            @slot_taken = true
+            render :form, status: :unprocessable_entity and return
           end
         end
 
         redirect_to my_submit_audition_request_success_path(token: @audition_cycle.token), status: :see_other
-      rescue SlotFull
-        redirect_to my_submit_audition_request_form_path(token: @audition_cycle.token),
-                    alert: "Sorry — that slot just filled up. Please pick another.", status: :see_other
+      else
+        load_open_signup_slots if @audition_cycle.signup_mode_open?
+        render :form
       end
     end
 
@@ -347,6 +319,34 @@ module My
                                           .where("start_at >= ?", Time.current)
                                           .order(:start_at)
       @current_booking = existing_open_signup_audition
+    end
+
+    # Book (or move to) the slot the performer picked, linking it to their request.
+    # Row-locks the slot so concurrent bookings can't oversell it; raises SlotFull
+    # if it filled up (or vanished) between page load and submit.
+    def book_open_signup_slot!(request)
+      target = @audition_cycle.audition_sessions.find_by(id: params[:audition_session_id])
+      raise SlotFull if target.nil?
+
+      Audition.transaction do
+        slot = AuditionSession.lock.find(target.id)
+        existing = existing_open_signup_audition
+
+        if existing&.audition_session_id == slot.id
+          # Already in this slot — just make sure it's linked to the request.
+          existing.update!(audition_request: request) if existing.audition_request_id.nil?
+        else
+          if slot.maximum_auditionees.present? && slot.auditions.count >= slot.maximum_auditionees
+            raise SlotFull
+          end
+
+          if existing
+            existing.update!(audition_session: slot, audition_request: request)
+          else
+            Audition.create!(auditionable: @requestable, audition_session: slot, audition_request: request)
+          end
+        end
+      end
     end
 
     # This performer's existing Audition in this cycle, if they've already booked.

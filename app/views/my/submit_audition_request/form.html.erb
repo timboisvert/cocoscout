@@ -11,7 +11,9 @@
     <!-- Full-Width Header -->
     <div class="mb-8 sm:mb-10">
       <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-      <% if @audition_cycle.hybrid_auditions? %>
+      <% if @audition_cycle.signup_mode_open? %>
+        <p class="text-lg text-slate-600">Book your audition slot</p>
+      <% elsif @audition_cycle.hybrid_auditions? %>
         <p class="text-lg text-slate-600">Audition sign-up</p>
       <% elsif @audition_cycle.video_only? %>
         <p class="text-lg text-slate-600">Submit a video audition</p>
@@ -321,8 +323,59 @@
       </div>
     <% end %>
 
-    <!-- Audition Availability Section -->
-    <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
+    <!-- Open sign-up: pick an actual slot. Curated: rate session availability. -->
+    <% if @audition_cycle.signup_mode_open? %>
+      <% if @audition_sessions.present? %>
+        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
+          <p class="text-sm text-gray-500 mb-4">
+            Choose your audition slot. <span class="text-sm text-pink-500">(required)</span>
+          </p>
+
+          <% if @missing_slot %>
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-sm text-red-800">Please choose a slot before submitting.</p>
+            </div>
+          <% end %>
+          <% if @slot_taken %>
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-sm text-red-800">Sorry — that slot just filled up. Please pick another.</p>
+            </div>
+          <% end %>
+
+          <div class="space-y-3">
+            <% @audition_sessions.each do |session| %>
+              <% currently_booked = @current_booking&.audition_session_id == session.id %>
+              <% is_full = session.full? && !currently_booked %>
+              <label class="block <%= is_full ? 'cursor-not-allowed' : 'cursor-pointer' %>">
+                <%= radio_button_tag "audition_session_id", session.id, currently_booked,
+                      class: "peer sr-only", required: true, disabled: is_full %>
+                <div class="flex items-center gap-4 px-3 py-2 border rounded-lg transition-all <%= is_full ? 'opacity-50 bg-gray-50 border-gray-200' : 'bg-white border-gray-200 hover:border-pink-400 peer-checked:border-pink-500 peer-checked:bg-pink-50 peer-checked:ring-1 peer-checked:ring-pink-500' %>">
+                  <%# Date box %>
+                  <div class="flex-shrink-0 w-14 text-center">
+                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+                    <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+                    <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
+                  </div>
+                  <%# Time + location %>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900"><%= session.start_at.strftime("%l:%M %p") %></div>
+                    <% if session.location.present? %>
+                      <div class="text-xs text-gray-600 truncate"><%= session.location.name %></div>
+                    <% end %>
+                  </div>
+                  <%# Status tag %>
+                  <% if is_full %>
+                    <span class="flex-shrink-0 text-xs font-medium text-gray-500">Full</span>
+                  <% elsif currently_booked %>
+                    <span class="flex-shrink-0 text-xs font-medium text-pink-600">Your slot</span>
+                  <% end %>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% elsif @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
       <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
         <p class="text-sm text-gray-500 mb-4">
           Please indicate your availability for the following audition sessions. <% if @audition_cycle.require_all_audition_availability %> <span class="text-sm text-pink-500">(required)</span><% end %>
@@ -408,7 +461,9 @@
     <!-- Submit Button -->
     <%
       existing_request = @audition_cycle.audition_requests.exists?(requestable: @requestable)
-      if @audition_cycle.video_only?
+      if @audition_cycle.signup_mode_open?
+        submit_text = @current_booking ? "Update booking" : "Book audition"
+      elsif @audition_cycle.video_only?
         submit_text = existing_request ? "Update video audition" : "Submit video audition"
       else
         submit_text = existing_request ? "Update Sign-up" : "Sign up"

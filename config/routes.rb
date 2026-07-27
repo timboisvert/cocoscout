@@ -452,7 +452,6 @@ Rails.application.routes.draw do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
       get "/form", to: "submit_audition_request#form", as: "submit_audition_request_form"
       post "/form", to: "submit_audition_request#submitform", as: "submit_submit_audition_request_form"
-      post "/slot", to: "submit_audition_request#book_slot", as: "book_audition_slot"
       get "/success", to: "submit_audition_request#success", as: "submit_audition_request_success"
       get "/inactive", to: "submit_audition_request#inactive", as: "submit_audition_request_inactive"
     end
