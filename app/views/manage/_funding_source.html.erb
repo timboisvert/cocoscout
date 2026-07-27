@@ -20,9 +20,15 @@
       <div class="flex items-center gap-2">
         <%= render "shared/button", text: "Change", variant: "secondary", size: "small",
               path: manage_connect_payout_funding_path(return_to: return_to), method: :post, form: { data: { turbo: false } } %>
-        <%= render "shared/button", text: "Remove", variant: "danger", size: "small",
-              path: manage_remove_payout_funding_path(return_to: return_to), method: :delete,
-              data: { turbo_confirm: "Remove this funding source? You won't be able to run payouts until you add another." } %>
+        <% remove_funding_cid = "confirm-remove-funding-source" %>
+        <%= render "shared/button", text: "Remove", variant: "primary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: remove_funding_cid } %>
+        <%= render "shared/confirm_modal", id: remove_funding_cid,
+              title: "Remove funding source?",
+              message: "Remove this funding source? You won't be able to run payouts until you add another.",
+              confirm_text: "Remove",
+              url: manage_remove_payout_funding_path(return_to: return_to),
+              method: :delete %>
       </div>
     </div>
   <% else %>

@@ -62,10 +62,15 @@
           <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each person to their connected bank.</p>
         </div>
         <% if Current.organization.funding_payment_method_id.present? %>
-          <%= button_to manage_fund_payout_batch_path(@batch), method: :post, class: "inline-block",
-                form: { data: { turbo_confirm: "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank." } } do %>
-            <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium" %>
-          <% end %>
+          <% fund_pay_cid = "confirm-fund-pay-batch" %>
+          <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: fund_pay_cid } %>
+          <%= render "shared/confirm_modal", id: fund_pay_cid,
+                title: "Fund and pay this run?",
+                message: "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank.",
+                confirm_text: "Fund & pay run",
+                url: manage_fund_payout_batch_path(@batch),
+                method: :post %>
         <% else %>
           <%= render "shared/button", text: "Connect a bank account first", variant: "primary", size: "small",
                 path: manage_connect_payout_funding_path(return_to: manage_payout_batch_path(@batch)), method: :post, form: { data: { turbo: false } } %>

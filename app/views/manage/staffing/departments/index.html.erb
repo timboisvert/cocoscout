@@ -4,9 +4,14 @@
       <% @departments.each do |dept| %>
         <div class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2" data-dept-name="<%= dept.name %>">
           <span class="text-sm text-gray-900"><%= dept.name %></span>
-          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small",
-                path: manage_staffing_department_path(dept), method: :delete,
-                data: { turbo_confirm: "Remove the #{dept.name} department?" } %>
+          <% dept_cid = "confirm-remove-dept-#{dept.id}" %>
+          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: dept_cid } %>
+          <%= render "shared/confirm_modal", id: dept_cid,
+                title: "Remove department?",
+                message: "Remove the #{dept.name} department?",
+                confirm_text: "Remove",
+                url: manage_staffing_department_path(dept), method: :delete %>
         </div>
       <% end %>
     <% else %>

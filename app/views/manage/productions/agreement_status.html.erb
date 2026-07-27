@@ -12,10 +12,15 @@
     </div>
 
     <% if @roster_counts[:not_sent].positive? || @roster_counts[:awaiting].positive? %>
-      <%= button_to send_agreement_reminders_manage_production_path(@production), method: :post, class: "inline-block",
-            form: { data: { turbo_confirm: "Send the agreement to everyone who hasn't signed yet?" } } do %>
-        <%= render "shared/button", text: "Send to everyone unsigned", variant: "primary", size: "medium" %>
-      <% end %>
+      <% send_unsigned_cid = "confirm-send-agreement-unsigned" %>
+      <%= render "shared/button", text: "Send to everyone unsigned", variant: "primary", size: "medium", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: send_unsigned_cid } %>
+      <%= render "shared/confirm_modal", id: send_unsigned_cid,
+            title: "Send to everyone unsigned?",
+            message: "Send the agreement to everyone who hasn't signed yet?",
+            confirm_text: "Send",
+            url: send_agreement_reminders_manage_production_path(@production),
+            method: :post %>
     <% end %>
   </div>
 

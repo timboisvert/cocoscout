@@ -61,9 +61,17 @@
 
     <!-- Cancel Link -->
     <div class="mt-4 text-center">
-      <%= link_to "Cancel", manage_cancel_staffing_staff_wizard_path,
-          data: { turbo_method: :delete, turbo_confirm: "Cancel adding this staff member? Your progress will be discarded." },
-          class: "text-sm text-gray-500 hover:text-gray-700" %>
+      <% cancel_wizard_cid = "confirm-cancel-wizard" %>
+      <button type="button"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-id="<%= cancel_wizard_cid %>"
+              class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-0">Cancel</button>
+      <%= render "shared/confirm_modal", id: cancel_wizard_cid,
+            title: "Cancel adding staff?",
+            message: "Cancel adding this staff member? Your progress will be discarded.",
+            confirm_text: "Discard",
+            url: manage_cancel_staffing_staff_wizard_path, method: :delete %>
     </div>
   </div>
 </div>

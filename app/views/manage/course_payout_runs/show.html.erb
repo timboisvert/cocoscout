@@ -53,9 +53,15 @@
 
           <% if pending.any? %>
             <div>
-              <%= render "shared/button", text: "Pay everyone now", variant: "primary", size: "medium",
-                path: manage_course_payout_run_pay_path, method: :post,
-                data: { turbo_confirm: "Send #{number_to_currency(pending_total / 100.0)} to #{pluralize(pending.size, 'recipient')} now? This transfers the money to their banks." } %>
+              <% pay_everyone_cid = "confirm-pay-everyone-course" %>
+              <%= render "shared/button", text: "Pay everyone now", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: pay_everyone_cid } %>
+              <%= render "shared/confirm_modal", id: pay_everyone_cid,
+                    title: "Pay everyone now?",
+                    message: "Send #{number_to_currency(pending_total / 100.0)} to #{pluralize(pending.size, 'recipient')} now? This transfers the money to their banks.",
+                    confirm_text: "Pay everyone",
+                    url: manage_course_payout_run_pay_path,
+                    method: :post %>
               <p class="text-xs text-gray-500 mt-1 text-right">Paid from the course money we hold — no funding step.</p>
             </div>
           <% elsif completed %>

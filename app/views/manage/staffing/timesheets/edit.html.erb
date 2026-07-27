@@ -94,12 +94,21 @@
 
           <%# Send back to the approval queue without editing the hours. %>
           <div class="mt-4 pt-4 border-t border-gray-200">
-            <%= button_to manage_unapprove_staffing_timesheet_path(@entry), method: :patch,
-                  class: "text-sm text-amber-700 hover:text-amber-800 cursor-pointer inline-flex items-center gap-1.5",
-                  form: { data: { turbo_frame: "_top", turbo_confirm: "Send this entry back to the review queue? You'll need to approve it again." } } do %>
+            <% unapprove_cid = "confirm-unapprove-#{@entry.id}" %>
+            <button type="button"
+                    data-controller="modal"
+                    data-action="click->modal#open"
+                    data-modal-id="<%= unapprove_cid %>"
+                    class="text-sm text-amber-700 hover:text-amber-800 cursor-pointer inline-flex items-center gap-1.5 bg-transparent border-0 p-0">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
               Unapprove (send back for review)
-            <% end %>
+            </button>
+            <%= render "shared/confirm_modal", id: unapprove_cid,
+                  title: "Send back for review?",
+                  message: "Send this entry back to the review queue? You'll need to approve it again.",
+                  confirm_text: "Send back",
+                  url: manage_unapprove_staffing_timesheet_path(@entry), method: :patch,
+                  form_data: { turbo_frame: "_top" } %>
           </div>
         </div>
       </div>

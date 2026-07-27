@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 // Fully client-side availability calendar for My Shifts. Renders the summary
 // and a month grid, navigates months without a server round-trip, and supports
@@ -27,12 +28,16 @@ export default class extends Controller {
 
     get available() { return this.mode === "available" }
 
-    setMode(event) {
+    async setMode(event) {
         if (event) event.preventDefault()
         const newMode = event.currentTarget.dataset.mode
         if (!newMode || newMode === this.mode) return
         if (this.entries.size > 0 &&
-            !window.confirm("Switching will clear the days you've already marked. Continue?")) return
+            !(await confirmDialog({
+                title: "Switch mode?",
+                message: "Switching will clear the days you've already marked. Continue?",
+                confirmText: "Switch"
+            }))) return
 
         this.mode = newMode
         this.entries.clear()

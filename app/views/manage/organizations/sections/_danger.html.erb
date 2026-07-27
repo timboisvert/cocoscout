@@ -9,7 +9,7 @@
         Transfer ownership of this organization to another manager. You will remain a manager but will lose owner privileges.
       </p>
 
-      <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post, class: "space-y-4" do |f| %>
+      <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post, class: "space-y-4", id: "transfer-ownership-form" do |f| %>
         <div class="sm:w-1/2">
           <%= f.label :new_owner_id, "New Owner", class: "block text-sm font-medium text-gray-700 mb-2" %>
           <%= f.select :new_owner_id,
@@ -27,10 +27,39 @@
                      text: "Transfer Ownership",
                      variant: "secondary",
                      size: "medium",
-                     type: :submit,
-                     data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
+                     type: :button,
+                     data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-transfer-ownership" } %>
         </div>
       <% end %>
+
+      <%# Confirmation modal for transfer ownership (form-carrying: keeps new_owner_id select) %>
+      <div id="confirm-transfer-ownership"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+           data-controller="modal"
+           data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+             data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Transfer ownership?</h3>
+            <button type="button"
+                    data-action="click->modal#close"
+                    class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="px-6 py-5 text-sm text-gray-600">
+            Are you sure you want to transfer ownership? This action cannot be undone.
+          </div>
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  data: { action: "click->modal#close" } %>
+            <button type="submit" form="transfer-ownership-form"
+                    class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10">Transfer Ownership</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 <% end %>

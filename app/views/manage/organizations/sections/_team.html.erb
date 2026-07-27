@@ -109,9 +109,16 @@
             <div class="text-xs text-gray-500">Awaiting response</div>
           </div>
           <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-            <%= form_with url: revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, turbo_confirm: "Are you sure you want to revoke this invitation?" } do %>
-              <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :submit %>
-            <% end %>
+            <% revoke_invite_cid = "confirm-revoke-invite-#{invite.id}" %>
+            <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: revoke_invite_cid } %>
+            <%= render "shared/confirm_modal", id: revoke_invite_cid,
+                  title: "Revoke invitation?",
+                  message: "Are you sure you want to revoke this invitation?",
+                  confirm_text: "Revoke",
+                  url: revoke_invite_manage_team_index_path(id: invite.id),
+                  method: :delete,
+                  form_data: { turbo: false } %>
           </div>
         </div>
       </div>

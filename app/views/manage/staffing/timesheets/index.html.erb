@@ -26,10 +26,15 @@
         · <span class="font-semibold text-gray-900"><%= number_with_precision(@total_hours, precision: 2, strip_insignificant_zeros: true) %> hrs</span>
         from <%= pluralize(@groups.size, "person") %> awaiting your approval
       </p>
-      <%= form_with url: manage_approve_staffing_timesheets_path, method: :patch, data: { turbo_confirm: "Approve every pending entry from all #{@groups.size} people?" } do %>
-        <%= hidden_field_tag :all, "1" %>
-        <%= render "shared/button", text: "Approve everything", variant: "secondary", size: "small", type: :submit %>
-      <% end %>
+      <% approve_all_cid = "confirm-approve-all" %>
+      <%= render "shared/button", text: "Approve everything", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: approve_all_cid } %>
+      <%= render "shared/confirm_modal", id: approve_all_cid,
+            title: "Approve all pending?",
+            message: "Approve every pending entry from all #{@groups.size} people?",
+            confirm_text: "Approve everything",
+            url: manage_approve_staffing_timesheets_path, method: :patch,
+            params: { all: "1" } %>
     </div>
 
     <div class="space-y-4 mt-4">

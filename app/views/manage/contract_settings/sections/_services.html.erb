@@ -44,9 +44,15 @@
           </div>
         <% end %>
         <div class="px-6 pb-3 -mt-2">
-          <%= render "shared/button", text: "Remove", variant: "danger", size: "small",
-                path: manage_contract_settings_service_path(service), method: :delete,
-                data: { turbo_confirm: "Remove “#{service.name}” from your services?" } %>
+          <% remove_service_cid = "confirm-remove-service-#{service.id}" %>
+          <%= render "shared/button", text: "Remove", variant: "danger", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: remove_service_cid } %>
+          <%= render "shared/confirm_modal", id: remove_service_cid,
+                title: "Remove service?",
+                message: "Remove “#{service.name}” from your services?",
+                confirm_text: "Remove",
+                url: manage_contract_settings_service_path(service),
+                method: :delete %>
         </div>
       <% end %>
     </div>

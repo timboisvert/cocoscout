@@ -89,10 +89,18 @@
             method: :patch, params: { subscription_action: "comp_indefinite" },
             class: "text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium cursor-pointer w-full" %>
         <% if @organization.comped? %>
-          <%= button_to "Remove comp", organization_subscription_path(@organization),
-              method: :patch, params: { subscription_action: "remove_comp" },
-              class: "text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium cursor-pointer w-full",
-              data: { turbo_confirm: "Remove complimentary Pro access for '#{@organization.name}'?" } %>
+          <% remove_comp_cid = "confirm-remove-comp" %>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_comp_cid %>"
+                  class="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium cursor-pointer w-full">
+            Remove comp
+          </button>
+          <%= render "shared/confirm_modal", id: remove_comp_cid,
+                title: "Remove complimentary Pro access?",
+                message: "Remove complimentary Pro access for '#{@organization.name}'?",
+                confirm_text: "Remove comp",
+                url: organization_subscription_path(@organization),
+                method: :patch,
+                params: { subscription_action: "remove_comp" } %>
         <% end %>
       </div>
     </div>

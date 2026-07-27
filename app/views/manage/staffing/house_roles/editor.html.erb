@@ -8,9 +8,14 @@
             <%= role.name %>
             <% if role.show_specific? %><span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">Per-show</span><% end %>
           </span>
-          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small",
-                path: manage_destroy_staffing_house_role_path(role, return_to: "editor"), method: :delete,
-                data: { turbo_confirm: "Remove the #{role.name} role?" } %>
+          <% role_cid = "confirm-remove-role-#{role.id}" %>
+          <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: role_cid } %>
+          <%= render "shared/confirm_modal", id: role_cid,
+                title: "Remove role?",
+                message: "Remove the #{role.name} role?",
+                confirm_text: "Remove",
+                url: manage_destroy_staffing_house_role_path(role, return_to: "editor"), method: :delete %>
         </div>
       <% end %>
     <% else %>
