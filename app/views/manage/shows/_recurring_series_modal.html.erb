@@ -235,9 +235,14 @@
                 <button type="button" class="text-sm text-gray-500 hover:text-gray-700 cursor-pointer" data-action="click->recurring-series-modal#backToRescheduleOptions">
                   ← Change options
                 </button>
-                <%= form_with url: reschedule_future_manage_production_shows_path(@production), method: :post, local: true, data: { "recurring-series-modal-target": "rescheduleConfirmForm", turbo_confirm: "This will delete the future events and create new ones on the new schedule. Continue?" } do %>
-                  <%= render "shared/button", text: "Confirm & Reschedule", variant: "primary", type: :submit %>
-                <% end %>
+                <% reschedule_cid = "confirm-reschedule-series" %>
+                <%= render "shared/button", text: "Confirm & Reschedule", variant: "primary", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: reschedule_cid } %>
+                <%= render "shared/confirm_modal", id: reschedule_cid, title: "Reschedule series?",
+                      message: "This will delete the future events and create new ones on the new schedule. Continue?",
+                      confirm_text: "Confirm & Reschedule",
+                      url: reschedule_future_manage_production_shows_path(@production), method: :post,
+                      form_data: { "recurring-series-modal-target": "rescheduleConfirmForm" } %>
               </div>
             </div>
           </div>

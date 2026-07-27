@@ -78,15 +78,19 @@
                 <% if draft_count > 0 && @casting_table.draft? %>
                   <span class="text-xs text-amber-600 font-medium"><%= draft_count %> draft<%= draft_count > 1 ? 's' : '' %></span>
                 <% end %>
-                <%= form_with url: manage_casting_table_remove_member_path(@casting_table, memberable_type: "Person", memberable_id: person.id),
-                    method: :delete,
-                    data: {
-                      turbo_confirm: draft_count > 0 && @casting_table.draft? ?
-                        "Remove \"#{person.name}\" from this casting table?\n\nThis will also delete #{draft_count} draft assignment(s)." :
-                        "Remove \"#{person.name}\" from this casting table?"
-                    } do %>
-                  <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash" %>
-                <% end %>
+                <% remove_person_message = draft_count > 0 && @casting_table.draft? ?
+                     "Remove \"#{person.name}\" from this casting table? This will also delete #{draft_count} draft assignment(s)." :
+                     "Remove \"#{person.name}\" from this casting table?" %>
+                <%= render "shared/button", text: "Remove", variant: "primary", size: "small", icon: "trash", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-member-person-#{person.id}" } %>
+                <%= render "shared/confirm_modal",
+                      id: "confirm-remove-member-person-#{person.id}",
+                      title: "Remove member?",
+                      message: remove_person_message,
+                      confirm_text: "Remove",
+                      confirm_icon: "trash",
+                      url: manage_casting_table_remove_member_path(@casting_table, memberable_type: "Person", memberable_id: person.id),
+                      method: :delete %>
               </div>
             </div>
           <% end %>
@@ -113,15 +117,19 @@
                 <% if draft_count > 0 && @casting_table.draft? %>
                   <span class="text-xs text-amber-600 font-medium"><%= draft_count %> draft<%= draft_count > 1 ? 's' : '' %></span>
                 <% end %>
-                <%= form_with url: manage_casting_table_remove_member_path(@casting_table, memberable_type: "Group", memberable_id: group.id),
-                    method: :delete,
-                    data: {
-                      turbo_confirm: draft_count > 0 && @casting_table.draft? ?
-                        "Remove \"#{group.name}\" from this casting table?\n\nThis will also delete #{draft_count} draft assignment(s)." :
-                        "Remove \"#{group.name}\" from this casting table?"
-                    } do %>
-                  <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash" %>
-                <% end %>
+                <% remove_group_message = draft_count > 0 && @casting_table.draft? ?
+                     "Remove \"#{group.name}\" from this casting table? This will also delete #{draft_count} draft assignment(s)." :
+                     "Remove \"#{group.name}\" from this casting table?" %>
+                <%= render "shared/button", text: "Remove", variant: "primary", size: "small", icon: "trash", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-member-group-#{group.id}" } %>
+                <%= render "shared/confirm_modal",
+                      id: "confirm-remove-member-group-#{group.id}",
+                      title: "Remove member?",
+                      message: remove_group_message,
+                      confirm_text: "Remove",
+                      confirm_icon: "trash",
+                      url: manage_casting_table_remove_member_path(@casting_table, memberable_type: "Group", memberable_id: group.id),
+                      method: :delete %>
               </div>
             </div>
           <% end %>

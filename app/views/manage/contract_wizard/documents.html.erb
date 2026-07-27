@@ -37,12 +37,18 @@
                   <%= icon("download", class: "w-4 h-4") %>
                 <% end %>
               <% end %>
-              <%= button_to manage_delete_document_contract_wizard_path(@contract, document_id: doc.id),
-                method: :delete,
-                data: { turbo_confirm: "Delete this document?" },
-                class: "text-gray-400 hover:text-red-600" do %>
+              <button type="button"
+                data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-wizard-doc-<%= doc.id %>"
+                class="text-gray-400 hover:text-red-600 bg-transparent border-0 cursor-pointer p-0">
                 <%= icon("trash", class: "w-4 h-4") %>
-              <% end %>
+              </button>
+              <%= render "shared/confirm_modal",
+                id: "confirm-delete-wizard-doc-#{doc.id}",
+                title: "Delete document?",
+                message: "Delete this document?",
+                confirm_text: "Delete",
+                url: manage_delete_document_contract_wizard_path(@contract, document_id: doc.id),
+                method: :delete %>
             </div>
           </div>
         <% end %>

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["modal", "form", "list"]
@@ -100,9 +101,9 @@ export default class extends Controller {
         }
     }
 
-    remove(event) {
+    async remove(event) {
         event.preventDefault()
-        if (!confirm('Remove this video?')) return
+        if (!(await confirmDialog({ title: "Remove video?", message: "Remove this video?", confirmText: "Remove" }))) return
 
         const videoId = event.currentTarget.dataset.videoId
         const videoEl = document.querySelector(`[data-video-id="${videoId}"]`)

@@ -639,11 +639,14 @@
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
           </p>
-          <%= form_with url: manage_cancel_casting_vacancy_path(@production, @vacancy), method: :post, data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } do %>
-            <%= render "shared/button", text: "Close Vacancy Without Filling", variant: "secondary", size: "medium", type: :submit %>
-          <% end %>
+          <% close_vacancy_linked_cid = "confirm-close-vacancy-linked-#{@vacancy.id}" %>
+          <%= render "shared/button", text: "Close Vacancy Without Filling", variant: "secondary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: close_vacancy_linked_cid } %>
         </div>
       </div>
+      <%= render "shared/confirm_modal", id: close_vacancy_linked_cid, title: "Close vacancy?",
+            message: "Are you sure you want to close this vacancy without filling it? This cannot be undone.", confirm_text: "Close Vacancy",
+            url: manage_cancel_casting_vacancy_path(@production, @vacancy), method: :post %>
 
     </div><!-- Close linked-vacancy-decision controller wrapper -->
     <% else %>
@@ -655,16 +658,24 @@
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
             The show will proceed without someone in this role.
           </p>
+          <% close_vacancy_cid = "confirm-close-vacancy-#{@vacancy.id}" %>
+          <% reclaim_vacancy_cid = "confirm-reclaim-vacancy-#{@vacancy.id}" %>
           <div class="flex items-center gap-3">
-            <%= form_with url: manage_cancel_casting_vacancy_path(@production, @vacancy), method: :post, data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } do %>
-              <%= render "shared/button", text: "Close Vacancy Without Filling", variant: "secondary", size: "medium", type: :submit %>
-            <% end %>
+            <%= render "shared/button", text: "Close Vacancy Without Filling", variant: "secondary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: close_vacancy_cid } %>
             <% if @vacancy.vacated_by %>
-              <%= form_with url: manage_reclaim_casting_vacancy_path(@production, @vacancy), method: :post, data: { turbo_confirm: "Put #{@vacancy.vacated_by.name} back as #{@vacancy.role.name}? This will close the vacancy and restore their assignment." } do %>
-                <%= render "shared/button", text: "Put #{@vacancy.vacated_by.name} Back", variant: "primary", size: "medium", type: :submit %>
-              <% end %>
+              <%= render "shared/button", text: "Put #{@vacancy.vacated_by.name} Back", variant: "primary", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: reclaim_vacancy_cid } %>
             <% end %>
           </div>
+          <%= render "shared/confirm_modal", id: close_vacancy_cid, title: "Close vacancy?",
+                message: "Are you sure you want to close this vacancy without filling it? This cannot be undone.", confirm_text: "Close Vacancy",
+                url: manage_cancel_casting_vacancy_path(@production, @vacancy), method: :post %>
+          <% if @vacancy.vacated_by %>
+            <%= render "shared/confirm_modal", id: reclaim_vacancy_cid, title: "Restore assignment?",
+                  message: "Put #{@vacancy.vacated_by.name} back as #{@vacancy.role.name}? This will close the vacancy and restore their assignment.", confirm_text: "Put Back",
+                  url: manage_reclaim_casting_vacancy_path(@production, @vacancy), method: :post %>
+          <% end %>
         </div>
       </div>
     <% end %>

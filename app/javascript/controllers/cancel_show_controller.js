@@ -8,7 +8,7 @@ export default class extends Controller {
     "notifySection",
     "notifyField",
     "cancelForm",
-    "submitButton",
+    "confirmMessage",
     "categoryCheckbox",
     "categoryField"
   ]
@@ -30,18 +30,17 @@ export default class extends Controller {
       this.scopeFieldTarget.value = scope
     }
 
-    // Update button text and confirmation message
-    if (this.hasSubmitButtonTarget) {
+    // Keep the in-page confirm modal's message in sync with the selected scope.
+    if (this.hasConfirmMessageTarget) {
+      let message
       if (scope === "all") {
-        this.submitButtonTarget.value = `Cancel All ${this.occurrenceCountValue} ${this.eventTypeValue}s`
-        this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel all ${this.occurrenceCountValue} occurrences in this series?`)
+        message = `Are you sure you want to cancel all ${this.occurrenceCountValue} occurrences in this series?`
       } else if (scope === "this_and_future") {
-        this.submitButtonTarget.value = `Cancel This & ${this.futureCountValue - 1} Future ${this.eventTypeValue}s`
-        this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel this and ${this.futureCountValue - 1} future occurrences?`)
+        message = `Are you sure you want to cancel this and ${this.futureCountValue - 1} future occurrences?`
       } else {
-        this.submitButtonTarget.value = `Cancel ${this.eventTypeValue}`
-        this.submitButtonTarget.setAttribute("data-turbo-confirm", `Are you sure you want to cancel this ${this.eventTypeValue.toLowerCase()} on ${this.singleDateValue}?`)
+        message = `Are you sure you want to cancel this ${this.eventTypeValue.toLowerCase()} on ${this.singleDateValue}?`
       }
+      this.confirmMessageTarget.textContent = message
     }
   }
 
@@ -94,5 +93,7 @@ export default class extends Controller {
     if (this.hasCancelFormTarget) {
       this.cancelFormTarget.addEventListener("submit", () => this.updateFormFields())
     }
+    // Initialize the confirm modal message for the default scope.
+    this.toggleScope()
   }
 }

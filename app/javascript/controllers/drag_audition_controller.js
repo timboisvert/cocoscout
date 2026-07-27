@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { confirmDialog } from "controllers/lib/confirm_dialog";
 
 export default class extends Controller {
   static targets = ["item", "dropzone", "addModal"]; // Assuming 'item' is the draggable element
@@ -105,11 +106,11 @@ export default class extends Controller {
     event.currentTarget.classList.remove('bg-pink-50');
   }
 
-  removeAudition(event) {
+  async removeAudition(event) {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!confirm('Are you sure you want to remove this person from this audition session?')) {
+    if (!(await confirmDialog({ title: "Remove from session?", message: "Are you sure you want to remove this person from this audition session?", confirmText: "Remove" }))) {
       return;
     }
 

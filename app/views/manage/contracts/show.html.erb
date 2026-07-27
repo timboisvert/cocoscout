@@ -342,13 +342,19 @@
                         <%= icon("download", class: "w-4 h-4") %>
                       <% end %>
                     <% end %>
-                    <%= button_to manage_contract_contract_document_path(@contract, doc),
-                      method: :delete,
-                      data: { turbo_confirm: "Delete this document?" },
-                      class: "text-gray-400 hover:text-red-600",
-                      title: "Delete" do %>
+                    <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-contract-doc-<%= doc.id %>"
+                      class="text-gray-400 hover:text-red-600 bg-transparent border-0 cursor-pointer p-0"
+                      title="Delete">
                       <%= icon("trash", class: "w-4 h-4") %>
-                    <% end %>
+                    </button>
+                    <%= render "shared/confirm_modal",
+                      id: "confirm-delete-contract-doc-#{doc.id}",
+                      title: "Delete document?",
+                      message: "Delete this document?",
+                      confirm_text: "Delete",
+                      url: manage_contract_contract_document_path(@contract, doc),
+                      method: :delete %>
                   </div>
                 </div>
               <% end %>
@@ -463,13 +469,20 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Actions" %>
           <div class="p-4 space-y-2">
-            <%= button_to manage_contract_path(@contract),
-                method: :delete,
-                data: { turbo_confirm: "Are you sure you want to permanently delete this contract? This will also delete all payments, documents, and events. This cannot be undone." },
-                class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition" do %>
+            <button type="button"
+                data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-contract-<%= @contract.id %>"
+                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition cursor-pointer">
               <%= icon("trash", class: "w-4 h-4") %>
               Delete Forever
-            <% end %>
+            </button>
+            <%= render "shared/confirm_modal",
+                id: "confirm-delete-contract-#{@contract.id}",
+                title: "Delete contract forever?",
+                message: "Are you sure you want to permanently delete this contract? This will also delete all payments, documents, and events. This cannot be undone.",
+                confirm_text: "Delete Forever",
+                confirm_icon: "trash",
+                url: manage_contract_path(@contract),
+                method: :delete %>
           </div>
         </div>
       <% end %>

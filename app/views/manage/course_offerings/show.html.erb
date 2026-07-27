@@ -21,6 +21,7 @@
     registration_url = "#{request.base_url}/c/#{@course_offering.short_code}"
   %>
 
+  <% delete_course_cid = "confirm-delete-course-#{@course_offering.id}" %>
   <%
     top_links = [
       { text: "Financials", path: manage_money_production_financials_path(@production) },
@@ -28,9 +29,9 @@
       { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
     unless @course_offering.contract_id?
-      top_links << { text: "Delete Course", path: manage_delete_course_offering_path(@course_offering),
-                     data: { turbo_method: :delete, turbo_confirm: "Delete \"#{@course_offering.title}\"? This cannot be undone." },
-                     variant: "danger" }
+      top_links << { text: "Delete Course", type: :button,
+                     data: { controller: "modal", action: "click->modal#open", modal_id: delete_course_cid },
+                     variant: "primary" }
     end
   %>
 
@@ -41,6 +42,16 @@
     text: @course_offering.title,
     links: top_links
   } %>
+
+  <% unless @course_offering.contract_id? %>
+    <%= render "shared/confirm_modal",
+          id: delete_course_cid,
+          title: "Delete course?",
+          message: "Delete \"#{@course_offering.title}\"? This cannot be undone.",
+          confirm_text: "Delete Course",
+          url: manage_delete_course_offering_path(@course_offering),
+          method: :delete %>
+  <% end %>
 
   <% if @course_offering.contract_id? %>
     <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["modal", "form", "list", "nameField", "fileField"]
@@ -394,11 +395,11 @@ export default class extends Controller {
         }
     }
 
-    remove(event) {
+    async remove(event) {
         const button = event.currentTarget
         const resumeId = button.dataset.resumeId
 
-        if (!confirm('Are you sure you want to remove this resume?')) {
+        if (!(await confirmDialog({ title: "Remove resume?", message: "Are you sure you want to remove this resume?", confirmText: "Remove" }))) {
             return
         }
 

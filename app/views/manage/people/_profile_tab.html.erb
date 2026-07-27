@@ -33,14 +33,19 @@
             <%= render "shared/card_header", title: "Organization" %>
             <div class="p-4">
               <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
-                <%= link_to "Remove from #{Current.organization.name}",
-                    remove_from_organization_manage_person_path(person),
-                    data: {
-                      turbo_method: :post,
-                      turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?"
-                    },
-                    class: "text-sm text-pink-500 hover:underline"
-                %>
+                <% remove_person_org_cid = "confirm-remove-person-org-#{person.id}" %>
+                <button type="button"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-id="<%= remove_person_org_cid %>"
+                        class="text-sm text-pink-500 hover:underline bg-transparent border-0 cursor-pointer p-0">Remove from <%= Current.organization.name %></button>
+                <%= render "shared/confirm_modal",
+                      id: remove_person_org_cid,
+                      title: "Remove from organization?",
+                      message: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?",
+                      confirm_text: "Remove",
+                      url: remove_from_organization_manage_person_path(person),
+                      method: :post %>
               <% end %>
             </div>
           </div>

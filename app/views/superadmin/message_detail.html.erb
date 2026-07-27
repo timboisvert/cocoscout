@@ -30,9 +30,17 @@
                 Restore Message
               <% end %>
             <% else %>
-              <%= button_to message_delete_path(@message), method: :delete, data: { confirm: "Are you sure you want to delete this message?" }, class: "px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium" do %>
+              <% cid = "confirm-delete-message" %>
+              <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                      class="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-medium cursor-pointer">
                 Delete Message
-              <% end %>
+              </button>
+              <%= render "shared/confirm_modal", id: cid,
+                    title: "Delete message?",
+                    message: "Are you sure you want to delete this message?",
+                    confirm_text: "Delete Message",
+                    url: message_delete_path(@message),
+                    method: :delete %>
             <% end %>
           </div>
         </div>

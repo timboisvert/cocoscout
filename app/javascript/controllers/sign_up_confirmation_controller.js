@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
   static targets = ["modal", "slotName", "slotInfo", "hiddenSlotId", "confirmButton", "changeSlotSection", "formSection", "slotList", "lockedSlot", "modalTitle", "modalForm"]
@@ -76,10 +77,10 @@ export default class extends Controller {
     }
   }
 
-  openCancelConfirmation(event) {
+  async openCancelConfirmation(event) {
     event.preventDefault()
 
-    if (confirm('Are you sure you want to cancel your registration? This action cannot be undone.')) {
+    if (await confirmDialog({ title: "Cancel registration?", message: "Are you sure you want to cancel your registration? This action cannot be undone.", confirmText: "Cancel registration", cancelText: "Keep registration" })) {
       this.performCancelRegistration()
     }
   }

@@ -51,7 +51,7 @@
             <button type="button"
                     data-action="click->group-members#removeMember"
                     data-membership-id="<%= member.id %>"
-                    class="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg font-medium cursor-pointer transition">
+                    class="px-3 py-1.5 text-xs text-pink-600 hover:text-pink-700 hover:bg-pink-50 border border-pink-200 hover:border-pink-300 rounded-lg font-medium cursor-pointer transition">
               Remove
             </button>
           <% end %>
@@ -79,11 +79,17 @@
               </span>
 
               <% if membership&.owner? || membership&.write? %>
-                <%= button_to "Revoke",
-                      revoke_group_invitation_path(group, invitation),
-                      method: :delete,
-                      data: { turbo_confirm: "Revoke invitation to #{invitation.email}?" },
-                      class: "text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" %>
+                <% revoke_cid = "confirm-revoke-invitation-#{invitation.id}" %>
+                <button type="button"
+                        data-controller="modal" data-action="click->modal#open" data-modal-id="<%= revoke_cid %>"
+                        class="text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0">
+                  Revoke
+                </button>
+                <%= render "shared/confirm_modal", id: revoke_cid,
+                      title: "Revoke invitation?",
+                      message: "Revoke invitation to #{invitation.email}?",
+                      confirm_text: "Revoke",
+                      url: revoke_group_invitation_path(group, invitation), method: :delete %>
               <% end %>
             </div>
           </div>

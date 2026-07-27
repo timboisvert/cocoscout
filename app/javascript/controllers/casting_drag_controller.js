@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["dropZone", "auditionee", "person", "addModal"]
@@ -228,10 +229,10 @@ export default class extends Controller {
             .catch(error => console.error('Error:', error))
     }
 
-    removePerson(event) {
+    async removePerson(event) {
         event.preventDefault()
 
-        if (!confirm('Are you sure you want to remove this auditionee from this talent pool?')) {
+        if (!(await confirmDialog({ title: "Remove from talent pool?", message: "Are you sure you want to remove this auditionee from this talent pool?", confirmText: "Remove" }))) {
             return
         }
 

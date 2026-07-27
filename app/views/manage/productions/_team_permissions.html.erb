@@ -48,7 +48,7 @@
                     } %>
                 <%= render "shared/button",
                     text: "Remove",
-                    variant: "danger",
+                    variant: "primary",
                     size: "small",
                     type: :button,
                     data: {
@@ -89,9 +89,17 @@
                 <div class="text-xs text-gray-500"><%= invite.invitation_role&.capitalize || "Viewer" %></div>
               </div>
               <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                <%= form_with url: revoke_production_invite_manage_production_path(@production, invite_id: invite.id), method: :delete, data: { turbo: false, turbo_confirm: "Are you sure you want to revoke this invitation?" } do %>
-                  <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :submit %>
-                <% end %>
+                <% revoke_prod_invite_cid = "confirm-revoke-prod-invite-#{invite.id}" %>
+                <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: revoke_prod_invite_cid } %>
+                <%= render "shared/confirm_modal",
+                      id: revoke_prod_invite_cid,
+                      title: "Revoke invitation?",
+                      message: "Are you sure you want to revoke this invitation?",
+                      confirm_text: "Revoke",
+                      url: revoke_production_invite_manage_production_path(@production, invite_id: invite.id),
+                      method: :delete,
+                      form_data: { turbo: false } %>
               </div>
             </div>
           </div>
@@ -277,7 +285,7 @@
           <input type="hidden" name="user_id" data-production-team-modals-target="removeUserId">
           <div class="flex justify-end gap-3">
             <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeRemoveModal" } %>
-            <%= render "shared/button", text: "Remove", variant: "danger", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Remove", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>

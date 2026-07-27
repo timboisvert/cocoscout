@@ -506,14 +506,18 @@
                   <p class="text-sm font-medium text-gray-900">Archive this form</p>
                   <p class="text-xs text-gray-500">Hide from your list. Can be restored later.</p>
                 </div>
-                <%= link_to manage_archive_signups_form_path(@production, @sign_up_form),
-                    data: { turbo_method: :patch, turbo_confirm: "Archive this sign-up form? It will be hidden from your list but can be restored later." },
-                    class: "inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" do %>
+                <% archive_form_cid = "confirm-archive-form-repeated-#{@sign_up_form.id}" %>
+                <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= archive_form_cid %>"
+                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
                   Archive
-                <% end %>
+                </button>
               </div>
             </div>
           </div>
+          <%= render "shared/confirm_modal", id: archive_form_cid, title: "Archive sign-up form?",
+                message: "Archive this sign-up form? It will be hidden from your list but can be restored later.", confirm_text: "Archive",
+                url: manage_archive_signups_form_path(@production, @sign_up_form), method: :patch %>
         </div>
       </div>
     </div>
@@ -658,14 +662,18 @@
                   <p class="text-sm font-medium text-gray-900">Archive this form</p>
                   <p class="text-xs text-gray-500">Hide from your list. Can be restored later.</p>
                 </div>
-                <%= link_to manage_archive_signups_form_path(@production, @sign_up_form),
-                    data: { turbo_method: :patch, turbo_confirm: "Archive this sign-up form? It will be hidden from your list but can be restored later." },
-                    class: "inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" do %>
+                <% archive_form_cid2 = "confirm-archive-form-nonrepeated-#{@sign_up_form.id}" %>
+                <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= archive_form_cid2 %>"
+                    class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
                   Archive
-                <% end %>
+                </button>
               </div>
             </div>
           </div>
+          <%= render "shared/confirm_modal", id: archive_form_cid2, title: "Archive sign-up form?",
+                message: "Archive this sign-up form? It will be hidden from your list but can be restored later.", confirm_text: "Archive",
+                url: manage_archive_signups_form_path(@production, @sign_up_form), method: :patch %>
         </div>
       </div>
     </div>

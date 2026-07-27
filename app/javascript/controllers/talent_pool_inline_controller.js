@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 // Controls inline talent pool management with modals
 export default class extends Controller {
@@ -217,7 +218,7 @@ export default class extends Controller {
     const invitationId = button.dataset.invitationId
     const invitationEmail = button.dataset.invitationEmail
 
-    if (!confirm(`Revoke invitation to ${invitationEmail}?`)) {
+    if (!(await confirmDialog({ title: "Revoke invitation?", message: `Revoke invitation to ${invitationEmail}?`, confirmText: "Revoke" }))) {
       return
     }
 

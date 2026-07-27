@@ -86,15 +86,18 @@
                       <span class="text-sm text-gray-900"><%= reg.display_name %></span>
                     <% end %>
                   </div>
+                  <% return_queue_cid = "confirm-return-queue-multi-#{slot.id}-#{reg.id}" %>
                   <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                     <%= render "shared/button",
                         text: "Return to Queue",
                         variant: "ghost",
                         size: "small",
-                        path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
-                        method: :patch,
-                        data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                        type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: return_queue_cid } %>
                   </div>
+                  <%= render "shared/confirm_modal", id: return_queue_cid, title: "Return to queue?",
+                        message: "Return #{reg.display_name} to queue?", confirm_text: "Return to Queue",
+                        url: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id), method: :patch %>
                 </div>
               <% end %>
             </div>
@@ -154,15 +157,18 @@
                             <span class="text-sm text-gray-900"><%= reg.display_name %></span>
                           <% end %>
                         </div>
+                        <% return_queue_cid2 = "confirm-return-queue-multi2-#{slot.id}-#{reg.id}" %>
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
-                              method: :patch,
-                              data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                              type: :button,
+                              data: { controller: "modal", action: "click->modal#open", modal_id: return_queue_cid2 } %>
                         </div>
+                        <%= render "shared/confirm_modal", id: return_queue_cid2, title: "Return to queue?",
+                              message: "Return #{reg.display_name} to queue?", confirm_text: "Return to Queue",
+                              url: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id), method: :patch %>
                       </div>
                     <% end %>
                     <% available_count = [slot.capacity - slot_registrations.size, 0].max %>
@@ -212,15 +218,18 @@
                             <span class="text-sm text-gray-900"><%= reg.display_name %></span>
                           <% end %>
                         </div>
+                        <% return_queue_cid3 = "confirm-return-queue-single-#{slot.id}-#{reg.id}" %>
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
-                              method: :patch,
-                              data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                              type: :button,
+                              data: { controller: "modal", action: "click->modal#open", modal_id: return_queue_cid3 } %>
                         </div>
+                        <%= render "shared/confirm_modal", id: return_queue_cid3, title: "Return to queue?",
+                              message: "Return #{reg.display_name} to queue?", confirm_text: "Return to Queue",
+                              url: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id), method: :patch %>
                       </div>
                     <% end %>
                   </div>
@@ -313,6 +322,7 @@
                     <% end %>
                   </div>
                 </div>
+                <% remove_queue_cid = "confirm-remove-queue-#{registration.id}" %>
                 <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                   <%= render "shared/button",
                       text: "Auto-assign",
@@ -325,10 +335,12 @@
                       text: "Remove",
                       variant: "ghost",
                       size: "small",
-                      path: manage_cancel_registration_signups_form_path(@production, @sign_up_form, registration_id: registration.id),
-                      method: :delete,
-                      data: { turbo_method: :delete, turbo_confirm: "Remove #{registration.display_name} from the queue?" } %>
+                      type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: remove_queue_cid } %>
                 </div>
+                <%= render "shared/confirm_modal", id: remove_queue_cid, title: "Remove from queue?",
+                      message: "Remove #{registration.display_name} from the queue?", confirm_text: "Remove",
+                      url: manage_cancel_registration_signups_form_path(@production, @sign_up_form, registration_id: registration.id), method: :delete %>
               </div>
             <% end %>
           </div>

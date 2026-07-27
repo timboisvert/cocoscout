@@ -75,22 +75,39 @@
                     <%= render "shared/card_header", title: "Organization" %>
                     <div class="p-4">
                         <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
-                            <%= link_to "Remove from #{Current.organization.name}",
-                                remove_from_organization_manage_person_path(person),
-                                data: {
-                                    turbo_method: :post,
-                                    turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?"
-                                },
-                                class: "text-sm text-pink-500 hover:underline"
-                            %>
+                            <% remove_person_confirm_id = "confirm-#{SecureRandom.hex(6)}" %>
+                            <button type="button"
+                                    data-controller="modal"
+                                    data-action="click->modal#open"
+                                    data-modal-id="<%= remove_person_confirm_id %>"
+                                    class="text-sm text-pink-500 hover:underline cursor-pointer">
+                                Remove from <%= Current.organization.name %>
+                            </button>
+                            <%= render "shared/confirm_modal",
+                                id: remove_person_confirm_id,
+                                title: "Remove from organization?",
+                                message: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?",
+                                confirm_text: "Remove",
+                                url: remove_from_organization_manage_person_path(person),
+                                method: :post %>
                         <% end %>
 
                         <% if show_delete_signup %>
-                            <%= link_to "Delete Sign-up",
-                                manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
-                                data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this sign-up?" },
-                                class: "block text-sm text-pink-500 hover:underline mt-1"
-                            %>
+                            <% delete_signup_confirm_id = "confirm-#{SecureRandom.hex(6)}" %>
+                            <button type="button"
+                                    data-controller="modal"
+                                    data-action="click->modal#open"
+                                    data-modal-id="<%= delete_signup_confirm_id %>"
+                                    class="block text-sm text-pink-500 hover:underline mt-1 cursor-pointer">
+                                Delete Sign-up
+                            </button>
+                            <%= render "shared/confirm_modal",
+                                id: delete_signup_confirm_id,
+                                title: "Delete sign-up?",
+                                message: "Are you sure you want to delete this sign-up?",
+                                confirm_text: "Delete",
+                                url: manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                                method: :delete %>
                         <% end %>
                     </div>
                 </div>

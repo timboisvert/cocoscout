@@ -72,13 +72,16 @@
                     "role-start-offset": role.default_start_offset_minutes,
                     "role-end-offset": role.default_end_offset_minutes
                   } %>
+            <% remove_role_cid = "confirm-remove-house-role-#{role.id}" %>
             <%= render "shared/button",
                   text: "Remove",
-                  variant: "danger",
+                  variant: "primary",
                   size: "small",
-                  path: manage_destroy_staffing_house_role_path(role),
-                  method: :delete,
-                  data: { turbo_confirm: "Remove this role? Existing shifts using it will be kept." } %>
+                  type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_role_cid } %>
+            <%= render "shared/confirm_modal", id: remove_role_cid, title: "Remove role?",
+                  message: "Remove this role? Existing shifts using it will be kept.", confirm_text: "Remove",
+                  url: manage_destroy_staffing_house_role_path(role), method: :delete %>
           </div>
         </div>
       <% end %>

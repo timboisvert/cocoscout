@@ -38,9 +38,17 @@
                     class: "text-xs text-pink-600 hover:underline" %>
               <%= button_to "Approve", mics_hub_approve_submission_path(@hub.slug, id: mic.id), method: :post,
                     class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-              <%= button_to "Reject", mics_hub_reject_submission_path(@hub.slug, id: mic.id), method: :post,
-                    data: { turbo_confirm: "Reject #{mic.name}?" },
-                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+              <% reject_sub_cid = "confirm-reject-submission-#{mic.id}" %>
+              <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reject_sub_cid %>"
+                      class="cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded">
+                Reject
+              </button>
+              <%= render "shared/confirm_modal", id: reject_sub_cid,
+                    title: "Reject submission?",
+                    message: "Reject #{mic.name}?",
+                    confirm_text: "Reject",
+                    url: mics_hub_reject_submission_path(@hub.slug, id: mic.id), method: :post %>
             </div>
           </li>
         <% end %>
@@ -73,9 +81,17 @@
                     class: "text-xs text-pink-600 hover:underline" %>
               <%= button_to "Approve", mics_hub_approve_claim_path(@hub.slug, id: c.id), method: :post,
                     class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
-              <%= button_to "Reject", mics_hub_reject_claim_path(@hub.slug, id: c.id), method: :post,
-                    data: { turbo_confirm: "Reject this claim?" },
-                    class: "cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded" %>
+              <% reject_claim_cid = "confirm-reject-claim-#{c.id}" %>
+              <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reject_claim_cid %>"
+                      class="cursor-pointer px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded">
+                Reject
+              </button>
+              <%= render "shared/confirm_modal", id: reject_claim_cid,
+                    title: "Reject claim?",
+                    message: "Reject this claim?",
+                    confirm_text: "Reject",
+                    url: mics_hub_reject_claim_path(@hub.slug, id: c.id), method: :post %>
             </div>
           </li>
         <% end %>
@@ -106,9 +122,17 @@
             <div class="flex items-center gap-2 shrink-0">
               <%= link_to "Open", mics_detail_path(ch.mic.slug), target: "_blank",
                     class: "text-xs text-pink-600 hover:underline" %>
-              <%= button_to "Replace owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "replaced"), method: :post,
-                    data: { turbo_confirm: "Make #{ch.challenger.email_address} the new owner of #{ch.mic.name}?" },
-                    class: "cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded" %>
+              <% replace_owner_cid = "confirm-replace-owner-#{ch.id}" %>
+              <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= replace_owner_cid %>"
+                      class="cursor-pointer px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded">
+                Replace owner
+              </button>
+              <%= render "shared/confirm_modal", id: replace_owner_cid,
+                    title: "Replace owner?",
+                    message: "Make #{ch.challenger.email_address} the new owner of #{ch.mic.name}?",
+                    confirm_text: "Replace owner",
+                    url: mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "replaced"), method: :post %>
               <%= button_to "Add as co-owner", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "co_produce"), method: :post,
                     class: "cursor-pointer px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded" %>
               <%= button_to "Reject", mics_hub_resolve_challenge_path(@hub.slug, id: ch.id, outcome: "rejected"), method: :post,

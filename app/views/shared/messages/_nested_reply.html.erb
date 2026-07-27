@@ -59,7 +59,7 @@
 
               <%# Actions menu - only show if user can delete %>
               <% if !reply.deleted? && reply.can_be_deleted_by?(Current.user) %>
-                <div class="relative" data-controller="dropdown">
+                <div class="relative" data-controller="dropdown modal">
                   <button
                     type="button"
                     class="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors cursor-pointer"
@@ -72,16 +72,23 @@
                   <div
                     data-dropdown-target="menu"
                     class="hidden absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                    <%= link_to (is_manage ? manage_message_path(reply) : my_message_path(reply)),
-                        method: :delete,
-                        data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this reply?" },
-                        class: "flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer" do %>
+                    <button type="button"
+                        data-action="click->modal#open"
+                        data-modal-id="confirm-delete-reply-<%= reply.id %>"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer bg-transparent border-0 text-left">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                       </svg>
                       Delete
-                    <% end %>
+                    </button>
                   </div>
+                  <%= render "shared/confirm_modal",
+                        id: "confirm-delete-reply-#{reply.id}",
+                        title: "Delete reply?",
+                        message: "Are you sure you want to delete this reply?",
+                        confirm_text: "Delete",
+                        url: (is_manage ? manage_message_path(reply) : my_message_path(reply)),
+                        method: :delete %>
                 </div>
               <% end %>
             </div>

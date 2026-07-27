@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["list", "modal", "searchInput", "results", "loading"]
@@ -129,7 +130,7 @@ export default class extends Controller {
         event.preventDefault()
         const membershipId = event.currentTarget.dataset.membershipId
 
-        if (!confirm('Are you sure you want to leave this group?')) {
+        if (!(await confirmDialog({ title: "Leave group?", message: "Are you sure you want to leave this group?", confirmText: "Leave group" }))) {
             return
         }
 

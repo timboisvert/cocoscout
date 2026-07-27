@@ -46,11 +46,19 @@
                 PNG, JPG, or GIF. Recommended size: 512x512px
               </p>
               <% if @organization.logo.attached? %>
-                <%= button_to "Remove Logo",
-                    remove_logo_manage_organization_path(@organization),
-                    method: :delete,
-                    data: { turbo_confirm: "Are you sure you want to remove the logo?" },
-                    class: "mt-3 text-xs text-red-600 hover:text-red-700 font-medium" %>
+                <% remove_logo_cid = "confirm-#{SecureRandom.hex(6)}" %>
+                <button type="button"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-id="<%= remove_logo_cid %>"
+                        class="mt-3 text-xs text-pink-600 hover:text-pink-700 font-medium bg-transparent border-0 cursor-pointer">Remove Logo</button>
+                <%= render "shared/confirm_modal",
+                      id: remove_logo_cid,
+                      title: "Remove logo?",
+                      message: "Are you sure you want to remove the logo?",
+                      confirm_text: "Remove Logo",
+                      url: remove_logo_manage_organization_path(@organization),
+                      method: :delete %>
               <% end %>
             </div>
           </div>

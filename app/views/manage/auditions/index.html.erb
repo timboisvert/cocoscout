@@ -150,7 +150,14 @@
           </div>
           <div class="flex items-center gap-3">
             <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_signups_auditions_wizard_path(@production), variant: "primary", size: "small", icon: "arrow-right" } %>
-            <%= link_to "Start Over", manage_signups_auditions_wizard_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 underline" %>
+            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-audition-start-over" class="text-sm text-pink-700 hover:text-pink-900 underline bg-transparent border-0 cursor-pointer p-0">Start Over</button>
+            <%= render "shared/confirm_modal",
+                id: "confirm-audition-start-over",
+                title: "Start over?",
+                message: "Are you sure? This will discard your progress.",
+                confirm_text: "Start Over",
+                url: manage_signups_auditions_wizard_cancel_path(@production),
+                method: :delete %>
           </div>
         </div>
       </div>
@@ -254,7 +261,14 @@
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <% if @active_audition_cycle.present? && current_user_can_manage?(@production) %>
-          <%= button_to "Archive This Audition Cycle", manage_archive_signups_auditions_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer whitespace-nowrap", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-archive-audition-cycle-<%= @active_audition_cycle.id %>" class="text-sm text-pink-500 underline cursor-pointer whitespace-nowrap bg-transparent border-0 p-0">Archive This Audition Cycle</button>
+          <%= render "shared/confirm_modal",
+              id: "confirm-archive-audition-cycle-#{@active_audition_cycle.id}",
+              title: "Archive audition cycle?",
+              message: "Are you sure? This will close the current audition cycle and you can create a new one.",
+              confirm_text: "Archive",
+              url: manage_archive_signups_auditions_cycle_path(@production, @active_audition_cycle),
+              method: :patch %>
         <% end %>
         <%= link_to "View Archive", manage_signups_auditions_archive_path(@production), class: "text-sm text-pink-500 underline whitespace-nowrap" %>
       </div>

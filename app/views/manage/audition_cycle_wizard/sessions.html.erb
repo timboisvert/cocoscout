@@ -24,12 +24,16 @@
       <div class="mb-6">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-medium text-gray-700">Scheduled Sessions (<%= @wizard_state[:audition_sessions].size %>)</h3>
-          <%= button_to "Remove all",
-              manage_signups_auditions_wizard_delete_all_sessions_path(@production),
-              method: :delete,
-              class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0",
-              form_class: "inline-block",
-              data: { turbo_confirm: "Remove all #{@wizard_state[:audition_sessions].size} sessions?" } %>
+          <button type="button"
+              data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-remove-all-sessions"
+              class="text-sm text-pink-500 hover:text-pink-600 cursor-pointer bg-transparent border-0 p-0">Remove all</button>
+          <%= render "shared/confirm_modal",
+              id: "confirm-remove-all-sessions",
+              title: "Remove all sessions?",
+              message: "Remove all #{@wizard_state[:audition_sessions].size} sessions?",
+              confirm_text: "Remove all",
+              url: manage_signups_auditions_wizard_delete_all_sessions_path(@production),
+              method: :delete %>
         </div>
         <div class="space-y-2">
           <% sorted_sessions = @wizard_state[:audition_sessions].each_with_index.sort_by { |s, i| Time.parse(s[:start_at]) rescue Time.current } %>
@@ -54,13 +58,20 @@
                         data-session-location="<%= session[:location_id] %>">
                   Edit
                 </button>
-                <%= button_to "Remove",
-                    manage_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
-                    method: :delete,
-                    class: "text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
-                    form_class: "inline-block",
-                    data: { turbo_confirm: "Remove this session?" } %>
+                <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-remove-session-<%= original_index %>"
+                    class="text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm bg-transparent border-0">
+                  Remove
+                </button>
               </div>
+              <%# Modal rendered outside the opacity-0 hover container so it stays visible when shown %>
+              <%= render "shared/confirm_modal",
+                  id: "confirm-remove-session-#{original_index}",
+                  title: "Remove session?",
+                  message: "Remove this session?",
+                  confirm_text: "Remove",
+                  url: manage_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
+                  method: :delete %>
             </div>
           <% end %>
         </div>

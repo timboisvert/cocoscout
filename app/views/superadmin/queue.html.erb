@@ -14,21 +14,42 @@
   <!-- Bulk Actions -->
   <div class="mt-4 flex gap-3">
     <% if @failed_jobs > 0 %>
-      <%= button_to "Retry All Failed Jobs (#{@failed_jobs})", queue_retry_all_failed_path,
-          method: :post,
-          class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm",
-          data: { confirm: "Are you sure you want to retry all #{@failed_jobs} failed jobs?" } %>
-      <%= button_to "Clear All Failed Jobs (#{@failed_jobs})", queue_clear_failed_path,
-          method: :delete,
-          class: "px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm",
-          data: { confirm: "Are you sure you want to delete all #{@failed_jobs} failed jobs? This cannot be undone." } %>
+      <% retry_all_cid = "confirm-retry-all-failed" %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= retry_all_cid %>"
+              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm cursor-pointer">
+        Retry All Failed Jobs (<%= @failed_jobs %>)
+      </button>
+      <%= render "shared/confirm_modal", id: retry_all_cid,
+            title: "Retry all failed jobs?",
+            message: "Are you sure you want to retry all #{@failed_jobs} failed jobs?",
+            confirm_text: "Retry All",
+            url: queue_retry_all_failed_path,
+            method: :post %>
+      <% clear_failed_cid = "confirm-clear-all-failed" %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= clear_failed_cid %>"
+              class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-medium text-sm cursor-pointer">
+        Clear All Failed Jobs (<%= @failed_jobs %>)
+      </button>
+      <%= render "shared/confirm_modal", id: clear_failed_cid,
+            title: "Delete all failed jobs?",
+            message: "Are you sure you want to delete all #{@failed_jobs} failed jobs? This cannot be undone.",
+            confirm_text: "Delete All",
+            url: queue_clear_failed_path,
+            method: :delete %>
     <% end %>
 
     <% if @pending_jobs > 0 %>
-      <%= button_to "Clear All Pending Jobs (#{@pending_jobs})", queue_clear_pending_path,
-          method: :delete,
-          class: "px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium text-sm",
-          data: { confirm: "Are you sure you want to delete all #{@pending_jobs} pending jobs? This cannot be undone." } %>
+      <% clear_pending_cid = "confirm-clear-all-pending" %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= clear_pending_cid %>"
+              class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium text-sm cursor-pointer">
+        Clear All Pending Jobs (<%= @pending_jobs %>)
+      </button>
+      <%= render "shared/confirm_modal", id: clear_pending_cid,
+            title: "Delete all pending jobs?",
+            message: "Are you sure you want to delete all #{@pending_jobs} pending jobs? This cannot be undone.",
+            confirm_text: "Delete All",
+            url: queue_clear_pending_path,
+            method: :delete %>
     <% end %>
   </div>
 
@@ -146,10 +167,17 @@
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm">
                     <% if job[:runnable] %>
-                      <%= button_to "Run Now", queue_run_recurring_job_path(job_key: job[:key]),
-                          method: :post,
-                          class: "text-blue-600 hover:text-blue-800 font-medium",
-                          data: { confirm: "Run #{job[:class_name]} now?" } %>
+                      <% cid = "confirm-run-job-#{job[:key].to_s.parameterize}" %>
+                      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                              class="text-blue-600 hover:text-blue-800 font-medium cursor-pointer bg-transparent border-0">
+                        Run Now
+                      </button>
+                      <%= render "shared/confirm_modal", id: cid,
+                            title: "Run job now?",
+                            message: "Run #{job[:class_name]} now?",
+                            confirm_text: "Run Now",
+                            url: queue_run_recurring_job_path(job_key: job[:key]),
+                            method: :post %>
                     <% else %>
                       <span class="text-gray-400 text-xs">Command only</span>
                     <% end %>
@@ -215,10 +243,17 @@
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm">
                   <% unless job.finished_at %>
-                    <%= button_to "Delete", queue_delete_job_path(job.id),
-                        method: :delete,
-                        class: "text-red-600 hover:text-red-800 font-medium",
-                        data: { confirm: "Delete this job?" } %>
+                    <% cid = "confirm-delete-recent-job-#{job.id}" %>
+                    <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                            class="text-pink-600 hover:text-pink-700 font-medium cursor-pointer bg-transparent border-0">
+                      Delete
+                    </button>
+                    <%= render "shared/confirm_modal", id: cid,
+                          title: "Delete this job?",
+                          message: "Delete this job?",
+                          confirm_text: "Delete",
+                          url: queue_delete_job_path(job.id),
+                          method: :delete %>
                   <% end %>
                 </td>
               </tr>

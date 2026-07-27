@@ -126,9 +126,15 @@
 
     <%# Make Changes button %>
     <div class="flex items-center gap-3">
-      <%= form_with url: manage_casting_show_reopen_path(production, show.id), method: :patch, class: "inline", data: { turbo_confirm: "Are you sure you want to reopen casting for this show? You can make changes and finalize again when ready." } do |f| %>
-        <%= render "shared/button", text: "Make Changes", variant: "primary", size: "medium", type: :submit %>
-      <% end %>
+      <%= render "shared/button", text: "Make Changes", variant: "primary", size: "medium", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-reopen-casting-#{show.id}" } %>
+      <%= render "shared/confirm_modal",
+            id: "confirm-reopen-casting-#{show.id}",
+            title: "Reopen casting?",
+            message: "Are you sure you want to reopen casting for this show? You can make changes and finalize again when ready.",
+            confirm_text: "Make Changes",
+            url: manage_casting_show_reopen_path(production, show.id),
+            method: :patch %>
       <span class="text-xs text-gray-500">
         You'll need to finalize again after making changes.
       </span>

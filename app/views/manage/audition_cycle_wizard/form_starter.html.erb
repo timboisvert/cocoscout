@@ -51,12 +51,18 @@
                       data-question-options="<%= options.to_json %>">
                 Edit
               </button>
-              <%= button_to "Remove",
-                    manage_signups_auditions_wizard_delete_form_question_path(@production, index: idx),
-                    method: :delete,
-                    class: "text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm",
-                    form_class: "inline-block",
-                    data: { turbo_confirm: "Remove this question?" } %>
+              <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-remove-form-question-<%= idx %>"
+                    class="text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm bg-transparent border-0">
+                Remove
+              </button>
+              <%= render "shared/confirm_modal",
+                    id: "confirm-remove-form-question-#{idx}",
+                    title: "Remove question?",
+                    message: "Remove this question?",
+                    confirm_text: "Remove",
+                    url: manage_signups_auditions_wizard_delete_form_question_path(@production, index: idx),
+                    method: :delete %>
             </div>
           </div>
         <% end %>

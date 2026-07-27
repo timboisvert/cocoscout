@@ -38,10 +38,17 @@
             class: "text-sm px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 font-medium" do %>
           Consolidate into Another Org
         <% end %>
-        <%= button_to "Delete Organization", destroy_organization_path(@organization),
-            method: :delete,
-            class: "text-sm px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-medium cursor-pointer",
-            data: { turbo_confirm: "Are you sure you want to delete '#{@organization.name}'? This will permanently destroy the organization and ALL its data (productions, shows, contracts, etc). This cannot be undone." } %>
+        <% cid = "confirm-delete-org" %>
+        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                class="text-sm px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 font-medium cursor-pointer">
+          Delete Organization
+        </button>
+        <%= render "shared/confirm_modal", id: cid,
+              title: "Delete organization?",
+              message: "Are you sure you want to delete '#{@organization.name}'? This will permanently destroy the organization and ALL its data (productions, shows, contracts, etc). This cannot be undone.",
+              confirm_text: "Delete Organization",
+              url: destroy_organization_path(@organization),
+              method: :delete %>
       </div>
     </div>
   </div>

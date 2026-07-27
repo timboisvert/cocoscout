@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["tabContainer", "panelContainer", "personBadge", "popup", "menu", "modal", "nameInput", "reviewCheckbox", "sendSection", "tabIndicator", "emailTemplate"]
@@ -517,7 +518,7 @@ export default class extends Controller {
         }
     }
 
-    sendNotifications(event) {
+    async sendNotifications(event) {
         const groupType = this.groupTypeValue || 'casting'
         const isInvitation = groupType === 'audition'
 
@@ -525,7 +526,11 @@ export default class extends Controller {
             ? "Are you sure you want to send audition invitation emails to all applicants? This action cannot be undone."
             : "Are you sure you want to finalize cast changes and send notification emails to all auditionees? This action cannot be undone."
 
-        if (!confirm(confirmMessage)) {
+        if (!(await confirmDialog({
+            title: isInvitation ? "Send audition invitations?" : "Send cast notifications?",
+            message: confirmMessage,
+            confirmText: "Send"
+        }))) {
             return
         }
 
@@ -554,12 +559,12 @@ export default class extends Controller {
         form.submit()
     }
 
-    deleteGroup(event) {
+    async deleteGroup(event) {
         event.stopPropagation()
 
         const groupId = event.currentTarget.dataset.groupId
 
-        if (!confirm("Are you sure you want to delete this email group? This action cannot be undone.")) {
+        if (!(await confirmDialog({ title: "Delete email group?", message: "Are you sure you want to delete this email group? This action cannot be undone.", confirmText: "Delete" }))) {
             return
         }
 

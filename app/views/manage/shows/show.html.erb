@@ -187,7 +187,11 @@
               %>
               <div class="flex flex-wrap gap-2 items-center">
                 <% if is_canceled %>
-                  <%= render "shared/button", text: uncancel_label, path: manage_uncancel_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
+                  <% uncancel_cid = "confirm-#{SecureRandom.hex(6)}" %>
+                  <%= render "shared/button", text: uncancel_label, variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: uncancel_cid } %>
+                  <%= render "shared/confirm_modal", id: uncancel_cid, title: "Uncancel #{event_label.downcase}?",
+                        message: "Are you sure you want to uncancel this #{event_label.downcase}?", confirm_text: uncancel_label,
+                        url: manage_uncancel_show_path(@production, @show), method: :patch %>
                   <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
                 <% else %>
                   <%# Always show edit button, even for past events %>

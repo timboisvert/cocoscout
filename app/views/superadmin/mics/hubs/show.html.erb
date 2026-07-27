@@ -120,9 +120,17 @@
                     class: "cursor-pointer px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold" do %>
                 Impersonate
               <% end %>
-              <%= button_to "Remove", mics_hub_remove_editor_path(@hub.slug, user_id: m.user_id), method: :delete,
-                    data: { turbo_confirm: "Remove #{m.user.email_address} as a captain of #{@hub.name}?" },
-                    class: "cursor-pointer text-xs text-gray-500 hover:text-red-600 underline" %>
+              <% remove_captain_cid = "confirm-remove-captain-#{m.user_id}" %>
+              <button type="button"
+                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_captain_cid %>"
+                      class="cursor-pointer text-xs text-gray-500 hover:text-red-600 underline bg-transparent border-0">
+                Remove
+              </button>
+              <%= render "shared/confirm_modal", id: remove_captain_cid,
+                    title: "Remove captain?",
+                    message: "Remove #{m.user.email_address} as a captain of #{@hub.name}?",
+                    confirm_text: "Remove",
+                    url: mics_hub_remove_editor_path(@hub.slug, user_id: m.user_id), method: :delete %>
             </div>
           </li>
         <% end %>
@@ -152,8 +160,7 @@
       <% if @rollup_candidate_cities.empty? %>
         <p class="text-sm text-gray-500">No unassigned venues in <%= @hub.state %> right now.</p>
       <% else %>
-        <%= form_with url: mics_hub_rollup_venues_path(@hub.slug), method: :post,
-              data: { turbo_confirm: "Roll the selected cities' venues into #{@hub.name}?" },
+        <%= form_with url: mics_hub_rollup_venues_path(@hub.slug), method: :post, id: "rollup-venues-form",
               class: "space-y-3" do %>
           <div class="text-xs text-gray-500">
             <%= pluralize(@rollup_candidate_cities.size, "city") %> in <%= @hub.state %> with unassigned venues
@@ -172,7 +179,8 @@
           </div>
           <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
             <span class="text-xs text-gray-500">Check every neighborhood that should report to this hub. Venues already in another hub are skipped.</span>
-            <button type="submit" class="cursor-pointer px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-bold">
+            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-rollup-venues"
+                    class="cursor-pointer px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-bold">
               Roll selected cities into <%= @hub.name %>
             </button>
           </div>
@@ -181,6 +189,26 @@
     </div>
   </section>
 </main>
+
+<%# Confirmation for the roll-up form (form carries the cities[] checkboxes, so the confirm submits it via form=) %>
+<div id="confirm-rollup-venues" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-white">Roll up venues?</h3>
+      <button type="button" class="text-white/80 hover:text-white" data-action="click->modal#close" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-gray-600">Roll the selected cities' venues into <%= @hub.name %>?</p>
+    </div>
+    <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <button type="submit" form="rollup-venues-form" class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10">Roll up venues</button>
+    </div>
+  </div>
+</div>
 
 <dialog id="modal-add-captain"
         class="fixed inset-0 m-auto w-[min(36rem,92vw)] max-h-[85vh] p-0 rounded shadow-2xl backdrop:bg-gray-900/50 overflow-hidden">

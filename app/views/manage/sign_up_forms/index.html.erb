@@ -49,7 +49,11 @@
         </div>
         <div class="flex items-center gap-2">
           <%= render "shared/button", text: "Continue", variant: "primary", size: "small", path: manage_signups_forms_wizard_path(@production) %>
-          <%= render "shared/button", text: "Discard", variant: "ghost", size: "small", path: manage_signups_forms_wizard_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Discard your progress?" } %>
+          <% discard_cid = "confirm-#{SecureRandom.hex(6)}" %>
+          <%= render "shared/button", text: "Discard", variant: "ghost", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: discard_cid } %>
+          <%= render "shared/confirm_modal", id: discard_cid, title: "Discard progress?",
+                message: "Discard your progress?", confirm_text: "Discard",
+                url: manage_signups_forms_wizard_cancel_path(@production), method: :delete %>
         </div>
       </div>
     </div>

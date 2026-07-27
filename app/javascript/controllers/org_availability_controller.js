@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["personModal", "personContent", "showModal", "showContent"]
@@ -215,7 +216,7 @@ export default class extends Controller {
         const personId = event.currentTarget.dataset.personId
 
         // Confirm pre-registration
-        if (!confirm("Pre-register this person? They will be added to the queue and receive a notification email.")) {
+        if (!(await confirmDialog({ title: "Pre-register this person?", message: "Pre-register this person? They will be added to the queue and receive a notification email.", confirmText: "Pre-register" }))) {
             return
         }
 

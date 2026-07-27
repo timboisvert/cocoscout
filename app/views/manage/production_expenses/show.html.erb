@@ -1,3 +1,4 @@
+<% recalculate_cid = "confirm-recalculate-#{@production_expense.id}" %>
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
     ["Money", manage_money_index_path],
@@ -8,9 +9,17 @@
   text: @production_expense.name,
   links: [
     { text: "Edit", path: manage_edit_money_financials_production_expense_path(@production, @production_expense), icon: "pencil" },
-    { text: "Recalculate", path: manage_recalculate_money_financials_production_expense_path(@production, @production_expense), data: { turbo_method: :post, turbo_confirm: "Recalculate all non-override allocations?" }, color: "gray" }
+    { text: "Recalculate", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: recalculate_cid }, color: "gray" }
   ]
 } %>
+
+<%= render "shared/confirm_modal",
+      id: recalculate_cid,
+      title: "Recalculate allocations?",
+      message: "Recalculate all non-override allocations?",
+      confirm_text: "Recalculate",
+      url: manage_recalculate_money_financials_production_expense_path(@production, @production_expense),
+      method: :post %>
 
 <div class="max-w-4xl mx-auto px-4 py-8">
   <%# Summary Card %>
@@ -99,15 +108,24 @@
                   </svg>
                 </button>
                 <% if allocation.is_override? %>
-                  <%= button_to manage_override_money_financials_production_expense_allocation_path(@production, @production_expense, allocation),
-                      method: :patch,
-                      params: { clear_override: true },
-                      data: { turbo_confirm: "Clear this override and recalculate?" },
-                      class: "text-gray-400 hover:text-red-500 p-1 cursor-pointer" do %>
+                  <% clear_override_cid = "confirm-clear-override-#{allocation.id}" %>
+                  <button type="button"
+                      data-controller="modal"
+                      data-action="click->modal#open"
+                      data-modal-id="<%= clear_override_cid %>"
+                      class="text-gray-400 hover:text-red-500 p-1 cursor-pointer bg-transparent border-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
-                  <% end %>
+                  </button>
+                  <%= render "shared/confirm_modal",
+                        id: clear_override_cid,
+                        title: "Clear override?",
+                        message: "Clear this override and recalculate?",
+                        confirm_text: "Clear Override",
+                        url: manage_override_money_financials_production_expense_allocation_path(@production, @production_expense, allocation),
+                        method: :patch,
+                        params: { clear_override: true } %>
                 <% end %>
 
                 <%# Hidden inline edit form %>
@@ -158,11 +176,20 @@
 
   <%# Delete %>
   <div class="mt-8 text-center">
-    <%= button_to manage_delete_money_financials_production_expense_path(@production, @production_expense),
-        method: :delete,
-        data: { turbo_confirm: "Delete this production expense and all its allocations?" },
-        class: "text-red-500 hover:text-red-600 text-sm cursor-pointer" do %>
+    <% delete_expense_cid = "confirm-delete-expense-#{@production_expense.id}" %>
+    <button type="button"
+        data-controller="modal"
+        data-action="click->modal#open"
+        data-modal-id="<%= delete_expense_cid %>"
+        class="text-pink-600 hover:text-pink-700 text-sm cursor-pointer bg-transparent border-0">
       Delete this expense
-    <% end %>
+    </button>
+    <%= render "shared/confirm_modal",
+          id: delete_expense_cid,
+          title: "Delete expense?",
+          message: "Delete this production expense and all its allocations?",
+          confirm_text: "Delete",
+          url: manage_delete_money_financials_production_expense_path(@production, @production_expense),
+          method: :delete %>
   </div>
 </div>

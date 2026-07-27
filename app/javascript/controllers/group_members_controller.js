@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
     static targets = ["inviteModal", "inviteForm"]
@@ -83,11 +84,11 @@ export default class extends Controller {
         })
     }
 
-    removeMember(event) {
+    async removeMember(event) {
         const button = event.currentTarget
         const membershipId = button.dataset.membershipId
 
-        if (!confirm('Remove this member from the group?')) return
+        if (!(await confirmDialog({ title: "Remove member?", message: "Remove this member from the group?", confirmText: "Remove" }))) return
 
         fetch(`/groups/${this.groupIdValue}/remove_member`, {
             method: 'DELETE',

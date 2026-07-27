@@ -26,14 +26,35 @@
   <% if local_assigns[:actions].present? %>
     <div class="flex items-center gap-2">
       <% actions.each do |action| %>
+        <%
+          action_data = action[:data] || {}
+          confirm_msg = action_data[:turbo_confirm] || action_data[:confirm]
+        %>
         <% if action[:method].present? && action[:method] != :get %>
-          <%= render "shared/button",
-            text: action[:text],
-            variant: action[:variant] || "secondary",
-            size: "small",
-            path: action[:path],
-            method: action[:method],
-            data: action[:data] %>
+          <% if confirm_msg %>
+            <% confirm_id = "confirm-#{SecureRandom.hex(6)}" %>
+            <%= render "shared/button",
+              text: action[:text],
+              variant: action[:variant] || "secondary",
+              size: "small",
+              type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: confirm_id } %>
+            <%= render "shared/confirm_modal",
+              id: confirm_id,
+              title: action[:text],
+              message: confirm_msg,
+              confirm_text: action[:text],
+              url: action[:path],
+              method: action[:method] %>
+          <% else %>
+            <%= render "shared/button",
+              text: action[:text],
+              variant: action[:variant] || "secondary",
+              size: "small",
+              path: action[:path],
+              method: action[:method],
+              data: action[:data] %>
+          <% end %>
         <% else %>
           <%= link_to action[:path] do %>
             <%= render "shared/button", text: action[:text], variant: action[:variant] || "secondary", size: "small" %>

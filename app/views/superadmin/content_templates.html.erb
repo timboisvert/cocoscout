@@ -83,7 +83,15 @@
                       <div class="flex items-center gap-2">
                         <%= render "shared/button", text: "Preview", path: content_template_preview_path(template), variant: "outline", size: "small" %>
                         <%= render "shared/button", text: "Edit", path: content_template_edit_path(template), variant: "ghost", size: "small" %>
-                        <%= render "shared/button", text: "Delete", path: content_template_destroy_path(template), variant: "ghost", size: "small", data: { turbo_method: :delete, turbo_confirm: "Delete template '#{template.name}'? This cannot be undone." } %>
+                        <% cid = "confirm-delete-template-#{template.id}" %>
+                        <%= render "shared/button", text: "Delete", variant: "ghost", size: "small", type: :button,
+                              data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+                        <%= render "shared/confirm_modal", id: cid,
+                              title: "Delete template?",
+                              message: "Delete template '#{template.name}'? This cannot be undone.",
+                              confirm_text: "Delete",
+                              url: content_template_destroy_path(template),
+                              method: :delete %>
                       </div>
                     </td>
                   </tr>

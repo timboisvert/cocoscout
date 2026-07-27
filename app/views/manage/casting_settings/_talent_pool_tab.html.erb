@@ -158,24 +158,24 @@
 
     <!-- Modal for confirming removal -->
     <div data-talent-pool-inline-target="removeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->talent-pool-inline#closeRemoveModal keydown.esc@window->talent-pool-inline#closeRemoveModal">
-      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->talent-pool-inline#stopPropagation">
-        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Remove from Talent Pool</h3>
-          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="talent-pool-inline#closeRemoveModal">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="relative top-20 mx-auto border w-full max-w-md shadow-lg rounded-xl bg-white overflow-hidden" data-action="click->talent-pool-inline#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Remove from Talent Pool</h3>
+          <button type="button" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" data-action="talent-pool-inline#closeRemoveModal">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        <div class="mt-4">
+        <div class="px-6 py-5">
           <p class="text-sm text-gray-600">
             Are you sure you want to remove <strong data-talent-pool-inline-target="removePersonName"></strong> from the talent pool?
           </p>
           <div data-talent-pool-inline-target="removeWarning" class="mt-3"></div>
-          <div class="flex justify-end gap-2 mt-4">
-            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "talent-pool-inline#closeRemoveModal" } %>
-            <%= render "shared/button", text: "Remove", variant: "danger", size: "small", type: :button, data: { action: "talent-pool-inline#confirmRemove" } %>
-          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "talent-pool-inline#closeRemoveModal" } %>
+          <%= render "shared/button", text: "Remove", variant: "primary", size: "medium", type: :button, data: { action: "talent-pool-inline#confirmRemove" } %>
         </div>
       </div>
     </div>

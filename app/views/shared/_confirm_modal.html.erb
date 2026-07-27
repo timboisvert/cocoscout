@@ -1,0 +1,95 @@
+<%#
+  Reusable in-page confirmation modal (replaces native browser confirms).
+
+  Pair it with a trigger element somewhere on the page that opens it:
+
+    <button type="button"
+            data-controller="modal"
+            data-action="click->modal#open"
+            data-modal-id="<%= confirm_id %>">
+      Delete
+    </button>
+
+  ...and render this modal (usually right next to the trigger):
+
+    <%= render "shared/confirm_modal",
+          id: confirm_id,
+          title: "Delete this thing?",
+          message: "This can't be undone.",
+          confirm_text: "Delete",
+          url: some_path,
+          method: :delete %>
+
+  Locals:
+    id              (required) unique DOM id, must match the trigger's data-modal-id
+    title           heading text (default "Are you sure?")
+    message         body copy; may contain HTML (default nil)
+    confirm_text    confirm button label (default "Confirm")
+    confirm_variant shared/button variant for the confirm button (default "primary" — pink)
+    confirm_icon    optional icon name for the confirm button
+    cancel_text     cancel button label (default "Cancel")
+    url             form action URL for the confirmed action (required)
+    method          HTTP method for the form (default :delete)
+    params          hash of hidden params submitted with the action (optional)
+    form_data       hash of extra data attributes for the form (optional)
+%>
+<%
+  id              = local_assigns.fetch(:id)
+  title           = local_assigns[:title] || "Are you sure?"
+  message         = local_assigns[:message]
+  confirm_text    = local_assigns[:confirm_text] || "Confirm"
+  confirm_variant = local_assigns[:confirm_variant] || "primary"
+  confirm_icon    = local_assigns[:confirm_icon]
+  cancel_text     = local_assigns[:cancel_text] || "Cancel"
+  url             = local_assigns[:url]
+  method          = local_assigns[:method] || :delete
+  params          = local_assigns[:params] || {}
+  form_data       = local_assigns[:form_data] || {}
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+       data-action="click->modal#stopPropagation">
+    <%# Header — pink gradient (CocoScout standard for confirmation modals) %>
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= title %></h3>
+      <button type="button"
+              data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%# Body %>
+    <% if message.present? %>
+      <div class="px-6 py-5 text-sm text-gray-600">
+        <%= message.html_safe %>
+      </div>
+    <% end %>
+
+    <%# Footer %>
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+      <%= render "shared/button",
+            text: cancel_text,
+            variant: "secondary",
+            size: "medium",
+            type: :button,
+            data: { action: "click->modal#close" } %>
+      <%= form_with url: url, method: method, class: "inline", data: form_data do %>
+        <% params.each do |k, v| %>
+          <%= hidden_field_tag k, v %>
+        <% end %>
+        <%= render "shared/button",
+              text: confirm_text,
+              variant: confirm_variant,
+              size: "medium",
+              type: :submit,
+              icon: confirm_icon %>
+      <% end %>
+    </div>
+  </div>
+</div>
