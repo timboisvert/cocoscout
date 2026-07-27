@@ -1,0 +1,78 @@
+<% content_for :title, @production ? "#{@production.name} — Incoming" : "Incoming Payments" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: @production ? [
+      ["Money", manage_money_index_path],
+      ["Incoming", manage_money_incoming_path]
+    ] : [
+      ["Money", manage_money_index_path]
+    ],
+    text: @production ? @production.name : "Incoming",
+    links: []
+  } %>
+
+  <%# ---- Summary ---------------------------------------------------------- %>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Outstanding</div>
+      <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@total_outstanding) %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@payments.size, "payment") %> awaiting collection</div>
+    </div>
+    <div class="bg-white rounded-lg border <%= @overdue_count.positive? ? 'border-red-200' : 'border-gray-200' %> p-4">
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Overdue</div>
+      <div class="text-2xl font-bold mt-1 tabular-nums <%= @overdue_count.positive? ? 'text-red-600' : 'text-gray-400' %>"><%= number_to_currency(@total_overdue) %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@overdue_count, "payment") %> past due</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Where it comes from</div>
+      <div class="text-sm text-gray-600 mt-2">Almost all incoming money is contract payments — rental fees, deposits, and revenue shares owed to you.</div>
+    </div>
+  </div>
+
+  <% if @production %>
+    <%# ---- Single production: list its incoming payments ------------------ %>
+    <% if @payments.any? %>
+      <div class="space-y-2">
+        <% @payments.each do |payment| %>
+          <%= render "payment_row", payment: payment, show_production: false %>
+        <% end %>
+      </div>
+    <% else %>
+      <%= render "empty" %>
+    <% end %>
+  <% else %>
+    <%# ---- Org-wide: productions grid + org-level payments ---------------- %>
+    <% if @production_summaries.any? %>
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">By production</h3>
+      <%= render layout: "shared/slim_list", locals: { label: "Production", columns: ["Outstanding", "Overdue"] } do %>
+        <% @production_summaries.each do |s| %>
+          <%= render "shared/slim_list_row",
+                title: s[:production].name,
+                subtitle: "#{pluralize(s[:count], 'payment')} owed",
+                href: manage_money_production_incoming_path(s[:production]),
+                cells: [
+                  { value: number_to_currency(s[:outstanding]) },
+                  { value: s[:overdue_count].positive? ? number_to_currency(s[:overdue_amount]) : "—",
+                    class: s[:overdue_count].positive? ? "text-red-600 font-medium" : "text-gray-400" }
+                ] %>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <% if @orphan_payments.any? %>
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 mt-8">Not tied to a production</h3>
+      <div class="space-y-2">
+        <% @orphan_payments.each do |payment| %>
+          <%= render "payment_row", payment: payment, show_production: false %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @production_summaries.empty? && @orphan_payments.empty? %>
+      <%= render "empty" %>
+    <% end %>
+  <% end %>
+</div>

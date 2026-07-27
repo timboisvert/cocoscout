@@ -1,0 +1,12 @@
+<div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-10 text-center">
+  <div class="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+    <%= icon("check-circle", class: "w-6 h-6 text-green-600") %>
+  </div>
+  <p class="text-gray-700 font-medium">Nothing outstanding</p>
+  <p class="text-gray-500 text-sm mt-1">Incoming payments from your contracts show up here until they're collected.</p>
+  <div class="mt-4">
+    <%= link_to manage_contracts_path do %>
+      <%= render "shared/button", text: "View Contracts", variant: "secondary", size: "small" %>
+    <% end %>
+  </div>
+</div>

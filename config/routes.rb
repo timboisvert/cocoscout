@@ -1268,6 +1268,14 @@ Rails.application.routes.draw do
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
 
+    # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
+    # almost all of it from contracts. Detail route before :production_id so the
+    # literal "payment" segment isn't captured as a production id.
+    get  "money/incoming", to: "money_incoming#index", as: "money_incoming"
+    get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
+    post "money/incoming/payment/:id/remind", to: "money_incoming#remind", as: "remind_money_incoming_payment"
+    get  "money/incoming/:production_id", to: "money_incoming#index", as: "money_production_incoming"
+
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"
     # Slim inline accordion of a production's shows + their payout status (Turbo-frame, lazy).
     get "money/payouts/:production_id/events", to: "money_payouts#events", as: "money_production_payout_events"

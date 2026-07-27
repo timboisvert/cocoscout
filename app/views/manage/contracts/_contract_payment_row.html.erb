@@ -116,11 +116,12 @@
             <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                   class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
           <% elsif is_incoming && payment.collectable_online? %>
-            <%# Copy the pay link and send it however they like — no login needed. %>
+            <%# Copy the pay link, record an offline payment inline, or open the
+                Collect page for the QR code + reminders. No login needed to pay. %>
             <div class="flex items-center gap-1" data-controller="clipboard">
               <input type="hidden" data-clipboard-target="textField"
                      value="<%= pay_contract_url(token: payment.payment_token!) %>">
-              <%= render "shared/button", text: "Copy pay link", variant: "primary", size: "xs",
+              <%= render "shared/button", text: "Copy pay link", variant: "secondary", size: "xs",
                     icon: "link", type: :button, data: { action: "click->clipboard#copy" } %>
               <% if offline_allowed %>
                 <%= render "shared/button", text: "", variant: "outline-pink", size: "xs",
@@ -128,16 +129,25 @@
                       data: { action: "click->payment-modal#open" },
                       classes: "!gap-0", title: "Record a payment that arrived another way" %>
               <% end %>
+              <%= link_to manage_money_incoming_payment_path(payment) do %>
+                <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
+              <% end %>
             </div>
           <% elsif is_incoming && offline_allowed %>
-            <%# Records money that arrived offline (cash/check). %>
-            <%= render "shared/button", text: "Record payment", variant: "outline-pink", size: "xs",
-                  icon: "check-circle", type: :button, data: { action: "click->payment-modal#open" } %>
+            <%# Records money that arrived offline (cash/check); Collect page for more. %>
+            <div class="flex items-center gap-1">
+              <%= render "shared/button", text: "Record payment", variant: "outline-pink", size: "xs",
+                    icon: "check-circle", type: :button, data: { action: "click->payment-modal#open" } %>
+              <%= link_to manage_money_incoming_payment_path(payment) do %>
+                <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
+              <% end %>
+            </div>
           <% elsif is_incoming %>
-            <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
-                  title="This contract is online payment only. Allow another method on the contract to record one by hand.">
-              Awaiting payment
-            </span>
+            <%# No settled amount to charge yet (or online-only) — the Collect page
+                still lets them send a reminder or record an offline payment. %>
+            <%= link_to manage_money_incoming_payment_path(payment) do %>
+              <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
+            <% end %>
           <% elsif awaits_financials && !amount_set %>
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
                   title="This settles once you enter ticket sales for the shows on this contract.">

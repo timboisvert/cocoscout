@@ -1,0 +1,219 @@
+<% content_for :title, "Incoming Payment" %>
+<%
+  is_late = @payment.overdue?
+  is_paid = @payment.status_paid?
+  amount_tbd = @payment.amount_tbd? && @payment.amount.to_f.zero?
+  offline_allowed = @contract.offline_payments_allowed?
+  reminder_cid = "send-reminder-#{@payment.id}"
+  record_cid = "record-payment-#{@payment.id}"
+%>
+
+<div class="w-full max-w-3xl mx-auto mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Incoming", manage_money_incoming_path],
+      (@contract.production_id? ? [@contract.production_name, manage_money_production_incoming_path(@contract.production)] : nil)
+    ].compact,
+    text: @contract.contractor_name.presence || "Payment",
+    links: []
+  } %>
+
+  <%# ---- Payment summary card ------------------------------------------- %>
+  <div class="bg-white rounded-xl border <%= is_late ? 'border-red-200' : 'border-gray-200' %> overflow-hidden mt-2">
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <% if is_paid %>
+              <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
+                Paid<%= @payment.paid_date ? " #{@payment.paid_date.strftime('%b %-d')}" : "" %>
+              </span>
+            <% elsif is_late %>
+              <span class="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+                <%= icon("alert-circle", class: "w-3 h-3 mr-1 inline") %>
+                Overdue · <%= distance_of_time_in_words(@payment.due_date, Date.current) %>
+              </span>
+            <% else %>
+              <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">Awaiting payment</span>
+            <% end %>
+          </div>
+          <h1 class="text-lg font-bold text-gray-900 truncate"><%= @payment.description.presence || "Payment" %></h1>
+          <div class="text-sm text-gray-600 mt-1">
+            From <%= link_to @contract.contractor_name.presence || "payer", (@contractor ? manage_contractor_path(@contractor) : manage_contract_path(@contract)), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+            · <%= link_to "View contract", manage_contract_path(@contract), class: "text-pink-600 hover:text-pink-700" %>
+          </div>
+          <% if @contract.production_name.present? %>
+            <div class="text-sm text-gray-500 mt-0.5"><%= @contract.production_name %></div>
+          <% end %>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <div class="text-3xl font-bold <%= amount_tbd ? 'text-gray-400' : 'text-green-600' %> tabular-nums">
+            <%= amount_tbd ? "TBD" : number_to_currency(@payment.amount) %>
+          </div>
+          <div class="text-xs text-gray-500 mt-1">Due <%= @payment.due_date.strftime("%b %-d, %Y") %></div>
+        </div>
+      </div>
+    </div>
+
+    <% unless is_paid %>
+      <%# ---- Action panels ------------------------------------------------ %>
+      <div class="border-t border-gray-100 divide-y divide-gray-100">
+
+        <%# Collect in person / online %>
+        <% if @pay_url %>
+          <div class="p-6 flex items-start justify-between gap-4" data-controller="qr-code clipboard" data-qr-code-url-value="<%= @pay_url %>">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-gray-900">Collect payment</h3>
+              <p class="text-sm text-gray-500 mt-0.5">Show a QR code to charge them in person, or copy the pay link to send however you like. No login needed — they pay by card.</p>
+              <input type="hidden" data-clipboard-target="textField" value="<%= @pay_url %>">
+            </div>
+            <div class="flex flex-col gap-2 flex-shrink-0">
+              <%= render "shared/button", text: "Show QR code", variant: "primary", size: "small", icon: "qr-code", type: :button, data: { action: "click->qr-code#open" } %>
+              <%= render "shared/button", text: "Copy pay link", variant: "secondary", size: "small", icon: "link", type: :button, data: { action: "click->clipboard#copy" } %>
+            </div>
+
+            <%# QR modal %>
+            <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+              <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden" data-action="click->qr-code#stopPropagation">
+                <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                  <h3 class="text-lg font-semibold text-white">Scan to pay</h3>
+                  <button type="button" data-action="click->qr-code#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <div class="p-6 text-center">
+                  <p class="text-sm text-gray-600 mb-4">Hand them your phone or screen. Scanning opens a secure card-payment page for <strong><%= amount_tbd ? "this payment" : number_to_currency(@payment.amount) %></strong>.</p>
+                  <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                    <canvas data-qr-code-target="canvas" width="280" height="280"></canvas>
+                  </div>
+                  <button type="button" data-action="click->qr-code#download" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Send a reminder %>
+        <div class="p-6 flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-gray-900">Send a reminder</h3>
+            <p class="text-sm text-gray-500 mt-0.5">
+              Email <%= @contractor&.display_email.presence || @contract.contractor_name.presence || "the payer" %> a nudge<%= @pay_url ? " with the pay link" : "" %>.
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <%= render "shared/button", text: "Send reminder", variant: "primary", size: "small", icon: "mail", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: reminder_cid } %>
+          </div>
+        </div>
+
+        <%# Record an offline payment %>
+        <% if offline_allowed %>
+          <div class="p-6 flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-gray-900">Record a payment</h3>
+              <p class="text-sm text-gray-500 mt-0.5">Got paid another way — a check or bank transfer? Mark it received here.</p>
+            </div>
+            <div class="flex-shrink-0">
+              <%= render "shared/button", text: "Record payment", variant: "secondary", size: "small", icon: "check-circle", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: record_cid } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <p class="text-xs text-gray-400 mt-4 text-center">
+    Incoming payments are managed on the <%= link_to "contract", manage_contract_path(@contract), class: "underline hover:text-gray-600" %> too — this is the collection view.
+  </p>
+</div>
+
+<%# ================= Reminder modal ================= %>
+<% unless is_paid %>
+  <div id="<%= reminder_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Send payment reminder</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= form_with url: remind_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
+        <div class="p-6 space-y-4">
+          <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+            Reminding <strong><%= @contract.contractor_name.presence || "the payer" %></strong> about
+            <strong><%= amount_tbd ? "this payment" : number_to_currency(@payment.amount) %></strong>
+            for <%= @payment.description.presence || "a payment" %>, due <%= @payment.due_date.strftime("%b %-d, %Y") %>.
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Add a note (optional)</label>
+            <%= text_area_tag :custom_message, nil, rows: 3, placeholder: "e.g. Thanks so much — the link below takes care of it in a minute.",
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            <p class="text-xs text-gray-400 mt-1">We include the amount, what it's for, and the pay link automatically.</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Send reminder", variant: "primary", size: "medium", type: :submit, icon: "mail" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# ================= Record-offline-payment modal ================= %>
+  <% if offline_allowed %>
+    <div id="<%= record_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Record payment received</h3>
+          <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <%= form_with url: mark_paid_manage_contract_contract_payment_path(@contract, @payment), method: :post, data: { turbo: false } do %>
+          <div class="p-6 space-y-4">
+            <p class="text-sm text-gray-600">For money that arrived outside CocoScout — a check or a direct bank transfer.</p>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Amount received</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-gray-500">$</span>
+                <%= number_field_tag :payment_amount, (amount_tbd ? nil : @payment.amount), step: 0.01, min: 0, placeholder: "0.00",
+                      class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date received</label>
+              <%= date_field_tag :paid_date, Date.current,
+                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">How it arrived</label>
+              <% method_options = @contract.offline_payment_methods.map { |m| [Contract::OFFLINE_PAYMENT_METHOD_LABELS[m], m] } %>
+              <%= select_tag :payment_method, options_for_select([["Select method...", ""]] + method_options),
+                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Reference/Check # (optional)</label>
+              <%= text_field_tag :reference_number, nil, placeholder: "e.g. Check #1234",
+                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Record payment", variant: "primary", size: "medium", type: :submit, icon: "check-circle" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
