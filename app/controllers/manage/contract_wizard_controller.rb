@@ -4,57 +4,103 @@ module Manage
   class ContractWizardController < ManageController
     before_action :set_contract, except: %i[new create_draft]
 
-    # Step 0: Start new contract
+    # Step 1: Choose the contractor. When launched from a specific contractor's
+    # page (?contractor_id=), skip the picker entirely and drop straight into the
+    # "what's this contract for?" step with the draft already created.
     def new
+      if params[:contractor_id].present?
+        contractor = Current.organization.contractors.find_by(id: params[:contractor_id])
+        if contractor
+          @contract = build_draft_for(contractor)
+          if @contract.persisted?
+            redirect_to manage_production_contract_wizard_path(@contract)
+            return
+          end
+        end
+      end
+
       @contract = Current.organization.contracts.build
       @contractors = Current.organization.contractors.alphabetical
-      @linkable_productions = linkable_productions
     end
 
     def create_draft
-      contractor_id = params[:contract][:contractor_id].presence
-      contractor = Current.organization.contractors.find_by(id: contractor_id) if contractor_id
+      contractor = Current.organization.contractors.find_by(id: params.dig(:contract, :contractor_id).presence)
 
       # Require a contractor to be selected
       unless contractor
         @contract = Current.organization.contracts.build
         @contractors = Current.organization.contractors.alphabetical
-        @linkable_productions = linkable_productions
         flash.now[:alert] = "Please select a contractor or create a new one."
         render :new, status: :unprocessable_entity
         return
       end
 
-      # Optionally attach the contract to an existing production instead of
-      # creating a new one on activation (prevents duplicate productions when the
-      # show was already set up manually).
-      linked = linkable_productions.find_by(id: params[:contract][:link_production_id].presence)
+      @contract = build_draft_for(contractor)
 
-      @contract = Current.organization.contracts.build(
-        contractor_id: contractor.id,
-        contractor_name: contractor.name,
-        contractor_email: contractor.email,
-        contractor_phone: contractor.phone,
-        contractor_address: contractor.address,
-        production_name: linked&.name.presence || params[:contract][:production_name].presence,
-        draft_data: linked ? { "link_production_id" => linked.id } : {},
-        status: :draft,
-        wizard_step: 2
-      )
-
-      if @contract.save
-        redirect_to manage_bookings_contract_wizard_path(@contract)
+      if @contract.persisted?
+        redirect_to manage_production_contract_wizard_path(@contract)
       else
         @contractors = Current.organization.contractors.alphabetical
-        @linkable_productions = linkable_productions
         render :new, status: :unprocessable_entity
       end
     end
 
-    # Resume a draft contract at its last step
+    # Step "About" (a): what this contract is FOR — its name, and whether it's a
+    # brand-new production or an existing one. (Moved off the create screen so
+    # picking a contractor is the only thing step 1 asks.)
+    def production
+      @step = 1
+      @linkable_productions = linkable_productions
+      @link_production_id = @contract.draft_data["link_production_id"]
+    end
+
+    def save_production
+      linked = linkable_productions.find_by(id: params[:link_production_id].presence)
+      @contract.production_name = linked&.name.presence || params[:production_name].presence
+
+      if linked
+        @contract.draft_data = @contract.draft_data.merge("link_production_id" => linked.id)
+      else
+        # Switched back to "new production" — drop any prior link.
+        @contract.draft_data = @contract.draft_data.except("link_production_id")
+      end
+      @contract.save!
+
+      redirect_to manage_signing_contract_wizard_path(@contract)
+    end
+
+    # Step "About" (b): how this contract gets signed — CocoScout e-signature, or
+    # the classic "already signed / I'll upload it" offline path. Stored on the
+    # contract so the rest of the flow (and rollout of in-flight contracts) can key
+    # off it; defaults to :offline so nothing changes unless e-sign is chosen.
+    def signing
+      @step = 1
+    end
+
+    def save_signing
+      mode = params[:signing_mode] == "esign" ? "esign" : "offline"
+      @contract.signing_mode = mode
+      @contract.draft_data = @contract.draft_data.merge("signing_chosen" => true)
+      @contract.save!
+      redirect_to manage_bookings_contract_wizard_path(@contract)
+    end
+
+    # Resume a draft contract at its last step. The two "About" micro-steps come
+    # before any wizard_step is banked, so send a still-nameless draft back there.
     def resume
+      # Once it's been sent (or signed), the wizard is done — the contract page is
+      # where you track and manage it.
+      if @contract.signing_out_for_signature? || @contract.signing_executed?
+        redirect_to manage_contract_path(@contract)
+        return
+      end
+
+      if @contract.production_name.blank?
+        redirect_to manage_production_contract_wizard_path(@contract)
+        return
+      end
+
       step = @contract.wizard_step || 2
-      # Minimum step is now 2 (bookings) since contractor is selected at creation
       step = 2 if step < 2
       redirect_to wizard_step_path(step)
     end
@@ -179,8 +225,16 @@ module Manage
       end
 
       @contract.update_draft_step(:services, services)
-      @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
-      redirect_to manage_documents_contract_wizard_path(@contract)
+
+      # E-sign contracts generate their signed PDF — they never upload one, so
+      # skip the Documents step and go straight to Review & Send.
+      if @contract.signing_mode_esign?
+        @contract.update_column(:wizard_step, [ 8, @contract.wizard_step ].max)
+        redirect_to manage_review_contract_wizard_path(@contract)
+      else
+        @contract.update_column(:wizard_step, [ 7, @contract.wizard_step ].max)
+        redirect_to manage_documents_contract_wizard_path(@contract)
+      end
     end
 
     # Step 4: Financials — who sells the tickets, and how the deal settles.
@@ -239,8 +293,10 @@ module Manage
       end
     end
 
-    # Step 7: Document upload
+    # Step 7: Document upload (offline contracts only — e-sign generates its PDF).
     def documents
+      return redirect_to manage_review_contract_wizard_path(@contract) if @contract.signing_mode_esign?
+
       @step = 7
       @documents = @contract.contract_documents.recent
     end
@@ -272,11 +328,116 @@ module Manage
       redirect_to manage_documents_contract_wizard_path(@contract), notice: "Document deleted."
     end
 
-    # Step 8: Review and activate
+    # Step 8: Review the DATA. Offline contracts activate here; e-sign contracts
+    # confirm the data is right, then continue into Prepare → Sign → Send.
     def review
       @step = 8
       @valid_for_activation = @contract.valid_for_activation?
       @validation_errors = @contract.errors.full_messages unless @valid_for_activation
+      @conflicts = contract_conflicts
+    end
+
+    # E-sign proceed from Review → Prepare. We re-check for booking conflicts at
+    # submit time (the page may have sat open while the calendar changed). If a
+    # conflict now exists and the producer hasn't chosen to schedule anyway, we
+    # bounce back to Review with the conflict bar. Otherwise we persist their
+    # override decision (the rentals aren't created until signing) and continue.
+    def save_review
+      return redirect_to manage_review_contract_wizard_path(@contract) unless @contract.signing_mode_esign?
+
+      @conflicts = contract_conflicts
+      override = params[:allow_overlap] == "1"
+
+      if @conflicts.any? && !override
+        @step = 8
+        @valid_for_activation = @contract.valid_for_activation?
+        @validation_errors = @contract.errors.full_messages unless @valid_for_activation
+        flash.now[:alert] = "There's a scheduling conflict — choose how to handle it before continuing."
+        render :review, status: :unprocessable_entity
+        return
+      end
+
+      persist_overlap_override(override)
+      redirect_to manage_prepare_contract_wizard_path(@contract)
+    end
+
+    # Step 9: Prepare — pick the template and preview the fully rendered contract,
+    # then lock it in. (?template_id= re-previews a different template.)
+    def prepare
+      return redirect_to manage_review_contract_wizard_path(@contract) unless @contract.signing_mode_esign?
+
+      @step = 9
+      @contract.update_column(:wizard_step, [ 9, @contract.wizard_step ].max)
+      @active_templates = @contract.organization.contract_templates.active.order(:name)
+      @selected_template = @active_templates.find { |t| t.id == params[:template_id].to_i } ||
+                           @contract.contract_template || @active_templates.first
+      @rendered_document = @selected_template ? @contract.render_document_for(@selected_template) : nil
+    end
+
+    def save_prepare
+      template = @contract.organization.contract_templates.active.find_by(id: params[:contract_template_id])
+      unless template
+        redirect_to manage_prepare_contract_wizard_path(@contract), alert: "Choose a contract template."
+        return
+      end
+
+      @contract.prepare_for_signature!(template: template)
+      @contract.update_column(:wizard_step, [ 10, @contract.wizard_step ].max)
+      redirect_to manage_sign_contract_wizard_path(@contract)
+    end
+
+    # Step 10: Sign — the org's own deliberate signature over the locked document.
+    def sign
+      return redirect_to manage_review_contract_wizard_path(@contract) unless @contract.signing_mode_esign?
+      return redirect_to manage_prepare_contract_wizard_path(@contract) if @contract.contract_template.nil?
+
+      @step = 10
+      @contract.update_column(:wizard_step, [ 10, @contract.wizard_step ].max)
+      @rendered_document = @contract.render_signable_document
+    end
+
+    def save_sign
+      signer_name = params[:signer_name].to_s.strip
+
+      if signer_name.blank? || params[:agree] != "1"
+        @step = 10
+        @rendered_document = @contract.render_signable_document
+        flash.now[:alert] = "Type your name and confirm to sign."
+        render :sign, status: :unprocessable_entity
+        return
+      end
+
+      @contract.sign_by_org!(signer_name: signer_name, signed_by: Current.user, request: request)
+      @contract.update_column(:wizard_step, [ 11, @contract.wizard_step ].max)
+      redirect_to manage_send_contract_wizard_path(@contract)
+    end
+
+    # Step 11: Send — review what's going out, then send it for signature.
+    def send_step
+      return redirect_to manage_review_contract_wizard_path(@contract) unless @contract.signing_mode_esign?
+      return redirect_to manage_sign_contract_wizard_path(@contract) unless @contract.organization_signature
+
+      @step = 11
+      @contract.update_column(:wizard_step, [ 11, @contract.wizard_step ].max)
+      render :send # action is send_step (send is reserved), but the view is send.html.erb
+    end
+
+    def save_send
+      if @contract.send_for_signature!
+        # Link the contractor to their Person now (idempotent) so a member sees the
+        # contract in My Contracts right away, not only once the async job runs.
+        @contract.contractor&.ensure_person!
+        # Notify the counterparty (email + in-app message) off the request thread.
+        ContractSignatureRequestJob.perform_later(
+          @contract.id,
+          sign_contract_url(token: @contract.signing_token),
+          Current.user&.id
+        )
+        redirect_to manage_contract_path(@contract),
+                    notice: "Contract sent to #{@contract.contractor_name} for signature."
+      else
+        redirect_to manage_send_contract_wizard_path(@contract), alert: "This contract can't be sent yet."
+      end
     end
 
     def activate
@@ -288,6 +449,9 @@ module Manage
         @step = 8
         @valid_for_activation = false
         @validation_errors = @contract.errors.full_messages
+        # Re-detect conflicts so the bar (and its calendar/choices) reappears if
+        # the clash showed up between page load and submit.
+        @conflicts = contract_conflicts
         render :review, status: :unprocessable_entity
       end
     end
@@ -311,6 +475,32 @@ module Manage
 
     def set_contract
       @contract = Current.organization.contracts.find(params[:contract_id])
+    end
+
+    # Proactive scheduling-conflict detection for the review step.
+    def contract_conflicts
+      @contract_conflicts ||= ContractBookingConflicts.new(@contract)
+    end
+
+    # Remember whether the producer chose to schedule over a conflict, so the
+    # decision survives to activation/signing (where the rentals are created).
+    def persist_overlap_override(override)
+      @contract.update_column(:draft_data, @contract.draft_data.merge("allow_overlap" => override))
+    end
+
+    # Persist a fresh draft seeded with the contractor's snapshot. Used both by the
+    # normal create flow and the skip-the-picker path from a contractor's page.
+    # Production name + signing mode are chosen in the next two "About" steps.
+    def build_draft_for(contractor)
+      Current.organization.contracts.create(
+        contractor_id: contractor.id,
+        contractor_name: contractor.name,
+        contractor_email: contractor.email,
+        contractor_phone: contractor.phone,
+        contractor_address: contractor.address,
+        status: :draft,
+        wizard_step: 2
+      )
     end
 
     # Active productions not already tied to a contract — candidates a new contract
@@ -351,6 +541,9 @@ module Manage
       when 6 then manage_tech_contract_wizard_path(@contract)       # Services
       when 7 then manage_documents_contract_wizard_path(@contract)
       when 8 then manage_review_contract_wizard_path(@contract)
+      when 9 then manage_prepare_contract_wizard_path(@contract)
+      when 10 then manage_sign_contract_wizard_path(@contract)
+      when 11 then manage_send_contract_wizard_path(@contract)
       else manage_bookings_contract_wizard_path(@contract)
       end
     end

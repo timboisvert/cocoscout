@@ -15,8 +15,34 @@ module My
         .order("show_payout_line_items.paid_at DESC NULLS LAST, shows.date_and_time DESC")
 
       @total_received = paid_items.to_a.sum(&:amount)
-      # What we still owe them, across every organization (from the ledger).
-      @to_be_paid_cents = @person.payout_balance_cents
+
+      # What they're owed now, itemized straight from the ledger earnings (the
+      # source of the balance), with a friendly label per line. Anything already
+      # paid out shows as a reconciling deduction so it nets to the balance.
+      net_cents = @person.payout_balance_cents
+      earnings = PayoutLedgerEntry.where(payee: @person, entry_type: "earning")
+                                  .includes(:organization).order(occurred_at: :desc).to_a
+      @owed_lines = earnings.reject { |e| e.amount_cents.zero? }.map do |e|
+        { label: earning_label(e), org: e.organization&.name, cents: e.amount_cents }
+      end
+      # payouts + advances already netted against those earnings.
+      @already_paid_out_cents = earnings.sum(&:amount_cents) - net_cents
+
+      # Hours still awaiting a manager's approval — estimated at their rate,
+      # included in the total but clearly flagged as not yet approved.
+      members = OrganizationStaffMember.active.where(person_id: @person.id).index_by(&:organization_id)
+      pending = StaffTimeEntry.where(person_id: @person.id).pending
+                              .includes(:organization, shift_assignment: { shift: :house_role })
+                              .chronological.to_a
+      @pending_lines = pending.map do |e|
+        member = members[e.organization_id]
+        rate = member ? member.rate_cents_for(e.shift&.house_role).to_i : 0
+        { label: pending_label(e), org: e.organization&.name, cents: (rate * e.hours.to_f).round }
+      end
+      @pending_total_cents = @pending_lines.sum { |l| l[:cents] }
+
+      # Total owed includes the pending (awaiting-approval) estimate.
+      @to_be_paid_cents = net_cents + @pending_total_cents
 
       @pagy, @payment_history = pagy(paid_items, limit: 25)
     end
@@ -53,6 +79,27 @@ module My
     end
 
     private
+
+    # Friendly label for an earning ledger line, enriched from its source where
+    # possible (show name, staff-pay component, contract detail).
+    def earning_label(entry)
+      case entry.source
+      when PayoutContribution
+        entry.source.label.presence || entry.description
+      when ShowPayoutLineItem
+        entry.source.show_payout&.show&.production&.name.presence || "Show payout"
+      else
+        entry.description.presence || "Earnings"
+      end
+    end
+
+    # Friendly label for a pending (awaiting-approval) time entry.
+    def pending_label(entry)
+      hrs = ActiveSupport::NumberHelper.number_to_rounded(entry.hours, precision: 2, strip_insignificant_zeros: true)
+      role = entry.shift&.house_role&.name
+      base = role ? "#{role} shift" : (entry.source == "manual" ? "Additional time" : "Shift")
+      "#{base} · #{hrs}h"
+    end
 
     def start_bank_onboarding
       url = StripeConnectService.new(@person).onboarding_link(

@@ -4,10 +4,17 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+  <% primary = @people.first %>
+
   <%= render "my/payments/payout_summary" %>
 
   <!-- Finish staff onboarding (per organization) -->
   <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
+
+  <!-- Complete your info — sits with the other action boxes, above the calendar header -->
+  <% if primary %>
+    <%= render "my/dashboard/profile_completion_panel", person: primary %>
+  <% end %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
@@ -16,9 +23,8 @@
   } %>
 
   <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
-  <% if (primary = @people.first) %>
+  <% if primary %>
     <%= render "my/dashboard/onboarding_checklist", person: primary %>
-    <%= render "my/dashboard/profile_completion_panel", person: primary %>
   <% end %>
 
   <!-- Pending Vacancy Invitations -->

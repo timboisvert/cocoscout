@@ -26,29 +26,29 @@
   <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search Bar - Always Visible %>
   <div class="mb-4" data-controller="search-bar">
-    <%= form_with url: manage_contacts_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+    <%= form_with url: manage_contacts_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex items-center gap-2" do |f| %>
       <div class="relative flex-1">
         <input
           type="text"
           name="q"
           value="<%= @search %>"
           placeholder="Search by name or email..."
-          class="w-full h-12 px-4 pl-10 pr-10 rounded border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          class="w-full h-10 text-base px-3 pl-9 pr-9 rounded-lg border border-gray-300 bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
           autocomplete="off"
           data-action="input->search-bar#toggleClear"
           data-search-bar-target="input"
         />
-        <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="absolute left-2.5 top-3 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <button
           type="button"
           data-action="click->search-bar#clear"
           data-search-bar-target="clearBtn"
-          class="absolute right-2 top-2.5 p-1 rounded-full hover:bg-gray-100 transition cursor-pointer <%= @search.blank? ? 'hidden' : '' %>"
+          class="absolute right-1.5 top-2.5 p-1 rounded-full hover:bg-gray-100 transition cursor-pointer <%= @search.blank? ? 'hidden' : '' %>"
           title="Clear search"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 hover:text-gray-600">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>

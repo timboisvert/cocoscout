@@ -17,6 +17,21 @@ class HouseRole < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: 100 }
   validates :default_required_count, numericality: { only_integer: true, greater_than: 0 }
+  validates :default_hourly_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+
+  # Dollar view of the role's standard pay, for forms. nil = no default set.
+  def default_hourly_rate_dollars
+    default_hourly_rate_cents ? default_hourly_rate_cents / 100.0 : nil
+  end
+
+  def default_hourly_rate_dollars=(value)
+    self.default_hourly_rate_cents =
+      if value.blank?
+        nil
+      else
+        (value.to_s.gsub(/[^0-9.]/, "").to_f * 100).round
+      end
+  end
 
   scope :active, -> { where(archived_at: nil) }
   scope :ordered, -> { order(:position, :name) }

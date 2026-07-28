@@ -10,21 +10,60 @@ class PayoutBatchService
   # Payee types that can hold a Stripe Connect account (groups/guests can't).
   PAYABLE_TYPES = %w[Person Contractor].freeze
 
-  # Create a draft batch with one item per eligible payee (positive balance +
-  # Connect-enabled). Returns the batch (with no items if nobody is payable).
+  # Batch statuses that still "hold" money: an open draft (fund it from its own
+  # run) or a run mid-flight. Money committed to one of these has posted its
+  # earning to the ledger but not yet its offsetting payout, so a balance sweep
+  # must NOT grab it again.
+  UNSETTLED_BATCH_STATUSES = %w[draft funding funded processing].freeze
+
+  # Create a draft batch with one item per eligible payee. The amount is the
+  # payee's ledger balance MINUS anything already committed to another open/
+  # in-flight run — so this balance sweep never double-pays money that's already
+  # sitting in an open staff_pay/performer draft. Returns the batch (no items if
+  # nobody has an un-committed positive balance).
   def self.build_for(organization:, created_by: nil, trigger: "manual")
     batch = PayoutBatch.create!(organization: organization, created_by: created_by, trigger: trigger, status: "draft")
+    committed = committed_by_payee(organization, except_batch: batch)
 
     organization.payout_balances_by_payee.each do |(payee_type, payee_id), cents|
-      next unless cents.positive? && PAYABLE_TYPES.include?(payee_type)
+      next unless PAYABLE_TYPES.include?(payee_type)
+
+      available = cents - committed[[payee_type, payee_id]].to_i
+      next unless available.positive?
 
       payee = payee_type.constantize.find_by(id: payee_id)
       next unless payee&.can_receive_payouts?
 
-      batch.items.create!(payee: payee, amount_cents: cents)
+      batch.items.create!(payee: payee, amount_cents: available)
     end
 
     batch.recalculate_total!
+    batch
+  end
+
+  # Cents each payee already has staged in an open/in-flight run (pending items
+  # only — a paid item already posted its payout to the ledger). Keyed by
+  # [payee_type, payee_id] to match payout_balances_by_payee.
+  def self.committed_by_payee(organization, except_batch: nil)
+    scope = PayoutBatchItem
+      .joins(:payout_batch)
+      .where(payout_batches: { organization_id: organization.id, status: UNSETTLED_BATCH_STATUSES })
+      .where(status: "pending")
+    scope = scope.where.not(payout_batch_id: except_batch.id) if except_batch&.persisted?
+    scope.group(:payee_type, :payee_id).sum(:amount_cents)
+  end
+
+  # Undo an unfunded draft run. Returns tied staff hours to the approved-unpaid
+  # pool (dependent: :nullify clears payout_batch_id on destroy, but not paid_at),
+  # then destroys the batch — cascading to its items, contributions, and the
+  # earning ledger entries those posted. Draft-only: never touch money in flight.
+  def self.discard!(batch)
+    raise Error, "Only a draft run can be discarded." unless batch.status == "draft"
+
+    ActiveRecord::Base.transaction do
+      batch.staff_time_entries.update_all(paid_at: nil, updated_at: Time.current)
+      batch.destroy!
+    end
     batch
   end
 

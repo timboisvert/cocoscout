@@ -9,7 +9,9 @@ module My
 
     def index
       @show_my_sidebar = true
-      @contracts = my_contracts
+      @contracts = my_contracts.to_a
+      # Make sure executed contracts have their signed PDF generated (idempotent).
+      @contracts.each(&:ensure_signed_pdf!)
       # Whether they still need to connect a bank to be paid.
       @needs_bank = Current.user.people.select(&:can_receive_payouts?).empty?
     end
@@ -55,8 +57,13 @@ module My
     def my_contracts
       Contract.joins(:contractor)
               .where(contractors: { person_id: person_ids })
+              # Show real contracts (active/completed/etc.) and e-sign contracts that
+              # have actually been sent to them — but not drafts the org is still
+              # preparing (unsent / awaiting_send).
+              .where("contracts.status != 'draft' OR contracts.signing_state = 'out_for_signature'")
               .includes(:contractor, :production, :organization, :contract_payments,
-                        :contract_documents, space_rentals: [ :location, :location_space ])
+                        { contract_documents: { file_attachment: :blob } },
+                        space_rentals: [ :location, :location_space ])
               .order(created_at: :desc)
     end
 

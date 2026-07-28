@@ -1,0 +1,142 @@
+<%# E-signature status + actions. Only rendered for signing_mode: esign contracts. %>
+<div class="border border-gray-200 rounded-lg overflow-hidden">
+  <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-700">Signature</h3>
+    <% if @contract.signing_out_for_signature? %>
+      <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Out for signature
+      </span>
+    <% elsif @contract.signing_executed? %>
+      <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Executed
+      </span>
+    <% elsif @contract.signing_awaiting_send? %>
+      <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Ready to send
+      </span>
+    <% else %>
+      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">Not signed yet</span>
+    <% end %>
+  </div>
+
+  <div class="p-4">
+    <% if @contract.signing_unsent? %>
+      <p class="text-sm text-gray-600 mb-3">This contract hasn't been prepared and signed yet.</p>
+      <%= link_to manage_resume_contract_wizard_path(@contract) do %>
+        <%= render "shared/button", text: "Continue setup", variant: "primary", size: "medium", icon: "arrow-right", classes: "w-full justify-center" %>
+      <% end %>
+
+    <% elsif @contract.signing_awaiting_send? %>
+      <% org_sig = @contract.organization_signature %>
+      <p class="text-sm text-gray-600 mb-3">You've signed<%= " as #{org_sig.signer_name}" if org_sig&.signer_name.present? %>. It's ready to send to <span class="font-medium text-gray-900"><%= @contract.contractor_name %></span>.</p>
+      <%= link_to manage_send_contract_wizard_path(@contract) do %>
+        <%= render "shared/button", text: "Review & send", variant: "primary", size: "medium", icon: "paper-airplane", classes: "w-full justify-center" %>
+      <% end %>
+
+    <% elsif @contract.signing_out_for_signature? %>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Waiting on</dt>
+          <dd class="text-gray-900 font-medium text-right"><%= @contract.contractor_name %></dd>
+        </div>
+        <% if @contract.contractor_email.present? %>
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Email</dt>
+            <dd class="text-gray-900 text-right"><%= @contract.contractor_email %></dd>
+          </div>
+        <% end %>
+        <% if @contract.sent_for_signature_at %>
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Sent</dt>
+            <dd class="text-gray-900 text-right"><%= time_ago_in_words(@contract.sent_for_signature_at) %> ago</dd>
+          </div>
+        <% end %>
+        <% if (org_sig = @contract.organization_signature) %>
+          <div class="flex justify-between border-t border-gray-100 pt-2">
+            <dt class="text-gray-500"><%= @contract.organization.name %> signed</dt>
+            <dd class="text-gray-900 text-right"><%= org_sig.signed_on %></dd>
+          </div>
+        <% end %>
+      </dl>
+
+      <%# Shareable signing link — copy it or show a QR to send however you like. %>
+      <% share_url = sign_contract_url(token: @contract.signing_token) %>
+      <div class="mt-4 pt-3 border-t border-gray-100" data-controller="qr-code clipboard" data-qr-code-url-value="<%= share_url %>">
+        <p class="text-xs font-medium text-gray-600 mb-2">Signing link</p>
+        <input type="hidden" data-clipboard-target="textField" value="<%= share_url %>">
+        <div class="flex items-center gap-1">
+          <%= render "shared/button", text: "Copy link", variant: "secondary", size: "xs", icon: "link", type: :button,
+                data: { action: "click->clipboard#copy" } %>
+          <%= render "shared/button", text: "", variant: "outline", size: "xs", icon: "qr-code", type: :button, title: "Show QR code",
+                data: { action: "click->qr-code#open" } %>
+        </div>
+
+        <%# QR modal %>
+        <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+             data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+          <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden" data-action="click->qr-code#stopPropagation">
+            <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+              <h3 class="text-lg font-semibold text-white">Scan to review &amp; sign</h3>
+              <button type="button" data-action="click->qr-code#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="p-6 text-center">
+              <p class="text-sm text-gray-600 mb-4">They scan this to open the contract and sign it — no CocoScout login needed. Or copy the link and send it however you like.</p>
+              <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                <canvas data-qr-code-target="canvas" width="240" height="240"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-gray-100">
+        <% rid = "confirm-revoke-signature-#{@contract.id}" %>
+        <%= render "shared/button", text: "Revoke request", variant: "secondary", size: "small", icon: "x-mark", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: rid } %>
+        <p class="text-xs text-gray-500 mt-2">Revoking kills the link. You've still signed, so you can re-send or step back to change it.</p>
+        <%= render "shared/confirm_modal", id: rid,
+              title: "Revoke signature request?",
+              message: "The link sent to #{@contract.contractor_name} will stop working. You can re-send it or edit and re-sign first.",
+              confirm_text: "Revoke request",
+              url: manage_contract_signature_path(@contract), method: :delete %>
+      </div>
+
+    <% else %>
+      <%# executed %>
+      <div class="space-y-3">
+        <% if (org_sig = @contract.organization_signature) %>
+          <div class="flex items-start gap-2">
+            <%= icon("check-circle", class: "w-4 h-4 text-green-600 mt-0.5") %>
+            <div class="text-sm">
+              <div class="text-gray-900 font-medium"><%= org_sig.signer_name.presence || @contract.organization.name %></div>
+              <div class="text-gray-500 text-xs"><%= @contract.organization.name %> · <%= org_sig.signed_at_long %></div>
+            </div>
+          </div>
+        <% end %>
+        <% if (con_sig = @contract.contractor_signature) %>
+          <div class="flex items-start gap-2">
+            <%= icon("check-circle", class: "w-4 h-4 text-green-600 mt-0.5") %>
+            <div class="text-sm">
+              <div class="text-gray-900 font-medium"><%= con_sig.signer_name.presence || @contract.contractor_name %></div>
+              <div class="text-gray-500 text-xs">
+                Contractor · <%= con_sig.signed_at_long %>
+                <% if con_sig.ip_address.present? %> · IP <%= con_sig.ip_address %><% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="pt-3 border-t border-gray-100">
+          <% if (pdf_doc = @contract.signed_pdf_document) %>
+            <%= render "shared/button", text: "Download signed PDF", variant: "secondary", size: "small", icon: "download",
+                  classes: "w-full justify-center", path: rails_blob_path(pdf_doc.file, disposition: "attachment") %>
+          <% else %>
+            <p class="text-xs text-gray-500">Your signed PDF is being generated — refresh in a moment.</p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

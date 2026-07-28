@@ -1,12 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
+import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 // Opens/closes the House Role modal and switches it between "new" and "edit"
-// modes by reading data-* attributes from the clicked trigger.
+// modes by reading data-* attributes from the clicked trigger. In edit mode a
+// "Remove role" action deletes the role (delete lives in the modal, not on the
+// row, so it works on touch).
 export default class extends Controller {
     static targets = [
         "modal", "form", "title", "submitButton", "methodInput",
         "nameInput", "roleTypeSelect", "locationSelect", "requiredCount",
-        "startOffset", "endOffset"
+        "startOffset", "endOffset", "hourlyRate", "deleteButton"
     ]
     static values = {
         createUrl: String,
@@ -22,6 +25,8 @@ export default class extends Controller {
         if (this.hasMethodInputTarget) this.methodInputTarget.value = "post"
         if (this.hasTitleTarget) this.titleTarget.textContent = "Add role"
         this.setSubmitText("Add role")
+        this.editUrl = null
+        if (this.hasDeleteButtonTarget) this.deleteButtonTarget.classList.add("hidden")
         this.show()
     }
 
@@ -36,14 +41,38 @@ export default class extends Controller {
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = btn.dataset.roleRequiredCount || ""
         if (this.hasStartOffsetTarget)   this.startOffsetTarget.value   = btn.dataset.roleStartOffset || ""
         if (this.hasEndOffsetTarget)     this.endOffsetTarget.value     = btn.dataset.roleEndOffset || ""
+        if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value    = btn.dataset.roleHourlyRate || ""
 
         if (this.hasFormTarget && this.hasUpdateUrlTemplateValue) {
-            this.formTarget.action = this.updateUrlTemplateValue.replace(":id", id)
+            // update (PATCH) and destroy (DELETE) share the same path
+            this.editUrl = this.updateUrlTemplateValue.replace(":id", id)
+            this.formTarget.action = this.editUrl
         }
         if (this.hasMethodInputTarget) this.methodInputTarget.value = "patch"
         if (this.hasTitleTarget) this.titleTarget.textContent = "Edit role"
         this.setSubmitText("Save changes")
+        if (this.hasDeleteButtonTarget) this.deleteButtonTarget.classList.remove("hidden")
         this.show()
+    }
+
+    async destroyRole(event) {
+        if (event) event.preventDefault()
+        if (!this.editUrl) return
+        if (!(await confirmDialog({
+            title: "Remove role?",
+            message: "Existing shifts using it will be kept.",
+            confirmText: "Remove"
+        }))) return
+
+        const form = document.createElement("form")
+        form.method = "post"
+        form.action = this.editUrl
+        const token = document.querySelector('meta[name="csrf-token"]')?.content
+        form.innerHTML =
+            `<input type="hidden" name="_method" value="delete">` +
+            `<input type="hidden" name="authenticity_token" value="${token || ""}">`
+        document.body.appendChild(form)
+        form.submit()
     }
 
     close(event) {
@@ -76,6 +105,7 @@ export default class extends Controller {
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = "1"
         if (this.hasStartOffsetTarget)   this.startOffsetTarget.value = "-60"
         if (this.hasEndOffsetTarget)     this.endOffsetTarget.value = "60"
+        if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value = ""
     }
 
     setSubmitText(text) {

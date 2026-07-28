@@ -12,10 +12,14 @@
     label:     header label for the first (title) column (default "Name")
     col_class: width utility for each column cell (default "w-28"); pass the same
                value to the rows so headers and cells line up
+    col_classes: optional array of per-column width utilities (overrides col_class
+               per column, e.g. ["w-48", "w-28", "w-24"]); pass the same to the rows
     min_width: min-width utility so columns don't crush on mobile (default "min-w-[560px]")
 %>
 <%
   col_class = local_assigns.fetch(:col_class, "w-28")
+  col_classes = local_assigns[:col_classes]
+  col_aligns = local_assigns[:col_aligns]
   first_label = local_assigns.fetch(:label, "Name")
   min_width = local_assigns.fetch(:min_width, "min-w-[560px]")
 %>
@@ -26,8 +30,8 @@
       <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
         <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
         <span class="flex-1 min-w-0"><%= first_label %></span>
-        <% columns.each do |col| %>
-          <span class="<%= col_class %> text-right flex-shrink-0"><%= col %></span>
+        <% columns.each_with_index do |col, i| %>
+          <span class="<%= (col_classes && col_classes[i]) || col_class %> <%= (col_aligns && col_aligns[i]) || "text-right" %> flex-shrink-0"><%= col %></span>
         <% end %>
       </div>
 

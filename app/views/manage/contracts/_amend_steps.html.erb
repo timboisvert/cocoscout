@@ -1,21 +1,17 @@
 <%#
-  Amend-flow progress indicator. Local: current (1-5).
-  Completed steps show a green check, the current step is pink, future steps gray.
+  Amend-flow progress header. Local: current (1-5).
+  Renders the shared full-width wizard-steps component (the same one the create
+  wizard uses) so amending looks and behaves like the rest of the system.
+  Completed steps are clickable to jump back.
 %>
-<% steps = [ "Events", "Review Events", "Financials", "Ticketing & Services", "Confirm" ] %>
-<div class="flex items-center gap-4 mb-8">
-  <% steps.each_with_index do |name, i| %>
-    <% n = i + 1 %>
-    <% state = n < current ? :done : (n == current ? :current : :future) %>
-    <div class="flex items-center gap-2 flex-shrink-0">
-      <div class="w-8 h-8 flex-shrink-0 aspect-square rounded-full flex items-center justify-center text-sm font-semibold
-                  <%= state == :done ? "bg-green-500 text-white" : (state == :current ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-500") %>">
-        <% if state == :done %><%= icon("check", class: "w-4 h-4") %><% else %><%= n %><% end %>
-      </div>
-      <span class="text-sm font-medium whitespace-nowrap <%= state == :current ? "text-gray-900" : "text-gray-500" %>"><%= name %></span>
-    </div>
-    <% unless n == steps.size %>
-      <div class="flex-1 h-0.5 <%= n < current ? "bg-green-500" : "bg-gray-200" %>"></div>
-    <% end %>
-  <% end %>
-</div>
+<%
+  current = (local_assigns[:current] || 1).to_i
+  steps = [
+    { name: "Events",               path: amend_bookings_manage_contract_path(@contract) },
+    { name: "Review Events",        path: amend_events_manage_contract_path(@contract) },
+    { name: "Financials",           path: amend_payments_manage_contract_path(@contract) },
+    { name: "Ticketing & Services", path: amend_ticketing_tech_manage_contract_path(@contract) },
+    { name: "Confirm",              path: amend_review_manage_contract_path(@contract) }
+  ]
+%>
+<%= render "shared/wizard_steps", steps: steps, current_index: current - 1 %>

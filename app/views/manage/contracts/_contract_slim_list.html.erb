@@ -6,7 +6,7 @@
   Locals:
     contracts: array of Contract objects
 %>
-<%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Dates", "Type", "Value" ], col_class: "w-32", min_width: "min-w-[640px]" } do %>
+<%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Dates", "Type", "Value" ], col_classes: [ "w-56", "w-36", "w-28" ], col_aligns: [ "text-left", "text-left", "text-right" ], min_width: "min-w-[780px]" } do %>
   <% contracts.each do |contract| %>
     <%
       is_draft = contract.status_draft?
@@ -45,7 +45,9 @@
         "—"
       end
 
-      # ---- Column 3: Value (+ status color) ----
+      # ---- Column 3: Value (price is the headline; status is small subtext) ----
+      value_sub = nil
+      value_sub_class = "text-gray-400"
       if is_revenue_share && contract.has_revenue_projection?
         our_range = contract.projected_our_revenue_range
         value_label = "#{number_to_currency(our_range[:low], precision: 0)}–#{number_to_currency(our_range[:high], precision: 0)}"
@@ -54,17 +56,15 @@
         value_label = "#{our_share}% of sales"
         value_class = "text-gray-900"
       elsif total_value > 0
-        status_suffix = if is_paid
-          " · paid"
+        value_label = number_to_currency(total_value)
+        value_class = "text-gray-900"
+        if is_paid
+          value_sub = "paid"; value_sub_class = "text-green-600"
         elsif is_behind
-          " · #{pluralize(late_payments.size, 'late')}"
+          value_sub = pluralize(late_payments.size, "late"); value_sub_class = "text-red-500"
         elsif pending_payments.any?
-          " · #{pending_payments.size} pending"
-        else
-          ""
+          value_sub = "#{pending_payments.size} pending"; value_sub_class = "text-gray-400"
         end
-        value_label = "#{number_to_currency(total_value)}#{status_suffix}"
-        value_class = is_paid ? "text-green-600" : (is_behind ? "text-red-600" : "text-gray-900")
       elsif is_draft
         value_label = "Not configured"
         value_class = "text-gray-400"
@@ -73,19 +73,32 @@
         value_class = "text-gray-400"
       end
 
-      badge = is_draft ? { text: (contract.wizard_step > 1 ? "Draft · Step #{contract.wizard_step}/8" : "Draft"), color: "gray" } : nil
+      badge =
+        if !is_draft
+          nil
+        elsif contract.signing_mode_esign?
+          # E-sign drafts read by their signing stage, not a step number.
+          case contract.signing_state
+          when "awaiting_send" then { text: "Ready to send", color: "blue" }
+          when "out_for_signature" then { text: "Out for signature", color: "amber" }
+          else { text: "Draft", color: "gray" }
+          end
+        else
+          { text: (contract.wizard_step > 1 ? "Draft · Step #{contract.wizard_step}/8" : "Draft"), color: "gray" }
+        end
       subtitle = production_label.presence || contract.contractor_email.presence
     %>
     <%= render "shared/slim_list_row",
           title: contract.contractor_name,
           subtitle: subtitle,
           badge: badge,
-          col_class: "w-32",
+          col_classes: [ "w-56", "w-36", "w-28" ],
+          col_aligns: [ "text-left", "text-left", "text-right" ],
           href: contract_path,
           cells: [
             { value: dates_label, class: "text-gray-600 truncate" },
-            { value: type_label, class: "text-gray-600" },
-            { value: value_label, class: value_class }
+            { value: type_label, class: "text-gray-600 truncate" },
+            { value: value_label, class: value_class, subvalue: value_sub, subvalue_class: value_sub_class }
           ] %>
   <% end %>
 <% end %>

@@ -11,51 +11,21 @@
     links: []
   } %>
 
+  <%
+    wizard_steps = [
+      { num: 1, name: "Basics", path: manage_course_wizard_basics_path },
+      { num: 2, name: "Instructor", path: manage_course_wizard_instructor_path },
+      { num: 3, name: "Schedule", path: manage_course_wizard_schedule_path },
+      { num: 4, name: "Pricing", path: manage_course_wizard_pricing_path },
+      { num: 5, name: "Details", path: manage_course_wizard_details_path },
+      { num: 6, name: "Review", path: manage_course_wizard_review_path }
+    ]
+    current_index = wizard_steps.index { |s| s[:num] == @step } || 0
+  %>
+  <%# Full-width step bar, directly below the breadcrumb. %>
+  <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>
+
   <div class="max-w-2xl mx-auto">
-    <!-- Progress Steps -->
-    <div class="mb-8">
-      <div class="flex items-center justify-center">
-        <%
-          steps = [
-            { num: 1, name: "Basics", path: manage_course_wizard_basics_path },
-            { num: 2, name: "Instructor", path: manage_course_wizard_instructor_path },
-            { num: 3, name: "Schedule", path: manage_course_wizard_schedule_path },
-            { num: 4, name: "Pricing", path: manage_course_wizard_pricing_path },
-            { num: 5, name: "Details", path: manage_course_wizard_details_path },
-            { num: 6, name: "Review", path: manage_course_wizard_review_path }
-          ]
-        %>
-        <% steps.each_with_index do |step, index| %>
-          <% is_current = step[:num] == @step %>
-          <% is_completed = step[:num] < @step %>
-          <% is_clickable = is_completed %>
-          <div class="flex items-center">
-            <% if is_clickable %>
-              <%= link_to step[:path], class: "flex items-center" do %>
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
-              <% end %>
-            <% else %>
-              <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
-                  <%= step[:num] %>
-                </div>
-                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
-              </div>
-            <% end %>
-          </div>
-
-          <% if index < steps.length - 1 %>
-            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < @step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
-
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
       <%= yield %>

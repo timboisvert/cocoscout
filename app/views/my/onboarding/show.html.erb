@@ -6,7 +6,12 @@
   first_name = @staff_member.preferred_first_name.presence || @staff_member.first_name.presence || @person.name.to_s.split(" ").first
 %>
 
-<div class="max-w-2xl mx-auto px-4 py-10">
+<div class="max-w-2xl mx-auto px-4 py-10"
+     data-controller="unavailability"
+     data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
+     data-unavailability-create-url-value="<%= my_create_shift_unavailability_path %>"
+     data-unavailability-mode-value="<%= @availability_mode %>"
+     data-unavailability-set-mode-url-value="<%= my_set_shift_availability_mode_path %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%# Warm welcome header %>
@@ -59,15 +64,26 @@
       </div>
     </div>
 
-    <%# Step 3 — initial work availability %>
-    <div class="bg-white border border-gray-200 rounded-lg p-5">
+    <%# Step 3 — initial work availability. Marked done once anything is set;
+        flips live when the calendar modal is closed with days marked. %>
+    <% availability_set = @unavailability_entries.any? %>
+    <div data-onboarding-step3-card class="bg-white border <%= availability_set ? "border-green-200" : "border-gray-200" %> rounded-lg p-5">
       <div class="flex items-start gap-4">
-        <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center flex-shrink-0 text-sm font-semibold">3</div>
+        <span data-onboarding-step3-pending class="<%= "hidden" if availability_set %>"><%= render "my/onboarding/step_marker", done: false, number: 3 %></span>
+        <span data-onboarding-step3-done class="<%= "hidden" unless availability_set %>"><%= render "my/onboarding/step_marker", done: true, number: 3 %></span>
         <div class="flex-1 min-w-0">
           <h3 class="font-semibold text-gray-900">Set your initial work availability</h3>
           <p class="text-sm text-gray-600 mt-1">Tell <%= @organization.name %> when you can work so they can schedule you. You can update this any time from My Shifts.</p>
-          <div class="mt-3">
-            <%= render "shared/button", text: "Set work availability", variant: "primary", size: "medium", path: my_shifts_path %>
+
+          <div data-onboarding-step3-pending class="mt-3 <%= "hidden" if availability_set %>">
+            <%= render "shared/button", text: "Set work availability", variant: "primary", size: "medium", type: :button,
+                  data: { action: "click->unavailability#open" } %>
+          </div>
+
+          <div data-onboarding-step3-done class="mt-2 <%= "hidden" unless availability_set %>">
+            <p class="text-sm text-green-700 font-medium">Availability set — thanks!</p>
+            <button type="button" data-action="click->unavailability#open"
+                    class="text-sm text-pink-600 hover:text-pink-700 mt-1 bg-transparent border-0 p-0 cursor-pointer">Update availability</button>
           </div>
         </div>
       </div>
@@ -79,4 +95,56 @@
       <p class="text-sm font-medium text-green-800">You're all set — <%= @organization.name %> can now schedule and pay you. 🎉</p>
     </div>
   <% end %>
+
+  <%# The work-availability calendar modal (step 3 opens it in place). %>
+  <%= render "my/shifts/availability_modal" %>
+
+  <%# Celebration overlay, revealed when they finish availability and everything
+      else is already done. %>
+  <div id="onboarding-complete-overlay"
+       class="hidden fixed inset-0 z-[80] bg-gray-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <h2 class="text-2xl coustard-regular text-gray-900">Nice work — you're all set! 🎉</h2>
+      <p class="text-gray-600 mt-2">
+        You've accepted your spot, set up how you get paid, and told <%= @organization.name %> when you can work.
+        Head to My Shifts to see your assignments.
+      </p>
+      <div class="mt-6 flex flex-col gap-2">
+        <%= link_to my_shifts_path do %>
+          <%= render "shared/button", text: "Go to My Shifts", variant: "primary", size: "large", type: :button, classes: "w-full" %>
+        <% end %>
+        <button type="button" onclick="document.getElementById('onboarding-complete-overlay').classList.add('hidden')"
+                class="text-sm text-gray-500 hover:text-gray-700 bg-transparent border-0 cursor-pointer py-1">
+          Keep looking around here
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+  (function () {
+    // Whether everything except availability is already done — decides if
+    // finishing availability completes the whole onboarding.
+    var allElseDone = <%= (acknowledged && bank_done).to_json.html_safe %>;
+
+    document.addEventListener("unavailability:closed", function (event) {
+      if (!event.detail || !event.detail.hasEntries) return;
+
+      // Availability is set now — reflect that in step 3 without a reload.
+      document.querySelectorAll("[data-onboarding-step3-pending]").forEach(function (el) { el.classList.add("hidden"); });
+      document.querySelectorAll("[data-onboarding-step3-done]").forEach(function (el) { el.classList.remove("hidden"); });
+      var card = document.querySelector("[data-onboarding-step3-card]");
+      if (card) { card.classList.remove("border-gray-200"); card.classList.add("border-green-200"); }
+
+      // If the other steps were already done, this was the last one — celebrate.
+      if (allElseDone) {
+        var overlay = document.getElementById("onboarding-complete-overlay");
+        if (overlay) overlay.classList.remove("hidden");
+      }
+    });
+  })();
+</script>

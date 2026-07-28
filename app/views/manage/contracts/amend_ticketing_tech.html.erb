@@ -12,10 +12,10 @@
     links: []
   } %>
 
+  <%= render "manage/contracts/amend_steps", current: 4 %>
+
   <div class="max-w-2xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Update the ticket tiers and prices, discounts, and the services on this contract.</p>
-
-    <%= render "manage/contracts/amend_steps", current: 4 %>
 
     <%= form_with url: save_amend_ticketing_tech_manage_contract_path(@contract), method: :post, local: true do %>
       <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">

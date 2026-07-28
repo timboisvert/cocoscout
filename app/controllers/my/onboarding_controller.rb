@@ -12,6 +12,14 @@ module My
 
     def show
       @organization = @staff_member.organization
+
+      # Person-scoped availability, so step 3 can open the same calendar modal
+      # inline instead of bouncing to My Shifts.
+      @availability_mode = @person.availability_mode || "unavailable"
+      @unavailability_entries = @person.staff_unavailabilities
+                                       .where(date: Date.current.beginning_of_month..(Date.current + 12.months))
+                                       .order(:date)
+                                       .map { |u| { date: u.date.iso8601, scope: u.scope } }
     end
 
     # "I'm in" — record that they've accepted onboarding, then re-evaluate whether

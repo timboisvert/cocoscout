@@ -55,13 +55,15 @@ class OrganizationStaffMember < ApplicationRecord
   def sync_role_qualifications!(role_ids:, rates: {})
     rates = (rates || {}).transform_keys(&:to_i)
     ids = Array(role_ids).map(&:to_i).reject(&:zero?).uniq
-    valid = organization.house_roles.where(id: ids).pluck(:id)
+    valid_roles = organization.house_roles.where(id: ids)
 
-    staff_role_qualifications.where.not(house_role_id: valid).destroy_all
+    staff_role_qualifications.where.not(house_role_id: valid_roles.select(:id)).destroy_all
 
-    valid.each do |rid|
-      qualification = staff_role_qualifications.find_or_initialize_by(house_role_id: rid)
-      qualification.hourly_rate_cents = self.class.rate_cents_from(rates[rid])
+    valid_roles.each do |role|
+      qualification = staff_role_qualifications.find_or_initialize_by(house_role_id: role.id)
+      # An explicit rate wins; otherwise fall back to the role's default pay.
+      qualification.hourly_rate_cents =
+        self.class.rate_cents_from(rates[role.id]) || role.default_hourly_rate_cents
       qualification.save!
     end
   end

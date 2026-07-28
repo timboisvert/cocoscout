@@ -91,6 +91,8 @@ module Manage
             reimbursement_cents: dollars_to_cents(row[:reimbursement]),
             tips_cents: dollars_to_cents(row[:tips]),
             cash_tips_cents: dollars_to_cents(row[:cash_tips]),
+            tips_worksheet: parse_worksheet(row[:tips_sheet]),
+            cash_tips_worksheet: parse_worksheet(row[:cash_tips_sheet]),
             notes: row[:notes].to_s.strip.presence,
             time_entry_ids: Array(row[:time_entry_ids])
           }
@@ -112,6 +114,20 @@ module Manage
         return 0 if value.blank?
 
         (value.to_s.delete("$,").to_d * 100).round
+      end
+
+      # The tips / cash-tips worksheet arrives as hidden inputs, each a
+      # "date|amount" string (see tips_worksheet_controller#useTotal). Turn it
+      # into the per-day breakdown stored on the contribution; drop blank/zero
+      # rows.
+      def parse_worksheet(raw)
+        Array(raw).filter_map do |entry|
+          date, amount = entry.to_s.split("|", 2)
+          cents = dollars_to_cents(amount)
+          next if cents.zero?
+
+          { "date" => date.to_s.strip.presence, "amount_cents" => cents }
+        end
       end
 
       def parse_payday

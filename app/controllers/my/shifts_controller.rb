@@ -33,6 +33,14 @@ module My
       @has_any = @rows.any?
       @upcoming_count = @rows.size
 
+      # Staff positions this person has been invited to but hasn't accepted yet —
+      # surfaced as a prompt bar so they can accept their onboarding right here.
+      @pending_onboarding_invites = OrganizationStaffMember.active
+        .where(person_id: people_ids)
+        .includes(:organization, :person)
+        .select { |m| m.onboarding_status == :invited }
+        .sort_by { |m| m.organization.name.to_s.downcase }
+
       load_timekeeping(people_ids, finalized_weeks)
 
       # Unavailability for the calendar/summary (the client renders both). Cover

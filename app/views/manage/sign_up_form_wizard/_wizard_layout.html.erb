@@ -12,62 +12,27 @@
     links: []
   } %>
 
+  <%
+    # Build steps dynamically based on wizard state
+    all_steps = []
+    all_steps << { key: "scope", name: "Scope", path: manage_signups_forms_wizard_path(@production) }
+    unless @wizard_state && @wizard_state[:scope] == "shared_pool"
+      all_steps << { key: "events", name: "Events", path: manage_signups_forms_wizard_events_path(@production) }
+    end
+    all_steps << { key: "slots", name: "Slots", path: manage_signups_forms_wizard_slots_path(@production) }
+    all_steps << { key: "rules", name: "Rules", path: manage_signups_forms_wizard_rules_path(@production) }
+    all_steps << { key: "schedule", name: "Schedule", path: manage_signups_forms_wizard_schedule_path(@production) }
+    all_steps << { key: "notifications", name: "Notifications", path: manage_signups_forms_wizard_notifications_path(@production) }
+    all_steps << { key: "review", name: "Review", path: manage_signups_forms_wizard_review_path(@production) }
+
+    # Assign step numbers
+    wizard_steps = all_steps.each_with_index.map { |step, i| step.merge(num: i + 1) }
+    current_index = wizard_steps.index { |s| s[:num] == current_step } || 0
+  %>
+  <%# Full-width step bar, directly below the breadcrumb. %>
+  <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>
+
   <div class="max-w-2xl mx-auto mt-8">
-    <!-- Progress Steps -->
-    <div class="mb-8">
-      <div class="flex items-center justify-center">
-        <%
-          # Build steps dynamically based on wizard state
-          all_steps = []
-          all_steps << { key: "scope", name: "Scope", path: manage_signups_forms_wizard_path(@production) }
-          unless @wizard_state && @wizard_state[:scope] == "shared_pool"
-            all_steps << { key: "events", name: "Events", path: manage_signups_forms_wizard_events_path(@production) }
-          end
-          all_steps << { key: "slots", name: "Slots", path: manage_signups_forms_wizard_slots_path(@production) }
-          all_steps << { key: "rules", name: "Rules", path: manage_signups_forms_wizard_rules_path(@production) }
-          all_steps << { key: "schedule", name: "Schedule", path: manage_signups_forms_wizard_schedule_path(@production) }
-          all_steps << { key: "notifications", name: "Notifications", path: manage_signups_forms_wizard_notifications_path(@production) }
-          all_steps << { key: "review", name: "Review", path: manage_signups_forms_wizard_review_path(@production) }
-
-          # Assign step numbers
-          steps = all_steps.each_with_index.map { |step, i| step.merge(num: i + 1) }
-        %>
-        <% steps.each_with_index do |step, index| %>
-          <% is_current = step[:num] == current_step %>
-          <% is_completed = step[:num] < current_step %>
-          <% is_clickable = is_completed %>
-
-          <div class="flex items-center">
-            <% if is_clickable %>
-              <%= link_to step[:path], class: "flex items-center" do %>
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_completed ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
-                  <% if is_completed %>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  <% else %>
-                    <%= step[:num] %>
-                  <% end %>
-                </div>
-                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
-              <% end %>
-            <% else %>
-              <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
-                  <%= step[:num] %>
-                </div>
-                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
-              </div>
-            <% end %>
-          </div>
-
-          <% if index < steps.length - 1 %>
-            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < current_step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
-
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
       <%= yield %>

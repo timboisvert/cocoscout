@@ -11,64 +11,46 @@
     links: []
   } %>
 
-  <%# Steps are 2xl by default; a step with a side panel asks for more room. %>
+  <%
+    # Settlement-first flow. Schedule merges bookings + preview (internal steps 2 &
+    # 3 both read as "Schedule"); Financials comes before everything downstream;
+    # Ticketing only appears once we're the ones selling; e-sign contracts skip the
+    # Documents (upload) step since they generate their PDF.
+    persisted = defined?(@contract) && @contract.persisted?
+    esign = persisted && @contract.signing_mode_esign?
+    # The data-collection steps, in order.
+    data_steps = [
+      # "About" (step 1) covers the two setup micro-steps: production + signing.
+      { num: 1, name: "About", path: persisted ? manage_production_contract_wizard_path(@contract) : nil },
+      { num: 2, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
+      { num: 4, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil }
+    ]
+    data_steps << { num: 5, name: "Ticketing", path: manage_ticketing_contract_wizard_path(@contract) } if persisted && @contract.org_sells_tickets?
+    data_steps << { num: 6, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil }
+    data_steps << { num: 7, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil } unless esign
+    data_steps << { num: 8, name: esign ? "Review" : "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
+
+    if esign && @step && @step >= 9
+      # Document phase (Prepare/Sign/Send): the whole data journey compresses into a
+      # single clickable "Set up" group, followed by the three document steps.
+      wizard_steps = [
+        { name: "Set up", path: manage_review_contract_wizard_path(@contract), substeps: data_steps },
+        { name: "Prepare", path: manage_prepare_contract_wizard_path(@contract) },
+        { name: "Sign", path: manage_sign_contract_wizard_path(@contract) },
+        { name: "Send", path: manage_send_contract_wizard_path(@contract) }
+      ]
+      current_index = { 9 => 1, 10 => 2, 11 => 3 }[@step] || 0
+    else
+      # Data phase: the collection steps, expanded. (Normalize schedule-preview 3→2.)
+      current_step = @step == 3 ? 2 : @step
+      wizard_steps = data_steps
+      current_index = wizard_steps.index { |s| s[:num] == current_step } || 0
+    end
+  %>
+  <%# Full-width step bar, directly below the breadcrumb. %>
+  <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>
+
   <div class="<%= local_assigns[:width].presence || "max-w-2xl" %> mx-auto">
-    <!-- Progress Steps -->
-    <div class="mb-8">
-      <div class="flex items-center justify-center">
-        <%
-          # Settlement-first flow. Schedule merges bookings + preview (internal
-          # steps 2 & 3 both read as "Schedule"); Financials comes before
-          # everything downstream, and Ticketing only appears once you've said
-          # we're the ones selling.
-          persisted = defined?(@contract) && @contract.persisted?
-          # Normalize the schedule-preview sub-step (3) onto the Schedule node (2).
-          current_step = @step == 3 ? 2 : @step
-          steps = [
-            { num: 2, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
-            { num: 4, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil }
-          ]
-          if persisted && @contract.org_sells_tickets?
-            steps << { num: 5, name: "Ticketing", path: manage_ticketing_contract_wizard_path(@contract) }
-          end
-          steps += [
-            { num: 6, name: "Services", path: persisted ? manage_tech_contract_wizard_path(@contract) : nil },
-            { num: 7, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil },
-            { num: 8, name: "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
-          ]
-          steps.each_with_index { |step, i| step[:display] = i + 1 }
-        %>
-        <% steps.each_with_index do |step, index| %>
-          <% is_current = step[:num] == current_step %>
-          <% is_completed = step[:num] < current_step %>
-          <% is_clickable = is_completed && step[:path].present? %>
-          <div class="flex items-center">
-            <% if is_clickable %>
-              <%= link_to step[:path], class: "flex items-center" do %>
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
-              <% end %>
-            <% else %>
-              <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
-                  <%= step[:display] %>
-                </div>
-                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
-              </div>
-            <% end %>
-          </div>
-
-          <% if index < steps.length - 1 %>
-            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < current_step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
-
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
       <%= yield %>

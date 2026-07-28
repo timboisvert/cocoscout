@@ -1,0 +1,99 @@
+<%#
+  Shared wizard step indicator — a full-width progress bar meant to sit directly
+  below the page's top_menu/breadcrumb (NOT glued to the narrow content column).
+
+  Locals:
+    steps         : ordered Array of { name:, path: } hashes (path optional).
+                    A completed step with a path becomes a clickable back-link.
+                    A step may instead carry substeps: [ { name:, path: }, … ] —
+                    it then renders as ONE compressed "group" node with a dropdown
+                    of its substeps (used to collapse a finished phase, e.g. all the
+                    data-collection steps compressing into a single "Set up ✓" node
+                    once you move on to preparing/signing/sending).
+    current_index : 0-based index of the current step. Steps before it render as
+                    complete (check + pink), the current one is filled pink, and
+                    the rest are upcoming (gray).
+
+  Notes:
+    - Build the `steps` array in the caller so conditional/dynamic steps (ones that
+      appear or disappear) are simply included or omitted before rendering.
+    - Labels hide on very small screens; the numbered circles always show.
+    - The group dropdown uses a native <details> element — no JS required.
+%>
+<%
+  steps = local_assigns[:steps] || []
+  current_index = (local_assigns[:current_index] || 0).to_i
+%>
+<% if steps.any? %>
+  <% has_group = steps.any? { |s| s[:substeps].present? } %>
+  <div class="border-b border-gray-200 mb-8">
+    <%# A group dropdown must escape the bar, so don't clip when one is present.
+        Only the many-step (no-group) case scrolls horizontally. %>
+    <nav aria-label="Progress" class="w-full pt-1 pb-4 <%= has_group ? "overflow-visible" : "overflow-x-auto" %>">
+      <ol class="flex items-center w-full min-w-max sm:min-w-0">
+        <% steps.each_with_index do |step, i| %>
+          <% is_current  = i == current_index %>
+          <% is_complete = i < current_index %>
+          <% clickable   = is_complete && step[:path].present? %>
+          <% grouped     = step[:substeps].present? %>
+          <%
+            circle_classes = (is_complete || is_current) ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-600"
+            label_classes  = is_current ? "text-pink-600" : (is_complete ? "text-pink-500" : "text-gray-500")
+          %>
+          <% circle = capture do %>
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 <%= circle_classes %>">
+              <% if is_complete %>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              <% else %>
+                <%= i + 1 %>
+              <% end %>
+            </span>
+          <% end %>
+
+          <li class="flex items-center <%= i < steps.length - 1 ? "flex-1" : "" %>">
+            <% if grouped %>
+              <%# Compressed group: circle + label + caret → dropdown of substeps. %>
+              <details class="relative">
+                <summary class="flex items-center gap-2 cursor-pointer list-none select-none">
+                  <%= circle %>
+                  <span class="text-sm font-medium hidden sm:inline whitespace-nowrap <%= label_classes %>"><%= step[:name] %></span>
+                  <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div class="absolute left-0 top-full mt-2 z-50 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                  <p class="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">Jump back to</p>
+                  <% step[:substeps].each do |sub| %>
+                    <% if sub[:path].present? %>
+                      <%= link_to sub[:name], sub[:path], class: "block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" %>
+                    <% else %>
+                      <span class="block px-3 py-2 text-sm text-gray-400"><%= sub[:name] %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </details>
+            <% elsif clickable %>
+              <%= link_to step[:path], class: "flex items-center hover:opacity-80 transition-opacity" do %>
+                <span class="flex items-center gap-2">
+                  <%= circle %>
+                  <span class="text-sm font-medium hidden sm:inline whitespace-nowrap <%= label_classes %>"><%= step[:name] %></span>
+                </span>
+              <% end %>
+            <% else %>
+              <span class="flex items-center gap-2">
+                <%= circle %>
+                <span class="text-sm font-medium hidden sm:inline whitespace-nowrap <%= label_classes %>" <%= 'aria-current="step"'.html_safe if is_current %>><%= step[:name] %></span>
+              </span>
+            <% end %>
+
+            <% if i < steps.length - 1 %>
+              <span class="flex-1 h-0.5 mx-3 min-w-[1.5rem] <%= is_complete ? "bg-pink-500" : "bg-gray-200" %>"></span>
+            <% end %>
+          </li>
+        <% end %>
+      </ol>
+    </nav>
+  </div>
+<% end %>

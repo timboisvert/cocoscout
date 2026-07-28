@@ -31,6 +31,18 @@
   # Ticket-linked amounts land on their own once show financials are in.
   awaits_financials = payment.amount_tbd? &&
     (payment.revenue_share? || contract.revenue_share? || contract.ticket_revenue_minus_fee?)
+  # Where the payment's title links. Send people to where the money actually
+  # lives: incoming money → its Collect/record page; an outgoing amount that was
+  # calculated on a show's payout page → back to that payout page; otherwise the
+  # contract itself.
+  payment_link =
+    if is_incoming
+      manage_money_incoming_payment_path(payment)
+    elsif payment.show_id.present?
+      manage_money_show_payout_path(payment.show_id)
+    else
+      manage_contract_path(contract)
+    end
 %>
 
 <div data-controller="payment-modal">
@@ -55,7 +67,7 @@
             </span>
           <% end %>
           <span class="font-medium text-gray-900">
-            <%= link_to (contract.production_name.presence || contract.contractor_name), manage_contract_path(contract), class: "hover:text-pink-600" %>
+            <%= link_to (contract.production_name.presence || contract.contractor_name), payment_link, class: "hover:text-pink-600" %>
           </span>
         </div>
         <div class="text-sm text-gray-600">

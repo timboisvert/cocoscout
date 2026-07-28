@@ -25,14 +25,16 @@
     description: shifts_description,
     actions: [
       { icon: "dollar-sign", text: "My Payments", description: "See what you're owed", path: my_payments_path },
-      { icon: "clipboard-list", text: "Add non-shift time", description: "Log hours you weren't scheduled for", path: "#",
+      { icon: "clipboard-list", text: "Add additional time", description: "Log other hours you worked", path: "#",
         data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
-                mode: "manual", url: my_time_entries_path, title: "Add non-shift time you worked" } },
+                mode: "manual", url: my_time_entries_path, title: "Add additional time you worked" } },
       { icon: "calendar", text: "Work Availability", description: "Set when you can work", path: "#",
         data: { action: "click->unavailability#open" } }
     ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">
+    <%= render "my/shifts/onboarding_invite_bar", invites: @pending_onboarding_invites %>
+
     <%# Glance %>
     <%= render "my/shifts/summary" %>
 

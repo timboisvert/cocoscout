@@ -37,8 +37,9 @@ class ContractPaymentSyncService
   private
 
   def should_sync?
-    return false unless @production&.type_third_party?
-
+    # Driven by the CONTRACT, not the production's type flag: any show governed by
+    # a revenue-share (or revenue-minus-fee) contract settles its share this way,
+    # even if it's linked to an in-house production rather than a third-party one.
     @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
   end
 

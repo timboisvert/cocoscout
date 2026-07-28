@@ -1,0 +1,23 @@
+<%#
+  Slim, spreadsheet-style contractors list — the same shared slim_list used for
+  contracts. Locals: contractors (array of Contractor). Counts read from the
+  preloaded :contracts association (controller does includes(:contracts)).
+%>
+<%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Active", "Total" ], col_classes: [ "w-24", "w-24" ], min_width: "min-w-[480px]" } do %>
+  <% contractors.each do |contractor| %>
+    <%
+      active_count = contractor.contracts.select(&:status_active?).size
+      total_count = contractor.contracts.size
+      email = contractor.try(:email).presence || contractor.person&.email
+    %>
+    <%= render "shared/slim_list_row",
+          title: contractor.name,
+          subtitle: email,
+          col_classes: [ "w-24", "w-24" ],
+          href: manage_contractor_path(contractor),
+          cells: [
+            { value: (active_count.positive? ? active_count : "—"), class: (active_count.positive? ? "text-green-600" : "text-gray-400") },
+            { value: total_count, class: "text-gray-600" }
+          ] %>
+  <% end %>
+<% end %>

@@ -11,36 +11,12 @@
     links: []
   } %>
 
-  <div class="max-w-2xl mx-auto mt-8">
-    <!-- Progress Steps -->
-    <div class="mb-8">
-      <div class="flex items-center justify-center">
-        <div class="flex items-center">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline">Productions</span>
-        </div>
-        <div class="flex-1 h-0.5 mx-2 bg-pink-500"></div>
-        <div class="flex items-center">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">2</div>
-          <span class="ml-2 text-sm font-medium text-pink-600 hidden sm:inline">Events</span>
-        </div>
-        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
-        <div class="flex items-center">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">3</div>
-          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Members</span>
-        </div>
-        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
-        <div class="flex items-center">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">4</div>
-          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Review</span>
-        </div>
-      </div>
-    </div>
+  <%# Full-width step bar, directly below the breadcrumb. %>
+  <%= render "shared/wizard_steps",
+        steps: [{ name: "Productions" }, { name: "Events" }, { name: "Members" }, { name: "Review" }],
+        current_index: 1 %>
 
+  <div class="max-w-2xl mx-auto mt-8">
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
       <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Which events are you casting?</h2>

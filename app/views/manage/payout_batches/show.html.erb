@@ -102,17 +102,44 @@
               <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
                 <% contributions.each do |c| %>
                   <% source_path = payout_contribution_source_path(c) %>
-                  <div class="flex items-center justify-between gap-4 py-1.5 text-sm">
-                    <% if source_path %>
-                      <%# Trace back to what created this payment (show, advance, contract, course). %>
-                      <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
-                        <span class="truncate group-hover/trace:underline"><%= c.label %></span>
-                        <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <% worksheet = c.worksheet_entries %>
+                  <div class="py-1.5 text-sm">
+                    <div class="flex items-center justify-between gap-4">
+                      <% if worksheet.any? %>
+                        <%# Trace tips/cash-tips back to the days they came from. %>
+                        <details class="group/ws min-w-0">
+                          <summary class="flex items-center gap-1.5 min-w-0 cursor-pointer list-none <%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> hover:text-pink-600">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 transition-transform group-open/ws:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <span class="truncate"><%= c.label %></span>
+                            <span class="text-[11px] text-gray-400 flex-shrink-0"><%= pluralize(worksheet.size, "day") %></span>
+                          </summary>
+                          <div class="mt-1 ml-5 space-y-0.5">
+                            <% worksheet.each do |w| %>
+                              <div class="flex items-center justify-between gap-4 text-xs text-gray-500">
+                                <span><%= w["date"].present? ? l(Date.parse(w["date"]), format: :long) : "No date" %></span>
+                                <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
+                              </div>
+                            <% end %>
+                          </div>
+                        </details>
+                      <% elsif source_path %>
+                        <%# Trace back to what created this payment (show, advance, contract, course). %>
+                        <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
+                          <span class="truncate group-hover/trace:underline"><%= c.label %></span>
+                          <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <% end %>
+                      <% else %>
+                        <span class="<%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> truncate"><%= c.label %></span>
                       <% end %>
-                    <% else %>
-                      <span class="text-gray-600 truncate"><%= c.label %></span>
-                    <% end %>
-                    <span class="text-gray-800 tabular-nums flex-shrink-0"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                      <div class="flex items-center gap-2 flex-shrink-0">
+                        <% if c.excluded_from_payout %>
+                          <span class="text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">Recorded · not paid</span>
+                          <span class="text-gray-400 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                        <% else %>
+                          <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                        <% end %>
+                      </div>
+                    </div>
                   </div>
                 <% end %>
               </div>
@@ -134,5 +161,25 @@
         <% end %>
       </div>
     </div>
+
+    <%# Discard lives quietly at the very bottom — a draft run that hasn't been funded. %>
+    <% if @batch.status == "draft" %>
+      <% discard_cid = "confirm-discard-batch" %>
+      <div class="mt-10 pt-6 border-t border-gray-100 text-center">
+        <p class="text-xs text-gray-400 max-w-md mx-auto">
+          Nothing here has been funded yet. Discarding removes this draft run and returns any pulled-in staff hours to what's waiting to be paid.
+        </p>
+        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= discard_cid %>"
+                class="mt-2 text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0">
+          Discard this draft run
+        </button>
+      </div>
+      <%= render "shared/confirm_modal", id: discard_cid,
+            title: "Discard this draft run?",
+            message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips and manually-typed amounts on this run are cleared. This can't be undone.",
+            confirm_text: "Discard run",
+            url: manage_payout_batch_path(@batch),
+            method: :delete %>
+    <% end %>
   </div>
 </div>

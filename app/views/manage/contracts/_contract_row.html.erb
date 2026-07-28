@@ -8,13 +8,15 @@
       <% end %>
       <% case contract.status %>
       <% when "draft" %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-          Draft
-        </span>
-        <% if contract.wizard_step > 1 %>
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">
-            Step <%= contract.wizard_step %>/6
-          </span>
+        <% if contract.signing_mode_esign? && contract.signing_out_for_signature? %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Out for signature</span>
+        <% elsif contract.signing_mode_esign? && contract.signing_awaiting_send? %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Ready to send</span>
+        <% else %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">Draft</span>
+          <% if !contract.signing_mode_esign? && contract.wizard_step > 1 %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Step <%= contract.wizard_step %>/6</span>
+          <% end %>
         <% end %>
       <% when "active" %>
         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">

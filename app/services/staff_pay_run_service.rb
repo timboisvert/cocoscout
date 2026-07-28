@@ -55,16 +55,19 @@ class StaffPayRunService
         )
 
         parts = contribution_parts(organization, member, line, worked)
-        total = parts.sum { |p| p[:amount] }
-        next if total <= 0
+        # Cash tips are recorded alongside but never paid, so a person joins the
+        # run only when they have a payable amount.
+        payable_total = parts.reject { |p| p[:excluded] }.sum { |p| p[:amount] }
+        next if payable_total <= 0
 
         item = batch.items.find_by(payee: payee) ||
-               batch.items.create!(payee: payee, amount_cents: total, status: "pending")
+               batch.items.create!(payee: payee, amount_cents: payable_total, status: "pending")
 
         parts.each do |part|
-          add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount], description: line[:notes])
+          add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
+                            description: line[:notes], excluded_from_payout: part[:excluded], worksheet: part[:worksheet])
         end
-        item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
+        item.update!(amount_cents: item.payout_contributions.payable.sum(:amount_cents))
 
         tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
         added += 1
@@ -76,14 +79,17 @@ class StaffPayRunService
     Result.new(batch: batch, added: added)
   end
 
-  # The named components of a line, each becoming a contribution row. Cash tips
-  # are intentionally excluded (recorded on the grid only, not sent through us).
+  # The named components of a line, each becoming a contribution row. Card tips
+  # route through Stripe; cash tips are recorded-only (excluded_from_payout) —
+  # kept as a permanent part of the run's record but never paid. Tips and cash
+  # tips carry their per-day worksheet breakdown for backward traceability.
   def self.contribution_parts(organization, member, line, worked)
     [
-      { label: worked_label(organization, member, line), amount: worked.to_i },
-      { label: "Bonus", amount: line[:bonus_cents].to_i },
-      { label: "Reimbursement", amount: line[:reimbursement_cents].to_i },
-      { label: "Tips", amount: line[:tips_cents].to_i }
+      { label: worked_label(organization, member, line), amount: worked.to_i, excluded: false },
+      { label: "Bonus", amount: line[:bonus_cents].to_i, excluded: false },
+      { label: "Reimbursement", amount: line[:reimbursement_cents].to_i, excluded: false },
+      { label: "Tips", amount: line[:tips_cents].to_i, excluded: false, worksheet: line[:tips_worksheet] },
+      { label: "Cash tips (recorded)", amount: line[:cash_tips_cents].to_i, excluded: true, worksheet: line[:cash_tips_worksheet] }
     ].select { |p| p[:amount].positive? }
   end
 
@@ -98,16 +104,21 @@ class StaffPayRunService
     "Worked hours (#{formatted}h)"
   end
 
-  def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil)
+  def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil, excluded_from_payout: false, worksheet: nil)
     contribution = PayoutContribution.create!(
       payout_batch: batch, payout_batch_item: item, payee: payee,
-      amount_cents: amount_cents, label: label, description: description
+      amount_cents: amount_cents, label: label, description: description,
+      excluded_from_payout: excluded_from_payout, worksheet: worksheet.presence
     )
-    PayoutLedgerEntry.post!(
-      organization: batch.organization, payee: payee, entry_type: "earning",
-      amount_cents: amount_cents, source: contribution,
-      description: "Staff pay: #{label}", occurred_at: Time.current, category: "staffing"
-    )
+    # Recorded-only lines (cash tips) must not add to the worker's owed balance —
+    # they're already in hand, so no earning entry is posted.
+    unless excluded_from_payout
+      PayoutLedgerEntry.post!(
+        organization: batch.organization, payee: payee, entry_type: "earning",
+        amount_cents: amount_cents, source: contribution,
+        description: "Staff pay: #{label}", occurred_at: Time.current, category: "staffing"
+      )
+    end
     contribution
   end
 

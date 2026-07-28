@@ -12,77 +12,9 @@
   } %>
 
   <div class="max-w-3xl mx-auto mt-4">
-    <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4">
-      <div class="flex items-start gap-3">
-        <%= icon("ticket", class: "w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5") %>
-        <div class="text-sm text-pink-900">
-          <p class="font-semibold mb-1"><%= @contract.production_name.presence || @contract.contractor_name %></p>
-          <p>
-            You sell the tickets on this contract, so enter what you sold for each show.
-            <%= @contract.organization.name %> keeps
-            <%= number_with_precision(@contract.revenue_share_percentage, strip_insignificant_zeros: true) %>% —
-            we'll bill you that share once you report.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <% if @shows.any? %>
-      <%= form_with url: my_report_contract_sales_path(@contract), method: :patch, local: true do %>
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <div class="hidden sm:grid grid-cols-12 gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <div class="col-span-6">Show</div>
-            <div class="col-span-3">Tickets sold</div>
-            <div class="col-span-3">Ticket revenue</div>
-          </div>
-          <div class="divide-y divide-gray-100">
-            <% @shows.each do |show| %>
-              <%
-                financials = show.show_financials
-                count_val = financials&.ticket_count.to_i.positive? ? financials.ticket_count : nil
-                revenue_val = financials&.ticket_revenue.to_f.positive? ? financials.ticket_revenue : nil
-              %>
-              <div class="grid grid-cols-12 gap-3 px-4 py-3 items-center">
-                <div class="col-span-12 sm:col-span-6">
-                  <div class="font-medium text-gray-900 text-sm"><%= show.date_and_time.strftime("%a %b %-d, %Y") %></div>
-                  <div class="text-xs text-gray-500">
-                    <%= show.date_and_time.strftime("%-l:%M %p").strip %>
-                    <% if financials&.contractor_reported? %>
-                      <span class="text-gray-400">·</span>
-                      <span class="text-green-600">Reported</span>
-                    <% end %>
-                  </div>
-                </div>
-                <div class="col-span-6 sm:col-span-3">
-                  <label class="block text-xs font-medium text-gray-600 mb-1 sm:hidden">Tickets sold</label>
-                  <%= number_field_tag "financials[#{show.id}][ticket_count]", count_val,
-                        min: 0, step: 1, placeholder: "0",
-                        class: "block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-                </div>
-                <div class="col-span-6 sm:col-span-3">
-                  <label class="block text-xs font-medium text-gray-600 mb-1 sm:hidden">Ticket revenue</label>
-                  <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 text-sm">$</span>
-                    <%= number_field_tag "financials[#{show.id}][ticket_revenue]", revenue_val,
-                          min: 0, step: 0.01, placeholder: "0.00",
-                          class: "block w-full pl-7 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between pt-2">
-          <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: my_contracts_path %>
-          <%= render "shared/button", text: "Submit sales", variant: "primary", size: "medium", type: :submit %>
-        </div>
-      <% end %>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
-        <p class="text-gray-600">No shows on this contract yet.</p>
-        <p class="text-sm text-gray-500 mt-1">Once shows are scheduled, you can report ticket sales here.</p>
-      </div>
+    <%# Wrapped in a frame so the same form can lazy-load into the My Contracts modal. %>
+    <%= turbo_frame_tag "report_sales_#{@contract.id}" do %>
+      <%= render "my/contracts/report_sales_form" %>
     <% end %>
   </div>
 </div>

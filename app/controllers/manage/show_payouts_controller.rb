@@ -24,7 +24,9 @@ module Manage
       # are owed for it) — a contract show is paid from these, not from casting.
       @show_contract_payments = @show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
 
-      if @is_third_party && @contract&.revenue_share?
+      # A revenue-share CONTRACT drives the split regardless of the production's
+      # type flag (a contract can be linked to an in-house production too).
+      if @contract&.revenue_share?
         setup_contractor_payout
       elsif @show_contract_payments.any?
         setup_contract_payout
@@ -55,6 +57,9 @@ module Manage
 
       @show_financials.assign_attributes(attrs)
       if @show_financials.save
+        # Recompute any revenue-share contract payment for this show from the new
+        # numbers (same as the other financials editors do).
+        ContractPaymentSyncService.new(@show).call
         redirect_to manage_money_show_payout_path(@show),
                     notice: "Financial data saved."
       else
@@ -365,22 +370,59 @@ module Manage
       end
     end
 
+    # Message everyone owed on this show who hasn't connected a bank yet, telling
+    # them how much is waiting and linking them to set up payment. In-app messages
+    # only (no email), all copy via ContentTemplateService. People without a
+    # CocoScout login can't receive an in-app message — they're skipped (share the
+    # QR / setup link with them instead).
     def send_payment_reminders
-      # Find performers who haven't connected a bank yet and have unpaid line items
       line_items_needing_setup = @show_payout.line_items.not_already_paid.select do |li|
         li.payee.respond_to?(:can_receive_payouts?) && !li.payee.can_receive_payouts?
       end
 
       if line_items_needing_setup.empty?
-        redirect_to manage_money_show_payout_path(@show),
-                    notice: "Everyone has connected a bank!"
+        redirect_to manage_money_show_payout_path(@show), notice: "Everyone has connected a bank!"
         return
       end
 
-      # TODO: Implement actual email sending when mailer is set up
-      count = line_items_needing_setup.size
-      redirect_to manage_money_show_payout_path(@show),
-                  notice: "Payment setup reminders will be sent to #{count} performer#{"s" if count != 1}. (Coming soon!)"
+      org = Current.organization
+      sent = 0
+      skipped_no_login = 0
+
+      line_items_needing_setup.group_by(&:payee).each do |payee, items|
+        unless payee.is_a?(Person) && payee.user
+          skipped_no_login += 1
+          next
+        end
+        cents = items.sum { |li| (li.amount.to_d * 100).round }
+        next if cents <= 0
+
+        ContentTemplateService.deliver(
+          template_key: "payout_setup_reminder",
+          variables: {
+            recipient_name: payee.name.to_s.split(/\s+/).first.presence || payee.name.to_s,
+            organization_name: org.name,
+            amount: helpers.number_to_currency(cents / 100.0),
+            setup_link: my_payments_setup_url
+          },
+          sender: nil,
+          recipients: [ payee ],
+          organization: org,
+          message_type: :system,
+          visibility: :personal
+        )
+        sent += 1
+      end
+
+      notice =
+        if sent.zero?
+          "No reminders sent — the people who still need to set up payment don't have a CocoScout login yet. Share the QR code or setup link with them instead."
+        else
+          msg = "Sent #{sent} payment-setup reminder#{"s" unless sent == 1}."
+          msg += " #{skipped_no_login} without a login #{skipped_no_login == 1 ? "was" : "were"} skipped — share the setup link with them." if skipped_no_login.positive?
+          msg
+        end
+      redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
     def close_as_non_paying

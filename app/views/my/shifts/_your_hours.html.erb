@@ -15,9 +15,9 @@
       <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       <h2 class="text-base font-semibold text-gray-900">Your shifts</h2>
     </div>
-    <%= render "shared/button", text: "Add non-shift time", variant: "secondary", size: "small", icon: "plus", type: :button,
+    <%= render "shared/button", text: "Add additional time", variant: "secondary", size: "small", icon: "plus", type: :button,
           data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
-                  mode: "manual", url: my_time_entries_path, title: "Add non-shift time you worked" } %>
+                  mode: "manual", url: my_time_entries_path, title: "Add additional time you worked" } %>
   </div>
 
   <div class="p-5 space-y-4">

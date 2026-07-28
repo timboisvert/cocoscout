@@ -1,0 +1,122 @@
+<%#
+  Scheduling-conflict modal for the contract wizard's Review step.
+
+  Shows, per clashing space+day: a plain-English explanation and a to-scale
+  calendar of everything on the calendar that day, then asks the producer to
+  choose — schedule over it anyway, or pause and go fix the bookings.
+
+  locals:
+    conflicts   — ContractBookingConflicts
+    contract    — Contract
+    esign       — Boolean (affects the proceed wording)
+    proceed_url — where "schedule anyway" posts (save_review or activate)
+%>
+<div id="conflict-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full my-8 overflow-hidden" data-action="click->modal#stopPropagation">
+    <%# Pink header (the standard) %>
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Scheduling conflict</h3>
+      <button type="button" data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="p-5 max-h-[65vh] overflow-y-auto space-y-6">
+      <p class="text-sm text-gray-600">
+        Some of what this contract books is already spoken for. Here's exactly what overlaps, and the full day's
+        schedule for that space so you can see where it fits.
+      </p>
+
+      <% conflicts.conflict_days.each do |day| %>
+        <div class="rounded-lg border border-gray-200 p-4">
+          <div class="mb-2">
+            <h4 class="font-semibold text-gray-900"><%= day.date.strftime("%A, %B %-d, %Y") %></h4>
+            <p class="text-sm text-gray-500">
+              <%= day.space_name %><% if day.location_name.present? %> · <%= day.location_name %><% end %>
+            </p>
+          </div>
+
+          <div class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+            <%= icon("alert-triangle", class: "w-4 h-4 flex-shrink-0 mt-0.5") %>
+            <span><%= day.plain_english %></span>
+          </div>
+
+          <%= render "manage/contract_wizard/conflict_day_calendar", day: day %>
+        </div>
+      <% end %>
+
+      <%# The choice — two stacked radio option-cards (never a bare checkbox). %>
+      <div>
+        <p class="font-semibold text-gray-900 mb-1">What would you like to do?</p>
+        <p class="text-sm text-gray-500 mb-3">This is your call — nothing is booked until you decide.</p>
+
+        <div class="space-y-3">
+          <label for="choice-anyway"
+                 class="flex items-start gap-3 rounded-lg border border-gray-300 p-4 cursor-pointer hover:border-pink-400 transition has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <input type="radio" name="conflict_choice" id="choice-anyway" value="anyway"
+                   class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <span>
+              <span class="block font-medium text-gray-900">Schedule it anyway</span>
+              <span class="block text-sm text-gray-600">
+                I know it overlaps and I want to book it over the top. Both bookings will share the space.
+              </span>
+            </span>
+          </label>
+
+          <label for="choice-fix"
+                 class="flex items-start gap-3 rounded-lg border border-gray-300 p-4 cursor-pointer hover:border-pink-400 transition has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <input type="radio" name="conflict_choice" id="choice-fix" value="fix"
+                   class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <span>
+              <span class="block font-medium text-gray-900">Pause and fix it first</span>
+              <span class="block text-sm text-gray-600">
+                Take me back to the bookings so I can change the date or time, then I'll come back here.
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <%# Footer — the action follows the chosen option. %>
+    <div class="border-t border-gray-100 px-5 py-4 flex items-center justify-end gap-3">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+            data: { action: "click->modal#close" } %>
+
+      <span id="conflict-action-hint" class="text-sm text-gray-400">Choose an option above to continue</span>
+
+      <div id="conflict-action-anyway" style="display: none;">
+        <%= form_with url: proceed_url, method: :post, local: true, class: "inline" do %>
+          <%= hidden_field_tag :allow_overlap, "1" %>
+          <%= render "shared/button",
+                text: (esign ? "Schedule anyway & continue" : "Schedule anyway & activate"),
+                variant: "primary", size: "medium", icon: "arrow-right", type: :submit %>
+        <% end %>
+      </div>
+
+      <div id="conflict-action-fix" style="display: none;">
+        <%= link_to manage_bookings_contract_wizard_path(contract) do %>
+          <%= render "shared/button", text: "Go to bookings", variant: "primary", size: "medium", icon: "pencil", type: :button %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var radios = document.querySelectorAll('input[name="conflict_choice"]');
+    var anyway = document.getElementById("conflict-action-anyway");
+    var fix    = document.getElementById("conflict-action-fix");
+    var hint   = document.getElementById("conflict-action-hint");
+    radios.forEach(function (r) {
+      r.addEventListener("change", function () {
+        anyway.style.display = this.value === "anyway" ? "" : "none";
+        fix.style.display    = this.value === "fix" ? "" : "none";
+        if (hint) hint.style.display = "none";
+      });
+    });
+  })();
+</script>

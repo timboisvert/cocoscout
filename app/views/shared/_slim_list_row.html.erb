@@ -8,6 +8,7 @@
     cells:      array of { value:, class: } — right-aligned columns; supply the
                 same count as the list's `columns` so they line up
     col_class:  width utility per column (default "w-28"); match the list
+    col_classes: optional array of per-column widths (overrides col_class); match the list
     badge:      optional { text:, color: } small pill next to the title
                 (color: pink|green|red|amber|gray|blue)
     subtitle:   optional small secondary text under the title
@@ -20,6 +21,8 @@
 %>
 <%
   col_class = local_assigns.fetch(:col_class, "w-28")
+  col_classes = local_assigns[:col_classes]
+  col_aligns = local_assigns[:col_aligns]
   badge = local_assigns[:badge]
   cells = local_assigns.fetch(:cells, [])
   subtitle = local_assigns[:subtitle]
@@ -38,8 +41,13 @@
       <span class="block text-[11px] text-gray-400 truncate mt-0.5"><%= subtitle %></span>
     <% end %>
   </span>
-  <% cells.each do |cell| %>
-    <span class="<%= col_class %> text-right flex-shrink-0 text-sm tabular-nums <%= cell[:class] %>"><%= cell[:value] %></span>
+  <% cells.each_with_index do |cell, i| %>
+    <span class="<%= (col_classes && col_classes[i]) || col_class %> <%= (col_aligns && col_aligns[i]) || "text-right" %> flex-shrink-0 text-sm tabular-nums <%= cell[:class] %>">
+      <%= cell[:value] %>
+      <% if cell[:subvalue].present? %>
+        <span class="block text-[11px] font-normal <%= cell[:subvalue_class] || "text-gray-400" %>"><%= cell[:subvalue] %></span>
+      <% end %>
+    </span>
   <% end %>
 <% end %>
 

@@ -12,10 +12,10 @@
     links: []
   } %>
 
+  <%= render "manage/contracts/amend_steps", current: 3 %>
+
   <div class="max-w-2xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Update the deal: who sells the tickets, how it settles, and every payment on this contract.</p>
-
-    <%= render "manage/contracts/amend_steps", current: 3 %>
 
     <%= render "manage/contracts/financials_fields",
           contract: @contract,

@@ -81,7 +81,19 @@
                     <% if e.notes.present? %> · <span class="italic">“<%= e.notes %>”</span><% end %>
                   </div>
                 </div>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 flex-shrink-0">Pending</span>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  <%= link_to "Adjust", manage_edit_staffing_timesheet_path(e),
+                        data: { turbo_frame: "timesheet_edit_modal" },
+                        class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+                  <% reject_cid = "confirm-reject-#{e.id}" %>
+                  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reject_cid %>"
+                          class="text-xs text-gray-400 hover:text-red-600 bg-transparent border-0 cursor-pointer">Reject</button>
+                  <%= render "shared/confirm_modal", id: reject_cid,
+                        title: "Reject this entry?",
+                        message: "Reject and remove #{person.name}'s #{number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true)}h entry on #{e.started_at.strftime('%b %-d')}? They can re-submit if it was a mistake.",
+                        confirm_text: "Reject",
+                        url: manage_reject_staffing_timesheet_path(e), method: :delete %>
+                </div>
               </div>
             <% end %>
           </div>
@@ -89,4 +101,7 @@
       <% end %>
     </div>
   <% end %>
+
+  <%# Host frame for the Adjust (edit) modal, loaded by the per-entry links. %>
+  <%= turbo_frame_tag "timesheet_edit_modal" %>
 </div>

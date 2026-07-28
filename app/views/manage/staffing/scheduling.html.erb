@@ -25,9 +25,14 @@
     ],
     text: "Scheduling",
     links: [
-      { text: "Roles", icon: "cog", path: manage_staffing_house_roles_path }
+      { text: "Availability", icon: "calendar", type: :button,
+        data: { controller: "modal", modal_id: "staff-availability-modal" },
+        data_action: "click->modal#open" },
+      { text: "Manage roles", icon: "cog", path: manage_staffing_house_roles_path }
     ]
   } %>
+
+  <%= render "manage/staffing/availability_overview_modal" %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">
 
@@ -60,27 +65,6 @@
           Generate shifts
         </button>
       <% end %>
-
-      <%# Finalize & notify — only meaningful once there are shifts this week. %>
-      <% if @shifts_by_day.any? %>
-        <% if @week_finalized %>
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium"
-                title="Finalized <%= @finalization.finalized_at.strftime("%b %-d at %-l:%M %p") %><%= " by #{@finalization.finalized_by.email_address}" if @finalization.finalized_by %>">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>
-            Finalized
-          </span>
-          <button type="button" data-action="staffing-finalize#open"
-                  class="text-sm text-gray-600 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 px-1">
-            Re-notify
-          </button>
-        <% else %>
-          <button type="button" data-action="staffing-finalize#open"
-                  class="bg-green-600 hover:bg-green-700 text-white inline-flex items-center justify-center gap-1.5 font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-            Finalize &amp; notify
-          </button>
-        <% end %>
-      <% end %>
     </div>
   </div>
   <%# Mobile-only week label (kept off the button row so the nav stays tidy). %>
@@ -88,12 +72,77 @@
     Week of <%= @week_start.strftime("%b %-d, %Y") %>
   </div>
 
-  <%# Draft banner — staff can't see this week until it's finalized. %>
-  <% if @shifts_by_day.any? && !@week_finalized %>
-    <div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-      <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>
-      <span><span class="font-medium">Draft schedule.</span> Staff can't see their assignments for this week until you finalize it.</span>
-    </div>
+  <%# === Communications band — its own full-width row above the schedule. Clean
+      two-tier: status + actions on top, the "who needs an update" chips below. %>
+  <% if @shifts_by_day.any? %>
+    <% reason_dot = { new: "bg-green-500", changed: "bg-amber-500", removed: "bg-red-500" } %>
+    <% reason_label = { new: "new shift", changed: "shift changed", removed: "shift removed" } %>
+
+    <% if !@week_finalized %>
+      <%# Draft — never published. Publishing notifies everyone assigned. %>
+      <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 flex-shrink-0">
+            <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>
+          </span>
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-900">Draft schedule — not published yet</div>
+            <div class="text-xs text-gray-600 mt-0.5">Staff can't see their shifts until you publish · <%= pluralize(@comms[:total], "person") %> assigned</div>
+          </div>
+        </div>
+        <button type="button" data-action="staffing-finalize#open"
+                class="bg-green-600 hover:bg-green-700 text-white inline-flex items-center justify-center gap-1.5 font-medium rounded-md transition-colors cursor-pointer px-3.5 py-2 text-sm flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Publish &amp; notify
+        </button>
+      </div>
+
+    <% elsif @comms[:update].empty? %>
+      <%# Published and everyone's current. Quiet resend option only. %>
+      <div class="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-sm text-gray-700">Everyone has been notified for this week.</span>
+        <% resend_cid = "confirm-resend-all" %>
+        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= resend_cid %>"
+                class="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer bg-transparent border-0 flex-shrink-0">
+          Resend notifications
+        </button>
+        <%= render "shared/confirm_modal", id: resend_cid,
+              title: "Resend notifications?",
+              message: "Resend the current schedule to all #{pluralize(@comms[:total], 'assigned staff member')}.",
+              confirm_text: "Resend",
+              url: manage_finalize_staffing_path(week_start: @week_start.to_s, notify_all: 1),
+              method: :post %>
+      </div>
+
+    <% else %>
+      <%# Published, but some people have a new/changed/removed shift to be told. %>
+      <div class="mb-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <span class="text-sm font-semibold text-gray-900"><%= pluralize(@comms[:update].size, "update") %> to send</span>
+          <% notify_cid = "confirm-notify-updates" %>
+          <%= render "shared/button", text: "Notify updates", variant: "primary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: notify_cid } %>
+        </div>
+
+        <div class="border-t border-gray-100 bg-gray-50 px-4 py-2.5 flex flex-wrap items-center gap-1.5">
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mr-1">Needs an update</span>
+          <% @comms[:update].each do |u| %>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white border border-gray-200 shadow-sm pl-2 pr-2.5 py-1 text-xs">
+              <span class="w-1.5 h-1.5 rounded-full <%= reason_dot[u[:reason]] %>"></span>
+              <span class="font-medium text-gray-800"><%= u[:person].name %></span>
+              <span class="text-gray-400"><%= reason_label[u[:reason]] %></span>
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <%= render "shared/confirm_modal", id: "confirm-notify-updates",
+            title: "Notify the staff whose shifts changed?",
+            message: "We'll message the #{pluralize(@comms[:update].size, 'person')} with a new, changed, or removed shift this week — everyone else is left alone.",
+            confirm_text: "Notify updates",
+            url: manage_finalize_staffing_path(week_start: @week_start.to_s),
+            method: :post %>
+    <% end %>
   <% end %>
 
   <%# === Day rows === %>
@@ -833,7 +882,7 @@
            data-action="click->staffing-finalize#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
           <div>
-            <h3 class="text-lg font-semibold text-white">Finalize &amp; notify</h3>
+            <h3 class="text-lg font-semibold text-white">Publish &amp; notify</h3>
             <div class="text-xs text-white/80">Week of <%= @week_start.strftime("%b %-d, %Y") %></div>
           </div>
           <button type="button" data-action="click->staffing-finalize#close" class="text-white/70 hover:text-white cursor-pointer">
@@ -896,7 +945,7 @@
           </div>
           <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
             <button type="button" data-action="click->staffing-finalize#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-            <%= render "shared/button", text: "Finalize & send", variant: "primary", size: "small", type: :submit %>
+            <%= render "shared/button", text: "Publish & send", variant: "primary", size: "small", type: :submit %>
           </div>
         <% end %>
       </div>

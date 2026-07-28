@@ -18,9 +18,9 @@
         <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <%= icon("file-text", class: "w-8 h-8 text-pink-600") %>
         </div>
-        <h2 class="text-xl font-bold text-gray-900">Create a New Contract</h2>
+        <h2 class="text-xl font-bold text-gray-900">Who is this contract with?</h2>
         <p class="text-gray-600 mt-2">
-          Set up a contract for a third-party group renting your space or performing at your venue.
+          Choose the contractor. Next you'll say what the contract is for and how it gets signed.
         </p>
       </div>
 
@@ -60,36 +60,6 @@
               <input type="hidden" name="contract[contractor_id]" value="" data-new-contract-contractor-target="select">
             <% end %>
           </div>
-
-          <div>
-            <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">
-              Production / Show Name
-            </label>
-            <input type="text"
-                   name="contract[production_name]"
-                   id="production_name"
-                   placeholder="e.g. Spring Recital 2026"
-                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-            <p class="text-xs text-gray-500 mt-1">Optional. Used as the production name when a new production is created for this contract.</p>
-          </div>
-
-          <% if @linkable_productions&.any? %>
-            <div>
-              <label for="link_production_id" class="block text-sm font-medium text-gray-900 mb-1.5">
-                Link to an existing production
-                <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <select name="contract[link_production_id]"
-                      id="link_production_id"
-                      class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                <option value="">-- Create a new production --</option>
-                <% @linkable_productions.each do |production| %>
-                  <option value="<%= production.id %>"><%= production.name %></option>
-                <% end %>
-              </select>
-              <p class="text-xs text-gray-500 mt-1">Choose this if you already set up the show. The contract attaches to it instead of creating a duplicate production.</p>
-            </div>
-          <% end %>
         </div>
 
         <div class="mt-8 flex justify-end">

@@ -67,7 +67,14 @@ class PayoutBatchItem < ApplicationRecord
     # ledger entry is history that must stand.
     return self if paid?
 
-    owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
+    net_owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
+    # Pay only for the earning lines actually in THIS run (show payouts + contract
+    # payments), capped at what's still net-owed so advances and prior payouts
+    # still reduce it. This is what makes "Remove from run" work: dropping a line
+    # lowers what the run pays, instead of always settling the payee's whole
+    # balance. (Removing the last line settles to 0 and drops the item.)
+    in_run_earnings = payout_contributions.payable.where.not(source_type: "PersonAdvance").sum(:amount_cents)
+    owed = [ net_owed, in_run_earnings ].min
     pending_advance_cents = payout_contributions.where(source_type: "PersonAdvance").sum(:amount_cents)
     total = owed + pending_advance_cents
 

@@ -93,8 +93,8 @@
     <%= render partial: "manage/payouts/money_show_row", locals: { show: @show, production: @production } %>
   </div>
 
-  <% if @is_third_party && @contract&.revenue_share? %>
-    <!-- Third-party contractor payout — display only; settled on the contract -->
+  <% if @contract&.revenue_share? %>
+    <!-- Revenue-share contractor payout — display only; settled on the contract -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Main Content -->
       <div class="lg:col-span-2 space-y-6">

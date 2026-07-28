@@ -1,0 +1,14 @@
+<% content_for :title, "New Contract Template" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Contracts", manage_contracts_path],
+      ["Contract Settings", manage_contract_settings_section_path(section: "templates")]
+    ],
+    text: "New Template"
+  } %>
+
+  <%= render "form", contract_template: @contract_template %>
+</div>

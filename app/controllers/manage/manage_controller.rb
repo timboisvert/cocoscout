@@ -12,9 +12,14 @@ module Manage
     # before_action :hide_sidebar
     before_action :set_current_organization, if: -> { Current.user.present? }
     before_action :set_current_production, if: -> { Current.user.present? }
+    # NOTE: no `except:` here. `except:` matches by action name across ALL
+    # subclasses, so exempting :index would (wrongly) let every manage controller's
+    # index run with no organization and blow up on Current.organization.*. The
+    # dashboard's own index/welcome self-handle a missing org — that's exempted
+    # inside the method by checking for the base controller specifically.
     before_action :require_current_organization, if: lambda {
       Current.user.present?
-    }, except: %i[index welcome dismiss_production_welcome]
+    }
     before_action :ensure_user_has_access_to_company, if: lambda {
       Current.user.present? && Current.organization.present?
     }, except: %i[index welcome dismiss_production_welcome]
@@ -292,6 +297,11 @@ module Manage
     end
 
     def require_current_organization
+      # The org-level dashboard (this base controller's own index/welcome/dismiss)
+      # handles a missing org itself — the org picker / welcome page. Subclasses
+      # (contracts, casting, …) must NOT be let through, or they crash on a nil org
+      # (e.g. while impersonating a contractor who has no organization).
+      return if instance_of?(Manage::ManageController) && %w[index welcome dismiss_production_welcome].include?(action_name)
       return if controller_name == "organizations" && %w[new create index show].include?(action_name)
       return if controller_name == "select"
 

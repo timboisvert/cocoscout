@@ -66,9 +66,15 @@ module Manage
         entry = find_editable_entry
         return unless entry
 
+        was_approved = entry.approved_at.present?
         entry.update!(approved_at: nil, approved_by: nil)
-        redirect_to manage_approved_staffing_timesheets_path(month: entry.started_at.strftime("%Y-%m")),
-                    notice: "Sent that entry back for review."
+        if was_approved
+          redirect_to manage_approved_staffing_timesheets_path(month: entry.started_at.strftime("%Y-%m")),
+                      notice: "Sent that entry back for review."
+        else
+          # Already in the queue (adjusted from the pending list) — just go back to it.
+          redirect_to manage_staffing_timesheets_path, notice: "Kept in your review queue."
+        end
       end
 
       def edit
@@ -83,6 +89,10 @@ module Manage
       def update
         @entry = find_editable_entry
         return unless @entry
+
+        # Was it already approved before this edit? Drives the "re-approve" vs
+        # "approve" wording on the saved confirmation.
+        @was_approved = @entry.approved_at.present?
 
         if @entry.update(entry_params.merge(approved_at: nil, approved_by: nil))
           @saved = true
@@ -100,6 +110,17 @@ module Manage
 
         entry.update!(approved_at: Time.current, approved_by: Current.user)
         redirect_to manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
+      end
+
+      # Reject a submitted entry: remove it from the queue. Unpaid only (a paid
+      # entry is settled and can't be rejected). The worker can re-submit if it
+      # was a mistake.
+      def reject
+        entry = find_editable_entry
+        return unless entry
+
+        entry.destroy!
+        redirect_to manage_staffing_timesheets_path, notice: "Rejected that time entry."
       end
 
       private

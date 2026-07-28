@@ -1,0 +1,79 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "About" } do %>
+  <% has_existing = @linkable_productions&.any? %>
+  <% initial_mode = @link_production_id.present? ? "existing" : "new" %>
+
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What is this contract for?</h2>
+  <p class="text-gray-600 mb-6">Give it a name, and tell us whether it's a brand-new production or one you've already set up.</p>
+
+  <%= form_with url: manage_production_contract_wizard_path(@contract), method: :post, local: true do %>
+    <% if has_existing %>
+      <div class="space-y-3" data-controller="radio-card">
+        <%# New production %>
+        <label class="block cursor-pointer">
+          <div data-radio-card-target="card" data-value="new"
+               class="border rounded-lg p-4 transition <%= initial_mode == "new" ? "border-pink-500 bg-pink-50" : "border-gray-200" %>">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="production_mode" value="new"
+                     <%= "checked" if initial_mode == "new" %>
+                     data-action="change->radio-card#select"
+                     class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">A new production</div>
+                <p class="text-sm text-gray-500">We'll create the show for you when the contract is activated.</p>
+
+                <div data-radio-card-target="extras" data-for="new" class="mt-3 <%= "hidden" unless initial_mode == "new" %>">
+                  <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">Production / show name</label>
+                  <input type="text" name="production_name" id="production_name"
+                         value="<%= @contract.production_name unless @link_production_id.present? %>"
+                         placeholder="e.g. Spring Recital 2026"
+                         class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                </div>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <%# Existing production %>
+        <label class="block cursor-pointer">
+          <div data-radio-card-target="card" data-value="existing"
+               class="border rounded-lg p-4 transition <%= initial_mode == "existing" ? "border-pink-500 bg-pink-50" : "border-gray-200" %>">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="production_mode" value="existing"
+                     <%= "checked" if initial_mode == "existing" %>
+                     data-action="change->radio-card#select"
+                     class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">An existing production</div>
+                <p class="text-sm text-gray-500">Attach this contract to a show you already set up, instead of creating a duplicate.</p>
+
+                <div data-radio-card-target="extras" data-for="existing" class="mt-3 <%= "hidden" unless initial_mode == "existing" %>">
+                  <label for="link_production_id" class="block text-sm font-medium text-gray-900 mb-1.5">Choose the production</label>
+                  <select name="link_production_id" id="link_production_id"
+                          class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                    <option value="">-- Select a production --</option>
+                    <% @linkable_productions.each do |production| %>
+                      <option value="<%= production.id %>" <%= "selected" if @link_production_id == production.id %>><%= production.name %></option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </label>
+      </div>
+    <% else %>
+      <%# No existing productions to link — just name the new one. %>
+      <div>
+        <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">Production / show name</label>
+        <input type="text" name="production_name" id="production_name"
+               value="<%= @contract.production_name %>"
+               placeholder="e.g. Spring Recital 2026"
+               class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      </div>
+    <% end %>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

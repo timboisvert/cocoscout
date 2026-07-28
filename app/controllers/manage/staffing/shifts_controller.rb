@@ -27,6 +27,7 @@ module Manage
       end
 
       def destroy
+        @shift.shift_assignments.each { |a| record_removal_if_notified(a) }
         @shift.destroy!
         redirect_back_or_to manage_staffing_scheduling_path, notice: "Shift removed."
       end
@@ -57,6 +58,7 @@ module Manage
         assignment = @shift.shift_assignments.find_by(person_id: params[:person_id])
         if assignment
           name = assignment.person.name
+          record_removal_if_notified(assignment)
           assignment.destroy!
           redirect_back_or_to manage_staffing_scheduling_path, notice: "Removed #{name} from this shift."
         else
@@ -157,6 +159,21 @@ module Manage
       end
 
       private
+
+      # If this assignment was already notified to the person, log a pending
+      # "shift removed" notice so the next targeted Notify updates tells them.
+      def record_removal_if_notified(assignment)
+        return if assignment.notified_at.nil?
+
+        shift = assignment.shift
+        location = shift.house_role.location&.name || shift.source.try(:location).try(:name)
+        Current.organization.staff_schedule_removals.create!(
+          person_id: assignment.person_id,
+          shift_starts_at: shift.starts_at,
+          shift_label: shift.role_label,
+          location_name: location
+        )
+      end
 
       def set_shift
         @shift = Current.organization.shifts.find(params[:id])

@@ -65,6 +65,7 @@
                   <th class="px-4 py-2.5 font-semibold text-right">Total</th>
                   <th class="px-4 py-2.5 font-semibold text-right">People</th>
                   <th class="px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
+                  <th class="px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -78,6 +79,18 @@
                     <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
                     <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
                     <td class="px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
+                    <td class="px-4 py-2.5 text-right">
+                      <% if batch.status == "draft" %>
+                        <% dcid = "confirm-discard-#{batch.id}" %>
+                        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= dcid %>"
+                                class="text-xs text-gray-500 hover:text-red-600 cursor-pointer bg-transparent border-0 whitespace-nowrap">Discard</button>
+                        <%= render "shared/confirm_modal", id: dcid,
+                              title: "Discard this draft run?",
+                              message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips and manually-typed amounts on this run are cleared. This can't be undone.",
+                              confirm_text: "Discard run",
+                              url: manage_payout_batch_path(batch), method: :delete %>
+                      <% end %>
+                    </td>
                   </tr>
                 <% end %>
               </tbody>
@@ -94,53 +107,9 @@
       </div>
     </div>
 
-    <%# ---- Sidebar: funding + schedule config ---- %>
+    <%# ---- Sidebar: funding source ---- %>
     <aside class="space-y-6">
       <%= render "manage/funding_source", org: org %>
-
-      <div class="bg-white border border-gray-200 rounded-lg p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Payout schedule</h2>
-        <p class="text-sm text-gray-500 mt-0.5 mb-4">
-          <% if org.payout_schedule_enabled? %>
-            <%= org.payout_schedule_label %> — next run <span class="font-medium text-gray-700"><%= org.next_payout_date.strftime("%A, %b %-d") %></span>.
-          <% else %>
-            Automatic payouts are off — you run them yourself.
-          <% end %>
-        </p>
-
-        <%= form_with url: manage_payout_batch_schedule_path, method: :patch, class: "space-y-3" do %>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
-            <select name="payout_schedule" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <% [ %w[manual Manual], %w[weekly Weekly], %w[monthly Monthly] ].each do |val, label| %>
-                <option value="<%= val %>" <%= "selected" if org.payout_schedule == val %>><%= label %></option>
-              <% end %>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Day of week <span class="text-gray-400">(if weekly)</span></label>
-            <select name="weekly_day" class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <% Date::DAYNAMES.each_with_index do |name, i| %>
-                <option value="<%= i %>" <%= "selected" if (org.payout_schedule == "weekly" ? org.payout_schedule_day : PayoutScheduling::DEFAULT_WEEKLY_DAY) == i %>><%= name %></option>
-              <% end %>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Day of month <span class="text-gray-400">(if monthly)</span></label>
-            <input type="number" name="monthly_day" min="1" max="28"
-                   value="<%= org.payout_schedule == 'monthly' ? org.payout_schedule_day : PayoutScheduling::DEFAULT_MONTHLY_DAY %>"
-                   class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          </div>
-          <input type="hidden" name="payout_funding_method" value="ach">
-          <div class="flex justify-end pt-1">
-            <%= render "shared/button", text: "Save schedule", variant: "secondary", size: "small", type: :submit %>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-        <p class="text-xs text-gray-500">Pay everyone who's connected a bank at once. You fund the run via ACH and CocoScout deposits each person's balance straight to their account.</p>
-      </div>
     </aside>
   </div>
 </div>

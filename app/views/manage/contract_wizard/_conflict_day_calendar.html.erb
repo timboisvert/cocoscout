@@ -1,0 +1,78 @@
+<%#
+  A single day's timeline for one space: hours down the left, every block that day
+  positioned to scale, overlapping items packed into side-by-side lanes so a clash
+  reads at a glance.
+
+  locals:
+    day — ContractBookingConflicts::ConflictDay
+%>
+<%
+  blocks = day.blocks
+  px_per_hour = 56
+
+  window_start = blocks.map(&:starts_at).min.beginning_of_hour
+  latest_end   = blocks.map(&:ends_at).max
+  window_end   = (latest_end == latest_end.beginning_of_hour) ? latest_end : (latest_end.beginning_of_hour + 1.hour)
+  hours        = [ ((window_end - window_start) / 1.hour).ceil, 1 ].max
+  total_h      = hours * px_per_hour
+
+  # Greedy lane packing: reuse a lane once its last block has ended.
+  lane_ends = []
+  lane_of = {}
+  blocks.sort_by(&:starts_at).each do |b|
+    idx = lane_ends.index { |end_t| end_t <= b.starts_at }
+    if idx
+      lane_ends[idx] = b.ends_at
+    else
+      lane_ends << b.ends_at
+      idx = lane_ends.size - 1
+    end
+    lane_of[b.object_id] = idx
+  end
+  num_lanes = [ lane_ends.size, 1 ].max
+  lane_width = 100.0 / num_lanes
+%>
+
+<div class="mt-3 flex rounded-lg border border-gray-200 overflow-hidden">
+  <%# Hour gutter %>
+  <div class="w-14 flex-shrink-0 bg-gray-50 border-r border-gray-200 relative" style="height: <%= total_h %>px;">
+    <% (0..hours).each do |h| %>
+      <div class="absolute left-0 right-1 text-right text-[11px] text-gray-400 -translate-y-1/2" style="top: <%= h * px_per_hour %>px;">
+        <%= (window_start + h.hours).strftime("%-l %p") %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Timeline %>
+  <div class="relative flex-1 bg-white" style="height: <%= total_h %>px;">
+    <% (0..hours).each do |h| %>
+      <div class="absolute left-0 right-0 border-t border-gray-100" style="top: <%= h * px_per_hour %>px;"></div>
+    <% end %>
+
+    <% blocks.each do |b| %>
+      <%
+        top    = ((b.starts_at - window_start) / 1.hour) * px_per_hour
+        height = [ ((b.ends_at - b.starts_at) / 1.hour) * px_per_hour, 24 ].max
+        left   = lane_width * lane_of[b.object_id]
+        cls = case b.kind
+              when :proposed_conflict then "bg-pink-100 border-pink-400 text-pink-900 ring-2 ring-pink-400"
+              when :proposed          then "bg-pink-50 border-pink-300 text-pink-900"
+              when :existing_conflict then "bg-red-50 border-red-300 text-red-900"
+              else                          "bg-gray-100 border-gray-300 text-gray-700"
+              end
+      %>
+      <div class="absolute rounded-md border px-2 py-1 overflow-hidden <%= cls %>"
+           style="top: <%= top %>px; height: <%= height %>px; left: calc(<%= left %>% + 2px); width: calc(<%= lane_width %>% - 4px);">
+        <div class="text-[11px] font-semibold leading-tight truncate"><%= b.label %></div>
+        <div class="text-[10px] leading-tight truncate opacity-80"><%= ContractBookingConflicts.time_range(b) %></div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Legend %>
+<div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500">
+  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-pink-100 border border-pink-400"></span> This contract</span>
+  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-50 border border-red-300"></span> Conflicting booking</span>
+  <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300"></span> Also scheduled that day</span>
+</div>

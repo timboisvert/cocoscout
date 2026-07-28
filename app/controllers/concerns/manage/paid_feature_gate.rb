@@ -22,6 +22,8 @@ module Manage
       "manage/show_financials" => :money,
       "manage/contracts" => :contracts,
       "manage/contract_settings" => :contracts,
+      "manage/contract_templates" => :contracts,
+      "manage/contract_signatures" => :contracts,
       "manage/contract_payments" => :contracts,
       "manage/contract_wizard" => :contracts,
       "manage/contract_documents" => :contracts,

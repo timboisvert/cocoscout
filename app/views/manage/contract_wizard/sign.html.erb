@@ -1,0 +1,63 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Sign", width: "max-w-3xl" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Sign the contract</h2>
+  <p class="text-gray-600 mb-6">You're signing this on behalf of <%= @contract.organization.name %>. Once you sign, you'll send it to <%= @contract.contractor_name %> to sign too.</p>
+
+  <% if flash[:alert] %>
+    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <p class="text-sm text-red-600"><%= flash[:alert] %></p>
+    </div>
+  <% end %>
+
+  <%# The locked contract, so they sign with it in front of them. %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-700">Contract</h3>
+    </div>
+    <div class="p-6 max-h-[45vh] overflow-y-auto bg-white">
+      <div class="prose prose-sm max-w-none
+                  [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1
+                  [&_table]:w-full [&_table]:text-sm [&_table]:my-3 [&_th]:text-left [&_th]:font-medium [&_th]:text-gray-500 [&_th]:border-b [&_th]:py-1 [&_td]:py-1 [&_td]:border-b [&_td]:border-gray-100
+                  [&_hr]:my-5 [&_h3]:mt-5 [&_h4]:mt-4 [&_h4]:font-semibold">
+        <%= @rendered_document %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-pink-500 to-pink-600">
+      <h3 class="text-sm font-semibold text-white">Sign as <%= @contract.organization.name %></h3>
+    </div>
+    <%= form_with url: manage_sign_contract_wizard_path(@contract), method: :post, local: true, data: { controller: "sign-gate" } do %>
+      <div class="p-6 space-y-4">
+        <div>
+          <label for="signer_name" class="block text-sm font-medium text-gray-900 mb-1.5">Your full name <span class="text-pink-500">*</span></label>
+          <input type="text" name="signer_name" id="signer_name" required autocomplete="name"
+                 value="<%= Current.user&.person&.name %>"
+                 data-sign-gate-target="name" data-action="input->sign-gate#update"
+                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        </div>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" name="agree" value="1"
+                 data-sign-gate-target="agree" data-action="change->sign-gate#update"
+                 class="mt-1 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+          <span class="text-sm text-gray-700">I'm signing this contract on behalf of <%= @contract.organization.name %>, and I agree it's a legally binding contract.</span>
+        </label>
+
+        <p class="text-xs text-gray-500">Your signature is recorded with your account, the date and time, and your IP address.</p>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_prepare_contract_wizard_path(@contract) %>
+        <%# Starts enabled so it works without JS; sign-gate disables until valid when present, and the server validates regardless. %>
+        <%= render "shared/button", text: "Sign contract", variant: "primary", size: "medium", type: :submit,
+              classes: "disabled:opacity-50 disabled:cursor-not-allowed", data: { sign_gate_target: "submit" } %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Teammate signing — the next iteration. %>
+  <div class="mt-4 text-center">
+    <p class="text-xs text-gray-400">Need someone else on your team to sign instead? That's coming soon.</p>
+  </div>
+<% end %>

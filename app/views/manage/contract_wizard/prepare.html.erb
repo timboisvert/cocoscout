@@ -1,0 +1,61 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Prepare", width: "max-w-3xl" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Prepare the contract</h2>
+  <p class="text-gray-600 mb-6">This is the actual contract <%= @contract.contractor_name %> will sign. Pick the template, read it over carefully, then lock it in.</p>
+
+  <% if @active_templates.empty? %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No contract templates yet</h3>
+      <p class="text-gray-600 mb-4">A template is the wording of the contract. Create one, then come back to prepare this contract.</p>
+      <%= link_to manage_contract_settings_section_path(section: "templates") do %>
+        <%= render "shared/button", text: "Create a template", variant: "primary", size: "medium", icon: "plus" %>
+      <% end %>
+    </div>
+  <% else %>
+    <%# Template chooser (only worth showing when there's a choice). %>
+    <% if @active_templates.size > 1 %>
+      <%= form_with url: manage_prepare_contract_wizard_path(@contract), method: :get, local: true, class: "flex items-end gap-3 mb-5" do %>
+        <div class="flex-1">
+          <label for="template_id" class="block text-sm font-medium text-gray-900 mb-1.5">Template</label>
+          <select name="template_id" id="template_id"
+                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <% @active_templates.each do |t| %>
+              <option value="<%= t.id %>" <%= "selected" if t.id == @selected_template&.id %>><%= t.name %></option>
+            <% end %>
+          </select>
+        </div>
+        <%= render "shared/button", text: "Preview", variant: "secondary", size: "medium", icon: "eye", type: :submit %>
+      <% end %>
+    <% end %>
+
+    <% if @active_templates.size == 1 %>
+      <p class="text-xs text-gray-400 mb-2">
+        Using your only contract template, <span class="font-medium text-gray-500"><%= @selected_template&.name %></span>. You can add more in
+        <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "templates"), class: "underline hover:text-gray-600" %>.
+      </p>
+    <% end %>
+
+    <%# The rendered contract — the whole point of this step. %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-700">Preview — <%= @selected_template&.name %></h3>
+        <span class="text-xs text-gray-500">with this contract's data</span>
+      </div>
+      <div class="p-6 max-h-[55vh] overflow-y-auto bg-white">
+        <div class="prose prose-sm max-w-none
+                    [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1
+                    [&_table]:w-full [&_table]:text-sm [&_table]:my-3 [&_th]:text-left [&_th]:font-medium [&_th]:text-gray-500 [&_th]:border-b [&_th]:py-1 [&_td]:py-1 [&_td]:border-b [&_td]:border-gray-100
+                    [&_hr]:my-5 [&_h3]:mt-5 [&_h4]:mt-4 [&_h4]:font-semibold">
+          <%= @rendered_document %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_review_contract_wizard_path(@contract) %>
+      <%= form_with url: manage_prepare_contract_wizard_path(@contract), method: :post, local: true do %>
+        <input type="hidden" name="contract_template_id" value="<%= @selected_template&.id %>">
+        <%= render "shared/button", text: "This is the contract — continue to sign", variant: "primary", size: "medium", icon: "arrow-right", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

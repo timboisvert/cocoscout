@@ -147,30 +147,19 @@
   </div>
 
 
-  <%# Active Contracts %>
+  <%# Active & draft contracts — same slim list as /manage/contracts. %>
   <% if @active_contracts.any? || @draft_contracts.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Active Contracts" %>
-      <div class="p-4 space-y-2">
-        <% @active_contracts.each do |contract| %>
-          <%= render "manage/contracts/contract_list_row", contract: contract %>
-        <% end %>
-        <% @draft_contracts.each do |contract| %>
-          <%= render "manage/contracts/contract_list_row", contract: contract %>
-        <% end %>
-      </div>
+    <div class="mb-8">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">Active &amp; draft contracts</h2>
+      <%= render "manage/contracts/contract_slim_list", contracts: (@active_contracts.to_a + @draft_contracts.to_a) %>
     </div>
   <% end %>
 
-  <%# Past Contracts %>
+  <%# Past contracts %>
   <% if @completed_contracts.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Past Contracts" %>
-      <div class="p-4 space-y-2">
-        <% @completed_contracts.each do |contract| %>
-          <%= render "manage/contracts/contract_list_row", contract: contract %>
-        <% end %>
-      </div>
+    <div class="mb-8">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">Past contracts</h2>
+      <%= render "manage/contracts/contract_slim_list", contracts: @completed_contracts.to_a %>
     </div>
   <% end %>
 

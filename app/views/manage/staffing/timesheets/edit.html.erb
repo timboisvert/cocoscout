@@ -16,16 +16,22 @@
               <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             </div>
             <div class="text-sm text-gray-600">
-              You changed <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s hours
-              (now <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>),
-              so they've gone back to review. Approve them again to make them payable, or leave them in the queue for now.
+              <% if @was_approved %>
+                You changed <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s hours
+                (now <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>),
+                so they've gone back to review. Approve them again to make them payable, or leave them in the queue for now.
+              <% else %>
+                <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s hours are now
+                <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>.
+                Approve them to make them payable, or leave them in the queue for now.
+              <% end %>
             </div>
           </div>
           <div class="flex items-center gap-2 mt-6">
-            <%= render "shared/button", text: "Re-approve now", variant: "primary", size: "medium",
+            <%= render "shared/button", text: @was_approved ? "Re-approve now" : "Approve now", variant: "primary", size: "medium",
                   path: manage_reapprove_staffing_timesheet_path(@entry), method: :patch,
                   form: { data: { turbo_frame: "_top" } } %>
-            <%= render "shared/button", text: "Keep in review", variant: "secondary", size: "medium",
+            <%= render "shared/button", text: @was_approved ? "Keep in review" : "Back to queue", variant: "secondary", size: "medium",
                   path: manage_staffing_timesheets_path, data: { turbo_frame: "_top" } %>
           </div>
         </div>
@@ -92,24 +98,28 @@
             </div>
           <% end %>
 
-          <%# Send back to the approval queue without editing the hours. %>
-          <div class="mt-4 pt-4 border-t border-gray-200">
-            <% unapprove_cid = "confirm-unapprove-#{@entry.id}" %>
-            <button type="button"
-                    data-controller="modal"
-                    data-action="click->modal#open"
-                    data-modal-id="<%= unapprove_cid %>"
-                    class="text-sm text-amber-700 hover:text-amber-800 cursor-pointer inline-flex items-center gap-1.5 bg-transparent border-0 p-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
-              Unapprove (send back for review)
-            </button>
-            <%= render "shared/confirm_modal", id: unapprove_cid,
-                  title: "Send back for review?",
-                  message: "Send this entry back to the review queue? You'll need to approve it again.",
-                  confirm_text: "Send back",
-                  url: manage_unapprove_staffing_timesheet_path(@entry), method: :patch,
-                  form_data: { turbo_frame: "_top" } %>
-          </div>
+          <%# Send back to the approval queue without editing the hours — only
+              relevant for an already-approved entry. A still-pending one is either
+              adjusted or rejected, so there's nothing to send back. %>
+          <% if @entry.approved_at.present? %>
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <% unapprove_cid = "confirm-unapprove-#{@entry.id}" %>
+              <button type="button"
+                      data-controller="modal"
+                      data-action="click->modal#open"
+                      data-modal-id="<%= unapprove_cid %>"
+                      class="text-sm text-amber-700 hover:text-amber-800 cursor-pointer inline-flex items-center gap-1.5 bg-transparent border-0 p-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                Unapprove (send back for review)
+              </button>
+              <%= render "shared/confirm_modal", id: unapprove_cid,
+                    title: "Send back for review?",
+                    message: "Send this entry back to the review queue? You'll need to approve it again.",
+                    confirm_text: "Send back",
+                    url: manage_unapprove_staffing_timesheet_path(@entry), method: :patch,
+                    form_data: { turbo_frame: "_top" } %>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>

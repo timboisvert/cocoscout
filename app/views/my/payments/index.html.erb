@@ -18,12 +18,57 @@
         <div class="bg-white rounded-lg border border-gray-200 p-4">
           <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">To be paid</div>
           <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@to_be_paid_cents / 100.0) %></div>
+          <% if @pending_total_cents.to_i.positive? %>
+            <div class="text-[11px] text-amber-600 mt-0.5">incl. <%= number_to_currency(@pending_total_cents / 100.0) %> awaiting approval</div>
+          <% end %>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4">
           <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total received</div>
           <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@total_received) %></div>
         </div>
       </div>
+
+      <%# What makes up "To be paid" — confirmed lines plus anything awaiting approval. %>
+      <% if @owed_lines.any? || @pending_lines.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">What you're being paid for</h3>
+          </div>
+          <div class="divide-y divide-gray-100">
+            <% @owed_lines.each do |line| %>
+              <div class="px-5 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm text-gray-900 truncate"><%= line[:label] %></div>
+                  <% if line[:org].present? %><div class="text-xs text-gray-400 truncate"><%= line[:org] %></div><% end %>
+                </div>
+                <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
+              </div>
+            <% end %>
+            <% if @already_paid_out_cents.to_i.positive? %>
+              <div class="px-5 py-3 flex items-center justify-between gap-4">
+                <div class="text-sm text-gray-400">Already paid out</div>
+                <div class="text-sm text-gray-400 tabular-nums flex-shrink-0">−<%= number_to_currency(@already_paid_out_cents / 100.0) %></div>
+              </div>
+            <% end %>
+            <% @pending_lines.each do |line| %>
+              <div class="px-5 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="text-sm text-gray-900 truncate flex items-center gap-2">
+                    <span class="truncate"><%= line[:label] %></span>
+                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 flex-shrink-0">Awaiting approval</span>
+                  </div>
+                  <% if line[:org].present? %><div class="text-xs text-gray-400 truncate"><%= line[:org] %></div><% end %>
+                </div>
+                <div class="text-sm font-medium text-gray-500 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
+              </div>
+            <% end %>
+          </div>
+          <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">To be paid</span>
+            <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@to_be_paid_cents / 100.0) %></span>
+          </div>
+        </div>
+      <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-200">

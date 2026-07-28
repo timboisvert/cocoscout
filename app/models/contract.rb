@@ -10,7 +10,11 @@ class Contract < ApplicationRecord
   # A contract is FOR one production (the real-world show). A production can be the
   # subject of many contracts over time — see Production#contracts.
   belongs_to :production, optional: true
+  # The template whose wording rendered this contract's signable document (only
+  # set for e-sign contracts; offline contracts never pick one).
+  belongs_to :contract_template, optional: true
   has_many :course_offerings, dependent: :nullify
+  has_many :contract_signatures, dependent: :destroy
 
   # Status enum
   enum :status, {
@@ -19,6 +23,27 @@ class Contract < ApplicationRecord
     completed: "completed",
     cancelled: "cancelled"
   }, default: :draft, prefix: :status
+
+  # How this contract's signature is handled. :offline is the classic behavior
+  # (signed elsewhere, PDF optionally uploaded) and the default for every existing
+  # contract. :esign engages CocoScout's native create → send → sign → PDF flow.
+  enum :signing_mode, {
+    offline: "offline",
+    esign: "esign"
+  }, default: :offline, prefix: :signing_mode
+
+  # Native-signing lifecycle (esign contracts only):
+  #   unsent → awaiting_send → out_for_signature → executed
+  # unsent: still being prepared/signed by the org side (wizard Prepare/Sign steps).
+  # awaiting_send: the org has signed; the document is locked and ready to send.
+  # out_for_signature: sent to the counterparty. executed: they signed.
+  # Independent of :status (draft/active/…) — execution auto-activates the contract.
+  enum :signing_state, {
+    unsent: "unsent",
+    awaiting_send: "awaiting_send",
+    out_for_signature: "out_for_signature",
+    executed: "executed"
+  }, default: :unsent, prefix: :signing
 
   validates :contractor_name, presence: true
 
@@ -131,6 +156,174 @@ class Contract < ApplicationRecord
     end
 
     true
+  end
+
+  # ─── Native e-signature ─────────────────────────────────────────────────────
+
+  # The counterparty's CocoScout member Person, if they already have a login — so
+  # we can tell them the contract will also appear in their My Contracts. Resolves
+  # the linked contractor Person, else matches an org Person by email; returns it
+  # only when it's a real member (has a user account). Never creates anything.
+  def signer_member_person
+    person = contractor&.person
+    person ||= organization.people.where("LOWER(email) = ?", contractor_email.to_s.downcase).first if contractor_email.present?
+    person if person&.user_id.present?
+  end
+
+  def signer_is_member?
+    signer_member_person.present?
+  end
+
+  def organization_signature
+    contract_signatures.detect(&:role_organization?) ||
+      contract_signatures.role_organization.first
+  end
+
+  def contractor_signature
+    contract_signatures.detect(&:role_contractor?) ||
+      contract_signatures.role_contractor.first
+  end
+
+  # The generated (or uploaded) signed-contract PDF, if one is attached. Uses the
+  # loaded association (so a preloaded index doesn't re-query per card).
+  def signed_pdf_document
+    contract_documents.to_a.select { |d| d.document_type == "signed_contract" }.detect { |d| d.file.attached? }
+  end
+
+  # Kick off signed-PDF generation if this is executed but has none yet. Safe to
+  # call from a view/GET — the job is idempotent and no-ops when a PDF exists.
+  def ensure_signed_pdf!
+    GenerateContractPdfJob.perform_later(id) if signing_executed? && signed_pdf_document.nil?
+  end
+
+  # Mint a fresh public signing token (rotates any prior one — an old link dies).
+  def regenerate_signing_token!
+    update!(signing_token: SecureRandom.urlsafe_base64(24))
+  rescue ActiveRecord::RecordNotUnique
+    retry
+  end
+
+  # Prepare (wizard "Prepare" step): lock in the template whose wording will render
+  # the document. The producer previews the rendered contract before this. Idempotent
+  # — they can re-pick and re-preview until they sign.
+  def prepare_for_signature!(template:)
+    raise ArgumentError, "not an e-sign contract" unless signing_mode_esign?
+    raise ArgumentError, "template required" if template.nil?
+    return false if signing_executed? || signing_out_for_signature?
+
+    update!(contract_template: template)
+    true
+  end
+
+  # Org signs (wizard "Sign" step): the org's own deliberate signature, stamped with
+  # the producer + timestamp + IP, over the locked document snapshot. Moves the
+  # contract to awaiting_send — nothing has gone to the counterparty yet.
+  def sign_by_org!(signer_name:, signed_by:, request:)
+    raise ArgumentError, "choose a template first" if contract_template.nil?
+    return false if signing_executed? || signing_out_for_signature?
+
+    transaction do
+      snapshot = render_signable_document
+      contract_signatures.role_organization.destroy_all
+      contract_signatures.create!(
+        signer_role: "organization",
+        signer_name: signer_name.presence || signed_by&.person&.name.presence || organization.name,
+        signer_email: signed_by&.person&.email.presence || signed_by&.email_address,
+        signed_by_user: signed_by,
+        person: signed_by&.person,
+        signed_at: Time.current,
+        ip_address: request&.remote_ip,
+        user_agent: request&.user_agent&.truncate(500),
+        content_snapshot: snapshot,
+        contract_template: contract_template,
+        template_version: contract_template.version
+      )
+      update!(signing_state: :awaiting_send)
+    end
+    true
+  end
+
+  # Send (wizard "Send" step): the org has signed; now mint a fresh link and put it
+  # out for the counterparty to sign. (Templated email + in-app message are enqueued
+  # by the caller.)
+  def send_for_signature!
+    return false unless signing_awaiting_send?
+
+    regenerate_signing_token!
+    update!(signing_state: :out_for_signature, sent_for_signature_at: Time.current)
+    true
+  end
+
+  # Pull back a sent-but-unsigned request: the link dies. The org's signature and
+  # locked document are kept, so it drops back to awaiting_send — re-send in one
+  # click, or step back to change the data / template and re-sign first.
+  def revoke_signing!
+    return false unless signing_out_for_signature?
+
+    update!(signing_state: :awaiting_send, signing_token: nil, sent_for_signature_at: nil)
+    true
+  end
+
+  # Counterparty agrees on the public sign page → contract is executed. Both
+  # parties' snapshots are the identical document the org sent. Executing an
+  # esign contract also activates it (creates its operational records).
+  def execute_by_signature!(signer_name:, signer_email:, request:, person: nil)
+    return false unless signing_out_for_signature?
+
+    transaction do
+      snapshot = organization_signature&.content_snapshot.presence || render_signable_document
+      contract_signatures.role_contractor.destroy_all
+      contract_signatures.create!(
+        signer_role: "contractor",
+        signer_name: signer_name,
+        signer_email: signer_email,
+        person: person,
+        signed_at: Time.current,
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent&.truncate(500),
+        content_snapshot: snapshot,
+        contract_template: contract_template,
+        template_version: contract_template&.version
+      )
+      # Keep the token alive after execution so the signer can return to their
+      # link for the signed PDF; only revoke nulls it.
+      update!(signing_state: :executed, executed_at: Time.current)
+    end
+
+    # Best-effort: a fully-signed contract becomes operational. If activation
+    # can't complete (e.g. a booking conflict), it stays executed-but-draft for
+    # the producer to resolve — the signature record is already safe.
+    activate! if status_draft?
+    # Generate the signed PDF off the request thread.
+    GenerateContractPdfJob.perform_later(id)
+    true
+  end
+
+  # The merge values a contract template renders against.
+  def signing_variables
+    {
+      contractor_name: contractor_name,
+      organization_name: organization.name,
+      production_name: production_name.presence || production&.name,
+      contract_start_date: contract_start_date&.strftime("%B %-d, %Y"),
+      contract_end_date: contract_end_date&.strftime("%B %-d, %Y"),
+      current_date: Date.current.strftime("%B %-d, %Y")
+    }
+  end
+
+  # The full signable document for the locked template: the wording (merge-filled)
+  # followed by a system-generated "Deal Terms" schedule so the concrete
+  # dates/money/services are always accurate regardless of what the author wrote.
+  def render_signable_document
+    render_document_for(contract_template)
+  end
+
+  # Same, for an arbitrary template — used to preview before locking one in.
+  # Interpolate (don't use +) so the safe template HTML and the Deal Terms HTML are
+  # joined as plain strings and neither half gets auto-escaped; mark the whole safe.
+  def render_document_for(template)
+    body = template ? template.render_content(signing_variables).to_s : ""
+    "#{body}#{deal_terms_html}".html_safe
   end
 
   # Draft data helpers
@@ -698,6 +891,50 @@ class Contract < ApplicationRecord
     format("$%.2f", value.to_f)
   end
 
+  # System-generated "Deal Terms" schedule appended to every signable document —
+  # the concrete term, money terms, payment schedule, and services, straight from
+  # the contract's own data so the numbers can't drift from a template's wording.
+  def deal_terms_html
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    out = +%(<hr><h3>Deal Terms</h3>)
+
+    if contract_start_date && contract_end_date
+      out << %(<p><strong>Term:</strong> #{esc.(contract_start_date.strftime("%B %-d, %Y"))} – #{esc.(contract_end_date.strftime("%B %-d, %Y"))}</p>)
+    end
+
+    summary_lines = (deal_summary rescue [])
+    if summary_lines.any?
+      out << "<ul>"
+      summary_lines.each { |l| out << %(<li><strong>#{esc.(l[:label])}:</strong> #{esc.(l[:value])}</li>) }
+      out << "</ul>"
+    end
+
+    payments = (draft_payments rescue [])
+    if payments.any?
+      out << "<h4>Payment schedule</h4><table><thead><tr><th>Item</th><th>Direction</th><th>Amount</th><th>Due</th></tr></thead><tbody>"
+      payments.each do |p|
+        direction = p["direction"] == "outgoing" ? "We pay them" : "They pay us"
+        amount = p["amount_tbd"] ? "TBD" : deal_money(p["amount"])
+        due = p["due_date"].present? ? esc.(p["due_date"]) : "—"
+        out << %(<tr><td>#{esc.(p["description"].presence || "Payment")}</td><td>#{direction}</td><td>#{amount}</td><td>#{due}</td></tr>)
+      end
+      out << "</tbody></table>"
+    end
+
+    services = (draft_services rescue [])
+    if services.any?
+      out << "<h4>Services</h4><ul>"
+      services.each do |s|
+        qty = s["quantity"].to_f
+        qty_label = qty > 1 ? " × #{qty.to_i == qty ? qty.to_i : qty}" : ""
+        out << %(<li>#{esc.(s["name"])}#{qty_label} — #{deal_money(s["unit_price"])}#{s["unit"] == "hourly" ? "/hr" : ""}</li>)
+      end
+      out << "</ul>"
+    end
+
+    out
+  end
+
   def deal_summary_flat_fee(cfg, lines)
     if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
       lines << { label: "How the money works",
@@ -801,7 +1038,10 @@ class Contract < ApplicationRecord
         event_ends_at: event_ends_at,
         notes: booking["notes"],
         confirmed: true,
-        allow_overlap: allow_overlap
+        # Honor an override chosen in the wizard. Offline activation sets the
+        # transient attr; e-sign persists it in draft_data because the rentals
+        # aren't created until the counterparty signs, long after that choice.
+        allow_overlap: allow_overlap || draft_data["allow_overlap"] == true
       })
 
       event_type = booking["event_type"] || "show"

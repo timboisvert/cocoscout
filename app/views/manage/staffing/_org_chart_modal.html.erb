@@ -1,0 +1,34 @@
+<%# Org chart in a large, scrollable modal — opened from the "Org chart" button
+    on the staff list (shared `modal` controller, id "org-chart-modal"). Reuses the
+    recursive _org_node tree. Data: @roots + @children_by_manager. %>
+<div id="org-chart-modal" class="hidden fixed inset-0 z-[70] overflow-y-auto"
+     data-controller="modal" data-action="keydown.esc@window->modal#close">
+  <div class="flex min-h-full items-start justify-center p-4 py-10">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" data-action="click->modal#closeOnBackdrop"></div>
+
+    <div class="relative w-full max-w-5xl bg-white rounded-xl shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+        <div>
+          <h3 class="text-lg font-semibold text-white">Org chart</h3>
+          <p class="text-xs text-pink-100">Who reports to whom — scroll to explore</p>
+        </div>
+        <button type="button" data-action="click->modal#close"
+                class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="max-h-[75vh] overflow-auto p-6 bg-gray-50 rounded-b-xl">
+        <% if @roots.blank? %>
+          <p class="text-sm text-gray-500 text-center py-8">No staff to chart yet.</p>
+        <% else %>
+          <ul class="space-y-2 min-w-max">
+            <% @roots.each do |root| %>
+              <%= render "manage/staffing/org_node", member: root, children_by_manager: @children_by_manager %>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

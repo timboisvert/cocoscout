@@ -29,14 +29,23 @@ export default class extends Controller {
         rows.forEach(r => {
             const id = r.dataset.roleId
             const name = this.escape(r.dataset.roleName)
+            const defaultRate = r.dataset.roleDefaultRate || ""
             const isChecked = checked.has(id) ? "checked" : ""
-            const rateVal = rates[id] ? this.escape(rates[id]) : ""
-            html += `<label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer" data-role-row data-role-id="${id}">` +
+            // Preserve a typed rate; otherwise seed a checked role with its default
+            // so it "shows up" the same way it does on first load.
+            const rateVal = rates[id]
+                ? this.escape(rates[id])
+                : (isChecked && defaultRate ? this.escape(defaultRate) : "")
+            const ph = defaultRate ? this.escape(defaultRate) : this.escape(placeholder)
+            const caption = defaultRate
+                ? `<span class="block text-xs text-gray-400">Role default $${this.escape(defaultRate)}/hr</span>`
+                : ""
+            html += `<label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer" data-role-row data-role-id="${id}" data-role-default-rate="${this.escape(defaultRate)}">` +
                 `<input type="checkbox" name="house_role_ids[]" value="${id}" ${isChecked} data-role-checkbox class="h-4 w-4 rounded border-gray-300 accent-pink-500">` +
-                `<span class="flex-1 text-sm font-medium text-gray-800">${name}</span>` +
+                `<span class="flex-1 min-w-0"><span class="block text-sm font-medium text-gray-800 truncate">${name}</span>${caption}</span>` +
                 `<div class="relative w-28 flex-shrink-0">` +
                 `<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>` +
-                `<input type="text" inputmode="decimal" name="role_rates[${id}]" value="${rateVal}" placeholder="${this.escape(placeholder)}" data-role-rate class="w-full pl-5 pr-8 py-1.5 border border-gray-200 rounded text-right text-sm focus:outline-none focus:ring-1 focus:ring-pink-300">` +
+                `<input type="text" inputmode="decimal" name="role_rates[${id}]" value="${rateVal}" placeholder="${ph}" data-role-rate class="w-full pl-5 pr-8 py-1.5 border border-gray-200 rounded text-right text-sm focus:outline-none focus:ring-1 focus:ring-pink-300">` +
                 `<span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">/hr</span>` +
                 `</div>` +
                 `</label>`

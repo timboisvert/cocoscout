@@ -5,7 +5,7 @@ module Manage
   # as a tab, so only the section you're looking at loads its data and a link
   # can point straight at it.
   class ContractSettingsController < Manage::ManageController
-    SECTIONS = %w[payments services].freeze
+    SECTIONS = %w[payments services templates].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
@@ -18,6 +18,8 @@ module Manage
       when "services"
         @services = Current.organization.contract_service_options.ordered
         @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
+      when "templates"
+        @contract_templates = Current.organization.contract_templates.order(:name)
       end
     end
 

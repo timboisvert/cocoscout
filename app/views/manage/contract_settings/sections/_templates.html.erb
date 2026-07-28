@@ -1,0 +1,55 @@
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Contract templates</h2>
+      <p class="text-sm text-gray-600">Reusable contract wording you can send for e-signature. Each contract fills in the <code class="bg-gray-100 px-1 rounded text-xs">{{merge fields}}</code> from its own data, and the dates, financials, and services are appended automatically.</p>
+    </div>
+    <%= link_to new_manage_contract_template_path, class: "shrink-0" do %>
+      <%= render "shared/button", text: "New Template", variant: "primary", size: "small", icon: "plus" %>
+    <% end %>
+  </div>
+</div>
+
+<% if @contract_templates.any? %>
+  <div class="space-y-2">
+    <% @contract_templates.each do |template| %>
+      <%= link_to edit_manage_contract_template_path(template), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <h3 class="font-semibold text-gray-900"><%= template.name %></h3>
+              <% unless template.active? %>
+                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+              <% end %>
+              <span class="text-xs text-gray-500">Version <%= template.version %></span>
+            </div>
+            <% if template.description.present? %>
+              <p class="text-sm text-gray-600 mt-1"><%= template.description %></p>
+            <% end %>
+            <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
+              <span>
+                <% contract_count = template.total_contracts %>
+                <%= contract_count %> <%= "contract".pluralize(contract_count) %>
+              </span>
+              <span>Updated <%= time_ago_in_words(template.updated_at) %> ago</span>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">No contract templates yet</h3>
+    <p class="text-gray-600 mb-4">Create a template so you can send contracts for signature without rewriting the wording each time.</p>
+    <%= link_to new_manage_contract_template_path do %>
+      <%= render "shared/button", text: "Create First Template", variant: "primary", size: "medium" %>
+    <% end %>
+  </div>
+<% end %>

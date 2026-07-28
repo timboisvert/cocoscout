@@ -238,7 +238,13 @@
         <% else %>
           <span></span>
         <% end %>
-        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Close</button>
+        <div class="flex items-center gap-2">
+          <% if (pdf_doc = contract.signed_pdf_document) %>
+            <%= render "shared/button", text: "Download PDF", variant: "secondary", size: "medium", icon: "download",
+                  path: rails_blob_path(pdf_doc.file, disposition: "attachment") %>
+          <% end %>
+          <%= render "shared/button", text: "Close", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        </div>
       </div>
     </div>
   </div>

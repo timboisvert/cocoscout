@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -495,6 +495,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.index ["organization_id"], name: "index_contract_service_options_on_organization_id"
   end
 
+  create_table "contract_signatures", force: :cascade do |t|
+    t.text "content_snapshot", null: false
+    t.bigint "contract_id", null: false
+    t.bigint "contract_template_id"
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.bigint "person_id"
+    t.datetime "signed_at", null: false
+    t.bigint "signed_by_user_id"
+    t.string "signer_email"
+    t.string "signer_name"
+    t.string "signer_role", null: false
+    t.integer "template_version"
+    t.datetime "updated_at", null: false
+    t.text "user_agent"
+    t.index ["contract_id", "signer_role"], name: "index_contract_signatures_on_contract_id_and_signer_role", unique: true
+    t.index ["contract_id"], name: "index_contract_signatures_on_contract_id"
+    t.index ["contract_template_id"], name: "index_contract_signatures_on_contract_template_id"
+    t.index ["person_id"], name: "index_contract_signatures_on_person_id"
+    t.index ["signed_by_user_id"], name: "index_contract_signatures_on_signed_by_user_id"
+  end
+
+  create_table "contract_templates", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", default: 1, null: false
+    t.index ["organization_id", "active"], name: "index_contract_templates_on_organization_id_and_active"
+    t.index ["organization_id"], name: "index_contract_templates_on_organization_id"
+  end
+
   create_table "contractors", force: :cascade do |t|
     t.text "address"
     t.datetime "created_at", null: false
@@ -521,6 +555,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.datetime "completed_at"
     t.date "contract_end_date"
     t.date "contract_start_date"
+    t.bigint "contract_template_id"
     t.text "contractor_address"
     t.string "contractor_email"
     t.bigint "contractor_id"
@@ -528,21 +563,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.string "contractor_phone"
     t.datetime "created_at", null: false
     t.jsonb "draft_data", default: {}
+    t.datetime "executed_at"
     t.text "notes"
     t.bigint "organization_id", null: false
     t.bigint "production_id"
     t.string "production_name"
     t.jsonb "revenue_projections", default: {}
+    t.datetime "sent_for_signature_at"
     t.jsonb "services", default: []
+    t.string "signing_mode", default: "offline", null: false
+    t.string "signing_state", default: "unsent", null: false
+    t.string "signing_token"
     t.boolean "skip_event_creation", default: false, null: false
     t.string "status", default: "draft", null: false
     t.text "terms"
     t.datetime "updated_at", null: false
     t.integer "wizard_step", default: 1, null: false
+    t.index ["contract_template_id"], name: "index_contracts_on_contract_template_id"
     t.index ["contractor_id"], name: "index_contracts_on_contractor_id"
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_contracts_on_organization_id"
     t.index ["production_id"], name: "index_contracts_on_production_id"
+    t.index ["signing_token"], name: "index_contracts_on_signing_token", unique: true
     t.index ["status"], name: "index_contracts_on_status"
   end
 
@@ -901,6 +943,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.integer "default_end_offset_minutes", default: 60, null: false
+    t.integer "default_hourly_rate_cents"
     t.integer "default_required_count", default: 1, null: false
     t.integer "default_start_offset_minutes", default: -60, null: false
     t.bigint "location_id"
@@ -1396,6 +1439,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.bigint "amount_cents", default: 0, null: false
     t.datetime "created_at", null: false
     t.string "description"
+    t.boolean "excluded_from_payout", default: false, null: false
     t.string "label", null: false
     t.bigint "payee_id", null: false
     t.string "payee_type", null: false
@@ -1404,6 +1448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.bigint "source_id"
     t.string "source_type"
     t.datetime "updated_at", null: false
+    t.jsonb "worksheet"
     t.index ["payee_type", "payee_id"], name: "index_payout_contributions_on_payee"
     t.index ["payout_batch_id"], name: "index_payout_contributions_on_payout_batch_id"
     t.index ["payout_batch_item_id"], name: "index_payout_contributions_on_payout_batch_item_id"
@@ -2581,6 +2626,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
     t.index ["organization_staff_member_id"], name: "idx_staff_role_qual_member"
   end
 
+  create_table "staff_schedule_removals", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "location_name"
+    t.datetime "notified_at"
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.string "shift_label"
+    t.datetime "shift_starts_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "shift_starts_at"], name: "idx_on_organization_id_shift_starts_at_1d096fe153"
+    t.index ["organization_id"], name: "index_staff_schedule_removals_on_organization_id"
+    t.index ["person_id"], name: "index_staff_schedule_removals_on_person_id"
+  end
+
   create_table "staff_time_entries", force: :cascade do |t|
     t.datetime "approved_at"
     t.bigint "approved_by_id"
@@ -2799,8 +2858,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contract_service_options", "organizations"
+  add_foreign_key "contract_signatures", "contract_templates"
+  add_foreign_key "contract_signatures", "contracts"
+  add_foreign_key "contract_signatures", "people"
+  add_foreign_key "contract_templates", "organizations"
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contractors", "people"
+  add_foreign_key "contracts", "contract_templates"
   add_foreign_key "contracts", "contractors"
   add_foreign_key "contracts", "organizations"
   add_foreign_key "contracts", "productions"
@@ -2985,6 +3049,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_140000) do
   add_foreign_key "staff_activations", "people"
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
+  add_foreign_key "staff_schedule_removals", "organizations"
+  add_foreign_key "staff_schedule_removals", "people"
   add_foreign_key "staff_time_entries", "organizations"
   add_foreign_key "staff_time_entries", "payout_batches"
   add_foreign_key "staff_time_entries", "people"

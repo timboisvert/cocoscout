@@ -1,0 +1,41 @@
+<%# Prompt bar for staff positions the person has been invited to but hasn't
+    accepted yet. Links to the onboarding page for each org so they can accept.
+    Local: invites (Array<OrganizationStaffMember>). %>
+<% return if invites.blank? %>
+
+<div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 overflow-hidden">
+  <div class="flex items-start gap-3 px-4 py-3 <%= invites.size > 1 ? "border-b border-amber-200" : "" %>">
+    <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+      <%= icon("envelope", class: "w-5 h-5") %>
+    </span>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold text-amber-900">
+        <% if invites.size == 1 %>
+          <%= invites.first.organization.name %> invited you to join their staff
+        <% else %>
+          You've been invited to join <%= invites.size %> staff teams
+        <% end %>
+      </p>
+      <p class="text-sm text-amber-800">Accept your onboarding to see your shifts and set up how you get paid.</p>
+    </div>
+
+    <% if invites.size == 1 %>
+      <%= link_to my_onboarding_path(invites.first.organization.id), class: "flex-shrink-0" do %>
+        <%= render "shared/button", text: "Accept onboarding", variant: "primary", size: "small", type: :button %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if invites.size > 1 %>
+    <div class="divide-y divide-amber-100">
+      <% invites.each do |member| %>
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <span class="min-w-0 font-medium text-amber-900 truncate"><%= member.organization.name %></span>
+          <%= link_to my_onboarding_path(member.organization.id), class: "flex-shrink-0" do %>
+            <%= render "shared/button", text: "Accept onboarding", variant: "primary", size: "small", type: :button %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

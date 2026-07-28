@@ -1,0 +1,53 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "About" } do %>
+  <% chosen = @contract.draft_data["signing_chosen"] %>
+  <% initial_mode = chosen ? @contract.signing_mode : "esign" %>
+
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How will this contract be signed?</h2>
+  <p class="text-gray-600 mb-6">You can send it for signature right here in CocoScout, or just record a contract that's already been signed.</p>
+
+  <%= form_with url: manage_signing_contract_wizard_path(@contract), method: :post, local: true do %>
+    <div class="space-y-3" data-controller="radio-card">
+      <%# E-signature %>
+      <label class="block cursor-pointer">
+        <div data-radio-card-target="card" data-value="esign"
+             class="border rounded-lg p-4 transition <%= initial_mode == "esign" ? "border-pink-500 bg-pink-50" : "border-gray-200" %>">
+          <div class="flex items-start gap-3">
+            <input type="radio" name="signing_mode" value="esign"
+                   <%= "checked" if initial_mode == "esign" %>
+                   data-action="change->radio-card#select"
+                   class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <div class="font-medium text-gray-900">Create &amp; send for signature</div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700">CocoScout e-sign</span>
+              </div>
+              <p class="text-sm text-gray-500 mt-1">Build the contract here, send a link for them to review and sign, and get a signed PDF — no DocuSign needed.</p>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <%# Offline / already signed %>
+      <label class="block cursor-pointer">
+        <div data-radio-card-target="card" data-value="offline"
+             class="border rounded-lg p-4 transition <%= initial_mode == "offline" ? "border-pink-500 bg-pink-50" : "border-gray-200" %>">
+          <div class="flex items-start gap-3">
+            <input type="radio" name="signing_mode" value="offline"
+                   <%= "checked" if initial_mode == "offline" %>
+                   data-action="change->radio-card#select"
+                   class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">Already signed / I'll upload it</div>
+              <p class="text-sm text-gray-500 mt-1">Record a contract that was signed elsewhere. You can upload the signed PDF for your records.</p>
+            </div>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_production_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

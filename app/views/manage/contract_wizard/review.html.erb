@@ -1,31 +1,32 @@
+<% esign = @contract.signing_mode_esign? %>
 <%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Review" } do %>
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review & Activate</h2>
-  <p class="text-gray-600 mb-6">Review all details before activating the contract.</p>
+  <% if esign %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review the details</h2>
+    <p class="text-gray-600 mb-6">Make sure everything below is right. Next you'll prepare the actual contract, sign it, and send it to <%= @contract.contractor_name %>.</p>
+  <% else %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review &amp; Activate</h2>
+    <p class="text-gray-600 mb-6">Review all details before activating the contract.</p>
+  <% end %>
 
-  <% unless @valid_for_activation %>
-    <%
-      # Check if errors are only overlap-related (can be overridden)
-      overlap_errors = @validation_errors&.select { |e| e.include?("overlaps with existing") || e.include?("conflicts with existing") } || []
-      only_overlap_errors = overlap_errors.any? && overlap_errors.length == @validation_errors&.length
-    %>
+  <%
+    # Hard blockers that genuinely stop the contract (no bookings, missing dates).
+    # Scheduling overlaps are NOT listed here — they're handled by the conflict
+    # bar above the proceed button, which lets the producer decide what to do.
+    hard_errors = (@validation_errors || []).reject do |e|
+      e.include?("overlaps with existing") || e.include?("conflicts with existing")
+    end
+  %>
+  <% if hard_errors.any? %>
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
       <div class="flex items-start">
         <%= icon("alert-circle", class: "w-5 h-5 text-red-600 mt-0.5 mr-3") %>
         <div class="flex-1">
-          <h3 class="font-medium text-red-800"><%= only_overlap_errors ? "Scheduling conflict detected" : "Cannot activate yet" %></h3>
+          <h3 class="font-medium text-red-800"><%= esign ? "Cannot send yet" : "Cannot activate yet" %></h3>
           <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
-            <% @validation_errors&.each do |error| %>
+            <% hard_errors.each do |error| %>
               <li><%= error %></li>
             <% end %>
           </ul>
-          <% if only_overlap_errors %>
-            <div class="mt-3 pt-3 border-t border-red-200">
-              <label class="flex items-center gap-2 cursor-pointer" id="override-overlap-label">
-                <input type="checkbox" id="allow-overlap-checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-                <span class="text-sm text-red-700">I understand there's a conflict and want to proceed anyway</span>
-              </label>
-            </div>
-          <% end %>
         </div>
       </div>
     </div>
@@ -244,40 +245,75 @@
   </div>
 
   <%
-    # Determine if we can override errors
-    overlap_errors = @validation_errors&.select { |e| e.include?("overlaps with existing") || e.include?("conflicts with existing") } || []
-    can_override = !@valid_for_activation && overlap_errors.any? && overlap_errors.length == @validation_errors&.length
+    has_conflicts = @conflicts&.any?
+    proceed_label = esign ? "Continue to prepare the contract" : "Activate Contract"
+    proceed_icon  = esign ? "arrow-right" : "check-circle"
+    proceed_url   = esign ? manage_save_review_contract_wizard_path(@contract) : manage_activate_contract_wizard_path(@contract)
   %>
 
-  <div class="mt-8 flex justify-between items-center">
-    <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_documents_contract_wizard_path(@contract) %>
+  <%# Anchor so a submit that surfaces a fresh conflict scrolls straight to it. %>
+  <div id="conflict-anchor" class="scroll-mt-24"></div>
 
-    <div class="flex items-center gap-4">
-      <% if @valid_for_activation %>
-        <%= form_with url: manage_activate_contract_wizard_path(@contract), method: :post, local: true, class: "inline activate-form" do %>
-          <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :submit %>
+  <div data-controller="modal" class="mt-8">
+    <% if has_conflicts %>
+      <%# Proactive conflict summary bar — click to open the calendar + choices. %>
+      <button type="button"
+              data-action="click->modal#open" data-modal-id="conflict-modal"
+              class="w-full flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100 transition cursor-pointer mb-4">
+        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <%= icon("alert-triangle", class: "w-5 h-5") %>
+        </span>
+        <span class="flex-1 min-w-0">
+          <span class="block font-semibold text-amber-900">
+            <%= pluralize(@conflicts.count, "scheduling conflict") %> on this contract
+          </span>
+          <span class="block text-sm text-amber-800">
+            Part of this booking overlaps something already on your calendar. Review it and choose what to do.
+          </span>
+        </span>
+        <span class="flex-shrink-0 text-sm font-medium text-amber-800 flex items-center gap-1">
+          Review <%= icon("arrow-right", class: "w-4 h-4") %>
+        </span>
+      </button>
+    <% end %>
+
+    <div class="flex justify-between items-center">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left",
+            path: esign ? manage_tech_contract_wizard_path(@contract) : manage_documents_contract_wizard_path(@contract) %>
+
+      <div class="flex items-center gap-4">
+        <% if !@valid_for_activation %>
+          <%# Hard blocker (no bookings / missing dates) — nothing to override. %>
+          <%= render "shared/button", text: proceed_label, variant: "primary", size: "large", icon: proceed_icon, type: :button, disabled: true %>
+        <% elsif has_conflicts %>
+          <%# Must resolve the conflict choice in the modal before proceeding. %>
+          <%= render "shared/button", text: "Resolve conflict to continue", variant: "primary", size: "large",
+                icon: "alert-triangle", type: :button,
+                data: { action: "click->modal#open", modal_id: "conflict-modal" } %>
+        <% else %>
+          <%# Clear path — a plain in-form submit. %>
+          <%= form_with url: proceed_url, method: :post, local: true, class: "inline" do %>
+            <%= hidden_field_tag :allow_overlap, "0" %>
+            <%= render "shared/button", text: proceed_label, variant: "primary", size: "large", icon: proceed_icon, type: :submit %>
+          <% end %>
         <% end %>
-      <% elsif can_override %>
-        <%= form_with url: manage_activate_contract_wizard_path(@contract), method: :post, local: true, class: "inline activate-form", id: "activate-with-override-form" do |f| %>
-          <%= hidden_field_tag :allow_overlap, "1" %>
-          <div id="activate-override-btn" style="display: none;">
-            <%= render "shared/button", text: "Activate Anyway", variant: "danger", size: "large", icon: "alert-triangle", type: :submit %>
-          </div>
-          <div id="activate-disabled-btn">
-            <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :button, disabled: true %>
-          </div>
-        <% end %>
-        <script>
-          document.getElementById('allow-overlap-checkbox').addEventListener('change', function() {
-            document.getElementById('activate-override-btn').style.display = this.checked ? 'block' : 'none';
-            document.getElementById('activate-disabled-btn').style.display = this.checked ? 'none' : 'block';
-          });
-        </script>
-      <% else %>
-        <%= render "shared/button", text: "Activate Contract", variant: "primary", size: "large", icon: "check-circle", type: :button, disabled: true %>
-      <% end %>
+      </div>
     </div>
+
+    <% if has_conflicts %>
+      <%= render "manage/contract_wizard/conflict_modal", conflicts: @conflicts, contract: @contract, esign: esign, proceed_url: proceed_url %>
+    <% end %>
   </div>
+
+  <% if has_conflicts && response.status == 422 %>
+    <%# A fresh conflict surfaced on submit — bring it into view. %>
+    <script>
+      (function () {
+        var anchor = document.getElementById("conflict-anchor");
+        if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "center" });
+      })();
+    </script>
+  <% end %>
 
   <%
     bookings = @contract.draft_bookings || []
@@ -289,17 +325,27 @@
     <div class="flex items-start">
       <%= icon("info", class: "w-5 h-5 text-blue-600 mt-0.5 mr-3") %>
       <div class="text-sm text-blue-800">
-        <p class="font-medium">What happens when you activate?</p>
-        <ul class="mt-2 list-disc list-inside space-y-1">
-          <li>Space rentals will be created and appear on your calendar</li>
-          <li>Payment schedule will be set up with reminders</li>
-          <% if bookings.any? %>
-            <li>A third-party production will be created with <%= pluralize(bookings.count, "event") %>
-              (<%= event_types_used.map { |t| event_type_configs.dig(t, "label") || t.titleize }.join(", ") %>)
-            </li>
-          <% end %>
-          <li>You can still edit details after activation</li>
-        </ul>
+        <% if esign %>
+          <p class="font-medium">What's next?</p>
+          <ul class="mt-2 list-disc list-inside space-y-1">
+            <li><strong>Prepare</strong> — pick your contract template and preview the full rendered contract with this data</li>
+            <li><strong>Sign</strong> — you sign it as <%= @contract.organization.name %></li>
+            <li><strong>Send</strong> — send it to <%= @contract.contractor_name %> to sign</li>
+            <li>When they sign, the contract is executed and everything above is created automatically</li>
+          </ul>
+        <% else %>
+          <p class="font-medium">What happens when you activate?</p>
+          <ul class="mt-2 list-disc list-inside space-y-1">
+            <li>Space rentals will be created and appear on your calendar</li>
+            <li>Payment schedule will be set up with reminders</li>
+            <% if bookings.any? %>
+              <li>A third-party production will be created with <%= pluralize(bookings.count, "event") %>
+                (<%= event_types_used.map { |t| event_type_configs.dig(t, "label") || t.titleize }.join(", ") %>)
+              </li>
+            <% end %>
+            <li>You can still edit details after activation</li>
+          </ul>
+        <% end %>
       </div>
     </div>
   </div>

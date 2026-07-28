@@ -18,24 +18,31 @@
       ["Staffing", manage_staffing_index_path]
     ],
     text: "Roles",
-    links: []
+    links: [
+      { text: "Add role", icon: "plus", type: :button,
+        data_action: "click->house-role-modal#openForNew" }
+    ]
   } %>
 
-  <div class="flex items-center justify-between mb-4">
-    <p class="text-sm text-gray-600">
-      Define all the roles you staff for shows — bartender, FOH, tech, security, etc. Each can be a house role (one shift for the whole evening) or a per-show role.
-    </p>
-    <button type="button"
-            data-action="click->house-role-modal#openForNew"
-            class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm whitespace-nowrap">
-      Add Role
-    </button>
-  </div>
+  <p class="text-sm text-gray-600 mb-4">
+    Define all the roles you staff for shows — bartender, FOH, tech, security, etc. Each can be a house role (one shift for the whole evening) or a per-show role.
+  </p>
 
   <% if @house_roles.any? %>
     <div class="space-y-2">
       <% @house_roles.each do |role| %>
-        <div class="group bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-4 hover:border-gray-300 transition-colors">
+        <%# Whole row taps to edit (mobile-friendly); delete lives inside the modal. %>
+        <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-4 hover:border-pink-300 hover:bg-gray-50 transition-colors cursor-pointer"
+             role="button" tabindex="0"
+             data-action="click->house-role-modal#openForEdit keydown.enter->house-role-modal#openForEdit"
+             data-role-id="<%= role.id %>"
+             data-role-name="<%= role.name %>"
+             data-role-type="<%= role.role_type %>"
+             data-role-location-id="<%= role.location_id %>"
+             data-role-required-count="<%= role.default_required_count %>"
+             data-role-start-offset="<%= role.default_start_offset_minutes %>"
+             data-role-end-offset="<%= role.default_end_offset_minutes %>"
+             data-role-hourly-rate="<%= role.default_hourly_rate_dollars %>">
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="font-medium text-gray-900"><%= role.name %></span>
@@ -55,34 +62,7 @@
               Ends <%= role.default_end_offset_minutes %> min after <%= role.show_specific? ? "the show" : "last show" %>
             </div>
           </div>
-          <%# Action buttons: always visible on mobile, hover-reveal on desktop. %>
-          <div class="flex items-center gap-2 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-            <%= render "shared/button",
-                  text: "Edit",
-                  variant: "outline",
-                  size: "small",
-                  type: :button,
-                  data: {
-                    action: "click->house-role-modal#openForEdit",
-                    "role-id": role.id,
-                    "role-name": role.name,
-                    "role-type": role.role_type,
-                    "role-location-id": role.location_id,
-                    "role-required-count": role.default_required_count,
-                    "role-start-offset": role.default_start_offset_minutes,
-                    "role-end-offset": role.default_end_offset_minutes
-                  } %>
-            <% remove_role_cid = "confirm-remove-house-role-#{role.id}" %>
-            <%= render "shared/button",
-                  text: "Remove",
-                  variant: "primary",
-                  size: "small",
-                  type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: remove_role_cid } %>
-            <%= render "shared/confirm_modal", id: remove_role_cid, title: "Remove role?",
-                  message: "Remove this role? Existing shifts using it will be kept.", confirm_text: "Remove",
-                  url: manage_destroy_staffing_house_role_path(role), method: :delete %>
-          </div>
+          <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </div>
       <% end %>
     </div>
@@ -149,11 +129,24 @@
               <p class="text-xs text-gray-500 mt-1">Leave blank for org-wide.</p>
             </div>
 
-            <div>
-              <%= form.label :default_required_count, "Default count per show", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <%= form.number_field :default_required_count, min: 1, step: 1, required: true, value: 1,
-                    data: { "house-role-modal-target": "requiredCount" },
-                    class: "block w-32 shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <%= form.label :default_required_count, "Default count per show", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :default_required_count, min: 1, step: 1, required: true, value: 1,
+                      data: { "house-role-modal-target": "requiredCount" },
+                      class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+              <div>
+                <%= form.label :default_hourly_rate_dollars, "Default hourly pay", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <%= form.text_field :default_hourly_rate_dollars, inputmode: "decimal", placeholder: "0.00",
+                        data: { "house-role-modal-target": "hourlyRate" },
+                        class: "block w-full shadow-sm rounded-lg border border-gray-300 pl-7 pr-12 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/hr</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Pre-fills each staff member's rate for this role.</p>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -174,14 +167,21 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-            <button type="button" data-action="click->house-role-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-            <%= render "shared/button",
-                  text: "Add role",
-                  variant: "primary",
-                  size: "small",
-                  type: :submit,
-                  data: { "house-role-modal-target": "submitButton" } %>
+          <div class="flex items-center gap-2 px-5 py-3 border-t border-gray-200">
+            <%# Delete lives here in edit mode — shown/hidden by the controller. %>
+            <button type="button" data-house-role-modal-target="deleteButton" data-action="click->house-role-modal#destroyRole"
+                    class="hidden text-sm text-gray-500 hover:text-red-600 cursor-pointer bg-transparent border-0">
+              Remove role
+            </button>
+            <div class="flex items-center gap-2 ml-auto">
+              <button type="button" data-action="click->house-role-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+              <%= render "shared/button",
+                    text: "Add role",
+                    variant: "primary",
+                    size: "small",
+                    type: :submit,
+                    data: { "house-role-modal-target": "submitButton" } %>
+            </div>
           </div>
         <% end %>
       </div>

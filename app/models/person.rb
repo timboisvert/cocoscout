@@ -40,6 +40,7 @@ class Person < ApplicationRecord
   has_many :assigned_shifts, through: :shift_assignments, source: :shift
   has_many :organization_staff_members, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
+  has_many :staff_schedule_removals, dependent: :destroy
 
   has_many :role_eligibilities, as: :member, dependent: :destroy
 

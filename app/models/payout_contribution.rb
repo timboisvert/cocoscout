@@ -17,6 +17,15 @@ class PayoutContribution < ApplicationRecord
   validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :label, presence: true
 
+  # Contributions that count toward the payee's transfer and ledger. Excludes
+  # recorded-only lines like cash tips, which are kept for the record but never
+  # paid (staff already took their split from the bar tip jar).
+  scope :payable, -> { where(excluded_from_payout: false) }
+
+  def worksheet_entries
+    Array(worksheet)
+  end
+
   # If a contribution goes away (e.g. its show payout is recalculated and the
   # source line is deleted), re-sum the payee's item — and drop the item if it
   # has nothing left — then re-total the run.
@@ -34,13 +43,14 @@ class PayoutContribution < ApplicationRecord
     # history. Only open (unpaid) items resettle or drop.
     if item.nil? || item.paid?
       # leave the paid item and its ledger entry untouched
-    elsif item.payout_contributions.exists?
+    elsif item.payout_contributions.payable.exists?
       # Performer-scoped runs pay the net ledger balance; staff/legacy runs are
-      # the sum of their contributions.
+      # the sum of their contributions. Recorded-only lines (cash tips) never
+      # count toward the item amount.
       if payout_batch&.kind == "performer"
         item.settle_performer_amount!
       else
-        item.update_columns(amount_cents: item.payout_contributions.sum(:amount_cents), updated_at: Time.current)
+        item.update_columns(amount_cents: item.payout_contributions.payable.sum(:amount_cents), updated_at: Time.current)
       end
     elsif item.persisted?
       item.destroy

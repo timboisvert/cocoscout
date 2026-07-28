@@ -68,6 +68,11 @@ Rails.application.routes.draw do
   post "/pay/contract/:token/checkout", to: "contract_payment_checkout#checkout", as: "pay_contract_checkout"
   get  "/pay/contract/:token/success",  to: "contract_payment_checkout#success",  as: "pay_contract_success"
 
+  # Public, no-login contract signing link. The token names one contract.
+  get  "/sign/contract/:token",      to: "contract_signing#show",    as: "sign_contract"
+  post "/sign/contract/:token",      to: "contract_signing#sign"
+  get  "/sign/contract/:token/done", to: "contract_signing#success", as: "sign_contract_success"
+
   # ------------------------------------------------------------------
   # Open Mic Finder — public surface
   # ------------------------------------------------------------------
@@ -1189,6 +1194,7 @@ Rails.application.routes.draw do
     patch "staffing/timesheets/:id/unapprove",    to: "staffing/timesheets#unapprove",   as: "unapprove_staffing_timesheet"
     patch "staffing/timesheets/:id/reapprove",    to: "staffing/timesheets#reapprove",   as: "reapprove_staffing_timesheet"
     patch "staffing/timesheets/:id",              to: "staffing/timesheets#update",      as: "staffing_timesheet"
+    delete "staffing/timesheets/:id",             to: "staffing/timesheets#reject",      as: "reject_staffing_timesheet"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
@@ -1266,6 +1272,7 @@ Rails.application.routes.draw do
     post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
+    delete "money/payout-runs/:id", to: "payout_batches#destroy"
 
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
     # almost all of it from contracts. Detail route before :production_id so the
@@ -1365,6 +1372,13 @@ Rails.application.routes.draw do
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"
+    # Contract-document templates. The list is the "Templates" tab of Contract
+    # Settings (contract_settings#show); this owns the form pages + mutations.
+    # Pathed under "contracts/templates" so it never collides with a contract :id.
+    resources :contract_templates, path: "contracts/templates",
+              only: %i[new create edit update destroy] do
+      member { get :preview }
+    end
     # Sections are named, never positional — declared last so the specific
     # routes above win.
     get    "contracts/settings/:section",     to: "contract_settings#show",           as: "contract_settings_section"
@@ -1398,12 +1412,19 @@ Rails.application.routes.draw do
         end
       end
       resources :space_rentals, only: %i[create update destroy], path: "rentals"
+      # Native e-signature: revoke an outstanding request. (Sending happens in the
+      # wizard's Prepare → Sign → Send steps.)
+      resource :signature, only: %i[destroy], controller: "contract_signatures"
     end
 
     # Contract wizard
     get  "contracts/wizard/new", to: "contract_wizard#new", as: "new_contract_wizard"
     post "contracts/wizard/create_draft", to: "contract_wizard#create_draft", as: "create_draft_contract_wizard"
     get  "contracts/:contract_id/wizard/resume", to: "contract_wizard#resume", as: "resume_contract_wizard"
+    get  "contracts/:contract_id/wizard/production", to: "contract_wizard#production", as: "production_contract_wizard"
+    post "contracts/:contract_id/wizard/production", to: "contract_wizard#save_production"
+    get  "contracts/:contract_id/wizard/signing", to: "contract_wizard#signing", as: "signing_contract_wizard"
+    post "contracts/:contract_id/wizard/signing", to: "contract_wizard#save_signing"
     get  "contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
     post "contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
     get  "contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
@@ -1420,7 +1441,15 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/documents", to: "contract_wizard#save_documents"
     delete "contracts/:contract_id/wizard/documents/:document_id", to: "contract_wizard#delete_document", as: "delete_document_contract_wizard"
     get  "contracts/:contract_id/wizard/review", to: "contract_wizard#review", as: "review_contract_wizard"
+    post "contracts/:contract_id/wizard/review", to: "contract_wizard#save_review", as: "save_review_contract_wizard"
     post "contracts/:contract_id/wizard/activate", to: "contract_wizard#activate", as: "activate_contract_wizard"
+    # E-sign document flow (after the data review): prepare → sign → send.
+    get  "contracts/:contract_id/wizard/prepare", to: "contract_wizard#prepare", as: "prepare_contract_wizard"
+    post "contracts/:contract_id/wizard/prepare", to: "contract_wizard#save_prepare"
+    get  "contracts/:contract_id/wizard/sign", to: "contract_wizard#sign", as: "sign_contract_wizard"
+    post "contracts/:contract_id/wizard/sign", to: "contract_wizard#save_sign"
+    get  "contracts/:contract_id/wizard/send", to: "contract_wizard#send_step", as: "send_contract_wizard"
+    post "contracts/:contract_id/wizard/send", to: "contract_wizard#save_send"
     delete "contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
 
     # Location spaces

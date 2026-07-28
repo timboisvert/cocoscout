@@ -1,0 +1,72 @@
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Send" } do %>
+  <% org_sig = @contract.organization_signature %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Send for signature</h2>
+  <p class="text-gray-600 mb-6">You've signed. Here's exactly what's about to happen — review it, then send it to <%= @contract.contractor_name %>.</p>
+
+  <div class="space-y-4">
+    <%# You've signed %>
+    <div class="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+      <%= icon("check-circle", class: "w-5 h-5 text-green-600 mt-0.5") %>
+      <div class="text-sm">
+        <p class="font-medium text-gray-900">You've signed as <%= @contract.organization.name %></p>
+        <% if org_sig %>
+          <p class="text-gray-600"><%= org_sig.signer_name %> · <%= org_sig.signed_at_long %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Who it goes to %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-3">Sending to</h3>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Contractor</dt>
+          <dd class="text-gray-900 font-medium text-right"><%= @contract.contractor_name %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Email</dt>
+          <dd class="text-right">
+            <% if @contract.contractor_email.present? %>
+              <span class="text-gray-900"><%= @contract.contractor_email %></span>
+            <% else %>
+              <span class="text-amber-600">No email on file</span>
+            <% end %>
+          </dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Contract</dt>
+          <dd class="text-gray-900 text-right"><%= @contract.production_name.presence || @contract.production&.name || "Contract" %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <%# What they'll be asked to do %>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">What they'll be asked to do</h3>
+      <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+        <li>Open a secure link — no CocoScout account needed</li>
+        <% if @contract.signer_is_member? %>
+          <li><span class="text-gray-900 font-medium"><%= @contract.contractor_name %> is a CocoScout member</span>, so it'll also appear in their <span class="font-medium">My Contracts</span> to review and sign</li>
+        <% end %>
+        <li>Review the full contract you just prepared and signed</li>
+        <li>Type their name and agree, which signs it electronically (stamped with date + IP)</li>
+        <li>As soon as they sign, the contract is executed and everything's created automatically</li>
+      </ul>
+    </div>
+
+    <div class="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
+      <% if @contract.contractor_email.present? %>
+        We'll email and message <%= @contract.contractor_name %> a link to review and sign. You'll also get a shareable link + QR on the contract page, and you can revoke it any time before they sign.
+      <% else %>
+        There's no email on file, so you'll share the signing link yourself — you'll get it (with a QR code) on the contract page after you send. You can revoke it any time before they sign.
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-8 flex items-center justify-between">
+    <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
+    <%= form_with url: manage_send_contract_wizard_path(@contract), method: :post, local: true do %>
+      <%= render "shared/button", text: "Send to #{@contract.contractor_name}", variant: "primary", size: "large", icon: "paper-airplane", type: :submit %>
+    <% end %>
+  </div>
+<% end %>

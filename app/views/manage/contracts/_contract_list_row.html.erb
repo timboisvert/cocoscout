@@ -42,13 +42,16 @@
               <%= contract.contractor_name %>
             </span>
             <% if is_draft %>
-              <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                Draft
-              </span>
-              <% if contract.wizard_step > 1 %>
-                <span class="inline-flex items-center rounded-md bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
-                  Step <%= contract.wizard_step %>/8
-                </span>
+              <% if contract.signing_mode_esign? && contract.signing_out_for_signature? %>
+                <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Out for signature</span>
+              <% elsif contract.signing_mode_esign? && contract.signing_awaiting_send? %>
+                <span class="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Ready to send</span>
+              <% else %>
+                <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Draft</span>
+                <%# Step counter only makes sense for the fixed offline wizard. %>
+                <% if !contract.signing_mode_esign? && contract.wizard_step > 1 %>
+                  <span class="inline-flex items-center rounded-md bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">Step <%= contract.wizard_step %>/8</span>
+                <% end %>
               <% end %>
             <% end %>
           </div>

@@ -3,18 +3,26 @@
 <div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%# Status badge helper %>
+  <%# Status badge helper — e-sign signing states take precedence over the raw
+     draft status so a sent contract reads "Awaiting Signature", not "Contract". %>
   <%
-    status_badge = case @contract.status
-    when "active"
-      { bg: "bg-green-100", text: "text-green-800", icon: "check-circle", label: "Active" }
-    when "completed"
-      { bg: "bg-blue-100", text: "text-blue-800", icon: "check", label: "Completed" }
-    when "cancelled"
-      { bg: "bg-red-100", text: "text-red-800", icon: "x-circle", label: "Cancelled" }
-    else
-      { bg: "bg-gray-100", text: "text-gray-700", icon: "file-text", label: "Contract" }
-    end
+    status_badge =
+      if @contract.signing_out_for_signature?
+        { bg: "bg-amber-100", text: "text-amber-800", icon: "clock", label: "Awaiting Signature" }
+      elsif @contract.signing_awaiting_send?
+        { bg: "bg-blue-100", text: "text-blue-800", icon: "envelope", label: "Ready to Send" }
+      else
+        case @contract.status
+        when "active"
+          { bg: "bg-green-100", text: "text-green-800", icon: "check-circle", label: "Active" }
+        when "completed"
+          { bg: "bg-blue-100", text: "text-blue-800", icon: "check", label: "Completed" }
+        when "cancelled"
+          { bg: "bg-red-100", text: "text-red-800", icon: "x-circle", label: "Cancelled" }
+        else
+          { bg: "bg-gray-100", text: "text-gray-700", icon: "file-text", label: "Contract" }
+        end
+      end
 
     # Build breadcrumbs with optional contractor link
     breadcrumb_items = [
@@ -30,6 +38,25 @@
     text: @contract.production_name.presence || @contract.contractor_name,
     links: []
   } %>
+
+  <%# Signing status banner — this contract isn't active yet; read-only until signed. %>
+  <% if @contract.signing_out_for_signature? %>
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
+      <%= icon("clock", class: "w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5") %>
+      <div class="text-sm text-amber-900">
+        <p class="font-semibold">Awaiting signature — not active yet</p>
+        <p class="mt-0.5">This contract is out for <%= @contract.contractor_name %> to review and sign. You can see everything here, but it can't be amended until it's signed. Need to change something? Revoke it in the <span class="font-medium">Signature</span> panel, make your edits, and send it again.</p>
+      </div>
+    </div>
+  <% elsif @contract.signing_awaiting_send? %>
+    <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-start gap-3">
+      <%= icon("envelope", class: "w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5") %>
+      <div class="text-sm text-blue-900">
+        <p class="font-semibold">Signed by you — ready to send</p>
+        <p class="mt-0.5">You've signed this contract. Send it to <%= @contract.contractor_name %> to sign, from the <span class="font-medium">Signature</span> panel.</p>
+      </div>
+    </div>
+  <% end %>
 
   <%# Status and date info - show_row style %>
   <div class="flex items-stretch px-3 py-3 border border-gray-200 rounded-lg bg-white mb-6">
@@ -282,6 +309,11 @@
 
     <%# Sidebar %>
     <div class="space-y-6">
+      <%# E-signature status (only for contracts set up for native signing) %>
+      <% if @contract.signing_mode_esign? %>
+        <%= render "signature_panel" %>
+      <% end %>
+
       <%# Financial Summary %>
       <div class="border border-gray-200 rounded-lg overflow-hidden">
         <%= render "shared/card_header", title: "Financial Summary" %>

@@ -48,7 +48,7 @@ module NavigationHelper
 
     on_paid_plan = Current.organization&.on_paid_plan?
 
-    items = [
+    free_items = [
       { label: "Home", path: manage_path, icon: "home", active: controller_name == "manage" && action_name == "index" },
       { label: "Messages", path: manage_messages_path, icon: "messages", active: controller_name == "messages",
         badge: Current.user&.unread_message_count_for_org(Current.organization).to_i },
@@ -63,7 +63,18 @@ module NavigationHelper
       { label: "Documents", path: manage_org_documents_path, icon: "documents",
         active: %w[org_documents documents].include?(controller_name) },
       { label: "Contacts", path: manage_contacts_path, icon: "contacts",
-        active: %w[directory people groups questionnaires].include?(controller_name) },
+        active: %w[directory people groups questionnaires].include?(controller_name) }
+    ]
+
+    # The Pro-tier modules, grouped under a small "Pro" heading so the whole set
+    # reads as Pro without a badge on each one.
+    pro_items = []
+    # Staffing is limited to org owners/managers; it leads the Pro group.
+    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
+      pro_items << { label: "Staffing", path: manage_staffing_index_path, icon: "staffing", locked: !on_paid_plan, feature: :staffing,
+                     active: controller_path.to_s.start_with?("manage/staffing") }
+    end
+    pro_items += [
       { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
         active: %w[money money_financials money_payouts show_payouts show_financials].include?(controller_name) },
       # Contracts is its own Pro module — a deal with someone doesn't require Money.
@@ -73,16 +84,10 @@ module NavigationHelper
         active: controller_name == "reports" }
     ]
 
-    # Staffing is limited to org owners/managers. Insert it right above Money.
-    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
-      money_idx = items.index { |l| l[:label] == "Money" }
-      items.insert((money_idx || items.length), {
-        label: "Staffing", path: manage_staffing_index_path, icon: "staffing", locked: !on_paid_plan, feature: :staffing,
-        active: controller_path.to_s.start_with?("manage/staffing")
-      })
-    end
-
-    [ { label: nil, items: items } ]
+    [
+      { label: nil, items: free_items },
+      { label: "Pro", items: pro_items }
+    ]
   end
 
   # --- Talent --------------------------------------------------------------

@@ -158,10 +158,17 @@ module Manage
     end
 
     def show
-      # Draft contracts should be edited via the wizard
-      if @contract.status_draft?
-        redirect_to manage_contractor_contract_wizard_path(@contract) and return
+      # In-progress drafts are edited in the wizard. But an e-sign contract that's
+      # been signed/sent (awaiting_send / out_for_signature) is viewable here —
+      # read-only, so you can see its status and revoke — even though it's still
+      # technically a draft until the counterparty signs.
+      if @contract.status_draft? && (!@contract.signing_mode_esign? || @contract.signing_unsent?)
+        redirect_to manage_resume_contract_wizard_path(@contract) and return
       end
+
+      # Generate the signed PDF if it's executed but doesn't have one yet
+      # (covers contracts signed before PDF generation existed).
+      @contract.ensure_signed_pdf!
 
       # Sync any paid course offering payouts to contract payments
       @contract.sync_course_payouts_to_payments

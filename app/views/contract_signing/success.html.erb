@@ -1,0 +1,49 @@
+<% content_for :title, "Contract signed" %>
+
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      <div class="px-6 py-8 text-center border-b border-gray-100">
+        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-green-100 mb-4">
+          <svg class="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        <h1 class="text-2xl coustard-regular text-gray-900">You're all signed</h1>
+        <p class="mt-2 text-sm text-gray-600">
+          Your contract with <%= @organization.name %> is now fully signed and executed.
+        </p>
+      </div>
+
+      <div class="px-6 py-6 space-y-4">
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Contract</dt>
+            <dd class="text-gray-900 font-medium text-right"><%= @contract.production_name.presence || @contract.production&.name || "Contract" %></dd>
+          </div>
+          <% if @signature %>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Signed by</dt>
+              <dd class="text-gray-900 text-right"><%= @signature.signer_name %></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Signed on</dt>
+              <dd class="text-gray-900 text-right"><%= @signature.signed_at_long %></dd>
+            </div>
+          <% end %>
+        </dl>
+
+        <% if (pdf_doc = @contract.signed_pdf_document) %>
+          <%= render "shared/button", text: "Download signed PDF", variant: "primary", size: "medium", icon: "download",
+                classes: "w-full justify-center", path: rails_blob_path(pdf_doc.file, disposition: "attachment") %>
+        <% else %>
+          <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+            <p class="text-sm text-gray-600">Your signed PDF copy is being generated — refresh in a moment and it'll be ready to download here.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <p class="text-center text-xs text-gray-400 mt-6">Powered by CocoScout</p>
+  </div>
+</div>

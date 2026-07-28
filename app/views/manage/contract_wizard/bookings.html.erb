@@ -183,7 +183,7 @@
 
     <%# Navigation %>
     <div class="flex justify-between mt-6">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_contractor_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_signing_contract_wizard_path(@contract) %>
       <%= render "shared/button", text: "Next: Preview Schedule", variant: "primary", size: "medium", type: :submit, data: { action: "click->contract-bookings#validateAndSubmit" } %>
     </div>
 

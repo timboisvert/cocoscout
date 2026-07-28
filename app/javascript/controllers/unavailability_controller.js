@@ -83,6 +83,9 @@ export default class extends Controller {
     close(event) {
         if (event) event.preventDefault()
         if (this.hasModalTarget) this.modalTarget.classList.add("hidden")
+        // Let the page know the calendar was dismissed, and whether anything is
+        // marked — the onboarding page uses this to complete its availability step.
+        this.dispatch("closed", { detail: { hasEntries: this.entries.size > 0 } })
     }
 
     backdropClose(event) { if (event.target === this.modalTarget) this.close() }

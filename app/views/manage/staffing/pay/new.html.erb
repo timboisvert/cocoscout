@@ -79,11 +79,11 @@
               <% payee = member.person %>
               <% can_pay = payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? %>
               <tr data-pay-run-target="row" data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>" class="<%= "opacity-60" unless can_pay %>">
-                <td class="px-3 py-2">
+                <td class="px-3 py-2 align-top">
                   <div class="font-medium text-gray-900"><%= member.display_name %></div>
                   <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
                 </td>
-                <td class="px-3 py-2 text-right text-gray-600"><%= member.hourly_rate_cents ? number_to_currency(member.hourly_rate_cents / 100.0) : "—" %></td>
+                <td class="px-3 py-2 text-right text-gray-600 align-top pt-3.5"><%= member.hourly_rate_cents ? number_to_currency(member.hourly_rate_cents / 100.0) : "—" %></td>
                 <td class="px-3 py-2 text-right align-top">
                   <input id="pay-hours-<%= member.id %>" type="number" step="0.01" min="0" name="lines[<%= member.id %>][hours]" data-pay-field="hours" data-action="input->pay-run#recalc" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
                   <span id="pay-entries-<%= member.id %>"></span>
@@ -93,8 +93,8 @@
                             class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">pull <%= number_with_precision(approved, precision: 2, strip_insignificant_zeros: true) %>h</button>
                   <% end %>
                 </td>
-                <td class="px-3 py-2 text-right"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][bonus]" data-pay-field="bonus" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
-                <td class="px-3 py-2 text-right"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][reimbursement]" data-pay-field="reimbursement" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
+                <td class="px-3 py-2 text-right align-top"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][bonus]" data-pay-field="bonus" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
+                <td class="px-3 py-2 text-right align-top"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][reimbursement]" data-pay-field="reimbursement" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
                 <td class="px-3 py-2 text-right align-top">
                   <input id="pay-tips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
                   <span id="pay-tips-sheet-<%= member.id %>" class="hidden"></span>
@@ -107,7 +107,7 @@
                   <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-cashtips-<%= member.id %>" data-holder-id="pay-cashtips-sheet-<%= member.id %>" data-field-name="cash_tips_sheet" data-title="Cash tips worksheet"
                           class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
                 </td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900" data-pay-total>$0.00</td>
+                <td class="px-3 py-2 text-right font-medium text-gray-900 align-top pt-3.5" data-pay-total>$0.00</td>
               </tr>
             <% end %>
           </tbody>
@@ -120,7 +120,7 @@
         </table>
       </div>
 
-      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are recorded for your records but not sent through us.</p>
+      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this pay run's record for your files, but not sent through us.</p>
 
       <div class="flex items-center justify-end gap-3 mt-4">
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
@@ -219,7 +219,7 @@
       </div>
       <div>
         <dt class="font-medium text-gray-900">Cash tips</dt>
-        <dd class="text-gray-600">Tips they were <strong>already handed in cash</strong>. Recorded here for your records and their pay history only — <strong>we don't send this money again</strong>, so it's excluded from the total.</dd>
+        <dd class="text-gray-600">Tips they <strong>already took in cash</strong> (their split from the jar). Saved to this pay run's permanent record — for your files and their pay history — but <strong>we don't send this money again</strong>, so it's excluded from the total. Use the worksheet to log which days they came from.</dd>
       </div>
       <div>
         <dt class="font-medium text-gray-900">Total</dt>

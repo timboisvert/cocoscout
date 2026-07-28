@@ -62,6 +62,22 @@ module Manage
       redirect_to manage_payout_batch_path(batch), alert: e.message
     end
 
+    # Discard an unfunded draft run: undo everything it staged. Staff hours it
+    # pulled in go back to the approved-unpaid pool, and the earning ledger
+    # entries it posted are reversed. Only a draft (never-funded) run can be
+    # discarded — once funding starts, the money is moving.
+    def destroy
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.status == "draft"
+        redirect_to(manage_payout_batch_path(batch),
+                    alert: "Only a draft run that hasn't been funded can be discarded.") and return
+      end
+
+      PayoutBatchService.discard!(batch)
+      redirect_to manage_payout_batches_path,
+                  notice: "Draft run discarded. Any staff hours it held are back in what's waiting to be paid."
+    end
+
     # Connect the bank/card the org funds payout runs from (Stripe Checkout).
     def connect_funding
       return_to = safe_funding_return_to(params[:return_to])
@@ -126,17 +142,39 @@ module Manage
 
     # Split everyone the org owes into those ready to be paid (connected bank)
     # and those who still need to connect. Used by the review screen.
+    CATEGORY_LABELS = { "performer" => "Show payouts", "staffing" => "Staff pay" }.freeze
+
+    # Preview EXACTLY what a New run would create: each payee's balance minus what
+    # they already have queued in another open run (same rule build_for uses), so
+    # the preview and the actual run agree. Each row carries a breakdown of what
+    # the amount is for.
     def load_preview
+      committed = PayoutBatchService.committed_by_payee(organization)
+
+      earnings = organization.payout_ledger_entries.where(entry_type: "earning")
+                             .group(:payee_type, :payee_id, :category).sum(:amount_cents)
+      earnings_by_payee = Hash.new { |h, k| h[k] = [] }
+      earnings.each { |(ptype, pid, cat), cents| earnings_by_payee[[ptype, pid]] << [cat, cents] }
+
       @ready = []
       @not_ready = []
 
-      organization.payout_balances_by_payee.each do |(payee_type, payee_id), cents|
-        next unless cents.positive? && %w[Person Contractor Group].include?(payee_type)
+      organization.payout_balances_by_payee.each do |(payee_type, payee_id), balance|
+        next unless PayoutBatchService::PAYABLE_TYPES.include?(payee_type)
+
+        committed_cents = committed[[payee_type, payee_id]].to_i
+        available = balance - committed_cents
+        next unless available.positive?
 
         payee = payee_type.constantize.find_by(id: payee_id)
         next unless payee
 
-        row = { payee: payee, cents: cents }
+        row = {
+          payee: payee,
+          cents: available,
+          committed_cents: committed_cents,
+          lines: preview_breakdown(earnings_by_payee[[payee_type, payee_id]], balance, committed_cents)
+        }
         if payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
           @ready << row
         else
@@ -147,6 +185,20 @@ module Manage
       @ready.sort_by! { |r| -r[:cents] }
       @not_ready.sort_by! { |r| -r[:cents] }
       @ready_total_cents = @ready.sum { |r| r[:cents] }
+    end
+
+    # A "what for" breakdown that sums to `available` (balance - committed):
+    # earnings grouped by category, any advance/payout adjustment, then a
+    # deduction for whatever's already queued in another open run.
+    def preview_breakdown(category_pairs, balance, committed_cents)
+      lines = category_pairs.reject { |_cat, cents| cents.zero? }.map do |cat, cents|
+        { label: CATEGORY_LABELS[cat] || cat.to_s.titleize, cents: cents }
+      end
+      gross = category_pairs.sum { |_cat, cents| cents }
+      adjustment = balance - gross
+      lines << { label: "Advances / adjustments", cents: adjustment } if adjustment != 0
+      lines << { label: "Already queued in an open run", cents: -committed_cents } if committed_cents.positive?
+      lines
     end
   end
 end

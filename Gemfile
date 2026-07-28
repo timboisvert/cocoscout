@@ -13,6 +13,8 @@ gem "kamal", require: false
 gem "mail", "~> 2.9.0" # Pin to 2.8.x to avoid breaking changes in 2.9.0
 gem "pagy", "~> 43.2.2"
 gem "pg"
+gem "prawn"        # PDF generation (signed contract documents)
+gem "prawn-table"  # tables inside those PDFs
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rails"
