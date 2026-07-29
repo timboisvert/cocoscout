@@ -429,7 +429,11 @@ class ContentTemplateService
         show: show,
         organization: organization || production&.organization,
         message_type: message_type,
-        visibility: visibility
+        visibility: visibility,
+        # "system" template deliveries are automated/transactional — flag them so
+        # they render as an automated notification (not "from" the sending user)
+        # and stay out of the sender's own inbox/sent folder.
+        system_generated: message_type.to_s == "system"
       )
     end
 

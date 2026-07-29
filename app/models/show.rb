@@ -852,9 +852,10 @@ class Show < ApplicationRecord
     return if organization.nil?
     return unless organization.at_event_limit?(date_and_time)
 
+    month_label = date_and_time.strftime(date_and_time.year == Time.current.year ? "%B" : "%B %Y")
     errors.add(:base,
                "This organization has reached its free plan limit of " \
-               "#{Organization::FREE_MONTHLY_EVENT_LIMIT} events for that month. " \
+               "#{Organization::FREE_MONTHLY_EVENT_LIMIT} events for #{month_label}. " \
                "Upgrade to Pro for unlimited events.")
   end
 

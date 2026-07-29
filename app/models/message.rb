@@ -343,10 +343,18 @@ class Message < ApplicationRecord
   # show "Production Team" or production name. System-generated direct messages
   # (e.g. mic queue notifications) hide whichever account technically sent them
   # so the inbox doesn't appear to be "from Andie" when it's a transactional alert.
+  # An automated/transactional message: either explicitly flagged, or anything
+  # of the "system" message type. New system notification types keep forgetting
+  # to set system_generated, which made them wrongly render as "from" whichever
+  # account technically sent them — so treat the type as authoritative too.
+  def automated?
+    system_generated? || system?
+  end
+
   def sender_name
     if sent_as_production_team?
       production&.name || "Production Team"
-    elsif system_generated?
+    elsif automated?
       "Automated Notification"
     else
       case sender
@@ -362,7 +370,7 @@ class Message < ApplicationRecord
   # or any message with no personal sender but a production context.
   def sent_as_production_team?
     %w[production show].include?(visibility) ||
-      (system_generated? && production.present?) ||
+      (automated? && production.present?) ||
       (sender.nil? && production.present?)
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_040000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -307,6 +307,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_040000) do
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
+    t.datetime "archived_at"
     t.integer "assignable_id"
     t.string "assignable_type"
     t.integer "audition_cycle_id", null: false
@@ -318,6 +319,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_040000) do
     t.bigint "talent_pool_id", null: false
     t.datetime "updated_at", null: false
     t.index ["assignable_type", "assignable_id"], name: "idx_on_assignable_type_assignable_id_366d98058e"
+    t.index ["audition_cycle_id", "archived_at"], name: "idx_on_audition_cycle_id_archived_at_6df8d43e35"
     t.index ["audition_cycle_id", "talent_pool_id", "assignable_type", "assignable_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
     t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"

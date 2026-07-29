@@ -202,7 +202,7 @@ module Manage
           render json: { error: "event_limit_reached", limit: Organization::FREE_MONTHLY_EVENT_LIMIT },
                  status: :payment_required
         end
-        format.any { redirect_to org_billing_tab_path, notice: event_limit_notice }
+        format.any { redirect_to org_billing_tab_path, notice: event_limit_notice(target_date) }
       end
     end
 
@@ -215,9 +215,19 @@ module Manage
       nil
     end
 
-    def event_limit_notice
-      "You've reached the Producer plan limit of #{Organization::FREE_MONTHLY_EVENT_LIMIT} events this month. " \
-        "Upgrade to Pro for unlimited events."
+    def event_limit_notice(target_date = nil)
+      "You've reached the Producer plan limit of #{Organization::FREE_MONTHLY_EVENT_LIMIT} events " \
+        "#{event_limit_month_phrase(target_date)}. Upgrade to Pro for unlimited events."
+    end
+
+    # "this month" when the blocked event is in the current calendar month, else
+    # the event's own month ("in August" / "in August 2027") — the cap is keyed on
+    # the event's scheduled date, not today.
+    def event_limit_month_phrase(target_date)
+      return "this month" if target_date.nil? || target_date.beginning_of_month == Time.current.beginning_of_month
+
+      format = target_date.year == Time.current.year ? "%B" : "%B %Y"
+      "in #{target_date.strftime(format)}"
     end
 
     # before_action for production-creation actions: redirect Producer-plan orgs

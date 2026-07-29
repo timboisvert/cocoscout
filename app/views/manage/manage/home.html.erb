@@ -242,7 +242,7 @@
     <!-- Row 3: Calendar -->
     <%
       month_start_date = @current_month.to_date
-      month_end_date = @current_month.end_of_month.to_date
+      month_end_date = (@calendar_last_month || @current_month).end_of_month.to_date
       is_current_month = month_start_date == Date.current.beginning_of_month
       current_week_sunday = Date.current.beginning_of_week(:sunday)
       # For current month, start grid at beginning of current week (skip past weeks)
@@ -257,13 +257,13 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
               </svg>
-              <%= @prev_month.strftime("%b") %>
+              <%= @prev_month_label || @prev_month.strftime("%b") %>
             <% end %>
           <% end %>
         </div>
 
         <div class="flex items-center gap-3">
-          <h2 class="text-lg font-bold text-gray-900"><%= @current_month.strftime("%B %Y") %></h2>
+          <h2 class="text-lg font-bold text-gray-900"><%= @calendar_heading || @current_month.strftime("%B %Y") %></h2>
           <% if @current_month != Time.current.beginning_of_month %>
             <%= link_to "Today", manage_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
           <% end %>
@@ -272,7 +272,7 @@
         <div>
           <% if @can_go_next %>
             <%= link_to manage_path(month: @next_month.strftime("%Y-%m-01")), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
-              <%= @next_month.strftime("%b") %>
+              <%= @next_month_label || @next_month.strftime("%b") %>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
               </svg>
@@ -302,6 +302,8 @@
             <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
             <% is_past = current_date < Date.current %>
             <% is_today = current_date == Date.current %>
+            <%# First day of a later month in the grid — flag it so the new month is obvious %>
+            <% is_month_start = current_date.day == 1 && current_date != cal_start_date %>
             <%
               day_events_json = day_events.map { |e| {
                 time: e[:time].strftime("%-I:%M%p").downcase,
@@ -314,12 +316,15 @@
                 durationHours: e[:duration_hours]
               } }.to_json
             %>
-            <div class="border border-gray-200 min-h-[80px] p-1 cursor-pointer <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>"
+            <div class="border border-gray-200 min-h-[80px] p-1 cursor-pointer <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %> <%= 'border-l-2 border-l-pink-400' if is_month_start %>"
                  data-controller="calendar-day"
                  data-action="click->calendar-day#open"
                  data-calendar-day-date-value="<%= current_date.iso8601 %>"
                  data-calendar-day-events-value="<%= html_escape(day_events_json) %>">
               <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
+                <% if is_month_start %>
+                  <span class="inline-block bg-pink-100 text-pink-700 rounded px-1.5 py-0.5 text-[10px] font-bold mr-0.5"><%= current_date.strftime("%b") %></span>
+                <% end %>
                 <%= current_date.day %>
               </div>
 
@@ -363,9 +368,14 @@
         <% mobile_start_date = is_current_month ? Date.current : month_start_date %>
         <% current_date = mobile_start_date %>
         <% has_events = false %>
+        <% shown_month = nil %>
         <% while current_date <= month_end_date %>
           <% day_events = (@events_by_date[current_date] || []).sort_by { |e| e[:time] } %>
           <% if day_events.any? %>
+            <% if shown_month && current_date.beginning_of_month != shown_month %>
+              <div class="text-xs font-bold text-pink-700 uppercase tracking-wide pt-3 pb-1 px-1 border-t border-gray-200 mt-2"><%= current_date.strftime("%B %Y") %></div>
+            <% end %>
+            <% shown_month = current_date.beginning_of_month %>
             <% has_events = true %>
             <% is_past = current_date < Date.current %>
             <% is_today = current_date == Date.current %>
@@ -407,7 +417,7 @@
           <% current_date = current_date + 1.day %>
         <% end %>
         <% unless has_events %>
-          <div class="text-center text-sm text-gray-500 py-8">No events this month.</div>
+          <div class="text-center text-sm text-gray-500 py-8">No upcoming events.</div>
         <% end %>
       </div>
 

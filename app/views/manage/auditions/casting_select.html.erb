@@ -28,7 +28,21 @@
           <p class="text-sm text-gray-600 hidden sm:block">Drag auditionees from the right to add them to your talent pool.</p>
           <p class="text-sm text-gray-600 sm:hidden">Tap + to add auditionees to your talent pool.</p>
         </div>
-        <%= render partial: "shared/button", locals: { text: "Done Selecting", path: manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <% if @cast_assignment_stages.any? %>
+            <% clear_id = "clear-decided-#{@audition_cycle.id}" %>
+            <%= render "shared/button", text: "Clear decided", variant: "secondary", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: clear_id } %>
+            <%= render "shared/confirm_modal",
+                  id: clear_id,
+                  title: "Clear everyone you've decided on?",
+                  message: "This removes everyone you've already added to the cast or rejected from the board, leaving only auditionees you haven't decided on yet. <strong>No notifications are sent</strong>, and anyone already in your talent pool stays there. You can add people back later from &ldquo;Add More Cast Members.&rdquo;",
+                  confirm_text: "Clear decided",
+                  url: manage_clear_decided_cast_assignments_signups_auditions_cycle_path(@production, @audition_cycle),
+                  method: :post %>
+          <% end %>
+          <%= render partial: "shared/button", locals: { text: "Done Selecting", path: manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+        </div>
       </div>
     </div>
 

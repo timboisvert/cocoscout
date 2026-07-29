@@ -1,0 +1,78 @@
+<%#
+  Marketing modal that explains Pro's usage-based fees (per active performer /
+  per active staff member). Opened from the pricing grid via a trigger with
+  data-controller="modal", data-action="click->modal#open" and
+  data-modal-id="usage-fees-modal". Fees derive from the billing-service
+  constants so the copy can't drift from what we actually charge.
+
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
+%>
+<%
+  performer_fee = PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS / 100
+  staff_fee     = StaffBillingService::PER_ACTIVE_STAFF_CENTS / 100
+  pro_monthly   = SubscriptionPlan::PRO_MONTHLY_CENTS / 100
+  pro_annual    = SubscriptionPlan::PRO_ANNUAL_CENTS / 100
+%>
+<div id="usage-fees-modal"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+       data-action="click->modal#stopPropagation">
+    <%# Header — pink gradient (CocoScout modal standard) %>
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Simple, fair usage-based pricing</h3>
+      <button type="button"
+              data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%# Body %>
+    <div class="px-6 py-5">
+      <p class="text-sm text-slate-600 mb-5">
+        Pro is a flat <strong class="text-slate-900">$<%= pro_monthly %>/month</strong> (or <strong class="text-slate-900">$<%= pro_annual %>/year</strong> — two months free). On top of that,
+        you only pay for the people you actually pay or schedule through CocoScout — and nothing for anyone you don't.
+      </p>
+
+      <div class="space-y-3">
+        <%# Paying performers %>
+        <div class="rounded-xl border border-pink-200 bg-pink-50/60 p-4">
+          <div class="flex items-baseline justify-between gap-3">
+            <h4 class="font-semibold text-slate-900">When you pay performers</h4>
+            <span class="font-bold text-pink-600 whitespace-nowrap">$<%= performer_fee %><span class="text-xs font-medium text-slate-500"> / active performer / mo</span></span>
+          </div>
+          <p class="mt-1.5 text-sm text-slate-600">
+            An active performer is anyone you pay through a payout run that month. Pay 10 performers in a month,
+            that's $<%= performer_fee * 10 %>. Pay no one, pay nothing.
+          </p>
+        </div>
+
+        <%# Scheduling staff %>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div class="flex items-baseline justify-between gap-3">
+            <h4 class="font-semibold text-slate-900">When you schedule staff</h4>
+            <span class="font-bold text-slate-900 whitespace-nowrap">$<%= staff_fee %><span class="text-xs font-medium text-slate-500"> / active staff / mo</span></span>
+          </div>
+          <p class="mt-1.5 text-sm text-slate-600">
+            An active staff member is anyone you put on the schedule and notify for a shift that month.
+            Only the people you actually use count — no charge for the rest of your roster.
+          </p>
+        </div>
+      </div>
+
+      <p class="mt-5 text-xs text-slate-500">
+        No setup fees, no minimums, no per-transaction cut. Quiet month? Your bill is just the base subscription.
+      </p>
+
+      <div class="mt-6 flex justify-end">
+        <%= render "shared/button", text: "Got it", variant: "primary", size: "medium", type: :button,
+              data: { action: "click->modal#close" } %>
+      </div>
+    </div>
+  </div>
+</div>

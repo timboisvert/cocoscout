@@ -104,7 +104,8 @@ module Manage
         @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
       end
 
-      @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
+      @cast_assignment_stages = @audition_cycle.cast_assignment_stages.active.includes(:assignable, :talent_pool)
+      exclude_cleared_auditionees!
     end
 
     # GET /auditions/casting/select
@@ -151,7 +152,8 @@ module Manage
         end
       end
 
-      @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
+      @cast_assignment_stages = @audition_cycle.cast_assignment_stages.active.includes(:assignable, :talent_pool)
+      exclude_cleared_auditionees!
       @current_talent_pool_members = @talent_pool.talent_pool_memberships.includes(:member).map(&:member).compact.sort_by { |m| m.name.to_s }
     end
 
@@ -558,12 +560,25 @@ module Manage
       auditionee_id = params[:auditionee_id]
       decision_type = params[:decision_type] || "cast"
 
-      # Remove any existing stage for this auditionee (in case they're being moved between buckets)
-      CastAssignmentStage.where(
+      existing = CastAssignmentStage.active.where(
         audition_cycle_id: @audition_cycle.id,
         assignable_type: auditionee_type,
         assignable_id: auditionee_id
-      ).destroy_all
+      ).to_a
+
+      # If this person was already FINALIZED (notified) in the bucket they're being
+      # dropped into, keep that finalized stage as-is. Re-creating it would reset the
+      # status to pending and re-notify them on the next finalize — the exact bug
+      # where moving already-notified people threatened to email them again.
+      keep = existing.find { |s| s.finalized? && s.decision_type == decision_type }
+      if keep
+        existing.reject { |s| s == keep }.each(&:destroy)
+        return head :ok
+      end
+
+      # Otherwise this is a genuine (or changed) decision: clear any prior active
+      # stage and stage a fresh pending one to be notified on the next finalize.
+      existing.each(&:destroy)
 
       CastAssignmentStage.create!(
         audition_cycle_id: @audition_cycle.id,
@@ -574,6 +589,23 @@ module Manage
       )
 
       head :ok
+    end
+
+    # POST /auditions/clear_decided_cast_assignments
+    # Archives every staged decision (cast or rejected) for this cycle so decided
+    # auditionees drop off the casting board, leaving only people not yet decided
+    # on. Never sends a notification, and never removes talent-pool memberships
+    # that were already saved when people were finalized.
+    def clear_decided_cast_assignments
+      cleared = @audition_cycle.cast_assignment_stages.active.update_all(archived_at: Time.current)
+
+      respond_to do |format|
+        format.json { render json: { ok: true, cleared: cleared } }
+        format.any do
+          redirect_to manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle),
+                      notice: "Cleared #{cleared} decided #{'auditionee'.pluralize(cleared)} from the board. No notifications were sent."
+        end
+      end
     end
 
     # POST /auditions/remove_from_cast_assignment
@@ -974,6 +1006,19 @@ module Manage
         recipient_name: person.name,
         production_name: production.name
       })
+    end
+
+    # Drop auditionees whose decision has been archived ("cleared") off the board,
+    # so cleared people don't reappear as undecided. People with no stage at all
+    # (genuinely undecided) are untouched.
+    def exclude_cleared_auditionees!
+      return if @auditioned_people.blank?
+
+      cleared_keys = @audition_cycle.cast_assignment_stages.archived
+                       .pluck(:assignable_type, :assignable_id).to_set
+      return if cleared_keys.empty?
+
+      @auditioned_people = @auditioned_people.reject { |p| cleared_keys.include?([ p.class.name, p.id ]) }
     end
 
     def set_production

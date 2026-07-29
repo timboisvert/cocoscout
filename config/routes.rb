@@ -773,6 +773,7 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:id/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/clear_decided_cast_assignments", to: "auditions#clear_decided_cast_assignments", as: "clear_decided_cast_assignments_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/schedule_auditions", to: "auditions#schedule_auditions", as: "schedule_auditions_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/notify_preview", to: "auditions#notify_preview", as: "notify_preview_signups_auditions_cycle"

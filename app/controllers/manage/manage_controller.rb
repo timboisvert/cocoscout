@@ -75,14 +75,55 @@ module Manage
       end
       cal_start = Time.current.beginning_of_month
       cal_end = 12.months.from_now.end_of_month
-      @prev_month = @current_month - 1.month
-      @next_month = @current_month + 1.month
+      real_current_month = Time.current.beginning_of_month
+
+      # When we're in the final stretch of a month, a plain single-month grid hides
+      # the upcoming weekend that spills into the next month — it reads as "nothing
+      # going on this weekend," which is deceptive. In that window we fold this month
+      # and the next into one view: the landing view shows the rest of this month PLUS
+      # all of next month, the forward arrow jumps to the month *after* next (the
+      # folded month isn't its own stop), and stepping back from there returns here.
+      days_left_in_month = (Time.current.end_of_month.to_date - Date.current).to_i
+      tail_of_month = days_left_in_month < 7
+      @calendar_combined = tail_of_month && @current_month == real_current_month
+
+      if tail_of_month && @current_month == real_current_month
+        @prev_month = @current_month - 1.month
+        @next_month = real_current_month + 2.months          # skip the folded next month
+      elsif tail_of_month && @current_month == real_current_month + 2.months
+        @prev_month = real_current_month                     # back to the combined this/next view
+        @next_month = @current_month + 1.month
+      else
+        @prev_month = @current_month - 1.month
+        @next_month = @current_month + 1.month
+      end
       @can_go_prev = @prev_month >= cal_start
       @can_go_next = @next_month <= cal_end
 
-      # Calendar: load shows for the displayed month (all productions including courses)
+      # The last month rendered in the grid — two months when combined.
+      @calendar_last_month = @calendar_combined ? (real_current_month + 1.month) : @current_month
+
+      # Nav-arrow labels. When a target IS the combined this/next view, label the
+      # arrow with both months ("Jul / Aug") so stepping back into it is obvious.
+      combined_short = "#{real_current_month.strftime('%b')} / #{(real_current_month + 1.month).strftime('%b')}"
+      @prev_month_label = (tail_of_month && @prev_month == real_current_month) ? combined_short : @prev_month.strftime("%b")
+      @next_month_label = (tail_of_month && @next_month == real_current_month) ? combined_short : @next_month.strftime("%b")
+
+      # Heading: "July / August 2026" when combined, else "July 2026".
+      @calendar_heading =
+        if @calendar_combined
+          if @current_month.year == @calendar_last_month.year
+            "#{@current_month.strftime('%B')} / #{@calendar_last_month.strftime('%B %Y')}"
+          else
+            "#{@current_month.strftime('%B %Y')} / #{@calendar_last_month.strftime('%B %Y')}"
+          end
+        else
+          @current_month.strftime("%B %Y")
+        end
+
+      # Calendar: load shows for the displayed range (all productions including courses)
       month_start = @current_month.beginning_of_month.beginning_of_day
-      month_end = @current_month.end_of_month.end_of_day
+      month_end = @calendar_last_month.end_of_month.end_of_day
       all_production_ids = @productions.map(&:id)
 
       # Build a lookup for course productions → their first course offering
