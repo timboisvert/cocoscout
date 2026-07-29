@@ -1,26 +1,10 @@
 <%#
-  Three persona cards used on both the signin and signup pages.
-  The cards explain who CocoScout is for — same account, three
-  distinct surfaces.
-
-  Compact icon + headline + one-line description. Designed to fit
-  inside a sticky left-column panel without dominating the page.
+  Persona cards used on both the signin and signup pages. One account, several
+  kinds of people — producers first (the primary audience), then performers/staff,
+  then open-mic regulars. Compact icon + headline + one-line description.
 %>
 <div class="space-y-4">
-  <%# Performers — line-icon people group (audience/cast) %>
-  <div class="flex items-start gap-3">
-    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
-      </svg>
-    </div>
-    <div class="min-w-0">
-      <h3 class="text-sm font-semibold text-slate-900">Performers &amp; comics</h3>
-      <p class="text-sm text-slate-600">Find auditions and courses, share availability, get cast, and get paid.</p>
-    </div>
-  </div>
-
-  <%# Producers — clipboard-check (run a show, run sign-ups) %>
+  <%# Producers — clipboard-check (run the whole production) %>
   <div class="flex items-start gap-3">
     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -28,12 +12,25 @@
       </svg>
     </div>
     <div class="min-w-0">
-      <h3 class="text-sm font-semibold text-slate-900">Producers</h3>
-      <p class="text-sm text-slate-600">Run shows, theaters, courses, and open mics — casting, sign-ups, scheduling, payouts.</p>
+      <h3 class="text-sm font-semibold text-slate-900">Producers, theaters &amp; venues</h3>
+      <p class="text-sm text-slate-600">Run the whole production — casting, sign-ups, scheduling, contracts, staffing, and payroll.</p>
     </div>
   </div>
 
-  <%# Mic regulars — outlined star (favorites + interest) %>
+  <%# Performers & staff — line-icon people group %>
+  <div class="flex items-start gap-3">
+    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
+      </svg>
+    </div>
+    <div class="min-w-0">
+      <h3 class="text-sm font-semibold text-slate-900">Performers &amp; staff</h3>
+      <p class="text-sm text-slate-600">Get cast, get scheduled, share availability, and get paid — free, forever.</p>
+    </div>
+  </div>
+
+  <%# Open mic regulars — outlined star %>
   <div class="flex items-start gap-3">
     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
