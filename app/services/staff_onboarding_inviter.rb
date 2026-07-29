@@ -40,19 +40,38 @@ class StaffOnboardingInviter
     email = recipient_email
     raise Error, "#{@person.name} has no email on file — add one before inviting them." unless email.match?(URI::MailTo::EMAIL_REGEXP)
 
+    invitation = nil
     ActiveRecord::Base.transaction do
       ensure_account(email)
-      ensure_invitation(email)
+      invitation = ensure_invitation(email)
       @staff_member.update!(onboarding_state: "invited")
     end
 
     copy = onboarding_copy
-    StaffOnboardingMailer.invite(@staff_member, subject: copy[:subject], body: copy[:body]).deliver_later
+    if account_unclaimed?
+      # Brand-new account: they have no password yet, so the onboarding page would
+      # just bounce them to a login they can't pass. Send the standard "set up
+      # your account" invitation first (create-a-password link). Once they claim
+      # it and land on their dashboard, the staff onboarding prompt takes over.
+      Manage::PersonMailer.person_invitation(invitation).deliver_later if invitation
+    else
+      # Existing account: they can log in, so send them straight to onboarding.
+      StaffOnboardingMailer.invite(@staff_member, subject: copy[:subject], body: copy[:body]).deliver_later
+    end
+
+    # The in-app welcome waits in their inbox — visible once they're signed in.
     send_in_app_message(copy)
     @staff_member
   end
 
   private
+
+  # True when the person's login has never been used — i.e. they still need to
+  # create a password before they can sign in and onboard.
+  def account_unclaimed?
+    user = @person.user
+    user.nil? || user.last_seen_at.blank?
+  end
 
   def ensure_account(email)
     return if @person.user.present?
@@ -63,9 +82,8 @@ class StaffOnboardingInviter
   end
 
   def ensure_invitation(email)
-    return if PersonInvitation.pending.exists?(email: email, organization: @organization)
-
-    PersonInvitation.create!(email: email, organization: @organization)
+    PersonInvitation.pending.find_by(email: email, organization: @organization) ||
+      PersonInvitation.create!(email: email, organization: @organization)
   end
 
   def send_in_app_message(copy = onboarding_copy)

@@ -22,10 +22,18 @@ module My
                                        .map { |u| { date: u.date.iso8601, scope: u.scope } }
     end
 
-    # "I'm in" — record that they've accepted onboarding, then re-evaluate whether
-    # they're fully onboarded (needs a connected bank too).
+    # "I agree & I'm in" — record that they've accepted onboarding (and, when the
+    # org has a staff agreement, the exact agreement + version they agreed to),
+    # then re-evaluate whether they're fully onboarded (needs a connected bank too).
     def acknowledge
-      @staff_member.update!(acknowledged_at: Time.current) unless @staff_member.acknowledged?
+      unless @staff_member.acknowledged?
+        template = @staff_member.effective_agreement_template
+        @staff_member.update!(
+          acknowledged_at: Time.current,
+          staff_agreement_template: template,
+          agreed_agreement_version: template&.version
+        )
+      end
       @staff_member.refresh_onboarding_state!
       accept_pending_invitations!
       redirect_to my_onboarding_path(@staff_member.organization_id), notice: "You're in — welcome aboard! A couple of quick things left below."

@@ -17,6 +17,12 @@ class Shift < ApplicationRecord
   has_many :shift_assignments, dependent: :destroy
   has_many :assigned_people, through: :shift_assignments, source: :person
 
+  # Extra shows this shift covers beyond its own `source` — only populated when
+  # show-based shifts are deliberately merged. Empty for the normal one-per-show
+  # case; covered_shows falls back to `source` then.
+  has_many :shift_shows, dependent: :destroy
+  has_many :shows, through: :shift_shows
+
   enum :coverage_mode, {
     needs_assignment: 0,
     covered_by_renter: 1,
@@ -26,6 +32,7 @@ class Shift < ApplicationRecord
   validates :starts_at, :ends_at, presence: true
   validates :required_count, numericality: { only_integer: true, greater_than: 0 }
   validate :ends_after_starts
+  validate :no_duplicate_shift
 
   # True when this shift covers more than one role.
   def doubled?
@@ -88,5 +95,35 @@ class Shift < ApplicationRecord
   def ends_after_starts
     return unless starts_at.present? && ends_at.present? && ends_at <= starts_at
     errors.add(:ends_at, "must be after the shift start time")
+  end
+
+  public
+
+  # The show(s) this shift is tied to. One show normally (its `source`); several
+  # only when show-based shifts have been merged (tracked explicitly, never
+  # inferred from time). Ordered by show start.
+  def covered_shows
+    extra = shows.to_a
+    if extra.any?
+      ([ source ].select { |s| s.is_a?(::Show) } + extra).uniq.sort_by(&:date_and_time)
+    else
+      [ source ].select { |s| s.is_a?(::Show) }
+    end
+  end
+
+  private
+
+  # Mirrors the idx_shifts_no_dupe unique index so a colliding create/edit fails
+  # validation (friendly message) instead of raising RecordNotUnique at the DB.
+  def no_duplicate_shift
+    return if starts_at.blank? || ends_at.blank? || house_role_id.blank?
+
+    dupes = Shift.where(
+      house_role_id: house_role_id,
+      source_type: source_type, source_id: source_id,
+      starts_at: starts_at, ends_at: ends_at
+    )
+    dupes = dupes.where.not(id: id) if persisted?
+    errors.add(:base, "There's already a shift for this role at that time.") if dupes.exists?
   end
 end

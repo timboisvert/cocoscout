@@ -38,6 +38,9 @@ module Manage
       # badge on the "Approve Hours" tile.
       @hours_to_approve_count = Current.organization.staff_time_entries.pending.count
 
+      # Staff who've said "I can't make it" on an upcoming shift.
+      @declined_assignments = declined_upcoming_assignments
+
       # The org chart now lives in a modal opened from the staff list.
       load_org_chart
     end
@@ -70,6 +73,10 @@ module Manage
       @week_finalized = @finalization&.finalized? || false
       # Who the finalize modal would notify, with each person's shift count.
       @finalize_recipients = build_finalize_recipients(shifts)
+      # Staff who've said "I can't make it" on an upcoming shift — a heads-up for
+      # the manager (no auto-offering; they decide what to do). The grid also flags
+      # declined chips directly via each assignment's declined? state.
+      @declined_assignments = declined_upcoming_assignments
       # Smart comms status: who's up to date vs. needs a (re)notify this week.
       @comms = compute_schedule_updates(shifts, @week_start)
 
@@ -159,20 +166,19 @@ module Manage
         day_segments = segments_by_date[day]
 
         roles.each do |role|
-          start_off = role.default_start_offset_minutes.minutes
-          end_off   = role.default_end_offset_minutes.minutes
-
-          # Anchors carry FINAL times (offsets already applied for the normal
-          # case). House roles get one all-evening anchor — or, when the manager
-          # split the evening, one per chosen window. Show-specific roles always
-          # get one anchor per show.
+          # Shifts run for the show's own hours (any early-in/late-out is baked
+          # into the show times / the contract). Show-specific roles get one anchor
+          # per show. House roles get one anchor per contiguous cluster of shows
+          # (shows an hour or less apart — or overlapping — become one shift; a
+          # bigger gap splits them) — unless the manager split the evening by hand,
+          # in which case we use their windows verbatim.
           anchors =
             if role.show_specific?
-              sorted.map { |show| [ show.date_and_time + start_off, show.ends_at + end_off, show ] }
+              sorted.map { |show| [ show.date_and_time, show.ends_at, show ] }
             elsif day_segments.any?
               day_segments.map { |seg_start, seg_end| [ seg_start, seg_end, first_show ] }
             else
-              [ [ first_show.date_and_time + start_off, last_show.ends_at + end_off, first_show ] ]
+              cluster_shows_by_gap(sorted).map { |c| [ c[:start], c[:end], c[:first] ] }
             end
 
           anchors.each do |starts_at, ends_at, source_show|
@@ -191,7 +197,9 @@ module Manage
             begin
               shift.save!
               created += 1
-            rescue ActiveRecord::RecordNotUnique
+            rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+              # Already exists (the no-dupe validation or the DB index) — skip it
+              # and keep generating the rest.
               skipped += 1
             end
           end
@@ -437,6 +445,17 @@ module Manage
       Date.current.beginning_of_week
     end
 
+    # Staff who declined ("can't make it") an upcoming shift for this org.
+    def declined_upcoming_assignments
+      ShiftAssignment.declined
+        .joins(:shift)
+        .where(shifts: { organization_id: Current.organization.id })
+        .where("shifts.ends_at >= ?", Time.current)
+        .includes(:person, shift: [ :house_role, :source ])
+        .order("shifts.starts_at ASC")
+        .to_a
+    end
+
     # The Generate modal's split windows → { Date => [[start, end], ...] }.
     def parse_split_segments(raw)
       result = Hash.new { |h, k| h[k] = [] }
@@ -448,6 +467,22 @@ module Manage
         result[s.to_date] << [ s, e ]
       end
       result
+    end
+
+    # Group a day's sorted shows into contiguous clusters. Consecutive shows an
+    # hour or less apart — or that overlap — belong to one shift; a bigger gap
+    # starts a new cluster. Managers can still split a cluster further by hand.
+    def cluster_shows_by_gap(sorted_shows, max_gap: 1.hour)
+      clusters = []
+      sorted_shows.each do |show|
+        current = clusters.last
+        if current && (show.date_and_time - current[:end]) <= max_gap
+          current[:end] = [ current[:end], show.ends_at ].max
+        else
+          clusters << { start: show.date_and_time, end: show.ends_at, first: show }
+        end
+      end
+      clusters
     end
 
     def shows_in_range(range)

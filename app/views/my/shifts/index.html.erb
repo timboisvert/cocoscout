@@ -38,10 +38,10 @@
     <%# Glance %>
     <%= render "my/shifts/summary" %>
 
-    <%# Your shifts (confirm worked hours) first, then what's coming up. %>
+    <%# What's coming up first, then completed shifts (confirm worked hours). %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mb-6">
-      <%= render "my/shifts/your_hours" %>
       <%= render "my/shifts/upcoming" %>
+      <%= render "my/shifts/your_hours" %>
     </div>
 
     <%# What you're owed · when you can work. %>

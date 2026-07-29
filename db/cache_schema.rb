@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -944,10 +944,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   create_table "house_roles", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
-    t.integer "default_end_offset_minutes", default: 60, null: false
     t.integer "default_hourly_rate_cents"
     t.integer "default_required_count", default: 1, null: false
-    t.integer "default_start_offset_minutes", default: -60, null: false
     t.bigint "location_id"
     t.string "name", null: false
     t.bigint "organization_id", null: false
@@ -1335,6 +1333,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
 
   create_table "organization_staff_members", force: :cascade do |t|
     t.datetime "acknowledged_at"
+    t.integer "agreed_agreement_version"
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.string "department"
@@ -1348,6 +1347,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
     t.bigint "person_id", null: false
     t.string "personal_email"
     t.string "preferred_first_name"
+    t.bigint "staff_agreement_template_id"
     t.date "start_date"
     t.string "title"
     t.datetime "updated_at", null: false
@@ -1355,6 +1355,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
     t.index ["organization_id", "person_id"], name: "idx_org_staff_members_unique", unique: true
     t.index ["organization_id"], name: "index_organization_staff_members_on_organization_id"
     t.index ["person_id"], name: "index_organization_staff_members_on_person_id"
+    t.index ["staff_agreement_template_id"], name: "idx_on_staff_agreement_template_id_99dbeb01ea"
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -2043,6 +2044,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   create_table "shift_assignments", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
+    t.string "decline_reason"
     t.datetime "declined_at"
     t.datetime "notified_at"
     t.bigint "person_id", null: false
@@ -2052,6 +2054,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
     t.index ["person_id"], name: "index_shift_assignments_on_person_id"
     t.index ["shift_id", "person_id"], name: "idx_shift_assignments_unique", unique: true
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
+  end
+
+  create_table "shift_shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "shift_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shift_id", "show_id"], name: "index_shift_shows_on_shift_id_and_show_id", unique: true
+    t.index ["shift_id"], name: "index_shift_shows_on_shift_id"
+    t.index ["show_id"], name: "index_shift_shows_on_show_id"
   end
 
   create_table "shifts", force: :cascade do |t|
@@ -2617,6 +2629,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
     t.index ["person_id"], name: "index_staff_activations_on_person_id"
   end
 
+  create_table "staff_agreement_templates", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", default: 1, null: false
+    t.index ["organization_id"], name: "index_staff_agreement_templates_on_organization_id"
+  end
+
   create_table "staff_role_qualifications", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "hourly_rate_cents"
@@ -2942,6 +2965,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   add_foreign_key "organization_staff_members", "organization_staff_members", column: "manager_id", on_delete: :nullify
   add_foreign_key "organization_staff_members", "organizations"
   add_foreign_key "organization_staff_members", "people"
+  add_foreign_key "organization_staff_members", "staff_agreement_templates"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
@@ -2997,6 +3021,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   add_foreign_key "shift_additional_roles", "shifts"
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
+  add_foreign_key "shift_shows", "shifts"
+  add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"
   add_foreign_key "shifts", "organizations"
   add_foreign_key "shoutouts", "people", column: "author_id"
@@ -3049,6 +3075,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060000) do
   add_foreign_key "space_rentals", "locations"
   add_foreign_key "staff_activations", "organizations"
   add_foreign_key "staff_activations", "people"
+  add_foreign_key "staff_agreement_templates", "organizations"
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
   add_foreign_key "staff_schedule_removals", "organizations"

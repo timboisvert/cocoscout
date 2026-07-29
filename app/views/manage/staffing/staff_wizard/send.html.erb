@@ -1,0 +1,48 @@
+<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 9, step_name: "Send" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Send the invitation</h2>
+
+  <% if @needs_account_setup %>
+    <%# New to CocoScout — must set a password before they can onboard. %>
+    <p class="text-gray-600 mb-6">
+      <%= @staff_member.display_name %> is new to CocoScout, so we'll first email them a link to set up their
+      account and join your team. Once they're in, their onboarding steps — accepting the agreement and
+      connecting their bank — are waiting on their dashboard.
+    </p>
+
+    <%= form_with url: manage_save_send_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
+      <div class="rounded-lg border border-pink-100 bg-pink-50 p-4 text-sm text-gray-700">
+        We'll send the standard account-setup email to <span class="font-medium text-gray-900"><%= @email_preview[:to_email] %></span>.
+      </div>
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= link_to "← Back", manage_agreement_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Send invitation", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+
+  <% else %>
+    <%# Existing account — send them straight to onboarding, editable draft. %>
+    <p class="text-gray-600 mb-6">This sends <%= @staff_member.display_name %> an email and a matching in-app message inviting them to onboard — accept their agreement, confirm their details, and set up how they get paid.</p>
+
+    <%= form_with url: manage_save_send_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
+      <div class="rounded-lg border border-pink-100 bg-pink-50 p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">The invitation we'll send</h3>
+        <p class="text-sm text-gray-600 mb-3">
+          Goes to <span class="font-medium text-gray-900"><%= @email_preview[:to_email] %></span>. Edit anything you like before sending.
+        </p>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <%= text_field_tag :email_subject, @email_preview[:subject], class: "block w-full mb-3 px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+        <input type="hidden" name="email_body" id="onboarding_email_body" value="<%= @email_preview[:body] %>">
+        <trix-editor input="onboarding_email_body" class="trix-content block w-full bg-white border border-gray-300 rounded-lg min-h-[200px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></trix-editor>
+        <p class="mt-1 text-xs text-gray-500">The name and organization are already filled in for you. Edit the message above — formatting is applied automatically.</p>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= link_to "← Back", manage_agreement_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Send invitation", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

@@ -417,6 +417,8 @@ Rails.application.routes.draw do
 
     # House staffing shifts the user has been assigned to.
     get   "/shifts",                        to: "shifts#index",             as: "shifts"
+    post  "/shifts/:id/cant-make-it",       to: "shifts#decline",           as: "decline_shift"
+    post  "/shifts/:id/undo-cant-make-it",  to: "shifts#undo_decline",      as: "undo_decline_shift"
 
     # House-staff availability (marked as unavailable-times or available-times).
     post  "/shifts/unavailability",         to: "shifts#create_unavailability", as: "create_shift_unavailability"
@@ -1211,6 +1213,15 @@ Rails.application.routes.draw do
     post   "staffing/departments",                to: "staffing/departments#create"
     delete "staffing/departments/:id",            to: "staffing/departments#destroy",    as: "staffing_department"
 
+    # Staffing settings — org-level config (the employee agreement, etc.)
+    get    "staffing/settings",                   to: "staffing/settings#show",          as: "staffing_settings"
+    get    "staffing/agreement-templates/new",    to: "staffing/agreement_templates#new",     as: "new_staffing_agreement_template"
+    post   "staffing/agreement-templates",        to: "staffing/agreement_templates#create",  as: "staffing_agreement_templates"
+    get    "staffing/agreement-templates/:id/edit",    to: "staffing/agreement_templates#edit",    as: "edit_staffing_agreement_template"
+    patch  "staffing/agreement-templates/:id",    to: "staffing/agreement_templates#update",  as: "staffing_agreement_template"
+    delete "staffing/agreement-templates/:id",    to: "staffing/agreement_templates#destroy"
+    get    "staffing/agreement-templates/:id/preview", to: "staffing/agreement_templates#preview", as: "preview_staffing_agreement_template"
+
     get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
     # Gusto-style add-staff wizard (the primary "add a staff member" flow).
     # Multi-step, matching the show/contract wizard model (session-backed state).
@@ -1226,7 +1237,16 @@ Rails.application.routes.draw do
     get    "staffing/staff/onboard/roles",      to: "staffing/staff_wizard#roles",        as: "roles_staffing_staff_wizard"
     post   "staffing/staff/onboard/roles",      to: "staffing/staff_wizard#save_roles",   as: "save_roles_staffing_staff_wizard"
     get    "staffing/staff/onboard/review",     to: "staffing/staff_wizard#review",       as: "review_staffing_staff_wizard"
-    post   "staffing/staff/onboard/review",     to: "staffing/staff_wizard#create",       as: "staffing_staff_wizard"
+    post   "staffing/staff/onboard/review",     to: "staffing/staff_wizard#save_review",  as: "staffing_staff_wizard"
+    get    "staffing/staff/onboard/invite",        to: "staffing/staff_wizard#invite",       as: "invite_staffing_staff_wizard"
+    post   "staffing/staff/onboard/invite",        to: "staffing/staff_wizard#save_invite",  as: "save_invite_staffing_staff_wizard"
+    post   "staffing/staff/onboard/invite/select", to: "staffing/staff_wizard#select_invite_person", as: "select_invite_person_staffing_staff_wizard"
+    post   "staffing/staff/onboard/invite/new",    to: "staffing/staff_wizard#invite_new_person",    as: "invite_new_person_staffing_staff_wizard"
+    post   "staffing/staff/onboard/invite/clear",  to: "staffing/staff_wizard#clear_invite_person",  as: "clear_invite_person_staffing_staff_wizard"
+    get    "staffing/staff/onboard/agreement",  to: "staffing/staff_wizard#agreement",    as: "agreement_staffing_staff_wizard"
+    post   "staffing/staff/onboard/agreement",  to: "staffing/staff_wizard#save_agreement", as: "save_agreement_staffing_staff_wizard"
+    get    "staffing/staff/onboard/send",       to: "staffing/staff_wizard#send_step",    as: "send_staffing_staff_wizard"
+    post   "staffing/staff/onboard/send",       to: "staffing/staff_wizard#save_send",    as: "save_send_staffing_staff_wizard"
     delete "staffing/staff/onboard/cancel",     to: "staffing/staff_wizard#cancel",       as: "cancel_staffing_staff_wizard"
     get  "staffing/staff/new",                    to: "staffing/staff#new",              as: "new_staffing_staff"
     post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
@@ -1244,6 +1264,7 @@ Rails.application.routes.draw do
                                                   to: "staffing/shifts#unassign",        as: "unassign_staffing_shift"
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
+    post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
     post   "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#acknowledge_gap", as: "acknowledge_gap_staffing_shift"
     delete "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#unacknowledge_gap", as: "unacknowledge_gap_staffing_shift"
     # Legacy /staffing/schedule URLs redirect to the scheduling sub-section.

@@ -11,6 +11,17 @@ class ShiftAssignment < ApplicationRecord
   validates :person_id, uniqueness: { scope: :shift_id, message: "is already assigned to this shift" }
   validates :position, numericality: { only_integer: true, greater_than: 0 }
 
+  # "Can't make it" declines (staff-initiated), for a manager heads-up.
+  scope :declined, -> { where.not(declined_at: nil) }
+
+  def decline!(reason: nil)
+    update!(declined_at: Time.current, accepted_at: nil, decline_reason: reason.to_s.strip.presence)
+  end
+
+  def undo_decline!
+    update!(declined_at: nil, decline_reason: nil)
+  end
+
   def notified?
     notified_at.present?
   end

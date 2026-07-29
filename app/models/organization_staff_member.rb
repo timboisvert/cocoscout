@@ -14,6 +14,9 @@ class OrganizationStaffMember < ApplicationRecord
   has_many :staff_role_qualifications, dependent: :destroy
   has_many :house_roles, through: :staff_role_qualifications
 
+  # The employee agreement this member was asked to accept during onboarding.
+  belongs_to :staff_agreement_template, optional: true
+
   validates :person_id, uniqueness: { scope: :organization_id }
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
   validates :hourly_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
@@ -26,6 +29,57 @@ class OrganizationStaffMember < ApplicationRecord
   def display_name
     first = preferred_first_name.presence || first_name.presence
     [ first, last_name.presence ].compact.join(" ").presence || person&.name
+  end
+
+  # The employee agreement to show this member: the one assigned to them, else the
+  # org's first active template. Nil when the org hasn't set one up.
+  def effective_agreement_template
+    staff_agreement_template || organization&.staff_agreement_templates&.active&.order(:name)&.first
+  end
+
+  # Merge values for rendering this member's employee agreement.
+  def agreement_variables
+    {
+      "staff_name"        => display_name.to_s,
+      "organization_name" => organization&.name.to_s,
+      "title"             => title.to_s,
+      "department"        => department.to_s,
+      "start_date"        => start_date ? start_date.strftime("%B %-d, %Y") : "",
+      "current_date"      => Date.current.strftime("%B %-d, %Y")
+    }
+  end
+
+  # The agreement this member sees/accepts: the template wording with merge fields
+  # filled in, plus a "Schedule 1" spelling out their role(s), pay, and start date.
+  def rendered_agreement_html(template = effective_agreement_template)
+    return nil unless template
+
+    template.render_content(agreement_variables) + agreement_schedule_html
+  end
+
+  # "Schedule 1" appended to the agreement — the member's role(s), pay rate(s), and
+  # start date — so the agreement they accept actually describes what they're doing.
+  def agreement_schedule_html
+    roles = staff_role_qualifications.includes(:house_role).map(&:house_role).compact
+    return "".html_safe if roles.empty? && title.blank? && start_date.blank?
+
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    parts = [ "<div><br></div>", "<div><strong>Schedule 1 &mdash; Services</strong></div>" ]
+    parts << "<div>Position: #{esc.call(title)}</div>" if title.present?
+    if roles.any?
+      items = roles.map do |role|
+        cents = rate_cents_for(role).to_i
+        rate = cents.positive? ? " &mdash; $#{format('%.2f', cents / 100.0)}/hr" : ""
+        "<li>#{esc.call(role.name)}#{rate}</li>"
+      end
+      parts << "<div>Role(s):</div><ul>#{items.join}</ul>"
+    end
+    parts << "<div>Start date: #{esc.call(start_date.strftime('%B %-d, %Y'))}</div>" if start_date.present?
+    parts.join.html_safe
+  end
+
+  def agreed_to_agreement?
+    agreed_agreement_version.present?
   end
 
   def hourly_rate_dollars

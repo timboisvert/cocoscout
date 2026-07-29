@@ -8,7 +8,8 @@ import { Controller } from "@hotwired/stimulus"
 // The form submits a segments[] array with starts_at/ends_at for each segment.
 // The server replaces the original shift with these.
 export default class extends Controller {
-    static targets = ["modal", "form", "title", "subtitle", "countDisplay", "segmentsContainer"]
+    static targets = ["modal", "form", "title", "subtitle", "countDisplay", "segmentsContainer",
+                      "byShowRow", "byShowLabel", "byShowList", "timeSplitRow"]
     static values = { splitUrlTemplate: String }
 
     open(event) {
@@ -23,12 +24,38 @@ export default class extends Controller {
         if (this.hasTitleTarget) this.titleTarget.textContent = `Split ${roleName} shift`
         if (this.hasSubtitleTarget) this.subtitleTarget.textContent = timeRange
 
+        // Show-based shifts split back into their shows (no time slicing);
+        // house shifts get the time-slider split.
+        const showSpecific = btn.dataset.shiftShowSpecific === "true"
+        const coveredCount = parseInt(btn.dataset.shiftCoveredShowCount || "0", 10)
+        const byShow = showSpecific && coveredCount > 1
+
+        if (this.hasByShowRowTarget) this.byShowRowTarget.classList.toggle("hidden", !byShow)
+        if (this.hasTimeSplitRowTarget) this.timeSplitRowTarget.classList.toggle("hidden", byShow)
+
+        if (byShow) {
+            if (this.hasByShowLabelTarget) this.byShowLabelTarget.textContent = `Split into ${coveredCount} separate shows`
+            if (this.hasByShowListTarget) {
+                let shows = []
+                try { shows = JSON.parse(btn.dataset.shiftCoveredShows || "[]") } catch (_) {}
+                this.byShowListTarget.innerHTML = shows.map(s =>
+                    `<div class="flex items-center gap-2 px-2 py-1.5 rounded bg-purple-50 border border-purple-100 text-sm text-purple-900"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0"></span><span>${this.escape(s)}</span></div>`
+                ).join("")
+            }
+        }
+
         this.count = 2
         if (this.hasFormTarget && this.hasSplitUrlTemplateValue) {
             this.formTarget.action = this.splitUrlTemplateValue.replace(":id", this.shiftId)
         }
-        this.redistribute()
+        if (!byShow) this.redistribute()
         this.show()
+    }
+
+    escape(s) {
+        const d = document.createElement("div")
+        d.textContent = s == null ? "" : String(s)
+        return d.innerHTML
     }
 
     close(event) { if (event) event.preventDefault(); this.hide() }

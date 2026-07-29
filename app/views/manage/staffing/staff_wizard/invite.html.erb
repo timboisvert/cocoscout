@@ -1,0 +1,134 @@
+<% display_name = [ @wizard_state[:preferred_first_name].presence || @wizard_state[:first_name], @wizard_state[:last_name] ].compact_blank.join(" ").presence || "this person" %>
+<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 7, step_name: "Invite" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Connect them to CocoScout</h2>
+
+  <% if @selected_person || @invite_email %>
+    <%# ================= Someone is picked ================= %>
+    <% if @invite_email %>
+      <p class="text-gray-600 mb-6">
+        <% if @account_was_new %>
+          We'll create a CocoScout account for <%= display_name %> and invite them at <%= @invite_email %>.
+        <% else %>
+          That email already has a CocoScout account — we'll link it and add <%= display_name %> to your team.
+        <% end %>
+      </p>
+      <div class="rounded-lg border border-gray-200 p-4 flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold flex-shrink-0"><%= display_name.split.map(&:first).first(2).join.upcase %></div>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= display_name %></div>
+          <div class="text-sm text-gray-500 truncate"><%= @invite_email %></div>
+        </div>
+        <% if @account_was_new %>
+          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-pink-100 text-pink-700 flex-shrink-0">New to CocoScout</span>
+        <% else %>
+          <span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Already on CocoScout</span>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-600 mb-6"><%= @selected_person.name %> already has a CocoScout account — they'll be added to your team, no new account needed.</p>
+      <div class="rounded-lg border border-gray-200 p-4 flex items-center gap-4 mb-4">
+        <% headshot = @selected_person.safe_headshot_variant(:thumb) %>
+        <% if headshot %>
+          <%= image_tag headshot, alt: @selected_person.name, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold flex-shrink-0"><%= @selected_person.initials %></div>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= @selected_person.name %></div>
+          <div class="text-sm text-gray-500 truncate"><%= @selected_person.email %></div>
+        </div>
+        <span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Already on CocoScout
+        </span>
+      </div>
+    <% end %>
+
+    <%= form_with url: manage_clear_invite_person_staffing_staff_wizard_path, method: :post do %>
+      <button type="submit" class="text-sm text-pink-600 hover:text-pink-700 bg-transparent border-0 cursor-pointer p-0">Choose someone else</button>
+    <% end %>
+
+    <%= form_with url: manage_save_invite_staffing_staff_wizard_path, method: :post, class: "mt-6" do %>
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= link_to "← Back", manage_review_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+
+  <% else %>
+    <%# ================= Search ================= %>
+    <p class="text-gray-600 mb-6">Search to see if <%= display_name %> already has a CocoScout account.</p>
+
+    <%= form_with url: manage_invite_staffing_staff_wizard_path, method: :get, class: "mb-4" do %>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Search by name or email</label>
+      <div class="flex gap-2">
+        <%= text_field_tag :q, @query, autofocus: true, placeholder: "e.g. Jordan or jordan@email.com",
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        <%= render "shared/button", text: "Search", variant: "secondary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+
+    <% if @searched && @results.any? %>
+      <%# --- Matches found: pick one --- %>
+      <div class="space-y-2">
+        <% @results.each do |person| %>
+          <div class="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
+            <% headshot = person.safe_headshot_variant(:thumb) %>
+            <% if headshot %>
+              <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= person.initials %></div>
+            <% end %>
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-gray-900 truncate"><%= person.name %></div>
+              <div class="text-xs text-gray-500 truncate"><%= person.email %></div>
+            </div>
+            <% if person.user.present? %>
+              <span class="hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 flex-shrink-0">On CocoScout</span>
+            <% end %>
+            <%= form_with url: manage_select_invite_person_staffing_staff_wizard_path, method: :post, class: "flex-shrink-0" do %>
+              <%= hidden_field_tag :person_id, person.id %>
+              <%= render "shared/button", text: "Select", variant: "primary", size: "small", type: :submit %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+    <% elsif @no_results %>
+      <%# --- No match: invite a brand-new CocoScout user --- %>
+      <div class="rounded-lg border border-pink-200 bg-pink-50 p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">Invite a new CocoScout user</h3>
+        <p class="text-sm text-gray-600 mb-4">No CocoScout account matches “<%= @query %>”. Enter their details and we'll set up a new account for them.</p>
+
+        <%= form_with url: manage_invite_new_person_staffing_staff_wizard_path, method: :post, class: "space-y-3" do %>
+          <%= hidden_field_tag :q, @query %>
+          <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-medium text-gray-500 mb-1">First name</label>
+              <%= text_field_tag :first_name, @prefill_first, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-1">
+              <label class="block text-xs font-medium text-gray-500 mb-1">M.I.</label>
+              <%= text_field_tag :middle_initial, @prefill_mi, maxlength: 1, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-gray-500 mb-1">Last name</label>
+              <%= text_field_tag :last_name, @prefill_last, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
+            <%= email_field_tag :email, @prefill_email, placeholder: "their@email.com", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+          <div class="pt-1">
+            <%= render "shared/button", text: "Invite to CocoScout", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="flex items-center justify-between pt-4 mt-6 border-t border-gray-200">
+      <%= link_to "← Back", manage_review_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+    </div>
+  <% end %>
+<% end %>

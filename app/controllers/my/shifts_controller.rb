@@ -61,6 +61,23 @@ module My
       @availability_upcoming_count = @unavailability_entries.count { |e| e[:date] >= today }
     end
 
+    # "I can't make it" on an assigned shift — records the decline (+ optional
+    # reason) so the org's managers see it on the scheduling page. We don't offer
+    # the shift to anyone else automatically.
+    def decline
+      assignment = find_my_assignment or return
+      assignment.decline!(reason: params[:reason])
+      redirect_to my_shifts_path,
+                  notice: "Thanks — we've let #{assignment.shift.organization.name} know you can't make this shift."
+    end
+
+    # Undo a "can't make it".
+    def undo_decline
+      assignment = find_my_assignment or return
+      assignment.undo_decline!
+      redirect_to my_shifts_path, notice: "You're back on for that shift."
+    end
+
     # Upsert/clear unavailability for one or more dates. Called by the client-side
     # calendar via fetch; responds JSON.
     def create_unavailability
@@ -105,6 +122,15 @@ module My
     end
 
     private
+
+    # Load a shift assignment that belongs to one of the current user's people.
+    def find_my_assignment
+      people_ids = Current.user.people.active.pluck(:id)
+      assignment = ShiftAssignment.where(person_id: people_ids).find_by(id: params[:id])
+      redirect_to(my_shifts_path, alert: "We couldn't find that shift.") and return nil unless assignment
+
+      assignment
+    end
 
     # Timekeeping panel: recent past shifts still to confirm, the worker's logged
     # (unpaid) entries, and a running unpaid-hours total. Same finalized-week gate

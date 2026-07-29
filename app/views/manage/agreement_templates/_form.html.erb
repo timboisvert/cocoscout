@@ -90,29 +90,33 @@
     </div>
   </div>
 
-  <div class="flex items-center justify-between pt-6 border-t border-gray-200">
-    <div>
-      <% if agreement_template.persisted? && agreement_template.productions.empty? %>
-        <button type="button"
-            data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-template-<%= agreement_template.id %>"
-            class="text-sm text-pink-600 hover:text-pink-700 bg-transparent border-0 cursor-pointer p-0">Delete Template</button>
-        <%= render "shared/confirm_modal",
-            id: "confirm-delete-template-#{agreement_template.id}",
-            title: "Delete template?",
-            message: "Are you sure you want to delete this template?",
-            confirm_text: "Delete Template",
-            url: manage_agreement_template_path(agreement_template),
-            method: :delete %>
-      <% elsif agreement_template.persisted? %>
-        <span class="text-sm text-gray-500">
-          Template in use by <%= agreement_template.productions.count %> <%= "production".pluralize(agreement_template.productions.count) %> — cannot delete
-        </span>
-      <% end %>
-    </div>
-    <div class="flex items-center gap-3">
-      <%= link_to "Cancel", manage_agreement_templates_path, class: "text-sm text-gray-600 hover:text-gray-800" %>
-      <%= render "shared/button", text: agreement_template.persisted? ? "Save Changes" : "Create Template", type: :submit, variant: "primary" %>
-    </div>
+  <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+    <%= link_to "Cancel", manage_agreement_templates_path, class: "text-sm text-gray-600 hover:text-gray-800" %>
+    <%= render "shared/button", text: agreement_template.persisted? ? "Save Changes" : "Create Template", type: :submit, variant: "primary" %>
+  </div>
+<% end %>
+
+<%# Delete lives OUTSIDE the edit form on purpose: the confirm modal renders its
+    own method: :delete form, and a nested <form> leaks its _method=delete into
+    the edit form — turning "Save Changes" into a destroy. Keep it separate. %>
+<% if agreement_template.persisted? %>
+  <div class="px-6 pb-6 border-t border-gray-100 pt-4">
+    <% if agreement_template.productions.empty? %>
+      <button type="button"
+          data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-template-<%= agreement_template.id %>"
+          class="text-sm text-pink-600 hover:text-pink-700 bg-transparent border-0 cursor-pointer p-0">Delete template</button>
+      <%= render "shared/confirm_modal",
+          id: "confirm-delete-template-#{agreement_template.id}",
+          title: "Delete template?",
+          message: "Are you sure you want to delete this template?",
+          confirm_text: "Delete Template",
+          url: manage_agreement_template_path(agreement_template),
+          method: :delete %>
+    <% else %>
+      <span class="text-sm text-gray-500">
+        Template in use by <%= agreement_template.productions.count %> <%= "production".pluralize(agreement_template.productions.count) %> — cannot delete
+      </span>
+    <% end %>
   </div>
 <% end %>
 </div>

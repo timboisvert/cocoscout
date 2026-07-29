@@ -11,7 +11,9 @@
   } %>
 
   <%
-    wizard_steps = [
+    # The data-collection steps. On the staged steps (Invite/Agreement/Send) they
+    # collapse into a single "Set up" group node, exactly like the contract wizard.
+    setup_steps = [
       { name: "Details", path: manage_new_staffing_staff_wizard_path },
       { name: "Job", path: manage_job_staffing_staff_wizard_path },
       { name: "Manager", path: manage_manager_staffing_staff_wizard_path },
@@ -19,7 +21,19 @@
       { name: "Roles", path: manage_roles_staffing_staff_wizard_path },
       { name: "Review", path: manage_review_staffing_staff_wizard_path }
     ]
-    current_index = current_step - 1
+
+    if current_step >= 7
+      wizard_steps = [
+        { name: "Set up", path: manage_review_staffing_staff_wizard_path, substeps: setup_steps },
+        { name: "Invite", path: manage_invite_staffing_staff_wizard_path },
+        { name: "Agreement", path: manage_agreement_staffing_staff_wizard_path },
+        { name: "Send", path: manage_send_staffing_staff_wizard_path }
+      ]
+      current_index = { 7 => 1, 8 => 2, 9 => 3 }[current_step] || 0
+    else
+      wizard_steps = setup_steps
+      current_index = current_step - 1
+    end
   %>
   <%# Full-width step bar, directly below the breadcrumb. %>
   <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>

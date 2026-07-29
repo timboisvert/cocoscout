@@ -9,7 +9,7 @@ export default class extends Controller {
     static targets = [
         "modal", "form", "title", "submitButton", "methodInput",
         "nameInput", "roleTypeSelect", "locationSelect", "requiredCount",
-        "startOffset", "endOffset", "hourlyRate", "deleteButton"
+        "hourlyRate", "deleteButton"
     ]
     static values = {
         createUrl: String,
@@ -39,8 +39,6 @@ export default class extends Controller {
         if (this.hasRoleTypeSelectTarget) this.roleTypeSelectTarget.value = btn.dataset.roleType || "house"
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = btn.dataset.roleLocationId || ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = btn.dataset.roleRequiredCount || ""
-        if (this.hasStartOffsetTarget)   this.startOffsetTarget.value   = btn.dataset.roleStartOffset || ""
-        if (this.hasEndOffsetTarget)     this.endOffsetTarget.value     = btn.dataset.roleEndOffset || ""
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value    = btn.dataset.roleHourlyRate || ""
 
         if (this.hasFormTarget && this.hasUpdateUrlTemplateValue) {
@@ -103,8 +101,6 @@ export default class extends Controller {
         if (this.hasRoleTypeSelectTarget) this.roleTypeSelectTarget.value = "house"
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = "1"
-        if (this.hasStartOffsetTarget)   this.startOffsetTarget.value = "-60"
-        if (this.hasEndOffsetTarget)     this.endOffsetTarget.value = "60"
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value = ""
     }
 

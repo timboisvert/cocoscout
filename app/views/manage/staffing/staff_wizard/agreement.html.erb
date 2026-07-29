@@ -1,0 +1,67 @@
+<%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 8, step_name: "Agreement" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Their staff agreement</h2>
+
+  <% if @agreement_templates.any? %>
+    <p class="text-gray-600 mb-6"><%= @staff_member.display_name %> will review and accept this agreement when they onboard. Pick which one, and preview it with their details filled in.</p>
+
+    <%# Template picker — selecting one reloads the preview (no JS needed). %>
+    <% if @agreement_templates.size > 1 %>
+      <div class="space-y-2 mb-6">
+        <% @agreement_templates.each do |template| %>
+          <% selected = @selected_template&.id == template.id %>
+          <%= link_to manage_agreement_staffing_staff_wizard_path(template_id: template.id),
+                class: "flex items-center justify-between gap-3 rounded-lg border p-4 transition-colors #{selected ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:bg-gray-50'}" do %>
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900"><%= template.name %></div>
+              <% if template.description.present? %>
+                <div class="text-sm text-gray-500 truncate"><%= template.description %></div>
+              <% end %>
+            </div>
+            <% if selected %>
+              <span class="w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              </span>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Preview of the selected agreement, rendered with this member's details. %>
+    <div class="rounded-lg border border-gray-200 overflow-hidden mb-6">
+      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+        <span class="text-sm font-semibold text-gray-900"><%= @selected_template.name %></span>
+        <span class="text-xs text-gray-500">Version <%= @selected_template.version %></span>
+      </div>
+      <div class="p-4 max-h-80 overflow-y-auto prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
+        <%= @staff_member.rendered_agreement_html(@selected_template) %>
+      </div>
+    </div>
+
+    <%= form_with url: manage_save_agreement_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
+      <%= hidden_field_tag :template_id, @selected_template.id %>
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= link_to "← Back", manage_invite_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% else %>
+    <%# No agreement configured yet — let them set one up, or continue without. %>
+    <p class="text-gray-600 mb-6">You haven't set up a staff agreement yet. You can add one in <span class="font-medium text-gray-900">Staffing → Settings</span> so new staff accept it during onboarding — or continue without one for now.</p>
+
+    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center mb-6">
+      <p class="text-sm text-gray-600 mb-4">No staff agreements to choose from.</p>
+      <%= link_to manage_new_staffing_agreement_template_path, target: "_blank", rel: "noopener", class: "inline-flex" do %>
+        <%= render "shared/button", text: "Create a staff agreement", variant: "secondary", size: "small", icon: "plus" %>
+      <% end %>
+      <p class="text-xs text-gray-400 mt-3">Opens in a new tab — come back and refresh to pick it.</p>
+    </div>
+
+    <%= form_with url: manage_save_agreement_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= link_to "← Back", manage_invite_staffing_staff_wizard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Continue without an agreement", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

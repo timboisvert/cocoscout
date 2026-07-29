@@ -12,7 +12,11 @@ module Manage
     class StaffWizardController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
       before_action :load_wizard_state
-      before_action :require_started, only: %i[job manager start pay roles save_roles review create]
+      before_action :require_started, only: %i[job manager start roles save_roles review save_review
+                                               invite save_invite select_invite_person invite_new_person clear_invite_person]
+      # Agreement + Send operate on the staff member persisted at the Invite step
+      # (once we know which CocoScout account they're tied to).
+      before_action :require_persisted_member, only: %i[agreement save_agreement send_step save_send]
 
       # Step 1: Personal details
       def details
@@ -22,10 +26,9 @@ module Manage
       def save_details
         first = params[:first_name].to_s.strip
         last  = params[:last_name].to_s.strip
-        email = params[:personal_email].to_s.strip.downcase
 
-        if first.blank? || last.blank? || !email.match?(URI::MailTo::EMAIL_REGEXP)
-          flash.now[:alert] = "First name, last name, and a valid personal email are required."
+        if first.blank? || last.blank?
+          flash.now[:alert] = "First and last name are required."
           @staff_member = build_preview_member
           return render :details, status: :unprocessable_entity
         end
@@ -34,8 +37,7 @@ module Manage
           first_name: first,
           middle_initial: params[:middle_initial].to_s.strip.first,
           last_name: last,
-          preferred_first_name: params[:preferred_first_name].to_s.strip,
-          personal_email: email
+          preferred_first_name: params[:preferred_first_name].to_s.strip
         )
         save_wizard_state
         redirect_to manage_job_staffing_staff_wizard_path
@@ -90,22 +92,109 @@ module Manage
         redirect_to manage_review_staffing_staff_wizard_path
       end
 
-      # Step 7: Review — confirm everything and edit the invite email before it
-      # goes out.
+      # End of the "Set up" group: read-only confirmation of everything entered.
       def review
         @staff_member = build_preview_member
         @manager = @wizard_state[:manager_id].present? ? active_staff_for_manager_select.find { |m| m.id == @wizard_state[:manager_id].to_i } : nil
         @selected_roles = Current.organization.house_roles.where(id: Array(@wizard_state[:house_role_ids])).ordered
-        @email_preview = StaffOnboardingInviter.preview(staff_member: @staff_member)
       end
 
-      # Final step: create the person + membership, then invite (with any edits
-      # the reviewer made to the email).
-      def create
+      # Leaving Review just advances to the Invite step — nothing is persisted
+      # until we know which CocoScout account this person is tied to.
+      def save_review
+        redirect_to manage_invite_staffing_staff_wizard_path
+      end
+
+      # Staged step 1: connect them to a CocoScout account. Search for an existing
+      # person; if there's no match, invite a brand-new one. Once someone is
+      # picked we show them with the option to swap for someone else.
+      def invite
+        @selected_person = selected_invite_person
+        @invite_email = @wizard_state[:invite_email].presence
+        # A pending email-invite is "new" unless that email already has a login.
+        @account_was_new = @invite_email.present? && User.find_by(email_address: @invite_email).nil?
+
+        @query = params[:q].to_s.strip
+        @searched = params.key?(:q)
+        @has_pick = @selected_person.present? || @invite_email.present?
+        @results = @has_pick ? [] : search_people(@query)
+        # Only offer "invite a new user" once a search has come back empty.
+        @no_results = @searched && !@has_pick && @results.empty?
+
+        # Pre-fill the create-new form from whatever they searched, falling back to
+        # the name from the Details step.
+        query_is_email = @query.include?("@")
+        @prefill_email = query_is_email ? @query : nil
+        name_query = query_is_email ? nil : @query
+        @prefill_first = name_query.present? ? name_query.split.first : @wizard_state[:first_name]
+        @prefill_last  = name_query.present? ? name_query.split.drop(1).join(" ").presence : @wizard_state[:last_name]
+        @prefill_mi    = @wizard_state[:middle_initial]
+      end
+
+      # Pick an existing CocoScout person from the search results.
+      def select_invite_person
+        person = Person.find_by(id: params[:person_id])
+        if person
+          @wizard_state[:selected_person_id] = person.id
+          @wizard_state.delete(:invite_email)
+          save_wizard_state
+        end
+        redirect_to manage_invite_staffing_staff_wizard_path
+      end
+
+      # Queue a brand-new person to invite (shown only when the search finds no
+      # one). Captures the name + email from the create form and keeps the Details
+      # step in sync. We DON'T create the account here — only remember the email —
+      # so the name always reflects the latest edit; the person is created at
+      # Continue (save_invite).
+      def invite_new_person
+        email = params[:email].to_s.strip.downcase
+        first = params[:first_name].to_s.strip
+        last  = params[:last_name].to_s.strip
+
+        unless email.match?(URI::MailTo::EMAIL_REGEXP) && first.present? && last.present?
+          redirect_to manage_invite_staffing_staff_wizard_path(q: params[:q]),
+                      alert: "A first name, last name, and valid email are needed to invite someone new."
+          return
+        end
+
+        @wizard_state.merge!(
+          first_name: first,
+          last_name: last,
+          middle_initial: params[:middle_initial].to_s.strip.first,
+          invite_email: email
+        )
+        @wizard_state.delete(:selected_person_id)
+        save_wizard_state
+        redirect_to manage_invite_staffing_staff_wizard_path
+      end
+
+      # "Choose someone else" — clear the pick and search again.
+      def clear_invite_person
+        @wizard_state.delete(:selected_person_id)
+        @wizard_state.delete(:invite_email)
+        save_wizard_state
+        redirect_to manage_invite_staffing_staff_wizard_path
+      end
+
+      # Continue from Invite: resolve the person (an existing pick, or create one
+      # now from the pending email + current Details name), then persist the
+      # membership + roles. No invite email yet — that's the Send step.
+      def save_invite
+        unless @wizard_state[:selected_person_id].present? || @wizard_state[:invite_email].present?
+          redirect_to manage_invite_staffing_staff_wizard_path, alert: "Find or invite the person first."
+          return
+        end
+
         staff_member = nil
         ActiveRecord::Base.transaction do
-          person = upsert_person(email: @wizard_state[:personal_email],
-                                  name: "#{@wizard_state[:first_name]} #{@wizard_state[:last_name]}")
+          person = if @wizard_state[:selected_person_id].present?
+            Person.find(@wizard_state[:selected_person_id])
+          else
+            upsert_person(email: @wizard_state[:invite_email],
+                          name: "#{@wizard_state[:first_name]} #{@wizard_state[:last_name]}".strip)
+          end
+          ensure_account_for(person)
 
           # Reuse any existing (possibly archived) membership for this person.
           staff_member = Current.organization.organization_staff_members.find_or_initialize_by(person: person)
@@ -115,18 +204,50 @@ module Manage
           staff_member.sync_role_qualifications!(role_ids: @wizard_state[:house_role_ids], rates: @wizard_state[:role_rates])
         end
 
-        invited = send_invite(staff_member, subject: params[:email_subject], body: params[:email_body])
+        @wizard_state[:staff_member_id] = staff_member.id
+        save_wizard_state
+        redirect_to manage_agreement_staffing_staff_wizard_path
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to manage_invite_staffing_staff_wizard_path,
+                    alert: "Couldn't add staff member: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+      end
+
+      # Staged step 2: which staff agreement they'll be asked to accept. Preview
+      # renders with this member's real details.
+      def agreement
+        @agreement_templates = Current.organization.staff_agreement_templates.active.order(:name)
+        @selected_template = @agreement_templates.find { |t| t.id == params[:template_id].to_i } ||
+                             @staff_member.staff_agreement_template ||
+                             @agreement_templates.first
+      end
+
+      def save_agreement
+        template = Current.organization.staff_agreement_templates.find_by(id: params[:template_id])
+        @staff_member.update(staff_agreement_template: template) if template
+        redirect_to manage_send_staffing_staff_wizard_path
+      end
+
+      # Staged step 3: send the onboarding invite (account + agreement), with any
+      # edits the reviewer made to the message.
+      def send_step
+        @email_preview = StaffOnboardingInviter.preview(staff_member: @staff_member)
+        user = @staff_member.person&.user
+        # A brand-new account gets the standard "set your password" invite first;
+        # an existing account goes straight to the (editable) onboarding email.
+        @needs_account_setup = user.nil? || user.last_seen_at.blank?
+        render :send # the view is send.html.erb; the action is send_step because `send` is reserved
+      end
+
+      def save_send
+        invited = send_invite(@staff_member, subject: params[:email_subject], body: params[:email_body])
         clear_wizard_state
 
         notice = if invited
-          "#{staff_member.display_name} added to staff — we emailed and messaged them to complete onboarding."
+          "#{@staff_member.display_name} added to staff — we emailed and messaged them to complete onboarding."
         else
-          "#{staff_member.display_name} added to staff. Invite them to complete onboarding when you're ready."
+          "#{@staff_member.display_name} added to staff. Invite them to complete onboarding when you're ready."
         end
         redirect_to manage_staffing_index_path, notice: notice
-      rescue ActiveRecord::RecordInvalid => e
-        redirect_to manage_review_staffing_staff_wizard_path,
-                    alert: "Couldn't add staff member: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
       def cancel
@@ -138,6 +259,14 @@ module Manage
 
       def require_started
         redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?
+      end
+
+      # Loads the staff member persisted at the end of Review. Falls back to Review
+      # if the wizard state was lost (e.g. cache expiry) so the staged steps never
+      # run without a record.
+      def require_persisted_member
+        @staff_member = Current.organization.organization_staff_members.find_by(id: @wizard_state[:staff_member_id])
+        redirect_to manage_review_staffing_staff_wizard_path if @staff_member.nil?
       end
 
       # A non-persisted OrganizationStaffMember carrying the in-progress state, so
@@ -152,13 +281,37 @@ module Manage
           middle_initial: @wizard_state[:middle_initial].to_s.first,
           last_name: @wizard_state[:last_name].presence,
           preferred_first_name: @wizard_state[:preferred_first_name].presence,
-          personal_email: @wizard_state[:personal_email].presence,
           title: @wizard_state[:title].presence,
           department: @wizard_state[:department].presence,
           start_date: @wizard_state[:start_date].presence,
           manager_id: valid_manager_id(@wizard_state[:manager_id]),
           onboarding_state: "added"
         }
+      end
+
+      # The CocoScout person picked (or invited) on the Invite step, if any.
+      def selected_invite_person
+        id = @wizard_state[:selected_person_id]
+        id.present? ? Person.find_by(id: id) : nil
+      end
+
+      # Search people by name / email / public key to connect an existing account.
+      def search_people(query)
+        return [] if query.blank?
+
+        like = "%#{query}%"
+        Person.where("name ILIKE :q OR email ILIKE :q OR public_key ILIKE :q", q: like)
+              .order(:name).limit(8).to_a
+      end
+
+      # Make sure the picked person is in this org and has a CocoScout login.
+      def ensure_account_for(person)
+        person.organizations << Current.organization unless person.organizations.include?(Current.organization)
+        return if person.user.present? || person.email.blank?
+
+        user = User.find_by(email_address: person.email) ||
+               User.create!(email_address: person.email, password: User.generate_secure_password)
+        person.update!(user: user)
       end
 
       def valid_manager_id(id)

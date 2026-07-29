@@ -4,7 +4,7 @@ module Manage
   module Staffing
     class ShiftsController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_shift, only: %i[update destroy assign unassign split merge_with_next acknowledge_gap unacknowledge_gap]
+      before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next acknowledge_gap unacknowledge_gap]
 
       def create
         attrs = shift_params
@@ -15,6 +15,8 @@ module Manage
           flash[:alert] = "Couldn't add shift: #{@shift.errors.full_messages.to_sentence}"
         end
         redirect_back_or_to manage_staffing_scheduling_path
+      rescue ActiveRecord::RecordNotUnique
+        redirect_back_or_to manage_staffing_scheduling_path, alert: "There's already a shift for this role at that time."
       end
 
       def update
@@ -24,6 +26,8 @@ module Manage
           flash[:alert] = "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
         end
         redirect_back_or_to manage_staffing_scheduling_path
+      rescue ActiveRecord::RecordNotUnique
+        redirect_back_or_to manage_staffing_scheduling_path, alert: "There's already a shift for this role at that time."
       end
 
       def destroy
@@ -71,7 +75,48 @@ module Manage
       # the original (so existing assignments stay on it); subsequent segments
       # are created as new shifts. If no segments are sent (e.g. a future
       # programmatic caller), falls back to splitting in half at the midpoint.
+      # Merge this shift with one or more chosen same-role shifts (shift_ids) into
+      # a single shift spanning them all, absorbing everyone's assignments.
+      def merge
+        ids = Array(params[:shift_ids]).map(&:to_i).reject(&:zero?)
+        others = Current.organization.shifts
+          .where(id: ids, house_role_id: @shift.house_role_id)
+          .where.not(id: @shift.id)
+          .to_a
+        if others.empty?
+          redirect_back_or_to(manage_staffing_scheduling_path, alert: "Pick at least one shift to merge.") and return
+        end
+
+        all_shifts = [ @shift ] + others
+        new_start = all_shifts.map(&:starts_at).min
+        new_end   = all_shifts.map(&:ends_at).max
+        # The shows the merged shift will cover (its own source + all the others).
+        extra_shows = all_shifts.flat_map(&:covered_shows).uniq.reject { |s| s == @shift.source }
+
+        ActiveRecord::Base.transaction do
+          seen = @shift.shift_assignments.pluck(:person_id).to_set
+          pos = @shift.shift_assignments.maximum(:position) || 0
+          others.each do |o|
+            o.shift_assignments.order(:position).each do |a|
+              next if seen.include?(a.person_id)
+              seen << a.person_id
+              pos += 1
+              @shift.shift_assignments.create!(person_id: a.person_id, position: pos,
+                                               notified_at: a.notified_at, accepted_at: a.accepted_at, declined_at: a.declined_at)
+            end
+          end
+          @shift.update!(starts_at: new_start, ends_at: new_end)
+          others.each(&:destroy!)
+          @shift.shows = extra_shows if extra_shows.any?
+        end
+        redirect_back_or_to manage_staffing_scheduling_path, notice: "Merged #{all_shifts.size} shifts."
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't merge: #{e.message}"
+      end
+
       def split
+        return split_into_shows if params[:by_show].present?
+
         segments = parse_segments(params[:segments])
 
         if segments.size < 2
@@ -114,9 +159,13 @@ module Manage
       # Merge with the adjacent same-role shift that starts at this one's end.
       # Combines assignments (dedup by person), then deletes the second shift.
       def merge_with_next
+        # The next same-role shift that begins where this one ends — regardless of
+        # which show each is anchored to (adjacent shifts for different shows are
+        # exactly what we want to combine).
         next_shift = Current.organization.shifts
-          .where(house_role_id: @shift.house_role_id, source_type: @shift.source_type, source_id: @shift.source_id)
+          .where(house_role_id: @shift.house_role_id)
           .where(starts_at: @shift.ends_at)
+          .where.not(id: @shift.id)
           .order(:starts_at)
           .first
 
@@ -133,7 +182,7 @@ module Manage
             @shift.shift_assignments.create!(person_id: a.person_id, position: next_position,
                                              notified_at: a.notified_at, accepted_at: a.accepted_at, declined_at: a.declined_at)
           end
-          @shift.update!(ends_at: next_shift.ends_at)
+          @shift.update!(ends_at: [ next_shift.ends_at, @shift.ends_at ].max)
           next_shift.destroy!
         end
         redirect_back_or_to manage_staffing_scheduling_path, notice: "Shifts merged."
@@ -159,6 +208,38 @@ module Manage
       end
 
       private
+
+      # Split a merged show-based shift back into one shift per show it covers —
+      # each anchored to its show with that show's hours. The first show's shift
+      # reuses this record (so existing assignments stay on it); the rest are new,
+      # empty shifts to staff per show.
+      def split_into_shows
+        shows = @shift.covered_shows
+        if shows.size < 2
+          redirect_back_or_to(manage_staffing_scheduling_path, alert: "This shift only covers one show.") and return
+        end
+
+        ActiveRecord::Base.transaction do
+          first = shows.first
+          @shift.update!(source: first, starts_at: first.date_and_time, ends_at: first.ends_at)
+          @shift.shift_shows.destroy_all # back to a single-show shift
+          shows[1..].each do |show|
+            Current.organization.shifts.create!(
+              house_role_id: @shift.house_role_id,
+              source: show,
+              starts_at: show.date_and_time,
+              ends_at: show.ends_at,
+              required_count: @shift.required_count,
+              coverage_mode: @shift.coverage_mode,
+              renter_name: @shift.renter_name,
+              notes: @shift.notes
+            )
+          end
+        end
+        redirect_back_or_to manage_staffing_scheduling_path, notice: "Split into #{shows.size} per-show shifts."
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't split: #{e.message}"
+      end
 
       # If this assignment was already notified to the person, log a pending
       # "shift removed" notice so the next targeted Notify updates tells them.

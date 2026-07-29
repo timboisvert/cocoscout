@@ -16,6 +16,9 @@
       <h1 class="text-3xl font-bold text-gray-900 coustard-regular">Edit Organization</h1>
     </div>
 
+    <%# Defined before the form so both the trigger (inside) and the modal (moved
+        outside the form to avoid a nested-form _method leak) can see it. %>
+    <% remove_logo_cid = "confirm-#{SecureRandom.hex(6)}" %>
     <%= form_with(model: [:manage, @organization], class: "bg-white border border-gray-200 rounded-lg p-6") do |form| %>
       <div class="space-y-6">
         <!-- Logo Section -->
@@ -46,19 +49,11 @@
                 PNG, JPG, or GIF. Recommended size: 512x512px
               </p>
               <% if @organization.logo.attached? %>
-                <% remove_logo_cid = "confirm-#{SecureRandom.hex(6)}" %>
                 <button type="button"
                         data-controller="modal"
                         data-action="click->modal#open"
                         data-modal-id="<%= remove_logo_cid %>"
                         class="mt-3 text-xs text-pink-600 hover:text-pink-700 font-medium bg-transparent border-0 cursor-pointer">Remove Logo</button>
-                <%= render "shared/confirm_modal",
-                      id: remove_logo_cid,
-                      title: "Remove logo?",
-                      message: "Are you sure you want to remove the logo?",
-                      confirm_text: "Remove Logo",
-                      url: remove_logo_manage_organization_path(@organization),
-                      method: :delete %>
               <% end %>
             </div>
           </div>
@@ -81,6 +76,17 @@
           <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: manage_organization_path(@organization), type: :button %>
         </div>
       </div>
+    <% end %>
+
+    <%# Rendered outside the form above so the modal's own form is not nested. %>
+    <% if @organization.logo.attached? %>
+      <%= render "shared/confirm_modal",
+            id: remove_logo_cid,
+            title: "Remove logo?",
+            message: "Are you sure you want to remove the logo?",
+            confirm_text: "Remove Logo",
+            url: remove_logo_manage_organization_path(@organization),
+            method: :delete %>
     <% end %>
   </div>
 </div>

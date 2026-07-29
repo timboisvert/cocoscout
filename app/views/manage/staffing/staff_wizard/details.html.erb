@@ -1,6 +1,6 @@
 <%= render layout: "manage/staffing/staff_wizard/wizard_layout", locals: { current_step: 1, step_name: "Details" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who are you adding?</h2>
-  <p class="text-gray-600 mb-4">Their basic details. We'll invite them to create their account and set up how they get paid.</p>
+  <p class="text-gray-600 mb-4">Their legal name, plus what you'd like to call them. You'll connect them to a CocoScout account in a moment.</p>
 
   <div class="rounded-lg border border-pink-100 bg-pink-50 p-4 mb-6">
     <p class="text-sm text-gray-700">
@@ -11,28 +11,28 @@
   </div>
 
   <%= form_with url: manage_save_details_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
-    <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
-      <div class="sm:col-span-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">First name <span class="text-pink-500">*</span></label>
-        <%= text_field_tag :first_name, @staff_member.first_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Legal name <span class="text-pink-500">*</span></label>
+      <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
+        <div class="sm:col-span-3">
+          <label class="block text-xs font-medium text-gray-500 mb-1">First name</label>
+          <%= text_field_tag :first_name, @staff_member.first_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+        <div class="sm:col-span-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">M.I.</label>
+          <%= text_field_tag :middle_initial, @staff_member.middle_initial, maxlength: 1, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Last name</label>
+          <%= text_field_tag :last_name, @staff_member.last_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
       </div>
-      <div class="sm:col-span-1">
-        <label class="block text-sm font-medium text-gray-700 mb-1">M.I.</label>
-        <%= text_field_tag :middle_initial, @staff_member.middle_initial, maxlength: 1, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-      </div>
-      <div class="sm:col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Last name <span class="text-pink-500">*</span></label>
-        <%= text_field_tag :last_name, @staff_member.last_name, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-      </div>
-      <div class="sm:col-span-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
-        <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from legal first name", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-      </div>
-      <div class="sm:col-span-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Personal email <span class="text-pink-500">*</span></label>
-        <%= email_field_tag :personal_email, @staff_member.personal_email, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-        <p class="mt-1 text-xs text-gray-500">Where we'll send their onboarding invite.</p>
-      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
+      <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from their legal first name", class: "block w-full max-w-sm px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <p class="mt-1 text-xs text-gray-500">This is what we'll show for them everywhere in staffing.</p>
     </div>
 
     <div class="flex items-center justify-end pt-4 border-t border-gray-200">

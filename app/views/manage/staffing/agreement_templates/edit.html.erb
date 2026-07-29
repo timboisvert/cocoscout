@@ -1,0 +1,14 @@
+<% content_for :title, "Edit Staff Agreement" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path],
+      ["Settings", manage_staffing_settings_path]
+    ],
+    text: @agreement_template.name
+  } %>
+
+  <%= render "form", agreement_template: @agreement_template %>
+</div>

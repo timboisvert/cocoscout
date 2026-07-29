@@ -45,12 +45,6 @@
                 <% remove_logo_cid = "confirm-remove-logo" %>
                 <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_logo_cid %>"
                         class="text-xs text-pink-500 underline cursor-pointer">Remove logo</button>
-                <%= render "shared/confirm_modal", id: remove_logo_cid,
-                      title: "Remove logo?",
-                      message: "Are you sure you want to remove the logo?",
-                      confirm_text: "Remove logo",
-                      url: remove_logo_manage_organization_path(@organization),
-                      method: :delete %>
               </div>
             <% end %>
           </div>
@@ -60,6 +54,17 @@
       <div class="border-t border-gray-200 pt-6 flex justify-end">
         <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
       </div>
+    <% end %>
+
+    <%# Rendered outside the form above so the modal's own form is not nested. %>
+    <% if @organization.logo.attached? %>
+      <%# Literal id (matches the trigger's) — remove_logo_cid is block-local to the form above. %>
+      <%= render "shared/confirm_modal", id: "confirm-remove-logo",
+            title: "Remove logo?",
+            message: "Are you sure you want to remove the logo?",
+            confirm_text: "Remove logo",
+            url: remove_logo_manage_organization_path(@organization),
+            method: :delete %>
     <% end %>
   </div>
 </div>
