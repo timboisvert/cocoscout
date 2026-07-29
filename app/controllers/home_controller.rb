@@ -10,6 +10,9 @@ class HomeController < ApplicationController
 
   # New homepage preview
   def new_home; end
+
+  # Producer-first repositioning preview (three tiers) — /new
+  def new_landing; end
   def new_performers; end
   def new_producers; end
 

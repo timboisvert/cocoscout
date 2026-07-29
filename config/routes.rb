@@ -29,7 +29,7 @@ Rails.application.routes.draw do
   get "/pricing", to: "home#pricing", as: "pricing"
 
   # Redirects from old /new paths
-  get "/new", to: redirect("/")
+  get "/new", to: "home#new_landing", as: "new_landing"
   get "/new/for-performers", to: redirect("/for-performers")
   get "/new/for-producers", to: redirect("/for-producers")
 
