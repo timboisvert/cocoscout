@@ -1,15 +1,4 @@
-<% content_for :title, "CocoScout — the platform for live production" %>
-
-<%
-  # Small inline-SVG helpers so the page is self-contained (matches how the other
-  # marketing pages hand-roll icons). No screenshots anywhere on this page.
-  check_svg = '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'.html_safe
-
-  # Comparison-table cells
-  chk  = -> { content_tag(:span, check_svg, class: "inline-flex text-green-600") }
-  dash = -> { content_tag(:span, "—", class: "text-slate-300") }
-  txt  = ->(s) { content_tag(:span, s, class: "text-sm text-slate-700") }
-%>
+<% content_for :title, "CocoScout — the platform for live entertainment production" %>
 
 <div class="min-h-screen bg-[#f9f9f7]">
   <%= render "shared/marketing/header" %>
@@ -19,7 +8,7 @@
     <%# ============================ HERO ============================ %>
     <section class="w-full px-6 pt-16 pb-14 sm:pt-24 sm:pb-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
       <div class="max-w-4xl mx-auto text-center">
-        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-4">The platform for live production</p>
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-4">The platform for live entertainment production</p>
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-5 coustard-regular leading-tight">
           Run the whole production.<br class="hidden sm:block"> In one place.
         </h1>
@@ -48,9 +37,9 @@
         <div class="grid gap-4 sm:grid-cols-2">
           <% [
             ["Instead of Gusto", "Payroll for cast, crew, staff, and contractors — one run, paid straight to their bank."],
+            ["Instead of DocuSign", "Contracts you send and get e-signed in minutes."],
             ["Instead of Google Forms", "Auditions and sign-ups with reviewing and voting built in."],
-            ["Instead of Google Sheets", "Casting boards, schedules, and financials — no more tangled tabs."],
-            ["Instead of Google Docs", "Contracts you send and get e-signed in minutes."]
+            ["Instead of Google Sheets", "Casting boards, schedules, and financials — no more tangled tabs."]
           ].each do |instead, replacement| %>
             <div class="rounded-2xl border border-slate-200 bg-white p-6">
               <div class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5"><%= instead %></div>
@@ -65,29 +54,13 @@
       </div>
     </section>
 
-    <%# ==================== BUILT BY PEOPLE WHO DO THIS ==================== %>
-    <section class="w-full px-6 py-16 sm:py-20">
-      <div class="max-w-5xl mx-auto">
-        <div class="rounded-3xl bg-slate-900 text-white px-8 py-12 sm:px-14 sm:py-16">
-          <p class="text-pink-300 font-bold text-sm uppercase tracking-wide mb-4">Built by people who do this</p>
-          <p class="text-2xl sm:text-3xl coustard-regular leading-snug">
-            We're not a generic software company that discovered theatre.
-          </p>
-          <p class="mt-4 text-lg text-slate-300 leading-relaxed max-w-3xl">
-            CocoScout is built by people who produce shows, book rooms, cast performers, and make
-            payroll — and got tired of duct-taping ten tools together to do it.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <%# ==================== EVERYTHING YOU CAN RUN ==================== %>
+    <%# ==================== THE PRODUCTION TOOLKIT ==================== %>
     <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-white">
       <div class="max-w-6xl mx-auto">
         <div class="max-w-3xl mb-10">
-          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Everything you can run</p>
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">One platform</p>
           <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight">
-            The whole production, end to end.
+            Everything it takes to run the show.
           </h2>
         </div>
 
@@ -98,7 +71,7 @@
           ]],
           ["Cast &amp; crew", [
             ["Casting &amp; roles", "Define roles, build talent pools, assign your cast."],
-            ["Casting Table", "Every role across every show on one visual board."],
+            ["Multi-show casting tables", "Every role across every show on one visual board."],
             ["Auditions &amp; sign-ups", "Intake, review, and vote — no Google Forms."],
             ["Contacts &amp; groups", "Your people directory, organized."],
             ["Documents", "Share riders, scripts, and paperwork."],
@@ -150,49 +123,7 @@
           </h2>
         </div>
 
-        <div class="grid gap-6 md:grid-cols-3 items-stretch">
-          <%# Producer %>
-          <div class="border border-slate-200 rounded-2xl p-8 flex flex-col bg-white">
-            <h3 class="text-xl font-bold text-slate-900">Producer</h3>
-            <p class="mt-2 text-4xl font-bold text-slate-900">$0</p>
-            <p class="mt-1 text-sm text-slate-500">Everything to run a production. For solo producers and small teams.</p>
-            <ul class="mt-6 space-y-2 text-sm text-slate-700 flex-1">
-              <% ["Shows, events &amp; rehearsals", "Casting, roles &amp; talent pools", "Auditions &amp; sign-ups", "Courses &amp; classes", "Contacts, documents &amp; messaging"].each do |f| %>
-                <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></span><span><%= f.html_safe %></span></li>
-              <% end %>
-            </ul>
-            <p class="mt-4 text-xs text-slate-400">1 production · 6 events / month</p>
-            <div class="mt-6"><%= render "shared/button", text: "Start free", path: signup_path, variant: "outline", size: "large" %></div>
-          </div>
-
-          <%# Pro (recommended) %>
-          <div class="border-2 border-pink-500 rounded-2xl p-8 flex flex-col bg-white relative shadow-lg">
-            <span class="absolute -top-3 left-8 inline-flex items-center rounded-full bg-pink-500 px-3 py-1 text-xs font-semibold text-white">Recommended</span>
-            <h3 class="text-xl font-bold text-slate-900">Pro</h3>
-            <p class="mt-2 text-4xl font-bold text-slate-900">$20<span class="text-base font-medium text-slate-500">/mo</span></p>
-            <p class="mt-1 text-sm text-slate-500">Plus <span class="font-semibold text-slate-700">$5 / active staff member</span> — you only pay for who you actually pay.</p>
-            <ul class="mt-6 space-y-2 text-sm text-slate-700 flex-1">
-              <% ["Everything in Producer", "Payouts, splits &amp; financials", "Contracts + e-signatures", "Reports &amp; analytics", "Casting Table board", "Staffing, scheduling &amp; payroll", "<strong>1099 contractor payments + tax filing</strong>", "Unlimited productions &amp; events"].each do |f| %>
-                <li class="flex items-start gap-2"><span class="text-pink-500 mt-0.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></span><span><%= f.html_safe %></span></li>
-              <% end %>
-            </ul>
-            <div class="mt-6"><%= render "shared/button", text: "Go Pro", path: signup_path, variant: "primary", size: "large" %></div>
-          </div>
-
-          <%# Enterprise (dark premium) %>
-          <div class="rounded-2xl p-8 flex flex-col bg-slate-900 text-white">
-            <h3 class="text-xl font-bold text-white">Enterprise</h3>
-            <p class="mt-2 text-4xl font-bold text-white">Custom</p>
-            <p class="mt-1 text-sm text-slate-300">Large-scale staffing and payroll for major companies, theatres, and venues.</p>
-            <ul class="mt-6 space-y-2 text-sm text-slate-200 flex-1">
-              <% ["Everything in Pro", "<strong class=\"text-white\">W-2 employees &amp; full payroll</strong>", "High-volume staffing", "Dedicated onboarding", "Priority support", "Advanced roles &amp; permissions"].each do |f| %>
-                <li class="flex items-start gap-2"><span class="text-pink-300 mt-0.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></span><span><%= f.html_safe %></span></li>
-              <% end %>
-            </ul>
-            <%= link_to "Talk to us", "mailto:hello@cocoscout.com",
-                  class: "mt-6 inline-flex justify-center items-center px-6 py-3 rounded bg-white text-slate-900 font-medium hover:bg-slate-100 transition" %>
-          </div>
-        </div>
+        <%= render "home/tier_cards" %>
         <p class="mt-6 text-center text-sm text-slate-500">Performers and staff are free, forever.</p>
       </div>
     </section>
@@ -201,70 +132,60 @@
     <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-white">
       <div class="max-w-5xl mx-auto">
         <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 coustard-regular mb-8">Compare every tier</h2>
+        <%= render "home/tier_comparison" %>
+      </div>
+    </section>
 
-        <% comparison = [
-          ["Productions &amp; events", [
-            ["Productions", txt.("1"), txt.("Unlimited"), txt.("Unlimited")],
-            ["Events per month", txt.("6"), txt.("Unlimited"), txt.("Unlimited")],
-            ["Shows, rehearsals &amp; events", chk.(), chk.(), chk.()],
-            ["Courses &amp; classes", chk.(), chk.(), chk.()]
-          ]],
-          ["Casting &amp; auditions", [
-            ["Roles &amp; talent pools", chk.(), chk.(), chk.()],
-            ["Auditions &amp; sign-ups", chk.(), chk.(), chk.()],
-            ["Availability tracking", chk.(), chk.(), chk.()],
-            ["Casting Table board", dash.(), chk.(), chk.()]
-          ]],
-          ["People &amp; docs", [
-            ["Contacts &amp; groups", chk.(), chk.(), chk.()],
-            ["Documents", chk.(), chk.(), chk.()],
-            ["Messaging", chk.(), chk.(), chk.()]
-          ]],
-          ["Money &amp; contracts", [
-            ["Payouts &amp; splits", dash.(), chk.(), chk.()],
-            ["Financials &amp; reports", dash.(), chk.(), chk.()],
-            ["Contracts + e-sign", dash.(), chk.(), chk.()],
-            ["Performer agreements", dash.(), chk.(), chk.()]
-          ]],
-          ["Staffing &amp; payroll", [
-            ["Scheduling &amp; shifts", dash.(), chk.(), chk.()],
-            ["Timesheets &amp; approvals", dash.(), chk.(), chk.()],
-            ["Payroll &amp; tips", dash.(), chk.(), chk.()],
-            ["1099 contractors + tax filing", dash.(), chk.(), chk.()],
-            ["W-2 employees &amp; full payroll", dash.(), dash.(), chk.()],
-            ["Staffing volume", dash.(), txt.("Standard"), txt.("High-volume")]
-          ]],
-          ["Support", [
-            ["Email support", chk.(), chk.(), chk.()],
-            ["Dedicated onboarding &amp; priority support", dash.(), dash.(), chk.()]
-          ]]
-        ] %>
+    <%# ==================== CASTING DEEP-DIVE ==================== %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100">
+      <div class="max-w-5xl mx-auto">
+        <div class="max-w-3xl">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Casting, built for live entertainment</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">
+            Cast every role, across every show.
+          </h2>
+          <p class="text-lg text-slate-600 leading-relaxed">
+            Build talent pools you reuse, see who's available, and cast a whole season on one board —
+            with auditions and voting built in. No more spreadsheets and forms held together with tape.
+          </p>
+        </div>
+        <div class="mt-8 grid gap-4 sm:grid-cols-3">
+          <% [
+            ["Talent pools", "Reusable rosters you cast from, show after show."],
+            ["Multi-show casting tables", "Every role in every show on one board."],
+            ["Auditions &amp; voting", "Intake, review, and vote — no Google Forms."]
+          ].each do |title, desc| %>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6">
+              <div class="font-bold text-slate-900 coustard-regular"><%= title.html_safe %></div>
+              <div class="text-sm text-slate-600 mt-1 leading-relaxed"><%= desc.html_safe %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </section>
 
-        <div class="space-y-6">
-          <% comparison.each do |group_name, rows| %>
-            <div class="border border-slate-200 rounded-2xl overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full min-w-[40rem] text-left">
-                  <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200">
-                      <th class="px-5 py-3 text-sm font-bold text-slate-900"><%= group_name.html_safe %></th>
-                      <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">Producer</th>
-                      <th class="px-5 py-3 text-xs font-semibold text-pink-600 uppercase tracking-wide w-32">Pro</th>
-                      <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Enterprise</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    <% rows.each do |label, producer_cell, pro_cell, enterprise_cell| %>
-                      <tr>
-                        <td class="px-5 py-3 text-sm text-slate-800"><%= label.html_safe %></td>
-                        <td class="px-5 py-3"><%= producer_cell %></td>
-                        <td class="px-5 py-3 bg-pink-50/40"><%= pro_cell %></td>
-                        <td class="px-5 py-3"><%= enterprise_cell %></td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              </div>
+    <%# ==================== CONTRACTS DEEP-DIVE ==================== %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-white">
+      <div class="max-w-5xl mx-auto">
+        <div class="max-w-3xl">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Contracts, built for live entertainment</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">
+            Put the deal in writing — and get it signed.
+          </h2>
+          <p class="text-lg text-slate-600 leading-relaxed">
+            Draft a booking contract from your own terms, send it, and get it e-signed in minutes —
+            then track every payment against it. All in one place, without the DocuSign bill.
+          </p>
+        </div>
+        <div class="mt-8 grid gap-4 sm:grid-cols-3">
+          <% [
+            ["Your deal terms", "Dates, splits, flat fees, and rentals — captured cleanly."],
+            ["Send &amp; e-sign", "Out for signature and signed in minutes."],
+            ["Payments tracked", "Always know what's owed and what's been paid."]
+          ].each do |title, desc| %>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6">
+              <div class="font-bold text-slate-900 coustard-regular"><%= title.html_safe %></div>
+              <div class="text-sm text-slate-600 mt-1 leading-relaxed"><%= desc.html_safe %></div>
             </div>
           <% end %>
         </div>

@@ -4,243 +4,117 @@
   <%= render "shared/marketing/header" %>
 
   <main class="flex flex-col min-w-full">
-    <!-- Hero -->
-    <section class="w-full px-6 py-16 sm:py-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
-      <div class="max-w-4xl mx-auto text-center">
-        <div class="inline-flex items-center gap-2 bg-pink-100 text-pink-600 px-4 py-2 rounded-full text-sm font-medium mb-8">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
-          </svg>
-          Free to start · no credit card
-        </div>
 
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 coustard-regular leading-tight">
-          Everything you need to<br>run your show — free.
+    <%# ============================ HERO ============================ %>
+    <section class="w-full px-6 pt-16 pb-14 sm:pt-24 sm:pb-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-4xl mx-auto text-center">
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-4">For production companies, theatres &amp; venues</p>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-5 coustard-regular leading-tight">
+          The command center for live entertainment.
         </h1>
-
-        <p class="text-lg sm:text-xl text-slate-600 mb-4 leading-relaxed">
-          Scheduling, casting, availability, sign-ups, messaging, contacts, documents, and courses —
-          all free for solo producers and small teams. Ready to grow? Upgrade to Pro any time.
+        <p class="text-lg sm:text-xl max-w-2xl mx-auto text-slate-600 leading-relaxed mb-8">
+          Program shows, cast performers, sign contracts, schedule staff, and make payroll — the whole
+          operation on one platform, built for how live production actually works.
         </p>
-        <p class="text-sm font-semibold uppercase tracking-wider text-pink-600 mb-10">
-          Built by performers &amp; producers, for performers &amp; producers.
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <%= render "shared/button", text: "Start Your Production", path: signup_path, variant: "primary", size: "large" %>
-          <%= render "shared/button", text: "See Features", path: "#free-features", variant: "secondary", size: "large" %>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= render "shared/button", text: "See the platform", path: "#platform", variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Compare plans", path: pricing_path, variant: "outline", size: "large" %>
         </div>
       </div>
     </section>
 
-    <!-- FREE FEATURES -->
-    <section id="free-features" class="w-full bg-white border-t border-slate-200">
-      <div class="text-center px-6 py-16 max-w-3xl mx-auto">
-        <span class="inline-flex items-center rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide mb-4">Included free</span>
-        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything you need to run your show</h2>
-        <p class="text-lg text-slate-600">Replace the spreadsheets, email chains, and group texts with one platform — at no cost.</p>
-      </div>
-
-      <%= render "home/producer_feature_block",
-        eyebrow: "Shows & Events", reverse: false, carousel_key: "scheduling",
-        title: "Schedule every show and rehearsal",
-        description: "Build your calendar of shows, rehearsals, and events — recurring or one-off — and keep your whole team in sync.",
-        bullets: ["Shows, rehearsals, and every event type", "Recurring events and one-click duplication", "Per-event details, call times, and locations"],
-        images: [
-          { src: "screenshots/scheduling/1-shows-list.png", alt: "Shows and events list" },
-          { src: "screenshots/scheduling/2-show-detail.png", alt: "Show detail" },
-          { src: "screenshots/scheduling/3-availability-grid.png", alt: "Availability grid" }
-        ] %>
-
-      <%= render "home/producer_feature_block",
-        eyebrow: "Casting", reverse: true, carousel_key: "casting-free",
-        title: "Cast your show and notify everyone",
-        description: "Define roles, build talent pools, collect availability, and assign performers — then notify your cast in a click.",
-        bullets: ["Roles and talent pools", "Cast availability tracking", "Assign performers and notify your cast"],
-        images: [
-          { src: "screenshots/casting/3-org-grid.png", alt: "Casting grid" },
-          { src: "screenshots/casting/2-notifications.png", alt: "Cast notifications" }
-        ] %>
-
-      <%= render "home/producer_feature_block",
-        eyebrow: "Sign-ups", reverse: false, carousel_key: "sign-ups",
-        title: "Let people sign up for anything",
-        description: "Create sign-up forms for events, track who's coming, and take attendance — no back-and-forth required.",
-        bullets: ["Event sign-up forms and waitlists", "Attendance tracking", "Self-service for your community"],
-        images: [
-          { src: "screenshots/sign-ups/1-sign-up-form.png", alt: "Sign-up form" },
-          { src: "screenshots/sign-ups/2-attendance.png", alt: "Attendance tracking" }
-        ] %>
-
-      <!-- More free features -->
-      <div class="w-full px-6 pt-8 pb-20 bg-gradient-to-br from-pink-50 to-white">
-        <div class="max-w-6xl mx-auto">
-          <h3 class="text-center text-2xl font-bold text-slate-900 mb-10 coustard-regular">…and everything else your production needs</h3>
-          <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <%= render "home/producer_feature_card", icon: "calendar", title: "Cast availability", description: "Collect availability for every show and see who can make it at a glance." %>
-            <%= render "home/producer_feature_card", icon: "clipboard", title: "Roles & talent pools", description: "Define the roles you need and organize the people who can fill them." %>
-            <%= render "home/producer_feature_card", icon: "chat", title: "Messaging", description: "Send show-wide announcements or targeted messages to keep everyone aligned." %>
-            <%= render "home/producer_feature_card", icon: "users", title: "Contacts", description: "Keep your whole directory of people and groups in one place." %>
-            <%= render "home/producer_feature_card", icon: "document", title: "Documents", description: "Share handbooks, riders, and agreements with the right people." %>
-            <%= render "home/producer_feature_card", icon: "cap", title: "Courses", description: "Sell classes and workshops online — a small fee applies per transaction." %>
-          </div>
+    <%# ==================== THE PATCHWORK ENDS HERE ==================== %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-3xl mb-10">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">One platform, not ten</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight">
+            Stop running your company on tools that were never built for it.
+          </h2>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <% [
+            ["Instead of Gusto", "Payroll for cast, crew, staff, and contractors — one run, paid straight to their bank."],
+            ["Instead of DocuSign", "Contracts you send and get e-signed in minutes."],
+            ["Instead of Google Forms", "Auditions and sign-ups with reviewing and voting built in."],
+            ["Instead of Google Sheets", "Casting boards, schedules, and financials — no more tangled tabs."]
+          ].each do |instead, replacement| %>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6">
+              <div class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5"><%= instead %></div>
+              <div class="text-slate-800 leading-relaxed"><%= replacement %></div>
+            </div>
+          <% end %>
         </div>
       </div>
     </section>
 
-    <!-- PRO FEATURES -->
-    <section id="pro-features" class="w-full bg-slate-900 text-white">
-      <div class="text-center px-6 py-16 max-w-3xl mx-auto">
-        <span class="inline-flex items-center rounded-full bg-pink-500 text-white px-3 py-1 text-xs font-semibold uppercase tracking-wide mb-4">Upgrade to Pro</span>
-        <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4 coustard-regular">Ready to grow? Add the full toolkit</h2>
-        <p class="text-lg text-slate-300">One upgrade — <span class="font-semibold text-white">$20/month or $200/year</span> — unlocks unlimited productions and every module below.</p>
-      </div>
-    </section>
-
-    <div class="bg-slate-50">
-      <%= render "home/producer_feature_block", pro: true,
-        eyebrow: "Auditions", reverse: false, carousel_key: "auditions",
-        title: "Run in-person & video auditions",
-        description: "Build custom audition forms, collect video submissions, schedule live sessions, and review as a team — all in one flow.",
-        bullets: ["Custom audition forms with video uploads", "In-person session scheduling", "Team review, voting, and notifications"],
-        images: [
-          { src: "screenshots/auditions/1-form-builder.png", alt: "Audition form builder" },
-          { src: "screenshots/auditions/2-submissions-list.png", alt: "Audition submissions" },
-          { src: "screenshots/auditions/3-submission-detail.png", alt: "Submission detail" }
-        ] %>
-
-      <%= render "home/producer_feature_block", pro: true,
-        eyebrow: "Money & Payments", reverse: true, carousel_key: "money",
-        title: "Track revenue and pay your people",
-        description: "See financials per show, manage advances, and pay everyone — performers get paid straight to their bank, on a schedule you set or all at once. Fair by design: $3/month per performer, only in the months you actually pay them.",
-        bullets: ["Show & production financials", "Pay performers straight to their bank", "Unlimited scheduled or one-click payout runs", "$3/mo per performer — only when you pay them"],
-        images: [
-          { src: "screenshots/accounting/1-financial-overview.png", alt: "Financial overview" },
-          { src: "screenshots/accounting/2-show-financials.png", alt: "Show financials" },
-          { src: "screenshots/payouts/1-dashboard.png", alt: "Payouts dashboard" },
-          { src: "screenshots/payouts/2-scheme-setup.png", alt: "Payout scheme setup" }
-        ] %>
-
-      <%= render "home/producer_feature_block", pro: true,
-        eyebrow: "Casting Tables", reverse: false, carousel_key: "casting-table",
-        title: "Cast a whole run of shows at once",
-        description: "See every role across every show on one visual board, drag performers into open slots, and spot conflicts instantly.",
-        bullets: ["Every show and role in one grid", "Drag-and-drop casting", "Conflict and vacancy detection"],
-        images: [
-          { src: "screenshots/casting/1-casting-table.png", alt: "Casting table" }
-        ] %>
-
-      <%= render "home/producer_feature_block", pro: true,
-        eyebrow: "Staffing", reverse: true, carousel_key: "staffing",
-        title: "Your whole team — scheduled, onboarded, and paid",
-        description: "Build the week's shifts, invite staff to onboard themselves, then pay them for the hours they work — straight to their bank. Fair by design: $5/month per person, only in the months they actually work.",
-        bullets: [
-          "Weekly shift scheduling by role, with staff availability",
-          "Staff onboard themselves and connect their own bank",
-          "Pay from an hours grid — unlimited payouts included",
-          "Nothing to pay for anyone who doesn't work that month"
-        ],
-        images: [
-          { src: "screenshots/scheduling/1-shows-list.png", alt: "Weekly staffing schedule" },
-          { src: "screenshots/scheduling/2-show-detail.png", alt: "Shift detail" },
-          { src: "screenshots/scheduling/3-availability-grid.png", alt: "Staff availability grid" }
-        ] %>
-
-      <!-- More Pro features -->
-      <div class="w-full px-6 pt-8 pb-20">
-        <div class="max-w-6xl mx-auto">
-          <h3 class="text-center text-2xl font-bold text-slate-900 mb-10 coustard-regular">Plus everything else in Pro</h3>
-          <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <%= render "home/producer_feature_card", pro: true, icon: "chart", title: "Reports", description: "Revenue, payouts, cast participation, and programming analytics." %>
-            <%= render "home/producer_feature_card", pro: true, icon: "sparkles", title: "Unlimited everything", description: "Run unlimited productions and unlimited shows/events every month." %>
-            <%= render "home/producer_feature_card", pro: true, icon: "clipboard", title: "Performer agreements", description: "Send agreements and collect e-signatures — manually or automatically when someone joins your talent pool." %>
-            <%= render "home/producer_feature_card", pro: true, icon: "document", title: "Contracts", description: "Book the dates, agree how the money works — revenue share, flat fee or rental — bill your services, and settle up online in either direction." %>
+    <%# ==================== DEEP FEATURE AREAS ==================== %>
+    <div id="platform"></div>
+    <% [
+      { bg: "bg-white", eyebrow: "Program &amp; schedule", title: "Plan every show, rehearsal, and event.",
+        desc: "Your whole calendar in one place, per production — so nothing slips and everyone knows what's next.",
+        bullets: ["Shows, rehearsals, meetings, and one-off events", "Recurring events and multi-show runs", "Per-production calendars your whole team can see", "Courses and classes with registration built in"] },
+      { bg: "bg-[#f9f9f7]", eyebrow: "Cast &amp; crew", title: "Cast your show and fill every role.",
+        desc: "From talent pools to the final cast list — plus intake, review, and communication in one flow.",
+        bullets: ["Roles and talent pools you reuse across shows", "Multi-show casting tables — every role in every show, on one board", "Auditions and sign-ups with reviewing and voting", "Availability tracking, contacts, groups, and documents", "Message your cast and crew without leaving the platform"] },
+      { bg: "bg-white", eyebrow: "Money &amp; contracts", title: "Get paid, and put the deal in writing.",
+        desc: "Track the money on every show, pay your performers, and send contracts that get signed.",
+        bullets: ["Show and production financials — revenue and expenses", "Payout schemes and splits, calculated for you", "Pay performers straight to their bank", "Booking contracts with native e-signatures", "Revenue, payout, and participation reports"] },
+      { bg: "bg-[#f9f9f7]", eyebrow: "Staffing &amp; payroll", title: "Schedule your team and make payroll.",
+        desc: "The full staffing stack — from the weekly schedule to the pay run — built for live venues.",
+        bullets: ["Build the week and assign shifts", "Staff log their hours; you approve before you pay", "One pay run — hours, bonuses, reimbursements, and tips", "House roles with default rates, departments, and org chart", "Contractor payments with tax handled — W-2 and full payroll with Enterprise"] }
+    ].each do |area| %>
+      <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 <%= area[:bg] %>">
+        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-start">
+          <div>
+            <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3"><%= area[:eyebrow].html_safe %></p>
+            <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4"><%= area[:title] %></h2>
+            <p class="text-lg text-slate-600 leading-relaxed"><%= area[:desc] %></p>
           </div>
-
-          <div class="text-center mt-12">
-            <%= render "shared/button", text: "See full plan comparison", path: pricing_path, variant: "secondary", size: "medium" %>
-          </div>
+          <ul class="space-y-3">
+            <% area[:bullets].each do |b| %>
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-6 h-6 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                </span>
+                <span class="text-slate-800 leading-relaxed"><%= b %></span>
+              </li>
+            <% end %>
+          </ul>
         </div>
-      </div>
-    </div>
+      </section>
+    <% end %>
 
-    <!-- Built by performers & producers -->
-    <section class="px-4 sm:px-6 lg:px-8 py-14 bg-white">
-      <div class="max-w-3xl mx-auto rounded-2xl bg-slate-900 text-white px-6 py-8 text-center">
-        <p class="text-xs uppercase tracking-wider text-pink-300 font-semibold mb-3">Built by performers &amp; producers, for performers &amp; producers</p>
-        <p class="text-lg text-slate-200">
-          Fair by design. Add your whole team for free — you only pay
-          <span class="font-semibold text-white">for performers when they perform and for staff members when they work</span>.
-          No seats, no minimums, no charge for anyone who sits out or doesn't get scheduled.
+    <%# ============================ TIERS ============================ %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center max-w-2xl mx-auto mb-12">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Three tiers</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight">
+            From your first show to a full operation.
+          </h2>
+        </div>
+        <%= render "home/tier_cards" %>
+        <p class="mt-6 text-center text-sm text-slate-500">
+          <%= link_to "See the full feature comparison", pricing_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>
         </p>
       </div>
     </section>
 
-    <!-- Carousel JavaScript -->
-    <script>
-      function initCarousels() {
-        document.querySelectorAll('[data-carousel]').forEach(function(carousel) {
-          if (carousel.dataset.carouselInitialized) return;
-          carousel.dataset.carouselInitialized = 'true';
-
-          const slides = carousel.querySelectorAll('.carousel-slide');
-          const dots = carousel.querySelectorAll('.carousel-dot');
-          const prevBtn = carousel.querySelector('.carousel-prev');
-          const nextBtn = carousel.querySelector('.carousel-next');
-          let currentIndex = 0;
-
-          function showSlide(index) {
-            slides.forEach((slide, i) => {
-              if (i === index) {
-                slide.classList.remove('hidden', 'absolute', 'inset-0');
-              } else {
-                slide.classList.add('hidden', 'absolute', 'inset-0');
-              }
-            });
-            dots.forEach((dot, i) => {
-              dot.classList.toggle('bg-pink-500', i === index);
-              dot.classList.toggle('bg-slate-300', i !== index);
-            });
-            currentIndex = index;
-          }
-
-          if (prevBtn) {
-            prevBtn.addEventListener('click', function(e) {
-              e.preventDefault();
-              showSlide(currentIndex === 0 ? slides.length - 1 : currentIndex - 1);
-            });
-          }
-          if (nextBtn) {
-            nextBtn.addEventListener('click', function(e) {
-              e.preventDefault();
-              showSlide(currentIndex === slides.length - 1 ? 0 : currentIndex + 1);
-            });
-          }
-          dots.forEach(function(dot, index) {
-            dot.addEventListener('click', function(e) {
-              e.preventDefault();
-              showSlide(index);
-            });
-          });
-        });
-      }
-
-      document.addEventListener('DOMContentLoaded', initCarousels);
-      document.addEventListener('turbo:load', initCarousels);
-    </script>
-
-    <!-- CTA -->
-    <section class="w-full px-6 py-20 bg-white border-t border-slate-200">
+    <%# ============================ CTA BAND ============================ %>
+    <section class="w-full bg-pink-500 text-white px-6 py-16">
       <div class="max-w-4xl mx-auto text-center">
-        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 coustard-regular">Get started for free</h2>
-        <p class="text-lg text-slate-600 mb-10">No credit card required. Start with everything you need, and upgrade to Pro when you're ready.</p>
-
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <%= render "shared/button", text: "Start Your Production", path: signup_path, variant: "primary", size: "large" %>
-          <%= render "shared/button", text: "Looking to perform instead? →", path: performers_path, variant: "ghost", size: "medium" %>
+        <h2 class="text-3xl sm:text-4xl coustard-regular mb-3">Run your whole production in one place.</h2>
+        <p class="text-pink-100 text-lg mb-8 max-w-2xl mx-auto">See how CocoScout fits your company — or start building your first show today.</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= link_to "Talk to us", "mailto:hello@cocoscout.com",
+                class: "inline-flex justify-center items-center px-8 py-3 rounded bg-white text-pink-700 font-semibold hover:bg-pink-50 transition" %>
+          <%= link_to "Start free", signup_path,
+                class: "inline-flex justify-center items-center px-8 py-3 rounded border border-white/70 text-white font-medium hover:bg-white/10 transition" %>
         </div>
       </div>
     </section>
+
   </main>
 
   <%= render "shared/marketing/footer" %>

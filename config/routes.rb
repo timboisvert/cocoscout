@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  root "home#new_home"
+  root "home#new_landing"
 
   # Utility
   get "/up", to: proc { [ 200, {}, [ "OK" ] ] }
@@ -29,7 +29,7 @@ Rails.application.routes.draw do
   get "/pricing", to: "home#pricing", as: "pricing"
 
   # Redirects from old /new paths
-  get "/new", to: "home#new_landing", as: "new_landing"
+  get "/new", to: redirect("/")
   get "/new/for-performers", to: redirect("/for-performers")
   get "/new/for-producers", to: redirect("/for-producers")
 

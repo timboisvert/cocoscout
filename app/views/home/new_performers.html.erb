@@ -1,215 +1,92 @@
-<% content_for :title, "CocoScout for Performers — find mics, auditions & courses" %>
+<% content_for :title, "For Performers &amp; Staff — CocoScout" %>
 
 <div class="min-h-screen bg-[#f9f9f7]">
   <%= render "shared/marketing/header" %>
 
   <main class="flex flex-col min-w-full">
-    <!-- Hero Section -->
-    <section class="w-full px-6 py-16 sm:py-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
-      <div class="max-w-7xl mx-auto">
-        <div class="text-center max-w-4xl mx-auto">
-          <div class="inline-flex items-center gap-2 bg-pink-100 text-pink-600 px-4 py-2 rounded-full text-sm font-medium mb-8">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-            Free for performers &amp; comics
-          </div>
 
-          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 coustard-regular leading-tight">
-            Find the stage.<br>Manage the rest.
-          </h1>
-
-          <p class="text-lg sm:text-xl text-slate-600 mb-10 leading-relaxed">
-            Discover open mics, auditions, and courses — then keep your whole performing life
-            (calendar, availability, payments, messages) in one free account.
-          </p>
-
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <%= render "shared/button", text: "Create Your Free Profile", path: signup_path, variant: "primary", size: "large" %>
-            <%= render "shared/button", text: "Find an open mic", path: mics_home_path, variant: "secondary", size: "large" %>
-          </div>
+    <%# ============================ HERO ============================ %>
+    <section class="w-full px-6 pt-16 pb-14 sm:pt-24 sm:pb-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-3xl mx-auto text-center">
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-4">For performers &amp; staff</p>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-5 coustard-regular leading-tight">
+          Your whole performing life, in one place.
+        </h1>
+        <p class="text-lg sm:text-xl max-w-2xl mx-auto text-slate-600 leading-relaxed mb-8">
+          Every show, rehearsal, course, and shift — plus your pay and your profile — across every
+          company you work with. Free, forever.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= render "shared/button", text: "Create your free account", path: signup_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Find a mic", path: mics_home_path, variant: "outline", size: "large" %>
         </div>
+        <p class="mt-5 text-sm text-slate-500">Free for performers and staff members. Always.</p>
       </div>
     </section>
 
-    <!-- Discovery: where to perform -->
-    <section class="w-full bg-white border-t border-slate-100 px-6 py-16">
-      <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-10">
-          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular">Find where to perform</h2>
-          <p class="text-lg text-slate-600">Three ways to get on stage and keep growing.</p>
+    <%# ==================== DEEP FEATURE AREAS ==================== %>
+    <% [
+      { bg: "bg-white", eyebrow: "Your schedule", title: "Every show, rehearsal, and shift — one calendar.",
+        desc: "No more juggling group chats and half a dozen companies' calendars. Everything you're part of lands in one place.",
+        bullets: ["A unified calendar across every company you work with", "The shows and events you're cast in", "Confirm your scheduled shifts and log the hours you work", "Auditions and courses on the same timeline"] },
+      { bg: "bg-[#f9f9f7]", eyebrow: "Get paid", title: "Paid straight to your bank.",
+        desc: "Whether you're performing or on staff, connect your bank once and get paid directly — no chasing checks.",
+        bullets: ["Connect your bank one time, get paid every time", "See exactly what you're owed, itemized by what it's for", "Your full pay history in one place", "Hours you log flow straight into your pay"] },
+      { bg: "bg-white", eyebrow: "Your profile &amp; bookings", title: "A home base companies can find.",
+        desc: "Keep one profile that shows your work and controls how you're reached — and handle the paperwork in the same spot.",
+        bullets: ["A profile that shows who you are and what you do", "Availability you control, so you only get asked when you're free", "Audition submissions tracked from sent to cast", "Contracts you review and e-sign in a click"] },
+      { bg: "bg-[#f9f9f7]", eyebrow: "Stay in the loop", title: "Never miss a request.",
+        desc: "Everything the companies you work with send you, in one inbox — so nothing slips through the cracks.",
+        bullets: ["Messages from every company in one place", "Open casting and booking requests awaiting your reply", "Shoutouts from your peers", "Documents and courses shared with you"] }
+    ].each do |area| %>
+      <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 <%= area[:bg] %>">
+        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-start">
+          <div>
+            <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3"><%= area[:eyebrow].html_safe %></p>
+            <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4"><%= area[:title] %></h2>
+            <p class="text-lg text-slate-600 leading-relaxed"><%= area[:desc] %></p>
+          </div>
+          <ul class="space-y-3">
+            <% area[:bullets].each do |b| %>
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 w-6 h-6 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                </span>
+                <span class="text-slate-800 leading-relaxed"><%= b %></span>
+              </li>
+            <% end %>
+          </ul>
         </div>
-        <div class="grid sm:grid-cols-3 gap-6">
-          <%= link_to mics_home_path, class: "group bg-pink-50 rounded-2xl border-2 border-pink-200 p-7 hover:border-pink-400 hover:shadow-lg transition-all block" do %>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600">Open mics</h3>
-              <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-pink-200 text-pink-800 font-bold">Find a Mic</span>
-            </div>
-            <p class="text-slate-600 mb-4">Every active open mic, city by city, kept current by the people who run them — on findamic.com.</p>
-            <span class="inline-flex items-center gap-1.5 text-pink-600 font-semibold">Browse open mics
-              <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-            </span>
-          <% end %>
-          <div class="bg-slate-50 rounded-2xl border border-slate-200 p-7">
-            <h3 class="text-2xl font-bold text-slate-900 coustard-regular mb-3">Auditions</h3>
-            <p class="text-slate-600">Discover open calls, submit with one click, and track every audition from submission to callback.</p>
-          </div>
-          <div class="bg-slate-50 rounded-2xl border border-slate-200 p-7">
-            <h3 class="text-2xl font-bold text-slate-900 coustard-regular mb-3">Courses</h3>
-            <p class="text-slate-600">Register for classes and workshops, and keep every session on your calendar.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+      </section>
+    <% end %>
 
-    <!-- Features Grid -->
-    <section id="features" class="w-full bg-white border-t border-b border-slate-100 px-6 py-20">
-      <div class="max-w-5xl mx-auto">
-        <div class="text-center mb-16">
-          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything a performer needs</h2>
-          <p class="text-lg text-slate-600 max-w-2xl mx-auto">From auditions to opening night, CocoScout keeps your performance life organized.</p>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-8">
-          <!-- Feature: Auditions -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Submit to Auditions</h3>
-            <p class="text-slate-600">Discover open calls, submit with one click, and track every audition from submission to callback.</p>
-          </div>
-
-          <!-- Feature: Profile -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Your Professional Profile</h3>
-            <p class="text-slate-600">Showcase your headshots, resume, vocal range, dance styles, and special skills. Add media clips to stand out.</p>
-          </div>
-
-          <!-- Feature: Get Paid -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Get Paid Directly</h3>
-            <p class="text-slate-600">Set up your payment method once and get paid by production teams directly through CocoScout. No chasing checks.</p>
-          </div>
-
-          <!-- Feature: Messaging -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Message Your Team</h3>
-            <p class="text-slate-600">Stay connected with cast members and production teams. All your conversations in one place—no group texts needed.</p>
-          </div>
-
-          <!-- Feature: Groups & Productions -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Stay Connected</h3>
-            <p class="text-slate-600">See all your productions in one place. Get updates, view cast lists, and never miss an announcement.</p>
-          </div>
-
-          <!-- Feature: Availability -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Share Your Availability</h3>
-            <p class="text-slate-600">Submit your conflicts once. Production teams see instantly who can rehearse when—no endless emails.</p>
-          </div>
-
-          <!-- Feature: Vacancies -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Find Open Roles</h3>
-            <p class="text-slate-600">Browse vacancies posted by production teams. Crew positions, understudy roles, last-minute replacements—all in one place.</p>
-          </div>
-
-          <!-- Feature: Dashboard -->
-          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-            <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center mb-5">
-              <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Your Dashboard</h3>
-            <p class="text-slate-600">Everything at a glance—upcoming events, recent messages, pending auditions, and what's next on your schedule.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- How It Works -->
-    <section class="w-full px-6 py-20">
-      <div class="max-w-5xl mx-auto">
-        <div class="text-center mb-16">
-          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Get started in minutes</h2>
-          <p class="text-lg text-slate-600">Your next audition is just a few clicks away.</p>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-8">
-          <div class="text-center">
-            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-bold text-pink-500 coustard-regular">1</span>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Create Your Profile</h3>
-            <p class="text-slate-600">Add your headshots, resume, and skills. Your profile is your calling card—make it shine.</p>
-          </div>
-
-          <div class="text-center">
-            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-bold text-pink-500 coustard-regular">2</span>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Submit to Auditions</h3>
-            <p class="text-slate-600">Browse open calls, submit with one click, and track every opportunity in one place.</p>
-          </div>
-
-          <div class="text-center">
-            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
-              <span class="text-2xl font-bold text-pink-500 coustard-regular">3</span>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Get Cast & Perform</h3>
-            <p class="text-slate-600">When you're cast, everything syncs—schedule, communications, and your cast mates—right to your dashboard.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Final CTA -->
-    <section class="w-full px-6 py-20">
+    <%# ==================== FREE FOREVER BAND ==================== %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-white">
       <div class="max-w-4xl mx-auto text-center">
-        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 coustard-regular">Ready for your next stage?</h2>
-        <p class="text-lg text-slate-600 mb-10">Create a free account — it powers your favorites and alerts on Find a Mic, your auditions, and your whole performing calendar.</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">
+          Free for performers and staff. Always.
+        </h2>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          CocoScout is built for the companies that run live entertainment — and it's a gift to the
+          people who make it happen. You never pay to use it.
+        </p>
+      </div>
+    </section>
 
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <%= render "shared/button", text: "Create Your Free Profile", path: signup_path, variant: "primary", size: "large" %>
-          <%= render "shared/button", text: "Running a production instead? →", path: producers_path, variant: "ghost", size: "medium" %>
+    <%# ============================ CTA BAND ============================ %>
+    <section class="w-full bg-pink-500 text-white px-6 py-16">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-3xl sm:text-4xl coustard-regular mb-3">Make CocoScout your home base.</h2>
+        <p class="text-pink-100 text-lg mb-8 max-w-2xl mx-auto">Create your free account and keep your whole performing life in one place.</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= link_to "Create your free account", signup_path,
+                class: "inline-flex justify-center items-center px-8 py-3 rounded bg-white text-pink-700 font-semibold hover:bg-pink-50 transition" %>
+          <%= link_to "Find a mic", mics_home_path,
+                class: "inline-flex justify-center items-center px-8 py-3 rounded border border-white/70 text-white font-medium hover:bg-white/10 transition" %>
         </div>
       </div>
     </section>
+
   </main>
 
   <%= render "shared/marketing/footer" %>
