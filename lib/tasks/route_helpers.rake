@@ -48,6 +48,10 @@ namespace :routes do
           # Skip dynamic/interpolated helpers and common non-route helpers
           next if helper_name.start_with?("safe_")
           next if %w[image_path asset_path font_path].include?(helper_name)
+          # View/SVG helper methods that end in _path but are NOT route helpers:
+          #   icon_path / nav_icon_path -> return an SVG path `d` string
+          #   payout_contribution_source_path -> returns a source object's path
+          next if %w[icon_path nav_icon_path payout_contribution_source_path].include?(helper_name)
 
           unless valid_helpers.include?(helper_name)
             relative_path = Pathname.new(file).relative_path_from(Rails.root)
