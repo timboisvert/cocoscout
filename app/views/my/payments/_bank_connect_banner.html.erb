@@ -11,14 +11,14 @@
           </svg>
         </div>
         <div>
-          <p class="text-sm font-semibold text-pink-900">Connect your bank to keep getting paid</p>
+          <p class="text-sm font-semibold text-pink-900">We've upgraded how you get paid</p>
           <p class="text-sm text-pink-800/80 mt-0.5 max-w-xl">
-            Set up your bank to get paid straight to your account.
+            Your payments are now more secure, with clearer visibility into what you're owed and when you're paid. If you'd entered payment details before, you'll need to add them again to keep getting paid.
           </p>
         </div>
       </div>
       <div class="flex-shrink-0">
-        <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
+        <%= render "shared/button", text: "Set up payments", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
       </div>
     </div>
   </div>
