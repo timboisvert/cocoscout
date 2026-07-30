@@ -61,7 +61,7 @@
           <div><code class="bg-pink-100 px-1 rounded">{{<%= field %>}}</code> — <%= label %></div>
         <% end %>
       </div>
-      <p class="text-xs text-pink-700 mt-3">The contract's booked dates, financial terms, and services are appended automatically as a "Deal Terms" schedule — you don't need to write those in.</p>
+      <p class="text-xs text-pink-700 mt-3">By default, the contract's booked dates, financial terms, and services are appended automatically as a "Deal Terms" schedule at the end — you don't need to write those in. To place the dates/stage/rent grid <em>inside</em> your own wording instead (e.g. a "License Period and Fees" section), drop the <code class="bg-pink-100 px-1 rounded">{{license_schedule}}</code> variable where you want it, and <code class="bg-pink-100 px-1 rounded">{{services}}</code> wherever the services being rendered should appear; using either one skips the automatic schedule.</p>
     </div>
 
     <div>
@@ -136,7 +136,7 @@
         </button>
       </div>
       <div class="px-6 py-5 overflow-y-auto prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
-        <%= contract_template.render_content(
+        <%= contract_template.render_preview(
               contractor_name: "Local Comedy Troupe",
               organization_name: contract_template.organization&.name,
               production_name: "Example Production",
@@ -144,7 +144,7 @@
               contract_end_date: (Date.current + 3.months).strftime("%B %-d, %Y"),
               current_date: Date.current.strftime("%B %-d, %Y")
             ) %>
-        <p class="text-xs text-gray-400 mt-4 not-prose">The contract’s real dates, fees, and services are appended as a “Deal Terms” schedule when it’s sent for signature.</p>
+        <p class="text-xs text-gray-400 mt-4 not-prose">Grids and services shown above are sample data — each contract fills in its real dates, fees, and services. A “Deal Terms” schedule is appended at signing only for templates that don’t place the schedule inline.</p>
       </div>
       <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end flex-shrink-0">
         <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>

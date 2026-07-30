@@ -51,13 +51,17 @@ class ContractPdf
 
   def render_body(pdf)
     html = @contract.organization_signature&.content_snapshot.presence || @contract.render_signable_document
-    Nokogiri::HTML.fragment(html.to_s).children.each do |node|
-      if node.text?
-        t = node.text.strip
-        pdf.text esc(t), inline_format: true, size: 10 unless t.empty?
-      else
-        render_block(pdf, node)
-      end
+    Nokogiri::HTML.fragment(html.to_s).children.each { |node| render_node(pdf, node) }
+  end
+
+  # Render a single DOM node: bare text becomes a line, elements dispatch to
+  # render_block. Used both at the top level and when recursing into a wrapper.
+  def render_node(pdf, node)
+    if node.text?
+      t = node.text.strip
+      pdf.text esc(t), inline_format: true, size: 10 unless t.empty?
+    else
+      render_block(pdf, node)
     end
   end
 
@@ -77,15 +81,30 @@ class ContractPdf
     when "table" then render_table(pdf, node)
     when "br" then pdf.move_down 4
     else
-      # div / p / blockquote / span / anything else → a paragraph.
-      text = inline(node).strip
-      if text.empty?
-        pdf.move_down 6 # our template uses <div><br></div> as spacers
+      # div / p / blockquote / span / anything else. A wrapper that itself holds
+      # block-level children (e.g. an inline {{license_schedule}} table dropped
+      # inside a <div>) must be walked, not flattened — otherwise inline() would
+      # collapse a whole table into a run of text. Recurse in that case.
+      if wraps_block?(node)
+        node.children.each { |child| render_node(pdf, child) }
       else
-        pdf.text text, inline_format: true, size: 10, leading: 2
-        pdf.move_down 4
+        # …otherwise it's a paragraph.
+        text = inline(node).strip
+        if text.empty?
+          pdf.move_down 6 # our template uses <div><br></div> as spacers
+        else
+          pdf.text text, inline_format: true, size: 10, leading: 2
+          pdf.move_down 4
+        end
       end
     end
+  end
+
+  # True when a node contains block-level element children we render on their own
+  # (table/list/heading/rule/nested wrapper) rather than as inline text.
+  BLOCK_TAGS = %w[table ul ol h1 h2 h3 h4 h5 h6 hr div p].freeze
+  def wraps_block?(node)
+    node.element_children.any? { |c| BLOCK_TAGS.include?(c.name) }
   end
 
   def heading(pdf, node, size)

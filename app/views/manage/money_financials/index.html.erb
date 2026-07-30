@@ -125,6 +125,20 @@
       period_path: manage_money_financials_path,
       refresh_url: manage_refresh_money_path %>
 
+    <%# Needs Financials — shows that have already started but have no confirmed
+        financials yet. The first thing to act on; click a row to enter them. %>
+    <% if @awaiting_financials_shows.any? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+          Needs Financials
+          <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @awaiting_financials_shows.size %>)</span>
+        </h3>
+        <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [], min_width: "min-w-[320px]" } do %>
+          <%= render "manage/money_financials/financials_show_rows", shows: @awaiting_financials_shows %>
+        <% end %>
+      </div>
+    <% end %>
+
     <%# Filter Bar — Type (productions vs courses) first, then Status %>
     <div class="mb-3">
       <%= render "shared/filters/filter_bar", bare: true, filter_groups: [

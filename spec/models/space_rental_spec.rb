@@ -149,4 +149,56 @@ RSpec.describe SpaceRental, type: :model do
       end
     end
   end
+
+  describe "overlap validation with entire-venue bookings" do
+    let(:mainstage) { location.location_spaces.create!(name: "The Mainstage") }
+    let(:rouge) { location.location_spaces.create!(name: "The Rouge Room") }
+    let(:other_contract) { create(:contract, organization: organization) }
+    let(:window) do
+      { starts_at: Time.zone.parse("2026-08-07 18:00"), ends_at: Time.zone.parse("2026-08-07 22:00") }
+    end
+
+    def new_rental(space, **attrs)
+      SpaceRental.new(contract: contract, location: location, location_space: space, **window, **attrs)
+    end
+
+    it "blocks booking a room when the whole venue is already reserved" do
+      create(:space_rental, contract: other_contract, location: location, location_space: nil, **window)
+
+      rental = new_rental(mainstage)
+      expect(rental).not_to be_valid
+      expect(rental.errors[:base].join).to match(/overlaps with existing rentals/)
+    end
+
+    it "blocks booking the whole venue when a room is already reserved" do
+      create(:space_rental, contract: other_contract, location: location, location_space: mainstage, **window)
+
+      expect(new_rental(nil)).not_to be_valid
+    end
+
+    it "still blocks a double-booking of the same room" do
+      create(:space_rental, contract: other_contract, location: location, location_space: mainstage, **window)
+
+      expect(new_rental(mainstage)).not_to be_valid
+    end
+
+    it "allows two different rooms at the same time" do
+      create(:space_rental, contract: other_contract, location: location, location_space: mainstage, **window)
+
+      expect(new_rental(rouge)).to be_valid
+    end
+
+    it "does not conflict with a cancelled contract's entire-venue hold" do
+      cancelled = create(:contract, :cancelled, organization: organization)
+      create(:space_rental, contract: cancelled, location: location, location_space: nil, allow_overlap: true, **window)
+
+      expect(new_rental(mainstage)).to be_valid
+    end
+
+    it "honors allow_overlap to schedule over the whole-venue hold anyway" do
+      create(:space_rental, contract: other_contract, location: location, location_space: nil, **window)
+
+      expect(new_rental(mainstage, allow_overlap: true)).to be_valid
+    end
+  end
 end

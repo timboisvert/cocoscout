@@ -90,7 +90,7 @@
               location = locations_map[booking["location_id"].to_i]
               space = spaces_map[booking["space_id"].to_i] if booking["space_id"].present?
               venue_name = location&.name || "Unknown location"
-              venue_name += " (#{space.name})" if space
+              venue_name += space ? " (#{space.name})" : " (Entire Venue)"
             %>
             <li class="flex items-center gap-2 text-gray-700">
               <%= icon("calendar", class: "w-4 h-4 text-gray-400 flex-shrink-0") %>

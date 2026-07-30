@@ -57,6 +57,9 @@ export default class extends Controller {
 
         // Cards first, so the list and totals read the restored answers.
         this.syncChoiceCards()
+        // Revenue share needs tickets — gate it before the first render (a brand-new
+        // contract starts on "No tickets", so it should start disabled).
+        this.syncRevenueShareAvailability()
         this.updateSummary()
         this.updateNextLabel()
     }
@@ -69,6 +72,11 @@ export default class extends Controller {
         if (!group) return
         const hidden = group.querySelector('input[type="hidden"]')
         if (hidden) hidden.value = event.target.value
+        // Every choice card feeds the deal (settlement timing, guarantee on/off,
+        // deposit, discount, direction…), so re-render the generated preview. This
+        // runs before any card-specific action (it's first in the action list), so
+        // the hidden value the preview reads is already current.
+        this.updateSummary()
     }
 
     // The reverse: after restoring saved config (which writes the hidden
@@ -124,15 +132,57 @@ export default class extends Controller {
     // changes with this answer. Keep the button honest about where it goes.
     onWhoSellsChange() {
         this.updateNextLabel()
+        this.syncRevenueShareAvailability()
+        // Who holds the ticket money flips the revenue-share direction and can
+        // change the structure, so re-render the generated preview + totals.
+        this.updateSummary()
     }
 
     updateNextLabel() {
         if (!this.hasNextButtonTarget) return
         const button = this.nextButtonTarget.querySelector("button")
         if (!button) return
-        const checked = this.element.querySelector('input[name="who_sells_tickets"]:checked')
-        const weSell = checked && checked.value === "org"
+        const weSell = this.whoSellsTickets === "org"
         button.textContent = weSell ? "Next: Ticketing" : "Next: Services"
+    }
+
+    // "org" (we sell + hold the money), "contractor" (they sell), or "" (no tickets).
+    get whoSellsTickets() {
+        const checked = this.element.querySelector('input[name="who_sells_tickets"]:checked')
+        return checked ? checked.value : ""
+    }
+
+    // Revenue share splits ticket revenue, so it only makes sense when tickets are
+    // sold. With "No tickets", disable that option and fall back to the default
+    // Flat Fee if it was selected. Per Event stays available (a set charge either way).
+    syncRevenueShareAvailability() {
+        const ticketsSold = this.whoSellsTickets !== ""
+
+        if (this.hasRevenueShareBtnTarget) {
+            const btn = this.revenueShareBtnTarget
+            btn.disabled = !ticketsSold
+            btn.classList.toggle("opacity-40", !ticketsSold)
+            btn.classList.toggle("cursor-not-allowed", !ticketsSold)
+            btn.classList.toggle("pointer-events-none", !ticketsSold)
+            btn.title = ticketsSold ? "" : "Revenue share needs tickets — choose who sells them above."
+        }
+
+        if (!ticketsSold && this.currentStructure === "revenue_share") {
+            this.currentStructure = "flat_fee"
+            this.updateStructureJson()
+            this.updateStructureButtons()
+            this.showConfigPanel("flat_fee")
+        }
+    }
+
+    // Who holds the ticket money decides how a revenue share settles: if we sell,
+    // we hold all of it and pay them THEIR share (outgoing); if they sell, they pay
+    // us OUR share (incoming).
+    revenueShareSettlement(ourShare) {
+        if (this.whoSellsTickets === "org") {
+            return { share: Math.max(0, 100 - ourShare), direction: "outgoing", recipient: "them" }
+        }
+        return { share: ourShare, direction: "incoming", recipient: "us" }
     }
 
     restoreConfig(config) {
@@ -425,8 +475,16 @@ export default class extends Controller {
             this.perEventTermsConfigTarget.classList.toggle("hidden", isUpfront)
         }
         if (this.hasPerEventTermsDaysConfigTarget) {
-            // Hide days config when upfront, show only when per_event
-            this.perEventTermsDaysConfigTarget.classList.toggle("hidden", isUpfront)
+            // The "days before/after event" field belongs to the terms dropdown, not
+            // the timing toggle — only show it for event-by-event AND before/after
+            // terms. (Toggling to upfront and back must not resurrect it on same_day.)
+            const terms = this.hasPerEventTermsTarget ? this.perEventTermsTarget.value : ""
+            const showDays = !isUpfront && (terms === "before" || terms === "after")
+            this.perEventTermsDaysConfigTarget.classList.toggle("hidden", !showDays)
+
+            if (showDays && this.hasPerEventTermsDaysLabelTarget) {
+                this.perEventTermsDaysLabelTarget.textContent = terms === "before" ? "Days before event" : "Days after event"
+            }
         }
 
         // Update the per-event total display
@@ -897,6 +955,8 @@ export default class extends Controller {
                 const hasGuarantee = this.guaranteeOn
                 const guaranteeAmount = parseFloat(this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : 0) || 0
                 const settlement = this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "same_day"
+                // Direction + which share settles depends on who holds the ticket money.
+                const settle = this.revenueShareSettlement(ourShare)
 
                 if (ourShare > 0) {
                     // Generate payments based on settlement terms
@@ -919,11 +979,11 @@ export default class extends Controller {
                             const monthName = firstEventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
                             payments.push({
-                                description: `${monthName} — ${ourShare}% to us`,
+                                description: `${monthName} — ${settle.share}% to ${settle.recipient}`,
                                 source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
-                                direction: "incoming",
+                                direction: settle.direction,
                                 due_date: this.formatDateForInput(dueDate)
                             })
                         })
@@ -949,11 +1009,11 @@ export default class extends Controller {
                             dueDate.setDate(dueDate.getDate() + 7)
 
                             payments.push({
-                                description: `Week ${index + 1} — ${ourShare}% to us`,
+                                description: `Week ${index + 1} — ${settle.share}% to ${settle.recipient}`,
                                 source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
-                                direction: "incoming",
+                                direction: settle.direction,
                                 due_date: this.formatDateForInput(dueDate)
                             })
                         })
@@ -968,22 +1028,24 @@ export default class extends Controller {
                             }
 
                             payments.push({
-                                description: `${this.eventDateLabel(bookingDate)} — ${ourShare}% to us`,
+                                description: `${this.eventDateLabel(bookingDate)} — ${settle.share}% to ${settle.recipient}`,
                                 source: "Revenue share",
                                 amount: 0,
                                 amount_tbd: true,
-                                direction: "incoming",
+                                direction: settle.direction,
                                 due_date: this.formatDateForInput(dueDate)
                             })
                         })
                     }
                 }
                 if (hasGuarantee && guaranteeAmount > 0) {
+                    // A minimum guarantee protects the producer's floor, so it flows the
+                    // same way as the share settlement (to them when we hold the money).
                     payments.push({
                         description: "Minimum guarantee",
                         source: "Minimum guarantee",
                         amount: guaranteeAmount,
-                        direction: "incoming",
+                        direction: settle.direction,
                         due_date: this.getDateDaysFromNow(7)
                     })
                 }

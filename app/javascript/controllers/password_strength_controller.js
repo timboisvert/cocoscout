@@ -4,14 +4,11 @@ export default class extends Controller {
     static targets = ["input", "lengthCheck", "uppercaseCheck", "lowercaseCheck", "numberCheck", "specialCheck", "submit"]
 
     connect() {
-        console.log("Password strength controller connected")
-        console.log("Submit target found:", this.hasSubmitTarget)
         this.checkStrength()
     }
 
     checkStrength() {
         const password = this.inputTarget.value
-        console.log("Checking password:", password)
 
         // Check each requirement
         const lengthMet = password.length >= 8
@@ -19,8 +16,6 @@ export default class extends Controller {
         const lowercaseMet = /[a-z]/.test(password)
         const numberMet = /[0-9]/.test(password)
         const specialMet = /[^A-Za-z0-9]/.test(password)
-
-        console.log("Requirements:", { lengthMet, uppercaseMet, lowercaseMet, numberMet, specialMet })
 
         // Update each requirement indicator
         this.updateRequirement(this.lengthCheckTarget, lengthMet)
@@ -31,14 +26,11 @@ export default class extends Controller {
 
         // Enable/disable submit button based on all requirements
         const allMet = lengthMet && uppercaseMet && lowercaseMet && numberMet && specialMet
-        console.log("All met:", allMet)
 
         if (this.hasSubmitTarget) {
             if (allMet) {
-                console.log("Enabling button")
                 this.enableButton()
             } else {
-                console.log("Disabling button")
                 this.disableButton()
             }
         }

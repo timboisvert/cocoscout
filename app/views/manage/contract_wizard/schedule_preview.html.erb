@@ -89,7 +89,7 @@
               <% end %>
               <div class="text-sm text-gray-500 truncate">
                 <% if location %>
-                  <%= location.name %><%= space ? " · #{space.name}" : "" %>
+                  <%= location.name %> · <%= space ? space.name : "Entire Venue" %>
                 <% end %>
               </div>
             </div>

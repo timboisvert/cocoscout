@@ -10,4 +10,12 @@ namespace :contracts do
       puts "  mismatch: contract ##{m[:contract_id]} derived=#{m[:derived]} existing=#{m[:existing].inspect} (left unchanged — review)"
     end
   end
+
+  desc "Fix revenue-share payments generated backwards for we-sell deals (we hold the money → we pay them their share). Idempotent. DRY_RUN=1 to preview."
+  task backfill_revenue_share_direction: :environment do
+    dry = ENV["DRY_RUN"] == "1"
+    result = RevenueShareDirectionBackfill.run(dry_run: dry)
+    puts "#{dry ? '[dry run] ' : ''}contracts_fixed=#{result.contracts_fixed} " \
+         "draft_rows=#{result.draft_rows_fixed} payment_rows=#{result.payment_rows_fixed}"
+  end
 end

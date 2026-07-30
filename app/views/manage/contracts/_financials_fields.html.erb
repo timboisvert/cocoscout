@@ -28,17 +28,20 @@
   <div class="mb-6">
     <h3 class="text-sm font-semibold text-gray-900 mb-1">Who sells the tickets?</h3>
     <p class="text-xs text-gray-500 mb-3">Just who takes the ticket money. How the deal settles is the next question.</p>
+    <%# Default a brand-new contract to "We do". Once the step has been saved the
+        key is present (nil means an explicit "No tickets"), so we respect that. %>
+    <% who_sells = existing_payment_config.key?("who_sells_tickets") ? existing_payment_config["who_sells_tickets"].to_s : "org" %>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
-        <input type="radio" name="who_sells_tickets" value="org" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if existing_payment_config["who_sells_tickets"] == "org" %>>
+        <input type="radio" name="who_sells_tickets" value="org" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if who_sells == "org" %>>
         <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">We do</span> — we set up ticketing and take the money</span>
       </label>
       <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
-        <input type="radio" name="who_sells_tickets" value="contractor" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if existing_payment_config["who_sells_tickets"] == "contractor" %>>
+        <input type="radio" name="who_sells_tickets" value="contractor" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if who_sells == "contractor" %>>
         <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">They do</span> — they sell and report their sales</span>
       </label>
       <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
-        <input type="radio" name="who_sells_tickets" value="" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if existing_payment_config["who_sells_tickets"].blank? %>>
+        <input type="radio" name="who_sells_tickets" value="" class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onWhoSellsChange" <%= "checked" if who_sells == "" %>>
         <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">No tickets</span> — this deal doesn't involve them</span>
       </label>
     </div>

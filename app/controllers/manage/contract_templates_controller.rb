@@ -45,7 +45,9 @@ module Manage
     end
 
     def preview
-      @rendered_content = @contract_template.render_content(
+      # The schedule grid and services are generated per contract, not per template,
+      # so render_preview shows representative samples where those tokens sit.
+      @rendered_content = @contract_template.render_preview(
         contractor_name: "Local Comedy Troupe",
         organization_name: Current.organization.name,
         production_name: "Example Production",

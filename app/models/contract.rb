@@ -47,6 +47,14 @@ class Contract < ApplicationRecord
 
   validates :contractor_name, presence: true
 
+  # Merge tokens a template can drop inside its own wording to place deal content
+  # inline, instead of relying on the Deal Terms schedule appended at the end.
+  # {{license_schedule}} → the dates/stage/rent grid; {{services}} → the service
+  # line items. When a template uses either, the appended block is suppressed so
+  # nothing is duplicated — see #render_document_for.
+  LICENSE_SCHEDULE_TOKEN = "{{license_schedule}}"
+  SERVICES_TOKEN = "{{services}}"
+
   # Ways money can reach us that aren't the online pay link. Each must be
   # allowed on the contract before a manager may record one.
   OFFLINE_PAYMENT_METHODS = %w[check bank_transfer cash].freeze
@@ -321,9 +329,19 @@ class Contract < ApplicationRecord
   # Same, for an arbitrary template — used to preview before locking one in.
   # Interpolate (don't use +) so the safe template HTML and the Deal Terms HTML are
   # joined as plain strings and neither half gets auto-escaped; mark the whole safe.
+  #
+  # If the template drops an inline token ({{license_schedule}} and/or {{services}})
+  # in its wording, it's placing that deal content itself, so we fill the tokens
+  # inline (raw HTML, not escaped) and skip the appended Deal Terms block — the
+  # template's prose already carries the money terms. Templates without any inline
+  # token keep the classic append. gsub is a no-op when a token is absent, so both
+  # substitutions run unconditionally.
   def render_document_for(template)
     body = template ? template.render_content(signing_variables).to_s : ""
-    "#{body}#{deal_terms_html}".html_safe
+    uses_inline = body.include?(LICENSE_SCHEDULE_TOKEN) || body.include?(SERVICES_TOKEN)
+    body = body.gsub(LICENSE_SCHEDULE_TOKEN, license_schedule_html)
+    body = body.gsub(SERVICES_TOKEN, license_services_html)
+    uses_inline ? body.html_safe : "#{body}#{deal_terms_html}".html_safe
   end
 
   # Draft data helpers
@@ -933,6 +951,215 @@ class Contract < ApplicationRecord
     end
 
     out
+  end
+
+  # The inline "License Period and Fees" grid — the dates/stage/rent table a
+  # template places itself via {{license_schedule}}. Built entirely from the
+  # contract's own bookings + rent so it can't drift, and emitted as a plain
+  # <table> the signing view and the PDF walker both already render.
+  def license_schedule_html
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    rows = license_schedule_rows
+    out = +%(<table><thead><tr><th>Dates</th><th>Event</th><th>Start</th><th>End</th><th>Stage</th><th>Rent</th></tr></thead><tbody>)
+    if rows.empty?
+      out << %(<tr><td colspan="6">Dates to be confirmed.</td></tr>)
+    else
+      rows.each do |r|
+        out << "<tr>"
+        out << %(<td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td>)
+        out << %(<td>#{esc.(r[:end])}</td><td>#{esc.(r[:stage])}</td><td>#{esc.(r[:rent])}</td>)
+        out << "</tr>"
+      end
+    end
+    out << "</tbody></table>"
+    out << license_payment_schedule_html
+    out
+  end
+
+  # A second grid, placed just below the dates/rent grid, listing when payments
+  # fall due — deposits, installments, "half up front / half on opening". Rendered
+  # only when there's a real dated schedule beyond the per-date rent already shown
+  # above: pure revenue splits (TBD) don't count, and a per-event rent whose
+  # payments all land on the booking dates is already visible in the Rent column,
+  # so simple deals get no redundant table.
+  def license_payment_schedule_html
+    payments = license_concrete_payments
+    return "" if payments.empty?
+
+    booking_dates = license_booking_dates
+    # Everything already shown as per-date rent above → nothing to add.
+    return "" unless payments.any? { |p| booking_dates.exclude?(p[:due]) }
+
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    out = +%(<h4>Payment schedule</h4><table><thead><tr><th>Payment</th><th>Amount</th><th>Due</th></tr></thead><tbody>)
+    payments.each do |p|
+      out << %(<tr><td>#{esc.(p[:label])}</td><td>#{esc.(p[:amount])}</td><td>#{esc.(p[:due_label])}</td></tr>)
+    end
+    out << "</tbody></table>"
+    out
+  end
+
+  # Concrete scheduled payments (real amount, real due date — not TBD revenue-share
+  # placeholders), oldest first, shaped for the payment-schedule grid.
+  def license_concrete_payments
+    draft_payments.filter_map do |p|
+      next if p["amount_tbd"]
+
+      amount = p["amount"].to_f
+      next unless amount.positive?
+
+      due = parse_booking_time(p["due_date"])&.to_date
+      next unless due
+
+      { label: p["description"].presence || "Payment", amount: deal_money(amount),
+        due: due, due_label: due.strftime("%b %-d, %Y") }
+    end.sort_by { |p| p[:due] }
+  end
+
+  # The set of dates the bookings fall on — used to tell whether a payment is
+  # "extra" (a deposit/installment worth its own row) or just per-date rent.
+  def license_booking_dates
+    draft_bookings.filter_map do |b|
+      (parse_booking_time(b["event_starts_at"]) || parse_booking_time(b["starts_at"]))&.to_date
+    end
+  end
+
+  # The services being rendered on this contract, for the {{services}} token — the
+  # deal's own service line items with quantity and rate. Renders its own heading
+  # and nothing at all when there are no services, so the token leaves no orphan
+  # header behind on a contract without any.
+  def license_services_html
+    services = (draft_services rescue [])
+    return "" if services.blank?
+
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    out = +%(<h4>Services</h4><ul>)
+    services.each do |s|
+      qty = s["quantity"].to_f
+      qty_label = qty > 1 ? " × #{qty.to_i == qty ? qty.to_i : qty}" : ""
+      per = s["unit"] == "hourly" ? "/hr" : ""
+      out << %(<li>#{esc.(s["name"])}#{qty_label} — #{deal_money(s["unit_price"])}#{per}</li>)
+    end
+    out << "</ul>"
+    out
+  end
+
+  # One grid row per booking (date-ordered), drawing only on data the contract
+  # already holds. Rent per row is a concrete dated amount when the schedule has
+  # one; otherwise it falls back to the deal's pricing expressed in words — a flat
+  # fee, a per-event amount, or a revenue share ("50% of ticket sales"). Never
+  # "TBD": the Rent cell always states how the money works.
+  def license_schedule_rows
+    rent_by_date = license_concrete_rent_by_date
+    space_names = license_space_names
+    rent_label = license_rent_label
+
+    draft_bookings.filter_map do |b|
+      starts_at = parse_booking_time(b["starts_at"])
+      next unless starts_at
+
+      event_start = parse_booking_time(b["event_starts_at"]) || starts_at
+      event_end = parse_booking_time(b["event_ends_at"]) || booking_end(b, starts_at)
+      space_id = (b["location_space_id"].presence || b["space_id"].presence)&.to_i
+
+      {
+        date: event_start.strftime("%a %b %-d, %Y"),
+        event: license_event_label(b),
+        start: event_start.strftime("%-l:%M %p"),
+        end: event_end ? event_end.strftime("%-l:%M %p") : "—",
+        stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
+        rent: rent_by_date[event_start.to_date] || rent_label
+      }
+    end
+  end
+
+  def parse_booking_time(value)
+    return nil if value.blank?
+
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def booking_end(booking, starts_at)
+    if booking["ends_at"].present?
+      parse_booking_time(booking["ends_at"])
+    elsif booking["duration"].present?
+      starts_at + booking["duration"].to_f.hours
+    end
+  end
+
+  # A readable event name for the grid: the booking's own event_type when it's a
+  # real label, otherwise the production/show name, else a generic fallback.
+  def license_event_label(booking)
+    raw = booking["event_type"].to_s.strip
+    return raw.tr("_", " ").split.map(&:capitalize).join(" ") if raw.present? && raw != "show"
+
+    production_name.presence || production&.name.presence || "Performance"
+  end
+
+  # Concrete rent keyed by date, from the payment schedule. Per-event payments
+  # carry a due_date on the event date, so this lines each booking up with its own
+  # dollar figure. Only real, settled-in amounts land here — TBD/revenue-share
+  # placeholders are skipped so they fall through to the worded pricing label.
+  def license_concrete_rent_by_date
+    draft_payments.each_with_object({}) do |payment, map|
+      next if payment["amount_tbd"]
+
+      amount = payment["amount"].to_f
+      next unless amount.positive?
+
+      date = parse_booking_time(payment["due_date"])&.to_date
+      next unless date
+
+      map[date] ||= deal_money(amount)
+    end
+  end
+
+  # How the rent reads when there's no concrete dated amount — the deal's pricing
+  # stated plainly, per payment structure. Never "TBD".
+  def license_rent_label
+    cfg = draft_payment_config
+    case draft_payment_structure
+    when "per_event"
+      cfg["per_event_amount"].to_f.positive? ? deal_money(cfg["per_event_amount"]) : "—"
+    when "flat_fee"
+      license_flat_fee_rent(cfg)
+    when "revenue_share"
+      license_revenue_share_rent(cfg)
+    else
+      "—"
+    end
+  end
+
+  # A flat fee shows the fee itself; the ticket-revenue-minus-fee variant says so.
+  def license_flat_fee_rent(cfg)
+    return "—" unless cfg["flat_fee_amount"].to_f.positive?
+
+    if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
+      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])} fee"
+    else
+      deal_money(cfg["flat_fee_amount"])
+    end
+  end
+
+  # A revenue share reads as the venue's cut, e.g. "50% of ticket sales".
+  def license_revenue_share_rent(cfg)
+    share = (cfg["revenue_our_share"].presence || 50).to_i
+    source = {
+      "ticket_sales" => "ticket sales", "door_sales" => "door sales",
+      "bar_sales" => "bar & concessions", "merchandise" => "merchandise",
+      "total_revenue" => "total revenue"
+    }[cfg["revenue_source"]] || "ticket sales"
+    "#{share}% of #{source}"
+  end
+
+  # Names for the stages referenced by the bookings, in one query.
+  def license_space_names
+    ids = draft_bookings.filter_map { |b| (b["location_space_id"].presence || b["space_id"].presence)&.to_i }.uniq
+    return {} if ids.empty?
+
+    LocationSpace.where(id: ids).pluck(:id, :name).to_h
   end
 
   def deal_summary_flat_fee(cfg, lines)

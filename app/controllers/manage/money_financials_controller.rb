@@ -62,6 +62,17 @@ module Manage
           .group(:production_id)
           .count
 
+        # The actionable to-do at the top of the page: revenue shows that have
+        # already started (hit their start time) but don't yet have confirmed
+        # financials. One flat, most-recent-first list the user can click into.
+        @awaiting_financials_shows = Show
+          .where(production_id: @productions.map(&:id), event_type: revenue_types)
+          .where("date_and_time <= ?", Time.current)
+          .left_joins(:show_financials)
+          .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
+          .includes(:production, :show_financials)
+          .order(date_and_time: :desc)
+
         all_summaries = @productions.map do |production|
           base = if production.type_course?
             build_course_summary(production)

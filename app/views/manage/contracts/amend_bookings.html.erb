@@ -68,7 +68,7 @@
               </div>
               <div>
                 <div class="font-medium text-gray-900">
-                  <%= rental.location_space&.name || rental.location&.name || "Location" %>
+                  <%= rental.space_name %>
                 </div>
                 <div class="text-sm text-gray-500">
                   <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>

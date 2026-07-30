@@ -603,4 +603,277 @@ RSpec.describe Contract, type: :model do
       end
     end
   end
+
+  describe "inline license schedule" do
+    let(:org) { create(:organization) }
+    let(:location) { create(:location, organization: org) }
+    let(:mainstage) { location.location_spaces.create!(name: "The Mainstage") }
+
+    # One evening booking with a distinct event window, on a known stage.
+    def booking(date:, space: mainstage, event_type: "show")
+      day = Date.parse(date)
+      {
+        "starts_at" => day.to_time.change(hour: 18).iso8601,
+        "ends_at" => day.to_time.change(hour: 23).iso8601,
+        "event_starts_at" => day.to_time.change(hour: 20).iso8601,
+        "event_ends_at" => day.to_time.change(hour: 22).iso8601,
+        "location_id" => location.id,
+        "location_space_id" => space.id,
+        "event_type" => event_type
+      }
+    end
+
+    describe "#license_schedule_html" do
+      it "renders one row per booking with date, event window, and stage" do
+        contract = create(:contract, organization: org, production_name: "Late Night Revue",
+          draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })
+
+        html = contract.send(:license_schedule_html)
+
+        expect(html).to include("<th>Dates</th>", "<th>Stage</th>", "<th>Rent</th>")
+        expect(html).to include("Fri Mar 6, 2026")
+        expect(html).to include("8:00 PM") # event start, not the 6pm load-in
+        expect(html).to include("10:00 PM")
+        expect(html).to include("The Mainstage")
+      end
+
+      it "uses the production name when the booking's event_type is the generic 'show'" do
+        contract = create(:contract, organization: org, production_name: "Late Night Revue",
+          draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })
+
+        expect(contract.send(:license_schedule_html)).to include("Late Night Revue")
+      end
+
+      it "labels the stage 'Entire venue' when no space is set" do
+        b = booking(date: "2026-03-06").except("location_space_id")
+        contract = create(:contract, organization: org, draft_data: { "bookings" => [ b ] })
+
+        expect(contract.send(:license_schedule_html)).to include("Entire venue")
+      end
+
+      it "shows an empty-state row when there are no bookings" do
+        contract = create(:contract, organization: org, draft_data: { "bookings" => [] })
+
+        expect(contract.send(:license_schedule_html)).to include("Dates to be confirmed")
+      end
+
+      context "rent column" do
+        it "matches a dated payment to its booking by date" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payments" => [ { "amount" => 500, "due_date" => "2026-03-06", "description" => "Mar 6 event" } ]
+            })
+
+          expect(contract.send(:license_schedule_html)).to include("$500.00")
+        end
+
+        it "falls back to the flat per-event amount when no dated payment matches" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "per_event",
+              "payment_config" => { "per_event_amount" => 350 }
+            })
+
+          expect(contract.send(:license_schedule_html)).to include("$350.00")
+        end
+
+        it "shows the fee (never a dash/TBD) for a flat-fee deal" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "flat_fee",
+              "payment_config" => { "flat_fee_amount" => 1000 }
+            })
+
+          html = contract.send(:license_schedule_html)
+          expect(html).to include("$1000.00")
+          expect(html).not_to include("TBD")
+          expect(html).not_to include("—")
+        end
+
+        it "phrases a revenue-share deal as the venue's cut, not TBD" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "revenue_share",
+              "payment_config" => { "revenue_our_share" => 50, "revenue_source" => "ticket_sales" }
+            })
+
+          html = contract.send(:license_schedule_html)
+          expect(html).to include("50% of ticket sales")
+          expect(html).not_to include("TBD")
+        end
+
+        it "ignores a TBD revenue-share payment row and states the share instead" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "revenue_share",
+              "payment_config" => { "revenue_our_share" => 60, "revenue_source" => "door_sales" },
+              "payments" => [ { "amount" => 0, "amount_tbd" => true, "due_date" => "2026-03-06" } ]
+            })
+
+          html = contract.send(:license_schedule_html)
+          expect(html).to include("60% of door sales")
+          expect(html).not_to include("TBD")
+        end
+      end
+
+      context "payment-schedule sub-grid (below the main grid)" do
+        it "adds a payment schedule when money is due on dates beyond the bookings" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payments" => [
+                { "description" => "Balance", "amount" => 500, "due_date" => "2026-03-06" },
+                { "description" => "Deposit", "amount" => 500, "due_date" => "2026-02-06" }
+              ]
+            })
+
+          html = contract.send(:license_schedule_html)
+
+          expect(html).to include("Payment schedule")
+          expect(html).to include("Deposit", "Balance", "Feb 6, 2026")
+          # Sorted oldest first: the deposit (due Feb) row precedes the balance (due Mar).
+          expect(html.index("Deposit")).to be < html.index("Balance")
+        end
+
+        it "omits the sub-grid for per-event rent that already shows in the Rent column" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "per_event",
+              "payments" => [ { "description" => "Mar 6 event", "amount" => 350, "due_date" => "2026-03-06" } ]
+            })
+
+          expect(contract.send(:license_schedule_html)).not_to include("Payment schedule")
+        end
+
+        it "omits the sub-grid for a pure revenue split (nothing concrete is due)" do
+          contract = create(:contract, organization: org,
+            draft_data: {
+              "bookings" => [ booking(date: "2026-03-06") ],
+              "payment_structure" => "revenue_share",
+              "payment_config" => { "revenue_our_share" => 50 },
+              "payments" => [ { "amount" => 0, "amount_tbd" => true, "due_date" => "2026-03-20" } ]
+            })
+
+          expect(contract.send(:license_schedule_html)).not_to include("Payment schedule")
+        end
+      end
+    end
+
+    describe "#license_services_html and the {{services}} token" do
+      let(:contract_with_services) do
+        create(:contract, organization: org,
+          draft_data: {
+            "bookings" => [ booking(date: "2026-03-06") ],
+            "services" => [
+              { "name" => "Sound technician", "quantity" => 2, "unit_price" => 25, "unit" => "hourly" },
+              { "name" => "Stagehand", "quantity" => 1, "unit_price" => 20, "unit" => "hourly" }
+            ]
+          })
+      end
+
+      it "lists the service line items with quantity and rate" do
+        html = contract_with_services.send(:license_services_html)
+
+        expect(html).to include("Sound technician × 2 — $25.00/hr")
+        expect(html).to include("Stagehand — $20.00/hr")
+      end
+
+      it "renders nothing when the contract has no services (no orphan header)" do
+        contract = create(:contract, organization: org, draft_data: { "bookings" => [] })
+
+        expect(contract.send(:license_services_html)).to eq("")
+      end
+
+      it "fills the {{services}} token inline and suppresses the appended Deal Terms" do
+        template = ContractTemplate.new(organization: org, name: "Svc", version: 1)
+        template.content = "<div>Wording.</div>{{services}}"
+        template.save!
+
+        doc = contract_with_services.render_document_for(template)
+
+        expect(doc).to include("Sound technician")
+        expect(doc).not_to include("{{services}}")
+        expect(doc).not_to include("Deal Terms")
+      end
+    end
+
+    describe "#render_document_for with the {{license_schedule}} token" do
+      let(:contract) do
+        create(:contract, organization: org, contractor_name: "Local Troupe", production_name: "Late Night Revue",
+          draft_data: {
+            "bookings" => [ booking(date: "2026-03-06") ],
+            "payment_structure" => "per_event",
+            "payment_config" => { "per_event_amount" => 350 }
+          })
+      end
+
+      def template_with(body)
+        t = ContractTemplate.new(organization: org, name: "T", version: 1)
+        t.content = body
+        t.save!
+        t
+      end
+
+      it "fills the grid inline and does NOT append the Deal Terms block" do
+        template = template_with("<div><strong>1.1</strong></div><div>{{license_schedule}}</div>")
+
+        doc = contract.render_document_for(template)
+
+        expect(doc).to include("<table>", "The Mainstage", "$350.00")
+        expect(doc).not_to include("Deal Terms")
+        expect(doc).not_to include("{{license_schedule}}") # token consumed
+      end
+
+      it "appends the Deal Terms schedule for templates without the token" do
+        template = template_with("<div>Plain wording, no inline schedule.</div>")
+
+        doc = contract.render_document_for(template)
+
+        expect(doc).to include("Deal Terms")
+      end
+    end
+
+    describe "the Stars & Garters residency template end to end" do
+      let(:template) do
+        t = ContractTemplate.new(organization: org, name: StarsAndGartersResidencyTemplate::TEMPLATE_NAME, version: 1)
+        t.content = StarsAndGartersResidencyTemplate::CONTENT
+        t.save!
+        t
+      end
+      let(:contract) do
+        create(:contract, organization: org, contract_template: template,
+          contractor_name: "Local Troupe", production_name: "Late Night Revue",
+          draft_data: {
+            "bookings" => [ booking(date: "2026-03-06") ],
+            "payment_structure" => "per_event",
+            "payment_config" => { "per_event_amount" => 350 },
+            "services" => [ { "name" => "Sound technician", "quantity" => 2, "unit_price" => 25, "unit" => "hourly" } ]
+          })
+      end
+
+      it "renders the boilerplate, fills the grid + services inline, and drops no raw token" do
+        doc = contract.render_signable_document
+
+        expect(doc).to include("STARS &amp; GARTERS RESIDENCY AGREEMENT")
+        expect(doc).to include("Local Troupe") # {{contractor_name}} filled
+        expect(doc).to include("The Mainstage", "$350.00") # {{license_schedule}} grid
+        expect(doc).to include("Sound technician × 2 — $25.00/hr") # {{services}} filled
+        expect(doc).not_to include("{{") # every token consumed
+        expect(doc).not_to include("Deal Terms") # inline schedule suppresses the append
+      end
+
+      it "generates a PDF without raising (the nested-table walker handles the grid)" do
+        bytes = ContractPdf.new(contract).render
+
+        expect(bytes).to be_present
+        expect(bytes[0, 4]).to eq("%PDF")
+      end
+    end
+  end
 end

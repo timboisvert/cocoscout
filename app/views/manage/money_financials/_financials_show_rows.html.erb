@@ -1,0 +1,14 @@
+<%#
+  Slim rows for shows that have started but still need their financials entered.
+  Each row links to that show's financials worksheet. Cross-production, so the
+  production name rides along as the subtitle.
+
+  Locals: shows
+%>
+<% shows.each do |show| %>
+  <%= render "shared/slim_list_row",
+        title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
+        subtitle: show.production&.name,
+        badge: { text: "Needs financials", color: "amber" },
+        href: manage_money_show_financials_path(show) %>
+<% end %>

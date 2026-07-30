@@ -238,33 +238,36 @@ export default class extends Controller {
     }
 
     frequencyChanged(event) {
-        const item = event.currentTarget.closest(".booking-item")
-        const frequency = event.currentTarget.value
+        this.updateFrequencyFields(event.currentTarget.closest(".booking-item"))
+    }
 
+    // Show/hide the conditional frequency sub-fields (day-of-week for weekly/biweekly,
+    // the week+day pickers for monthly "same day") to match an item's current
+    // frequency <select>. Runs both on change AND when a saved booking is restored,
+    // so returning to this step shows the right fields for the saved frequency
+    // without forcing a re-pick. (This was already called on restore — line in
+    // addRecurringWithData — but was never defined, so restored recurring bookings
+    // kept their sub-fields hidden until you re-selected the frequency.)
+    updateFrequencyFields(item) {
+        if (!item) return
+
+        const frequency = item.querySelector('[data-field="frequency"]')?.value
         const dayOfWeekField = item.querySelector('[data-frequency-field="day_of_week"]')
         const monthlyDayOptions = item.querySelector('[data-frequency-field="monthly_day_options"]')
 
-        // Hide all conditional fields first
+        // Hide all conditional fields first, then reveal the ones this frequency needs.
         if (dayOfWeekField) dayOfWeekField.classList.add('hidden')
         if (monthlyDayOptions) monthlyDayOptions.classList.add('hidden')
 
-        // Show appropriate fields based on frequency
         switch (frequency) {
-            case 'daily':
-                // No additional fields needed
-                break
             case 'weekly':
             case 'biweekly':
-                // Show day of week
                 if (dayOfWeekField) dayOfWeekField.classList.remove('hidden')
                 break
             case 'monthly_day':
-                // Show ordinal + day of week (e.g., "2nd Friday")
                 if (monthlyDayOptions) monthlyDayOptions.classList.remove('hidden')
                 break
-            case 'monthly_date':
-                // No additional fields - uses start date's day number
-                break
+            // 'daily' and 'monthly_date' need no extra fields.
         }
     }
 
@@ -452,12 +455,11 @@ export default class extends Controller {
             }
         }
 
-        // Trigger frequency change to show/hide appropriate fields
+        // Show the right sub-fields for the restored frequency. The frequency
+        // value is already set above, so this can run synchronously.
         const addedItem = this.bookingsListTarget.querySelector(`[data-booking-index="${item.dataset.bookingIndex}"]`)
         if (addedItem) {
-            setTimeout(() => {
-                this.updateFrequencyFields(addedItem)
-            }, 0)
+            this.updateFrequencyFields(addedItem)
 
             // Restore event type
             const eventTypeSelect = addedItem.querySelector('[data-field="event_type"]')

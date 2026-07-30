@@ -7,7 +7,7 @@
     - rental: SpaceRental object
 %>
 <%
-  location = rental.location_space&.location
+  location = rental.location
   space = rental.location_space
 %>
 
@@ -25,7 +25,7 @@
       <%# Rental Details %>
       <div class="flex-1 min-w-0">
         <div class="font-medium text-gray-900">
-          <%= space&.name || "Space" %>
+          <%= space&.name || "Entire Venue" %>
           <% if location %>
             <span class="text-gray-500 font-normal">at <%= location.name %></span>
           <% end %>

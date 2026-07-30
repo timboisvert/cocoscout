@@ -65,12 +65,14 @@ class ContractBookingConflicts
 
   private
 
-  # Parse the draft bookings into comparable proposed rentals (only those pinned to
-  # a specific space — "entire venue" bookings are skipped, matching validation).
+  # Parse the draft bookings into comparable proposed rentals. Both specific-room
+  # and "entire venue" bookings are included (space_id nil means entire venue) —
+  # an entire-venue booking conflicts with every space at the location, so it can't
+  # be skipped, matching SpaceRental#no_overlapping_rentals.
   def proposed_rentals
     @proposed_rentals ||= @contract.draft_bookings.filter_map do |b|
-      space_id = (b["location_space_id"] || b["space_id"]).presence
-      next if space_id.blank?
+      location_id = b["location_id"].presence
+      next if location_id.blank?
 
       starts_at = safe_parse(b["starts_at"])
       next if starts_at.nil?
@@ -82,27 +84,30 @@ class ContractBookingConflicts
       end
       next if ends_at.nil? || ends_at <= starts_at
 
-      { space_id: space_id.to_i, starts_at: starts_at, ends_at: ends_at }
+      space_id = (b["location_space_id"] || b["space_id"]).presence
+      { location_id: location_id.to_i, space_id: space_id&.to_i, starts_at: starts_at, ends_at: ends_at }
     end
   end
 
   def build
     return [] if proposed_rentals.empty?
 
-    spaces_map = @org.locations.includes(:location_spaces)
-                     .flat_map(&:location_spaces).index_by(&:id)
+    locations_map = @org.locations.includes(:location_spaces).index_by(&:id)
 
-    # Group proposed bookings by space + calendar day.
-    groups = proposed_rentals.group_by { |r| [ r[:space_id], r[:starts_at].to_date ] }
+    # Group proposed bookings by location + space (nil = entire venue) + day.
+    groups = proposed_rentals.group_by { |r| [ r[:location_id], r[:space_id], r[:starts_at].to_date ] }
 
-    groups.filter_map do |(space_id, date), proposed|
-      space = spaces_map[space_id]
-      next if space.nil?
+    groups.filter_map do |(location_id, space_id, date), proposed|
+      location = locations_map[location_id]
+      next if location.nil?
+
+      space = space_id && location.location_spaces.find { |s| s.id == space_id }
+      next if space_id && space.nil? # a specific space we don't recognize
 
       day_start = date.in_time_zone.beginning_of_day
       day_end   = date.in_time_zone.end_of_day
 
-      existing = existing_blocks(space_id, day_start, day_end)
+      existing = existing_blocks(location_id, space_id, day_start, day_end)
       next if existing.empty?
 
       proposed_blocks = proposed.map do |r|
@@ -124,40 +129,50 @@ class ContractBookingConflicts
 
       all_blocks = (proposed_blocks + existing_blocks_out).sort_by(&:starts_at)
 
-      ConflictDay.new(date: date, space_name: space.name,
-                      location_name: space.location&.name,
+      ConflictDay.new(date: date, space_name: space&.name || "Entire Venue",
+                      location_name: location.name,
                       blocks: all_blocks)
     end.sort_by(&:date)
   end
 
-  # Everything already on the calendar for this space that day: other contracts'
-  # rentals plus standalone shows (shows tied to a rental are counted via the
-  # rental, matching SpaceRental#no_overlapping_rentals).
-  def existing_blocks(space_id, day_start, day_end)
+  # Everything already on the calendar at an intersecting space that day: other
+  # contracts' rentals plus standalone shows (shows tied to a rental are counted
+  # via the rental, matching SpaceRental#no_overlapping_rentals). space_id nil
+  # (entire venue) intersects every space at the location.
+  def existing_blocks(location_id, space_id, day_start, day_end)
     rentals = SpaceRental
       .joins(:contract)
-      .includes(:contract)
-      .where(location_space_id: space_id)
+      .includes(:contract, :location_space)
+      .where(location_id: location_id)
       .where.not(contract_id: @contract.id)
       .where.not(contracts: { status: "cancelled" })
       .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", day_end, day_start)
+    rentals = rentals.where(location_space_id: [ space_id, nil ]) if space_id.present?
 
     rental_blocks = rentals.map do |r|
       name = r.contract.production_name.presence || r.contract.contractor_name
-      { label: name.presence || "Booked", sublabel: "Space rental",
+      { label: name.presence || "Booked", sublabel: existing_space_label(r.location_space),
         starts_at: r.starts_at, ends_at: r.ends_at }
     end
 
     shows = Show
-      .where(location_space_id: space_id, canceled: false, space_rental_id: nil)
+      .includes(:location_space)
+      .where(location_id: location_id, canceled: false, space_rental_id: nil)
       .where("date_and_time >= ? AND date_and_time <= ?", day_start, day_end)
+    shows = shows.where(location_space_id: [ space_id, nil ]) if space_id.present?
 
     show_blocks = shows.map do |s|
-      { label: s.display_name.presence || "Event", sublabel: "Event",
+      { label: s.display_name.presence || "Event", sublabel: existing_space_label(s.location_space),
         starts_at: s.date_and_time, ends_at: s.date_and_time + DEFAULT_SHOW_MINUTES.minutes }
     end
 
     (rental_blocks + show_blocks).sort_by { |b| b[:starts_at] }
+  end
+
+  # Name the existing booking's own space so the producer can see whether the clash
+  # is the same room or an "entire venue" hold that swallows it.
+  def existing_space_label(location_space)
+    location_space&.name || "Entire Venue"
   end
 
   # Same back-to-back buffer as the model validation.
