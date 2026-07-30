@@ -624,17 +624,38 @@ RSpec.describe Contract, type: :model do
     end
 
     describe "#license_schedule_html" do
-      it "renders one row per booking with date, event window, and stage" do
+      it "shows the full booked slot (rental start/end), not the show's own window" do
         contract = create(:contract, organization: org, production_name: "Late Night Revue",
           draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })
 
-        html = contract.send(:license_schedule_html)
+        # Structured row is unambiguous: booked 6–11 PM even though the show is 8–10.
+        row = contract.send(:license_schedule_rows).first
+        expect(row[:start]).to eq("6:00 PM")
+        expect(row[:end]).to eq("11:00 PM")
 
+        html = contract.send(:license_schedule_html)
         expect(html).to include("<th>Dates</th>", "<th>Stage</th>", "<th>Rent</th>")
-        expect(html).to include("Fri Mar 6, 2026")
-        expect(html).to include("8:00 PM") # event start, not the 6pm load-in
-        expect(html).to include("10:00 PM")
-        expect(html).to include("The Mainstage")
+        expect(html).to include("Fri Mar 6, 2026", "6:00 PM", "11:00 PM", "The Mainstage")
+      end
+
+      context "advertised event times section (below the grid)" do
+        it "lists the event window when it differs from the booked slot" do
+          contract = create(:contract, organization: org, production_name: "Late Night Revue",
+            draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })
+
+          html = contract.send(:license_schedule_html)
+
+          expect(html).to include("Advertised event times")
+          # The show's own window (8–10 PM) within the 6–11 PM booking.
+          expect(html).to include("8:00 PM", "10:00 PM")
+        end
+
+        it "omits the section when the event runs the full booked slot" do
+          b = booking(date: "2026-03-06").except("event_starts_at", "event_ends_at")
+          contract = create(:contract, organization: org, draft_data: { "bookings" => [ b ] })
+
+          expect(contract.send(:license_schedule_html)).not_to include("Advertised event times")
+        end
       end
 
       it "uses the production name when the booking's event_type is the generic 'show'" do

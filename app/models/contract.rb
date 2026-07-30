@@ -972,8 +972,47 @@ class Contract < ApplicationRecord
       end
     end
     out << "</tbody></table>"
+    out << license_event_times_html
     out << license_payment_schedule_html
     out
+  end
+
+  # A section below the grid listing the advertised event window for any booking
+  # whose show time differs from the booked slot (e.g. booked 8–11 PM, show 9–10:30).
+  # Nothing renders when every event runs its full slot.
+  def license_event_times_html
+    rows = license_event_time_rows
+    return "" if rows.empty?
+
+    esc = ->(s) { ERB::Util.html_escape(s.to_s) }
+    out = +%(<h4>Advertised event times</h4><table><thead><tr><th>Dates</th><th>Event</th><th>Start</th><th>End</th></tr></thead><tbody>)
+    rows.each do |r|
+      out << %(<tr><td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td><td>#{esc.(r[:end])}</td></tr>)
+    end
+    out << "</tbody></table>"
+    out
+  end
+
+  # One row per booking whose advertised event time differs from its booked slot.
+  def license_event_time_rows
+    draft_bookings.filter_map do |b|
+      starts_at = parse_booking_time(b["starts_at"])
+      next unless starts_at
+
+      ends_at = booking_end(b, starts_at)
+      event_start = parse_booking_time(b["event_starts_at"])
+      event_end = parse_booking_time(b["event_ends_at"])
+
+      differs = (event_start && event_start != starts_at) || (event_end && ends_at && event_end != ends_at)
+      next unless differs
+
+      {
+        date: (event_start || starts_at).strftime("%a %b %-d, %Y"),
+        event: license_event_label(b),
+        start: (event_start || starts_at).strftime("%-l:%M %p"),
+        end: (event_end || ends_at)&.strftime("%-l:%M %p") || "—"
+      }
+    end
   end
 
   # A second grid, placed just below the dates/rent grid, listing when payments
@@ -1016,12 +1055,10 @@ class Contract < ApplicationRecord
     end.sort_by { |p| p[:due] }
   end
 
-  # The set of dates the bookings fall on — used to tell whether a payment is
-  # "extra" (a deposit/installment worth its own row) or just per-date rent.
+  # The set of dates the bookings fall on (the rental date) — used to tell whether a
+  # payment is "extra" (a deposit/installment worth its own row) or just per-date rent.
   def license_booking_dates
-    draft_bookings.filter_map do |b|
-      (parse_booking_time(b["event_starts_at"]) || parse_booking_time(b["starts_at"]))&.to_date
-    end
+    draft_bookings.filter_map { |b| parse_booking_time(b["starts_at"])&.to_date }
   end
 
   # The services being rendered on this contract, for the {{services}} token — the
@@ -1055,20 +1092,22 @@ class Contract < ApplicationRecord
     rent_label = license_rent_label
 
     draft_bookings.filter_map do |b|
+      # The contract covers the whole booked slot (e.g. 8–11 PM), not the show's own
+      # time within it (e.g. 9–10:30) — the rental time is what's being licensed, so
+      # the grid shows the booking's start/end, not the event's.
       starts_at = parse_booking_time(b["starts_at"])
       next unless starts_at
 
-      event_start = parse_booking_time(b["event_starts_at"]) || starts_at
-      event_end = parse_booking_time(b["event_ends_at"]) || booking_end(b, starts_at)
+      ends_at = booking_end(b, starts_at)
       space_id = (b["location_space_id"].presence || b["space_id"].presence)&.to_i
 
       {
-        date: event_start.strftime("%a %b %-d, %Y"),
+        date: starts_at.strftime("%a %b %-d, %Y"),
         event: license_event_label(b),
-        start: event_start.strftime("%-l:%M %p"),
-        end: event_end ? event_end.strftime("%-l:%M %p") : "—",
+        start: starts_at.strftime("%-l:%M %p"),
+        end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
-        rent: rent_by_date[event_start.to_date] || rent_label
+        rent: rent_by_date[starts_at.to_date] || rent_label
       }
     end
   end
