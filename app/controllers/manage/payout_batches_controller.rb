@@ -154,7 +154,7 @@ module Manage
       earnings = organization.payout_ledger_entries.where(entry_type: "earning")
                              .group(:payee_type, :payee_id, :category).sum(:amount_cents)
       earnings_by_payee = Hash.new { |h, k| h[k] = [] }
-      earnings.each { |(ptype, pid, cat), cents| earnings_by_payee[[ptype, pid]] << [cat, cents] }
+      earnings.each { |(ptype, pid, cat), cents| earnings_by_payee[[ ptype, pid ]] << [ cat, cents ] }
 
       @ready = []
       @not_ready = []
@@ -162,7 +162,7 @@ module Manage
       organization.payout_balances_by_payee.each do |(payee_type, payee_id), balance|
         next unless PayoutBatchService::PAYABLE_TYPES.include?(payee_type)
 
-        committed_cents = committed[[payee_type, payee_id]].to_i
+        committed_cents = committed[[ payee_type, payee_id ]].to_i
         available = balance - committed_cents
         next unless available.positive?
 
@@ -173,7 +173,7 @@ module Manage
           payee: payee,
           cents: available,
           committed_cents: committed_cents,
-          lines: preview_breakdown(earnings_by_payee[[payee_type, payee_id]], balance, committed_cents)
+          lines: preview_breakdown(earnings_by_payee[[ payee_type, payee_id ]], balance, committed_cents)
         }
         if payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
           @ready << row

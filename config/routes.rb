@@ -1224,7 +1224,7 @@ Rails.application.routes.draw do
     delete "staffing/agreement-templates/:id",    to: "staffing/agreement_templates#destroy"
     get    "staffing/agreement-templates/:id/preview", to: "staffing/agreement_templates#preview", as: "preview_staffing_agreement_template"
 
-    get  "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
+    get "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
     # Gusto-style add-staff wizard (the primary "add a staff member" flow).
     # Multi-step, matching the show/contract wizard model (session-backed state).
     # One focused question per step: Details -> Job -> Manager -> Start -> Pay -> Roles.
@@ -1405,7 +1405,7 @@ Rails.application.routes.draw do
     end
     # Sections are named, never positional — declared last so the specific
     # routes above win.
-    get    "contracts/settings/:section",     to: "contract_settings#show",           as: "contract_settings_section"
+    get "contracts/settings/:section",     to: "contract_settings#show",           as: "contract_settings_section"
 
     resources :contracts, path: "contracts" do
       collection do

@@ -310,7 +310,7 @@ module Manage
 
       pairs_by_person = Hash.new { |h, k| h[k] = [] }
       shifts.each do |shift|
-        shift.shift_assignments.each { |a| pairs_by_person[a.person] << [a, shift] if a.person }
+        shift.shift_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
       end
 
       removals = Current.organization.staff_schedule_removals.pending

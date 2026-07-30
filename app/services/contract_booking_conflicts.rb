@@ -77,9 +77,9 @@ class ContractBookingConflicts
 
       ends_at = if b["ends_at"].present?
                   safe_parse(b["ends_at"])
-                else
+      else
                   starts_at + b["duration"].to_f.hours
-                end
+      end
       next if ends_at.nil? || ends_at <= starts_at
 
       { space_id: space_id.to_i, starts_at: starts_at, ends_at: ends_at }

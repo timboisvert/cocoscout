@@ -20,7 +20,7 @@ class AddContractSigning < ActiveRecord::Migration[8.1]
       t.string  :signer_name
       t.string  :signer_email
       t.references :person, null: true, foreign_key: true
-      t.bigint  :signed_by_user_id                    # org-side: the producer who sent it
+      t.bigint :signed_by_user_id                    # org-side: the producer who sent it
       t.references :contract_template, null: true, foreign_key: true
       t.datetime :signed_at, null: false
       t.string  :ip_address

@@ -28,7 +28,7 @@ class PayoutBatchService
     organization.payout_balances_by_payee.each do |(payee_type, payee_id), cents|
       next unless PAYABLE_TYPES.include?(payee_type)
 
-      available = cents - committed[[payee_type, payee_id]].to_i
+      available = cents - committed[[ payee_type, payee_id ]].to_i
       next unless available.positive?
 
       payee = payee_type.constantize.find_by(id: payee_id)

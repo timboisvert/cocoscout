@@ -14,6 +14,6 @@ class CreateStaffScheduleRemovals < ActiveRecord::Migration[8.1]
       t.datetime :notified_at
       t.timestamps
     end
-    add_index :staff_schedule_removals, [:organization_id, :shift_starts_at]
+    add_index :staff_schedule_removals, [ :organization_id, :shift_starts_at ]
   end
 end
