@@ -53,7 +53,7 @@ module Manage
         @wizard_state[:allow_in_person_auditions] = params[:allow_in_person_auditions] == "1"
 
         unless @wizard_state[:allow_video_submissions] || @wizard_state[:allow_in_person_auditions]
-          flash.now[:alert] = "Please select at least one audition format"
+          flash.now[:alert] = "Choose at least one audition format — Scheduled Sessions or Video Submissions."
           render :format, status: :unprocessable_entity and return
         end
       end

@@ -126,7 +126,7 @@ module Manage
         query_is_email = @query.include?("@")
         @prefill_email = query_is_email ? @query : nil
         name_query = query_is_email ? nil : @query
-        @prefill_first = name_query.present? ? name_query.split.first : @wizard_state[:first_name]
+        @prefill_first = name_query.present? ? name_query.split.first : (@wizard_state[:preferred_first_name].presence || @wizard_state[:first_name])
         @prefill_last  = name_query.present? ? name_query.split.drop(1).join(" ").presence : @wizard_state[:last_name]
         @prefill_mi    = @wizard_state[:middle_initial]
       end

@@ -7,7 +7,7 @@
   record_cid = "record-payment-#{@payment.id}"
 %>
 
-<div class="w-full max-w-3xl mx-auto mb-10">
+<div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -20,6 +20,7 @@
     links: []
   } %>
 
+  <div class="max-w-3xl mx-auto">
   <%# ---- Payment summary card ------------------------------------------- %>
   <div class="bg-white rounded-xl border <%= is_late ? 'border-red-200' : 'border-gray-200' %> overflow-hidden mt-2">
     <div class="p-6">
@@ -131,6 +132,7 @@
   <p class="text-xs text-gray-400 mt-4 text-center">
     Incoming payments are managed on the <%= link_to "contract", manage_contract_path(@contract), class: "underline hover:text-gray-600" %> too — this is the collection view.
   </p>
+  </div>
 </div>
 
 <%# ================= Reminder modal ================= %>
