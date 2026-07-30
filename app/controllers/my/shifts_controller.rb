@@ -41,6 +41,10 @@ module My
         .select { |m| m.onboarding_status == :invited }
         .sort_by { |m| m.organization.name.to_s.downcase }
 
+      # Staff who owe a signature on their org's (now-)required agreement — a
+      # sign-to-continue prompt surfaces this right here.
+      @pending_staff_agreements = OrganizationStaffMember.pending_agreement_signatures(people_ids)
+
       load_timekeeping(people_ids, finalized_weeks)
 
       # Unavailability for the calendar/summary (the client renders both). Cover

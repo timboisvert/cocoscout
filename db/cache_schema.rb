@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_30_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1334,6 +1334,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_110000) do
   create_table "organization_staff_members", force: :cascade do |t|
     t.datetime "acknowledged_at"
     t.integer "agreed_agreement_version"
+    t.boolean "agreement_exempt", default: false, null: false
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.string "department"
@@ -1376,6 +1377,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_110000) do
     t.string "payout_schedule", default: "manual", null: false
     t.integer "payout_schedule_day"
     t.boolean "payouts_enabled", default: false, null: false
+    t.bigint "required_staff_agreement_template_id"
     t.string "staffing_subscription_id"
     t.string "stripe_account_id"
     t.string "stripe_account_status"
@@ -1392,6 +1394,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_110000) do
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
+    t.index ["required_staff_agreement_template_id"], name: "index_organizations_on_required_staff_agreement_template_id"
     t.index ["staffing_subscription_id"], name: "index_organizations_on_staffing_subscription_id"
     t.index ["stripe_account_id"], name: "index_organizations_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
     t.index ["stripe_customer_id"], name: "index_organizations_on_stripe_customer_id"

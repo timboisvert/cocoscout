@@ -386,6 +386,9 @@ module My
         .includes(:organization, :person)
         .reject(&:onboarding_completed?)
         .sort_by { |m| m.organization.name.to_s.downcase }
+
+      # Staff who owe a signature on their org's (now-)required staff agreement.
+      @pending_staff_agreements = OrganizationStaffMember.pending_agreement_signatures(people_ids)
     end
 
     def dismiss_onboarding

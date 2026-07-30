@@ -29,6 +29,8 @@ class Organization < ApplicationRecord
   has_many :staffing_finalizations, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy
   has_many :staff_agreement_templates, dependent: :destroy
+  # The staff agreement this org requires staff to sign (if any). Nil = not required.
+  belongs_to :required_staff_agreement_template, class_name: "StaffAgreementTemplate", optional: true
   has_many :agreement_templates, dependent: :destroy
   has_many :contract_templates, dependent: :destroy
   has_many :questionnaires, dependent: :destroy
@@ -73,6 +75,12 @@ class Organization < ApplicationRecord
   FREE_PRODUCTION_LIMIT = 1
 
   validates :name, presence: true
+
+  # Whether staff must sign an agreement before working here. A required pointer to
+  # an inactive/deleted template counts as "not required" (defensive).
+  def requires_staff_agreement?
+    required_staff_agreement_template&.active? || false
+  end
 
   # The org's default answer to "how may a contractor pay us?" Online (the
   # Stripe pay link) is always available; this is the offline methods the org

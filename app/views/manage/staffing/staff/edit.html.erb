@@ -121,6 +121,9 @@
             <p class="text-sm text-gray-500 mt-0.5">The roles they can work and the hourly rate for each.</p>
           </div>
           <% role_rates = @staff_member.staff_role_qualifications.each_with_object({}) { |q, h| h[q.house_role_id] = q.hourly_rate_dollars } %>
+          <%# Sentinel so this form ALWAYS submits house_role_ids — lets "uncheck all" clear roles, %>
+          <%# and lets the controller tell a full save apart from a partial (exempt-toggle) save. %>
+          <%= hidden_field_tag "house_role_ids[]", "" %>
           <%= render "manage/staffing/roles_field", house_roles: @house_roles,
                 assigned_ids: @staff_member.house_role_ids,
                 role_rates: role_rates %>
@@ -138,7 +141,7 @@
           <h2 class="text-lg font-semibold text-gray-900">Onboarding</h2>
           <p class="text-sm text-gray-500 mt-0.5">Where <%= @staff_member.display_name %> is in getting set up.</p>
         </div>
-        <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+        <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-3">
           <% if onboarding == "completed" %>
             <p class="text-sm text-gray-700">✅ <span class="font-medium">Onboarded.</span> <%= @staff_member.display_name %> has created their account and set up how they get paid.</p>
           <% elsif onboarding == "invited" %>
@@ -146,39 +149,65 @@
           <% else %>
             <p class="text-sm text-gray-700"><span class="font-medium">Not invited yet.</span> Send the onboarding invite whenever you're ready.</p>
           <% end %>
+
+          <%# Send/resend the invite — only while they still have onboarding to finish;
+              no point resending to someone who's already fully onboarded. %>
+          <% if onboarding != "completed" && (person.email.present? || @staff_member.personal_email.present?) %>
+            <%= render "shared/button",
+                  text: (onboarding == "added" ? "Send onboarding invite" : "Resend onboarding invite"),
+                  variant: "primary", size: "small", icon: "paper-airplane", type: :button,
+                  data: {
+                    action: "click->invite-preview#open",
+                    "invite-path": manage_invite_staffing_staff_path(@staff_member),
+                    "to-name": person.name,
+                    "to-email": preview[:to_email],
+                    "email-subject": preview[:subject],
+                    "email-body": preview[:body]
+                  } %>
+          <% end %>
         </div>
 
-        <%# Staff agreement acceptance status %>
-        <% agreement_template = @staff_member.effective_agreement_template %>
-        <% if agreement_template %>
-          <div class="rounded-lg border border-gray-200 p-4 flex items-start gap-3">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">Staff agreement</p>
-              <% if @staff_member.agreed_to_agreement? %>
-                <p class="text-sm text-gray-600 mt-0.5">Accepted <span class="font-medium text-gray-900"><%= agreement_template.name %></span> (version <%= @staff_member.agreed_agreement_version %>).</p>
+        <%# Staff agreement — requirement-aware status + per-person exempt toggle. %>
+        <% required_agreement = @staff_member.required_agreement_template %>
+        <% signed_agreement = @staff_member.staff_agreement_template %>
+        <% if required_agreement || @staff_member.effective_agreement_template %>
+          <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900">Staff agreement</p>
+                <% if required_agreement %>
+                  <p class="text-sm text-gray-600 mt-0.5">Required: <span class="font-medium text-gray-900"><%= required_agreement.name %></span> (current version <%= required_agreement.version %>).</p>
+                <% else %>
+                  <p class="text-sm text-gray-600 mt-0.5">Optional — this organization doesn't require a signed agreement.</p>
+                <% end %>
+                <% if @staff_member.agreed_to_agreement? %>
+                  <p class="text-sm text-gray-600 mt-0.5">Signed <span class="font-medium text-gray-900"><%= signed_agreement&.name %></span> (version <%= @staff_member.agreed_agreement_version %>).</p>
+                <% end %>
+              </div>
+              <% if @staff_member.agreement_exempt? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex-shrink-0">Exempt</span>
+              <% elsif required_agreement.nil? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full <%= @staff_member.agreed_to_agreement? ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600" %> text-xs font-medium flex-shrink-0"><%= @staff_member.agreed_to_agreement? ? "Signed" : "Pending" %></span>
+              <% elsif @staff_member.signed_required_agreement? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium flex-shrink-0">Signed</span>
+              <% elsif @staff_member.agreed_to_agreement? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium flex-shrink-0">Older version</span>
               <% else %>
-                <p class="text-sm text-gray-600 mt-0.5">Will accept <span class="font-medium text-gray-900"><%= agreement_template.name %></span> during onboarding — not yet accepted.</p>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium flex-shrink-0">Needs to sign</span>
               <% end %>
             </div>
-            <% if @staff_member.agreed_to_agreement? %>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium flex-shrink-0">Accepted</span>
-            <% else %>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex-shrink-0">Pending</span>
+
+            <%# Exempt toggle — its own tiny form (the edit form closed above); auto-submits on change. %>
+            <% if required_agreement %>
+              <%= form_with url: manage_update_staffing_staff_path(@staff_member), method: :patch, class: "flex items-center gap-2 pt-3 border-t border-gray-100" do %>
+                <%= hidden_field_tag :agreement_exempt, "0" %>
+                <%= check_box_tag :agreement_exempt, "1", @staff_member.agreement_exempt?, id: "agreement_exempt_toggle",
+                      class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+                      onchange: "this.form.requestSubmit()" %>
+                <label for="agreement_exempt_toggle" class="text-sm text-gray-700 cursor-pointer">This person doesn't need to sign the staff agreement.</label>
+              <% end %>
             <% end %>
           </div>
-        <% end %>
-        <% if person.email.present? || @staff_member.personal_email.present? %>
-          <%= render "shared/button",
-                text: (onboarding == "added" ? "Send onboarding invite" : "Resend onboarding invite"),
-                variant: "primary", size: "small", icon: "paper-airplane", type: :button,
-                data: {
-                  action: "click->invite-preview#open",
-                  "invite-path": manage_invite_staffing_staff_path(@staff_member),
-                  "to-name": person.name,
-                  "to-email": preview[:to_email],
-                  "email-subject": preview[:subject],
-                  "email-body": preview[:body]
-                } %>
         <% end %>
       </div>
 

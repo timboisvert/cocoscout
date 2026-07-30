@@ -11,4 +11,67 @@
   } %>
 
   <%= render "form", agreement_template: @agreement_template %>
+
+  <%# Roster: who this agreement applies to and where each person stands. %>
+  <% roster = @agreement_template.applicable_staff_members.sort_by { |m| m.display_name.to_s.downcase } %>
+  <% required = @agreement_template.required_for_org? %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mt-4">
+    <div class="px-6 py-5 border-b border-gray-200 flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Who's signed</h2>
+        <p class="text-sm text-gray-600 mt-0.5">
+          <% if required %>
+            Every active staff member must sign the current version (v<%= @agreement_template.version %>) unless you exempt them.
+          <% else %>
+            This agreement isn't currently required. Below are staff who've accepted it.
+          <% end %>
+        </p>
+      </div>
+      <% if required %>
+        <% sum = @agreement_template.signing_summary %>
+        <div class="text-right flex-shrink-0">
+          <div class="text-sm font-semibold <%= sum[:pending].zero? ? "text-green-700" : "text-amber-700" %>">
+            <%= sum[:pending].zero? ? "All signed" : "#{sum[:pending]} still to sign" %>
+          </div>
+          <div class="text-xs text-gray-500"><%= sum[:signed] %> signed<% if sum[:exempt] > 0 %> · <%= sum[:exempt] %> exempt<% end %></div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if roster.any? %>
+      <div class="divide-y divide-gray-100">
+        <% roster.each do |m| %>
+          <% headshot = m.person&.safe_headshot_variant(:thumb) %>
+          <div class="flex items-center gap-3 px-6 py-3">
+            <% if headshot %>
+              <%= image_tag headshot, alt: m.display_name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= m.person&.initials %></div>
+            <% end %>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 truncate"><%= m.display_name %></div>
+              <% if m.title.present? %><div class="text-xs text-gray-500 truncate"><%= m.title %></div><% end %>
+            </div>
+            <% if required %>
+              <% if m.agreement_exempt? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex-shrink-0">Exempt</span>
+              <% elsif m.signed_required_agreement? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium flex-shrink-0">Signed v<%= m.agreed_agreement_version %></span>
+              <% elsif m.agreed_to_agreement? %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium flex-shrink-0">Signed v<%= m.agreed_agreement_version %> — outdated</span>
+              <% else %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium flex-shrink-0">Needs to sign</span>
+              <% end %>
+            <% else %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium flex-shrink-0">Signed v<%= m.agreed_agreement_version %></span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="px-6 py-8 text-center text-sm text-gray-500">
+        <%= required ? "No active staff members yet." : "No one has signed this agreement yet." %>
+      </div>
+    <% end %>
+  </div>
 </div>

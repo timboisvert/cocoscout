@@ -23,6 +23,7 @@ class StaffAgreementTemplate < ApplicationRecord
   scope :for_organization, ->(org) { where(organization: org) }
 
   before_save :increment_version_on_content_change
+  before_destroy :clear_org_required_pointer
 
   # The merge fields a staff agreement may reference, with a human label. Drives
   # the "Available Variables" helper in the editor and the preview's sample data.
@@ -50,6 +51,32 @@ class StaffAgreementTemplate < ApplicationRecord
     organization_staff_members.count
   end
 
+  # Is this the agreement the org currently requires staff to sign?
+  def required_for_org?
+    organization.required_staff_agreement_template_id == id
+  end
+
+  # Active staff this agreement covers, for the roster view. For the org's REQUIRED
+  # agreement that's everyone on staff (they all must sign); for any other template
+  # it's whoever has actually signed this specific one.
+  def applicable_staff_members
+    scope = required_for_org? ? organization.organization_staff_members : organization_staff_members
+    scope.active.includes(:person).to_a
+  end
+
+  # Signature tally for the required agreement: still-owed vs signed-current vs
+  # exempt. `pending` is what matters most — who still has to sign. Only meaningful
+  # when required_for_org? (otherwise pending is 0).
+  def signing_summary
+    members = applicable_staff_members
+    {
+      total:   members.size,
+      signed:  members.count(&:signed_required_agreement?),
+      pending: members.count(&:needs_to_sign_agreement?),
+      exempt:  members.count(&:agreement_exempt?)
+    }
+  end
+
   private
 
   def increment_version_on_content_change
@@ -60,5 +87,13 @@ class StaffAgreementTemplate < ApplicationRecord
 
   def content_present
     errors.add(:content, "can't be blank") if content.blank?
+  end
+
+  # If this template was the org's required agreement, clear that pointer so we
+  # never leave a dangling requirement pointing at a destroyed template.
+  def clear_org_required_pointer
+    return unless organization&.required_staff_agreement_template_id == id
+
+    organization.update_column(:required_staff_agreement_template_id, nil)
   end
 end

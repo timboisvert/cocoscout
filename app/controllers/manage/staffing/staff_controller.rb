@@ -42,7 +42,13 @@ module Manage
       def update
         @staff_member.assign_attributes(editable_employment_attributes)
         @staff_member.save!
-        @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
+        # Only re-sync roles when the roles-bearing form actually submitted them —
+        # a partial form (e.g. the Onboarding tab's exempt toggle) must not wipe
+        # this member's role qualifications. The edit form always sends the key
+        # (hidden sentinel), so "uncheck all → clear" still works there.
+        if params.key?(:house_role_ids)
+          @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
+        end
         redirect_to manage_staffing_index_path, notice: "#{@staff_member.display_name} updated."
       rescue ActiveRecord::RecordInvalid => e
         redirect_to manage_staffing_index_path,
@@ -138,6 +144,7 @@ module Manage
         attrs[:start_date] = params[:start_date].presence if params.key?(:start_date)
         attrs[:hourly_rate_cents] = parse_rate_cents(params[:hourly_rate]) if params.key?(:hourly_rate)
         attrs[:manager_id] = valid_manager_id(params[:manager_id]) if params.key?(:manager_id)
+        attrs[:agreement_exempt] = params[:agreement_exempt] == "1" if params.key?(:agreement_exempt)
         attrs
       end
 

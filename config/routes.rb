@@ -498,6 +498,7 @@ Rails.application.routes.draw do
     # Staff onboarding welcome page (where the invite email lands).
     get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
     post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
+    post "/staff-agreement/:organization_id/sign",   to: "staff_agreements#sign",   as: "sign_staff_agreement"
 
     # Payments (for talent to connect a bank and view payout history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
@@ -1215,6 +1216,7 @@ Rails.application.routes.draw do
 
     # Staffing settings — org-level config (the employee agreement, etc.)
     get    "staffing/settings",                   to: "staffing/settings#show",          as: "staffing_settings"
+    patch  "staffing/settings",                   to: "staffing/settings#update"
     get    "staffing/agreement-templates/new",    to: "staffing/agreement_templates#new",     as: "new_staffing_agreement_template"
     post   "staffing/agreement-templates",        to: "staffing/agreement_templates#create",  as: "staffing_agreement_templates"
     get    "staffing/agreement-templates/:id/edit",    to: "staffing/agreement_templates#edit",    as: "edit_staffing_agreement_template"

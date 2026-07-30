@@ -20,6 +20,24 @@
           <%= render "shared/button", text: "New Agreement", variant: "primary", size: "small", icon: "plus" %>
         <% end %>
       </div>
+
+      <%# Require signing: pick which agreement staff must sign (blank = optional). %>
+      <% active_templates = @agreement_templates.select(&:active?) %>
+      <% if active_templates.any? %>
+        <div class="mt-5 pt-5 border-t border-gray-200">
+          <%= form_with url: manage_staffing_settings_path, method: :patch, class: "flex flex-wrap items-end gap-3" do %>
+            <div class="flex-1 min-w-[16rem]">
+              <label for="required_staff_agreement_template_id" class="block text-sm font-medium text-gray-700 mb-1">Require staff to sign an agreement</label>
+              <p class="text-xs text-gray-500 mb-2">Everyone on staff must sign the agreement you choose before they can keep working — you can exempt individuals on their staff page.</p>
+              <% options = [ [ "Not required — optional", "" ] ] + active_templates.map { |t| [ "#{t.name} (v#{t.version})", t.id ] } %>
+              <%= select_tag :required_staff_agreement_template_id,
+                    options_for_select(options, Current.organization.required_staff_agreement_template_id),
+                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
 
     <% if @agreement_templates.any? %>
@@ -30,6 +48,9 @@
               <div class="flex-1">
                 <div class="flex items-center gap-2">
                   <h3 class="font-semibold text-gray-900"><%= template.name %></h3>
+                  <% if Current.organization.required_staff_agreement_template_id == template.id %>
+                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Required</span>
+                  <% end %>
                   <% unless template.active? %>
                     <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
                   <% end %>
@@ -39,8 +60,18 @@
                   <p class="text-sm text-gray-600 mt-1"><%= template.description %></p>
                 <% end %>
                 <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                  <% staff_count = template.total_staff_members %>
-                  <span><%= staff_count %> <%= "staff member".pluralize(staff_count) %></span>
+                  <% if template.required_for_org? %>
+                    <% sum = template.signing_summary %>
+                    <% if sum[:pending].zero? %>
+                      <span class="text-green-700 font-medium">Everyone's signed</span>
+                    <% else %>
+                      <span class="text-amber-700 font-medium"><%= sum[:pending] %> still to sign</span>
+                    <% end %>
+                    <span><%= sum[:signed] %> signed<% if sum[:exempt] > 0 %> · <%= sum[:exempt] %> exempt<% end %></span>
+                  <% else %>
+                    <% signers = template.applicable_staff_members.size %>
+                    <span><%= signers %> <%= "staff member".pluralize(signers) %> signed</span>
+                  <% end %>
                   <span>Updated <%= time_ago_in_words(template.updated_at) %> ago</span>
                 </div>
               </div>

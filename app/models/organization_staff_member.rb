@@ -31,10 +31,43 @@ class OrganizationStaffMember < ApplicationRecord
     [ first, last_name.presence ].compact.join(" ").presence || person&.name
   end
 
-  # The employee agreement to show this member: the one assigned to them, else the
-  # org's first active template. Nil when the org hasn't set one up.
+  # The employee agreement to show this member: the org's REQUIRED one if it has
+  # designated one (so onboarding signs the right template), else the one they've
+  # already signed, else the org's first active template. Nil when none exist.
   def effective_agreement_template
-    staff_agreement_template || organization&.staff_agreement_templates&.active&.order(:name)&.first
+    required_agreement_template ||
+      staff_agreement_template ||
+      organization&.staff_agreement_templates&.active&.order(:name)&.first
+  end
+
+  # The agreement this member is REQUIRED to sign (org-designated, active), or nil.
+  def required_agreement_template
+    organization&.requires_staff_agreement? ? organization.required_staff_agreement_template : nil
+  end
+
+  # Has this member signed the CURRENT version of the org's required agreement?
+  def signed_required_agreement?
+    tmpl = required_agreement_template
+    tmpl.present? &&
+      staff_agreement_template_id == tmpl.id &&
+      agreed_agreement_version.to_i == tmpl.version
+  end
+
+  # Retroactive-enforcement trigger: the org requires an agreement, this member
+  # isn't exempt, and they haven't signed the current version. Version-aware — a
+  # template version bump flips this back to true until they re-sign.
+  def needs_to_sign_agreement?
+    required_agreement_template.present? && !agreement_exempt? && !signed_required_agreement?
+  end
+
+  # Active members (across the given people) who owe a signature on their org's
+  # required agreement. The check is Ruby-level (org pointer + version compare),
+  # so we load and filter rather than express it in SQL.
+  def self.pending_agreement_signatures(person_ids)
+    active.where(person_id: person_ids)
+          .includes(:organization, :person, :staff_agreement_template)
+          .select(&:needs_to_sign_agreement?)
+          .sort_by { |m| m.organization.name.to_s.downcase }
   end
 
   # Merge values for rendering this member's employee agreement.

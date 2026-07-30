@@ -34,6 +34,7 @@
 
   <div class="border-t border-gray-200 pt-6 mt-2">
     <%= render "my/shifts/onboarding_invite_bar", invites: @pending_onboarding_invites %>
+    <%= render "my/shifts/staff_agreement_prompt", memberships: @pending_staff_agreements %>
 
     <%# Glance %>
     <%= render "my/shifts/summary" %>

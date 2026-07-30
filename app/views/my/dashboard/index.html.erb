@@ -11,6 +11,9 @@
   <!-- Finish staff onboarding (per organization) -->
   <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
 
+  <!-- Sign a (now-)required staff agreement to keep working -->
+  <%= render "my/shifts/staff_agreement_prompt", memberships: @pending_staff_agreements %>
+
   <!-- Complete your info — sits with the other action boxes, above the calendar header -->
   <% if primary %>
     <%= render "my/dashboard/profile_completion_panel", person: primary %>
