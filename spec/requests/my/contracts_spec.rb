@@ -21,8 +21,9 @@ RSpec.describe "My::Contracts", type: :request do
 
   it "renders a full-summary modal for each contract" do
     get my_contracts_path
+    # The contract card header is the clickable trigger that opens the modal.
     expect(response.body).to include("contract-modal-#{contract.id}")
-    expect(response.body).to include("View full contract")
+    expect(response.body).to include(%(data-modal-id="contract-modal-#{contract.id}"))
     # Modal frames the payment from the contractor's point of view — "we" is the
     # org they're looking at, named, not an abstract "we".
     expect(response.body).to include("#{org.name} pays you")

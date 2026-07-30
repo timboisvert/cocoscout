@@ -59,10 +59,12 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
       expect(message.body.to_plain_text).to include(role.name) # per-person shift list still appended
     end
 
-    it "re-notifies without creating a duplicate finalization row" do
+    it "re-notifies (notify all) without creating a duplicate finalization row" do
       post manage_finalize_staffing_path(week_start: week_start.to_s)
+      # Re-publishing an unchanged week notifies nobody; forcing notify_all
+      # re-sends to everyone — and must not create a second finalization row.
       expect {
-        post manage_finalize_staffing_path(week_start: week_start.to_s)
+        post manage_finalize_staffing_path(week_start: week_start.to_s), params: { notify_all: "1" }
       }.to change(Message, :count).by(1)
         .and change(StaffingFinalization, :count).by(0)
     end

@@ -173,9 +173,13 @@ class ContentTemplateService
     def deliver(template_key:, variables:, sender:, recipients:,
                 production: nil, show: nil, organization: nil,
                 message_type: :system, visibility: :personal,
-                mailer_class: nil, mailer_method: nil, email_batch: nil)
+                mailer_class: nil, mailer_method: nil, email_batch: nil,
+                subject_override: nil)
       result = render(template_key, variables)
       channel = result[:channel]
+      # A caller-supplied subject (e.g. a manager's edited notification subject)
+      # wins over the template's; the body/structure still comes from the template.
+      subject = subject_override.presence || result[:subject]
 
       delivery_result = {
         messages: [],
@@ -186,7 +190,7 @@ class ContentTemplateService
       # Deliver via message channel
       if channel == :message || channel == :both
         message = deliver_as_message(
-          subject: result[:subject],
+          subject: subject,
           body: result[:body],
           sender: sender,
           recipients: recipients,
@@ -202,7 +206,7 @@ class ContentTemplateService
       # Deliver via email channel
       if channel == :email || channel == :both
         count = deliver_as_email(
-          subject: result[:subject],
+          subject: subject,
           body: result[:body],
           recipients: recipients,
           production: production,

@@ -61,20 +61,25 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
 
   describe "approved-hours history" do
     it "lists approved and paid entries, and not pending ones" do
-      pending = create(:staff_time_entry, organization: org, person: person, notes: "still-pending")
-      approved = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner, notes: "signed-off")
-      paid = create(:staff_time_entry, :paid, organization: org, person: person, approved_at: Time.current, approved_by: owner, notes: "paid-out")
+      # The approved calendar shows entries as "Name · Xh", so distinguish the
+      # three states by person name.
+      pending_person = create(:person, name: "Pending Pete")
+      approved_person = create(:person, name: "Approved Ann")
+      paid_person = create(:person, name: "Paid Pat")
+      create(:staff_time_entry, organization: org, person: pending_person)
+      create(:staff_time_entry, organization: org, person: approved_person, approved_at: Time.current, approved_by: owner)
+      create(:staff_time_entry, :paid, organization: org, person: paid_person, approved_at: Time.current, approved_by: owner)
 
       get manage_approved_staffing_timesheets_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("signed-off").and include("paid-out")
-      expect(response.body).not_to include("still-pending")
+      expect(response.body).to include("Approved Ann").and include("Paid Pat")
+      expect(response.body).not_to include("Pending Pete")
     end
 
     it "shows an empty state when nothing has been approved" do
-      create(:staff_time_entry, organization: org, person: person)
+      create(:staff_time_entry, organization: org, person: person) # pending, not signed off
       get manage_approved_staffing_timesheets_path
-      expect(response.body).to include("Nothing approved yet")
+      expect(response.body).to include("No approved hours")
     end
   end
 

@@ -375,6 +375,7 @@ module Manage
             removals_list: removals_list_html(person_removals),
             my_shifts_link: my_shifts_url
           },
+          subject_override: subject,
           sender: nil,
           recipients: [ person ],
           organization: Current.organization,

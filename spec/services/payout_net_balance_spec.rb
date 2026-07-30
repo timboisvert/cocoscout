@@ -29,10 +29,30 @@ RSpec.describe "Payout net-balance and advances" do
     PayoutBatchService.process!(batch)
   end
 
+  # Settle a fresh performer run whose in-run earning is `earning_cents` — mirrors a
+  # show payout riding the run as a contribution (the earning itself is on the
+  # ledger via `earn`). An item now pays min(net balance, in-run earnings), so the
+  # run must actually carry the earning as a contribution. Returns the item or nil.
+  def settle_run(earning_cents)
+    batch = PayoutBatch.open_for(org, kind: "performer")
+    item = batch.items.create!(payee: person, amount_cents: 1, status: "pending")
+    if earning_cents.positive?
+      # A real performer earning contribution carries a source (a ShowPayoutLineItem);
+      # the in-run-earnings query excludes NULL source_type, so give it a source.
+      item.payout_contributions.create!(payout_batch: batch, payee: person, label: "Show pay",
+                                        amount_cents: earning_cents, source: create(:show, production: production))
+    end
+    item.settle_performer_amount!
+  end
+
   it "pays an advance ALONGSIDE earnings in the same run, leaving the advance owed" do
     earn(20_000) # $200 earned
     result = issue_advance(10_000) # + $100 advance in the same open run
     item = result.batch.items.find_by(payee: person)
+    # The $200 show pay rides the same run as a contribution (real flow).
+    item.payout_contributions.create!(payout_batch: result.batch, payee: person, label: "Show pay",
+                                      amount_cents: 20_000, source: create(:show, production: production))
+    item.settle_performer_amount!
     expect(item.amount_cents).to eq(30_000) # gets paid $200 owed + $100 advance
 
     pay!(result.batch)
@@ -45,14 +65,10 @@ RSpec.describe "Payout net-balance and advances" do
     expect(perf_balance).to eq(-30_000)
 
     earn(10_000) # partial: net -200 → still owed nothing to them
-    b1 = PayoutBatch.open_for(org, kind: "performer")
-    item = b1.items.create!(payee: person, amount_cents: 1, status: "pending").settle_performer_amount!
-    expect(item).to be_nil # they're still net-negative; pay nothing
+    expect(settle_run(10_000)).to be_nil # they're still net-negative; pay nothing
 
     earn(40_000) # now net +200
-    b2 = PayoutBatch.open_for(org, kind: "performer")
-    item2 = b2.items.create!(payee: person, amount_cents: 1, status: "pending").settle_performer_amount!
-    expect(item2.amount_cents).to eq(20_000) # $500 earned - $300 advance
+    expect(settle_run(40_000).amount_cents).to eq(20_000) # $500 earned - $300 advance
   end
 
   it "never re-settles or destroys a PAID item (protects payout history)" do
@@ -84,9 +100,7 @@ RSpec.describe "Payout net-balance and advances" do
     earn(20_000, category: "performer")
     earn(5_000, category: "staffing")
 
-    b = PayoutBatch.open_for(org, kind: "performer")
-    item = b.items.create!(payee: person, amount_cents: 1, status: "pending").settle_performer_amount!
-    expect(item.amount_cents).to eq(20_000) # only performer earnings, not the $50 staff
+    expect(settle_run(20_000).amount_cents).to eq(20_000) # only performer earnings, not the $50 staff
   end
 
   it "still recoups a LEGACY advance entry (pre-rebuild history) against new earnings" do
@@ -95,8 +109,6 @@ RSpec.describe "Payout net-balance and advances" do
                             amount_cents: -5_000, category: "performer", description: "legacy advance")
     earn(12_000)
 
-    b = PayoutBatch.open_for(org, kind: "performer")
-    item = b.items.create!(payee: person, amount_cents: 1, status: "pending").settle_performer_amount!
-    expect(item.amount_cents).to eq(7_000) # $120 earned - $50 legacy advance
+    expect(settle_run(12_000).amount_cents).to eq(7_000) # $120 earned - $50 legacy advance
   end
 end
