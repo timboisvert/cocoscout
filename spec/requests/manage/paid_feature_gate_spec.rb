@@ -24,10 +24,11 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       get manage_reports_path
       expect(response).to have_http_status(:payment_required)
       expect(response.body).to include("Reports")
+    end
 
+    it "leaves auditions & sign-ups open on the free plan" do
       get manage_signups_all_auditions_path
-      expect(response).to have_http_status(:payment_required)
-      expect(response.body).to include("Auditions")
+      expect(response).not_to have_http_status(:payment_required)
     end
 
     it "gates Contracts as its own feature rather than as part of Money" do

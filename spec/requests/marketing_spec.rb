@@ -9,11 +9,10 @@ RSpec.describe "Public marketing site", type: :request do
   describe "GET / (two-door homepage)" do
     before { get root_path }
 
-    it "renders with both audience doors and the new positioning" do
+    it "renders the producer-first landing hero" do
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("I run shows")
-      expect(response.body).to include("I perform")
-      expect(response.body).to include("operating platform")
+      expect(response.body).to include("Run the whole production.")
+      expect(response.body).to include("In one place.")
     end
 
     it "links to Find a Mic and includes the mobile nav drawer" do
@@ -40,7 +39,7 @@ RSpec.describe "Public marketing site", type: :request do
     it "leads with discovery and cross-links Find a Mic" do
       get performers_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Find where to perform")
+      expect(response.body).to include("Your whole performing life, in one place.")
       expect(response.body).to include(%(href="#{mics_home_path}"))
       expect(response.body).not_to include("Your talent deserves")
     end
@@ -68,7 +67,7 @@ RSpec.describe "Public marketing site", type: :request do
     it "sign up renders" do
       get signup_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("run shows")
+      expect(response.body).to include("Producer")
     end
   end
 end

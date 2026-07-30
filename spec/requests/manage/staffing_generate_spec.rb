@@ -23,21 +23,21 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
 
   describe "POST generate" do
     it "creates ONE spanning shift for a house role across the day's shows" do
-      create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: -60, default_end_offset_minutes: 60)
+      create(:house_role, organization: org, role_type: :house)
 
       expect {
         post manage_generate_staffing_path(week_start: week_start.to_s)
       }.to change(Shift, :count).by(1)
 
       shift = Shift.last
-      # 7pm (60 before first show) → 12:30am (60 after last show's 11pm end).
-      expect(shift.starts_at).to eq(early_show.date_and_time - 60.minutes)
-      expect(shift.ends_at).to eq(late_show.ends_at + 60.minutes)
+      # Spans the first show's start → the last show's end (no offsets).
+      expect(shift.starts_at).to eq(early_show.date_and_time)
+      expect(shift.ends_at).to eq(late_show.ends_at)
       expect(shift.source).to eq(early_show)
     end
 
     it "creates ONE shift PER show for a show-specific role" do
-      role = create(:house_role, organization: org, role_type: :show_specific, default_start_offset_minutes: -30, default_end_offset_minutes: 0)
+      role = create(:house_role, organization: org, role_type: :show_specific)
 
       expect {
         post manage_generate_staffing_path(week_start: week_start.to_s)
@@ -45,7 +45,7 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
 
       shifts = Shift.where(house_role: role).order(:starts_at)
       expect(shifts.map(&:source)).to contain_exactly(early_show, late_show)
-      expect(shifts.first.starts_at).to eq(early_show.date_and_time - 30.minutes)
+      expect(shifts.first.starts_at).to eq(early_show.date_and_time)
       expect(shifts.first.ends_at).to eq(early_show.ends_at)
     end
 
@@ -61,7 +61,7 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
     end
 
     it "spans only the selected shows for a house role" do
-      create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: 0, default_end_offset_minutes: 0)
+      create(:house_role, organization: org, role_type: :house)
 
       post manage_generate_staffing_path(week_start: week_start.to_s), params: { show_ids: [ early_show.id ] }
 
@@ -88,7 +88,7 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
 
       it "creates one house shift per window, verbatim (offsets not re-applied)" do
         # Non-zero offsets to prove the chosen windows are used as-is.
-        role = create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: -60, default_end_offset_minutes: 60)
+        role = create(:house_role, organization: org, role_type: :house)
 
         post manage_generate_staffing_path(week_start: week_start.to_s), params: {
           show_ids: [ s1.id, s2.id ], split_segments: windows
@@ -114,17 +114,21 @@ RSpec.describe "Manage::Staffing generation & display", type: :request do
         expect(Shift.where(house_role: r2).count).to eq(2)
       end
 
-      it "leaves the shift unsplit (one all-evening shift) when no windows are provided" do
-        role = create(:house_role, organization: org, role_type: :house, default_start_offset_minutes: 0, default_end_offset_minutes: 0)
+      it "auto-splits into one shift per show-cluster when shows are >1h apart (no explicit windows)" do
+        # s1 (6–7pm) and s2 (10–11pm) sit 3h apart, so the default gap clustering
+        # (max_gap 1h) yields two separate shifts rather than one idle-spanning one.
+        role = create(:house_role, organization: org, role_type: :house)
         post manage_generate_staffing_path(week_start: week_start.to_s), params: { show_ids: [ s1.id, s2.id ] }
-        shifts = Shift.where(house_role: role).to_a
-        expect(shifts.size).to eq(1)
+        shifts = Shift.where(house_role: role).order(:starts_at).to_a
+        expect(shifts.size).to eq(2)
         expect(shifts[0].starts_at).to eq(s1.date_and_time)
-        expect(shifts[0].ends_at).to eq(s2.ends_at)
+        expect(shifts[0].ends_at).to eq(s1.ends_at)
+        expect(shifts[1].starts_at).to eq(s2.date_and_time)
+        expect(shifts[1].ends_at).to eq(s2.ends_at)
       end
 
       it "does not apply windows to show-specific roles (still one per show)" do
-        role = create(:house_role, organization: org, role_type: :show_specific, default_start_offset_minutes: 0, default_end_offset_minutes: 0)
+        role = create(:house_role, organization: org, role_type: :show_specific)
         post manage_generate_staffing_path(week_start: week_start.to_s), params: {
           show_ids: [ s1.id, s2.id ], split_segments: windows
         }

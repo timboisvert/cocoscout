@@ -82,7 +82,7 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
     it "sends an approved entry back to pending" do
       entry = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
       patch manage_unapprove_staffing_timesheet_path(entry)
-      expect(response).to redirect_to(manage_approved_staffing_timesheets_path)
+      expect(response).to redirect_to(manage_approved_staffing_timesheets_path(month: Date.current.strftime("%Y-%m")))
       entry.reload
       expect(entry.approved_at).to be_nil
       expect(entry.status).to eq("pending")
