@@ -21,6 +21,21 @@ RSpec.describe PaymentTemplateUpdater do
       expect(log).to include(a_string_matching(/payment_setup_nudge: already present/))
     end
 
+    it "treats a lost create race as 'already present' instead of raising" do
+      # Isolate the nudge path: no reminder present means refresh_reminders!
+      # takes the skip branch and never calls save!, so the stub below only
+      # affects the nudge create.
+      ContentTemplate.where(key: "payment_setup_reminder").delete_all
+      # Simulate a multi-host deploy where another host inserts the row between
+      # our find_or_initialize and our save!, tripping the unique index.
+      allow_any_instance_of(ContentTemplate).to receive(:save!)
+        .and_raise(ActiveRecord::RecordNotUnique.new("key already taken"))
+
+      log = nil
+      expect { log = described_class.apply! }.not_to raise_error
+      expect(log).to include(a_string_matching(/payment_setup_nudge: already present \(created concurrently\)/))
+    end
+
     it "removes Venmo/Zelle wording from an existing reminder, in place" do
       reminder = ContentTemplate.where(key: "payment_setup_reminder").first_or_initialize
       reminder.update!(

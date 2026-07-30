@@ -48,8 +48,14 @@ module PaymentTemplateUpdater
         HTML
         available_variables: [ { "name" => "payment_setup_url", "description" => "URL to the payment setup page" } ]
       )
-      nudge.save!
-      "#{NUDGE_KEY}: created"
+      begin
+        nudge.save!
+        "#{NUDGE_KEY}: created"
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+        # Lost a create race with another host on a multi-host deploy — the row
+        # now exists, so treat it as present rather than failing the task.
+        "#{NUDGE_KEY}: already present (created concurrently)"
+      end
     elsif !nudge.active?
       nudge.update!(active: true)
       "#{NUDGE_KEY}: reactivated"
