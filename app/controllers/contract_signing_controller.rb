@@ -7,6 +7,10 @@
 class ContractSigningController < ApplicationController
   allow_unauthenticated_access
   before_action :set_contract
+  # Best-effort: populate Current.user when the visitor happens to be signed in
+  # (e.g. arriving from My Contracts), so we can greet a member by name — without
+  # requiring a login.
+  before_action :resume_session
 
   # Review + agree. Once executed, there's nothing to sign — send them to the
   # confirmation, which offers the signed PDF.
@@ -14,6 +18,7 @@ class ContractSigningController < ApplicationController
     return redirect_to sign_contract_success_path(token: @token) if @contract.signing_executed?
 
     @document = signable_document
+    @signer_person = signed_in_signer_person
   end
 
   # Record the counterparty's agreement.
@@ -50,6 +55,16 @@ class ContractSigningController < ApplicationController
   end
 
   private
+
+  # The signed-in CocoScout member signing this contract, when the current user
+  # is the contractor's linked person (or the email-matched member). Nil for an
+  # anonymous / non-member signer — they type their name + email instead.
+  def signed_in_signer_person
+    return nil unless Current.user
+
+    person = @contract.signer_member_person
+    person if person && Current.user.people.exists?(id: person.id)
+  end
 
   # The exact document the org sent — the snapshot the org signed, so both parties
   # agree to identical text. Falls back to a fresh render if somehow absent. The
