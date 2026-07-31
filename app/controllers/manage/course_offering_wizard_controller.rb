@@ -466,7 +466,7 @@ module Manage
 
         # For auto registration mode, close registration at the first session start time
         if @wizard_state[:registration_mode] != "custom" && @offering.closes_at.nil?
-          first_show = @production.shows.order(:date_and_time).first
+          first_show = @offering.sessions.first
           @offering.update!(closes_at: first_show.date_and_time) if first_show
         end
 
@@ -495,7 +495,7 @@ module Manage
         instructor_role = @production.roles.find_by(name: "Instructor")
         if instructor_role
           instructor_people.each do |instructor_person|
-            @production.shows.each do |show|
+            @offering.sessions.each do |show|
               ShowPersonRoleAssignment.find_or_create_by!(
                 show: show,
                 role: instructor_role,
@@ -569,7 +569,7 @@ module Manage
         # Move selected shows from the contract's production to the course production
         shows = contract.contract_shows.where(id: @wizard_state[:selected_show_ids])
         shows.each do |show|
-          show.update!(production: @production, event_type: "class")
+          show.update!(production: @production, event_type: "class", course_offering: @offering)
         end
       else
         # Create from session rules (new format with recurring support)
@@ -583,6 +583,7 @@ module Manage
                 date_and_time: dt,
                 duration_minutes: duration,
                 event_type: "class",
+                course_offering: @offering,
                 location_id: @wizard_state[:location_id],
                 is_online: @wizard_state[:is_online] || false
               )
@@ -603,6 +604,7 @@ module Manage
               duration_minutes: duration,
               secondary_name: session[:name] || session["name"],
               event_type: "class",
+              course_offering: @offering,
               location_id: @wizard_state[:location_id],
               is_online: @wizard_state[:is_online] || false
             )
@@ -634,6 +636,7 @@ module Manage
           date_and_time: dt,
           duration_minutes: duration,
           event_type: "class",
+          course_offering: @offering,
           location_id: @wizard_state[:location_id],
           is_online: @wizard_state[:is_online] || false
         )

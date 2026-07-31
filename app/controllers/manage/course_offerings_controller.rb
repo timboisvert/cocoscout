@@ -264,7 +264,8 @@ module Manage
             date_and_time: dt,
             duration_minutes: duration,
             event_type: "class",
-            location: production.shows.last&.location
+            course_offering: @course_offering,
+            location: @course_offering.sessions.last&.location
           )
           created_count += 1
         elsif type == "recurring"
@@ -273,7 +274,8 @@ module Manage
               date_and_time: session_dt,
               duration_minutes: duration,
               event_type: "class",
-              location: production.shows.last&.location
+              course_offering: @course_offering,
+              location: @course_offering.sessions.last&.location
             )
             created_count += 1
           end
@@ -547,8 +549,8 @@ module Manage
         pool.talent_pool_memberships.create!(member: person)
       end
 
-      # Assign to all sessions
-      production.shows.find_each do |show|
+      # Assign to this run's sessions only
+      course_offering.sessions.find_each do |show|
         ShowPersonRoleAssignment.find_or_create_by!(
           show: show,
           assignable: person,

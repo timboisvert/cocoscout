@@ -140,8 +140,11 @@ class CourseOffering < ApplicationRecord
 
   # --- Course sessions (shows) ---
 
+  # Sessions belonging to THIS run only. A course production can hold multiple
+  # runs (offerings); each session (Show, event_type "class") is scoped by
+  # course_offering_id so one run never shows another run's sessions.
   def sessions
-    production.shows.order(:date_and_time)
+    production.shows.where(course_offering_id: id).order(:date_and_time)
   end
 
   def upcoming_sessions

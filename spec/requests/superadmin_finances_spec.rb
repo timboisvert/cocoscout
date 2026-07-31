@@ -114,8 +114,8 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
 
     it "creates a per_session payment" do
       location = create(:location)
-      show1 = create(:show, production: production, location: location, date_and_time: 1.day.from_now)
-      show2 = create(:show, production: production, location: location, date_and_time: 2.days.from_now)
+      show1 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 1.day.from_now)
+      show2 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 2.days.from_now)
       create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
 
       expect {

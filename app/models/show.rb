@@ -8,6 +8,9 @@ class Show < ApplicationRecord
   belongs_to :event_linkage, optional: true
   belongs_to :location_space, optional: true
   belongs_to :space_rental, optional: true
+  # For course sessions (event_type "class"): the run (CourseOffering) this
+  # session belongs to. Nil for non-course shows. Scopes CourseOffering#sessions.
+  belongs_to :course_offering, optional: true
 
   # A show may be referenced as the primary_show in an EventLinkage
   has_one :primary_event_linkage, class_name: "EventLinkage", foreign_key: :primary_show_id, dependent: :nullify

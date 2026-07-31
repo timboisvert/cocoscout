@@ -124,7 +124,7 @@
           <div class="grid grid-cols-1 <%= 'sm:grid-cols-2' if has_course && has_contract %> gap-4">
             <% if has_course %>
               <%# Course info box %>
-              <% course = @production.course_offerings.first %>
+              <% course = @show.course_offering || @production.course_offerings.first %>
               <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <%= render "shared/card_header", title: "Course" %>
                 <div class="p-4">

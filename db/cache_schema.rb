@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_30_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2275,6 +2275,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_140000) do
     t.boolean "casting_enabled", default: true, null: false
     t.datetime "casting_finalized_at"
     t.string "casting_source"
+    t.bigint "course_offering_id"
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
     t.integer "duration_minutes"
@@ -2297,6 +2298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_140000) do
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
     t.index ["casting_source"], name: "index_shows_on_casting_source"
+    t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["location_space_id"], name: "index_shows_on_location_space_id"
@@ -3051,6 +3053,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_140000) do
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "shows", "course_offerings"
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "location_spaces"
   add_foreign_key "shows", "locations"
