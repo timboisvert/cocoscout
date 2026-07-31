@@ -26,6 +26,23 @@ class DuplicateProductionMerger
   # Pass dry_run: true to run the entire merge in a transaction that is rolled
   # back at the end — the returned Result reports exactly what WOULD move/dedupe,
   # while the database is left untouched.
+  # Tables where a unique-index collision means the loser's row is genuinely
+  # REDUNDANT (a link/permission/config duplicate) and is safe to drop. Any table
+  # NOT listed here that collides makes the merge RAISE and roll back rather than
+  # risk deleting real content, registrations, or money.
+  DEDUPABLE_TABLES = %w[
+    production_permissions
+    production_notification_settings
+    agreement_requests
+    agreement_signatures
+    audition_wizard_states
+    casting_table_productions
+    document_productions
+    talent_pool_shares
+    posters
+    payout_scheme_defaults
+  ].freeze
+
   def self.call(keeper_id:, loser_ids:, dry_run: false)
     new(keeper_id: keeper_id, loser_ids: loser_ids).call(dry_run: dry_run)
   end
@@ -84,8 +101,13 @@ class DuplicateProductionMerger
           row.update_columns(attrs)
         end
         moved[model.table_name] += 1
-      rescue ActiveRecord::RecordNotUnique
-        row.destroy
+      rescue ActiveRecord::RecordNotUnique => e
+        unless DEDUPABLE_TABLES.include?(model.table_name)
+          raise "unexpected unique collision moving #{model.table_name} ##{row.id} " \
+                "(production ##{loser.id} → ##{@keeper.id}) — refusing to delete real data. " \
+                "Investigate manually. (#{e.message})"
+        end
+        row.destroy # a genuinely redundant link/permission row already exists on the keeper
         deduped[model.table_name] += 1
       end
     end

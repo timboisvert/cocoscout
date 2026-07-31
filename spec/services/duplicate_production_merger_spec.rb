@@ -48,6 +48,20 @@ RSpec.describe DuplicateProductionMerger, type: :service do
     expect(user.included_production_ids).to include(9999) # untouched entries preserved
   end
 
+  it "aborts and rolls back rather than deleting a colliding row in a non-allowlisted table" do
+    create(:mic, production: keeper)
+    create(:mic, production: loser)
+    show = create(:show, production: loser)
+
+    expect {
+      described_class.call(keeper_id: keeper.id, loser_ids: [ loser.id ])
+    }.to raise_error(/unexpected unique collision moving mics/)
+
+    # Everything rolled back — loser intact, nothing re-pointed.
+    expect(Production.exists?(loser.id)).to be true
+    expect(show.reload.production_id).to eq(loser.id)
+  end
+
   it "refuses to merge productions from a different organization" do
     other_org_loser = create(:production, organization: create(:organization))
 
