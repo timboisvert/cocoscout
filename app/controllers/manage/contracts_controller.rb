@@ -622,7 +622,17 @@ module Manage
     # Remove a contract's own shows, and delete its production only when no other
     # contract still uses it and it has no remaining shows (productions are shared).
     def detach_and_maybe_delete_production(contract)
-      production = contract.production
+      candidate_productions = []
+
+      # Remove the course RUNS this contract created — but only empty ones; never
+      # delete a run people have paid for. The durable course production survives
+      # if it still has other runs.
+      contract.course_offerings.each do |offering|
+        next if offering.course_registrations.confirmed.exists?
+        candidate_productions << offering.production
+        offering.destroy
+      end
+      candidate_productions << contract.production
 
       # Unlink any contract payments that reference these shows BEFORE destroying
       # them — contract_payments.show_id has a FK that blocks deleting a
@@ -630,11 +640,14 @@ module Manage
       # the show link, never the payment itself.
       show_ids = contract.contract_shows.pluck(:id)
       ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
-
       contract.contract_shows.destroy_all
-      return unless production
 
-      if production.contracts.where.not(id: contract.id).none? && production.shows.reload.none?
+      # Delete any touched production that's now genuinely empty and unshared —
+      # no other contracts, no remaining runs, no remaining shows.
+      candidate_productions.compact.uniq.each do |production|
+        next if production.contracts.where.not(id: contract.id).any?
+        next if production.course_offerings.any?
+        next if production.shows.reload.any?
         production.destroy
       end
     end
