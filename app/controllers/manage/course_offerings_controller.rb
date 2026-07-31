@@ -4,6 +4,7 @@ module Manage
   class CourseOfferingsController < Manage::ManageController
     before_action :load_course_offering, only: %i[
       show edit update destroy open_registration close_registration
+      mark_completed reopen
       search_instructor update_instructor invite_instructor
       cancel_registration refund_registration add_sessions
       enable_questionnaire disable_questionnaire send_questionnaire
@@ -306,6 +307,19 @@ module Manage
     def close_registration
       @course_offering.update!(status: :closed)
       redirect_to manage_course_offering_path(@course_offering), notice: "Registration has been closed."
+    end
+
+    # Mark a run finished — it leaves the "Active courses" count and moves to the
+    # Completed section. (Auto-applied by CourseOfferingCompletionJob once every
+    # session has passed; this is the manual override.)
+    def mark_completed
+      @course_offering.update!(status: :completed)
+      redirect_to manage_course_offering_path(@course_offering), notice: "Course marked completed."
+    end
+
+    def reopen
+      @course_offering.update!(status: :closed)
+      redirect_to manage_course_offering_path(@course_offering), notice: "Course reopened."
     end
 
     def cancel_registration

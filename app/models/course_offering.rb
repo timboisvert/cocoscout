@@ -27,6 +27,7 @@ class CourseOffering < ApplicationRecord
     draft: "draft",
     open: "open",
     closed: "closed",
+    completed: "completed",
     archived: "archived"
   }, default: :draft
 

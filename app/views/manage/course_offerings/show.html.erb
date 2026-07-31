@@ -11,6 +11,8 @@
       { bg: "bg-green-100", text: "text-green-700", dot: true, label: "Registration Open" }
     when "closed"
       { bg: "bg-amber-100", text: "text-amber-700", label: "Registration Closed" }
+    when "completed"
+      { bg: "bg-blue-100", text: "text-blue-700", label: "Completed" }
     when "archived"
       { bg: "bg-gray-100", text: "text-gray-500", label: "Archived" }
     end
@@ -99,6 +101,15 @@
           <% elsif @course_offering.open? %>
             <%= form_with url: manage_close_course_offering_path(@course_offering), method: :post do %>
               <%= render "shared/button", text: "Close Registration", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          <% end %>
+          <% if @course_offering.closed? %>
+            <%= form_with url: manage_complete_course_offering_path(@course_offering), method: :post do %>
+              <%= render "shared/button", text: "Mark completed", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          <% elsif @course_offering.completed? %>
+            <%= form_with url: manage_reopen_course_offering_path(@course_offering), method: :post do %>
+              <%= render "shared/button", text: "Reopen", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           <% end %>
         </div>

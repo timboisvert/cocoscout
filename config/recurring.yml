@@ -27,6 +27,10 @@ development:
     class: ContractCompletionJob
     schedule: every hour
 
+  course_offering_completion:
+    class: CourseOfferingCompletionJob
+    schedule: every hour
+
   backfill_stripe_fees:
     class: BackfillStripeFeeJob
     schedule: every hour
@@ -62,6 +66,10 @@ production:
 
   contract_completion:
     class: ContractCompletionJob
+    schedule: at 2am every day
+
+  course_offering_completion:
+    class: CourseOfferingCompletionJob
     schedule: at 2am every day
 
   backfill_stripe_fees:

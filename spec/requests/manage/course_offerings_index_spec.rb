@@ -30,6 +30,17 @@ RSpec.describe "Manage::CourseOfferings index payouts overview", type: :request 
     expect(response.body).not_to include("Courses awaiting payout")
   end
 
+  it "excludes completed runs from Active and shows them as Completed" do
+    offering.update!(status: :open)
+    create(:course_offering, production: production, status: :completed)
+
+    get manage_course_offerings_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Completed")       # badge renders
+    expect(CourseOffering.active).to contain_exactly(offering) # completed excluded from active
+  end
+
   it "does not list a course whose payout is marked paid (e.g. settled offline)" do
     create(:course_registration, course_offering: offering, amount_cents: 4000, status: "confirmed")
     CourseOfferingPayout.create!(course_offering: offering, status: "paid", paid_at: Time.current)
