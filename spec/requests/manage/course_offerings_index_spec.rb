@@ -54,7 +54,7 @@ RSpec.describe "Manage::CourseOfferings index payouts overview", type: :request 
     get manage_course_offerings_path
 
     # The hub's two entry points, as action cards with descriptions.
-    expect(response.body).to include("New Course")
+    expect(response.body).to include("Add a Course")
     expect(response.body).to include("Course Settings")
     expect(response.body).to include(manage_course_wizard_start_path)
     expect(response.body).to include(manage_course_settings_path)

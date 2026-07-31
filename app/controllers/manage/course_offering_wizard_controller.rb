@@ -34,6 +34,9 @@ module Manage
     # Step 1: Course basics (title, description)
     def basics
       @step = 1
+      if @wizard_state[:existing_course_production_id].present?
+        @existing_course = Current.organization.productions.courses.find_by(id: @wizard_state[:existing_course_production_id])
+      end
     end
 
     def save_basics

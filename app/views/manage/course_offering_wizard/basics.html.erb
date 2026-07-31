@@ -5,10 +5,17 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
       </svg>
     </div>
-    <h2 class="text-xl font-bold text-gray-900">Create a New Course</h2>
-    <p class="text-gray-600 mt-2">
-      Set up a course that people can register and pay for online.
-    </p>
+    <% if @existing_course %>
+      <h2 class="text-xl font-bold text-gray-900">New run of <%= @existing_course.name %></h2>
+      <p class="text-gray-600 mt-2">
+        Confirm or update the course details for this run — we prefilled them from the last one. You'll set new dates and pricing next.
+      </p>
+    <% else %>
+      <h2 class="text-xl font-bold text-gray-900">Create a New Course</h2>
+      <p class="text-gray-600 mt-2">
+        Set up a course that people can register and pay for online.
+      </p>
+    <% end %>
   </div>
 
   <%= form_with url: manage_course_wizard_basics_path, method: :post, local: true do |form| %>
