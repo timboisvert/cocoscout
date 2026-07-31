@@ -492,19 +492,19 @@ RSpec.describe Contract, type: :model do
         expect(org_sells.pending_sales_report?).to be false
       end
 
-      it "is true when a past show still has unconfirmed sales" do
+      it "is true when a show still has unconfirmed sales" do
         create(:show, production: production, date_and_time: 1.week.ago)
         expect(contract.pending_sales_report?).to be true
       end
 
-      it "is false once every past show's sales are confirmed" do
-        show = create(:show, production: production, date_and_time: 1.week.ago)
-        create(:show_financials, :complete, show: show)
-        expect(contract.pending_sales_report?).to be false
+      it "is also true for an upcoming show whose sales aren't in yet" do
+        create(:show, production: production, date_and_time: 1.week.from_now)
+        expect(contract.pending_sales_report?).to be true
       end
 
-      it "ignores future shows that can't be reported yet" do
-        create(:show, production: production, date_and_time: 1.week.from_now)
+      it "is false once every show's sales are confirmed" do
+        show = create(:show, production: production, date_and_time: 1.week.ago)
+        create(:show_financials, :complete, show: show)
         expect(contract.pending_sales_report?).to be false
       end
     end
