@@ -149,8 +149,10 @@ class CoursePayoutCalculator
     contractor_amount = (net_revenue_cents * contractor_pct / 100.0).round
 
     [ {
-      payee_type: "Contractor",
-      payee_id: contract.contractor_id,
+      # Pay the contractor's linked Person — the identity that holds the Stripe
+      # Connect account and ledger (a Contractor record has no stripe_account_id).
+      payee_type: "Person",
+      payee_id: contract.contractor&.person_id,
       amount_cents: contractor_amount,
       label: contract.contractor_name,
       calculation_details: {
@@ -169,8 +171,9 @@ class CoursePayoutCalculator
     contractor_amount = [ net_revenue_cents - fee_cents, 0 ].max
 
     [ {
-      payee_type: "Contractor",
-      payee_id: contract.contractor_id,
+      # Pay the contractor's linked Person (holds the Stripe account + ledger).
+      payee_type: "Person",
+      payee_id: contract.contractor&.person_id,
       amount_cents: contractor_amount,
       label: contract.contractor_name,
       calculation_details: {

@@ -29,6 +29,7 @@ class CoursePayoutRunExecutor
         )
         item.mark_paid!(transfer_id: transfer.id)
         record_org_payout!(item)
+        settle_item_sources!(item)
         paid += 1
       rescue Stripe::StripeError => e
         # Record the error but leave the item pending so it can be retried; only a
@@ -59,6 +60,31 @@ class CoursePayoutRunExecutor
         meta[:course_offering_id] = payout.course_offering_id
       end
       meta
+    end
+
+    # After a successful transfer, reflect it on the source worksheet so the run,
+    # the payout page, and the "awaiting payout" list stay consistent: mark each
+    # source line item paid, and once all of a payout's lines are paid, mark the
+    # payout paid (a payout with no instructor lines is settled by its org row).
+    def settle_item_sources!(item)
+      item.payout_contributions.each do |contribution|
+        source = contribution.source
+        payout =
+          case source
+          when CourseOfferingPayoutLineItem
+            unless source.paid?
+              source.update_columns(manually_paid: true, manually_paid_at: Time.current,
+                                    paid_at: Time.current, payment_method: "stripe")
+            end
+            source.course_offering_payout
+          when CourseOfferingPayout
+            source
+          end
+        next unless payout
+        if payout.line_items.reload.all?(&:paid?) && !payout.paid?
+          payout.update_columns(status: "paid", paid_at: Time.current)
+        end
+      end
     end
 
     # The organization's own remainder is recorded as an OrgPayout — the books'

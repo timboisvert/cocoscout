@@ -51,5 +51,25 @@ RSpec.describe "Manage::CoursePayoutRuns", type: :request do
     expect(batch.reload.status).to eq("completed")
     expect(batch.items.all?(&:paid?)).to be(true)
     expect(response).to redirect_to(manage_course_payout_run_path)
+    # The source payout is now settled (no instructor lines → org row settles it).
+    expect(offering.course_offering_payout.reload.status).to eq("paid")
+  end
+
+  it "marks instructor line items and the payout paid after a successful run" do
+    make_payable(org)
+    person = create(:person)
+    make_payable(person)
+    payout = offering.create_course_offering_payout!(status: "calculated", total_revenue_cents: 4000,
+                                                     platform_fee_cents: 0, net_revenue_cents: 4000, total_payout_cents: 2000)
+    line = payout.line_items.create!(payee: person, amount_cents: 2000, label: "Instructor",
+                                     calculation_details: { type: "instructor" })
+    CoursePayoutRunService.add_to_run!(payout)
+    allow(Stripe::Transfer).to receive(:create) { |args| double(id: "tr_#{args[:destination]}") }
+    allow(Stripe).to receive(:api_key).and_return("sk_test_x")
+
+    post manage_course_payout_run_pay_path
+
+    expect(line.reload.paid?).to be(true)
+    expect(payout.reload.status).to eq("paid")
   end
 end
