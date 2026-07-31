@@ -1480,6 +1480,7 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/sign", to: "contract_wizard#save_sign"
     get  "contracts/:contract_id/wizard/send", to: "contract_wizard#send_step", as: "send_contract_wizard"
     post "contracts/:contract_id/wizard/send", to: "contract_wizard#save_send"
+    post "contracts/:contract_id/wizard/link_signer", to: "contract_wizard#link_signer", as: "link_signer_contract_wizard"
     delete "contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
 
     # Location spaces

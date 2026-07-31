@@ -419,10 +419,47 @@ module Manage
 
       @step = 11
       @contract.update_column(:wizard_step, [ 11, @contract.wizard_step ].max)
+      @signer_person = @contract.signer_person_record
       render :send # action is send_step (send is reserved), but the view is send.html.erb
     end
 
+    # Attach a CocoScout user to the contract's contractor from the send step —
+    # link an existing person (person_id) or invite one by email. Creates the
+    # Contractor record if the contract only had free-text contractor details.
+    def link_signer
+      contractor = @contract.contractor ||
+        Current.organization.contractors.create!(name: @contract.contractor_name.presence || "Contractor",
+                                                 email: @contract.contractor_email)
+
+      person =
+        if params[:person_id].present?
+          Person.find_by(id: params[:person_id])
+        elsif params[:invite_email].present?
+          email = params[:invite_email].to_s.strip.downcase
+          name = params[:invite_name].to_s.strip.presence || email.split("@").first
+          Person.where("LOWER(email) = ?", email).first || Person.create!(name: name, email: email)
+        end
+
+      if person
+        Current.organization.people << person unless Current.organization.people.include?(person)
+        contractor.update!(person: person)
+        @contract.update!(contractor: contractor, contractor_email: person.email.presence || @contract.contractor_email,
+                          contractor_name: @contract.contractor_name.presence || person.name)
+        redirect_to manage_send_contract_wizard_path(@contract), notice: "#{person.name} is attached — you can send now."
+      else
+        redirect_to manage_send_contract_wizard_path(@contract), alert: "Pick a person or enter an email to invite."
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to manage_send_contract_wizard_path(@contract), alert: "Couldn't attach that person: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+    end
+
     def save_send
+      unless @contract.signer_person_record
+        redirect_to manage_send_contract_wizard_path(@contract),
+          alert: "Attach a CocoScout user before sending — search for them or invite them by email."
+        return
+      end
+
       if @contract.send_for_signature!
         # Link the contractor to their Person now (idempotent) so a member sees the
         # contract in My Contracts right away, not only once the async job runs.

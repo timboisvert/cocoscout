@@ -182,6 +182,17 @@ class Contract < ApplicationRecord
     signer_member_person.present?
   end
 
+  # The CocoScout Person this contract is (or would be) sent to — the contractor's
+  # linked person, else an org person matching the contractor email. Unlike
+  # #signer_member_person this doesn't require them to have accepted a login yet;
+  # it's the "is there a CocoScout user attached?" gate for sending.
+  def signer_person_record
+    return contractor.person if contractor&.person
+    return nil if contractor_email.blank?
+
+    organization.people.where("LOWER(email) = ?", contractor_email.to_s.downcase).first
+  end
+
   def organization_signature
     contract_signatures.detect(&:role_organization?) ||
       contract_signatures.role_organization.first
