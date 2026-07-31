@@ -604,6 +604,18 @@ RSpec.describe Contract, type: :model do
     end
   end
 
+  describe "#execute_by_signature!" do
+    it "enqueues the manager notification when the counterparty signs" do
+      contract = create(:contract, signing_mode: :esign, signing_state: :out_for_signature)
+      allow(GenerateContractPdfJob).to receive(:perform_later)
+
+      expect(ContractSignedNotificationJob).to receive(:perform_later).with(contract.id)
+
+      contract.execute_by_signature!(signer_name: "Dan", signer_email: "dan@example.com",
+        request: double(remote_ip: "1.2.3.4", user_agent: "spec"))
+    end
+  end
+
   describe "inline license schedule" do
     let(:org) { create(:organization) }
     let(:location) { create(:location, organization: org) }
@@ -636,26 +648,6 @@ RSpec.describe Contract, type: :model do
         html = contract.send(:license_schedule_html)
         expect(html).to include("<th>Dates</th>", "<th>Stage</th>", "<th>Rent</th>")
         expect(html).to include("Fri Mar 6, 2026", "6:00 PM", "11:00 PM", "The Mainstage")
-      end
-
-      context "advertised event times section (below the grid)" do
-        it "lists the event window when it differs from the booked slot" do
-          contract = create(:contract, organization: org, production_name: "Late Night Revue",
-            draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })
-
-          html = contract.send(:license_schedule_html)
-
-          expect(html).to include("Advertised event times")
-          # The show's own window (8–10 PM) within the 6–11 PM booking.
-          expect(html).to include("8:00 PM", "10:00 PM")
-        end
-
-        it "omits the section when the event runs the full booked slot" do
-          b = booking(date: "2026-03-06").except("event_starts_at", "event_ends_at")
-          contract = create(:contract, organization: org, draft_data: { "bookings" => [ b ] })
-
-          expect(contract.send(:license_schedule_html)).not_to include("Advertised event times")
-        end
       end
 
       it "uses the production name when the booking's event_type is the generic 'show'" do

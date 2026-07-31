@@ -76,7 +76,7 @@ module NavigationHelper
     end
     pro_items += [
       { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
-        active: %w[money money_financials money_payouts show_payouts show_financials].include?(controller_name) },
+        active: %w[money money_financials money_payouts show_payouts show_financials money_settings].include?(controller_name) },
       # Contracts is its own Pro module — a deal with someone doesn't require Money.
       { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts,
         active: %w[contracts contract_wizard contract_payments contract_documents contractors contract_settings].include?(controller_name) },

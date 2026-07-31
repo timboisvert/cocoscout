@@ -1,0 +1,12 @@
+<% content_for :title, "Money settings" %>
+
+<%= render layout: "shared/settings_layout", locals: {
+  title: "Money settings",
+  breadcrumbs: [
+    ["Money", manage_money_index_path]
+  ],
+  sections: sections,
+  current: @section
+} do %>
+  <%= render "manage/money_settings/sections/#{@section}" %>
+<% end %>

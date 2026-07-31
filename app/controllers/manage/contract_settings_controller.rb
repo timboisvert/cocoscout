@@ -5,7 +5,7 @@ module Manage
   # as a tab, so only the section you're looking at loads its data and a link
   # can point straight at it.
   class ContractSettingsController < Manage::ManageController
-    SECTIONS = %w[payments services templates].freeze
+    SECTIONS = %w[payments services templates notifications].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
@@ -20,6 +20,9 @@ module Manage
         @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
       when "templates"
         @contract_templates = Current.organization.contract_templates.order(:name)
+      when "notifications"
+        @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
+        @notification_selected_ids = Current.organization.contract_notification_user_ids
       end
     end
 
@@ -29,6 +32,15 @@ module Manage
       offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
       Current.organization.update!(default_contract_payment_methods: [ "online" ] + offline)
       redirect_to section_path("payments"), notice: "Payment methods updated."
+    end
+
+    # Which managers get an in-app message when a contract is signed. Store only
+    # ids that are actually current managers; an empty selection means "all".
+    def update_notifications
+      manager_ids = Current.organization.contract_notification_manager_users.pluck(:id)
+      selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
+      Current.organization.update!(contract_notification_user_ids: selected)
+      redirect_to section_path("notifications"), notice: "Notification recipients updated."
     end
 
     def create_service

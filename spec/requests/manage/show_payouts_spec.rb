@@ -72,4 +72,37 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       expect(PayoutContribution.exists?(contribution.id)).to be(true)
     end
   end
+
+  describe "mark paid another way (offline)" do
+    # Not bank-connected and unpaid — the only state that offers the offline action.
+    let!(:li_offline) do
+      ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Cash Casey"), amount: 40)
+    end
+
+    it "hides the action when the org has declared no offline methods" do
+      get manage_money_show_payout_path(show)
+      expect(response.body).not_to include("payment-actions#showMarkPaidModal")
+    end
+
+    context "with offline methods enabled in Money settings" do
+      before { org.update!(enabled_offline_payout_methods: %w[cash zelle]) }
+
+      it "offers the action for a not-bank-connected unpaid payee" do
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("payment-actions#showMarkPaidModal")
+        expect(response.body).to include('data-item-name="Cash Casey"')
+      end
+
+      it "records the offline payment and shows the payee as paid" do
+        post manage_mark_line_item_paid_money_show_payout_path(show, li_offline),
+          params: { payment_method: "zelle", payment_notes: "Zelle #55" }
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(li_offline.reload).to be_paid
+        expect(li_offline.payment_method).to eq("zelle")
+        expect(li_offline.payment_notes).to eq("Zelle #55")
+        expect(li_offline.payout_reference_id).to be_nil # not a Stripe movement
+      end
+    end
+  end
 end

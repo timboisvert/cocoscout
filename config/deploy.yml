@@ -98,6 +98,8 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
   ps: app exec "ps aux"
+  # One-off, idempotent deploy tasks — run once on the primary host.
+  seed-content-templates: app exec -p --reuse "bin/rails content_templates:ensure_contract_templates"
 
 # Automatically clean up old images/containers after deploy
 retain_containers: 2

@@ -60,4 +60,31 @@ RSpec.describe "Manage::ContractSettings", type: :request do
       delete manage_contract_settings_service_path(svc)
     }.to change(ContractServiceOption, :count).by(-1)
   end
+
+  describe "the notifications section" do
+    let(:manager) { create(:user) }
+    let!(:manager_role) { create(:organization_role, :manager, user: manager, organization: org) }
+
+    it "lists the org's managers as notification recipients" do
+      get manage_contract_settings_section_path(section: "notifications")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Contract signing alerts")
+      expect(response.body).to include(manager.email_address)
+    end
+
+    it "saves the chosen recipients, ignoring non-managers" do
+      patch manage_contract_settings_notifications_path,
+        params: { notification_user_ids: [ manager.id.to_s, "999999" ] }
+
+      expect(response).to redirect_to(manage_contract_settings_section_path(section: "notifications"))
+      expect(org.reload.contract_notification_user_ids).to eq([ manager.id ])
+    end
+
+    it "clears recipients when none are ticked" do
+      org.update!(contract_notification_user_ids: [ manager.id ])
+      patch manage_contract_settings_notifications_path, params: {}
+      expect(org.reload.contract_notification_user_ids).to eq([])
+    end
+  end
 end

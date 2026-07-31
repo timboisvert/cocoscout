@@ -38,4 +38,35 @@ RSpec.describe ShowPayoutLineItem, type: :model do
       expect(ShowPayoutLineItem.paid).not_to include(li)
     end
   end
+
+  describe "offline payment methods (paid another way)" do
+    it "offers zelle and venmo as manual methods with proper labels" do
+      expect(ShowPayoutLineItem::MANUAL_PAYMENT_METHODS).to include("zelle", "venmo")
+      expect(ShowPayoutLineItem::PAYMENT_METHODS).to include("zelle", "venmo")
+
+      li = line_item
+      expect(li.tap { |i| i.payment_method = "zelle" }.payment_method_label).to eq("Zelle")
+      expect(li.tap { |i| i.payment_method = "venmo" }.payment_method_label).to eq("Venmo")
+    end
+
+    it "marks a payee paid offline, offsets their ledger balance, and moves no money through Stripe" do
+      person = create(:person)
+      li = line_item(payee: person, amount: 50)
+      li.sync_earning_ledger_entry! # they're owed $50
+      expect(org.payout_balance_cents_for(person)).to eq(5000)
+
+      li.mark_as_offline_paid!(create(:user), method: "zelle", notes: "Zelle #123")
+
+      expect(li.reload).to be_paid
+      expect(li.manually_paid?).to be(true)
+      expect(li.payment_method).to eq("zelle")
+      expect(li.payment_notes).to eq("Zelle #123")
+      # The offsetting payout entry zeroes what we owe them.
+      expect(org.payout_balance_cents_for(person)).to eq(0)
+      expect(PayoutLedgerEntry.where(source: li, entry_type: "payout").sum(:amount_cents)).to eq(-5000)
+      # Not a Stripe/bank movement: no payout run item, no transfer reference.
+      expect(PayoutBatchItem.count).to eq(0)
+      expect(li.payout_reference_id).to be_nil
+    end
+  end
 end

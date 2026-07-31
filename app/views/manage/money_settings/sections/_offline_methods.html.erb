@@ -1,0 +1,27 @@
+<%
+  # Only the methods a manager can actually hand-pick per person (excludes the
+  # internal "historical" back-fill marker). Labels kept local so this view owns
+  # its own wording.
+  method_labels = { "cash" => "Cash", "check" => "Check", "zelle" => "Zelle", "venmo" => "Venmo", "other" => "Other" }
+%>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">How you pay people outside CocoScout</h2>
+    <p class="text-sm text-gray-600 mt-1">Most people are paid straight to their bank through CocoScout. Tick any other way you sometimes pay someone, and you'll be able to record those payments by hand on a show's payouts — the person shows as paid without money moving through CocoScout.</p>
+  </div>
+  <%= form_with url: manage_money_settings_offline_methods_path, method: :patch, class: "px-6 py-5" do %>
+    <div class="space-y-3">
+      <% method_labels.each do |method, label| %>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <%= check_box_tag "offline_payout_methods[]", method,
+                @enabled_offline_payout_methods.include?(method), id: "offline_payout_method_#{method}",
+                class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span class="block text-sm font-medium text-gray-900"><%= label %></span>
+        </label>
+      <% end %>
+    </div>
+    <div class="mt-5">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

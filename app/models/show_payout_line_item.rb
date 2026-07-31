@@ -28,8 +28,8 @@ class ShowPayoutLineItem < ApplicationRecord
   # marker for a line paid through a payout run and "n/a" for $0 lines — both are
   # stored, never hand-picked. MANUAL_PAYMENT_METHODS is what a manager can choose
   # when recording an offline payment.
-  PAYMENT_METHODS = %w[cash check other historical n/a stripe].freeze
-  MANUAL_PAYMENT_METHODS = %w[cash check other historical].freeze
+  PAYMENT_METHODS = %w[cash check zelle venmo other historical n/a stripe].freeze
+  MANUAL_PAYMENT_METHODS = %w[cash check zelle venmo other historical].freeze
 
   # Payout statuses for tracking payment state
   PAYOUT_STATUSES = %w[pending success failed].freeze
@@ -219,6 +219,8 @@ class ShowPayoutLineItem < ApplicationRecord
     case payment_method
     when "cash" then "Cash"
     when "check" then "Check"
+    when "zelle" then "Zelle"
+    when "venmo" then "Venmo"
     when "historical" then "Historical"
     when "n/a" then "N/A"
     when "other" then "Other"

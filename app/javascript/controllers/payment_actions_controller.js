@@ -82,11 +82,11 @@ export default class extends Controller {
       this.markPaidNameTarget.textContent = itemName
     }
 
-    // Update form actions with the correct item ID(s)
+    // Point the (single) form at the right line item(s). The method + notes are
+    // submitted from the form fields, so no query string is needed.
+    const baseUrl = window.location.pathname
     this.markPaidFormTargets.forEach(form => {
-      const method = form.dataset.method
-      const baseUrl = window.location.pathname
-      form.action = `${baseUrl}/line_items/${itemId}/mark_paid?payment_method=${method}`
+      form.action = `${baseUrl}/line_items/${itemId}/mark_paid`
     })
 
     this.markPaidModalTarget.classList.remove("hidden")

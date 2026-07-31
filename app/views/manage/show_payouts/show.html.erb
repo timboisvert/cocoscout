@@ -1028,14 +1028,25 @@
                             <div class="text-xs text-gray-400 mt-0.5">add to a payout run</div>
                           </div>
                         <% else %>
-                          <%# No connected bank — they can't be paid through a run yet.
-                              We don't offer "mark as paid" here: that's a remnant of
-                              the old manual flow, and we shouldn't pretend to pay
-                              someone we can't. They stay owed until they set up how
-                              they get paid. %>
-                          <div class="text-right" title="This person hasn't set up how they get paid, so they can't be paid yet. They'll be paid on a payout run once they connect a bank.">
+                          <%# No connected bank — they can't be paid on a payout run. If
+                              the org has declared offline methods in Money settings, a
+                              manager can record that they were already paid another way
+                              (cash/check/Zelle/Venmo/other): the payee shows as paid with
+                              no money moving through CocoScout. Otherwise they stay owed
+                              until they connect a bank. %>
+                          <div class="text-right" title="This person hasn't connected a bank, so they can't be paid on a payout run. If you've already paid them another way, you can record it.">
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Needs payment setup</span>
-                            <div class="text-xs text-gray-400 mt-0.5">not payable yet</div>
+                            <% if !item.is_guest? && Current.organization.offline_payout_method_choices.any? %>
+                              <div class="mt-0.5">
+                                <button type="button"
+                                        data-action="click->payment-actions#showMarkPaidModal"
+                                        data-item-id="<%= items.map(&:id).join(",") %>"
+                                        data-item-name="<%= item.payee_name %>"
+                                        class="text-xs text-gray-400 hover:text-pink-600 underline cursor-pointer">Mark paid another way</button>
+                              </div>
+                            <% else %>
+                              <div class="text-xs text-gray-400 mt-0.5">not payable yet</div>
+                            <% end %>
                           </div>
                         <% end %>
                       </td>
@@ -1046,23 +1057,33 @@
             </table>
           </div>
 
-          <!-- Individual Mark Paid Modal -->
+          <!-- Individual "Mark paid another way" Modal -->
           <div data-payment-actions-target="markPaidModal"
                class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
                data-action="click->payment-actions#closeOnBackdrop">
             <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">Mark as Paid</h3>
-              <p class="text-sm text-gray-600 mb-4">Recording payment for <span data-payment-actions-target="markPaidName" class="font-medium"></span></p>
-              <div class="space-y-2">
-                <% ShowPayoutLineItem::MANUAL_PAYMENT_METHODS.each do |method| %>
-                  <%= form_with url: "#", method: :post, local: true, class: "mark-paid-form", data: { "payment-actions-target": "markPaidForm", method: method } do %>
-                    <%= render "shared/button", text: method.titleize, variant: "secondary", size: "small", classes: "w-full", type: :submit %>
-                  <% end %>
-                <% end %>
-              </div>
-              <div class="mt-4 pt-4 border-t border-gray-200">
-                <%= render "shared/button", text: "Cancel", variant: "ghost", size: "small", classes: "w-full", type: :button, data: { action: "click->payment-actions#hideMarkPaidModal" } %>
-              </div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-2">Mark paid another way</h3>
+              <p class="text-sm text-gray-600 mb-4">Recording a payment made outside CocoScout for <span data-payment-actions-target="markPaidName" class="font-medium"></span>.</p>
+              <%# One form; the JS points its action at the right line item(s). Method
+                  comes from the select, so only the org's declared methods are offered. %>
+              <%= form_with url: "#", method: :post, local: true, data: { "payment-actions-target": "markPaidForm" } do %>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">How did you pay them?</label>
+                  <select name="payment_method" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                    <% Current.organization.offline_payout_method_choices.each do |method| %>
+                      <option value="<%= method %>"><%= method.titleize %></option>
+                    <% end %>
+                  </select>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Reference / note <span class="text-gray-400 font-normal">(optional)</span></label>
+                  <input type="text" name="payment_notes" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" placeholder="e.g., Zelle confirmation #, paid at the till">
+                </div>
+                <div class="flex items-center justify-end gap-3">
+                  <%= render "shared/button", text: "Cancel", variant: "ghost", size: "small", type: :button, data: { action: "click->payment-actions#hideMarkPaidModal" } %>
+                  <%= render "shared/button", text: "Mark paid", variant: "primary", size: "small", type: :submit %>
+                </div>
+              <% end %>
             </div>
           </div>
 

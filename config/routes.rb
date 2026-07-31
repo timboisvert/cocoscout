@@ -1282,6 +1282,10 @@ Rails.application.routes.draw do
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
     post "money/refresh", to: "money#refresh", as: "refresh_money"
+    # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
+    get   "money/settings", to: "money_settings#show", as: "money_settings"
+    patch "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
+    get   "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     # Slim inline accordion of a production's revenue events (Turbo-frame, lazy).
     get "money/financials/:production_id/events", to: "money_financials#events", as: "money_production_financial_events"
@@ -1393,6 +1397,8 @@ Rails.application.routes.draw do
     get    "contracts/settings",              to: "contract_settings#show",           as: "contract_settings"
     patch  "contracts/settings/payment-methods", to: "contract_settings#update_payment_methods",
                                                  as: "contract_settings_payment_methods"
+    patch  "contracts/settings/notifications", to: "contract_settings#update_notifications",
+                                               as: "contract_settings_notifications"
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"

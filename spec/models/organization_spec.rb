@@ -88,4 +88,46 @@ RSpec.describe Organization, type: :model do
       expect(company.users.count).to eq(2)
     end
   end
+
+  describe "offline payout methods" do
+    it "filters stored values to the known manual methods" do
+      org = build(:organization, enabled_offline_payout_methods: %w[cash venmo bogus])
+      expect(org.enabled_offline_payout_methods).to eq(%w[cash venmo])
+    end
+
+    it "excludes 'historical' from the hand-pickable choices" do
+      org = build(:organization, enabled_offline_payout_methods: %w[cash historical zelle])
+      expect(org.offline_payout_method_choices).to eq(%w[cash zelle])
+    end
+
+    it "defaults to empty (Stripe is the norm; offline is opt-in)" do
+      expect(create(:organization).enabled_offline_payout_methods).to eq([])
+    end
+  end
+
+  describe "contract notification recipients" do
+    let(:org) { create(:organization, owner: create(:user)) }
+    let!(:owner_person) { create(:person, user: org.owner) }
+    let(:manager_user) { create(:user) }
+    let!(:manager_person) { create(:person, user: manager_user) }
+    let!(:manager_role) { create(:organization_role, :manager, user: manager_user, organization: org) }
+
+    it "offers the managers and the owner as selectable recipients" do
+      expect(org.contract_notification_manager_users).to include(org.owner, manager_user)
+    end
+
+    it "notifies no one when nothing is selected" do
+      expect(org.contract_notification_recipients).to eq([])
+    end
+
+    it "notifies only the chosen managers, as their people" do
+      org.update!(contract_notification_user_ids: [ manager_user.id ])
+      expect(org.contract_notification_recipients).to contain_exactly(manager_person)
+    end
+
+    it "drops a selected id that is no longer a current manager" do
+      org.update!(contract_notification_user_ids: [ manager_user.id, 999_999 ])
+      expect(org.contract_notification_recipients).to contain_exactly(manager_person)
+    end
+  end
 end

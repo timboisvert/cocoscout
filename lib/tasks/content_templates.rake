@@ -26,5 +26,23 @@ namespace :content_templates do
     else
       puts "content template contract_person_added already exists — left as is"
     end
+
+    # Sent to the org's chosen managers when a contract is signed by the
+    # counterparty. Message-only (no email); renders as an automated notification.
+    signed = ContentTemplate.find_or_initialize_by(key: "contract_signed_manager")
+    if signed.new_record?
+      signed.update!(
+        name: "Contract Signed (manager alert)",
+        subject: "{{contractor_name}} signed a contract",
+        body: "<p>{{contractor_name}} signed the contract for {{production_name}}. " \
+              "<a href=\"{{contract_url}}\">View the contract</a>.</p>",
+        category: "notifications",
+        channel: "message",
+        active: true
+      )
+      puts "Created content template: contract_signed_manager"
+    else
+      puts "content template contract_signed_manager already exists — left as is"
+    end
   end
 end

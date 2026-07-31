@@ -18,6 +18,7 @@ module Manage
       "manage/money_financials" => :money,
       "manage/money_payouts" => :money,
       "manage/money_incoming" => :money,
+      "manage/money_settings" => :money,
       "manage/show_payouts" => :money,
       "manage/show_financials" => :money,
       "manage/contracts" => :contracts,

@@ -93,6 +93,45 @@ class Organization < ApplicationRecord
     default_contract_payment_methods - [ "online" ]
   end
 
+  # Offline/"other" ways this org reports paying people outside CocoScout's Stripe
+  # rail. Stored as a plain list; filtered to the known manual methods so a stale
+  # value can never widen what's offered.
+  def enabled_offline_payout_methods
+    Array(self[:enabled_offline_payout_methods]) & ShowPayoutLineItem::MANUAL_PAYMENT_METHODS
+  end
+
+  # The subset a manager may hand-pick when recording a single offline payment on a
+  # payout — excludes "historical", which is a bulk back-fill marker, not a method
+  # the org actively pays with.
+  def offline_payout_method_choices
+    enabled_offline_payout_methods & %w[cash check zelle venmo other]
+  end
+
+  # --- Contract-signing notifications ----------------------------------------
+  # The managers the org explicitly chose to notify when a contract is signed.
+  # Empty means nobody is notified (the feature is off until someone's picked).
+  def contract_notification_user_ids
+    Array(self[:contract_notification_user_ids]).map(&:to_i)
+  end
+
+  # Users who may be chosen as contract-notification recipients — the org's
+  # managers plus the owner (a manager implicitly, but not always a role row).
+  def contract_notification_manager_users
+    ids = organization_roles.where(company_role: "manager").pluck(:user_id)
+    ids << owner_id if owner_id
+    User.where(id: ids.uniq.compact)
+  end
+
+  # The Person recipients to message when a contract is signed — only the chosen
+  # managers, intersected with the current manager set so a removed manager drops
+  # out. Empty selection sends to no one.
+  def contract_notification_recipients
+    ids = contract_notification_user_ids
+    return [] if ids.empty?
+
+    contract_notification_manager_users.where(id: ids).filter_map(&:person)
+  end
+
   before_create :generate_invite_token
 
   # Generate or ensure invite token exists
