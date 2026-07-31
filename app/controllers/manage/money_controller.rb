@@ -61,18 +61,20 @@ module Manage
           # Enrich with course payout info + real money in/out/profit (registration
           # revenue lives in Stripe, not show financials), so the slim grid shows
           # the same numbers as the financials screen.
-          offering = course.course_offerings.first
-          if offering
-            payout = offering.course_offering_payout
-            cf = offering.financials_summary
+          # A course can hold many runs — aggregate revenue across all of them for
+          # the course card, and focus the link/status on the latest run.
+          offerings = course.course_offerings.to_a
+          if offerings.any?
+            cfs = offerings.map { |o| o.financials_summary }
+            focus = offerings.max_by(&:created_at)
             summary[:is_course] = true
-            summary[:gross_revenue] = cf[:gross_cents] / 100.0
-            summary[:net_income] = cf[:net_cents] / 100.0
-            summary[:revenue_shows] = cf[:confirmed_count]
-            summary[:course_offering] = offering
-            summary[:course_confirmed_revenue_cents] = offering.course_registrations.confirmed.sum(:amount_cents)
-            summary[:course_payout_status] = payout&.status
-            summary[:course_payout_total_cents] = payout&.total_payout_cents
+            summary[:gross_revenue] = cfs.sum { |cf| cf[:gross_cents] } / 100.0
+            summary[:net_income] = cfs.sum { |cf| cf[:net_cents] } / 100.0
+            summary[:revenue_shows] = cfs.sum { |cf| cf[:confirmed_count] }
+            summary[:course_offering] = focus
+            summary[:course_confirmed_revenue_cents] = offerings.sum { |o| o.course_registrations.confirmed.sum(:amount_cents) }
+            summary[:course_payout_status] = focus.course_offering_payout&.status
+            summary[:course_payout_total_cents] = offerings.sum { |o| o.course_offering_payout&.total_payout_cents.to_i }
           end
           summary
         end

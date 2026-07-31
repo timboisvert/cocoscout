@@ -259,19 +259,21 @@ module Manage
 
       Current.user.accessible_productions.courses
              .includes(course_offerings: { course_offering_payout: :line_items }).each do |course|
-        offering = course.course_offerings.first
-        payout = offering&.course_offering_payout
-        next unless payout
+        # One course can hold many runs — surface each run's own payout.
+        course.course_offerings.each do |offering|
+          payout = offering.course_offering_payout
+          next unless payout
 
-        unpaid = payout.line_items.reject(&:paid?)
-        amount = unpaid.sum(&:amount_cents) / 100.0
-        next unless amount.positive?
+          unpaid = payout.line_items.reject(&:paid?)
+          amount = unpaid.sum(&:amount_cents) / 100.0
+          next unless amount.positive?
 
-        items << {
-          name: offering.title, kind: :course, amount: amount,
-          subtitle: "#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)}",
-          href: manage_course_offering_payout_path(offering)
-        }
+          items << {
+            name: offering.title, kind: :course, amount: amount,
+            subtitle: "#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)}",
+            href: manage_course_offering_payout_path(offering)
+          }
+        end
       end
 
       Current.organization.contracts.includes(:contract_payments, :contractor).each do |contract|

@@ -16,7 +16,8 @@ module Manage
         if @is_course
           # Course production - money in (registrations) − money out (platform fee
           # + instructor payouts) = profit. Same shape as everything else.
-          @course_offering = @production.course_offerings.includes(feature_credit_redemption: :feature_credit).first
+          # A course can hold many runs — focus on the latest (most current) one.
+          @course_offering = @production.course_offerings.includes(feature_credit_redemption: :feature_credit).order(:created_at).last
           @course = course_financials(@production)
           @money_in = (@course[:gross_cents] || 0) / 100.0
           @money_out = ((@course[:fee_cents] || 0) + (@course[:payout_cents] || 0)) / 100.0
@@ -157,7 +158,7 @@ module Manage
     # Course money in/out/profit (cents), from the CourseOffering. Returns {} when
     # there's no offering yet.
     def course_financials(production)
-      offering = production.course_offerings.includes(:course_offering_payout).first
+      offering = production.course_offerings.includes(:course_offering_payout).order(:created_at).last
       return {} unless offering
 
       offering.financials_summary.merge(offering: offering)
