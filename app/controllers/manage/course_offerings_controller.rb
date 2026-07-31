@@ -247,8 +247,24 @@ module Manage
         return
       end
 
-      @course_offering.destroy
-      redirect_to manage_course_offerings_path, notice: "Course deleted."
+      if @course_offering.course_registrations.exists?
+        redirect_to manage_course_offering_path(@course_offering),
+          alert: "This course has registrations, so it can't be deleted. Cancel or refund the registrations first."
+        return
+      end
+
+      production = @course_offering.production
+      if @course_offering.destroy
+        # Clean up the now-empty course production (no other runs, shows, or contracts).
+        if production && production.course_offerings.reload.none? &&
+           production.shows.reload.none? && production.contracts.none?
+          production.destroy
+        end
+        redirect_to manage_course_offerings_path, notice: "Course deleted."
+      else
+        redirect_to manage_course_offering_path(@course_offering),
+          alert: "Couldn't delete this course: #{@course_offering.errors.full_messages.to_sentence.presence || 'it still has linked records.'}"
+      end
     end
 
     def add_sessions
