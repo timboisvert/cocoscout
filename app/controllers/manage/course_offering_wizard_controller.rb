@@ -4,6 +4,33 @@ module Manage
   class CourseOfferingWizardController < ManageController
     before_action :load_wizard_state
 
+    # Step 0: Is this a brand-new course, or another run of an existing one?
+    def start
+      @existing_courses = existing_course_productions
+      # No prior courses → nothing to add a run to; skip straight to a new course.
+      redirect_to(manage_course_wizard_basics_path) and return if @existing_courses.empty?
+      @preselected_course_id = params[:course_id].presence
+    end
+
+    def save_start
+      if params[:course_choice] == "existing" && params[:existing_course_production_id].present?
+        production = Current.organization.productions.courses.find_by(id: params[:existing_course_production_id])
+        if production.nil?
+          @existing_courses = existing_course_productions
+          flash.now[:alert] = "Pick a course to add a run to."
+          render :start, status: :unprocessable_entity
+          return
+        end
+        @wizard_state[:existing_course_production_id] = production.id
+        prefill_from_course(production)
+      else
+        @wizard_state[:existing_course_production_id] = nil
+      end
+
+      save_wizard_state
+      redirect_to manage_course_wizard_basics_path
+    end
+
     # Step 1: Course basics (title, description)
     def basics
       @step = 1
@@ -357,29 +384,33 @@ module Manage
       end
 
       ActiveRecord::Base.transaction do
-        # When scheduled from a contract, the contract's activation already created
-        # a production (with the shows). Reuse/convert it into the course production
-        # instead of creating a second one — otherwise the contract is left with an
-        # empty orphan third_party production after its shows are moved to the course.
-        existing_contract_production = contract&.production
-        existing_contract_production = nil if existing_contract_production&.production_type == "course"
-
-        if existing_contract_production
-          existing_contract_production.update!(
+        # Resolve the durable COURSE production this run belongs to.
+        if @wizard_state[:existing_course_production_id].present?
+          # "Another run" of an existing course — reuse its production. A course
+          # holds many runs (offerings), so we never spawn a new production here.
+          @production = Current.organization.productions.courses.find(@wizard_state[:existing_course_production_id])
+        elsif contract&.production && contract.production.production_type != "course"
+          # First course scheduled from a contract: convert the contract's
+          # third_party booking production into the course production (avoids an
+          # orphan). The contract keeps pointing at it; its rental shows stay
+          # linked via space_rental.
+          contract.production.update!(
             name: @wizard_state[:title],
             production_type: :course,
             casting_source: :talent_pool,
             casting_setup_completed: true
           )
-          @production = existing_contract_production
+          @production = contract.production
         else
+          # New standalone course. NOTE: we never reassign contract.production —
+          # the contract keeps its own booking production; this run just links the
+          # contract for its split and tags the contract's rental shows as sessions.
           @production = Current.organization.productions.create!(
             name: @wizard_state[:title],
             production_type: :course,
             casting_source: :talent_pool,
             casting_setup_completed: true
           )
-          contract&.update!(production: @production)
         end
 
         # Set up instructor people if selected
@@ -563,6 +594,32 @@ module Manage
     end
 
     private
+
+    # Course productions that already have at least one run — candidates for
+    # "another run of an existing course."
+    def existing_course_productions
+      Current.organization.productions.courses
+             .includes(:course_offerings)
+             .select { |p| p.course_offerings.any? }
+             .sort_by { |p| p.name.to_s.downcase }
+    end
+
+    # Prefill the wizard from a course's most recent run so re-running it is fast.
+    # Deliberately skips dates/sessions — a new run has its own schedule.
+    def prefill_from_course(production)
+      latest = production.course_offerings.max_by(&:created_at)
+      return unless latest
+
+      @wizard_state[:title] = latest.title
+      @wizard_state[:subtitle] = latest.subtitle
+      @wizard_state[:description] = latest.description.to_s
+      @wizard_state[:price_cents] = latest.price_cents
+      @wizard_state[:early_bird_price_cents] = latest.early_bird_price_cents
+      @wizard_state[:currency] = latest.currency
+      @wizard_state[:capacity] = latest.capacity
+      @wizard_state[:instructor_name] = latest.instructor_name
+      @wizard_state[:instructor_person_ids] = latest.course_offering_instructors.order(:position).map(&:person_id)
+    end
 
     def create_course_sessions!(contract)
       if @wizard_state[:schedule_mode] == "contract" && contract.present? && @wizard_state[:selected_show_ids].present?

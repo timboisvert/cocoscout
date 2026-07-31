@@ -1536,6 +1536,8 @@ Rails.application.routes.draw do
     get "courses",              to: "course_offerings#index",   as: "course_offerings"
 
     # Course Offering Wizard (must be before :id routes so "wizard" isn't captured as :id)
+    get  "courses/wizard/start",      to: "course_offering_wizard#start",           as: "course_wizard_start"
+    post "courses/wizard/start",      to: "course_offering_wizard#save_start"
     get  "courses/wizard/new",        to: "course_offering_wizard#basics",          as: "course_wizard_basics"
     post "courses/wizard/new",        to: "course_offering_wizard#save_basics",     as: "course_wizard_save_basics"
     get  "courses/wizard/schedule",   to: "course_offering_wizard#schedule",        as: "course_wizard_schedule"

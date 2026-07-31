@@ -13,7 +13,7 @@
   HTML
 
   courses_actions = [
-    { icon: "clipboard-list", text: "New Course", description: "Set up a class or workshop", path: manage_course_wizard_basics_path },
+    { icon: "clipboard-list", text: "New Course", description: "Set up a class or workshop", path: manage_course_wizard_start_path },
     { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_settings_path }
   ]
 %>
@@ -169,7 +169,7 @@
     <p class="text-gray-600 text-sm mb-6">
       Create a course to start selling registrations online.
     </p>
-    <%= link_to manage_course_wizard_basics_path do %>
+    <%= link_to manage_course_wizard_start_path do %>
       <%= render "shared/button", text: "Create Course", variant: "primary", size: "medium" %>
     <% end %>
   </div>

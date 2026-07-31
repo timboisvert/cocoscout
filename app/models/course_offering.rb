@@ -11,6 +11,10 @@ class CourseOffering < ApplicationRecord
   has_many :course_offering_instructors, dependent: :destroy
   has_one :course_offering_payout, dependent: :destroy
   has_many :org_payouts, dependent: :nullify
+  # Session shows scoped to this run (see #sessions). Nullify (not destroy) on
+  # delete so removing a run never deletes its Shows — importantly, a contract's
+  # rental shows stay put — it just unlinks them from the deleted run.
+  has_many :offering_shows, class_name: "Show", dependent: :nullify, inverse_of: :course_offering
   has_many :instructor_people, through: :course_offering_instructors, source: :person
   has_one :email_draft, as: :emailable, dependent: :destroy
 

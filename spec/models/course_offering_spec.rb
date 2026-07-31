@@ -28,6 +28,13 @@ RSpec.describe CourseOffering, type: :model do
       earlier = create(:show, production: production, course_offering: run_a, event_type: "class", date_and_time: 1.week.from_now)
       expect(run_a.sessions.to_a).to eq([ earlier, later ])
     end
+
+    it "unlinks (does not delete) its session shows when the run is destroyed" do
+      show = create(:show, production: production, course_offering: run_a, event_type: "class", date_and_time: 1.week.from_now)
+      expect { run_a.destroy }.not_to raise_error
+      expect(Show.exists?(show.id)).to be true          # show survives
+      expect(show.reload.course_offering_id).to be_nil  # just unlinked
+    end
   end
 
   describe "#financials_summary" do

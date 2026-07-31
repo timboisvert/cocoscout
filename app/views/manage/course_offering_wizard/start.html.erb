@@ -1,0 +1,59 @@
+<%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Start" } do %>
+  <% preselect_existing = @preselected_course_id.present? %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900">New course, or another run?</h2>
+    <p class="text-gray-600 mt-2">Running a course you've taught before? Add it as a new run so it stays under one course.</p>
+  </div>
+
+  <%= form_with url: manage_course_wizard_start_path, method: :post, local: true do %>
+    <div class="space-y-3" data-controller="radio-toggle" data-radio-toggle-show-value="existing">
+      <label class="block cursor-pointer">
+        <div data-radio-toggle-target="card" data-value="new"
+             class="flex items-start gap-3 rounded-lg border p-4 <%= preselect_existing ? 'border-gray-200 bg-gray-50' : 'border-pink-500 bg-pink-50' %>">
+          <input type="radio" name="course_choice" value="new" <%= "checked" unless preselect_existing %>
+                 data-action="change->radio-toggle#update"
+                 class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div>
+            <div class="font-medium text-gray-900">A brand-new course</div>
+            <div class="text-sm text-gray-600">Start fresh with a course you haven't run before.</div>
+          </div>
+        </div>
+      </label>
+
+      <label class="block cursor-pointer">
+        <div data-radio-toggle-target="card" data-value="existing"
+             class="rounded-lg border p-4 <%= preselect_existing ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %>">
+          <div class="flex items-start gap-3">
+            <input type="radio" name="course_choice" value="existing" <%= "checked" if preselect_existing %>
+                   data-action="change->radio-toggle#update"
+                   class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div>
+              <div class="font-medium text-gray-900">Another run of an existing course</div>
+              <div class="text-sm text-gray-600">Reuse the course; we'll prefill from its last run — you just set new dates and pricing.</div>
+            </div>
+          </div>
+
+          <div data-radio-toggle-target="content" class="mt-4 <%= 'hidden' unless preselect_existing %>">
+            <label for="existing_course_production_id" class="block text-sm font-medium text-gray-900 mb-1.5">Which course?</label>
+            <select name="existing_course_production_id" id="existing_course_production_id"
+                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              <option value="">Select a course…</option>
+              <% @existing_courses.each do |course| %>
+                <option value="<%= course.id %>" <%= "selected" if @preselected_course_id.to_s == course.id.to_s %>><%= course.name %></option>
+              <% end %>
+            </select>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <div class="mt-6 flex justify-end">
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
