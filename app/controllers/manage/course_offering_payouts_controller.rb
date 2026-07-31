@@ -174,6 +174,23 @@ module Manage
         notice: "Payment removed."
     end
 
+    # Offline fallback: record that an instructor was paid another way (cash/check/
+    # Zelle/etc.) when they can't be paid through a Stripe run. Settles the payout
+    # once every line is paid, so the course leaves "awaiting payout".
+    def mark_line_item_paid
+      line_item = @payout.line_items.find(params[:line_item_id])
+      method = params[:method].presence_in(ShowPayoutLineItem::MANUAL_PAYMENT_METHODS) || "other"
+      line_item.mark_paid!(user: Current.user, method: method, notes: params[:notes].presence)
+
+      if @payout.line_items.reload.all?(&:paid?) && !@payout.paid?
+        @payout.update!(status: "paid", paid_at: Time.current)
+      end
+
+      redirect_to manage_course_offering_payout_path(@course_offering), notice: "Recorded as paid another way."
+    rescue ActiveRecord::RecordNotFound
+      redirect_to manage_course_offering_payout_path(@course_offering), alert: "That payout line wasn't found."
+    end
+
     def update_revenue_override
       override = params[:total_revenue_override_cents]
 

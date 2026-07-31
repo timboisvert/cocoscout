@@ -194,6 +194,14 @@
                       remainder connects via course settings, so only Person/Contractor. %>
                   <% if row[:status] == :needs_bank && payee && %w[Person Contractor].include?(payee.class.name) %>
                     <%= render "payment_setup_actions", setup_url: payee_onboarding_url(token: PayeeOnboardingToken.generate(payee)) %>
+                    <% if row[:source].is_a?(CourseOfferingPayoutLineItem) %>
+                      <div data-controller="modal">
+                        <% oid = "offline-pay-#{row[:source].id}" %>
+                        <button type="button" data-action="click->modal#open" data-modal-id="<%= oid %>"
+                                class="text-xs text-gray-400 hover:text-pink-600 underline cursor-pointer">Mark paid another way</button>
+                        <%= render "offline_pay_modal", id: oid, line_item: row[:source], course_offering: @course_offering %>
+                      </div>
+                    <% end %>
                   <% end %>
                 </div>
               </div>
