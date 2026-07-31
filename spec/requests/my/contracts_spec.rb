@@ -36,6 +36,16 @@ RSpec.describe "My::Contracts", type: :request do
     expect(response.body).to include("Connect your bank")
   end
 
+  it "groups multiple contracts on one production together" do
+    production = create(:production, organization: org, name: "Spring Revue")
+    create(:contract, :active, organization: org, contractor: contractor, production: production)
+    create(:contract, :active, organization: org, contractor: contractor, production: production)
+
+    get my_contracts_path
+    # The two-per-production group shows the count label; header renders once.
+    expect(response.body).to include("2 contracts")
+  end
+
   it "doesn't show contracts belonging to a different person" do
     other = create(:contractor, organization: org, person: create(:person), email: "other@example.com")
     create(:contract, :active, organization: org, contractor: other, contractor_name: "Other Co")
