@@ -38,11 +38,13 @@
           to_pay = contract.contract_payments.select(&:collectable_online?).sort_by(&:due_date)
           owed_total = to_pay.sum { |p| p.amount.to_f }
           needs_signature = contract.signing_out_for_signature?
-          reports_sales = contract.contractor_reports_sales?
+          reports_sales = contract.pending_sales_report?
           has_overdue = to_pay.any?(&:overdue?)
           has_action = needs_signature || reports_sales || to_pay.any?
           # Title from the contractor's POV: the show, else the org they contracted with.
-          title = contract.production_name.presence || contract.organization.name
+          # Fall back to the live production name — the snapshot column can be blank
+          # even when the production is linked — before landing on the org name.
+          title = contract.production_name.presence || contract.production&.name || contract.organization.name
           border = needs_signature ? "border-amber-300" : (has_overdue ? "border-pink-300" : "border-gray-200")
           status_class = { "active" => "bg-green-100 text-green-700", "completed" => "bg-blue-100 text-blue-700",
                            "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"

@@ -45,6 +45,17 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(payment.amount_tbd).to be false
       end
 
+      it "never overwrites a payment that's already been paid" do
+        show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)
+        # A settled payment — a re-sync (e.g. a contractor re-reporting sales on a
+        # closed contract) must not rewrite money that already moved.
+        payment = create(:contract_payment, :paid, contract: contract, due_date: Date.new(2026, 3, 16), amount: 999.0)
+
+        expect { described_class.new(show).call }.not_to change { payment.reload.amount }
+        expect(payment.amount).to eq(999.0)
+      end
+
       it "includes other revenue in the calculation" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
         create(:show_financials, :complete, show: show, ticket_revenue: 800.0, other_revenue: 200.0)

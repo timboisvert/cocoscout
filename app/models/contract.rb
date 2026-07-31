@@ -725,6 +725,21 @@ class Contract < ApplicationRecord
     who_sells_tickets == "contractor" && revenue_share?
   end
 
+  # True only when there's actually something left to report: a contractor-sells
+  # revenue-share contract with at least one PAST show whose financials aren't
+  # confirmed yet. Once every show's sales are in (data_confirmed), we stop
+  # nagging — even if the org, not the contractor, entered them. Drives the
+  # "report your sales" prompt so it never appears on already-settled contracts.
+  def pending_sales_report?
+    return false unless contractor_reports_sales?
+
+    contract_shows.any? do |show|
+      next false if show.date_and_time.present? && show.date_and_time > Time.current
+      financials = show.show_financials
+      financials.nil? || !financials.data_confirmed?
+    end
+  end
+
   # "revenue_share" | "revenue_minus_fee" | "flat".
   def settlement_basis
     draft_payment_config["settlement_basis"].presence || legacy_settlement_basis

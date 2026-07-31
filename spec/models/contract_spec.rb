@@ -477,6 +477,38 @@ RSpec.describe Contract, type: :model do
       end
     end
 
+    describe "#pending_sales_report?" do
+      let(:organization) { create(:organization) }
+      let(:production) { create(:production, organization: organization) }
+      let(:contract) do
+        create(:contract, :active, organization: organization, production: production,
+               draft_data: { "payment_config" => { "who_sells_tickets" => "contractor", "settlement_basis" => "revenue_share" } })
+      end
+
+      it "is false when the deal isn't contractor-sells revenue-share" do
+        org_sells = create(:contract, :active, organization: organization,
+               production: create(:production, organization: organization),
+               draft_data: { "payment_config" => { "who_sells_tickets" => "org", "settlement_basis" => "revenue_share" } })
+        expect(org_sells.pending_sales_report?).to be false
+      end
+
+      it "is true when a past show still has unconfirmed sales" do
+        create(:show, production: production, date_and_time: 1.week.ago)
+        expect(contract.pending_sales_report?).to be true
+      end
+
+      it "is false once every past show's sales are confirmed" do
+        show = create(:show, production: production, date_and_time: 1.week.ago)
+        create(:show_financials, :complete, show: show)
+        expect(contract.pending_sales_report?).to be false
+      end
+
+      it "ignores future shows that can't be reported yet" do
+        create(:show, production: production, date_and_time: 1.week.from_now)
+        expect(contract.pending_sales_report?).to be false
+      end
+    end
+
     describe "payment model v2 (who sells + settlement basis → direction)" do
       def contract_with(config)
         build(:contract, draft_data: { "payment_config" => config })

@@ -57,7 +57,7 @@ class ContractPaymentSyncService
                          .select { |s| s.show_financials&.has_data? }
                          .map { |s| [ s, s.show_financials.total_revenue ] }
       update_payment(payment, summary[:contractor_share], details, pending_count: summary[:pending_count])
-    else
+    elsif !payment.status_paid?
       payment.update(amount: 0, amount_tbd: true)
     end
   end
@@ -83,7 +83,7 @@ class ContractPaymentSyncService
     if financials&.has_data?
       settled_amount = (financials.total_revenue * share_pct_for(payment) / 100.0).round(2)
       update_payment(payment, settled_amount, [ [ @show, financials.total_revenue ] ])
-    else
+    elsif !payment.status_paid?
       # Reset to TBD if financial data removed
       payment.update(amount: 0, amount_tbd: true) if payment.amount_tbd? == false
     end
@@ -111,7 +111,7 @@ class ContractPaymentSyncService
         settled_amount = (total_revenue * share_pct_for(payment) / 100.0).round(2)
         show_details = confirmed_shows.map { |s| [ s, s.show_financials.total_revenue ] }
         update_payment(payment, settled_amount, show_details, pending_count: period_shows.size - confirmed_shows.size)
-      elsif payment.revenue_share?
+      elsif payment.revenue_share? && !payment.status_paid?
         # All shows still pending — keep TBD
         payment.update(amount: 0, amount_tbd: true)
       end
@@ -119,6 +119,11 @@ class ContractPaymentSyncService
   end
 
   def update_payment(payment, amount, show_details, pending_count: 0)
+    # Never rewrite a payment that's already been settled. A re-sync (e.g. a
+    # contractor re-submitting sales on a closed contract) must not overwrite the
+    # amount/notes of money that already moved.
+    return if payment.status_paid?
+
     attrs = { amount: amount }
 
     # Only clear TBD if all shows in the period are confirmed
