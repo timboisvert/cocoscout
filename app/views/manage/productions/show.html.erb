@@ -420,10 +420,17 @@
       <div class="p-4">
         <% links = [
           { name: "Messages", path: production_manage_messages_path(@production) },
-          { name: "Manage Shows & Events", path: manage_production_shows_path(@production) },
-          { name: "Manage Availability", path: manage_casting_availability_path(@production) },
-          { name: "Manage Casting", path: manage_casting_production_path(@production) },
-          { name: "Manage Auditions & Sign-ups", path: manage_signups_auditions_path(@production) },
+          { name: "Manage Shows & Events", path: manage_production_shows_path(@production) }
+        ]
+        # Courses don't use casting/availability/auditions — hide those entry points.
+        unless @production.type_course?
+          links += [
+            { name: "Manage Availability", path: manage_casting_availability_path(@production) },
+            { name: "Manage Casting", path: manage_casting_production_path(@production) },
+            { name: "Manage Auditions & Sign-ups", path: manage_signups_auditions_path(@production) }
+          ]
+        end
+        links += [
           { name: "View and Manage Visual Assets", path: manage_production_visual_assets_path(@production) },
           { name: "Production Settings", path: edit_manage_production_path(@production) }
         ] %>

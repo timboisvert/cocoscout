@@ -1081,6 +1081,8 @@ module Manage
     def check_not_third_party
       if @production.type_third_party?
         redirect_to manage_shows_path(@production), alert: "Casting is not available for third-party productions"
+      elsif @production.type_course?
+        redirect_to manage_course_offerings_path, alert: "Courses don't use casting."
       end
     end
 

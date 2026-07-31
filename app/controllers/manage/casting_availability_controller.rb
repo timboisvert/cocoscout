@@ -3,6 +3,7 @@
 module Manage
   class CastingAvailabilityController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
+    before_action :check_not_course, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
 
     def index
       # Get all future shows for this production, ordered by date
@@ -461,6 +462,13 @@ module Manage
     end
 
     private
+
+    # Courses don't use availability/casting — keep them out of this subsystem.
+    def check_not_course
+      if @production&.type_course?
+        redirect_to manage_course_offerings_path, alert: "Courses don't use availability."
+      end
+    end
 
     def set_production
       unless Current.organization
