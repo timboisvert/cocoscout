@@ -30,6 +30,15 @@ RSpec.describe "Manage::CourseOfferings index payouts overview", type: :request 
     expect(response.body).not_to include("Courses awaiting payout")
   end
 
+  it "does not list a course whose payout is marked paid (e.g. settled offline)" do
+    create(:course_registration, course_offering: offering, amount_cents: 4000, status: "confirmed")
+    CourseOfferingPayout.create!(course_offering: offering, status: "paid", paid_at: Time.current)
+
+    get manage_course_offerings_path
+
+    expect(response.body).not_to include("Courses awaiting payout")
+  end
+
   it "leads with a module hub header instead of top-nav links" do
     get manage_course_offerings_path
 

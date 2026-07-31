@@ -462,6 +462,10 @@ module Manage
 
       payout = offering.course_offering_payout
       return true if payout.nil?
+      # A payout marked paid is settled — whether through a Stripe run or recorded
+      # as paid another way (e.g. an offline/historical payment). Without this, a
+      # course paid outside a run stays "awaiting payout" forever.
+      return false if payout.paid?
 
       !PayoutContribution.exists?(source: payout)
     end
