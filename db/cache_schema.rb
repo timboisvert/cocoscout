@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -594,6 +594,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_120000) do
     t.bigint "course_offering_id", null: false
     t.datetime "created_at", null: false
     t.boolean "hide_photo", default: false, null: false
+    t.integer "payout_cents"
+    t.decimal "payout_percentage", precision: 5, scale: 2
+    t.string "payout_type", default: "none", null: false
     t.bigint "person_id", null: false
     t.integer "position", default: 0, null: false
     t.datetime "updated_at", null: false

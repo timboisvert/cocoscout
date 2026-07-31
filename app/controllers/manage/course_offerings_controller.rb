@@ -118,6 +118,8 @@ module Manage
       bios = params[:instructor_bios] || {}
       headshots = params[:instructor_headshots] || {}
       photo_modes = params[:instructor_photo_modes] || {}
+      payout_types = params[:instructor_payout_types] || {}
+      payout_values = params[:instructor_payout_values] || {}
 
       updates = {}
       if person_ids.any?
@@ -164,6 +166,13 @@ module Manage
           elsif mode == "profile" && coi.headshot.attached?
             coi.headshot.purge
           end
+
+          # Standalone (no-contract) payout split: one value interpreted per type.
+          ptype = payout_types[pid.to_s].presence_in(CourseOfferingInstructor::PAYOUT_TYPES) || "none"
+          value = payout_values[pid.to_s]
+          coi.payout_type = ptype
+          coi.payout_percentage = ptype == "percentage" ? value.presence : nil
+          coi.payout_cents = ptype == "flat" ? (value.to_f * 100).round : nil
 
           coi.save!
         end

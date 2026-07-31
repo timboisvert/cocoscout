@@ -403,6 +403,32 @@
             </div>
           </div>
 
+          <%# ── Instructor payout (standalone / no-contract courses) ── %>
+          <% instructors_for_pay = @course_offering.course_offering_instructors.includes(:person).to_a %>
+          <% if instructors_for_pay.any? %>
+            <div class="border-t border-gray-200 pt-5">
+              <h3 class="text-sm font-semibold text-gray-900">Instructor payout</h3>
+              <p class="text-xs text-gray-500 mt-0.5 mb-3">How each instructor is paid when this course <strong>isn't tied to a contract</strong>. Contract-based courses use the contract's terms instead.</p>
+              <div class="space-y-3">
+                <% instructors_for_pay.each do |coi| %>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <div class="min-w-[9rem] text-sm font-medium text-gray-900 truncate"><%= coi.person.name %></div>
+                    <select name="instructor_payout_types[<%= coi.person_id %>]"
+                            class="px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                      <option value="none" <%= "selected" if coi.payout_type == "none" %>>No payout</option>
+                      <option value="percentage" <%= "selected" if coi.payout_type == "percentage" %>>% of net revenue</option>
+                      <option value="flat" <%= "selected" if coi.payout_type == "flat" %>>Flat amount ($)</option>
+                    </select>
+                    <input type="number" step="0.01" min="0" name="instructor_payout_values[<%= coi.person_id %>]"
+                           value="<%= coi.payout_type == "percentage" ? coi.payout_percentage : (coi.payout_cents ? (coi.payout_cents / 100.0) : nil) %>"
+                           placeholder="e.g. 60 or 250"
+                           class="w-32 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
           <div class="flex items-center gap-3">
             <%= render "shared/button", text: "Save Instructors", variant: "primary", size: "medium", type: :submit %>
           </div>

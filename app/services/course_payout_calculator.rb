@@ -102,8 +102,9 @@ class CoursePayoutCalculator
       line_items = build_flat_fee_line_items(net_revenue_cents)
       total_payout_cents = line_items.sum { |li| li[:amount_cents] }
     else
-      line_items = []
-      total_payout_cents = 0
+      # No revenue contract — pay instructors per their standalone per-run split.
+      line_items = build_standalone_instructor_line_items(net_revenue_cents)
+      total_payout_cents = line_items.sum { |li| li[:amount_cents] }
     end
 
     {
@@ -163,6 +164,28 @@ class CoursePayoutCalculator
         net_revenue_cents: net_revenue_cents
       }
     } ]
+  end
+
+  # Standalone (no-contract) course: each instructor with a configured split gets
+  # a line item paid to their Person (holds the Stripe account).
+  def build_standalone_instructor_line_items(net_revenue_cents)
+    course_offering.course_offering_instructors.filter_map do |coi|
+      amount = coi.payout_amount_cents(net_revenue_cents)
+      next if amount <= 0 || coi.person_id.nil?
+
+      {
+        payee_type: "Person",
+        payee_id: coi.person_id,
+        amount_cents: amount,
+        label: coi.person.name,
+        calculation_details: {
+          type: "instructor",
+          instructor_person_id: coi.person_id,
+          payout_type: coi.payout_type,
+          net_revenue_cents: net_revenue_cents
+        }
+      }
+    end
   end
 
   def build_flat_fee_line_items(net_revenue_cents)
