@@ -24,12 +24,15 @@
   %>
 
   <% delete_course_cid = "confirm-delete-course-#{@course_offering.id}" %>
+  <% archive_course_cid = "confirm-archive-course-#{@course_offering.id}" %>
   <%
     top_links = [
       { text: "Financials", path: manage_money_production_financials_path(@production) },
       { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
       { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
+    top_links << { text: @course_offering.archived? ? "Restore" : "Archive", type: :button,
+                   data: { controller: "modal", action: "click->modal#open", modal_id: archive_course_cid } }
     unless @course_offering.contract_id?
       top_links << { text: "Delete Course", type: :button,
                      data: { controller: "modal", action: "click->modal#open", modal_id: delete_course_cid },
@@ -44,6 +47,18 @@
     text: @course_offering.title,
     links: top_links
   } %>
+
+  <% if @course_offering.archived? %>
+    <%= render "shared/confirm_modal", id: archive_course_cid,
+          title: "Restore course?",
+          message: "Bring \"#{@course_offering.title}\" back to your course lists.",
+          confirm_text: "Restore", url: manage_unarchive_course_offering_path(@course_offering), method: :post %>
+  <% else %>
+    <%= render "shared/confirm_modal", id: archive_course_cid,
+          title: "Archive course?",
+          message: "Hide \"#{@course_offering.title}\" from your course lists. You can restore it anytime.",
+          confirm_text: "Archive", url: manage_archive_course_offering_path(@course_offering), method: :post %>
+  <% end %>
 
   <% unless @course_offering.contract_id? %>
     <%= render "shared/confirm_modal",

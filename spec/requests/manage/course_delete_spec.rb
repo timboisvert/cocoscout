@@ -28,4 +28,22 @@ RSpec.describe "Manage::CourseOfferings delete", type: :request do
     expect(Production.exists?(production.id)).to be(false)
     expect(flash[:notice]).to match(/deleted/i)
   end
+
+  it "archives a course (hides it from the list) without deleting" do
+    create(:course_registration, course_offering: offering, status: "refunded")
+
+    post manage_archive_course_offering_path(offering)
+    expect(offering.reload.status).to eq("archived")
+
+    get manage_course_offerings_path
+    expect(response.body).to include("Archived courses")
+  end
+
+  it "restores an archived course" do
+    offering.update!(status: :archived)
+
+    post manage_unarchive_course_offering_path(offering)
+
+    expect(offering.reload.status).to eq("closed")
+  end
 end

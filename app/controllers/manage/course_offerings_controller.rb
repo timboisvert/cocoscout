@@ -4,7 +4,7 @@ module Manage
   class CourseOfferingsController < Manage::ManageController
     before_action :load_course_offering, only: %i[
       show edit update destroy open_registration close_registration
-      mark_completed reopen
+      mark_completed reopen archive unarchive
       search_instructor update_instructor invite_instructor
       cancel_registration refund_registration add_sessions
       enable_questionnaire disable_questionnaire send_questionnaire
@@ -12,12 +12,15 @@ module Manage
     ]
 
     def index
-      @course_offerings = Current.user.accessible_productions
+      all_offerings = Current.user.accessible_productions
         .courses
         .includes(:course_offerings)
         .flat_map(&:course_offerings)
         .sort_by(&:created_at)
         .reverse
+      # Archived runs are hidden from the main list (collapsed section at the bottom).
+      @archived_offerings = all_offerings.select(&:archived?)
+      @course_offerings = all_offerings - @archived_offerings
 
       # Payouts overview: active courses, and which ones still owe money that
       # hasn't been sent to a payout run yet.
@@ -247,9 +250,11 @@ module Manage
         return
       end
 
+      # Any registration (even refunded — we keep that history) blocks a hard
+      # delete. To get it off your lists, Archive it instead.
       if @course_offering.course_registrations.exists?
         redirect_to manage_course_offering_path(@course_offering),
-          alert: "This course has registrations, so it can't be deleted. Cancel or refund the registrations first."
+          alert: "This course has registrations, so it can't be deleted (we keep that history). Archive it instead to hide it from your lists."
         return
       end
 
@@ -345,6 +350,17 @@ module Manage
     def reopen
       @course_offering.update!(status: :closed)
       redirect_to manage_course_offering_path(@course_offering), notice: "Course reopened."
+    end
+
+    # Hide a course from the lists without deleting it (keeps registrations/history).
+    def archive
+      @course_offering.update!(status: :archived)
+      redirect_to manage_course_offerings_path, notice: "Course archived — it's hidden from your course lists."
+    end
+
+    def unarchive
+      @course_offering.update!(status: :closed)
+      redirect_to manage_course_offering_path(@course_offering), notice: "Course restored."
     end
 
     def cancel_registration
