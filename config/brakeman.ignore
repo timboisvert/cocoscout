@@ -392,6 +392,40 @@
     {
       "warning_type": "Dynamic Render Path",
       "warning_code": 15,
+      "fingerprint": "c26a61f7c1ba020511eddd8b71dc1e3c95ed72044b24cf313a6519da63221bc1",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/money_settings/show.html.erb",
+      "line": 11,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/money_settings/sections/#{(params[:section] or \"source\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::MoneySettingsController",
+          "method": "show",
+          "line": 15,
+          "file": "app/controllers/manage/money_settings_controller.rb",
+          "rendered": {
+            "name": "manage/money_settings/show",
+            "file": "app/views/manage/money_settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/money_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
       "fingerprint": "c79aab991239934bc65c125ab4929e02121540c7abfc2406f57c3bd7297dd0c9",
       "check_name": "Render",
       "message": "Render path contains parameter value",

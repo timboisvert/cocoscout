@@ -265,6 +265,5 @@ class MessageService
         organization: root.organization
       )
     end
-
   end
 end
