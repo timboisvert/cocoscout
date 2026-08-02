@@ -484,6 +484,24 @@ module Manage
         nil # inherit from root message
       end
 
+      # System/automated messages (e.g. contract-signed notifications) have no
+      # sender to reply to. Mirror the member side (my/messages#reply): route the
+      # reply to the production team as a NEW thread instead of letting it land
+      # nowhere while telling the user it was sent.
+      if root_message.effective_production.present? && (root_message.system_generated? || root_message.sender.nil?)
+        message = MessageService.send_to_production_team(
+          production: root_message.effective_production,
+          sender: Current.user,
+          subject: "Re: #{root_message.subject}",
+          body: params[:body]
+        )
+        message&.add_regards(root_message) if message
+        message&.images&.attach(images) if images.present?
+        redirect_to manage_message_path(message || root_message),
+                    notice: message ? "Reply sent to the production team." : "There's no one to reply to on this automated message."
+        return
+      end
+
       message = MessageService.reply(
         sender: Current.user,
         parent_message: parent,
@@ -493,7 +511,10 @@ module Manage
       message&.images&.attach(images) if images.present?
 
       respond_to do |format|
-        format.html { redirect_to manage_message_path(root_message), notice: "Reply sent" }
+        format.html do
+          notice = message ? "Reply sent" : "Reply couldn't be delivered — there's no recipient on this thread."
+          redirect_to manage_message_path(root_message), notice: notice
+        end
       end
     end
 

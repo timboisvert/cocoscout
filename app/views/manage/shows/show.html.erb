@@ -241,9 +241,9 @@
                 <% vacated_by = vacancy.vacated_by %>
                 <% is_linked = @show.linked? %>
                 <% affected_shows = is_linked ? vacancy.affected_shows.order(:date_and_time) : [@show] %>
-                <div class="group flex items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
+                <div class="group flex flex-col md:flex-row md:items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
                   <%# Left half: Show dates %>
-                  <div class="w-1/2 px-3 py-2">
+                  <div class="w-full md:w-1/2 px-3 py-2">
                     <% if affected_shows.size > 1 %>
                       <%# Multiple shows stacked vertically %>
                       <div class="space-y-2">
@@ -296,7 +296,7 @@
                   </div>
 
                   <%# Right half: Vacated by entity with role %>
-                  <div class="w-1/2 border-l border-pink-200 px-3 py-2 flex items-center gap-3">
+                  <div class="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-pink-200 px-3 py-2 flex items-center gap-3">
                     <% if vacated_by %>
                       <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
@@ -315,7 +315,8 @@
                         <strong class="text-pink-500"><%= vacancy.role.name %></strong>
                       </div>
                     </div>
-                    <div class="flex-shrink-0 hidden group-hover:block">
+                    <%# Always tappable on touch; hover-reveal only on desktop pointers. %>
+                    <div class="flex-shrink-0 block md:hidden md:group-hover:block">
                       <%= render "shared/button", text: "Review", path: manage_casting_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
                     </div>
                   </div>

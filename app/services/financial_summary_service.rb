@@ -68,6 +68,7 @@ class FinancialSummaryService
     production_ids = in_house_productions.map(&:id)
     scope = Show.where(production_id: production_ids)
                 .where(event_type: revenue_event_types)
+                .where(canceled: false) # A canceled show earned nothing — keep it out of the totals
                 .where("date_and_time < ?", Time.current) # Only past shows
 
     if date_range

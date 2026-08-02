@@ -564,7 +564,7 @@ class Contract < ApplicationRecord
   def revenue_share_summary
     return nil unless revenue_share?
 
-    all_shows = contract_shows.includes(:show_financials).to_a
+    all_shows = contract_shows.where(canceled: false).includes(:show_financials).to_a
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -586,7 +586,7 @@ class Contract < ApplicationRecord
   def flat_fee_revenue_summary
     return nil unless ticket_revenue_minus_fee?
 
-    all_shows = contract_shows.includes(:show_financials).to_a
+    all_shows = contract_shows.where(canceled: false).includes(:show_financials).to_a
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 

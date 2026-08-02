@@ -103,6 +103,34 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
         expect(li_offline.payment_notes).to eq("Zelle #55")
         expect(li_offline.payout_reference_id).to be_nil # not a Stripe movement
       end
+
+      it "stamps paid_at from a supplied paid_date" do
+        post manage_mark_line_item_paid_money_show_payout_path(show, li_offline),
+          params: { payment_method: "cash", paid_date: "2026-05-01" }
+
+        expect(li_offline.reload).to be_paid
+        expect(li_offline.paid_at.to_date).to eq(Date.new(2026, 5, 1))
+      end
+    end
+  end
+
+  describe "a line item calculated to nothing owed ($0)" do
+    # A custom scheme (or a fully-offset advance) can leave a payee owed nothing.
+    let!(:li_zero) do
+      ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Zero Zoe"), amount: 0)
+    end
+
+    it "offers a one-click Mark done instead of the pay-another-way flow" do
+      get manage_money_show_payout_path(show)
+      expect(response.body).to include("Mark done").and include("nothing owed")
+    end
+
+    it "marks the $0 line paid with no method on one click" do
+      post manage_mark_line_item_paid_money_show_payout_path(show, li_zero.id.to_s)
+
+      expect(response).to redirect_to(manage_money_show_payout_path(show))
+      expect(li_zero.reload).to be_paid
+      expect(li_zero.payment_method).to be_nil
     end
   end
 end

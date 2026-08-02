@@ -8,8 +8,8 @@ image: cocoscout
 servers:
   web:
     hosts:
-      - ec2-3-17-132-233.us-east-2.compute.amazonaws.com # CocoScout Web 1
-      - ec2-3-144-170-130.us-east-2.compute.amazonaws.com # CocoScout Web 2
+      - web1.deploy.cocoscout.com # CocoScout Web 1 (EIP 18.219.90.207, i-063c05931ddd1e203)
+      - web2.deploy.cocoscout.com # CocoScout Web 2 (EIP 3.21.119.92, i-0e719ed332f5b9800)
     options:
       memory: 3g  # Limit to leave headroom on 4GB instance
     env:
@@ -19,7 +19,7 @@ servers:
         DB_POOL: 6
   job:
     hosts:
-      - ec2-3-140-1-189.us-east-2.compute.amazonaws.com # CocoScout Jobs
+      - jobs.deploy.cocoscout.com # CocoScout Jobs (EIP 16.58.32.48, i-06a86efae7d1fda65)
     cmd: bin/jobs
     proxy: false
     options:

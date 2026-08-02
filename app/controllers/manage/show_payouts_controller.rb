@@ -310,9 +310,10 @@ module Manage
 
       method = params[:payment_method].presence
       notes = params[:payment_notes].presence
+      paid_on = params[:paid_date].presence
 
       line_items.each do |line_item|
-        line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
+        line_item.mark_as_already_paid!(Current.user, method: method, notes: notes, paid_on: paid_on)
       end
 
       # Explicit check in case the callback didn't fire (e.g., manually_paid was already true)

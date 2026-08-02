@@ -52,8 +52,7 @@ class Message < ApplicationRecord
   validates :subject, presence: true, length: { maximum: 255 }
   validates :message_type, presence: true
 
-  # Callbacks for real-time updates
-  after_create_commit :broadcast_to_thread
+  # Callbacks: bump unread counts + fire push notifications on new messages.
   after_create_commit :notify_subscribers, unless: :skip_notify_subscribers
   # Detect links to production documents in the body and attach them as regards
   # so the message renders a document preview card (like shows).
@@ -557,28 +556,6 @@ class Message < ApplicationRecord
 
   private
 
-  # Broadcast new reply to all viewers of the thread
-  def broadcast_to_thread
-    return unless reply? # Only broadcast for replies
-
-    root = root_message
-    html = ApplicationController.render(
-      partial: "shared/messages/nested_reply",
-      locals: { reply: self, depth: calculate_depth }
-    )
-
-    MessageThreadChannel.broadcast_to(
-      root,
-      type: "new_reply",
-      html: html,
-      sender_id: sender.is_a?(User) ? sender.id : nil,
-      message_id: id
-    )
-  rescue ArgumentError => e
-    # Solid Cable in Rails 8.1 has upsert compatibility issues
-    Rails.logger.warn("Message#broadcast_to_thread failed: #{e.message}")
-  end
-
   # Touch the root message so the inbox sort (messages.updated_at DESC) lifts
   # this thread when a new reply arrives. Skips silently if root no longer
   # exists (defensive — the after_commit could fire on edge cases).
@@ -600,17 +577,8 @@ class Message < ApplicationRecord
       # Increment unread count for this subscription
       subscription.increment_unread!
 
-      UserNotificationsChannel.broadcast_unread_count(subscription.user)
-
-      # Also send new message notification if not muted
+      # Native push notification for backgrounded/closed apps (skipped when muted)
       unless subscription.muted?
-        UserNotificationsChannel.broadcast_new_message(
-          subscription.user,
-          self,
-          root.subject
-        )
-
-        # Native push notification for backgrounded/closed apps
         PushNotificationService.notify_new_message(subscription.user, self)
       end
     end

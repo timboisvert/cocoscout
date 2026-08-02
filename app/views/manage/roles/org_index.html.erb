@@ -14,9 +14,9 @@
   <% if @productions.any? %>
     <div class="space-y-1">
       <% @productions.each do |production| %>
-        <%= link_to manage_casting_settings_section_path(production_id: production, section: "roles"), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+        <%= link_to manage_casting_settings_section_path(production_id: production, section: "roles"), class: "flex flex-col md:flex-row md:items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
           <%# Left Section: Production Logo + Name %>
-          <div class="w-1/2 flex items-center gap-4 pr-4">
+          <div class="w-full md:w-1/2 flex items-center gap-4 md:pr-4">
             <div class="flex-shrink-0">
               <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
             </div>
@@ -24,7 +24,7 @@
           </div>
 
           <%# Right Section: Role Badges %>
-          <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+          <div class="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4 flex items-center">
             <% roles = production.roles.order(:name) %>
             <% if roles.any? %>
               <div class="flex items-center gap-1.5 flex-wrap">

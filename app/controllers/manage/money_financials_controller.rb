@@ -57,6 +57,7 @@ module Manage
         # Pre-compute pending show counts per production in bulk
         pending_counts = Show
           .where(production_id: @productions.map(&:id), event_type: revenue_types)
+          .where(canceled: false)
           .where("date_and_time <= ?", 1.day.from_now)
           .left_joins(:show_financials)
           .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
@@ -68,6 +69,7 @@ module Manage
         # financials. One flat, most-recent-first list the user can click into.
         @awaiting_financials_shows = Show
           .where(production_id: @productions.map(&:id), event_type: revenue_types)
+          .where(canceled: false)
           .where("date_and_time <= ?", Time.current)
           .left_joins(:show_financials)
           .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")

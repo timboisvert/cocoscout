@@ -66,7 +66,7 @@
   <div class="text-xs">
     <%# Axis header — hour labels. %>
     <div class="flex">
-      <div class="w-44 flex-shrink-0"></div>
+      <div class="w-24 sm:w-44 flex-shrink-0"></div>
       <div class="flex-1 relative h-5 border-b border-gray-200">
         <% ticks.each do |tick| %>
           <% left = pct.call(tick) %>
@@ -102,7 +102,7 @@
         section_height = show_lanes.size * lane_height
       %>
       <div class="flex border-t border-gray-100">
-        <div class="w-44 flex-shrink-0 py-2 pr-2 text-gray-600 font-medium uppercase tracking-wide text-[10px] flex items-start">
+        <div class="w-24 sm:w-44 flex-shrink-0 py-2 pr-2 text-gray-600 font-medium uppercase tracking-wide text-[10px] flex items-start">
           <%= pluralize(sorted_shows.size, "show") %>
         </div>
         <div class="flex-1 relative" style="height: <%= section_height %>px;">
@@ -149,7 +149,7 @@
           role_section_height = block_lanes.size * row_lane_height
         %>
         <div class="flex border-t border-gray-100">
-          <div class="w-44 flex-shrink-0 py-2 pr-2 text-gray-800 font-medium truncate"><%= role.name %></div>
+          <div class="w-24 sm:w-44 flex-shrink-0 py-2 pr-2 text-gray-800 font-medium truncate"><%= role.name %></div>
           <div class="flex-1 relative" style="height: <%= role_section_height %>px;">
             <%# Hour gridlines. %>
             <% ticks.each do |tick| %>
@@ -296,7 +296,7 @@
             people_section_height = block_lanes.size * row_lane_height
           %>
           <div class="flex border-t border-gray-100">
-            <div class="w-44 flex-shrink-0 py-1.5 pr-2 flex items-start gap-2 min-w-0" style="height: <%= people_section_height %>px;">
+            <div class="w-24 sm:w-44 flex-shrink-0 py-1.5 pr-2 flex items-start gap-2 min-w-0" style="height: <%= people_section_height %>px;">
               <% if variant %>
                 <%= image_tag variant, alt: person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0 mt-1" %>
               <% else %>

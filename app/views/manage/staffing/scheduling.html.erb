@@ -256,10 +256,10 @@
               <% same_role_starts = role_groups.to_h { |role, arr| [role.id, arr.map(&:starts_at)] } %>
               <%# === Cards mode === %>
               <div data-day-view-target="cards">
-              <div class="flex flex-nowrap gap-3 items-start overflow-x-auto pb-2">
+              <div class="flex flex-col sm:flex-row sm:flex-nowrap gap-3 items-stretch sm:items-start sm:overflow-x-auto pb-2">
                 <% role_groups.each do |role, role_shifts| %>
                   <% sorted_role_shifts = role_shifts.sort_by(&:starts_at) %>
-                  <div class="w-48 sm:w-56 flex-shrink-0 flex flex-col gap-2">
+                  <div class="w-full sm:w-56 sm:flex-shrink-0 flex flex-col gap-2">
                     <%# Column header — role name lifted out of each individual card. %>
                     <div class="px-1 text-sm font-semibold text-gray-900 truncate">
                       <%= role.name %>

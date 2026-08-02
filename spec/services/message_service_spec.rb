@@ -485,5 +485,33 @@ RSpec.describe MessageService do
 
       expect(reply.message_type).to eq(original_message.message_type)
     end
+
+    context "when the root is a system message with no sender" do
+      # System/automated messages (e.g. contract-signed notifications) have a nil
+      # sender. Replying to such a production thread must not crash trying to
+      # resolve the original sender's Person.
+      let!(:system_root) do
+        Message.create!(
+          sender: nil,
+          subject: "Contract signed",
+          body: "A contract was signed.",
+          message_type: "system",
+          visibility: "production",
+          production: production,
+          organization: organization
+        )
+      end
+
+      it "doesn't crash resolving the (nil) original sender" do
+        reply = nil
+        expect {
+          reply = described_class.reply(sender: sender, parent_message: system_root, body: "Noted")
+        }.not_to raise_error
+
+        # No sender to reply to → no recipients → no message created (the controller
+        # is what reroutes a system reply to the production team).
+        expect(reply).to be_nil
+      end
+    end
   end
 end

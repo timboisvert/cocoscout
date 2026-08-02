@@ -25,11 +25,7 @@
   </head>
 
   <body class="inter-regular text-slate-700 bg-[#f9f9f7]"
-        data-turbo-native="true"
-        <% if Current.user.present? %>
-          data-controller="user-notifications"
-          data-user-notifications-user-id-value="<%= Current.user.id %>"
-        <% end %>>
+        data-turbo-native="true">
 
     <div id="native-loader" data-turbo-permanent>
       <img src="/icon.png" alt="" width="80" height="80">

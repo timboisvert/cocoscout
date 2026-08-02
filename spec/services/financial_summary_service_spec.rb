@@ -70,6 +70,18 @@ RSpec.describe FinancialSummaryService do
         # Only show1 is in this week
         expect(result[:shows_with_data]).to be <= 2
       end
+
+      it "excludes canceled shows from the totals" do
+        canceled = create(:show, production: production, date_and_time: 3.days.ago, event_type: :show, canceled: true)
+        create(:show_financials, show: canceled, ticket_revenue: 9999.0, expenses: 50.0)
+
+        result = service.summary_for_period(:all_time)
+        # Unchanged from the two live shows — the canceled show's $9,999 is ignored.
+        expect(result[:gross_revenue]).to eq(2600.0)
+        expect(result[:show_expenses]).to eq(500.0)
+        expect(result[:shows_with_data]).to eq(2)
+        expect(result[:show_count]).to eq(2)
+      end
     end
 
     context "with flat fee revenue" do

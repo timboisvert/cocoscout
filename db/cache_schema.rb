@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2462,17 +2462,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_130000) do
     t.string "sociable_type"
     t.datetime "updated_at", null: false
     t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
-  end
-
-  create_table "solid_cable_messages", force: :cascade do |t|
-    t.binary "channel", null: false
-    t.bigint "channel_hash", null: false
-    t.datetime "created_at", null: false
-    t.binary "payload", null: false
-    t.index ["channel"], name: "index_solid_cable_messages_on_channel"
-    t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
-    t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
-    t.index ["id"], name: "index_solid_cable_messages_on_id", unique: true
   end
 
   create_table "solid_cache_entries", force: :cascade do |t|

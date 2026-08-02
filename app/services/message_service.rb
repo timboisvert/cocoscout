@@ -211,14 +211,6 @@ class MessageService
       # Note: Email notifications are now handled by UnreadDigestJob
       # which sends a digest after 1 hour if user hasn't checked their inbox
 
-      # Broadcast to ActionCable if this is a reply
-      if parent_message.present?
-        broadcast_new_reply(message)
-      end
-
-      # Broadcast inbox notification to all subscribers (except sender)
-      broadcast_inbox_notification(message)
-
       message
     end
 
@@ -253,8 +245,10 @@ class MessageService
           recipients = original_sender_person ? [ original_sender_person ] : []
         end
       else
-        # For production/show messages, reply goes to original sender
-        original_sender_person = root.sender.is_a?(Person) ? root.sender : root.sender.person
+        # For production/show messages, reply goes to original sender — unless the
+        # root is a system/automated message (no sender), in which case there's no
+        # one to reply to and recipients stays empty rather than crashing.
+        original_sender_person = root.sender.is_a?(Person) ? root.sender : root.sender&.person
         recipients = original_sender_person ? [ original_sender_person ] : []
       end
 
@@ -272,77 +266,5 @@ class MessageService
       )
     end
 
-    private
-
-    def broadcast_new_reply(message)
-      root = message.root_message
-      parent = message.parent_message
-
-      Rails.logger.info "[MessageService] Broadcasting new reply: message_id=#{message.id}, parent_id=#{parent.id}, root_id=#{root.id}, depth=#{message.thread_depth}"
-
-      # Get default URL options for rendering (needed for image URLs)
-      url_options = Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
-      host = url_options[:host]
-      port = url_options[:port]
-      protocol = url_options[:protocol] || "http"
-
-      # Build the full host string for URL generation
-      full_host = port ? "#{host}:#{port}" : host
-
-      # Render the reply HTML with proper URL options
-      html = ApplicationController.renderer.new(
-        http_host: full_host,
-        https: protocol == "https"
-      ).render(
-        partial: "shared/messages/nested_reply",
-        locals: {
-          reply: message,
-          depth: message.thread_depth,
-          is_last: true,
-          broadcast_host: full_host,
-          broadcast_protocol: protocol
-        }
-      )
-
-      # For the parent_id, we want the direct parent's ID so JS can find where to insert
-      broadcast_parent_id = parent.id
-
-      # Broadcast to the root message channel
-      begin
-        MessageThreadChannel.broadcast_to(root, {
-          type: "new_reply",
-          message_id: message.id,
-          parent_id: broadcast_parent_id,
-          root_id: root.id,
-          sender_id: message.sender_id,
-          sender_name: message.sender_name,
-          depth: message.thread_depth,
-          html: html
-        })
-      rescue ArgumentError => e
-        # Solid Cable can have issues with unique index lookups in Rails 8.1
-        Rails.logger.warn "ActionCable broadcast failed: #{e.message}"
-      end
-    end
-
-    # Broadcast to all subscribers' inboxes that a new message arrived
-    def broadcast_inbox_notification(message)
-      root = message.root_message
-      sender_user_id = message.sender_id if message.sender_type == "User"
-
-      # Get all subscribed users except the sender
-      root.message_subscriptions.includes(:user).find_each do |subscription|
-        next unless subscription.user
-        next if subscription.user.id == sender_user_id # Don't notify sender
-
-        begin
-          UserInboxChannel.broadcast_new_message(subscription.user, message)
-        rescue ArgumentError => e
-          # Solid Cable can have issues with unique index lookups in Rails 8.1
-          # Log but don't fail message creation
-          Rails.logger.warn "ActionCable broadcast failed: #{e.message}"
-        end
-      end
-    end
   end
 end

@@ -152,7 +152,6 @@ module NavigationHelper
       ] },
       { label: "Technical", items: [
         { label: "Data", path: data_monitor_path, icon: "data", active: action_name == "data" },
-        { label: "Cable", path: cable_monitor_path, icon: "bolt", active: action_name == "cable" },
         { label: "Cache", path: cache_monitor_path, icon: "bolt", active: action_name == "cache" },
         { label: "Storage", path: storage_monitor_path, icon: "storage", active: action_name == "storage" },
         { label: "Queue", path: queue_monitor_path, icon: "queue", active: action_name.to_s.start_with?("queue") }

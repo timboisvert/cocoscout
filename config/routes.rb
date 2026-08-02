@@ -225,7 +225,6 @@ Rails.application.routes.draw do
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
     post "/queue/run_recurring/:job_key", to: "superadmin#queue_run_recurring_job", as: "queue_run_recurring_job"
-    get  "/cable",              to: "superadmin#cable",               as: "cable_monitor"
     get "/people", to: "superadmin#people_list", as: "people_list"
     delete "/people/bulk_destroy", to: "superadmin#bulk_destroy_people", as: "bulk_destroy_people"
     delete "/people/suspicious/destroy_all", to: "superadmin#destroy_all_suspicious_people",

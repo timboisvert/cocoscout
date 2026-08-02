@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["bulkModal", "markPaidModal", "markPaidName", "markPaidForm", "addPersonModal", "addMissingCastModal", "issueAdvancesModal"]
+  static targets = ["bulkModal", "markPaidModal", "markPaidName", "markPaidAmount", "markPaidForm", "addPersonModal", "addMissingCastModal", "issueAdvancesModal"]
   static values = {
     currentItemId: { type: Number, default: 0 }
   }
@@ -74,12 +74,16 @@ export default class extends Controller {
     event.preventDefault()
     const itemId = event.currentTarget.dataset.itemId
     const itemName = event.currentTarget.dataset.itemName
+    const itemAmount = event.currentTarget.dataset.itemAmount
     // Store the item ID(s) - may be comma-separated for grouped payees
     this.currentItemIdValue = itemId.includes(',') ? itemId : parseInt(itemId)
 
-    // Update the name in the modal
+    // Update the name + amount in the modal
     if (this.hasMarkPaidNameTarget) {
       this.markPaidNameTarget.textContent = itemName
+    }
+    if (this.hasMarkPaidAmountTarget && itemAmount) {
+      this.markPaidAmountTarget.textContent = itemAmount
     }
 
     // Point the (single) form at the right line item(s). The method + notes are

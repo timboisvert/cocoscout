@@ -62,14 +62,15 @@ class ShowPayoutLineItem < ApplicationRecord
   scope :performer_payouts, -> { where(is_individual_allocation: false, is_guest: false) }
   scope :guests, -> { where(is_guest: true) }
 
-  def mark_as_already_paid!(by_user, method: nil, notes: nil)
+  def mark_as_already_paid!(by_user, method: nil, notes: nil, paid_on: nil)
+    paid_time = paid_on.present? ? (Date.parse(paid_on.to_s).noon rescue Time.current) : Time.current
     update!(
       manually_paid: true,
       manually_paid_at: Time.current,
       manually_paid_by: by_user,
       payment_method: method,
       payment_notes: notes,
-      paid_at: Time.current
+      paid_at: paid_time
     )
     sync_payout_ledger_entry!
   end
