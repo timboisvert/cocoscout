@@ -3,18 +3,23 @@
     status. The whole row links to the staff edit page (no edit button). For
     people still onboarding, a trailing "Send invite" action sits outside the
     row link so it doesn't trigger navigation.
-    Locals: member, pending (bool). %>
+    Locals: member, pending (bool), inactive (bool, optional). %>
 <% person = member.person %>
+<% inactive = local_assigns.fetch(:inactive, false) %>
 <% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
 <% onboarding = member.onboarding_state.presence || "added" %>
 <% resend_label = onboarding == "invited" ? "Resend email" : "Send email" %>
 <% search_key = [ person.name, person.email, member.personal_email, member.title ].compact.join(" ").downcase %>
 <%
-  status_badge = case member.onboarding_status
+  status_badge = if inactive
+    { text: "Inactive", color: "gray", title: "Marked inactive — kept in your records, but not scheduled, paid, or asked for availability." }
+  else
+    case member.onboarding_status
     when :no_account   then { text: "No account", color: "gray",  title: "No CocoScout account yet — they need to accept the invite and sign up." }
     when :invited      then { text: "Invited", color: "amber", title: "Invited — waiting on them to accept onboarding." }
     when :awaiting_bank then { text: "Awaiting bank", color: "amber", title: "Accepted onboarding — still needs to connect a bank to get paid." }
     when :onboarded    then { text: "Onboarded", color: "green", title: "Onboarded — accepted and bank connected, ready to be paid." }
+    end
   end
 %>
 <div class="group relative flex items-center hover:bg-gray-50 transition-colors"
@@ -53,6 +58,15 @@
               title="<%= status_badge[:title] %>"><%= status_badge[:text] %></span>
       <% end %>
     </span>
+  <% end %>
+
+  <%# Trailing reactivate for inactive members (outside the row link). %>
+  <% if inactive %>
+    <div class="pr-3 flex-shrink-0">
+      <%= button_to manage_reactivate_staffing_staff_path(member), method: :post, class: "inline-block" do %>
+        <%= render "shared/button", text: "Reactivate", variant: "outline-pink", size: "xs", type: :submit %>
+      <% end %>
+    </div>
   <% end %>
 
   <%# Trailing quick-invite for people who haven't onboarded (outside the row link). %>

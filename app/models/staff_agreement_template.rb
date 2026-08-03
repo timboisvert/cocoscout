@@ -48,7 +48,7 @@ class StaffAgreementTemplate < ApplicationRecord
   end
 
   def total_staff_members
-    organization_staff_members.count
+    organization_staff_members.active.count
   end
 
   # Is this the agreement the org currently requires staff to sign?

@@ -28,6 +28,7 @@
         subtitle: "#{paid_items.count} of #{items.count} paid",
         href: manage_money_show_payout_path(show),
         href_data: href_data,
+        col_labels: [ "Awaiting", "Paid" ],
         cells: cells %>
     <% end %>
   </div>

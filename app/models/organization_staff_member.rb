@@ -23,6 +23,9 @@ class OrganizationStaffMember < ApplicationRecord
   validate :manager_in_same_org
 
   scope :active, -> { where(archived_at: nil) }
+  # Inactive = still in the system (history, records, My Shifts past shifts all
+  # kept) but out of scheduling, pay, availability prompts, and staffing counts.
+  scope :inactive, -> { where.not(archived_at: nil) }
 
   # Display name: preferred first name (falls back to legal first) + last name,
   # else the linked Person's display name.
@@ -215,6 +218,12 @@ class OrganizationStaffMember < ApplicationRecord
   def unarchive!
     update!(archived_at: nil)
   end
+
+  # The user-facing concept is "inactive", not deleted: roles, rates, manager,
+  # and all history survive; reactivating restores everything untouched.
+  alias_method :inactive?, :archived?
+  alias_method :deactivate!, :archive!
+  alias_method :reactivate!, :unarchive!
 
   private
 

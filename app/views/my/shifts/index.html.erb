@@ -25,11 +25,16 @@
     description: shifts_description,
     actions: [
       { icon: "dollar-sign", text: "My Payments", description: "See what you're owed", path: my_payments_path },
-      { icon: "clipboard-list", text: "Add additional time", description: "Log other hours you worked", path: "#",
-        data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
-                mode: "manual", url: my_time_entries_path, title: "Add additional time you worked" } },
-      { icon: "calendar", text: "Work Availability", description: "Set when you can work", path: "#",
-        data: { action: "click->unavailability#open" } }
+      # Logging time + availability only make sense with an active staff
+      # membership somewhere — inactive members keep their history (shifts,
+      # hours, payments) without being prompted for future availability.
+      *(@staff_orgs.any? ? [
+        { icon: "clipboard-list", text: "Add additional time", description: "Log other hours you worked", path: "#",
+          data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
+                  mode: "manual", url: my_time_entries_path, title: "Add additional time you worked" } },
+        { icon: "calendar", text: "Work Availability", description: "Set when you can work", path: "#",
+          data: { action: "click->unavailability#open" } }
+      ] : [])
     ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">
@@ -45,10 +50,11 @@
       <%= render "my/shifts/your_hours" %>
     </div>
 
-    <%# What you're owed · when you can work. %>
+    <%# What you're owed · when you can work. The availability card only shows
+        for active staff — inactive members aren't asked for future dates. %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       <%= render "my/shifts/getting_paid" %>
-      <%= render "my/shifts/availability" %>
+      <%= render "my/shifts/availability" if @staff_orgs.any? %>
     </div>
   </div>
 

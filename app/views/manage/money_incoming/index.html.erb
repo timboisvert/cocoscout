@@ -101,6 +101,7 @@
                 title: s[:production].name,
                 subtitle: "#{pluralize(s[:count], 'payment')} owed",
                 href: manage_money_production_incoming_path(s[:production]),
+                col_labels: [ "Outstanding", "Overdue" ],
                 cells: [
                   { value: number_to_currency(s[:outstanding]) },
                   { value: s[:overdue_count].positive? ? number_to_currency(s[:overdue_amount]) : "—",

@@ -60,6 +60,11 @@
         <div>
           <p class="text-sm font-medium text-gray-900">Ready to pay <%= pluralize(@batch.items.count, "person") %> · <%= number_to_currency(@batch.total_cents / 100.0) %></p>
           <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each person to their connected bank.</p>
+          <% earliest, latest = estimated_deposit_window %>
+          <p class="text-xs font-medium text-gray-800 mt-1">
+            Fund &amp; pay today → most staff see deposits by <%= l(latest, format: :long) %>
+            <span class="font-normal text-gray-400">(≈2–4 business days — an estimate)</span>
+          </p>
         </div>
         <% if Current.organization.funding_payment_method_id.present? %>
           <% fund_pay_cid = "confirm-fund-pay-batch" %>

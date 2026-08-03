@@ -107,11 +107,40 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect(response.body).to include(manage_invite_staffing_staff_path(member))
     end
 
-    it "removes a staff member (archives without error)" do
+    it "marks a staff member inactive (soft — record and history survive)" do
       expect {
         delete manage_destroy_staffing_staff_path(member)
       }.to change { member.reload.archived_at }.from(nil).to(be_present)
       expect(response).to redirect_to(manage_staffing_index_path)
+      expect(flash[:notice]).to include("inactive")
+      expect(OrganizationStaffMember.exists?(member.id)).to be(true)
+    end
+
+    it "lists inactive members in their own section with a Reactivate action" do
+      member.deactivate!
+      get manage_staffing_index_path
+      expect(response.body).to include("Inactive")
+      expect(response.body).to include(manage_reactivate_staffing_staff_path(member))
+    end
+
+    it "reactivates with roles and rates intact" do
+      role = create(:house_role, organization: org)
+      create(:staff_role_qualification, organization_staff_member: member, house_role: role, hourly_rate_cents: 1500)
+      member.deactivate!
+
+      post manage_reactivate_staffing_staff_path(member)
+
+      expect(member.reload.archived_at).to be_nil
+      expect(member.staff_role_qualifications.count).to eq(1) # nothing lost while inactive
+      expect(response).to redirect_to(manage_staffing_index_path)
+    end
+
+    it "re-adding an inactive person via the picker reactivates their membership instead of erroring" do
+      member.deactivate!
+      expect {
+        post manage_create_staffing_staff_path, params: { person_id: accountless.id }
+      }.not_to change(OrganizationStaffMember, :count)
+      expect(member.reload.archived_at).to be_nil
     end
 
     it "creates and links a user, and sends an invitation" do

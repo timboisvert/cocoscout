@@ -174,7 +174,7 @@ class ContentTemplateService
                 production: nil, show: nil, organization: nil,
                 message_type: :system, visibility: :personal,
                 mailer_class: nil, mailer_method: nil, email_batch: nil,
-                subject_override: nil)
+                subject_override: nil, system_generated: nil)
       result = render(template_key, variables)
       channel = result[:channel]
       # A caller-supplied subject (e.g. a manager's edited notification subject)
@@ -198,7 +198,8 @@ class ContentTemplateService
           show: show,
           organization: organization,
           message_type: message_type,
-          visibility: visibility
+          visibility: visibility,
+          system_generated: system_generated
         )
         delivery_result[:messages] << message if message
       end
@@ -419,7 +420,8 @@ class ContentTemplateService
     end
 
     def deliver_as_message(subject:, body:, sender:, recipients:,
-                           production:, show:, organization:, message_type:, visibility:)
+                           production:, show:, organization:, message_type:, visibility:,
+                           system_generated: nil)
       # Filter to people with user accounts
       valid_recipients = Array(recipients).select { |p| p.is_a?(Person) && p.user.present? }
       return nil if valid_recipients.empty?
@@ -434,10 +436,13 @@ class ContentTemplateService
         organization: organization || production&.organization,
         message_type: message_type,
         visibility: visibility,
-        # "system" template deliveries are automated/transactional — flag them so
-        # they render as an automated notification (not "from" the sending user)
-        # and stay out of the sender's own inbox/sent folder.
-        system_generated: message_type.to_s == "system"
+        # "system" template deliveries default to automated/transactional — the
+        # flag renders them as an automated notification (never "from" a user),
+        # keeps them out of the sender's sent folder, AND hides them from the
+        # manage inbox. Callers whose notification is FOR managers (e.g. contract
+        # signed) pass system_generated: false so it reaches /manage/messages;
+        # message_type :system alone keeps the automated attribution.
+        system_generated: system_generated.nil? ? message_type.to_s == "system" : system_generated
       )
     end
 

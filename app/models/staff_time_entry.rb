@@ -12,6 +12,10 @@ class StaffTimeEntry < ApplicationRecord
   belongs_to :shift_assignment, optional: true
   belongs_to :payout_batch, optional: true
   belongs_to :approved_by, class_name: "User", optional: true
+  # The role this work was done as — the thing that prices the hours. Shift
+  # confirmations inherit it from the shift; self-logged entries pick it.
+  # Optional so genuinely role-less work falls back to the person's default rate.
+  belongs_to :house_role, optional: true
 
   has_one :shift, through: :shift_assignment
 
@@ -19,6 +23,7 @@ class StaffTimeEntry < ApplicationRecord
   validates :started_at, :ended_at, presence: true
   validate :ends_after_start
   validates :hours, numericality: { greater_than: 0 }
+  validate :house_role_belongs_to_org
 
   before_validation :compute_hours
 
@@ -60,11 +65,23 @@ class StaffTimeEntry < ApplicationRecord
     self.hours = ((ended_at - started_at) / 1.hour).round(2)
   end
 
+  # The role that prices these hours: the entry's own role, else the shift's
+  # (covers rows that predate the house_role column).
+  def effective_house_role
+    house_role || shift&.house_role
+  end
+
   private
 
   def ends_after_start
     return if started_at.blank? || ended_at.blank?
 
     errors.add(:ended_at, "must be after the start time") if ended_at <= started_at
+  end
+
+  def house_role_belongs_to_org
+    return if house_role_id.blank? || organization.blank?
+
+    errors.add(:house_role, "isn't one of this organization's roles") unless organization.house_roles.exists?(id: house_role_id)
   end
 end

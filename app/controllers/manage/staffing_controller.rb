@@ -34,6 +34,12 @@ module Manage
       @staff_count = @active_staff.size
       @pending_count = @pending_staff.size
 
+      # Inactive members: still loved, still in the records — just not scheduled,
+      # paid, counted, or nagged. Shown collapsed under the roster.
+      @inactive_staff = Current.organization.organization_staff_members.inactive
+                               .includes(:house_roles, person: :user)
+                               .joins(:person).order("people.name")
+
       # Worked hours submitted by staff and awaiting a manager's sign-off — the
       # badge on the "Approve Hours" tile.
       @hours_to_approve_count = Current.organization.staff_time_entries.pending.count

@@ -35,6 +35,7 @@
         subtitle: status,
         href: manage_money_show_financials_path(show),
         href_data: href_data,
+        col_labels: [ "Revenue", "Costs", "Profit" ],
         cells: [
           { value: number_to_currency(revenue) },
           { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },

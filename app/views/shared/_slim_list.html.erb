@@ -15,11 +15,11 @@
     col_classes: optional array of per-column width utilities (overrides col_class
                per column, e.g. ["w-48", "w-28", "w-24"]); pass the same to the rows
     min_width: min-width utility applied from `sm:` up so columns don't crush on
-               small desktops (default "min-w-[560px]"); on phones the list drops
-               to min-w-0 so it fits the viewport (title truncates) instead of
-               forcing a sideways swipe, and only scrolls when the columns are
-               genuinely too wide to fit.
+               small desktops (default "min-w-[560px]"). On phones rows wrap
+               (title line + labeled figures line — pass `col_labels` to the
+               rows), so there's no min-width and no sideways swipe.
 %>
+<%# tailwind-safelist (dynamic sm: prefixes below): sm:min-w-[320px] sm:min-w-[360px] sm:min-w-[420px] sm:min-w-[480px] sm:min-w-[560px] sm:min-w-[780px] %>
 <%
   col_class = local_assigns.fetch(:col_class, "w-28")
   col_classes = local_assigns[:col_classes]
@@ -30,8 +30,8 @@
 <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
   <div class="overflow-x-auto">
     <div class="min-w-0 sm:<%= min_width %>">
-      <%# Column headers %>
-      <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+      <%# Column headers — desktop only; on phones each row carries its own labels. %>
+      <div class="hidden sm:flex items-center gap-3 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
         <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
         <span class="flex-1 min-w-0"><%= first_label %></span>
         <% columns.each_with_index do |col, i| %>

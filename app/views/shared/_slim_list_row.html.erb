@@ -23,6 +23,9 @@
   col_class = local_assigns.fetch(:col_class, "w-28")
   col_classes = local_assigns[:col_classes]
   col_aligns = local_assigns[:col_aligns]
+  # Column labels (usually the list's `columns`) — repeated inside each cell on
+  # phones, where the header row is hidden and rows wrap to two lines.
+  col_labels = local_assigns[:col_labels]
   badge = local_assigns[:badge]
   cells = local_assigns.fetch(:cells, [])
   subtitle = local_assigns[:subtitle]
@@ -30,6 +33,7 @@
 %>
 
 <% inner = capture do %>
+  <%# Line 1 on phones: chevron/spacer + title (full remaining width). %>
   <span class="flex-1 min-w-0">
     <span class="flex items-center gap-2">
       <span class="font-medium text-gray-900 text-sm truncate"><%= title %></span>
@@ -41,11 +45,20 @@
       <span class="block text-[11px] text-gray-400 truncate mt-0.5"><%= subtitle %></span>
     <% end %>
   </span>
-  <% cells.each_with_index do |cell, i| %>
-    <span class="<%= (col_classes && col_classes[i]) || col_class %> <%= (col_aligns && col_aligns[i]) || "text-right" %> flex-shrink-0 text-sm tabular-nums <%= cell[:class] %>">
-      <%= cell[:value] %>
-      <% if cell[:subvalue].present? %>
-        <span class="block text-[11px] font-normal <%= cell[:subvalue_class] || "text-gray-400" %>"><%= cell[:subvalue] %></span>
+  <% if cells.any? %>
+    <%# Phones: a second full-width line, figures spread out with tiny labels.
+        sm+: back to fixed spreadsheet columns on the one line. %>
+    <span class="flex w-full sm:w-auto items-center gap-3 pl-7 sm:pl-0">
+      <% cells.each_with_index do |cell, i| %>
+        <span class="flex-1 sm:flex-none <%= (col_classes && col_classes[i]) || col_class %> <%= (col_aligns && col_aligns[i]) || "text-right" %> text-sm tabular-nums <%= cell[:class] %>">
+          <% if col_labels && col_labels[i].present? %>
+            <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-medium sm:hidden"><%= col_labels[i] %></span>
+          <% end %>
+          <%= cell[:value] %>
+          <% if cell[:subvalue].present? %>
+            <span class="block text-[11px] font-normal <%= cell[:subvalue_class] || "text-gray-400" %>"><%= cell[:subvalue] %></span>
+          <% end %>
+        </span>
       <% end %>
     </span>
   <% end %>
@@ -53,7 +66,7 @@
 
 <% if local_assigns[:expand_src].present? %>
   <details class="group">
-    <summary class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 list-none [&::-webkit-details-marker]:hidden">
+    <summary class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-3 py-2 cursor-pointer hover:bg-gray-50 list-none [&::-webkit-details-marker]:hidden">
       <svg class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
       </svg>
@@ -66,12 +79,12 @@
     </div>
   </details>
 <% elsif local_assigns[:href].present? %>
-  <%= link_to href, class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50", data: href_data do %>
+  <%= link_to href, class: "flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-3 py-2 hover:bg-gray-50", data: href_data do %>
     <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
     <%= inner %>
   <% end %>
 <% else %>
-  <div class="flex items-center gap-3 px-3 py-2">
+  <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-3 py-2">
     <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
     <%= inner %>
   </div>

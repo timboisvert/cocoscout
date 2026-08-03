@@ -19,9 +19,12 @@ class StaffBillingService
   # Staff members billable this month — those who were *notified* of a shift
   # (recorded as a durable StaffActivation at finalize time, so it can't be
   # undone by removing the assignment before the cycle closes).
+  # Billing follows activations, not the roster — someone notified of a shift
+  # this month is billable even if they were marked inactive afterwards, so no
+  # .active filter here (else the count and the name list drift apart).
   def active_staff_members
     person_ids = activations.select(:person_id)
-    @organization.organization_staff_members.active.where(person_id: person_ids)
+    @organization.organization_staff_members.where(person_id: person_ids)
   end
 
   def activations

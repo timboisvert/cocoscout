@@ -1188,7 +1188,6 @@ Rails.application.routes.draw do
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
     get   "staffing/pay",                         to: "staffing/pay#new",                as: "staffing_pay"
     post  "staffing/pay",                         to: "staffing/pay#create",             as: "create_staffing_pay"
-    get   "staffing/pay/time-entries",            to: "staffing/pay#time_entries",       as: "staffing_pay_time_entries"
     patch "staffing/pay/draft",                   to: "staffing/pay#save_draft",         as: "staffing_pay_draft"
     get   "staffing/timesheets",                  to: "staffing/timesheets#index",       as: "staffing_timesheets"
     patch "staffing/timesheets/approve",          to: "staffing/timesheets#approve",     as: "approve_staffing_timesheets"
@@ -1255,6 +1254,7 @@ Rails.application.routes.draw do
     patch  "staffing/staff/:id",                  to: "staffing/staff#update",           as: "update_staffing_staff"
     post   "staffing/staff/:id/invite",           to: "staffing/staff#invite",           as: "invite_staffing_staff"
     delete "staffing/staff/:id",                  to: "staffing/staff#destroy",          as: "destroy_staffing_staff"
+    post   "staffing/staff/:id/reactivate",       to: "staffing/staff#reactivate",       as: "reactivate_staffing_staff"
 
     # Shift CRUD + assignment lives at the staffing root (no longer scoped to /schedule).
     post   "staffing/shifts",                     to: "staffing/shifts#create",          as: "create_staffing_shift"

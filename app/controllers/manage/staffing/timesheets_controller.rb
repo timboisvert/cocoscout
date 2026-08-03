@@ -12,7 +12,7 @@ module Manage
 
       def index
         entries = Current.organization.staff_time_entries.pending
-                         .includes(:person, shift_assignment: { shift: :house_role })
+                         .includes(:person, :house_role, shift_assignment: { shift: :house_role })
                          .chronological
 
         # Group by person so the manager reviews one teammate at a time.
@@ -20,6 +20,11 @@ module Manage
                          .sort_by { |person, _| person.name.to_s.downcase }
         @total_entries = entries.size
         @total_hours = entries.sum(&:hours)
+        # Members (with role rates) so each entry can show what approving it
+        # will cost — priced at the role the work was done as.
+        @members_by_person_id = Current.organization.organization_staff_members
+                                       .includes(staff_role_qualifications: :house_role)
+                                       .index_by(&:person_id)
       end
 
       # Sign off on submitted hours. Scoped to pending entries only, so this can

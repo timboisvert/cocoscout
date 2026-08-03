@@ -23,5 +23,5 @@
       cells = [ { value: "—", class: "text-gray-400" }, { value: "—", class: "text-gray-400" } ]
     end
   %>
-  <%= render "shared/slim_list_row", title: title, subtitle: subtitle, href: manage_money_show_payout_path(show), cells: cells %>
+  <%= render "shared/slim_list_row", title: title, subtitle: subtitle, href: manage_money_show_payout_path(show), col_labels: [ "Awaiting", "Paid" ], cells: cells %>
 <% end %>

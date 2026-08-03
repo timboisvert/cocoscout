@@ -39,6 +39,7 @@
         title: production.name,
         subtitle: subtitle,
         badge: badge,
+        col_labels: [ "Revenue", "Costs", "Profit" ],
         cells: [
           { value: number_to_currency(gross_revenue) },
           { value: number_to_currency(costs), class: costs > 0 ? "text-red-600" : "text-gray-400" },

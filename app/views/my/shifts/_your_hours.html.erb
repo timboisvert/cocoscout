@@ -59,7 +59,8 @@
               </div>
               <div class="text-xs text-gray-500 truncate">
                 <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
-                <% if e.shift&.role_label.present? %> · <%= e.shift.role_label %><% end %>
+                <% role_label = e.shift&.role_label.presence || e.house_role&.name %>
+                <% if role_label.present? %> · <%= role_label %><% end %>
                 <% if e.notes.present? %> · <%= e.notes %><% end %>
               </div>
             </div>
@@ -70,6 +71,8 @@
                       data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
                               mode: "edit", url: my_time_entry_path(e), method: "patch",
                               started: dt.call(e.started_at), ended: dt.call(e.ended_at), notes: e.notes.to_s,
+                              "org-id": e.organization_id, "house-role-id": e.house_role_id,
+                              "role-editable": (e.source == "manual").to_s,
                               title: "Edit your hours" } %>
                 <% remove_entry_cid = "confirm-remove-time-entry-#{e.id}" %>
                 <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small", type: :button,

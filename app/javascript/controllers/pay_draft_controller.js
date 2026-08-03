@@ -29,7 +29,10 @@ export default class extends Controller {
 
     serialize() {
         const form = this.formTarget
-        const out = { payday: this.val("payday"), funding_method: this.val("funding_method"), lines: {} }
+        // Note: payday is deliberately NOT persisted — a records date restored from
+        // a days-old draft would show up stale/in the past. It always defaults to
+        // today (server-set) instead.
+        const out = { funding_method: this.val("funding_method"), lines: {} }
         form.querySelectorAll('[name^="lines["]').forEach(el => {
             const m = el.name.match(/^lines\[(\d+)\]\[([a-z_]+)\](\[\])?$/)
             if (!m) return
@@ -44,7 +47,7 @@ export default class extends Controller {
     restore(data) {
         if (!data) return
         const form = this.formTarget
-        if (data.payday) this.setVal("payday", data.payday)
+        // payday intentionally not restored — keep the server default (today).
         if (data.funding_method) this.setVal("funding_method", data.funding_method)
 
         Object.entries(data.lines || {}).forEach(([id, fields]) => {
@@ -67,14 +70,17 @@ export default class extends Controller {
 
     holderFor(id, field) {
         if (field === "time_entry_ids") return document.getElementById(`pay-entries-${id}`)
+        if (field === "adhoc") return document.getElementById(`pay-adhoc-${id}`)
         if (field === "tips_sheet") return document.getElementById(`pay-tips-sheet-${id}`)
         if (field === "cash_tips_sheet") return document.getElementById(`pay-cashtips-sheet-${id}`)
         return null
     }
 
     recalc() {
-        const anyHours = this.formTarget.querySelector('[data-pay-field="hours"]')
-        if (anyHours) anyHours.dispatchEvent(new Event("input", { bubbles: true }))
+        // One bubbling event re-runs totals, accordion summaries, and the Hours
+        // buttons' sync after a restore.
+        const anyField = this.formTarget.querySelector('input[name^="lines["]')
+        if (anyField) anyField.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
     val(name) { const el = this.formTarget.querySelector(`[name="${name}"]`); return el ? el.value : "" }

@@ -128,15 +128,15 @@ module Manage
         .where.not(amount: nil)
         .sum(:amount)
 
-      # Total contract value (all incoming payments from contracts starting this year)
-      @total_contract_value = ContractPayment
-        .joins(:contract)
-        .where(contracts: { organization_id: Current.organization.id })
-        .where.not(contracts: { status: %w[draft cancelled] })
+      # What this year's contracts made vs cost us (gross model — ticket revenue
+      # counts as made for our-sale deals, contractor shares as cost; flat deals
+      # use their payments by direction). Both sides shown, not one net number.
+      year_contract_money = Current.organization.contracts
+        .where.not(status: %w[draft cancelled])
         .where("contracts.contract_start_date >= ? AND contracts.contract_start_date <= ?", year_start, year_end)
-        .where(direction: "incoming")
-        .where.not(amount: nil)
-        .sum(:amount)
+        .map(&:money_display)
+      @contracts_made = year_contract_money.sum { |d| d[:made] }
+      @contracts_cost = year_contract_money.sum { |d| d[:cost] }
 
       # Projected revenue from rev-share contracts (midpoint of projections)
       rev_share_contracts = Current.organization.contracts

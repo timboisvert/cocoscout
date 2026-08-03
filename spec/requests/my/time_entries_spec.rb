@@ -65,4 +65,36 @@ RSpec.describe "My::TimeEntries", type: :request do
     patch my_time_entry_path(entry), params: { notes: "sneaky" }
     expect(response).to have_http_status(:not_found).or redirect_to(my_shifts_path)
   end
+
+  describe "hours carry a role (the role prices the work)" do
+    it "stamps a shift confirmation with the shift's role" do
+      post my_time_entries_path, params: {
+        shift_assignment_id: assignment.id,
+        started_at: shift.starts_at.strftime("%Y-%m-%dT%H:%M"),
+        ended_at: shift.ends_at.strftime("%Y-%m-%dT%H:%M")
+      }
+      expect(StaffTimeEntry.last.house_role).to eq(role)
+    end
+
+    it "saves the chosen role on self-logged time" do
+      post my_time_entries_path, params: {
+        organization_id: org.id, house_role_id: role.id,
+        started_at: 1.day.ago.change(hour: 13).strftime("%Y-%m-%dT%H:%M"),
+        ended_at: 1.day.ago.change(hour: 16).strftime("%Y-%m-%dT%H:%M")
+      }
+      entry = StaffTimeEntry.last
+      expect(entry.source).to eq("manual")
+      expect(entry.house_role).to eq(role)
+    end
+
+    it "rejects a role from another organization" do
+      foreign_role = create(:house_role)
+      post my_time_entries_path, params: {
+        organization_id: org.id, house_role_id: foreign_role.id,
+        started_at: 1.day.ago.change(hour: 13).strftime("%Y-%m-%dT%H:%M"),
+        ended_at: 1.day.ago.change(hour: 16).strftime("%Y-%m-%dT%H:%M")
+      }
+      expect(StaffTimeEntry.where(house_role: foreign_role)).to be_empty
+    end
+  end
 end

@@ -48,7 +48,14 @@
       # ---- Column 3: Value (price is the headline; status is small subtext) ----
       value_sub = nil
       value_sub_class = "text-gray-400"
-      if is_revenue_share && contract.has_revenue_projection?
+      # Ticket-based deals with real activity show actuals: net headline, made/cost
+      # beneath — a rev-share where we sell is revenue + a payout, not one number.
+      actuals = !is_draft && (is_revenue_share || contract.ticket_revenue_minus_fee?) ? contract.money_display : nil
+      if actuals && (actuals[:made] > 0 || actuals[:cost] > 0)
+        value_label = number_to_currency(actuals[:net])
+        value_class = actuals[:net] >= 0 ? "text-green-600" : "text-red-600"
+        value_sub = "in #{number_to_currency(actuals[:made], precision: 0)} · out #{number_to_currency(actuals[:cost], precision: 0)}"
+      elsif is_revenue_share && contract.has_revenue_projection?
         our_range = contract.projected_our_revenue_range
         value_label = "#{number_to_currency(our_range[:low], precision: 0)}–#{number_to_currency(our_range[:high], precision: 0)}"
         value_class = "text-pink-600"
@@ -94,6 +101,7 @@
           badge: badge,
           col_classes: [ "w-56", "w-36", "w-28" ],
           col_aligns: [ "text-left", "text-left", "text-right" ],
+          col_labels: [ "Dates", "Type", "Value" ],
           href: contract_path,
           cells: [
             { value: dates_label, class: "text-gray-600 truncate" },

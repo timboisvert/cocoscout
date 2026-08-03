@@ -1,6 +1,7 @@
 <% content_for :title, "Pay People" %>
 
-<div class="w-full mb-10" data-controller="pay-run pay-pull tips-worksheet pay-draft help-modal"
+<div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal"
+     data-action="input->pay-run#recalc change->pay-run#recalc"
      data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
      data-pay-draft-initial-value="<%= @draft %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -29,7 +30,8 @@
     </div>
   <% else %>
     <%= form_with url: manage_create_staffing_pay_path, method: :post, class: "mt-4",
-          data: { "pay-draft-target": "form", action: "input->pay-draft#schedule change->pay-draft#schedule" } do %>
+          data: { controller: "pay-confirm", "pay-draft-target": "form",
+                  action: "input->pay-draft#schedule change->pay-draft#schedule submit->pay-confirm#intercept" } do %>
       <%# ACH is the only funding method for now — no card option. %>
       <input type="hidden" name="funding_method" value="ach">
 
@@ -38,10 +40,14 @@
           payout-runs page. %>
       <div class="rounded-lg border border-gray-200 bg-white p-4 mb-4">
         <div class="flex flex-col lg:flex-row lg:items-stretch gap-5">
-          <div class="lg:w-56 lg:border-r lg:border-gray-100 lg:pr-5">
+          <div class="lg:w-56 lg:border-r lg:border-gray-100 lg:pr-5" data-controller="deposit-estimate">
             <label class="block text-sm font-medium text-gray-700 mb-1">Pay date</label>
-            <%= date_field_tag :payday, @payday, class: "w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-            <p class="text-xs text-gray-500 mt-1">The pay date for your records.</p>
+            <%= date_field_tag :payday, @payday, min: Date.current,
+                  data: { deposit_estimate_target: "date", action: "change->deposit-estimate#update input->deposit-estimate#update" },
+                  class: "w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="text-xs text-gray-500 mt-1">The day you plan to fund &amp; pay this run.</p>
+            <p data-deposit-estimate-target="error" class="hidden text-xs text-red-600 mt-1"></p>
+            <p data-deposit-estimate-target="estimate" class="hidden text-xs font-medium text-gray-700 mt-1"></p>
           </div>
 
           <div class="flex-1">
@@ -60,12 +66,21 @@
         </div>
       </div>
 
-      <div class="overflow-x-auto border border-gray-200 rounded-lg bg-white">
-        <table class="min-w-full text-sm">
-          <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+      <%# One grid, two layouts. Below lg each person is a stacked card with
+          labeled fields (no sideways scrolling); from lg up it's the classic
+          spreadsheet table. Same single set of inputs in both — the form,
+          draft autosave, pull-hours, worksheets, and pay-run math don't know
+          the difference. %>
+      <%# Rate has no column of its own — pay rates belong to the work (roles),
+          and they surface inside each person's Hours modal where hours are
+          actually included and priced. %>
+      <div class="lg:overflow-x-auto lg:border lg:border-gray-200 lg:rounded-lg lg:bg-white"
+           data-controller="pay-accordion pay-hours"
+           data-action="input->pay-accordion#refreshAll change->pay-accordion#refreshAll input->pay-hours#syncAll keydown.esc@window->pay-hours#closeAll pay-hours:commit->pay-hours#commitMembers">
+        <table class="block lg:table min-w-full text-sm">
+          <thead class="hidden lg:table-header-group bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
               <th class="text-left font-medium px-3 py-2">Staff</th>
-              <th class="text-right font-medium px-3 py-2">Rate</th>
               <th class="text-right font-medium px-3 py-2">Hours</th>
               <th class="text-right font-medium px-3 py-2">Bonus</th>
               <th class="text-right font-medium px-3 py-2">Reimb.</th>
@@ -74,47 +89,177 @@
               <th class="text-right font-medium px-3 py-2">Total</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="block lg:table-row-group space-y-3 lg:space-y-0 lg:divide-y lg:divide-gray-100">
             <% @staff_members.each do |member| %>
               <% payee = member.person %>
               <% can_pay = payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? %>
-              <tr data-pay-run-target="row" data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>" class="<%= "opacity-60" unless can_pay %>">
-                <td class="px-3 py-2 align-top">
-                  <div class="font-medium text-gray-900"><%= member.display_name %></div>
+              <%
+                # Rate is a property of the work (the role), not the person. All
+                # hours — included entries and ad-hoc — are picked and priced in
+                # this person's Hours modal; the member default rate is only the
+                # fallback for role-less work.
+                role_rates = @role_rates_by_member[member.id] || []
+                entries = @approved_entries_by_person[member.person_id] || []
+              %>
+              <tr data-pay-run-target="row" data-pay-accordion-target="row" data-pay-hours-target="row"
+                  data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>"
+                  data-member-id="<%= member.id %>" data-member-name="<%= member.display_name %>"
+                  class="block lg:table-row bg-white lg:bg-transparent border border-gray-200 lg:border-0 rounded-lg lg:rounded-none p-3 lg:p-0 <%= "opacity-60" unless can_pay %>">
+                <%# Person header — the accordion toggle on mobile (name + live summary
+                    of anything entered); a plain name cell in the desktop table. %>
+                <td class="block lg:table-cell cursor-pointer lg:cursor-auto select-none lg:select-auto lg:px-3 lg:py-2 lg:align-top"
+                    data-action="click->pay-accordion#toggle">
+                  <div class="flex items-center justify-between gap-3 lg:block">
+                    <div class="min-w-0">
+                      <div class="font-medium text-gray-900 truncate"><%= member.display_name %></div>
+                    </div>
+                    <svg data-acc-chevron class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </div>
+                  <div data-acc-summary class="hidden text-xs font-medium text-gray-600 mt-1 lg:hidden"></div>
                   <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
                 </td>
-                <td class="px-3 py-2 text-right text-gray-600 align-top pt-3.5"><%= member.hourly_rate_cents ? number_to_currency(member.hourly_rate_cents / 100.0) : "—" %></td>
-                <td class="px-3 py-2 text-right align-top">
-                  <input id="pay-hours-<%= member.id %>" type="number" step="0.01" min="0" name="lines[<%= member.id %>][hours]" data-pay-field="hours" data-action="input->pay-run#recalc" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
-                  <span id="pay-entries-<%= member.id %>"></span>
-                  <% approved = (@approved_hours_by_person[member.person_id] || 0).to_f %>
-                  <% if approved.positive? %>
-                    <button type="button" data-action="click->pay-pull#open" data-member-id="<%= member.id %>" data-src="<%= manage_staffing_pay_time_entries_path(person_id: member.person_id) %>"
-                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">pull <%= number_with_precision(approved, precision: 2, strip_insignificant_zeros: true) %>h</button>
-                  <% end %>
+                <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
+                  <span class="text-xs text-gray-500 lg:hidden">Hours</span>
+                  <div class="text-right">
+                    <%# Form state written by the Hours modal's Done button:
+                        included entry ids + "hours|role_id" ad-hoc pairs. %>
+                    <span id="pay-entries-<%= member.id %>"></span>
+                    <span id="pay-adhoc-<%= member.id %>"></span>
+                    <%= render "shared/button", text: "Add hours", variant: "primary", size: "small", type: :button,
+                          classes: "w-full lg:w-auto",
+                          data: { action: "click->pay-hours#open", "pay-hours-target": "button", "member-id": member.id } %>
+                  </div>
+
+                  <%# ===== Hours modal: this person's approved entries (checkbox =
+                      included in this pay) + ad-hoc hours priced by role. ===== %>
+                  <div id="pay-hours-modal-<%= member.id %>" data-member-id="<%= member.id %>" data-pay-hours-target="modal"
+                       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto text-left"
+                       data-action="click->pay-hours#backdropClose">
+                    <div class="flex min-h-full items-start justify-center p-4 py-12">
+                      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-hours#stopPropagation">
+                        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+                          <h3 class="text-lg font-semibold text-white truncate"><%= member.display_name %> — hours</h3>
+                          <button type="button" data-action="click->pay-hours#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        </div>
+                        <div class="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                          <% if entries.any? %>
+                            <div>
+                              <div class="flex items-center justify-between gap-3 mb-2">
+                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Approved hours — check to include</div>
+                                <div class="flex items-center gap-1.5 text-xs flex-shrink-0">
+                                  <button type="button" data-action="click->pay-hours#selectAllEntries" class="font-medium text-pink-600 hover:text-pink-700 cursor-pointer">Select all</button>
+                                  <span class="text-gray-300">·</span>
+                                  <button type="button" data-action="click->pay-hours#selectNoEntries" class="font-medium text-pink-600 hover:text-pink-700 cursor-pointer">None</button>
+                                </div>
+                              </div>
+                              <div class="space-y-2">
+                                <% entries.each do |e| %>
+                                  <% entry_rate_cents = member.rate_cents_for(e.effective_house_role).to_i %>
+                                  <label class="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300">
+                                    <input type="checkbox" data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>" data-rate-cents="<%= entry_rate_cents %>"
+                                           data-action="change->pay-hours#recalcModal"
+                                           class="h-4 w-4 rounded border-gray-300 accent-pink-500">
+                                    <div class="min-w-0 flex-1">
+                                      <div class="text-sm font-medium text-gray-900 truncate">
+                                        <%= e.started_at.strftime("%a %b %-d") %>
+                                        <span class="text-gray-400">·</span>
+                                        <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h
+                                        <% if e.source == "manual" %><span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">self-logged</span><% end %>
+                                      </div>
+                                      <div class="text-xs text-gray-500 truncate">
+                                        <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
+                                        <% role_label = e.shift&.role_label.presence || e.house_role&.name %>
+                                        <% if role_label.present? %> · <%= role_label %><% end %>
+                                        <% if entry_rate_cents.positive? %> · <%= number_to_currency(entry_rate_cents / 100.0) %>/hr<% end %>
+                                      </div>
+                                    </div>
+                                  </label>
+                                <% end %>
+                              </div>
+                            </div>
+                          <% else %>
+                            <p class="text-xs text-gray-400">No approved hours yet — submitted time gets signed off in Approve Hours first.</p>
+                          <% end %>
+
+                          <div>
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                              <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Additional hours</div>
+                              <% if role_rates.size > 1 %>
+                                <button type="button" data-action="click->pay-hours#addAdhocRow"
+                                        class="text-xs font-medium text-pink-600 hover:text-pink-700 cursor-pointer flex-shrink-0">+ Add hours for another role</button>
+                              <% end %>
+                            </div>
+                            <div class="space-y-2" data-pay-hours-target="adhocList">
+                              <%= render "manage/staffing/pay/adhoc_row", member: member, role_rates: role_rates %>
+                            </div>
+                            <% if role_rates.size > 1 %>
+                              <%# Multiple lines = different shifts worked as different roles,
+                                  each priced at its own rate. %>
+                              <template data-pay-hours-target="adhocTemplate">
+                                <%= render "manage/staffing/pay/adhoc_row", member: member, role_rates: role_rates %>
+                              </template>
+                            <% end %>
+                            <%# Running subtotal of the ad-hoc lines. %>
+                            <div data-pay-hours-target="adhocSummary" class="hidden mt-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                              <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Additional hours</span>
+                                <span class="font-semibold text-gray-900 tabular-nums" data-pay-hours-target="adhocSummaryValue"></span>
+                              </div>
+                            </div>
+                            <p class="hidden text-xs text-amber-600 mt-1" data-pay-hours-target="adhocHint"></p>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200">
+                          <span class="text-sm text-gray-600">Including <span data-pay-hours-target="modalTotal" class="font-semibold text-gray-900">0h · $0.00</span></span>
+                          <%= render "shared/button", text: "Done", variant: "primary", size: "small", type: :button,
+                                classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+                                data: { action: "click->pay-hours#done", "pay-hours-target": "doneButton" } %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </td>
-                <td class="px-3 py-2 text-right align-top"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][bonus]" data-pay-field="bonus" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
-                <td class="px-3 py-2 text-right align-top"><input type="text" inputmode="decimal" name="lines[<%= member.id %>][reimbursement]" data-pay-field="reimbursement" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300"></td>
-                <td class="px-3 py-2 text-right align-top">
-                  <input id="pay-tips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
-                  <span id="pay-tips-sheet-<%= member.id %>" class="hidden"></span>
-                  <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-tips-<%= member.id %>" data-holder-id="pay-tips-sheet-<%= member.id %>" data-field-name="tips_sheet" data-title="Tips worksheet"
-                          class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
+                  <span class="text-xs text-gray-500 lg:hidden">Bonus</span>
+                  <input type="text" inputmode="decimal" name="lines[<%= member.id %>][bonus]" data-pay-field="bonus" data-action="input->pay-run#recalc" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
                 </td>
-                <td class="px-3 py-2 text-right align-top">
-                  <input id="pay-cashtips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][cash_tips]" placeholder="0" class="w-20 px-2 py-1.5 border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
-                  <span id="pay-cashtips-sheet-<%= member.id %>" class="hidden"></span>
-                  <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-cashtips-<%= member.id %>" data-holder-id="pay-cashtips-sheet-<%= member.id %>" data-field-name="cash_tips_sheet" data-title="Cash tips worksheet"
-                          class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
+                  <span class="text-xs text-gray-500 lg:hidden">Reimbursement</span>
+                  <input type="text" inputmode="decimal" name="lines[<%= member.id %>][reimbursement]" data-pay-field="reimbursement" data-action="input->pay-run#recalc" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
                 </td>
-                <td class="px-3 py-2 text-right font-medium text-gray-900 align-top pt-3.5" data-pay-total>$0.00</td>
+                <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
+                  <span class="text-xs text-gray-500 lg:hidden">Tips</span>
+                  <div class="text-right">
+                    <input id="pay-tips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
+                    <span id="pay-tips-sheet-<%= member.id %>" class="hidden"></span>
+                    <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-tips-<%= member.id %>" data-holder-id="pay-tips-sheet-<%= member.id %>" data-field-name="tips_sheet" data-title="Tips worksheet"
+                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                  </div>
+                </td>
+                <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
+                  <span class="text-xs text-gray-500 lg:hidden">Cash tips</span>
+                  <div class="text-right">
+                    <input id="pay-cashtips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][cash_tips]" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
+                    <span id="pay-cashtips-sheet-<%= member.id %>" class="hidden"></span>
+                    <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-cashtips-<%= member.id %>" data-holder-id="pay-cashtips-sheet-<%= member.id %>" data-field-name="cash_tips_sheet" data-title="Cash tips worksheet"
+                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                  </div>
+                </td>
+                <td data-acc-field class="hidden items-center justify-between gap-3 pt-2 mt-1 border-t border-gray-100 lg:border-t-0 lg:mt-0 lg:table-cell lg:px-3 lg:py-2 lg:pt-3.5 lg:text-right lg:align-top">
+                  <span class="text-xs font-medium text-gray-600 lg:hidden">Total</span>
+                  <span class="font-medium text-gray-900" data-pay-total>$0.00</span>
+                </td>
               </tr>
             <% end %>
           </tbody>
-          <tfoot class="bg-gray-50 border-t border-gray-200">
-            <tr>
-              <td colspan="7" class="px-3 py-3 text-right text-sm text-gray-600">Total to pay (<span data-pay-run-target="count">0</span> people, cash tips excluded)</td>
-              <td class="px-3 py-3 text-right text-base font-semibold text-gray-900" data-pay-run-target="grandTotal">$0.00</td>
+          <tfoot class="block lg:table-footer-group mt-3 lg:mt-0 bg-gray-50 border border-gray-200 lg:border-0 lg:border-t lg:border-gray-200 rounded-lg lg:rounded-none">
+            <tr class="flex items-center justify-between gap-3 p-3 lg:p-0 lg:table-row">
+              <td colspan="6" class="block lg:table-cell lg:px-3 lg:py-3 lg:text-right text-sm text-gray-600">Total to pay (<span data-pay-run-target="count">0</span> people, cash tips excluded)</td>
+              <td class="block lg:table-cell lg:px-3 lg:py-3 text-right text-base font-semibold text-gray-900" data-pay-run-target="grandTotal">$0.00</td>
             </tr>
           </tfoot>
         </table>
@@ -126,37 +271,68 @@
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
         <%= render "shared/button", text: "Add to pay run", variant: "primary", size: "medium", type: :submit %>
       </div>
-    <% end %>
-  <% end %>
 
-  <%# ---- Pull hours modal (shared; opened per person) ---- %>
-  <div data-pay-pull-target="modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->pay-pull#backdropClose keydown.esc@window->pay-pull#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-pull#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
-          <h3 class="text-lg font-semibold text-white">Pull worked hours</h3>
-          <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->pay-pull#close">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="px-5 py-4 max-h-96 overflow-y-auto">
-          <%= turbo_frame_tag "pay_time_entries", data: { "pay-pull-target": "frame" } do %>
-            <p class="text-sm text-gray-400 py-4 text-center">Loading…</p>
-          <% end %>
-        </div>
-        <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200">
-          <span class="text-sm text-gray-600"><span data-pay-pull-target="subtotal" class="font-semibold text-gray-900">0</span> hours selected</span>
-          <div class="flex items-center gap-2">
-            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "click->pay-pull#close" } %>
-            <%= render "shared/button", text: "Include", variant: "primary", size: "small", type: :button, data: { action: "click->pay-pull#include" } %>
+      <%# ===== Missing-hours check (shown on submit when approved hours aren't
+          included in this pay — e.g. a shift approved after hours were added). %>
+      <div data-pay-confirm-target="missingModal" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
+           data-action="click->pay-confirm#backdropClose">
+        <div class="flex min-h-full items-start justify-center p-4 py-12">
+          <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-confirm#stopPropagation">
+            <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+              <h3 class="text-lg font-semibold text-white">Approved hours not included</h3>
+              <button type="button" data-action="click->pay-confirm#closeAll" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="px-5 py-4">
+              <p class="text-sm text-gray-600 mb-3">These approved hours aren't part of this pay. Include them?</p>
+              <div data-pay-confirm-target="missingList" class="space-y-1.5 text-sm text-gray-800"></div>
+            </div>
+            <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+              <%= render "shared/button", text: "No, skip them", variant: "secondary", size: "small", type: :button, data: { action: "click->pay-confirm#skipMissing" } %>
+              <%= render "shared/button", text: "Yes, include them", variant: "primary", size: "small", type: :button, data: { action: "click->pay-confirm#includeMissing" } %>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+
+      <%# ===== Pay summary + acknowledge (the last stop before submitting). %>
+      <div data-pay-confirm-target="summaryModal" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
+           data-action="click->pay-confirm#backdropClose">
+        <div class="flex min-h-full items-start justify-center p-4 py-12">
+          <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->pay-confirm#stopPropagation">
+            <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+              <h3 class="text-lg font-semibold text-white">Review this pay</h3>
+              <button type="button" data-action="click->pay-confirm#closeAll" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="px-5 py-4 space-y-3 max-h-[55vh] overflow-y-auto">
+              <div data-pay-confirm-target="summaryList" class="divide-y divide-gray-100"></div>
+              <div class="flex items-center justify-between pt-2 border-t-2 border-gray-200 text-sm">
+                <span class="font-semibold text-gray-900">Total</span>
+                <span class="font-bold text-gray-900 tabular-nums" data-pay-confirm-target="summaryTotal">$0.00</span>
+              </div>
+            </div>
+            <div class="px-5 py-3 border-t border-gray-200 space-y-3">
+              <p class="text-xs text-gray-500" data-pay-confirm-target="timing"></p>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" data-pay-confirm-target="ack" data-action="change->pay-confirm#ackChanged"
+                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-700">I've reviewed this and want to add it to the pay run.</span>
+              </label>
+              <div class="flex items-center justify-end gap-2">
+                <%= render "shared/button", text: "Go back", variant: "secondary", size: "small", type: :button, data: { action: "click->pay-confirm#closeAll" } %>
+                <%= render "shared/button", text: "Add to pay run", variant: "primary", size: "small", type: :button,
+                      disabled: true, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+                      data: { action: "click->pay-confirm#confirm", "pay-confirm-target": "confirmButton" } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
 
   <%# ---- Tips / cash-tips worksheet modal (shared) ---- %>
   <div data-tips-worksheet-target="modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"

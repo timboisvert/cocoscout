@@ -156,29 +156,44 @@ module My
       # Every unpaid entry (pending review + approved) — these are what the worker
       # is still owed staffing pay for.
       @time_entries = StaffTimeEntry.where(person_id: people_ids).unpaid
-        .includes(shift_assignment: { shift: :house_role })
+        .includes(:house_role, shift_assignment: { shift: :house_role })
         .order(started_at: :desc)
         .to_a
       # A little recently-paid history.
       @paid_entries = StaffTimeEntry.where(person_id: people_ids).paid
         .where(paid_at: 90.days.ago..Time.current)
-        .includes(shift_assignment: { shift: :house_role })
+        .includes(:house_role, shift_assignment: { shift: :house_role })
         .order(paid_at: :desc).limit(10).to_a
 
-      # Pay rate per (org, person) so we can estimate what they're owed for
-      # STAFFING hours (this excludes performance payouts entirely).
-      rates = OrganizationStaffMember.where(person_id: people_ids)
-                                     .pluck(:organization_id, :person_id, :hourly_rate_cents)
-                                     .each_with_object({}) { |(org_id, pid, cents), h| h[[ org_id, pid ]] = cents.to_i }
+      # Owed estimate for STAFFING hours (excludes performance payouts). Each
+      # entry prices at the role it was worked as — the member default rate is
+      # only the fallback for role-less entries.
+      members_by_key = OrganizationStaffMember.where(person_id: people_ids)
+                                              .includes(staff_role_qualifications: :house_role)
+                                              .index_by { |m| [ m.organization_id, m.person_id ] }
 
       @unpaid_hours = @time_entries.sum { |e| e.hours.to_f }
       @pending_hours = @time_entries.select { |e| e.status == "pending" }.sum { |e| e.hours.to_f }
       @approved_hours = @time_entries.select { |e| e.status == "approved" }.sum { |e| e.hours.to_f }
-      @owed_estimate_cents = @time_entries.sum { |e| (e.hours.to_d * (rates[[ e.organization_id, e.person_id ]] || 0)).round }
+      @owed_estimate_cents = @time_entries.sum do |e|
+        member = members_by_key[[ e.organization_id, e.person_id ]]
+        (e.hours.to_d * member&.rate_cents_for(e.effective_house_role).to_i).round
+      end
 
       @staff_orgs = Organization.where(
         id: OrganizationStaffMember.active.where(person_id: people_ids).distinct.pluck(:organization_id)
       ).order(:name).to_a
+
+      # Qualified roles per org, for the "worked as" picker on self-logged time.
+      @staff_roles_by_org = OrganizationStaffMember.active.where(person_id: people_ids)
+        .includes(staff_role_qualifications: :house_role)
+        .each_with_object({}) do |m, h|
+          m.staff_role_qualifications.each do |q|
+            next unless q.house_role
+            (h[m.organization_id] ||= []) << q.house_role
+          end
+        end
+        .transform_values { |roles| roles.uniq.sort_by(&:name) }
 
       person = Current.user.person
       @bank_connected = person.respond_to?(:can_receive_payouts?) && person.can_receive_payouts?

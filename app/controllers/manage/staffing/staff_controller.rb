@@ -4,7 +4,7 @@ module Manage
   module Staffing
     class StaffController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_staff_member, only: %i[edit update destroy invite]
+      before_action :set_staff_member, only: %i[edit update destroy invite reactivate]
 
       # The staffing hub (Manage::StaffingController#index) is now the one and
       # only staff roster. Keep this legacy path working by redirecting to it.
@@ -29,7 +29,10 @@ module Manage
         # person to CocoScout by email and add them as staff in one step.
         return invite_new_staff_member if params[:invite_email].present?
 
-        @staff_member = Current.organization.organization_staff_members.new(person_id: params[:person_id])
+        # Re-adding someone who was marked inactive reactivates their existing
+        # membership (uniqueness is org-scoped and counts inactive rows).
+        @staff_member = Current.organization.organization_staff_members.find_or_initialize_by(person_id: params[:person_id])
+        @staff_member.archived_at = nil
         if @staff_member.save
           @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
           redirect_to manage_staffing_index_path, notice: "Staff member added."
@@ -71,9 +74,19 @@ module Manage
                     alert: "Couldn't invite #{@staff_member.display_name}: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
       end
 
+      # "Mark inactive" — a soft state, not a delete. They keep their history and
+      # records; they just stop being schedulable/payable/nagged. Note: any
+      # already-assigned future shifts are NOT unassigned automatically.
       def destroy
-        @staff_member.archive!
-        redirect_to manage_staffing_index_path, notice: "Staff member removed."
+        @staff_member.deactivate!
+        redirect_to manage_staffing_index_path,
+                    notice: "#{@staff_member.display_name} marked inactive. They keep their history and can be reactivated anytime."
+      end
+
+      def reactivate
+        @staff_member.reactivate!
+        redirect_to manage_staffing_index_path,
+                    notice: "#{@staff_member.display_name} is active again — roles, rates, and history all intact."
       end
 
       private

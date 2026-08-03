@@ -1,0 +1,31 @@
+<%# One "additional hours" line in the Hours modal: hours + the role they were
+    worked as (multi-role members can add several of these — different shifts,
+    different roles, different rates). Inputs are UI-only; Done commits them to
+    the row's hidden form state as "hours|role_id" pairs. %>
+<div class="flex items-center gap-2" data-adhoc-row>
+  <input type="number" step="0.01" min="0" placeholder="0"
+         data-adhoc-hours data-action="input->pay-hours#recalcModal"
+         class="w-24 px-2 py-2 text-base border border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+  <% if role_rates.size > 1 %>
+    <select data-adhoc-role data-action="change->pay-hours#recalcModal"
+            class="flex-1 min-w-0 px-2 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <option value="">Worked as…</option>
+      <% role_rates.each do |rr| %>
+        <option value="<%= rr[:role].id %>" data-rate-cents="<%= rr[:rate_cents] %>"><%= rr[:role].name %> · <%= number_to_currency(rr[:rate_cents] / 100.0) %>/hr</option>
+      <% end %>
+    </select>
+    <button type="button" data-action="click->pay-hours#removeAdhocRow" data-adhoc-remove title="Remove this line"
+            class="p-1 text-gray-400 hover:text-red-600 cursor-pointer flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  <% elsif role_rates.size == 1 %>
+    <span class="flex-1 min-w-0 text-sm text-gray-600 truncate" data-adhoc-fixed
+          data-role-id="<%= role_rates.first[:role].id %>" data-rate-cents="<%= role_rates.first[:rate_cents] %>">
+      as <%= role_rates.first[:role].name %> · <%= number_to_currency(role_rates.first[:rate_cents] / 100.0) %>/hr
+    </span>
+  <% else %>
+    <span class="flex-1 min-w-0 text-sm text-gray-500 truncate">
+      <%= member.hourly_rate_cents ? "at #{number_to_currency(member.hourly_rate_cents / 100.0)}/hr" : "no rate set" %>
+    </span>
+  <% end %>
+</div>

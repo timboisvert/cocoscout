@@ -23,10 +23,34 @@ RSpec.describe ContractSignedNotificationJob, type: :job do
       hash_including(
         template_key: "contract_signed_manager",
         message_type: :system,
+        system_generated: false, # must reach the manage inbox — it's FOR managers
         recipients: [ manager_person ],
         organization: org
       )
     )
+  end
+
+  it "lands in the manager's manage inbox (and the badge counts it), attributed as automated" do
+    ContentTemplate.find_or_create_by!(key: "contract_signed_manager") do |t|
+      t.name = "Contract signed (manager)"
+      t.channel = "message"
+      t.subject = "{{contractor_name}} signed"
+      t.body = "{{contractor_name}} signed the contract for {{production_name}}."
+      t.category = "contracts"
+    end
+
+    described_class.perform_now(contract.id)
+
+    message = Message.order(:created_at).last
+    expect(message.message_type).to eq("system")
+    expect(message.system_generated).to be(false)
+    expect(message.sender).to be_nil
+    expect(message.automated?).to be(true) # never attributed to a user
+
+    inbox = Message.manage_inbox_for(manager_user, org)
+    expect(inbox).to include(message)
+    # Badge == list invariant.
+    expect(manager_user.unread_message_count_for_org(org)).to eq(1)
   end
 
   it "no-ops when the org has selected no recipients" do

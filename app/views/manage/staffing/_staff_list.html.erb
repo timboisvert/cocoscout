@@ -69,6 +69,30 @@
     </div>
   <% end %>
 
+  <%# ---- Inactive (kept in the records, out of scheduling/pay/nags) ---- %>
+  <% if @inactive_staff&.any? %>
+    <details class="mt-6 group">
+      <summary class="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden mb-2">
+        <svg class="w-3.5 h-3.5 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Inactive</h3>
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-medium"><%= @inactive_staff.size %></span>
+        <span class="text-xs text-gray-400 font-normal normal-case">not scheduled, paid, or asked for availability</span>
+      </summary>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white opacity-75">
+        <div class="overflow-x-auto">
+          <div class="min-w-0 sm:min-w-[560px]">
+            <%= render "manage/staffing/staff_list_header" %>
+            <div class="divide-y divide-gray-100">
+              <% @inactive_staff.each do |member| %>
+                <%= render "manage/staffing/staff_row", member: member, pending: false, inactive: true %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+  <% end %>
+
   <%# Shown by JS when a search matches nobody. %>
   <div data-staff-hub-target="empty" class="hidden bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-2">
     <p class="text-sm text-gray-500">No staff match your search.</p>

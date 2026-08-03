@@ -218,6 +218,7 @@
             subtitle: subtitle,
             expand_src: manage_money_production_advance_events_path(production),
             expand_id: "advance-events-#{production.id}",
+            col_labels: [ "To pay", "To repay" ],
             cells: [
               { value: number_to_currency(to_pay), class: to_pay > 0 ? "text-pink-600 font-medium" : "text-gray-400" },
               { value: number_to_currency(to_repay), class: to_repay > 0 ? "text-amber-600 font-medium" : "text-gray-400" }

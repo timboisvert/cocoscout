@@ -519,6 +519,29 @@ class Contract < ApplicationRecord
     end
   end
 
+  # What this contract has made us vs cost us, for display. A revenue-share
+  # deal where WE sell isn't "-$155" — it made us the ticket revenue on its
+  # shows and cost us the contractor's share; a rental made us the rent. Wraps
+  # money_summary (which already knows this per contract type) and flags shows
+  # whose financials aren't in yet, so a low "made" reads as "so far".
+  #
+  # Returns { made:, cost:, net:, pending_shows: } in dollars.
+  def money_display
+    summary = money_summary
+    pending =
+      if revenue_share?
+        revenue_share_summary&.dig(:pending_count).to_i
+      elsif ticket_revenue_minus_fee?
+        flat_fee_revenue_summary&.dig(:pending_count).to_i
+      else
+        0
+      end
+
+    made = summary[:money_in].to_f
+    cost = summary[:money_out].to_f
+    { made: made, cost: cost, net: made - cost, pending_shows: pending }
+  end
+
   # Financial summary
   def total_incoming
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)

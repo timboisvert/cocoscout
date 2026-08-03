@@ -26,7 +26,11 @@ class ContractSignedNotificationJob < ApplicationJob
       recipients: recipients,
       organization: contract.organization,
       production: contract.production,
-      message_type: :system
+      message_type: :system,
+      # This notification is FOR managers — system_generated would hide it from
+      # the /manage/messages inbox (manage_inbox_for filters that flag). The
+      # :system message type alone keeps the automated attribution.
+      system_generated: false
     )
   end
 end

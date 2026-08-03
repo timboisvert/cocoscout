@@ -634,6 +634,29 @@ RSpec.describe Contract, type: :model do
         expect(c.money_summary).to eq(money_in: 500.0, money_out: 120.0)
       end
     end
+
+    # Display wrapper: made vs cost vs net, plus how many shows still owe
+    # financials — a we-sell rev-share is "made $1000, cost $700", never "-$700".
+    describe "#money_display" do
+      let(:org) { create(:organization) }
+      let(:production) { create(:production, organization: org, production_type: "third_party") }
+
+      it "splits a we-sell revenue share into made / cost / net and counts pending shows" do
+        c = create(:contract, organization: org, production: production,
+          draft_data: { "payment_structure" => "revenue_share",
+                        "payment_config" => { "who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                                              "revenue_our_share" => 30, "revenue_their_share" => 70 } })
+        confirmed = create(:show, :online, production: production, date_and_time: 1.week.ago, duration_minutes: 90)
+        create(:show_financials, :complete, show: confirmed, ticket_revenue: 1000.0, other_revenue: 0.0)
+        create(:show, :online, production: production, date_and_time: 2.days.ago, duration_minutes: 90) # no financials yet
+
+        display = c.money_display
+        expect(display[:made]).to eq(1000.0)
+        expect(display[:cost]).to eq(700.0)
+        expect(display[:net]).to eq(300.0)
+        expect(display[:pending_shows]).to eq(1)
+      end
+    end
   end
 
   describe "#execute_by_signature!" do

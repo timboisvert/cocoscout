@@ -208,6 +208,7 @@
                 title: item[:name],
                 subtitle: item[:subtitle],
                 badge: badge,
+                col_labels: [ "Awaiting" ],
                 cells: [ { value: number_to_currency(item[:amount]), class: "text-pink-600 font-medium" } ]
               }
             %>
@@ -217,6 +218,14 @@
               <%= render "shared/slim_list_row", **common, href: item[:href] %>
             <% end %>
           <% end %>
+          <%# Total across everything awaiting payout, so the number is right there
+              instead of adding up the rows by hand. %>
+          <% total_awaiting = @awaiting_items.sum { |i| i[:amount].to_f } %>
+          <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border-t-2 border-gray-200">
+            <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
+            <span class="flex-1 min-w-0 text-sm font-semibold text-gray-900">Total awaiting payout</span>
+            <span class="w-28 text-right flex-shrink-0 text-sm font-bold tabular-nums text-pink-600"><%= number_to_currency(total_awaiting) %></span>
+          </div>
         <% end %>
       </div>
     <% end %>
@@ -239,6 +248,7 @@
             subtitle: subtitle,
             expand_src: manage_money_production_payout_events_path(production),
             expand_id: "payout-events-#{production.id}",
+            col_labels: [ "Awaiting", "Paid" ],
             cells: [
               { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600 font-medium" : "text-gray-400" },
               { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" }

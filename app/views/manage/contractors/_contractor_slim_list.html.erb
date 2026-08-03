@@ -14,6 +14,7 @@
           title: contractor.name,
           subtitle: email,
           col_classes: [ "w-24", "w-24" ],
+          col_labels: [ "Active", "Total" ],
           href: manage_contractor_path(contractor),
           cells: [
             { value: (active_count.positive? ? active_count : "—"), class: (active_count.positive? ? "text-green-600" : "text-gray-400") },

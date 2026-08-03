@@ -11,19 +11,22 @@ module Manage
       def new
         @staff_members = payable_staff
         @payday = Date.current
-        # Approved-but-unpaid hours per person, for the "N hours" pull hint. Hours
-        # must be approved on the Approve Hours queue before they're payable.
-        @approved_hours_by_person = Current.organization.staff_time_entries.approved
-                                           .group(:person_id).sum(:hours)
+        # Approved (signed-off, unpaid) entries per person — listed with
+        # checkboxes in each person's Hours modal, and what the submit-time
+        # "missing hours" checker compares against. Hours must be approved on
+        # the Approve Hours queue before they're payable.
+        @approved_entries_by_person = Current.organization.staff_time_entries.approved
+                                             .includes(:house_role, shift_assignment: { shift: :house_role })
+                                             .chronological
+                                             .group_by(&:person_id)
+        # Each member's qualified roles with resolved rates — ad-hoc hours are
+        # priced by the role they were worked as, not a single per-person rate.
+        @role_rates_by_member = @staff_members.each_with_object({}) do |m, h|
+          h[m.id] = m.staff_role_qualifications.filter_map do |q|
+            q.house_role && { role: q.house_role, rate_cents: m.rate_cents_for(q.house_role).to_i }
+          end
+        end
         @draft = PayDraft.read(Current.user, Current.organization)
-      end
-
-      # A person's approved (sign-off complete, unpaid) time entries, rendered
-      # into the pull-hours modal frame.
-      def time_entries
-        person = staff_person
-        member = Current.organization.organization_staff_members.active.find_by(person_id: person.id)
-        render partial: "manage/staffing/pay/time_entries", locals: { entries: approved_entries_for(person), person: person, member: member }
       end
 
       # Server-side draft autosave of the whole pay form (opaque JSON blob).
@@ -42,9 +45,16 @@ module Manage
           redirect_to manage_staffing_pay_path, alert: "Enter hours or an amount for at least one person." and return
         end
 
+        # The pay date is the day the manager plans to fund & pay — it can't be
+        # in the past (the client flags this too; this is the backstop).
+        payday = parse_payday
+        if payday < Date.current
+          redirect_to manage_staffing_pay_path, alert: "That pay date has passed — pick today or a later date." and return
+        end
+
         result = StaffPayRunService.add_lines!(
           organization: Current.organization, created_by: Current.user,
-          lines: lines, payday: parse_payday
+          lines: lines, payday: payday
         )
 
         if result.added.zero?
@@ -58,20 +68,10 @@ module Manage
 
       private
 
-      # Only a person who's on this org's staff (scopes the pull/approve to us).
-      def staff_person
-        staff_ids = Current.organization.organization_staff_members.pluck(:person_id)
-        Person.where(id: staff_ids).find(params[:person_id])
-      end
-
-      def approved_entries_for(person)
-        Current.organization.staff_time_entries.approved.for_person(person)
-               .includes(shift_assignment: { shift: :house_role }).chronological
-      end
-
       def payable_staff
         Current.organization.organization_staff_members.active
-               .includes(:person).order("people.name").references(:person).to_a
+               .includes(:person, staff_role_qualifications: :house_role)
+               .order("people.name").references(:person).to_a
       end
 
       # Turn the submitted grid into StaffPayRunService line hashes, keeping only
@@ -86,7 +86,10 @@ module Manage
 
           line = {
             staff_member: member,
-            hours: row[:hours].to_f,
+            # Ad-hoc "hours|role_id" pairs from the Hours modal — each line is
+            # priced at its own role's rate. Roles resolve against the org so a
+            # forged id can't smuggle in another org's rate.
+            adhoc: parse_adhoc(row),
             bonus_cents: dollars_to_cents(row[:bonus]),
             reimbursement_cents: dollars_to_cents(row[:reimbursement]),
             tips_cents: dollars_to_cents(row[:tips]),
@@ -98,7 +101,7 @@ module Manage
           }
           worked = StaffPayRunService.worked_cents(
             organization: Current.organization, member: member,
-            hours: line[:hours], time_entry_ids: line[:time_entry_ids]
+            adhoc: line[:adhoc], time_entry_ids: line[:time_entry_ids]
           )
           gross = StaffPayRunService.payable_cents(
             worked_cents: worked,
@@ -114,6 +117,24 @@ module Manage
         return 0 if value.blank?
 
         (value.to_s.delete("$,").to_d * 100).round
+      end
+
+      # Ad-hoc worked-hours lines: "hours|role_id" pairs from the Hours modal.
+      # Also accepts the legacy single hours + house_role_id shape (old drafts).
+      def parse_adhoc(row)
+        pairs = Array(row[:adhoc]).filter_map do |pair|
+          hours, role_id = pair.to_s.split("|", 2)
+          hours = hours.to_f
+          next if hours <= 0
+
+          { hours: hours, house_role: Current.organization.house_roles.find_by(id: role_id) }
+        end
+        return pairs if pairs.any?
+
+        legacy_hours = row[:hours].to_f
+        return [] unless legacy_hours.positive?
+
+        [ { hours: legacy_hours, house_role: Current.organization.house_roles.find_by(id: row[:house_role_id]) } ]
       end
 
       # The tips / cash-tips worksheet arrives as hidden inputs, each a

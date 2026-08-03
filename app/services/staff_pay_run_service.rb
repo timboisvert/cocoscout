@@ -19,16 +19,24 @@
 class StaffPayRunService
   Result = Struct.new(:batch, :added, keyword_init: true)
 
-  # Worked-hours pay in cents. When specific approved time entries are pulled in,
-  # each is paid at that role's rate (rate_cents_for resolves role rate → member
-  # default); otherwise the manually entered hours are paid at the member default.
-  def self.worked_cents(organization:, member:, hours: 0, time_entry_ids: nil)
-    ids = Array(time_entry_ids).map(&:to_i).reject(&:zero?)
-    return (member.hourly_rate_cents.to_i * hours.to_f).round if ids.empty?
+  # Worked-hours pay in cents. Hours always carry a role when one is known —
+  # the role prices the work, the member default is only the fallback. A line
+  # combines both kinds: included time entries (each paid at its own role's
+  # rate — entry role, else the shift's) PLUS ad-hoc lines from the Hours modal
+  # (each `{ hours:, house_role: }` paid at its role's rate; the legacy
+  # hours/house_role kwargs still work for older callers).
+  def self.worked_cents(organization:, member:, adhoc: nil, hours: 0, time_entry_ids: nil, house_role: nil)
+    lines = Array(adhoc)
+    lines = [ { hours: hours, house_role: house_role } ] if lines.empty? && hours.to_f.positive?
+    adhoc_cents = lines.sum { |l| (member.rate_cents_for(l[:house_role]).to_i * l[:hours].to_f).round }
 
-    organization.staff_time_entries.for_person(member.person).where(id: ids)
-                .includes(shift_assignment: { shift: :house_role })
-                .sum { |entry| (member.rate_cents_for(entry.shift&.house_role).to_i * entry.hours.to_f).round }
+    ids = Array(time_entry_ids).map(&:to_i).reject(&:zero?)
+    return adhoc_cents if ids.empty?
+
+    entries = organization.staff_time_entries.for_person(member.person).where(id: ids)
+                          .includes(:house_role, shift_assignment: { shift: :house_role })
+                          .sum { |entry| (member.rate_cents_for(entry.effective_house_role).to_i * entry.hours.to_f).round }
+    entries + adhoc_cents
   end
 
   # amount actually routed through Stripe (cash tips excluded).
@@ -49,9 +57,12 @@ class StaffPayRunService
       lines.each do |line|
         member = line[:staff_member]
         payee = member.person
+        # Normalize the legacy single hours/house_role shape into ad-hoc lines
+        # so the rest of the pipeline only ever sees one format.
+        line[:adhoc] = normalize_adhoc(line)
         worked = worked_cents(
           organization: organization, member: member,
-          hours: line[:hours], time_entry_ids: line[:time_entry_ids]
+          adhoc: line[:adhoc], time_entry_ids: line[:time_entry_ids]
         )
 
         parts = contribution_parts(organization, member, line, worked)
@@ -93,15 +104,24 @@ class StaffPayRunService
     ].select { |p| p[:amount].positive? }
   end
 
+  def self.normalize_adhoc(line)
+    adhoc = Array(line[:adhoc])
+    return adhoc if adhoc.any?
+
+    line[:hours].to_f.positive? ? [ { hours: line[:hours].to_f, house_role: line[:house_role] } ] : []
+  end
+
   def self.worked_label(organization, member, line)
     ids = Array(line[:time_entry_ids]).map(&:to_i).reject(&:zero?)
-    hours = if ids.any?
-      organization.staff_time_entries.for_person(member.person).where(id: ids).sum(:hours)
-    else
-      line[:hours].to_f
-    end
+    adhoc = Array(line[:adhoc])
+    # Included entries + all ad-hoc lines — the line's total worked time.
+    hours = adhoc.sum { |l| l[:hours].to_f }
+    hours += organization.staff_time_entries.for_person(member.person).where(id: ids).sum(:hours).to_f if ids.any?
     formatted = ActiveSupport::NumberHelper.number_to_rounded(hours, precision: 2, strip_insignificant_zeros: true)
-    "Worked hours (#{formatted}h)"
+    # A single pure ad-hoc line under a chosen role names the role on the
+    # record; anything mixed stays generic (each entry carries its own role).
+    role_suffix = ids.empty? && adhoc.size == 1 && adhoc.first[:house_role] ? " as #{adhoc.first[:house_role].name}" : ""
+    "Worked hours (#{formatted}h#{role_suffix})"
   end
 
   def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil, excluded_from_payout: false, worksheet: nil)

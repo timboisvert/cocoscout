@@ -18,6 +18,7 @@ module My
       return if performed?
 
       entry.assign_attributes(time_params)
+      assign_manual_role(entry)
       if entry.save
         redirect_to my_shifts_path, notice: "Hours saved."
       else
@@ -26,7 +27,9 @@ module My
     end
 
     def update
-      if @entry.update(time_params)
+      @entry.assign_attributes(time_params)
+      assign_manual_role(@entry)
+      if @entry.save
         redirect_to my_shifts_path, notice: "Hours updated."
       else
         redirect_to my_shifts_path, alert: @entry.errors.full_messages.to_sentence
@@ -57,6 +60,7 @@ module My
         e.organization = shift.organization
         e.person = assignment.person
         e.source = "shift"
+        e.house_role_id ||= shift.house_role_id # the work's role prices the hours
         e.started_at ||= shift.starts_at
         e.ended_at ||= shift.ends_at
       end
@@ -90,6 +94,14 @@ module My
 
     def time_params
       params.permit(:started_at, :ended_at, :notes)
+    end
+
+    # Self-logged work carries the role it was done as (that's what prices the
+    # hours). Shift confirmations keep the shift's role — the param is ignored.
+    def assign_manual_role(entry)
+      return unless entry.source == "manual" && params.key?(:house_role_id)
+
+      entry.house_role_id = params[:house_role_id].presence
     end
   end
 end
