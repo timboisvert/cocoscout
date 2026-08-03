@@ -10,7 +10,7 @@
 <%# Cache key includes production posters' max updated_at so uploading a
     production-wide poster busts the show card's cache even though show.updated_at
     doesn't change. %>
-<% cache ["show_info_card_v7", show.id, show.updated_at.to_i, show.production&.posters&.maximum(:updated_at)&.to_i, compact, series_panel&.dig(:type), series_panel&.dig(:count)] do %>
+<% cache ["show_info_card_v8", show.id, show.updated_at.to_i, show.production&.posters&.maximum(:updated_at)&.to_i, compact, series_panel&.dig(:type), series_panel&.dig(:count), series_panel&.dig(:available_series)&.size, series_panel&.dig(:matching_shows)&.map(&:id)] do %>
 <%
   poster_url = safe_poster_url(show)
   has_poster = poster_url && !show.canceled
@@ -151,7 +151,9 @@
           </div>
 
         <% elsif series_panel[:type] == :add_to_series %>
-          <%# Scenario 2: NOT recurring, but production has series this could join %>
+          <%# Scenario 2: NOT recurring — offer existing series to join and/or
+              linking matching standalone events into a brand-new series %>
+          <% matching_shows = series_panel[:matching_shows] || [] %>
           <div class="space-y-3">
             <div class="flex items-center gap-2 mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-gray-500">
@@ -160,25 +162,49 @@
               <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Not in a Series</span>
             </div>
 
-            <p class="text-xs text-gray-500 leading-relaxed">
-              This <%= show.event_type.downcase %> isn't part of a recurring series. Add it to an existing one:
-            </p>
+            <% if series_panel[:available_series].any? %>
+              <p class="text-xs text-gray-500 leading-relaxed">
+                This <%= show.event_type.downcase %> isn't part of a recurring series. Add it to an existing one:
+              </p>
 
-            <div class="space-y-1.5">
-              <% series_panel[:available_series].each do |series| %>
-                <% add_series_cid = "confirm-add-series-#{show.id}-#{series[:group_id]}" %>
-                <button type="button"
-                      data-controller="modal" data-action="click->modal#open" data-modal-id="<%= add_series_cid %>"
-                      class="block w-full text-left px-3 py-2 rounded-md border border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 transition-colors group cursor-pointer">
-                  <div class="text-xs font-medium text-gray-900 group-hover:text-pink-700"><%= series[:event_type] %></div>
-                  <div class="text-[10px] text-gray-400"><%= series[:pattern] %> at <%= series[:time] %></div>
-                  <div class="text-[10px] text-gray-400"><%= series[:count] %> events in series</div>
-                </button>
-                <%= render "shared/confirm_modal", id: add_series_cid, title: "Add to series?",
-                      message: "Add this #{show.event_type.downcase} to the #{series[:event_type]} series?", confirm_text: "Add to Series",
-                      url: manage_add_to_series_show_path(series_panel[:production], show, recurrence_group_id: series[:group_id]), method: :patch %>
-              <% end %>
-            </div>
+              <div class="space-y-1.5">
+                <% series_panel[:available_series].each do |series| %>
+                  <% add_series_cid = "confirm-add-series-#{show.id}-#{series[:group_id]}" %>
+                  <button type="button"
+                        data-controller="modal" data-action="click->modal#open" data-modal-id="<%= add_series_cid %>"
+                        class="block w-full text-left px-3 py-2 rounded-md border border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 transition-colors group cursor-pointer">
+                    <div class="text-xs font-medium text-gray-900 group-hover:text-pink-700"><%= series[:event_type] %></div>
+                    <div class="text-[10px] text-gray-400"><%= series[:pattern] %> at <%= series[:time] %></div>
+                    <div class="text-[10px] text-gray-400"><%= series[:count] %> events in series</div>
+                  </button>
+                  <%= render "shared/confirm_modal", id: add_series_cid, title: "Add to series?",
+                        message: "Add this #{show.event_type.downcase} to the #{series[:event_type]} series?", confirm_text: "Add to Series",
+                        url: manage_add_to_series_show_path(series_panel[:production], show, recurrence_group_id: series[:group_id]), method: :patch %>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-xs text-gray-500 leading-relaxed">
+                This <%= show.event_type.downcase %> isn't part of a recurring series.
+              </p>
+            <% end %>
+
+            <% if matching_shows.any? %>
+              <% new_series_cid = "link-into-series-#{show.id}" %>
+              <p class="text-xs text-gray-500 leading-relaxed <%= "pt-1 border-t border-gray-200" if series_panel[:available_series].any? %>">
+                <%= series_panel[:available_series].any? ? "Or link" : "Link" %> it with
+                <%= pluralize(matching_shows.size, "other standalone #{show.event_type.downcase}") %>
+                at the same day and time into a new series:
+              </p>
+              <button type="button"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= new_series_cid %>"
+                    class="block w-full text-left px-3 py-2 rounded-md border border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 transition-colors group cursor-pointer">
+                <div class="text-xs font-medium text-gray-900 group-hover:text-pink-700">Start a new series</div>
+                <div class="text-[10px] text-gray-400"><%= matching_shows.size + 1 %> matching events</div>
+              </button>
+              <%= render "manage/shows/link_into_series_modal",
+                    id: new_series_cid, show: show,
+                    production: series_panel[:production], matching_shows: matching_shows %>
+            <% end %>
           </div>
         <% end %>
       </div>

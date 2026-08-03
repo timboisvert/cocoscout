@@ -607,6 +607,7 @@ Rails.application.routes.draw do
     delete "/shows/:production_id/:id/delete_linkage", to: "shows#delete_linkage", as: "delete_linkage_show"
     post "/shows/:production_id/:id/toggle_signup_based_casting", to: "shows#toggle_signup_based_casting", as: "toggle_signup_based_casting_show"
     patch "/shows/:production_id/:id/add_to_series", to: "shows#add_to_series", as: "add_to_series_show"
+    post "/shows/:production_id/:id/link_into_series", to: "shows#link_into_series", as: "link_into_series_show"
     post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
     get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
     patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"

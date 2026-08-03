@@ -1,0 +1,77 @@
+<%#
+  Modal for linking this show plus matching standalone shows into a brand-new
+  recurring series. Only sets recurrence fields — casting is untouched.
+
+  Locals:
+    id             DOM id, must match the trigger's data-modal-id
+    show           the Show being viewed (always included in the new series)
+    production     the Production
+    matching_shows standalone shows with the same event type, weekday, and time
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Start a new series</h3>
+      <button type="button"
+              data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: manage_link_into_series_show_path(production, show), method: :post do %>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-gray-600">
+          Link these <%= show.event_type.downcase.pluralize %> into one recurring series.
+          Nothing else changes &mdash; casting, availability, and signups stay exactly as they are.
+          Once linked, you can extend the series to add future dates.
+        </p>
+
+        <div class="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-64 overflow-y-auto">
+          <div class="flex items-center gap-3 px-3 py-2 bg-pink-50/50">
+            <svg class="w-4 h-4 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900"><%= show.date_and_time.strftime("%a, %b %-d, %Y") %></div>
+              <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%-I:%M %p") %> &middot; this <%= show.event_type.downcase %></div>
+            </div>
+          </div>
+          <% matching_shows.each do |matching_show| %>
+            <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+              <%= check_box_tag "show_ids[]", matching_show.id, true,
+                    id: "link-series-show-#{matching_show.id}",
+                    class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900"><%= matching_show.date_and_time.strftime("%a, %b %-d, %Y") %></div>
+                <div class="text-xs text-gray-500">
+                  <%= matching_show.date_and_time.strftime("%-I:%M %p") %><% if matching_show.canceled %> &middot; canceled<% end %>
+                </div>
+              </div>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button",
+              text: "Cancel",
+              variant: "secondary",
+              size: "medium",
+              type: :button,
+              data: { action: "click->modal#close" } %>
+        <%= render "shared/button",
+              text: "Link into Series",
+              variant: "primary",
+              size: "medium",
+              type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series confirm_time_change apply_time_change upload_poster]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series link_into_series confirm_time_change apply_time_change upload_poster]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
     before_action :enforce_free_event_limit, only: :create
 
@@ -1309,6 +1309,37 @@ module Manage
       )
       redirect_to manage_show_path(@production, @show),
                   notice: "#{@show.event_type.titleize} added to recurring series.",
+                  status: :see_other
+    end
+
+    # Link this show and other standalone shows into a brand-new recurring series.
+    # Only sets recurrence fields — casting/availability/signups are untouched.
+    def link_into_series
+      if @show.recurring?
+        redirect_to manage_show_path(@production, @show), alert: "This #{@show.event_type} is already part of a recurring series."
+        return
+      end
+
+      shows = @production.shows
+                         .where(recurrence_group_id: nil)
+                         .where(id: Array(params[:show_ids]) + [ @show.id ])
+                         .order(:date_and_time)
+                         .to_a
+
+      if shows.length < 2
+        redirect_to manage_show_path(@production, @show), alert: "Select at least one other event to link into a series."
+        return
+      end
+
+      recurrence_group_id = SecureRandom.uuid
+      pattern = infer_recurrence_pattern(shows)
+      @production.shows.where(id: shows.map(&:id))
+                       .update_all(recurrence_group_id: recurrence_group_id,
+                                   recurrence_pattern: pattern,
+                                   updated_at: Time.current)
+
+      redirect_to manage_show_path(@production, @show),
+                  notice: "Linked #{shows.length} #{@show.event_type.downcase.pluralize} into a recurring series.",
                   status: :see_other
     end
 

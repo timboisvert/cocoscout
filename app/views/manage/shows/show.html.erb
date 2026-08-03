@@ -73,6 +73,7 @@
         production: @production
       }
     else
+      available_series = []
       recurring_groups = @production.shows.where.not(recurrence_group_id: nil).select(:recurrence_group_id).distinct.pluck(:recurrence_group_id)
       if recurring_groups.any?
         available_series = recurring_groups.map do |group_id|
@@ -108,7 +109,24 @@
             count: series_shows.count
           }
         end.compact
-        series_panel = { type: :add_to_series, available_series: available_series, show: @show, production: @production } if available_series.any?
+      end
+
+      # Standalone shows matching this one's event type, weekday, and time of day —
+      # candidates for linking together into a brand-new recurring series.
+      matching_shows = @production.shows
+                                  .where(recurrence_group_id: nil, event_type: @show.event_type)
+                                  .where.not(id: @show.id)
+                                  .order(:date_and_time)
+                                  .select { |s| s.date_and_time.wday == @show.date_and_time.wday && s.date_and_time.strftime("%H:%M") == @show.date_and_time.strftime("%H:%M") }
+
+      if available_series.any? || matching_shows.any?
+        series_panel = {
+          type: :add_to_series,
+          available_series: available_series,
+          matching_shows: matching_shows,
+          show: @show,
+          production: @production
+        }
       end
     end
   %>
