@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { parseMoney, sanitizeMoneyField } from "controllers/lib/money_input"
 
 // A per-day worksheet for a tips (or cash-tips) field: enter (date, amount) rows,
 // see a live total, and "Use total" writes the sum into the field. The breakdown
@@ -34,7 +35,10 @@ export default class extends Controller {
         this.recalc()
     }
 
-    recalc() {
+    recalc(event) {
+        // A pasted "$25" or "1,200" must not read as zero — scrub the field as
+        // it's typed/pasted so only digits and dots remain.
+        if (event?.target) sanitizeMoneyField(event.target)
         const total = this.rowData().reduce((a, r) => a + r.amount, 0)
         if (this.hasSubtotalTarget) this.subtotalTarget.textContent = "$" + total.toFixed(2)
     }
@@ -82,7 +86,7 @@ export default class extends Controller {
         return Array.from(this.rowsTarget.querySelectorAll("[data-row]"))
             .map(r => ({
                 date: r.querySelector('[data-cell="date"]').value,
-                amount: parseFloat(r.querySelector('[data-cell="amount"]').value) || 0
+                amount: parseMoney(r.querySelector('[data-cell="amount"]').value)
             }))
             .filter(r => r.amount > 0)
     }

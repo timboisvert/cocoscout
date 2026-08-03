@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { parseMoney } from "controllers/lib/money_input"
 
 // Submit-time guardrails for the Pay People form.
 //
@@ -105,7 +106,7 @@ export default class extends Controller {
     }
 
     rowSummary(row) {
-        const val = f => parseFloat(row.querySelector(`[data-pay-field="${f}"]`)?.value || "0") || 0
+        const val = f => parseMoney(row.querySelector(`[data-pay-field="${f}"]`)?.value)
         const worked = (parseFloat(row.dataset.workedCents) || 0) / 100
         const workedHours = parseFloat(row.dataset.workedHours) || 0
         const bonus = val("bonus")

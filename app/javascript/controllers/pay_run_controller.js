@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { parseMoney, sanitizeMoneyField } from "controllers/lib/money_input"
 
 // Live totals for the staff pay-run grid. Worked pay is either per-role (when
 // approved hours are pulled in — the row carries the computed worked cents on
@@ -12,7 +13,10 @@ export default class extends Controller {
         this.recalc()
     }
 
-    recalc() {
+    recalc(event) {
+        // Pasted "$25" / "1,200" must never read as zero — scrub the money field
+        // that fired this event down to digits and dots.
+        if (event?.target?.matches?.('input[inputmode="decimal"]')) sanitizeMoneyField(event.target)
         let grand = 0
         let paying = 0
         // Money entered for people without a connected bank: it can't move yet,
@@ -21,7 +25,7 @@ export default class extends Controller {
         let owedPeople = 0
         this.rowTargets.forEach(row => {
             const rate = (parseFloat(row.dataset.rate || "0") || 0) / 100
-            const val = f => parseFloat(row.querySelector(`[data-pay-field="${f}"]`)?.value || "0") || 0
+            const val = f => parseMoney(row.querySelector(`[data-pay-field="${f}"]`)?.value)
             // Pulled per-role pay takes precedence over rate×hours when present.
             const worked = row.dataset.workedCents ? (parseFloat(row.dataset.workedCents) / 100) : rate * val("hours")
             const total = worked + val("bonus") + val("reimbursement") + val("tips")

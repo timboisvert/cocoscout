@@ -144,6 +144,14 @@ class ShowPayoutLineItem < ApplicationRecord
     payout_contribution.present?
   end
 
+  # Staged in an OPEN or in-flight run — the money is queued to move (or moving)
+  # and needs no further action. A contribution on a failed/canceled batch
+  # doesn't count: that money fell back to needing attention.
+  def staged_in_open_run?
+    batch = payout_contribution&.payout_batch
+    batch.present? && PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(batch.status)
+  end
+
   # A bank-connected performer whose balance has already been paid down by a
   # completed payout run. Their per-show line reads "Paid · payout run" instead
   # of forever showing "Auto-pay · next payout run".

@@ -74,7 +74,7 @@ module Manage
 
       revenue_types = EventTypes.revenue_event_types
       shows = @production.shows.where(event_type: revenue_types)
-                         .includes(:show_payout, show_payout: :line_items)
+                         .includes(:show_payout, show_payout: { line_items: { payout_contribution: :payout_batch } })
                          .order(date_and_time: :desc)
                          .limit(100)
                          .select { |s| s.show_payout&.calculated_at.present? }
@@ -148,7 +148,8 @@ module Manage
 
       # Load shows with pre-fetched associations
       @shows = query
-               .includes(:show_financials, :show_payout, :location, show_payout: :line_items)
+               .includes(:show_financials, :show_payout, :location,
+                         show_payout: { line_items: { payout_contribution: :payout_batch } })
                .limit(100)
                .to_a
 
@@ -163,6 +164,7 @@ module Manage
       # show's coarse total — so partially-paid shows show the right remaining.
       amounts = net_payout_amounts(@production)
       @total_awaiting_payout = amounts[:awaiting_amount]
+      @total_awaiting_in_run = amounts[:in_run_amount]
       @total_paid = amounts[:paid_amount]
       @awaiting_payout_people_count = amounts[:awaiting_people]
       @paid_people_count = amounts[:paid_people]
@@ -178,7 +180,8 @@ module Manage
       revenue_types = EventTypes.revenue_event_types
       all_revenue_shows = @production.shows.where(event_type: revenue_types)
                                      .where("date_and_time <= ?", 1.day.from_now)
-                                     .includes(:show_financials, :show_payout, show_payout: :line_items)
+                                     .includes(:show_financials, :show_payout,
+                                               show_payout: { line_items: { payout_contribution: :payout_batch } })
                                      .order(date_and_time: :desc).to_a
       @awaiting_calculation_shows = all_revenue_shows.select { |s| s.show_payout.nil? || s.show_payout.calculated_at.nil? }
       @awaiting_payout_shows = all_revenue_shows.select do |s|
@@ -223,6 +226,7 @@ module Manage
         needs_calculation_count: needs_calculation,
         awaiting_payout_count: production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil).count,
         awaiting_payout_amount: amounts[:awaiting_amount],
+        awaiting_in_run_amount: amounts[:in_run_amount],
         paid_count: production.show_payouts.paid.count,
         paid_amount: amounts[:paid_amount],
         outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
@@ -244,9 +248,21 @@ module Manage
         # production page. One awaiting show → link right to it; several → an
         # accordion of them, each linking to its show payout.
         shows = awaiting_shows_for(s[:production])
+        subtitle = +"#{shows.size} #{'show'.pluralize(shows.size)} awaiting"
+        # Split out what's already sitting in an open payout run — that slice is
+        # queued to move, so only the remainder actually needs action.
+        in_run = s[:awaiting_in_run_amount].to_f
+        if in_run.positive?
+          remainder = amount - in_run
+          subtitle << if remainder > 0.004
+            " · #{helpers.number_to_currency(in_run)} in a payout run, #{helpers.number_to_currency(remainder)} not staged yet"
+          else
+            " · all of it in a payout run"
+          end
+        end
         item = {
           name: s[:production].name, kind: :production, amount: amount,
-          subtitle: "#{shows.size} #{'show'.pluralize(shows.size)} awaiting"
+          subtitle: subtitle
         }
         if shows.size == 1
           item[:href] = manage_money_show_payout_path(shows.first)
@@ -303,13 +319,19 @@ module Manage
 
     # Awaiting/paid payout money and people for a production, computed from the
     # LINE ITEMS (each person's net), so a partially-paid show reflects only its
-    # remaining unpaid people — not the show's full total.
+    # remaining unpaid people — not the show's full total. `in_run_amount` is the
+    # slice of the awaiting money already staged in an open/in-flight payout run:
+    # still unpaid, but queued to move — so "awaiting $100, $50 in a run" reads
+    # as "only $50 still needs your action".
     def net_payout_amounts(production)
       calculated_ids = production.show_payouts.where.not(calculated_at: nil).select(:id)
       items = ShowPayoutLineItem.where(show_payout_id: calculated_ids)
       net = Arel.sql("COALESCE(show_payout_line_items.amount, 0) - COALESCE(show_payout_line_items.advance_deduction, 0)")
       {
         awaiting_amount: items.unpaid.sum(net),
+        in_run_amount: items.unpaid.joins(payout_contribution: :payout_batch)
+                            .where(payout_batches: { status: PayoutBatchService::UNSETTLED_BATCH_STATUSES })
+                            .sum(net),
         paid_amount: items.paid.sum(net),
         awaiting_people: items.unpaid.count,
         paid_people: items.paid.count

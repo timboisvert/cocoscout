@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { parseMoney } from "controllers/lib/money_input"
 
 // Mobile accordion for the Pay People cards. Each person starts collapsed
 // showing just their name + a live summary of anything entered (hours, bonus,
@@ -43,7 +44,7 @@ export default class extends Controller {
         const summary = row.querySelector("[data-acc-summary]")
         if (!summary) return
 
-        const val = f => parseFloat(row.querySelector(`[data-pay-field="${f}"]`)?.value || "0") || 0
+        const val = f => parseMoney(row.querySelector(`[data-pay-field="${f}"]`)?.value)
         const money = n => `$${(n % 1 === 0) ? n : n.toFixed(2)}`
 
         const parts = []
@@ -54,7 +55,7 @@ export default class extends Controller {
         if (val("bonus") > 0) parts.push(`${money(val("bonus"))} bonus`)
         if (val("reimbursement") > 0) parts.push(`${money(val("reimbursement"))} reimb.`)
         if (val("tips") > 0) parts.push(`${money(val("tips"))} tips`)
-        const cash = parseFloat(row.querySelector('input[name$="[cash_tips]"]')?.value || "0") || 0
+        const cash = parseMoney(row.querySelector('input[name$="[cash_tips]"]')?.value)
         if (cash > 0) parts.push(`${money(cash)} cash tips`)
 
         const total = row.querySelector("[data-pay-total]")?.textContent?.trim()

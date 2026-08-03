@@ -17,15 +17,23 @@
       <%
         items = show.show_payout.line_items.to_a
         paid_items = items.select(&:paid?)
-        awaiting = items.reject(&:paid?).sum(&:net_amount)
+        unpaid_items = items.reject(&:paid?)
+        awaiting = unpaid_items.sum(&:net_amount)
         paid = paid_items.sum(&:net_amount)
+        # Part of the awaiting money can already be staged in an open payout
+        # run — say so, or the number looks like nothing's been done about it.
+        in_run = unpaid_items.select(&:staged_in_open_run?).sum(&:net_amount)
+        subtitle = +"#{paid_items.count} of #{items.count} paid"
+        if in_run > 0
+          subtitle << (awaiting - in_run > 0.004 ? " · #{number_to_currency(in_run)} in a payout run" : " · awaiting amount is in a payout run")
+        end
         title = "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}"
         cells = [ { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600" : "text-gray-400" } ]
         cells << { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" } unless awaiting_only
       %>
       <%= render "shared/slim_list_row",
         title: title,
-        subtitle: "#{paid_items.count} of #{items.count} paid",
+        subtitle: subtitle,
         href: manage_money_show_payout_path(show),
         href_data: href_data,
         col_labels: [ "Awaiting", "Paid" ],

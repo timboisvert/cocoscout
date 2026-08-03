@@ -1078,7 +1078,12 @@
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
               </div>
-              <%= form_with url: "#", method: :post, local: true, data: { "payment-actions-target": "markPaidForm", turbo: false, controller: "require-choice" } do %>
+              <%# authenticity_token: the JS points this form's action at a per-line
+                  URL after render, so the default per-form CSRF token (minted for
+                  "#") would be rejected with a 422. Embed the global session token,
+                  which is valid for any path. %>
+              <%= form_with url: "#", method: :post, local: true, authenticity_token: form_authenticity_token,
+                    data: { "payment-actions-target": "markPaidForm", turbo: false, controller: "require-choice" } do %>
                 <div class="p-6 space-y-4">
                   <p class="text-sm text-gray-600">
                     Recording <strong data-payment-actions-target="markPaidAmount"></strong> paid to
