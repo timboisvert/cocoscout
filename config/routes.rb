@@ -506,6 +506,9 @@ Rails.application.routes.draw do
     post   "/payments/connect",                  to: "payments#connect_bank",              as: "payments_connect_bank"
     get    "/payments/connect/return",           to: "payments#connect_return",            as: "payments_connect_return"
     get    "/payments/connect/refresh",          to: "payments#connect_refresh",           as: "payments_connect_refresh"
+    # Receipt for one payment: a payout-run deposit ("run"), a show payout paid
+    # outside CocoScout ("show"), or staffing hours settled offline ("hours").
+    get    "/payments/receipt/:kind/:id",        to: "payments#receipt",                   as: "payment_receipt"
 
     # Shoutouts management
     get   "/shoutouts",                         to: "shoutouts#index",                    as: "shoutouts"
@@ -1196,6 +1199,8 @@ Rails.application.routes.draw do
     get   "staffing/timesheets/:id/edit",         to: "staffing/timesheets#edit",        as: "edit_staffing_timesheet"
     patch "staffing/timesheets/:id/unapprove",    to: "staffing/timesheets#unapprove",   as: "unapprove_staffing_timesheet"
     patch "staffing/timesheets/:id/reapprove",    to: "staffing/timesheets#reapprove",   as: "reapprove_staffing_timesheet"
+    patch "staffing/timesheets/:id/mark_paid_offline",   to: "staffing/timesheets#mark_paid_offline",   as: "mark_paid_offline_staffing_timesheet"
+    patch "staffing/timesheets/:id/unmark_paid_offline", to: "staffing/timesheets#unmark_paid_offline", as: "unmark_paid_offline_staffing_timesheet"
     patch "staffing/timesheets/:id",              to: "staffing/timesheets#update",      as: "staffing_timesheet"
     delete "staffing/timesheets/:id",             to: "staffing/timesheets#reject",      as: "reject_staffing_timesheet"
     post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
@@ -1216,6 +1221,7 @@ Rails.application.routes.draw do
     # Staffing settings — org-level config (the employee agreement, etc.)
     get    "staffing/settings",                   to: "staffing/settings#show",          as: "staffing_settings"
     patch  "staffing/settings",                   to: "staffing/settings#update"
+    get    "staffing/settings/:section",          to: "staffing/settings#show",          as: "staffing_settings_section"
     get    "staffing/agreement-templates/new",    to: "staffing/agreement_templates#new",     as: "new_staffing_agreement_template"
     post   "staffing/agreement-templates",        to: "staffing/agreement_templates#create",  as: "staffing_agreement_templates"
     get    "staffing/agreement-templates/:id/edit",    to: "staffing/agreement_templates#edit",    as: "edit_staffing_agreement_template"

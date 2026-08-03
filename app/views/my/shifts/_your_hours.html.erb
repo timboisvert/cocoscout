@@ -24,7 +24,7 @@
     <%# Recent shifts still to confirm %>
     <% if @unconfirmed_shifts.any? %>
       <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-        <div class="text-sm font-medium text-amber-900 mb-2">Confirm the hours you worked</div>
+        <div class="text-sm font-medium text-amber-900 mb-2">Verify the hours you worked</div>
         <div class="space-y-2">
           <% @unconfirmed_shifts.each do |a| %>
             <% s = a.shift %>
@@ -33,11 +33,11 @@
                 <div class="text-sm font-medium text-gray-900 truncate"><%= s.starts_at.strftime("%a %b %-d") %> · <%= s.role_label %></div>
                 <div class="text-xs text-gray-500"><%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %> · <%= number_with_precision(s.scheduled_hours, precision: 2, strip_insignificant_zeros: true) %>h scheduled</div>
               </div>
-              <%= render "shared/button", text: "Confirm", variant: "primary", size: "small", type: :button,
+              <%= render "shared/button", text: "Verify", variant: "primary", size: "small", type: :button,
                     data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
                             mode: "confirm", url: my_time_entries_path,
                             "assignment-id": a.id, started: dt.call(s.starts_at), ended: dt.call(s.ends_at),
-                            title: "Confirm your hours" } %>
+                            title: "Verify your hours" } %>
             </div>
           <% end %>
         </div>
@@ -89,7 +89,7 @@
         <% end %>
       </div>
     <% elsif @unconfirmed_shifts.empty? %>
-      <p class="text-sm text-gray-500 text-center py-4">No hours to review. Confirm a shift or add time you worked on your own.</p>
+      <p class="text-sm text-gray-500 text-center py-4">No hours to review. Verify a shift or add time you worked on your own.</p>
     <% end %>
   </div>
 </section>

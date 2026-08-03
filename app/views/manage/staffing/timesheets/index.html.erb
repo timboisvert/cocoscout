@@ -89,6 +89,10 @@
                   <%= link_to "Adjust", manage_edit_staffing_timesheet_path(e),
                         data: { turbo_frame: "timesheet_edit_modal" },
                         class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+                  <% already_paid_cid = "already-paid-#{e.id}" %>
+                  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= already_paid_cid %>"
+                          class="text-xs text-gray-400 hover:text-pink-600 underline bg-transparent border-0 cursor-pointer">Already paid</button>
+                  <%= render "manage/staffing/timesheets/already_paid_modal", entry: e, id: already_paid_cid %>
                   <% reject_cid = "confirm-reject-#{e.id}" %>
                   <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= reject_cid %>"
                           class="text-xs text-gray-400 hover:text-red-600 bg-transparent border-0 cursor-pointer">Reject</button>

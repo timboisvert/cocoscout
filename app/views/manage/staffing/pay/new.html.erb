@@ -1,7 +1,7 @@
 <% content_for :title, "Pay People" %>
 
-<div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal"
-     data-action="input->pay-run#recalc change->pay-run#recalc"
+<div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal pay-hidden-staff"
+     data-action="input->pay-run#recalc change->pay-run#recalc input->pay-hidden-staff#autoReveal change->pay-hidden-staff#autoReveal"
      data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
      data-pay-draft-initial-value="<%= @draft %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -23,7 +23,7 @@
     </div>
   <% end %>
 
-  <% if @staff_members.empty? %>
+  <% if (@staff_members + @hidden_staff_members).empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-4">
       <p class="text-sm text-gray-600 mb-3">No staff to pay yet.</p>
       <%= render "shared/button", text: "Add a staff member", variant: "primary", size: "small", path: manage_new_staffing_staff_wizard_path %>
@@ -90,9 +90,13 @@
             </tr>
           </thead>
           <tbody class="block lg:table-row-group space-y-3 lg:space-y-0 lg:divide-y lg:divide-gray-100">
-            <% @staff_members.each do |member| %>
+            <% (@staff_members + @hidden_staff_members).each do |member| %>
               <% payee = member.person %>
               <% can_pay = payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? %>
+              <%# Excluded/inactive members render but start hidden (inline style so
+                  no responsive display class can override it) — the reveal list at
+                  the bottom unhides them one at a time for one-off payments. %>
+              <% hidden_from_pay = @hidden_staff_members.include?(member) %>
               <%
                 # Rate is a property of the work (the role), not the person. All
                 # hours — included entries and ad-hoc — are picked and priced in
@@ -102,8 +106,11 @@
                 entries = @approved_entries_by_person[member.person_id] || []
               %>
               <tr data-pay-run-target="row" data-pay-accordion-target="row" data-pay-hours-target="row"
+                  data-pay-hidden-staff-target="row"
                   data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>"
                   data-member-id="<%= member.id %>" data-member-name="<%= member.display_name %>"
+                  data-hidden-from-pay="<%= hidden_from_pay %>"
+                  <% if hidden_from_pay %>style="display: none"<% end %>
                   class="block lg:table-row bg-white lg:bg-transparent border border-gray-200 lg:border-0 rounded-lg lg:rounded-none p-3 lg:p-0 <%= "opacity-60" unless can_pay %>">
                 <%# Person header — the accordion toggle on mobile (name + live summary
                     of anything entered); a plain name cell in the desktop table. %>
@@ -119,6 +126,7 @@
                   </div>
                   <div data-acc-summary class="hidden text-xs font-medium text-gray-600 mt-1 lg:hidden"></div>
                   <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
+                  <% if hidden_from_pay %><span class="block text-[11px] text-gray-500"><%= member.inactive? ? "Inactive" : "Usually hidden" %> — shown for a one-off payment</span><% end %>
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
                   <span class="text-xs text-gray-500 lg:hidden">Hours</span>
@@ -168,18 +176,68 @@
           </tbody>
           <tfoot class="block lg:table-footer-group mt-3 lg:mt-0 bg-gray-50 border border-gray-200 lg:border-0 lg:border-t lg:border-gray-200 rounded-lg lg:rounded-none">
             <tr class="flex items-center justify-between gap-3 p-3 lg:p-0 lg:table-row">
-              <td colspan="6" class="block lg:table-cell lg:px-3 lg:py-3 lg:text-right text-sm text-gray-600">Total to pay (<span data-pay-run-target="count">0</span> people, cash tips excluded)</td>
-              <td class="block lg:table-cell lg:px-3 lg:py-3 text-right text-base font-semibold text-gray-900" data-pay-run-target="grandTotal">$0.00</td>
+              <td colspan="6" class="block lg:table-cell lg:px-3 lg:py-3 lg:text-right text-sm text-gray-600">
+                Total to pay (<span data-pay-run-target="count">0</span> people, cash tips excluded)
+                <span data-pay-run-target="owedNote" class="hidden block text-xs text-amber-700 mt-1">
+                  Plus <span data-pay-run-target="owedTotal" class="font-medium">$0.00</span> for <span data-pay-run-target="owedCount">0 people</span> without a bank connected — recorded as owed, paid once they connect one.
+                </span>
+              </td>
+              <td class="block lg:table-cell lg:px-3 lg:py-3 text-right text-base font-semibold text-gray-900 lg:align-top" data-pay-run-target="grandTotal">$0.00</td>
             </tr>
           </tfoot>
         </table>
+
+        <%# Reveal list for excluded/inactive members: a quiet count under the
+            grid; clicking opens a picker to show one of them for a one-off
+            payment. Nothing persists — next visit they're hidden again. %>
+        <% if @hidden_staff_members.any? %>
+          <div data-pay-hidden-staff-target="bar" class="flex items-center justify-between gap-3 mt-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200">
+            <p class="text-xs text-gray-600">
+              <span data-pay-hidden-staff-target="count"><%= @hidden_staff_members.size %> <%= @hidden_staff_members.size == 1 ? "person" : "people" %></span>
+              hidden from this list (excluded or inactive).
+            </p>
+            <button type="button" data-action="click->pay-hidden-staff#openPicker"
+                    class="text-xs font-medium text-pink-600 hover:text-pink-700 underline cursor-pointer">Show someone</button>
+          </div>
+
+          <div data-pay-hidden-staff-target="picker"
+               class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+               data-action="click->pay-hidden-staff#closeOnBackdrop">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden text-left" data-action="click->pay-hidden-staff#stopPropagation">
+              <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                <h3 class="text-lg font-semibold text-white">Hidden from this list</h3>
+                <button type="button" data-action="click->pay-hidden-staff#closePicker" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="px-6 py-4">
+                <p class="text-sm text-gray-600 mb-3">Show someone here to make a one-off payment or reimbursement. They'll be hidden again next time. To change who's always hidden, use <%= link_to "Staffing settings", manage_staffing_settings_section_path(section: "pay_people"), class: "text-pink-600 hover:text-pink-700 underline" %>.</p>
+                <div class="max-h-72 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                  <% @hidden_staff_members.each do |member| %>
+                    <div data-hidden-person data-member-id="<%= member.id %>" class="flex items-center justify-between gap-3 px-3 py-2.5">
+                      <div class="min-w-0">
+                        <div class="text-sm text-gray-900 truncate"><%= member.display_name %></div>
+                        <div class="text-[11px] text-gray-500"><%= member.inactive? ? "Inactive" : "Hidden in Staffing settings" %></div>
+                      </div>
+                      <%= render "shared/button", text: "Show", variant: "secondary", size: "small", type: :button,
+                            data: { action: "click->pay-hidden-staff#reveal", "member-id": member.id } %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+                <%= render "shared/button", text: "Done", variant: "secondary", size: "medium", type: :button, data: { action: "click->pay-hidden-staff#closePicker" } %>
+              </div>
+            </div>
+          </div>
+        <% end %>
 
         <%# Hours modals — one per member, deliberately OUTSIDE the rows: a
             no-bank row is dimmed with opacity, and an opacity ancestor creates
             a stacking context that traps/clips the fixed overlay. Out here they
             layer over the whole page. Still inside this wrapper so the
             pay-hours controller's targets resolve. %>
-        <% @staff_members.each do |member| %>
+        <% (@staff_members + @hidden_staff_members).each do |member| %>
           <%= render "manage/staffing/pay/hours_modal",
                 member: member,
                 entries: @approved_entries_by_person[member.person_id] || [],
@@ -187,7 +245,7 @@
         <% end %>
       </div>
 
-      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this pay run's record for your files, but not sent through us.</p>
+      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid — anyone else you add here is recorded on the run as owed, and gets paid once they connect a bank. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this pay run's record for your files, but not sent through us.</p>
 
       <div class="flex items-center justify-end gap-3 mt-4">
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
@@ -234,6 +292,10 @@
               <div class="flex items-center justify-between pt-2 border-t-2 border-gray-200 text-sm">
                 <span class="font-semibold text-gray-900">Total</span>
                 <span class="font-bold text-gray-900 tabular-nums" data-pay-confirm-target="summaryTotal">$0.00</span>
+              </div>
+              <div data-pay-confirm-target="summaryOwed" class="hidden flex items-center justify-between text-xs text-amber-700">
+                <span>Recorded as owed (no bank connected yet)</span>
+                <span class="font-medium tabular-nums" data-pay-confirm-target="summaryOwedAmount">$0.00</span>
               </div>
             </div>
             <div class="px-5 py-3 border-t border-gray-200 space-y-3">

@@ -209,6 +209,24 @@ module MyHelper
     NO_CAST_SPOT_OFFERED_TEXT
   end
 
+  # Payee-facing "Paid May 15, 2026 with Zelle" phrasing. Only the hand-payment
+  # methods a payee would recognize get named — always "with", never "via".
+  # CocoScout-rail deposits, "other", and anything unknown just say the date:
+  # naming the platform (or a vague "other") adds nothing for the reader.
+  PAID_WITH_LABELS = {
+    "cash"  => "with cash",
+    "check" => "with check",
+    "zelle" => "with Zelle",
+    "venmo" => "with Venmo"
+  }.freeze
+
+  def paid_with_phrase(paid_at, method)
+    phrase = +"Paid"
+    phrase << " #{paid_at.strftime('%b %-d, %Y')}" if paid_at
+    suffix = PAID_WITH_LABELS[method.to_s]
+    suffix ? "#{phrase} #{suffix}" : phrase
+  end
+
   # Check if current user can moderate (delete) posts for a given post
   def can_moderate_post?(post)
     production = post.production

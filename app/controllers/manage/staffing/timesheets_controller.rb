@@ -117,6 +117,36 @@ module Manage
         redirect_to manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
       end
 
+      # These hours were already settled outside CocoScout (e.g. a payroll check
+      # cut before staff pay moved onto the platform). Marks the entry paid —
+      # approving it in the same stroke if it was still pending — so it can never
+      # be pulled into a pay run and the worker sees it as handled.
+      def mark_paid_offline
+        entry = find_editable_entry
+        return unless entry
+
+        was_pending = entry.approved_at.blank?
+        entry.mark_paid_offline!(Current.user, note: params[:note], paid_on: params[:paid_on])
+
+        destination = was_pending ? manage_staffing_timesheets_path
+                                  : manage_approved_staffing_timesheets_path(month: entry.started_at.strftime("%Y-%m"))
+        redirect_to destination,
+                    notice: "Marked #{entry.person.name}'s #{helpers.number_with_precision(entry.hours, precision: 2, strip_insignificant_zeros: true)}h on #{entry.started_at.strftime('%b %-d')} as already paid outside CocoScout."
+      end
+
+      # Undo a mistaken already-paid mark. The sign-off sticks, so the entry
+      # returns to "approved" and is pullable into a pay run again.
+      def unmark_paid_offline
+        entry = Current.organization.staff_time_entries.find(params[:id])
+        unless entry.paid_offline?
+          redirect_to manage_approved_staffing_timesheets_path, alert: "That entry isn't marked as paid outside CocoScout." and return
+        end
+
+        entry.unmark_paid_offline!
+        redirect_to manage_approved_staffing_timesheets_path(month: entry.started_at.strftime("%Y-%m")),
+                    notice: "Unmarked — those hours are back to approved and can be paid on a run."
+      end
+
       # Reject a submitted entry: remove it from the queue. Unpaid only (a paid
       # entry is settled and can't be rejected). The worker can re-submit if it
       # was a mistake.

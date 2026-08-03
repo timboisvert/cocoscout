@@ -6,15 +6,13 @@ module My
     before_action :set_person
 
     def index
-      # A simple log of everything this person has been paid, across all shows.
-      paid_items = ShowPayoutLineItem
-        .where(payee: @person)
-        .joins(show_payout: :show)
-        .where(show_payouts: { status: "paid" })
-        .includes(show_payout: { show: :production })
-        .order("show_payout_line_items.paid_at DESC NULLS LAST, shows.date_and_time DESC")
-
-      @total_received = paid_items.to_a.sum(&:amount)
+      # Payment history: one row per actual payment this person received — a
+      # payout-run deposit (one bank transfer, possibly bundling several
+      # earnings), a show payout hand-paid outside CocoScout, or staffing hours
+      # settled outside CocoScout. Several in a week is normal — they're paid
+      # different ways, and each is its own receipt.
+      @payment_history = payment_history_rows
+      @total_received = @payment_history.sum { |p| p[:cents] } / 100.0
 
       # What they're owed now, itemized straight from the ledger earnings (the
       # source of the balance), with a friendly label per line. Anything already
@@ -46,7 +44,43 @@ module My
       # Total owed includes the pending (awaiting-approval) estimate.
       @to_be_paid_cents = net_cents + @pending_total_cents
 
-      @pagy, @payment_history = pagy(paid_items, limit: 25)
+      # Money already staged in payout runs — proof the org has taken action.
+      # Submitted = the run is funded/funding/paying, so the money is moving and
+      # only the bank's timeline remains; queued = sitting in a draft run that
+      # goes out on its payday. Both still count in the owed balance (the
+      # debiting ledger entry posts only when the transfer lands).
+      run_items = PayoutBatchItem.where(payee: @person, status: "pending")
+                                 .joins(:payout_batch)
+                                 .where(payout_batches: { status: PayoutBatchService::UNSETTLED_BATCH_STATUSES })
+                                 .includes(payout_batch: :organization)
+                                 .order("payout_batches.created_at DESC")
+      @submitted_run_items = run_items.select { |i| i.payout_batch.in_flight? }
+      @queued_run_items = run_items.select { |i| i.payout_batch.open? }
+    end
+
+    # A receipt for one payment — everything it covered. Every lookup is scoped
+    # to the signed-in person, so nobody can read someone else's receipt.
+    def receipt
+      case params[:kind]
+      when "run"
+        @item = PayoutBatchItem.where(payee: @person, status: "paid")
+                               .includes(payout_batch: :organization).find(params[:id])
+        @contributions = @item.payout_contributions.order(:created_at).to_a
+      when "show"
+        @line_item = ShowPayoutLineItem.where(payee: @person, manually_paid: true)
+                                       .includes(show_payout: { show: :production }).find(params[:id])
+      when "hours"
+        @entry = StaffTimeEntry.where(person_id: @person.id).where.not(offline_paid_at: nil)
+                               .includes(:organization, shift_assignment: { shift: :house_role }).find(params[:id])
+        member = OrganizationStaffMember.find_by(person_id: @person.id, organization_id: @entry.organization_id)
+        rate = member ? member.rate_cents_for(@entry.effective_house_role).to_i : 0
+        @entry_amount_cents = @entry.offline_amount_cents || (rate * @entry.hours.to_f).round
+      else
+        redirect_to my_payments_path and return
+      end
+      @kind = params[:kind]
+    rescue ActiveRecord::RecordNotFound
+      redirect_to my_payments_path, alert: "We couldn't find that payment."
     end
 
     def setup
@@ -81,6 +115,53 @@ module My
     end
 
     private
+
+    # One hash per payment actually received, newest first. Three shapes of
+    # payment, each its own receipt: run = a payout-run bank deposit (can bundle
+    # several earnings); show = a show payout hand-paid outside CocoScout;
+    # hours = staffing hours settled outside CocoScout (offline-marked).
+    def payment_history_rows
+      rows = []
+
+      PayoutBatchItem.where(payee: @person, status: "paid")
+                     .includes(:payout_contributions, payout_batch: :organization)
+                     .find_each do |item|
+        batch = item.payout_batch
+        line_count = item.payout_contributions.reject(&:excluded_from_payout).size
+        rows << { kind: "run", id: item.id, org: batch.organization&.name,
+                  title: "#{batch.kind_label} · bank deposit",
+                  subtitle: line_count > 1 ? "#{line_count} items in this deposit" : nil,
+                  cents: item.amount_cents, paid_at: item.paid_at, method: "stripe" }
+      end
+
+      # Hand-paid show lines only — lines settled through a payout run are
+      # already covered by that run's deposit row above.
+      ShowPayoutLineItem.where(payee: @person, manually_paid: true)
+                        .includes(show_payout: { show: :production }).find_each do |li|
+        show = li.show_payout&.show
+        rows << { kind: "show", id: li.id, org: nil,
+                  title: show&.production&.name || "Show payout",
+                  subtitle: show&.date_and_time&.strftime("%B %-d, %Y"),
+                  cents: (li.net_amount.to_d * 100).round, paid_at: li.paid_at || li.manually_paid_at,
+                  method: li.payment_method }
+      end
+
+      staff_members = OrganizationStaffMember.where(person_id: @person.id).index_by(&:organization_id)
+      StaffTimeEntry.where(person_id: @person.id).where.not(offline_paid_at: nil)
+                    .includes(:organization, :house_role, shift_assignment: { shift: :house_role })
+                    .find_each do |e|
+        member = staff_members[e.organization_id]
+        rate = member ? member.rate_cents_for(e.effective_house_role).to_i : 0
+        hrs = ActiveSupport::NumberHelper.number_to_rounded(e.hours, precision: 2, strip_insignificant_zeros: true)
+        rows << { kind: "hours", id: e.id, org: e.organization&.name,
+                  title: "Staffing hours · #{hrs}h",
+                  subtitle: e.started_at&.strftime("%B %-d, %Y"),
+                  cents: e.offline_amount_cents || (rate * e.hours.to_f).round, paid_at: e.offline_paid_at,
+                  method: nil }
+      end
+
+      rows.sort_by { |r| r[:paid_at]&.to_time || Time.at(0) }.reverse.first(100)
+    end
 
     # Friendly label for an earning ledger line, enriched from its source where
     # possible (show name, staff-pay component, contract detail).

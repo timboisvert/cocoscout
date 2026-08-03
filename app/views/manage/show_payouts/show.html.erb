@@ -193,10 +193,14 @@
             </svg>
             <div class="flex-1">
               <p class="text-sm text-blue-800 font-medium">
-                <%= guests_without_payment.size %> guest<%= guests_without_payment.size == 1 ? "" : "s" %> to set up
+                <%= guests_without_payment.size %> guest<%= guests_without_payment.size == 1 ? "" : "s" %> to pay
               </p>
               <p class="text-sm text-blue-700 mt-1">
-                Add each guest's email to set them up as a payee. They'll get a link to connect their bank, then you can add them to a payout run.
+                <% if Current.organization.offline_payout_method_choices.any? %>
+                  For a one-off guest, pay them however you like and use “Mark paid another way” on their line below. Or, if you'll pay them again, add their email to set them up as a payee — they'll get a link to connect their bank so you can pay them on a payout run.
+                <% else %>
+                  Add each guest's email to set them up as a payee. They'll get a link to connect their bank, then you can add them to a payout run.
+                <% end %>
               </p>
             </div>
           </div>
@@ -1031,10 +1035,13 @@
                               manager can record that they were already paid another way
                               (cash/check/Zelle/Venmo/other): the payee shows as paid with
                               no money moving through CocoScout. Otherwise they stay owed
-                              until they connect a bank. %>
-                          <div class="text-right" title="This person hasn't connected a bank, so they can't be paid on a payout run. If you've already paid them another way, you can record it.">
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Needs payment setup</span>
-                            <% if !item.is_guest? && Current.organization.offline_payout_method_choices.any? %>
+                              until they connect a bank. Guests (one-off performers with
+                              no CocoScout account) get the same offline option — for
+                              them it's usually the whole story, since we only set a
+                              guest up as a real payee when there's an ongoing deal. %>
+                          <div class="text-right" title="<%= item.is_guest? ? "Guests aren't set up to be paid through CocoScout. If you've paid them another way, you can record it." : "This person hasn't connected a bank, so they can't be paid on a payout run. If you've already paid them another way, you can record it." %>">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"><%= item.is_guest? ? "Guest — unpaid" : "Needs payment setup" %></span>
+                            <% if Current.organization.offline_payout_method_choices.any? %>
                               <div class="mt-0.5">
                                 <button type="button"
                                         data-action="click->payment-actions#showMarkPaidModal"

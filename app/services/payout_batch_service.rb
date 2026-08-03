@@ -76,6 +76,12 @@ class PayoutBatchService
   def self.fund!(batch, method: nil, payment_method_id: nil)
     return batch if batch.total_cents.zero?
 
+    # The payday is "the day we send the money" — it drives the expected-deposit
+    # window payees see. A run planned for an earlier day that slipped (created
+    # Friday, funded Monday) must not advertise a date in the past, so freshen
+    # it at the moment of submission.
+    batch.update!(payday: Date.current) if batch.payday.blank? || batch.payday < Date.current
+
     org = batch.organization
     payment_method = payment_method_id.presence || org.funding_payment_method_id.presence
     raise Error, "Connect a bank or card to fund payouts first." if payment_method.blank?

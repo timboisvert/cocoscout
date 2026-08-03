@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 // the shift's role, so the picker stays hidden for them.
 export default class extends Controller {
     static targets = ["form", "methodInput", "assignmentInput", "orgRow", "orgSelect",
-                      "roleRow", "roleSelect",
+                      "roleRow", "roleSelect", "shiftNote",
                       "title", "started", "ended", "hours", "notes"]
 
     load(event) {
@@ -26,6 +26,8 @@ export default class extends Controller {
         if (this.hasTitleTarget) this.titleTarget.textContent = d.title || "Log time"
         if (this.hasAssignmentInputTarget) this.assignmentInputTarget.value = d.assignmentId || ""
         if (this.hasOrgRowTarget) this.orgRowTarget.classList.toggle("hidden", !manual)
+        // Shift verifications get the "these are your scheduled hours" explainer.
+        if (this.hasShiftNoteTarget) this.shiftNoteTarget.classList.toggle("hidden", d.mode !== "confirm")
         // Disabled inputs don't submit — keep org out of confirm/edit posts.
         if (this.hasOrgSelectTarget) this.orgSelectTarget.disabled = !manual
 

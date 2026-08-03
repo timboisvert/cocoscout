@@ -1,0 +1,48 @@
+<%#
+  "These hours were already paid outside CocoScout" modal — date paid + optional
+  note. Hand-rolled (not shared/confirm_modal) because it carries its own inputs.
+  Works for pending AND approved entries: marking settles the hours (approving
+  them too if they were still pending) without ever bouncing them back through
+  review, so the worker only ever sees them go from approved to paid.
+
+  Locals:
+    entry (required) the StaffTimeEntry
+    id    (required) unique DOM id, must match the trigger's data-modal-id
+%>
+<% e = entry %>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Already paid these hours?</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_mark_paid_offline_staffing_timesheet_path(e), method: :patch, data: { turbo_frame: "_top" } do %>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-gray-600">
+          Mark <span class="font-medium"><%= e.person.name %></span>'s
+          <span class="font-medium"><%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h on <%= e.started_at.strftime("%b %-d") %></span>
+          as paid outside CocoScout. This<%= " approves the hours and" if e.approved_at.blank? %> settles them —
+          they can never be pulled into a pay run, and <%= e.person.name %> will see them as paid.
+        </p>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date paid</label>
+          <%= date_field_tag :paid_on, Date.current, id: "paid-on-#{id}",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">How was it paid? <span class="text-gray-400 font-normal">(optional)</span></label>
+          <%= text_field_tag :note, nil, id: "paid-note-#{id}", placeholder: "e.g. July 15 payroll check",
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Mark already paid", variant: "primary", size: "medium", type: :submit, icon: "check-circle" %>
+      </div>
+    <% end %>
+  </div>
+</div>

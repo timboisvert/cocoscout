@@ -45,7 +45,13 @@
           <% @paid_entries.first(5).each do |e| %>
             <div class="flex items-center justify-between gap-2 text-sm">
               <span class="text-gray-600"><%= e.started_at.strftime("%b %-d") %> · <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>
-              <span class="text-gray-400 text-xs">paid <%= e.paid_at.strftime("%b %-d") %></span>
+              <% if e.paid_offline? %>
+                <%# Settled by hand (payroll check, cash…), not a CocoScout deposit —
+                    say so, so no one waits on a bank transfer that isn't coming. %>
+                <span class="text-gray-400 text-xs" <% if e.offline_payment_note.present? %>title="<%= e.offline_payment_note %>"<% end %>>paid directly<% if e.paid_at %> <%= e.paid_at.strftime("%b %-d") %><% end %></span>
+              <% else %>
+                <span class="text-gray-400 text-xs">paid <%= e.paid_at.strftime("%b %-d") %></span>
+              <% end %>
             </div>
           <% end %>
         </div>

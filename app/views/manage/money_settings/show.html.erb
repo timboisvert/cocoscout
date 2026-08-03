@@ -6,7 +6,8 @@
     ["Money", manage_money_index_path]
   ],
   sections: sections,
-  current: @section
+  current: @section,
+  show_single_tab: true
 } do %>
   <%= render "manage/money_settings/sections/#{@section}" %>
 <% end %>

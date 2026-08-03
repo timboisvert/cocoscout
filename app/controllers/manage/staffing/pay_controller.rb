@@ -9,7 +9,13 @@ module Manage
       before_action :ensure_org_owner_or_manager
 
       def new
-        @staff_members = payable_staff
+        all_members = payable_staff
+        # Hidden from the grid by default: members excluded in Staffing settings
+        # (e.g. salaried managers) and inactive members. Both stay revealable
+        # one-by-one from the list at the bottom for one-off payments — and go
+        # back to hidden on the next visit.
+        @hidden_staff_members = all_members.select { |m| m.inactive? || m.excluded_from_pay? }
+        @staff_members = all_members - @hidden_staff_members
         @payday = Date.current
         # Approved (signed-off, unpaid) entries per person — listed with
         # checkboxes in each person's Hours modal, and what the submit-time
@@ -21,7 +27,7 @@ module Manage
                                              .group_by(&:person_id)
         # Each member's qualified roles with resolved rates — ad-hoc hours are
         # priced by the role they were worked as, not a single per-person rate.
-        @role_rates_by_member = @staff_members.each_with_object({}) do |m, h|
+        @role_rates_by_member = all_members.each_with_object({}) do |m, h|
           h[m.id] = m.staff_role_qualifications.filter_map do |q|
             q.house_role && { role: q.house_role, rate_cents: m.rate_cents_for(q.house_role).to_i }
           end
@@ -68,8 +74,10 @@ module Manage
 
       private
 
+      # All members, active AND inactive — the grid shows active/non-excluded by
+      # default and keeps the rest revealable for one-off payments.
       def payable_staff
-        Current.organization.organization_staff_members.active
+        Current.organization.organization_staff_members
                .includes(:person, staff_role_qualifications: :house_role)
                .order("people.name").references(:person).to_a
       end
@@ -78,7 +86,9 @@ module Manage
       # rows with something to pay.
       def parse_lines
         rows = params[:lines].is_a?(ActionController::Parameters) ? params[:lines].to_unsafe_h : {}
-        members = Current.organization.organization_staff_members.active.where(id: rows.keys).index_by(&:id)
+        # Not scoped to active: inactive/excluded members can be revealed on the
+        # grid for one-off payments, and their rows must survive the submit.
+        members = Current.organization.organization_staff_members.where(id: rows.keys).index_by(&:id)
 
         rows.filter_map do |id, row|
           member = members[id.to_i]

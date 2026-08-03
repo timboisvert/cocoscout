@@ -12,6 +12,7 @@ class StaffTimeEntry < ApplicationRecord
   belongs_to :shift_assignment, optional: true
   belongs_to :payout_batch, optional: true
   belongs_to :approved_by, class_name: "User", optional: true
+  belongs_to :offline_paid_by, class_name: "User", optional: true
   # The role this work was done as — the thing that prices the hours. Shift
   # confirmations inherit it from the shift; self-logged entries pick it.
   # Optional so genuinely role-less work falls back to the person's default rate.
@@ -27,10 +28,13 @@ class StaffTimeEntry < ApplicationRecord
 
   before_validation :compute_hours
 
-  scope :unpaid, -> { where(payout_batch_id: nil) }
-  scope :paid, -> { where.not(payout_batch_id: nil) }
-  scope :pending, -> { where(approved_at: nil, payout_batch_id: nil) }
-  scope :approved, -> { where.not(approved_at: nil).where(payout_batch_id: nil) }
+  # "Paid" is either pulled into a pay run (payout_batch) or hand-marked as
+  # settled outside CocoScout (offline_paid_at) — both make the entry
+  # un-pullable and locked.
+  scope :unpaid, -> { where(payout_batch_id: nil, offline_paid_at: nil) }
+  scope :paid, -> { where.not(payout_batch_id: nil).or(where.not(offline_paid_at: nil)) }
+  scope :pending, -> { where(approved_at: nil, payout_batch_id: nil, offline_paid_at: nil) }
+  scope :approved, -> { where.not(approved_at: nil).where(payout_batch_id: nil, offline_paid_at: nil) }
   # Everything a manager has signed off on, whether or not it's since been paid —
   # backs the "view approved hours" history.
   scope :signed_off, -> { where.not(approved_at: nil) }
@@ -39,7 +43,13 @@ class StaffTimeEntry < ApplicationRecord
   scope :chronological, -> { order(:started_at) }
 
   def paid?
-    payout_batch_id.present?
+    payout_batch_id.present? || offline_paid_at.present?
+  end
+
+  # Settled by hand outside CocoScout (payroll check, cash, …) rather than
+  # through a pay run. No money moved through us — the mark is the record.
+  def paid_offline?
+    offline_paid_at.present? && payout_batch_id.nil?
   end
 
   def approved?
@@ -47,7 +57,8 @@ class StaffTimeEntry < ApplicationRecord
   end
 
   # A worker's entry starts life "pending review", becomes "approved" once a
-  # manager signs off, and finally "paid" when it's pulled into a pay run.
+  # manager signs off, and finally "paid" when it's pulled into a pay run
+  # (or marked as already paid outside CocoScout).
   def status
     return "paid" if paid?
     return "approved" if approved?
@@ -56,7 +67,35 @@ class StaffTimeEntry < ApplicationRecord
   end
 
   def status_label
+    return "Paid outside CocoScout" if paid_offline?
+
     { "paid" => "Paid", "approved" => "Approved", "pending" => "Pending review" }[status]
+  end
+
+  # Record that these hours were already settled outside CocoScout. Marking
+  # implies sign-off, so an entry straight from the pending queue gets approved
+  # in the same stroke. paid_at is set so the entry reads as paid everywhere
+  # the batch-paid ones do.
+  # amount_cents records what was actually paid when the external system knows
+  # better than our rates (historical imports); left nil, the hours price at
+  # the member's rate as usual.
+  def mark_paid_offline!(by_user, note: nil, paid_on: nil, amount_cents: nil)
+    paid_time = paid_on.present? ? (Date.parse(paid_on.to_s).noon rescue Time.current) : Time.current
+    update!(
+      offline_paid_at: paid_time,
+      offline_paid_by: by_user,
+      offline_payment_note: note.presence,
+      offline_amount_cents: amount_cents,
+      paid_at: paid_time,
+      approved_at: approved_at || Time.current,
+      approved_by: approved_by || by_user
+    )
+  end
+
+  # Undo a mistaken offline-paid mark. The approval sticks — the hours were
+  # still signed off — so the entry lands back in "approved", pullable again.
+  def unmark_paid_offline!
+    update!(offline_paid_at: nil, offline_paid_by: nil, offline_payment_note: nil, offline_amount_cents: nil, paid_at: nil)
   end
 
   def compute_hours

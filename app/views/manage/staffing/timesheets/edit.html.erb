@@ -98,20 +98,20 @@
             </div>
           <% end %>
 
-          <%# Send back to the approval queue without editing the hours — only
-              relevant for an already-approved entry. A still-pending one is either
-              adjusted or rejected, so there's nothing to send back. %>
+          <%# Actions for an already-approved entry, without editing the hours:
+              settle them as paid outside CocoScout (keeps them "approved" in the
+              worker's eyes — no bounce back through review), or unapprove to send
+              them back to the queue. A still-pending entry is either adjusted or
+              rejected, so neither applies. %>
           <% if @entry.approved_at.present? %>
-            <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-200">
+              <% edit_already_paid_cid = "already-paid-edit-#{@entry.id}" %>
+              <%= render "shared/button", text: "Already paid", variant: "secondary", size: "medium", type: :button, icon: "check-circle",
+                    data: { controller: "modal", action: "click->modal#open", modal_id: edit_already_paid_cid } %>
+              <%= render "manage/staffing/timesheets/already_paid_modal", entry: @entry, id: edit_already_paid_cid %>
               <% unapprove_cid = "confirm-unapprove-#{@entry.id}" %>
-              <button type="button"
-                      data-controller="modal"
-                      data-action="click->modal#open"
-                      data-modal-id="<%= unapprove_cid %>"
-                      class="text-sm text-amber-700 hover:text-amber-800 cursor-pointer inline-flex items-center gap-1.5 bg-transparent border-0 p-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
-                Unapprove (send back for review)
-              </button>
+              <%= render "shared/button", text: "Unapprove & return for review", variant: "secondary", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: unapprove_cid } %>
               <%= render "shared/confirm_modal", id: unapprove_cid,
                     title: "Send back for review?",
                     message: "Send this entry back to the review queue? You'll need to approve it again.",

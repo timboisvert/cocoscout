@@ -1,0 +1,160 @@
+<% content_for :title, "Payment receipt" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["My Payments", my_payments_path]
+    ],
+    text: "Payment receipt",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <% if @kind == "run" %>
+      <% batch = @item.payout_batch %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-gray-900"><%= batch.kind_label %> · bank deposit</h3>
+            <p class="text-sm text-gray-500 mt-0.5">
+              <%= batch.organization&.name %><% if @item.paid_at %> · sent <%= @item.paid_at.strftime("%B %-d, %Y") %><% end %>
+            </p>
+          </div>
+          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Paid</span>
+        </div>
+
+        <%# Everything bundled into this one transfer. %>
+        <div class="divide-y divide-gray-100">
+          <% if @contributions.any? %>
+            <% @contributions.each do |c| %>
+              <div class="px-5 py-3">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="min-w-0">
+                    <div class="text-sm text-gray-900"><%= c.label %></div>
+                    <% if c.description.present? %><div class="text-xs text-gray-400 truncate"><%= c.description %></div><% end %>
+                    <% if c.excluded_from_payout? %>
+                      <div class="text-[11px] text-gray-400">Recorded for your records — paid in cash, not part of this deposit</div>
+                    <% end %>
+                  </div>
+                  <div class="text-sm font-medium <%= c.excluded_from_payout? ? "text-gray-400" : "text-gray-900" %> tabular-nums flex-shrink-0">
+                    <%= number_to_currency(c.amount_cents / 100.0) %>
+                  </div>
+                </div>
+                <% if c.worksheet_entries.any? %>
+                  <%# The per-day worksheet behind a tips line. %>
+                  <div class="mt-1.5 ml-3 space-y-0.5">
+                    <% c.worksheet_entries.each do |w| %>
+                      <div class="flex items-center justify-between text-xs text-gray-500">
+                        <span><%= w["date"].present? ? (Date.parse(w["date"]).strftime("%b %-d") rescue w["date"]) : "—" %></span>
+                        <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="px-5 py-3 flex items-center justify-between gap-4">
+              <div class="text-sm text-gray-900">Balance payout</div>
+              <div class="text-sm font-medium text-gray-900 tabular-nums"><%= number_to_currency(@item.amount_cents / 100.0) %></div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700">Deposited to your bank</span>
+          <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@item.amount_cents / 100.0) %></span>
+        </div>
+      </div>
+
+    <% elsif @kind == "show" %>
+      <% show = @line_item.show_payout&.show %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-gray-900"><%= show&.production&.name || "Show payout" %></h3>
+            <p class="text-sm text-gray-500 mt-0.5">
+              <% if show %><%= show.date_and_time.strftime("%B %-d, %Y") %><% end %>
+            </p>
+          </div>
+          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Paid</span>
+        </div>
+
+        <div class="divide-y divide-gray-100">
+          <div class="px-5 py-3 flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <div class="text-sm text-gray-900">Show payout</div>
+              <div class="text-xs text-gray-400"><%= @line_item.calculation_explanation %></div>
+            </div>
+            <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(@line_item.amount) %></div>
+          </div>
+          <% if @line_item.advance_deduction.to_f.positive? %>
+            <div class="px-5 py-3 flex items-center justify-between gap-4">
+              <div class="text-sm text-gray-500">Advance repaid</div>
+              <div class="text-sm text-gray-500 tabular-nums">−<%= number_to_currency(@line_item.advance_deduction) %></div>
+            </div>
+          <% end %>
+          <% if @line_item.payment_notes.present? %>
+            <div class="px-5 py-3">
+              <div class="text-xs text-gray-400">Note</div>
+              <div class="text-sm text-gray-700"><%= @line_item.payment_notes %></div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700"><%= paid_with_phrase(@line_item.paid_at, @line_item.payment_method) %></span>
+          <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@line_item.net_amount) %></span>
+        </div>
+      </div>
+
+    <% elsif @kind == "hours" %>
+      <% role = @entry.effective_house_role %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-gray-900">Staffing hours</h3>
+            <p class="text-sm text-gray-500 mt-0.5"><%= @entry.organization&.name %></p>
+          </div>
+          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">Paid</span>
+        </div>
+
+        <div class="divide-y divide-gray-100">
+          <div class="px-5 py-3 flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <div class="text-sm text-gray-900">
+                <%= @entry.started_at.strftime("%A, %B %-d, %Y") %>
+                <% if role %> · <%= role.name %><% end %>
+              </div>
+              <div class="text-xs text-gray-400">
+                <%= @entry.started_at.strftime("%-l:%M %p") %>–<%= @entry.ended_at.strftime("%-l:%M %p") %>
+                · <%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h
+              </div>
+            </div>
+            <% if @entry_amount_cents.to_i.positive? %>
+              <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(@entry_amount_cents / 100.0) %></div>
+            <% end %>
+          </div>
+          <% if @entry.offline_payment_note.present? %>
+            <div class="px-5 py-3">
+              <div class="text-xs text-gray-400">Note</div>
+              <div class="text-sm text-gray-700"><%= @entry.offline_payment_note %></div>
+            </div>
+          <% end %>
+          <div class="px-5 py-3">
+            <p class="text-xs text-gray-500">These hours were paid to you directly (for example by check or cash), not as a CocoScout bank deposit.</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700"><%= paid_with_phrase(@entry.offline_paid_at, nil) %></span>
+          <% if @entry_amount_cents.to_i.positive? %>
+            <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@entry_amount_cents / 100.0) %></span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

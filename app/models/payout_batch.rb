@@ -38,6 +38,36 @@ class PayoutBatch < ApplicationRecord
     status == "draft"
   end
 
+  # Submitted and money moving: funding debit in progress, funded, or paying
+  # out. The payee-facing "we've sent it — waiting on the bank" state.
+  def in_flight?
+    %w[funding funded processing].include?(status)
+  end
+
+  # Deposits typically land 2–4 business days after the run is funded (ACH
+  # settle + transfer). Mirrors MIN/MAX_BUSINESS_DAYS in pay_confirm_controller.js.
+  DEPOSIT_MIN_BUSINESS_DAYS = 2
+  DEPOSIT_MAX_BUSINESS_DAYS = 4
+
+  # [earliest, latest] dates a payee can expect the deposit, counted from the
+  # payday (freshened to the submit date when the run is funded — see
+  # PayoutBatchService.fund!).
+  def expected_deposit_range
+    base = payday || created_at&.to_date || Date.current
+    [ self.class.add_business_days(base, DEPOSIT_MIN_BUSINESS_DAYS),
+      self.class.add_business_days(base, DEPOSIT_MAX_BUSINESS_DAYS) ]
+  end
+
+  def self.add_business_days(date, count)
+    out = date
+    added = 0
+    while added < count
+      out += 1
+      added += 1 unless out.saturday? || out.sunday?
+    end
+    out
+  end
+
   def kind_label
     case kind
     when "performer" then "Performer payouts"

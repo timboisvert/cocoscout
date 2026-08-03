@@ -19,12 +19,15 @@
     intro       — optional sentence under the title, for the whole page
     width       — optional max-width class for the body (default max-w-2xl);
                   pass something wider for sections holding tables or lists
+    show_single_tab — pass true to show the strip even with one section, for a
+                  page that should look tabbed like its sibling settings pages
 %>
 <%
   sections ||= []
   breadcrumbs ||= []
   intro = local_assigns[:intro]
   width = local_assigns[:width].presence || "max-w-2xl"
+  show_single_tab = local_assigns[:show_single_tab]
 %>
 
 <div class="w-full mb-10">
@@ -40,7 +43,7 @@
     <p class="text-sm text-gray-600 max-w-2xl -mt-2 mb-5"><%= intro %></p>
   <% end %>
 
-  <% if sections.size > 1 %>
+  <% if sections.size > 1 || (show_single_tab && sections.any?) %>
     <nav class="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
       <% sections.each do |section| %>
         <% active = section[:key].to_s == current.to_s %>

@@ -12,7 +12,8 @@ const MAX_BUSINESS_DAYS = 4
 
 export default class extends Controller {
     static targets = ["missingModal", "missingList", "summaryModal",
-                      "summaryList", "summaryTotal", "timing", "ack", "confirmButton"]
+                      "summaryList", "summaryTotal", "summaryOwed", "summaryOwedAmount",
+                      "timing", "ack", "confirmButton"]
 
     intercept(event) {
         if (this.confirmed) return // acknowledged — let the submit through
@@ -30,8 +31,11 @@ export default class extends Controller {
     // ---- missing hours ------------------------------------------------------
 
     // Approved-entry checkboxes (in each person's Hours modal) that aren't checked.
+    // Rows hidden from the grid (excluded/inactive members) are skipped — their
+    // old approved hours shouldn't nag every submit; revealing the person
+    // (data-hidden-from-pay flips to "false") brings the check back.
     collectMissing() {
-        return this.rows().flatMap(row => {
+        return this.rows().filter(row => row.dataset.hiddenFromPay !== "true").flatMap(row => {
             const boxes = this.modalBoxesFor(row).filter(cb => !cb.checked)
             if (!boxes.length) return []
             const hours = boxes.reduce((sum, cb) => sum + (parseFloat(cb.dataset.hours) || 0), 0)
@@ -74,6 +78,13 @@ export default class extends Controller {
         const lines = this.rows().map(row => this.rowSummary(row)).filter(Boolean)
         // Total matches the grid footer: only people with a connected bank move money.
         const total = lines.reduce((sum, l) => sum + (l.payable ? l.total : 0), 0)
+        // No-bank people's money is still recorded on the run as owed — show it
+        // rather than letting it silently vanish from the total.
+        const owed = lines.reduce((sum, l) => sum + (l.payable ? 0 : l.total), 0)
+        if (this.hasSummaryOwedTarget) {
+            this.summaryOwedTarget.classList.toggle("hidden", owed <= 0)
+            if (this.hasSummaryOwedAmountTarget) this.summaryOwedAmountTarget.textContent = this.money(owed)
+        }
 
         this.summaryListTarget.innerHTML = lines.length
             ? lines.map(l => `
