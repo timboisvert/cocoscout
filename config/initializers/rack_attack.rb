@@ -5,14 +5,6 @@
 # proxy 504s for real users — with CPU flat, so no alarm fired. These throttles
 # cap what any single IP can consume; legit users never come near them.
 class Rack::Attack
-  # Counters live in Redis (shared across Puma workers and both web hosts);
-  # fall back to an in-process store when Redis isn't around (dev without redis).
-  if defined?(REDIS) && REDIS
-    Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(redis: REDIS)
-  else
-    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
-  end
-
   # Never throttle the load balancer's health checks or in-VPC traffic.
   safelist("health-checks-and-vpc") do |req|
     req.path == "/up" || req.ip.to_s.start_with?("10.")
@@ -42,3 +34,17 @@ end
 
 # Don't interfere with the test suite's rapid-fire requests.
 Rack::Attack.enabled = !Rails.env.test?
+
+# Counter store: Redis, shared across Puma workers and both web hosts, so the
+# limits mean what they say. Set after boot because initializers load
+# alphabetically and the REDIS constant is defined in redis.rb, which loads
+# AFTER this file ("rack_attack" < "redis"). Falls back to an in-process store
+# (per-worker counters — looser, but still protective) when Redis isn't around.
+Rails.application.config.after_initialize do
+  Rack::Attack.cache.store =
+    if defined?(REDIS) && REDIS
+      ActiveSupport::Cache::RedisCacheStore.new(redis: REDIS)
+    else
+      ActiveSupport::Cache::MemoryStore.new
+    end
+end
