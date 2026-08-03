@@ -132,96 +132,6 @@
                           data: { action: "click->pay-hours#open", "pay-hours-target": "button", "member-id": member.id } %>
                   </div>
 
-                  <%# ===== Hours modal: this person's approved entries (checkbox =
-                      included in this pay) + ad-hoc hours priced by role. ===== %>
-                  <div id="pay-hours-modal-<%= member.id %>" data-member-id="<%= member.id %>" data-pay-hours-target="modal"
-                       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto text-left"
-                       data-action="click->pay-hours#backdropClose">
-                    <div class="flex min-h-full items-start justify-center p-4 py-12">
-                      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-hours#stopPropagation">
-                        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
-                          <h3 class="text-lg font-semibold text-white truncate"><%= member.display_name %> — hours</h3>
-                          <button type="button" data-action="click->pay-hours#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                          </button>
-                        </div>
-                        <div class="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-                          <% if entries.any? %>
-                            <div>
-                              <div class="flex items-center justify-between gap-3 mb-2">
-                                <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Approved hours — check to include</div>
-                                <div class="flex items-center gap-1.5 text-xs flex-shrink-0">
-                                  <button type="button" data-action="click->pay-hours#selectAllEntries" class="font-medium text-pink-600 hover:text-pink-700 cursor-pointer">Select all</button>
-                                  <span class="text-gray-300">·</span>
-                                  <button type="button" data-action="click->pay-hours#selectNoEntries" class="font-medium text-pink-600 hover:text-pink-700 cursor-pointer">None</button>
-                                </div>
-                              </div>
-                              <div class="space-y-2">
-                                <% entries.each do |e| %>
-                                  <% entry_rate_cents = member.rate_cents_for(e.effective_house_role).to_i %>
-                                  <label class="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300">
-                                    <input type="checkbox" data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>" data-rate-cents="<%= entry_rate_cents %>"
-                                           data-action="change->pay-hours#recalcModal"
-                                           class="h-4 w-4 rounded border-gray-300 accent-pink-500">
-                                    <div class="min-w-0 flex-1">
-                                      <div class="text-sm font-medium text-gray-900 truncate">
-                                        <%= e.started_at.strftime("%a %b %-d") %>
-                                        <span class="text-gray-400">·</span>
-                                        <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h
-                                        <% if e.source == "manual" %><span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">self-logged</span><% end %>
-                                      </div>
-                                      <div class="text-xs text-gray-500 truncate">
-                                        <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
-                                        <% role_label = e.shift&.role_label.presence || e.house_role&.name %>
-                                        <% if role_label.present? %> · <%= role_label %><% end %>
-                                        <% if entry_rate_cents.positive? %> · <%= number_to_currency(entry_rate_cents / 100.0) %>/hr<% end %>
-                                      </div>
-                                    </div>
-                                  </label>
-                                <% end %>
-                              </div>
-                            </div>
-                          <% else %>
-                            <p class="text-xs text-gray-400">No approved hours yet — submitted time gets signed off in Approve Hours first.</p>
-                          <% end %>
-
-                          <div>
-                            <div class="flex items-center justify-between gap-3 mb-2">
-                              <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Additional hours</div>
-                              <% if role_rates.size > 1 %>
-                                <button type="button" data-action="click->pay-hours#addAdhocRow"
-                                        class="text-xs font-medium text-pink-600 hover:text-pink-700 cursor-pointer flex-shrink-0">+ Add hours for another role</button>
-                              <% end %>
-                            </div>
-                            <div class="space-y-2" data-pay-hours-target="adhocList">
-                              <%= render "manage/staffing/pay/adhoc_row", member: member, role_rates: role_rates %>
-                            </div>
-                            <% if role_rates.size > 1 %>
-                              <%# Multiple lines = different shifts worked as different roles,
-                                  each priced at its own rate. %>
-                              <template data-pay-hours-target="adhocTemplate">
-                                <%= render "manage/staffing/pay/adhoc_row", member: member, role_rates: role_rates %>
-                              </template>
-                            <% end %>
-                            <%# Running subtotal of the ad-hoc lines. %>
-                            <div data-pay-hours-target="adhocSummary" class="hidden mt-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
-                              <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600">Additional hours</span>
-                                <span class="font-semibold text-gray-900 tabular-nums" data-pay-hours-target="adhocSummaryValue"></span>
-                              </div>
-                            </div>
-                            <p class="hidden text-xs text-amber-600 mt-1" data-pay-hours-target="adhocHint"></p>
-                          </div>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200">
-                          <span class="text-sm text-gray-600">Including <span data-pay-hours-target="modalTotal" class="font-semibold text-gray-900">0h · $0.00</span></span>
-                          <%= render "shared/button", text: "Done", variant: "primary", size: "small", type: :button,
-                                classes: "disabled:opacity-50 disabled:cursor-not-allowed",
-                                data: { action: "click->pay-hours#done", "pay-hours-target": "doneButton" } %>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
                   <span class="text-xs text-gray-500 lg:hidden">Bonus</span>
@@ -263,6 +173,18 @@
             </tr>
           </tfoot>
         </table>
+
+        <%# Hours modals — one per member, deliberately OUTSIDE the rows: a
+            no-bank row is dimmed with opacity, and an opacity ancestor creates
+            a stacking context that traps/clips the fixed overlay. Out here they
+            layer over the whole page. Still inside this wrapper so the
+            pay-hours controller's targets resolve. %>
+        <% @staff_members.each do |member| %>
+          <%= render "manage/staffing/pay/hours_modal",
+                member: member,
+                entries: @approved_entries_by_person[member.person_id] || [],
+                role_rates: @role_rates_by_member[member.id] || [] %>
+        <% end %>
       </div>
 
       <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this pay run's record for your files, but not sent through us.</p>

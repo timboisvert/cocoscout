@@ -14,7 +14,7 @@ servers:
       memory: 3g  # Limit to leave headroom on 4GB instance
     env:
       clear:
-        WEB_CONCURRENCY: 1  # Puma workers (1 per vCPU on t4g.medium)
+        WEB_CONCURRENCY: 2  # Puma workers — t4g.medium has 2 vCPUs; 2 workers × RAILS_MAX_THREADS threads each
         RAILS_MAX_THREADS: 6
         DB_POOL: 6
   job:

@@ -17,6 +17,7 @@ gem "prawn"        # PDF generation (signed contract documents)
 gem "prawn-table"  # tables inside those PDFs
 gem "propshaft"
 gem "puma", ">= 5.0"
+gem "rack-attack"
 gem "rails"
 gem "rails_autolink"
 gem "sentry-rails"

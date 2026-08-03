@@ -29,6 +29,17 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
+# Cluster mode when WEB_CONCURRENCY > 1 (deploy.yml sets it per role). Without
+# this, WEB_CONCURRENCY was silently ignored and each host ran a single Puma
+# process — 6 threads total, so a handful of slow requests (e.g. a bot crawl
+# hitting image variants) wedged the whole host into 30s proxy 504s while CPU
+# sat idle. The jobs host keeps WEB_CONCURRENCY=1 → single mode, unchanged.
+web_concurrency = ENV.fetch("WEB_CONCURRENCY", 1).to_i
+if web_concurrency > 1
+  workers web_concurrency
+  preload_app!
+end
+
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
