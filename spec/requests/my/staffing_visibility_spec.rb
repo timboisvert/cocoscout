@@ -62,8 +62,8 @@ RSpec.describe "Staff shift visibility", type: :request do
       create(:shift_assignment, shift: s, person: my_person)
 
       get my_shifts_path
-      # Recent past shifts now appear under "Confirm your hours" so they can be paid.
-      expect(response.body).to include("Confirm your hours").and include("PastWeekRole")
+      # Recent past shifts now appear under "Verify the hours you worked" so they can be paid.
+      expect(response.body).to include("Verify your hours").and include("PastWeekRole")
     end
 
     it "shows a doubled-up shift with the combined role label" do
