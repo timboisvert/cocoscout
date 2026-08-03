@@ -1309,6 +1309,7 @@ Rails.application.routes.draw do
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
     post "money/incoming/payment/:id/remind", to: "money_incoming#remind", as: "remind_money_incoming_payment"
     post "money/incoming/payment/:id/mark_received", to: "money_incoming#mark_received", as: "mark_received_money_incoming_payment"
+    get  "money/incoming/:production_id/payments", to: "money_incoming#payments", as: "money_production_incoming_payments"
     get  "money/incoming/:production_id", to: "money_incoming#index", as: "money_production_incoming"
 
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"

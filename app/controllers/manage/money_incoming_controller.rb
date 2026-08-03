@@ -33,7 +33,7 @@ module Manage
       { key: "all", label: "All",       months: nil }
     ].freeze
 
-    before_action :set_production, only: :index
+    before_action :set_production, only: %i[index payments]
 
     # Org-wide list grouped by production (mirrors money_payouts#index), or a
     # single production's incoming payments when a production_id is present.
@@ -70,12 +70,32 @@ module Manage
       @monthly_forecast = build_monthly_forecast(upcoming, @window_end)
 
       unless @production
+        # Org-wide list layout: one flat list by due date (default, overdue and
+        # soonest-due first) or grouped by production.
+        @group_by = params[:group] == "production" ? "production" : "due_date"
+
         with_production, @orphan_payments = @payments.partition { |p| p.contract.production_id.present? }
         @production_summaries = with_production
                                   .group_by { |p| p.contract.production }
                                   .map { |production, payments| build_summary(production, payments) }
                                   .sort_by { |s| [ -s[:overdue_count], -s[:outstanding] ] }
       end
+    end
+
+    # Lazily-loaded accordion body on the by-production incoming list: one
+    # production's pending payments, honoring the same forward window as the
+    # index (overdue always shows). Rows link straight to the payment detail.
+    def payments
+      return head :not_found unless @production
+
+      window = WINDOWS.find { |w| w[:key] == params[:window] } || WINDOWS.find { |w| w[:key] == "3m" }
+      window_end = window[:months] ? (Date.current >> window[:months]) : nil
+
+      all_pending = incoming_scope.includes(contract: [ :contractor, :production ])
+                                  .where(contracts: { production_id: @production.id })
+                                  .by_due_date.to_a
+      @payments = window_end ? all_pending.select { |p| p.overdue? || p.due_date <= window_end } : all_pending
+      render layout: false
     end
 
     # A single receivable: its status, the collect-in-person QR, the reminder

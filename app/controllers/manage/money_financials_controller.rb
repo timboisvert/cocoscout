@@ -152,6 +152,16 @@ module Manage
       revenue_types = EventTypes.revenue_event_types
       @shows = load_shows_for_production(@production)
                  .select { |s| revenue_types.include?(s.event_type) }
+
+      # When the list is filtered to "Pending Financials", the expanded events
+      # should show only the events actually pending — same definition as the
+      # pending counts on the index (started, not canceled, unconfirmed data).
+      if params[:filter] == "pending"
+        @shows = @shows.select do |s|
+          !s.canceled && s.date_and_time <= 1.day.from_now && !s.show_financials&.data_confirmed?
+        end
+      end
+
       render layout: false
     end
 

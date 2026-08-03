@@ -163,7 +163,7 @@
 
     <div class="">
       <% if @production_summaries.any? %>
-        <%= render "manage/money/slim_grid", summaries: @production_summaries %>
+        <%= render "manage/money/slim_grid", summaries: @production_summaries, events_filter: @financials_filter %>
       <% else %>
         <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
           <p class="text-gray-600">

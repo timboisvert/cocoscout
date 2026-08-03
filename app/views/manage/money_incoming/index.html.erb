@@ -15,7 +15,7 @@
   } %>
 
   <%# ---- Window filter ---------------------------------------------------- %>
-  <% window_path = ->(key) { @production ? manage_money_production_incoming_path(@production, window: key) : manage_money_incoming_path(window: key) } %>
+  <% window_path = ->(key) { @production ? manage_money_production_incoming_path(@production, window: key) : manage_money_incoming_path(window: key, group: @group_by) } %>
   <%= render "shared/filters/filter_bar", filter_groups: [
         { label: "Show next", filters: @windows.map { |w| { text: w[:label], path: window_path.call(w[:key]), active: @window_key == w[:key] } } }
       ] %>
@@ -79,52 +79,80 @@
   <% end %>
 
   <% if @production %>
-    <%# ---- Single production: list its incoming payments ------------------ %>
+    <%# ---- Single production: slim grid of its incoming payments ---------- %>
     <% if @payments.any? %>
-      <div class="space-y-2">
+      <%= render layout: "shared/slim_list", locals: { label: "Payment", columns: ["Due", "Amount"] } do %>
         <% @payments.each do |payment| %>
-          <%= render "payment_row", payment: payment, show_production: false %>
+          <%= render "payment_slim_row", payment: payment %>
         <% end %>
-      </div>
+      <% end %>
     <% elsif @total_outstanding.positive? %>
       <%= render "windowed_empty", show_all_path: window_path.call("all") %>
     <% else %>
       <%= render "empty" %>
     <% end %>
   <% else %>
-    <%# ---- Org-wide: productions grid + org-level payments ---------------- %>
-    <% if @production_summaries.any? %>
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">By production</h3>
-      <%= render layout: "shared/slim_list", locals: { label: "Production", columns: ["Outstanding", "Overdue"] } do %>
-        <% @production_summaries.each do |s| %>
-          <%= render "shared/slim_list_row",
-                title: s[:production].name,
-                subtitle: "#{pluralize(s[:count], 'payment')} owed",
-                href: manage_money_production_incoming_path(s[:production]),
-                col_labels: [ "Outstanding", "Overdue" ],
-                cells: [
-                  { value: number_to_currency(s[:outstanding]) },
-                  { value: s[:overdue_count].positive? ? number_to_currency(s[:overdue_amount]) : "—",
-                    class: s[:overdue_count].positive? ? "text-red-600 font-medium" : "text-gray-400" }
-                ] %>
-        <% end %>
-      <% end %>
-    <% end %>
+    <%# ---- Org-wide: list-by filter directly above the list ---------------- %>
+    <div class="mb-3">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+            {
+              label: "List by",
+              filters: [
+                { text: "Due date",   path: manage_money_incoming_path(window: @window_key, group: "due_date"),   active: @group_by == "due_date" },
+                { text: "Production", path: manage_money_incoming_path(window: @window_key, group: "production"), active: @group_by == "production" }
+              ]
+            }
+          ] %>
+    </div>
 
-    <% if @orphan_payments.any? %>
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 mt-8">Not tied to a production</h3>
-      <div class="space-y-2">
-        <% @orphan_payments.each do |payment| %>
-          <%= render "payment_row", payment: payment, show_production: false %>
+    <% if @group_by == "due_date" %>
+      <%# One slim grid, every payment as a row, overdue/soonest due first. %>
+      <% if @payments.any? %>
+        <%= render layout: "shared/slim_list", locals: { label: "Payment", columns: ["Due", "Amount"] } do %>
+          <% @payments.each do |payment| %>
+            <%= render "payment_slim_row", payment: payment, show_production: true %>
+          <% end %>
         <% end %>
-      </div>
-    <% end %>
-
-    <% if @production_summaries.empty? && @orphan_payments.empty? %>
-      <% if @total_outstanding.positive? %>
+      <% elsif @total_outstanding.positive? %>
         <%= render "windowed_empty", show_all_path: window_path.call("all") %>
       <% else %>
         <%= render "empty" %>
+      <% end %>
+    <% else %>
+      <%# Grouped by production, same slim grid. %>
+      <% if @production_summaries.any? %>
+        <%= render layout: "shared/slim_list", locals: { label: "Production", columns: ["Outstanding", "Overdue"] } do %>
+          <% @production_summaries.each do |s| %>
+            <%= render "shared/slim_list_row",
+                  title: s[:production].name,
+                  subtitle: "#{pluralize(s[:count], 'payment')} owed",
+                  expand_src: manage_money_production_incoming_payments_path(s[:production], window: @window_key),
+                  expand_id: "prod-incoming-#{s[:production].id}",
+                  col_labels: [ "Outstanding", "Overdue" ],
+                  cells: [
+                    { value: number_to_currency(s[:outstanding]) },
+                    { value: s[:overdue_count].positive? ? number_to_currency(s[:overdue_amount]) : "—",
+                      class: s[:overdue_count].positive? ? "text-red-600 font-medium" : "text-gray-400" }
+                  ] %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% if @orphan_payments.any? %>
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 mt-8">Not tied to a production</h3>
+        <%= render layout: "shared/slim_list", locals: { label: "Payment", columns: ["Due", "Amount"] } do %>
+          <% @orphan_payments.each do |payment| %>
+            <%= render "payment_slim_row", payment: payment %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% if @production_summaries.empty? && @orphan_payments.empty? %>
+        <% if @total_outstanding.positive? %>
+          <%= render "windowed_empty", show_all_path: window_path.call("all") %>
+        <% else %>
+          <%= render "empty" %>
+        <% end %>
       <% end %>
     <% end %>
   <% end %>

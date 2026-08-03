@@ -1,0 +1,34 @@
+<%#
+  One incoming payment as a shared/slim_list row (Due / Amount columns) linking
+  to the payment detail page. Used on the org-wide due-date list, the
+  per-production page, and the by-production accordion body.
+
+  Required: payment (ContractPayment, direction incoming)
+  Optional: show_production (default false) — lead the subtitle with the production
+            href_data — data attrs for the row link (e.g. { turbo_frame: "_top" }
+            inside a Turbo frame so the link navigates the whole page)
+%>
+<%
+  show_production = local_assigns.fetch(:show_production, false)
+  href_data = local_assigns.fetch(:href_data, {})
+  contract = payment.contract
+  prod_name = show_production ? (contract.production_name.presence || contract.production&.name) : nil
+  subtitle_parts = [ prod_name, payment.description.presence || "Payment" ].compact
+  is_late = payment.overdue?
+  amount_tbd = payment.amount_tbd? && payment.amount.to_f.zero?
+%>
+<%= render "shared/slim_list_row",
+      title: contract.contractor_name.presence || "Payer",
+      subtitle: subtitle_parts.join(" · "),
+      badge: is_late ? { text: "Overdue", color: "red" } : nil,
+      href: manage_money_incoming_payment_path(payment),
+      href_data: href_data,
+      col_labels: [ "Due", "Amount" ],
+      cells: [
+        { value: payment.due_date.strftime("%b %-d, %Y"),
+          class: is_late ? "text-red-600 font-medium" : "text-gray-700",
+          subvalue: is_late ? "#{distance_of_time_in_words(payment.due_date, Date.current)} overdue" : nil,
+          subvalue_class: "text-red-500" },
+        { value: amount_tbd ? "TBD" : number_to_currency(payment.amount),
+          class: amount_tbd ? "text-gray-400" : "text-green-600 font-semibold" }
+      ] %>

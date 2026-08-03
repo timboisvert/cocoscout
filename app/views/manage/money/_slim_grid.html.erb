@@ -9,7 +9,10 @@
                :gross_revenue, :net_income; optionally :is_course, :is_third_party,
                :revenue_shows / :total_shows, :pending_financials_count
     label:     first-column header (default "Production")
+    events_filter: optional filter carried into the expanded events list
+               ("pending" limits it to events still needing financials)
 %>
+<% events_filter = local_assigns[:events_filter].presence %>
 <%= render layout: "shared/slim_list", locals: { label: local_assigns.fetch(:label, "Production"), columns: [ "Revenue", "Costs", "Profit" ] } do %>
   <% summaries.each do |summary| %>
     <%
@@ -51,7 +54,7 @@
       <%= render "shared/slim_list_row", **row_locals, href: manage_money_production_financials_path(production) %>
     <% else %>
       <%= render "shared/slim_list_row", **row_locals,
-            expand_src: manage_money_production_financial_events_path(production),
+            expand_src: manage_money_production_financial_events_path(production, filter: events_filter),
             expand_id: "prod-events-#{production.id}" %>
     <% end %>
   <% end %>

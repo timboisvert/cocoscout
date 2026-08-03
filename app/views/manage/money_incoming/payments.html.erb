@@ -1,0 +1,14 @@
+<%# Slim per-payment rows for one production, loaded lazily into the accordion
+    on the org-wide incoming list. Each row links to the payment detail page —
+    the only deeper page on this side of Money. %>
+<%= turbo_frame_tag "prod-incoming-#{@production.id}" do %>
+  <% if @payments.any? %>
+    <div class="divide-y divide-gray-100">
+      <% @payments.each do |payment| %>
+        <%= render "payment_slim_row", payment: payment, href_data: { turbo_frame: "_top" } %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="py-3 pl-7 pr-3 text-sm text-gray-500">No pending payments in this window.</div>
+  <% end %>
+<% end %>
