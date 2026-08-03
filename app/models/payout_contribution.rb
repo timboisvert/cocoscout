@@ -26,6 +26,27 @@ class PayoutContribution < ApplicationRecord
     Array(worksheet)
   end
 
+  # The work dates this line covers, as [oldest, newest] Dates — so a payee
+  # sees "Tips · Jun 12 – Jul 3" instead of a bare "Tips". Tips/cash-tips use
+  # their per-day worksheet; worked-hours lines use the time entries tied to
+  # this run. Nil for undated lines (bonus, reimbursement, balance payouts).
+  def covered_date_range
+    worksheet_dates = worksheet_entries.filter_map do |w|
+      Date.parse(w["date"].to_s)
+    rescue Date::Error
+      nil
+    end
+    return [ worksheet_dates.min, worksheet_dates.max ] if worksheet_dates.any?
+
+    if label.to_s.start_with?("Worked hours") && payee_type == "Person"
+      min, max = StaffTimeEntry.where(payout_batch_id: payout_batch_id, person_id: payee_id)
+                               .pluck(Arel.sql("MIN(started_at)"), Arel.sql("MAX(started_at)")).first
+      return [ min.to_date, max.to_date ] if min && max
+    end
+
+    nil
+  end
+
   # If a contribution goes away (e.g. its show payout is recalculated and the
   # source line is deleted), re-sum the payee's item — and drop the item if it
   # has nothing left — then re-total the run.

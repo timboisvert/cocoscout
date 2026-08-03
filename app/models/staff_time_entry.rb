@@ -23,7 +23,9 @@ class StaffTimeEntry < ApplicationRecord
   validates :source, inclusion: { in: SOURCES }
   validates :started_at, :ended_at, presence: true
   validate :ends_after_start
-  validates :hours, numericality: { greater_than: 0 }
+  # A reimbursement-only offline settlement (an expense check with no worked
+  # time behind it) is the one entry allowed to carry zero hours.
+  validates :hours, numericality: { greater_than: 0 }, unless: :offline_reimbursement_only?
   validate :house_role_belongs_to_org
 
   before_validation :compute_hours
@@ -52,6 +54,21 @@ class StaffTimeEntry < ApplicationRecord
     offline_paid_at.present? && payout_batch_id.nil?
   end
 
+  # An offline settlement that was purely an expense reimbursement — no worked
+  # time attached (e.g. an expense check imported from an external payroll).
+  def offline_reimbursement_only?
+    offline_reimbursement_cents.to_i.positive? && hours.to_f.zero?
+  end
+
+  # Everything this offline settlement actually handed over — wages plus any
+  # reimbursement — when the import recorded true amounts. Nil when nothing
+  # was recorded (price the hours by rate as usual).
+  def offline_total_cents
+    return nil if offline_amount_cents.nil? && offline_reimbursement_cents.nil?
+
+    offline_amount_cents.to_i + offline_reimbursement_cents.to_i
+  end
+
   def approved?
     approved_at.present?
   end
@@ -78,14 +95,17 @@ class StaffTimeEntry < ApplicationRecord
   # the batch-paid ones do.
   # amount_cents records what was actually paid when the external system knows
   # better than our rates (historical imports); left nil, the hours price at
-  # the member's rate as usual.
-  def mark_paid_offline!(by_user, note: nil, paid_on: nil, amount_cents: nil)
+  # the member's rate as usual. reimbursement_cents is the expense money that
+  # rode along in the same payment — the same "Reimbursement" component Pay
+  # People records — kept apart from wages for year-end statements.
+  def mark_paid_offline!(by_user, note: nil, paid_on: nil, amount_cents: nil, reimbursement_cents: nil)
     paid_time = paid_on.present? ? (Date.parse(paid_on.to_s).noon rescue Time.current) : Time.current
     update!(
       offline_paid_at: paid_time,
       offline_paid_by: by_user,
       offline_payment_note: note.presence,
       offline_amount_cents: amount_cents,
+      offline_reimbursement_cents: reimbursement_cents,
       paid_at: paid_time,
       approved_at: approved_at || Time.current,
       approved_by: approved_by || by_user
@@ -94,8 +114,13 @@ class StaffTimeEntry < ApplicationRecord
 
   # Undo a mistaken offline-paid mark. The approval sticks — the hours were
   # still signed off — so the entry lands back in "approved", pullable again.
+  # A reimbursement-only entry has no worked time to keep, so unmarking it
+  # removes the record entirely.
   def unmark_paid_offline!
-    update!(offline_paid_at: nil, offline_paid_by: nil, offline_payment_note: nil, offline_amount_cents: nil, paid_at: nil)
+    return destroy! if offline_reimbursement_only?
+
+    update!(offline_paid_at: nil, offline_paid_by: nil, offline_payment_note: nil,
+            offline_amount_cents: nil, offline_reimbursement_cents: nil, paid_at: nil)
   end
 
   def compute_hours
@@ -114,6 +139,9 @@ class StaffTimeEntry < ApplicationRecord
 
   def ends_after_start
     return if started_at.blank? || ended_at.blank?
+    # Reimbursement-only settlements carry no time span — start == end is the
+    # zero-hour record.
+    return if offline_reimbursement_only? && ended_at == started_at
 
     errors.add(:ended_at, "must be after the start time") if ended_at <= started_at
   end

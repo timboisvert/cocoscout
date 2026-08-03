@@ -19,9 +19,9 @@ module My
       # paid out shows as a reconciling deduction so it nets to the balance.
       net_cents = @person.payout_balance_cents
       earnings = PayoutLedgerEntry.where(payee: @person, entry_type: "earning")
-                                  .includes(:organization).order(occurred_at: :desc).to_a
+                                  .includes(:organization, :source).order(occurred_at: :desc).to_a
       @owed_lines = earnings.reject { |e| e.amount_cents.zero? }.map do |e|
-        { label: earning_label(e), org: e.organization&.name, cents: e.amount_cents }
+        { label: earning_label(e), org: e.organization&.name, cents: e.amount_cents, date: earning_date(e) }
       end
       # payouts + advances already netted against those earnings.
       @already_paid_out_cents = earnings.sum(&:amount_cents) - net_cents
@@ -37,7 +37,7 @@ module My
       @pending_lines = pending.map do |e|
         member = members[e.organization_id]
         rate = member ? member.rate_cents_for(e.shift&.house_role).to_i : 0
-        { label: pending_label(e), org: e.organization&.name, cents: (rate * e.hours.to_f).round }
+        { label: pending_label(e), org: e.organization&.name, cents: (rate * e.hours.to_f).round, date: e.started_at }
       end
       @pending_total_cents = @pending_lines.sum { |l| l[:cents] }
 
@@ -74,7 +74,11 @@ module My
                                .includes(:organization, shift_assignment: { shift: :house_role }).find(params[:id])
         member = OrganizationStaffMember.find_by(person_id: @person.id, organization_id: @entry.organization_id)
         rate = member ? member.rate_cents_for(@entry.effective_house_role).to_i : 0
-        @entry_amount_cents = @entry.offline_amount_cents || (rate * @entry.hours.to_f).round
+        # Total received; when a reimbursement rode along, the receipt breaks
+        # out wages vs reimbursement from the two components.
+        @entry_wage_cents = @entry.offline_amount_cents || (rate * @entry.hours.to_f).round
+        @entry_reimbursement_cents = @entry.offline_reimbursement_cents.to_i
+        @entry_amount_cents = @entry_wage_cents + @entry_reimbursement_cents
       else
         redirect_to my_payments_path and return
       end
@@ -141,7 +145,9 @@ module My
         show = li.show_payout&.show
         rows << { kind: "show", id: li.id, org: nil,
                   title: show&.production&.name || "Show payout",
-                  subtitle: show&.date_and_time&.strftime("%B %-d, %Y"),
+                  # The manager's reference note rides along ("Zelle conf #1234") —
+                  # it's often the only context the payee has for a hand-payment.
+                  subtitle: [ show&.date_and_time&.strftime("%B %-d, %Y"), li.payment_notes.presence ].compact.join(" · "),
                   cents: (li.net_amount.to_d * 100).round, paid_at: li.paid_at || li.manually_paid_at,
                   method: li.payment_method }
       end
@@ -154,13 +160,33 @@ module My
         rate = member ? member.rate_cents_for(e.effective_house_role).to_i : 0
         hrs = ActiveSupport::NumberHelper.number_to_rounded(e.hours, precision: 2, strip_insignificant_zeros: true)
         rows << { kind: "hours", id: e.id, org: e.organization&.name,
-                  title: "Staffing hours · #{hrs}h",
-                  subtitle: e.started_at&.strftime("%B %-d, %Y"),
-                  cents: e.offline_amount_cents || (rate * e.hours.to_f).round, paid_at: e.offline_paid_at,
+                  title: e.offline_reimbursement_only? ? "Reimbursement" : "Staffing hours · #{hrs}h",
+                  # The manager's "how it was paid" note (e.g. "Paid via Gusto")
+                  # shows right on the row — it's the payee's only context for
+                  # hours settled outside CocoScout.
+                  subtitle: [ e.started_at&.strftime("%B %-d, %Y"), e.offline_payment_note.presence ].compact.join(" · "),
+                  # The full amount handed over — wages plus any reimbursement.
+                  cents: e.offline_total_cents || (rate * e.hours.to_f).round, paid_at: e.offline_paid_at,
                   method: nil }
       end
 
+      # Zero-dollar rows ($0 "mark done" lines, rate-less hours) are noise in a
+      # payment log — nothing was received, so nothing to list.
+      rows.reject! { |r| r[:cents].to_i <= 0 }
+
       rows.sort_by { |r| r[:paid_at]&.to_time || Time.at(0) }.reverse.first(100)
+    end
+
+    # When the work behind an earning line happened: the show's date for show
+    # payouts, or the [oldest, newest] work-date range for a pay-run line
+    # (tips worksheet days, tied worked-hours entries). Nil when undated.
+    def earning_date(entry)
+      case entry.source
+      when ShowPayoutLineItem
+        entry.source.show_payout&.show&.date_and_time
+      when PayoutContribution
+        entry.source.covered_date_range
+      end
     end
 
     # Friendly label for an earning ledger line, enriched from its source where

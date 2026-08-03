@@ -97,7 +97,8 @@
               <div class="px-5 py-3 flex items-center justify-between gap-4">
                 <div class="min-w-0">
                   <div class="text-sm text-gray-900 truncate"><%= line[:label] %></div>
-                  <% if line[:org].present? %><div class="text-xs text-gray-400 truncate"><%= line[:org] %></div><% end %>
+                  <% detail = [ line[:org].presence, work_dates_text(line[:date]) ].compact.join(" · ") %>
+                  <% if detail.present? %><div class="text-xs text-gray-400 truncate"><%= detail %></div><% end %>
                 </div>
                 <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
               </div>
@@ -115,7 +116,8 @@
                     <span class="truncate"><%= line[:label] %></span>
                     <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 flex-shrink-0">Awaiting approval</span>
                   </div>
-                  <% if line[:org].present? %><div class="text-xs text-gray-400 truncate"><%= line[:org] %></div><% end %>
+                  <% detail = [ line[:org].presence, work_dates_text(line[:date]) ].compact.join(" · ") %>
+                  <% if detail.present? %><div class="text-xs text-gray-400 truncate"><%= detail %></div><% end %>
                 </div>
                 <div class="text-sm font-medium text-gray-500 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
               </div>

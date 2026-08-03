@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2673,9 +2673,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_100000) do
     t.decimal "hours", precision: 6, scale: 2, null: false
     t.bigint "house_role_id"
     t.string "notes"
+    t.bigint "offline_amount_cents"
     t.datetime "offline_paid_at"
     t.bigint "offline_paid_by_id"
     t.string "offline_payment_note"
+    t.bigint "offline_reimbursement_cents"
     t.bigint "organization_id", null: false
     t.datetime "paid_at"
     t.bigint "payout_batch_id"

@@ -227,6 +227,25 @@ module MyHelper
     suffix ? "#{phrase} #{suffix}" : phrase
   end
 
+  # "When was this work?" for a payment line: a single Time/Date, or a
+  # [oldest, newest] pair (a pay-run line covering a stretch of days). A pair
+  # collapsing to one day reads as that day; the year is only said once when
+  # both ends share it.
+  def work_dates_text(value)
+    return nil if value.blank?
+    return value.strftime("%B %-d, %Y") unless value.is_a?(Array)
+
+    min, max = value
+    return nil unless min && max
+
+    min = min.to_date
+    max = max.to_date
+    return min.strftime("%B %-d, %Y") if min == max
+
+    first = min.year == max.year ? min.strftime("%b %-d") : min.strftime("%b %-d, %Y")
+    "#{first} – #{max.strftime('%b %-d, %Y')}"
+  end
+
   # Check if current user can moderate (delete) posts for a given post
   def can_moderate_post?(post)
     production = post.production
