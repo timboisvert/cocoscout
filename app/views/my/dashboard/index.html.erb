@@ -8,6 +8,9 @@
 
   <%= render "my/payments/payout_summary" %>
 
+  <!-- Open tasks (availability, sign-ups, questionnaires) waiting on the user -->
+  <%= render "my/tasks/summary_card" %>
+
   <!-- Finish staff onboarding (per organization) -->
   <%= render "my/dashboard/staff_onboarding_prompts", memberships: @incomplete_staff_onboardings %>
 

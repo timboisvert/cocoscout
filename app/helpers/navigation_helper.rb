@@ -97,8 +97,8 @@ module NavigationHelper
       { label: "Home", path: my_dashboard_path, icon: "home", active: controller_name == "dashboard" },
       { label: "My Messages", path: my_messages_path, icon: "messages", active: controller_name == "messages",
         badge: Current.user&.unread_message_count.to_i },
-      { label: "My Open Requests", path: my_requests_path, icon: "requests", active: controller_name == "open_requests",
-        badge: Current.user&.open_requests_count.to_i },
+      { label: "My Tasks", path: my_tasks_path, icon: "requests", active: controller_name == "tasks",
+        badge: Current.user&.open_tasks_count.to_i },
       { label: "My Shows & Events", path: my_shows_path, icon: "shows", active: controller_name == "shows" }
     ]
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?

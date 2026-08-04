@@ -220,11 +220,19 @@
       </div>
     <% end %>
 
-    <%# Awaiting Payout — address these first. Productions, courses, and contracts. %>
+    <%# Awaiting Payout — address these first. Productions, courses, and contracts.
+        One column per money status ("In draft run" / "In flight" / "Paid" appear
+        only when some row has money there), so each row answers "what have I
+        actually done about this?" at a glance. %>
     <% if @awaiting_items.any? %>
+      <%
+        col_meta = Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS
+        awaiting_col_labels = @awaiting_columns.map { |c| col_meta[c][:label] }
+        list_min_width = { 1 => "min-w-[360px]", 2 => "min-w-[480px]", 3 => "min-w-[560px]", 4 => "min-w-[780px]" }[@awaiting_columns.size]
+      %>
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Awaiting Payout</h3>
       <div class="mb-8">
-        <%= render layout: "shared/slim_list", locals: { label: "To pay", columns: [ "Awaiting" ], min_width: "min-w-[360px]" } do %>
+        <%= render layout: "shared/slim_list", locals: { label: "To pay", columns: awaiting_col_labels, min_width: list_min_width } do %>
           <% @awaiting_items.each do |item| %>
             <%
               badge = case item[:kind]
@@ -235,8 +243,8 @@
                 title: item[:name],
                 subtitle: item[:subtitle],
                 badge: badge,
-                col_labels: [ "Awaiting" ],
-                cells: [ { value: number_to_currency(item[:amount]), class: "text-pink-600 font-medium" } ]
+                col_labels: awaiting_col_labels,
+                cells: @awaiting_columns.map { |c| awaiting_payout_cell(item[:amounts][c], c) }
               }
             %>
             <% if item[:expand_src] %>
@@ -245,13 +253,18 @@
               <%= render "shared/slim_list_row", **common, href: item[:href] %>
             <% end %>
           <% end %>
-          <%# Total across everything awaiting payout, so the number is right there
-              instead of adding up the rows by hand. %>
-          <% total_awaiting = @awaiting_items.sum { |i| i[:amount].to_f } %>
-          <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 border-t-2 border-gray-200">
-            <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
-            <span class="flex-1 min-w-0 text-sm font-semibold text-gray-900">Total awaiting payout</span>
-            <span class="w-28 text-right flex-shrink-0 text-sm font-bold tabular-nums text-pink-600"><%= number_to_currency(total_awaiting) %></span>
+          <%# Per-status totals, so the numbers are right there instead of adding
+              up the rows by hand. The headline — what still hasn't been paid —
+              sits in the subtitle. %>
+          <% still_owed = @awaiting_items.sum { |i| i[:amount].to_f } %>
+          <div class="bg-gray-50 border-t-2 border-gray-200">
+            <%= render "shared/slim_list_row",
+                  title: "Total awaiting payout",
+                  subtitle: "#{number_to_currency(still_owed)} still unpaid in total",
+                  col_labels: awaiting_col_labels,
+                  cells: @awaiting_columns.map { |c|
+                    awaiting_payout_cell(@awaiting_items.sum { |i| i[:amounts][c].to_f }, c, bold: true)
+                  } %>
           </div>
         <% end %>
       </div>

@@ -432,16 +432,16 @@ Rails.application.routes.draw do
     patch "/profile_completion/contact",  to: "profile_completion#update_contact",  as: "profile_completion_contact"
     patch "/profile_completion/headshot", to: "profile_completion#update_headshot", as: "profile_completion_headshot"
 
-    # Open Requests (consolidated: availability + sign-ups + questionnaires)
-    get   "/requests",                      to: "open_requests#index",      as: "requests"
-    patch "/requests/availability/:show_id", to: "open_requests#update_availability", as: "update_request_availability"
-    post  "/requests/signup/:show_id",      to: "open_requests#sign_up",    as: "request_sign_up"
-    post  "/requests/decline/:show_id",     to: "open_requests#decline_signup", as: "request_decline_signup"
-    post  "/requests/pool_signup/:form_id", to: "open_requests#pool_signup", as: "request_pool_signup"
-    delete "/requests/pool_signup/:form_id", to: "open_requests#pool_unsignup", as: "request_pool_unsignup"
+    # My Tasks (consolidated: availability + sign-ups + questionnaires)
+    get   "/tasks",                         to: "tasks#index",          as: "tasks"
+    post  "/tasks/signup/:show_id",         to: "tasks#sign_up",        as: "task_sign_up"
+    post  "/tasks/decline/:show_id",        to: "tasks#decline_signup", as: "task_decline_signup"
 
-    # Legacy availability routes - redirect index to open requests, keep update for existing forms
-    get   "/availability",                  to: redirect("/my/requests"), as: "availability"
+    # Legacy path — the iOS app deep-links /my/requests; keep this redirect forever.
+    get   "/requests",                      to: redirect("/my/tasks"),  as: "requests"
+
+    # Legacy availability routes - redirect index to My Tasks, keep update for existing forms
+    get   "/availability",                  to: redirect("/my/tasks"), as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     patch "/availability/:show_id/note",    to: "availability#update_note",  as: "update_availability_note"
@@ -451,8 +451,8 @@ Rails.application.routes.draw do
     get   "/auditions/:id",                 to: "auditions#show",           as: "audition"
     post  "/auditions/:id/accept",          to: "auditions#accept",         as: "accept_audition"
     post  "/auditions/:id/decline",         to: "auditions#decline",        as: "decline_audition"
-    get   "/signups",                       to: redirect("/my/requests"), as: "sign_ups"
-    get   "/questionnaires",                to: redirect("/my/requests"), as: "questionnaires"
+    get   "/signups",                       to: redirect("/my/tasks"), as: "sign_ups"
+    get   "/questionnaires",                to: redirect("/my/tasks"), as: "questionnaires"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }

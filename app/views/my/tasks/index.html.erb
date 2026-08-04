@@ -1,0 +1,198 @@
+<% content_for :title, "My Tasks" %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Tasks",
+    links: []
+  } %>
+
+  <% if @has_any_productions %>
+    <% has_groups = @groups.any? %>
+    <% has_multiple_entities = @people.size > 1 || has_groups %>
+
+    <% if has_multiple_entities %>
+      <div class="mb-4">
+        <%= render "shared/filters/filter_bar",
+            toggle_label: "Filters",
+            filter_groups: [
+              {
+                partial: "shared/filters/entity_filter",
+                locals: {
+                  path_helper: method(:my_tasks_path),
+                  people: @people,
+                  groups: @groups,
+                  entity_filter: @entity_filter,
+                  label: "Include"
+                }
+              }
+            ]
+        %>
+      </div>
+    <% end %>
+
+    <div class="space-y-6">
+
+      <%# ========================================= %>
+      <%# All caught up %>
+      <%# ========================================= %>
+      <% if @counts[:total].zero? %>
+        <div class="border-2 border-dashed border-gray-200 rounded-lg">
+          <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">You're all caught up</h3>
+            <p class="mt-1 text-sm text-gray-500">Nothing needs your response right now.</p>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
+      <%# Availability requests (open) %>
+      <%# ========================================= %>
+      <% if @open_availability_items.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+            <div>
+              <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                Availability requests
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @counts[:availability] %></span>
+              </h3>
+              <p class="text-sm text-gray-500 mt-0.5">Let your production managers know if you can make these shows.</p>
+            </div>
+          </div>
+          <div class="p-4 space-y-1" data-controller="linked-highlight">
+            <% @open_availability_items.each do |item| %>
+              <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
+                <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
+      <%# Sign-ups (open first, then answered future ones — they stay %>
+      <%# visible so people can change their mind) %>
+      <%# ========================================= %>
+      <% if @open_signup_items.any? || @answered_signup_items.any? || @non_event_signups.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+              Sign-ups
+              <% if @counts[:signups] > 0 %>
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @counts[:signups] %></span>
+              <% end %>
+            </h3>
+            <p class="text-sm text-gray-500 mt-0.5">Register for these events to reserve your spot. You can change your answer until the event.</p>
+          </div>
+          <div class="p-4 space-y-1">
+            <% (@open_signup_items + @answered_signup_items).each do |item| %>
+              <%= render partial: "my/tasks/signup_item", locals: { item: item } %>
+            <% end %>
+            <% @non_event_signups.each do |item| %>
+              <%= render partial: "my/tasks/non_event_signup", locals: { item: item, has_groups: has_groups } %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
+      <%# Questionnaires (open) %>
+      <%# ========================================= %>
+      <% if @open_questionnaire_items.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+              Questionnaires
+              <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @counts[:questionnaires] %></span>
+            </h3>
+            <p class="text-sm text-gray-500 mt-0.5">Complete these questionnaires from your production managers.</p>
+          </div>
+          <div class="p-4 space-y-2">
+            <% @open_questionnaire_items.each do |item| %>
+              <%= render partial: "my/tasks/questionnaire_item", locals: { item: item } %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
+      <%# Availability you've given — collapsed, but loudly labeled. %>
+      <%# This is where people come to CHANGE an answer. %>
+      <%# ========================================= %>
+      <% if @answered_availability_items.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-controller="disclosure">
+          <button type="button" data-action="click->disclosure#toggle"
+                  class="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
+            <div>
+              <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                Availability you've given
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @answered_availability_items.size %></span>
+              </h3>
+              <p class="text-sm text-gray-500 mt-0.5">Plans changed? Open this and change your answer any time.</p>
+            </div>
+            <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div data-disclosure-target="content" class="hidden border-t border-gray-200">
+            <div class="p-4 space-y-1" data-controller="linked-highlight">
+              <% @answered_availability_items.each do |item| %>
+                <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
+                  <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
+                </div>
+              <% end %>
+            </div>
+            <div class="px-5 pb-4">
+              <%= link_to my_availability_calendar_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
+                Availability Calendar &rarr;
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
+      <%# Done (completed questionnaires) %>
+      <%# ========================================= %>
+      <% if @completed_questionnaire_items.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-controller="disclosure">
+          <button type="button" data-action="click->disclosure#toggle"
+                  class="w-full px-5 py-3 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
+            <h3 class="text-sm font-medium text-gray-500 flex items-center gap-2">
+              Done
+              <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600"><%= @completed_questionnaire_items.size %></span>
+            </h3>
+            <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div data-disclosure-target="content" class="hidden border-t border-gray-200">
+            <div class="p-4 space-y-2">
+              <% @completed_questionnaire_items.each do |item| %>
+                <%= render partial: "my/tasks/questionnaire_item", locals: { item: item } %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+    </div>
+
+  <% else %>
+    <%# No productions %>
+    <div class="text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No productions</h3>
+      <p class="mt-1 text-sm text-gray-500">You haven't been added to any productions yet.</p>
+    </div>
+  <% end %>
+
+</div>

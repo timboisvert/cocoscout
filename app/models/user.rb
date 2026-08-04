@@ -52,153 +52,16 @@ class User < ApplicationRecord
                          .sum(:unread_count)
   end
 
-  # Count of open requests needing user's attention:
-  # - Unanswered availability requests (shows not tied to sign-up forms)
-  # - Unanswered sign-up opportunities (shows with sign-up forms where talent can act)
-  # - Open questionnaires (invited but not yet responded)
-  def open_requests_count
-    return 0 unless person
+  # Open-task counts (availability + sign-ups + questionnaires) for the nav
+  # badge and dashboard summary card. Memoized so both render from one
+  # computation per request. Full logic lives in TaskListService — the same
+  # code that builds the My Tasks page, so the badge can't disagree with it.
+  def open_task_counts
+    @open_task_counts ||= TaskListService.new(self, include_details: false).counts
+  end
 
-    person_ids = people.active.pluck(:id)
-    return 0 if person_ids.empty?
-
-    count = 0
-
-    # Get all upcoming shows within 90 days from talent pools (direct + shared)
-    show_ids = Show.joins(production: { talent_pools: :people })
-                   .where(people: { id: person_ids })
-                   .where.not(canceled: true)
-                   .where("date_and_time > ?", Time.current)
-                   .where("date_and_time <= ?", 90.days.from_now)
-                   .where.not(productions: { production_type: "course" })
-                   .pluck(:id)
-
-    # Also include shows from shared talent pools
-    shared_show_ids = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
-                          .where(people: { id: person_ids })
-                          .where.not(canceled: true)
-                          .where("date_and_time > ?", Time.current)
-                          .where("date_and_time <= ?", 90.days.from_now)
-                          .where.not(productions: { production_type: "course" })
-                          .pluck(:id)
-
-    # Include group-based shows (direct + shared talent pools)
-    group_ids = Group.joins(:group_memberships)
-                     .where(group_memberships: { person_id: person_ids })
-                     .pluck(:id)
-
-    group_show_ids = if group_ids.any?
-      direct = Show.joins(production: { talent_pools: :groups })
-                   .where(groups: { id: group_ids })
-                   .where.not(canceled: true)
-                   .where("date_and_time > ?", Time.current)
-                   .where("date_and_time <= ?", 90.days.from_now)
-                   .where.not(productions: { production_type: "course" })
-                   .pluck(:id)
-
-      shared = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
-                   .where(groups: { id: group_ids })
-                   .where.not(canceled: true)
-                   .where("date_and_time > ?", Time.current)
-                   .where("date_and_time <= ?", 90.days.from_now)
-                   .where.not(productions: { production_type: "course" })
-                   .pluck(:id)
-
-      (direct + shared)
-    else
-      []
-    end
-
-    show_ids = (show_ids + shared_show_ids + group_show_ids).uniq
-
-    if show_ids.any?
-      # Shows with sign-up forms (exclude archived forms)
-      # We need the instance and form to check if talent can pre-register
-      signup_instances = SignUpFormInstance.joins(:sign_up_form, :show)
-                                           .where(show_id: show_ids)
-                                           .where(status: %w[scheduled open])
-                                           .where(sign_up_forms: { archived_at: nil })
-                                           .includes(:sign_up_form, :show)
-
-      shows_with_signup_by_id = signup_instances.each_with_object({}) do |instance, hash|
-        hash[instance.show_id] = instance
-      end
-
-      # Get existing availabilities for these shows (person + group entities)
-      availability_show_ids = ShowAvailability.where(show_id: show_ids)
-                                              .where(
-                                                "(available_entity_type = 'Person' AND available_entity_id IN (?)) OR " \
-                                                "(available_entity_type = 'Group' AND available_entity_id IN (?))",
-                                                person_ids, group_ids
-                                              )
-                                              .pluck(:show_id)
-                                              .to_set
-
-      # Get existing registrations for shows with sign-up forms
-      # Join through slot -> instance -> show since some registrations have nil sign_up_form_instance_id
-      registration_show_ids = SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
-                                                .where(shows: { id: show_ids })
-                                                .where(person_id: person_ids)
-                                                .where.not(status: "cancelled")
-                                                .pluck("shows.id")
-                                                .to_set
-
-      # Get shows where the person declined (cancelled registration = actively declined)
-      declined_show_ids = SignUpRegistration.joins(sign_up_slot: { sign_up_form_instance: :show })
-                                            .where(shows: { id: show_ids })
-                                            .where(person_id: person_ids)
-                                            .where(status: "cancelled")
-                                            .pluck("shows.id")
-                                            .to_set
-
-      # Also include shows declined via unavailable availability
-      declined_show_ids.merge(
-        ShowAvailability.where(show_id: show_ids)
-                        .where(available_entity_type: "Person", available_entity_id: person_ids, status: "unavailable")
-                        .pluck(:show_id)
-      )
-
-      # Count unanswered availability requests (shows without sign-up forms and no availability)
-      show_ids.each do |show_id|
-        instance = shows_with_signup_by_id[show_id]
-        if instance
-          # Sign-up show: count if not registered, not declined, and talent can act
-          next if registration_show_ids.include?(show_id) || availability_show_ids.include?(show_id) || declined_show_ids.include?(show_id)
-
-          form = instance.sign_up_form
-          if instance.status == "open"
-            count += 1
-          elsif form.allows_talent_self_pre_registration? && form.pre_registration_open_for?(instance.show)
-            count += 1
-          end
-        else
-          # Availability show: count if no availability response
-          count += 1 unless availability_show_ids.include?(show_id)
-        end
-      end
-    end
-
-    # Count open questionnaires
-    questionnaire_ids = QuestionnaireInvitation.where(invitee_type: "Person", invitee_id: person_ids)
-                                               .pluck(:questionnaire_id)
-                                               .uniq
-
-    if questionnaire_ids.any?
-      responded_questionnaire_ids = QuestionnaireResponse.where(respondent_type: "Person", respondent_id: person_ids)
-                                                         .where(questionnaire_id: questionnaire_ids)
-                                                         .pluck(:questionnaire_id)
-                                                         .to_set
-
-      open_questionnaires = Questionnaire.where(id: questionnaire_ids)
-                                         .where(archived_at: nil)
-                                         .where(accepting_responses: true)
-                                         .where.not(id: responded_questionnaire_ids)
-                                         .count
-
-      count += open_questionnaires
-    end
-
-    count
+  def open_tasks_count
+    open_task_counts[:total]
   end
 
   # Get root messages for threads user is subscribed to

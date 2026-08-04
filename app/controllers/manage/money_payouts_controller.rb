@@ -86,9 +86,13 @@ module Manage
                          .limit(100)
                          .select { |s| s.show_payout&.calculated_at.present? }
       # The Awaiting-Payout accordion only wants shows that still owe someone, and
-      # matches that section's single "Awaiting" column.
+      # mirrors that section's status columns — the parent passes which ones it's
+      # showing so the inline rows line up under its headers.
       @awaiting_only = params[:awaiting].present?
       shows = shows.select { |s| s.show_payout.line_items.any? { |li| !li.paid? } } if @awaiting_only
+      @awaiting_cols = params[:cols].to_s.split(",").map(&:to_sym) &
+                       Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS.keys
+      @awaiting_cols = [ :to_pay ] if @awaiting_cols.empty?
       @shows = shows
       render layout: false
     end
@@ -251,85 +255,145 @@ module Manage
 
     # The heterogeneous "to pay" list: productions with unpaid performer payouts,
     # courses with unpaid instructor payouts, and contracts with outstanding
-    # outgoing payments. Highest amount first.
+    # outgoing payments. Each item carries a per-status breakdown (to pay / in
+    # draft run / in flight / paid) so the grid can answer "what have I actually
+    # done about this?" per row. Most-actionable first.
     def build_awaiting_payout_items
       items = []
 
       @production_summaries.each do |s|
-        amount = s[:awaiting_payout_amount].to_f
-        next unless amount.positive?
+        next unless s[:awaiting_payout_amount].to_f.positive?
 
-        # Go straight to the payout that needs attention — the show, never the
-        # production page. One awaiting show → link right to it; several → an
-        # accordion of them, each linking to its show payout.
         shows = awaiting_shows_for(s[:production])
-        subtitle = +"#{shows.size} #{'show'.pluralize(shows.size)} awaiting"
-        # Split out what's already sitting in an open payout run — that slice is
-        # queued to move, so only the remainder actually needs action.
-        in_run = s[:awaiting_in_run_amount].to_f
-        if in_run.positive?
-          remainder = amount - in_run
-          subtitle << if remainder > 0.004
-            " · #{helpers.number_to_currency(in_run)} in a payout run, #{helpers.number_to_currency(remainder)} not staged yet"
-          else
-            " · all of it in a payout run"
-          end
-        end
-        item = {
-          name: s[:production].name, kind: :production, amount: amount,
-          subtitle: subtitle
+        next if shows.empty?
+
+        breakdown = helpers.awaiting_payout_breakdown(shows.flat_map { |sh| sh.show_payout.line_items })
+        amounts = breakdown[:amounts]
+        counts = breakdown[:counts]
+        # Say what state the money is in, not just that it exists: people still
+        # needing action, people queued in runs, people already paid.
+        parts = [ "#{shows.size} #{'show'.pluralize(shows.size)}" ]
+        parts << "#{counts[:to_pay]} #{'person'.pluralize(counts[:to_pay])} to pay" if counts[:to_pay].positive?
+        parts << "#{counts[:in_draft]} in a draft run" if counts[:in_draft].positive?
+        parts << "#{counts[:in_flight]} in flight" if counts[:in_flight].positive?
+        parts << "#{counts[:paid]} already paid" if counts[:paid].positive?
+
+        items << {
+          name: s[:production].name, kind: :production,
+          amount: amounts[:to_pay] + amounts[:in_draft] + amounts[:in_flight],
+          amounts: amounts,
+          subtitle: parts.join(" · "),
+          production: s[:production],
+          awaiting_shows: shows
         }
-        if shows.size == 1
-          item[:href] = manage_money_show_payout_path(shows.first)
-        else
-          item[:expand_src] = manage_money_production_payout_events_path(s[:production], awaiting: 1)
-          item[:expand_id] = "awaiting-events-#{s[:production].id}"
-        end
-        items << item
       end
 
       Current.user.accessible_productions.courses
              .includes(course_offerings: { course_offering_payout: :line_items }).each do |course|
-        # One course can hold many runs — surface each run's own payout.
+        # One course can hold many runs — surface each run's own payout. Course
+        # instructor payouts are settled directly (never staged in a run).
         course.course_offerings.each do |offering|
           payout = offering.course_offering_payout
           next unless payout
 
           unpaid = payout.line_items.reject(&:paid?)
+          paid = payout.line_items.select(&:paid?)
           amount = unpaid.sum(&:amount_cents) / 100.0
           next unless amount.positive?
 
+          subtitle = +"#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)} to pay"
+          subtitle << " · #{paid.count} already paid" if paid.any?
+
           items << {
             name: offering.title, kind: :course, amount: amount,
-            subtitle: "#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)}",
+            amounts: { to_pay: amount, paid: paid.sum(&:amount_cents) / 100.0 },
+            subtitle: subtitle,
             href: manage_course_offering_payout_path(offering)
           }
         end
       end
 
-      Current.organization.contracts.includes(:contract_payments, :contractor).each do |contract|
-        pending = contract.contract_payments.select { |p| p.direction_outgoing? && p.status_pending? }
+      Current.organization.contracts
+             .includes({ contract_payments: { payout_contribution: :payout_batch } }, :contractor).each do |contract|
+        outgoing = contract.contract_payments.select(&:direction_outgoing?)
+        pending = outgoing.select(&:status_pending?)
         amount = pending.sum { |p| p.amount.to_f }
         next unless amount.positive?
 
+        # Contract payments can be staged in payout runs too — split them the
+        # same way as show payouts.
+        by_col = pending.group_by do |p|
+          batch = p.payout_contribution&.payout_batch
+          if batch&.status == "draft"
+            :in_draft
+          elsif batch && PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(batch.status)
+            :in_flight
+          else
+            :to_pay
+          end
+        end
+        paid_payments = outgoing.select(&:status_paid?)
+        amounts = by_col.transform_values { |ps| ps.sum { |p| p.amount.to_f } }
+        amounts[:paid] = paid_payments.sum { |p| p.amount.to_f }
+
+        parts = [ "#{pending.count} contract #{'payment'.pluralize(pending.count)} due" ]
+        due = pending.filter_map(&:due_date).min
+        if due
+          due_label = pending.size == 1 ? "due" : "next due"
+          parts << (due < Date.current ? "overdue since #{due.strftime('%b %-d')}" : "#{due_label} #{due.strftime('%b %-d')}")
+        end
+        parts << "#{by_col[:in_draft].size} in a draft run" if by_col[:in_draft].present?
+        parts << "#{by_col[:in_flight].size} in flight" if by_col[:in_flight].present?
+        parts << "#{paid_payments.count} already paid" if paid_payments.any?
+
         items << {
           name: contract.contractor_name, kind: :contract, amount: amount,
-          subtitle: "#{pending.count} contract #{'payment'.pluralize(pending.count)} due",
+          amounts: amounts,
+          subtitle: parts.join(" · "),
           href: manage_contract_path(contract)
         }
       end
 
-      items.sort_by { |i| -i[:amount] }
+      # Rows needing the most action float to the top.
+      items.sort_by! { |i| [ -i[:amounts][:to_pay].to_f, -i[:amount].to_f ] }
+
+      # Which status columns the grid needs: "To pay" always; the others only
+      # when some row actually has money there.
+      @awaiting_columns = [ :to_pay ]
+      %i[in_draft in_flight paid].each do |col|
+        @awaiting_columns << col if items.any? { |i| i[:amounts][col].to_f > 0.004 }
+      end
+
+      # Link the production rows now that the column set is known — the accordion
+      # gets it via the URL so its inline show rows line up with the grid. Go
+      # straight to the payout that needs attention: one awaiting show → link
+      # right to it; several → an accordion, each linking to its show payout.
+      cols_param = @awaiting_columns.join(",")
+      items.each do |item|
+        shows = item.delete(:awaiting_shows) || next
+        production = item.delete(:production)
+        if shows.size == 1
+          item[:href] = manage_money_show_payout_path(shows.first)
+        else
+          item[:expand_src] = manage_money_production_payout_events_path(production, awaiting: 1, cols: cols_param)
+          item[:expand_id] = "awaiting-events-#{production.id}"
+        end
+      end
+
+      items
     end
 
-    # The shows in a production that still have someone unpaid.
+    # The shows in a production that still have someone unpaid, with line items
+    # (and their payout-run batches) loaded for the status breakdown.
     def awaiting_shows_for(production)
       calculated_ids = production.show_payouts.where.not(calculated_at: nil).select(:id)
       unpaid_payout_ids = ShowPayoutLineItem.where(show_payout_id: calculated_ids).unpaid.distinct.pluck(:show_payout_id)
       return [] if unpaid_payout_ids.empty?
 
       show_ids = ShowPayout.where(id: unpaid_payout_ids).pluck(:show_id)
-      Show.where(id: show_ids).order(date_and_time: :desc).to_a
+      Show.where(id: show_ids)
+          .includes(show_payout: { line_items: { payout_contribution: :payout_batch } })
+          .order(date_and_time: :desc).to_a
     end
 
     # Awaiting/paid payout money and people for a production, computed from the

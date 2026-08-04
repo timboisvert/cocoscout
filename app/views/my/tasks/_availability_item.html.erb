@@ -1,0 +1,20 @@
+<%#
+  One availability request row — inline-editable via shared/show_row's
+  availability panel (Available / Unavailable buttons PATCH straight to
+  /my/availability/:show_id).
+
+  Required locals:
+    - item: Hash with :show, :entity, :entity_type, :entity_key, :availability
+    - has_groups: Boolean (affects headshot display in show_row)
+%>
+<%= render partial: "shared/show_row", locals: {
+  show: item[:show],
+  show_location: true,
+  show_production: true,
+  show_linked: true,
+  availability: item[:availability],
+  entity_key: item[:entity_key],
+  entity: item[:entity],
+  has_groups: has_groups,
+  right_panel: :availability
+} %>

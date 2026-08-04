@@ -1,16 +1,20 @@
 <%#
   Slim per-show payout rows for one production — columns line up with the payouts
-  list (Awaiting / Paid). Shared by the inline accordion (Turbo frame) and any
-  single-production payout view.
+  list. Shared by the inline accordion (Turbo frame) and any single-production
+  payout view.
 
   Locals:
     shows:         array of Show with a calculated show_payout (line_items loaded)
-    awaiting_only: when true, show only the Awaiting column (matches the Awaiting
-                   Payout section's single column); default shows Awaiting + Paid
+    awaiting_only: when true, render the Awaiting Payout section's status columns
+                   (see `cols`) instead of the default Awaiting + Paid pair
+    cols:          awaiting_only mode — which status columns to render (symbols
+                   from Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS), so
+                   the rows line up under whatever headers the parent grid shows
     href_data:     optional data attrs for each row link (e.g. { turbo_frame: "_top" })
 %>
 <% href_data = local_assigns.fetch(:href_data, {}) %>
 <% awaiting_only = local_assigns.fetch(:awaiting_only, false) %>
+<% cols = local_assigns.fetch(:cols, [ :to_pay ]) %>
 <% if shows.any? %>
   <div class="divide-y divide-gray-100">
     <% shows.each do |show| %>
@@ -18,25 +22,37 @@
         items = show.show_payout.line_items.to_a
         paid_items = items.select(&:paid?)
         unpaid_items = items.reject(&:paid?)
-        awaiting = unpaid_items.sum(&:net_amount)
-        paid = paid_items.sum(&:net_amount)
-        # Part of the awaiting money can already be staged in an open payout
-        # run — say so, or the number looks like nothing's been done about it.
-        in_run = unpaid_items.select(&:staged_in_open_run?).sum(&:net_amount)
-        subtitle = +"#{paid_items.count} of #{items.count} paid"
-        if in_run > 0
-          subtitle << (awaiting - in_run > 0.004 ? " · #{number_to_currency(in_run)} in a payout run" : " · awaiting amount is in a payout run")
-        end
         title = "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}"
-        cells = [ { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600" : "text-gray-400" } ]
-        cells << { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" } unless awaiting_only
+        if awaiting_only
+          # Status columns matching the parent Awaiting Payout grid; the columns
+          # carry the amounts, so the subtitle just tracks people.
+          breakdown = awaiting_payout_breakdown(items)
+          subtitle = "#{paid_items.count} of #{items.count} paid"
+          col_labels = cols.map { |c| Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS.fetch(c)[:label] }
+          cells = cols.map { |c| awaiting_payout_cell(breakdown[:amounts][c], c) }
+        else
+          awaiting = unpaid_items.sum(&:net_amount)
+          paid = paid_items.sum(&:net_amount)
+          subtitle = +"#{paid_items.count} of #{items.count} paid"
+          # Part of the awaiting money can already be staged in an open payout
+          # run — say so, or the number looks like nothing's been done about it.
+          in_run = unpaid_items.select(&:staged_in_open_run?).sum(&:net_amount)
+          if in_run > 0
+            subtitle << (awaiting - in_run > 0.004 ? " · #{number_to_currency(in_run)} in a payout run" : " · awaiting amount is in a payout run")
+          end
+          col_labels = [ "Awaiting", "Paid" ]
+          cells = [
+            { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600" : "text-gray-400" },
+            { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" }
+          ]
+        end
       %>
       <%= render "shared/slim_list_row",
         title: title,
         subtitle: subtitle,
         href: manage_money_show_payout_path(show),
         href_data: href_data,
-        col_labels: [ "Awaiting", "Paid" ],
+        col_labels: col_labels,
         cells: cells %>
     <% end %>
   </div>

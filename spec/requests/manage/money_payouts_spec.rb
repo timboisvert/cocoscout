@@ -67,15 +67,47 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       expect(response.body).to include(manage_money_production_payout_events_path(production, awaiting: 1))
     end
 
-    it "the awaiting accordion lists only shows that still owe someone, one column" do
+    it "the awaiting accordion lists only shows that still owe someone" do
       get manage_money_production_payout_events_path(production, awaiting: 1),
           headers: { "Turbo-Frame" => "awaiting-events-#{production.id}" }
       expect(response.body).to include("awaiting-events-#{production.id}")
       expect(response.body).to include(show.display_name).and include(show2.display_name)
       expect(response.body).to include(manage_money_show_payout_path(show))
-      # Single "Awaiting" column — the paid amount ($70) is not shown here.
+      # No cols param → just the default To pay column; the paid amount ($70)
+      # is not shown here.
       expect(response.body).to include("$80.00")
       expect(response.body).not_to include("$70.00")
+    end
+
+    it "the accordion mirrors the status columns the grid passes it" do
+      get manage_money_production_payout_events_path(production, awaiting: 1, cols: "to_pay,paid"),
+          headers: { "Turbo-Frame" => "awaiting-events-#{production.id}" }
+      expect(response.body).to include("$80.00").and include("$70.00")
+    end
+  end
+
+  context "with money staged in a payout run" do
+    let!(:batch) { PayoutBatch.create!(organization: org, kind: "performer", status: "draft", trigger: "manual") }
+    let!(:batch_item) { batch.items.create!(payee: li_a.payee, amount_cents: 5000, status: "pending") }
+    let!(:contribution) do
+      batch_item.payout_contributions.create!(payout_batch: batch, payee: li_a.payee, label: "Show pay",
+                                              amount_cents: 5000, source: li_a)
+    end
+
+    it "splits the awaiting grid into To pay / In draft run / Paid columns" do
+      get manage_money_payouts_path
+      expect(response.body).to include("To pay").and include("In draft run").and include("Paid")
+      expect(response.body).to include("$30.00") # li_b — still needs action
+      expect(response.body).to include("$50.00") # li_a — staged, run not yet submitted
+      expect(response.body).to include("$70.00") # li_paid — already paid
+      expect(response.body).to include("1 person to pay · 1 in a draft run · 1 already paid")
+    end
+
+    it "moves the staged money to In flight once the run is submitted" do
+      batch.update!(status: "funding")
+      get manage_money_payouts_path
+      expect(response.body).to include("In flight")
+      expect(response.body).not_to include("In draft run")
     end
   end
 

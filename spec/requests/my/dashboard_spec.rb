@@ -42,4 +42,31 @@ RSpec.describe "My::Dashboard", type: :request do
       expect(response.body).not_to include("Finish setting up your staff")
     end
   end
+
+  describe "open tasks summary card" do
+    let(:organization) { create(:organization, :pro) }
+    let(:production) { create(:production, organization: organization) }
+    let(:pool) { create(:talent_pool, production: production) }
+
+    before { TalentPoolMembership.create!(talent_pool: pool, member: person) }
+
+    it "shows the count, breakdown, and a link to My Tasks when tasks are waiting" do
+      create(:show, production: production, date_and_time: 1.week.from_now)
+      create(:show, production: production, date_and_time: 2.weeks.from_now)
+      questionnaire = create(:questionnaire, production: production)
+      QuestionnaireInvitation.create!(questionnaire: questionnaire, invitee: person)
+
+      get my_dashboard_path
+      expect(response.body).to include("3 tasks waiting")
+      expect(response.body).to include("2 availability requests")
+      expect(response.body).to include("1 questionnaire")
+      expect(response.body).to include(my_tasks_path)
+    end
+
+    it "renders nothing when the user is caught up" do
+      get my_dashboard_path
+      expect(response.body).not_to include("tasks waiting")
+      expect(response.body).not_to include("Go to My Tasks")
+    end
+  end
 end
