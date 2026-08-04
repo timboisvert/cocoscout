@@ -93,7 +93,8 @@
           </button>
         </div>
         <div class="px-6 py-5">
-          <%= form_with url: add_url, method: :post, local: true, data: { "wizard-question-target": "form", action: "submit->wizard-question#validateBeforeSubmit" } do %>
+          <%# JS rewrites this form's action for edits; pass the session CSRF token — the per-form token is minted for the add path and gets rejected elsewhere. %>
+          <%= form_with url: add_url, method: :post, local: true, authenticity_token: form_authenticity_token, data: { "wizard-question-target": "form", action: "submit->wizard-question#validateBeforeSubmit" } do %>
             <%# Method input lets us switch between POST (add) and PATCH (edit) without a separate form %>
             <input type="hidden" name="_method" value="post" data-wizard-question-target="methodInput">
             <div class="space-y-4">

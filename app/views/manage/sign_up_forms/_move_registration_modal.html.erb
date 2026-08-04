@@ -38,7 +38,9 @@
     </div>
 
     <%# Form %>
+    <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
     <%= form_with url: "#", method: :patch, local: true,
+                  authenticity_token: form_authenticity_token,
                   data: { move_registration_modal_target: "form" } do |f| %>
       <div class="mt-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">Select new slot</label>

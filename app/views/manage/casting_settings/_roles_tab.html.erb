@@ -125,7 +125,8 @@
       </div>
       <div class="mt-4">
         <% form_url = @role.persisted? ? manage_update_casting_role_path(@production, @role) : manage_create_casting_role_path(@production) %>
-        <%= form_with(url: form_url, scope: :role, method: @role.persisted? ? :patch : :post, data: { role_modal_target: "form" }) do |form| %>
+        <%# JS rewrites this form's action for edits; pass the session CSRF token — the per-form token is minted for the rendered path and gets rejected elsewhere. %>
+        <%= form_with(url: form_url, scope: :role, method: @role.persisted? ? :patch : :post, authenticity_token: form_authenticity_token, data: { role_modal_target: "form" }) do |form| %>
           <input type="hidden" name="_method" value="<%= @role.persisted? ? 'patch' : 'post' %>" data-role-modal-target="methodInput">
           <div class="mb-4">
             <%= form.label :name, "Role Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
