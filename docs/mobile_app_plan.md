@@ -26,7 +26,7 @@ The native apps wrap the entire `/my` dashboard. All 20 existing controllers are
 | Messages | `messages` | Inbox with threads, rich text, reactions, polls |
 | Direct Messages | `direct_messages` | Person-to-person private messages |
 | Production Messages | `production_messages` | Messages to production teams |
-| Open Requests | `open_requests` | Consolidated availability, sign-ups, questionnaires |
+| My Tasks | `tasks` | Consolidated availability, sign-ups, questionnaires (formerly Open Requests) |
 | Sign-ups | `sign_ups` | Self-service registration for shows |
 | Auditions | `auditions` | View audition cycles, accept/decline slots |
 | Submit Audition | `submit_audition_request` | Apply for auditions with availability + questions |
@@ -194,7 +194,7 @@ Set up tab-based navigation:
 | Dashboard | `house` | `/my` |
 | Shows | `calendar` | `/my/shows` |
 | Messages | `envelope` | `/my/messages` |
-| Requests | `bell` | `/my/requests` |
+| Tasks | `bell` | `/my/tasks` |
 | Profile | `person` | `/my/profiles` |
 
 Use path configuration (shared JSON, see Phase 4) to control push vs modal presentation per URL pattern.
@@ -239,7 +239,7 @@ Configure `MainActivity` with Hotwire session and root URL `https://cocoscout.co
 ### 12. Configure Navigation
 
 Same tab structure as iOS:
-- Bottom navigation bar with 5 tabs (Dashboard, Shows, Messages, Requests, Profile)
+- Bottom navigation bar with 5 tabs (Dashboard, Shows, Messages, Tasks, Profile)
 - Fragment-based navigation stack per tab
 - Shared path configuration JSON controls presentation styles
 
@@ -271,7 +271,7 @@ Create `public/hotwire-native/path-configuration.json` — served from the Rails
       { "title": "Dashboard", "path": "/my", "icon": "house" },
       { "title": "Shows", "path": "/my/shows", "icon": "calendar" },
       { "title": "Messages", "path": "/my/messages", "icon": "envelope" },
-      { "title": "Requests", "path": "/my/requests", "icon": "bell" },
+      { "title": "Tasks", "path": "/my/tasks", "icon": "bell" },
       { "title": "Profile", "path": "/my/profiles", "icon": "person" }
     ]
   },
@@ -338,7 +338,7 @@ Key properties:
 - [ ] Push notification delivery end-to-end (rpush → APNs/FCM → device)
 - [ ] Device token registration and deregistration
 - [ ] All `/my` pages render correctly in native WebView
-- [ ] Tab navigation between Dashboard, Shows, Messages, Requests, Profile
+- [ ] Tab navigation between Dashboard, Shows, Messages, Tasks, Profile
 - [ ] Availability submission (yes/no/maybe) via web view
 - [ ] Message sending and real-time receipt via ActionCable (WebSocket through WebView)
 - [ ] Push notification received when app is backgrounded
