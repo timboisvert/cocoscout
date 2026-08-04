@@ -76,6 +76,43 @@
       <% end %>
 
       <%# ========================================= %>
+      <%# Availability you've given — collapsed, but loudly labeled. %>
+      <%# This is where people come to CHANGE an answer. Availability %>
+      <%# outranks sign-ups, so both availability sections sit above them. %>
+      <%# ========================================= %>
+      <% if @answered_availability_items.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-controller="disclosure">
+          <button type="button" data-action="click->disclosure#toggle"
+                  class="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
+            <div>
+              <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                Availability you've given
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @answered_availability_items.size %></span>
+              </h3>
+              <p class="text-sm text-gray-500 mt-0.5">Plans changed? Open this and change your answer any time.</p>
+            </div>
+            <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div data-disclosure-target="content" class="hidden border-t border-gray-200">
+            <div class="p-4 space-y-1" data-controller="linked-highlight">
+              <% @answered_availability_items.each do |item| %>
+                <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
+                  <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
+                </div>
+              <% end %>
+            </div>
+            <div class="px-5 pb-4">
+              <%= link_to my_availability_calendar_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
+                Availability Calendar &rarr;
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ========================================= %>
       <%# Sign-ups (open first, then answered future ones — they stay %>
       <%# visible so people can change their mind) %>
       <%# ========================================= %>
@@ -117,42 +154,6 @@
             <% @open_questionnaire_items.each do |item| %>
               <%= render partial: "my/tasks/questionnaire_item", locals: { item: item } %>
             <% end %>
-          </div>
-        </div>
-      <% end %>
-
-      <%# ========================================= %>
-      <%# Availability you've given — collapsed, but loudly labeled. %>
-      <%# This is where people come to CHANGE an answer. %>
-      <%# ========================================= %>
-      <% if @answered_availability_items.any? %>
-        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-controller="disclosure">
-          <button type="button" data-action="click->disclosure#toggle"
-                  class="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
-            <div>
-              <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                Availability you've given
-                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @answered_availability_items.size %></span>
-              </h3>
-              <p class="text-sm text-gray-500 mt-0.5">Plans changed? Open this and change your answer any time.</p>
-            </div>
-            <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div data-disclosure-target="content" class="hidden border-t border-gray-200">
-            <div class="p-4 space-y-1" data-controller="linked-highlight">
-              <% @answered_availability_items.each do |item| %>
-                <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
-                  <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
-                </div>
-              <% end %>
-            </div>
-            <div class="px-5 pb-4">
-              <%= link_to my_availability_calendar_path, class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
-                Availability Calendar &rarr;
-              <% end %>
-            </div>
           </div>
         </div>
       <% end %>
