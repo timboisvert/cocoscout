@@ -141,7 +141,8 @@
           </p>
         </div>
         <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex flex-row-reverse gap-2">
-          <%= form_with url: "#", method: :delete, data: { organization_leave_target: "form" } do %>
+          <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
+          <%= form_with url: "#", method: :delete, authenticity_token: form_authenticity_token, data: { organization_leave_target: "form" } do %>
             <%= render "shared/button", text: "Leave Organization", variant: "primary", type: "submit" %>
           <% end %>
           <%= render "shared/button", text: "Cancel", variant: "secondary", data: { action: "click->organization-leave#closeConfirm" } %>

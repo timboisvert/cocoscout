@@ -88,7 +88,9 @@
           </button>
         </div>
 
+        <%# JS rewrites this form's action for edits; pass the session CSRF token — the per-form token is minted for the create path and gets rejected elsewhere. %>
         <%= form_with url: create_url, method: :post, local: true,
+                      authenticity_token: form_authenticity_token,
                       data: { "house-role-modal-target": "form" },
                       scope: :house_role do |form| %>
           <%# Method override lets one form serve both create (POST) and update (PATCH). %>

@@ -48,4 +48,12 @@ RSpec.describe "Mark paid another way CSRF", type: :request do
     expect(response).to have_http_status(:redirect)
     expect(li_unpaid.reload.manually_paid).to be(true)
   end
+
+  it "rejects a submission without a token (sanity check that protection is on)" do
+    post manage_mark_line_item_paid_money_show_payout_path(show, li_unpaid),
+         params: { payment_method: "cash" }
+
+    expect(response.status).to eq(422)
+    expect(li_unpaid.reload.manually_paid).to be(false)
+  end
 end

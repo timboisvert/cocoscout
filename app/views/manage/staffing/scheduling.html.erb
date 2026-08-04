@@ -639,7 +639,9 @@
           </button>
         </div>
 
+        <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
         <%= form_with url: "#", method: :post, local: true,
+                      authenticity_token: form_authenticity_token,
                       data: { "shift-assign-target": "form" } do %>
           <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
         <% end %>
@@ -702,7 +704,9 @@
           </button>
         </div>
 
+        <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
         <%= form_with url: "#", method: :patch, local: true,
+                      authenticity_token: form_authenticity_token,
                       data: { "shift-edit-target": "form" }, scope: :shift do |f| %>
           <div class="px-5 py-4">
             <div class="text-xs text-gray-500 mb-2" data-shift-edit-target="dayLabel"></div>
@@ -785,7 +789,9 @@
           </button>
         </div>
 
+        <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
         <%= form_with url: "#", method: :post, local: true,
+                      authenticity_token: form_authenticity_token,
                       data: { "shift-split-target": "form" } do %>
           <%# Per-show split — shown by JS for show-based shifts. Splits back into
               one distinct shift per show; no time slicing for this type. %>

@@ -10,7 +10,8 @@
         <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button,
               data: { action: "click->modal#close" } %>
       </div>
-      <%= form_with url: my_time_entries_path, method: :post, data: { "time-entry-form-target": "form" } do %>
+      <%# JS rewrites this form's action for edits; pass the session CSRF token — the per-form token is minted for the create path and gets rejected elsewhere. %>
+      <%= form_with url: my_time_entries_path, method: :post, authenticity_token: form_authenticity_token, data: { "time-entry-form-target": "form" } do %>
         <input type="hidden" name="_method" value="post" data-time-entry-form-target="methodInput">
         <input type="hidden" name="shift_assignment_id" data-time-entry-form-target="assignmentInput">
         <div class="px-5 py-4 space-y-4">

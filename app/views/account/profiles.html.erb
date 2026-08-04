@@ -140,7 +140,8 @@
             This profile will be hidden but can be restored by contacting support.
           </p>
         </div>
-        <%= form_with(url: "#", method: :post, data: { turbo: true, "account-profiles-target": "archiveForm" }) do %>
+        <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
+        <%= form_with(url: "#", method: :post, authenticity_token: form_authenticity_token, data: { turbo: true, "account-profiles-target": "archiveForm" }) do %>
           <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
             <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->account-profiles#closeArchive" } %>
             <%= render "shared/button", text: "Archive Profile", variant: "primary", type: :submit %>
