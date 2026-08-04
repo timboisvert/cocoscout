@@ -46,15 +46,26 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(not_connected)).to eq(3000)
     end
 
-    it "leaves the balance intact when a transfer fails" do
+    it "leaves the balance intact when a transfer fails, keeping the run open to retry" do
       allow(Stripe::Transfer).to receive(:create).and_raise(Stripe::StripeError.new("no funds"))
 
       batch = PayoutBatchService.build_for(organization: org)
       PayoutBatchService.process!(batch)
 
       expect(batch.items.first.reload.status).to eq("failed")
-      expect(batch.reload.status).to eq("failed")
+      # The run isn't a dead end: it stays partially_paid (retryable via
+      # pay_remaining!) until every item is actually paid.
+      expect(batch.reload.status).to eq("partially_paid")
+      expect(batch.completed_at).to be_nil
       expect(org.payout_balance_cents_for(ready)).to eq(5000)
+
+      # The retry path: Stripe recovers, pay_remaining! finishes the run.
+      batch.update!(funding_status: "succeeded")
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_retry"))
+      PayoutBatchService.pay_remaining!(batch)
+
+      expect(batch.reload.status).to eq("completed")
+      expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
     it "marks a performer a billable active performer for the payout's month when a performer run pays them" do

@@ -396,7 +396,7 @@
       "check_name": "Render",
       "message": "Render path contains parameter value",
       "file": "app/views/manage/money_settings/show.html.erb",
-      "line": 11,
+      "line": 12,
       "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
       "code": "render(action => \"manage/money_settings/sections/#{(params[:section] or \"source\")}\", {})",
       "render_path": [
@@ -404,7 +404,7 @@
           "type": "controller",
           "class": "Manage::MoneySettingsController",
           "method": "show",
-          "line": 15,
+          "line": 16,
           "file": "app/controllers/manage/money_settings_controller.rb",
           "rendered": {
             "name": "manage/money_settings/show",
@@ -415,6 +415,40 @@
       "location": {
         "type": "template",
         "template": "manage/money_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "c78e37c106e08c42f7dac32269e60f88c10999efae26aa2845d64db6cca97a47",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/staffing/settings/show.html.erb",
+      "line": 12,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/staffing/settings/sections/#{(params[:section] or \"source\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::Staffing::SettingsController",
+          "method": "show",
+          "line": 19,
+          "file": "app/controllers/manage/staffing/settings_controller.rb",
+          "rendered": {
+            "name": "manage/staffing/settings/show",
+            "file": "app/views/manage/staffing/settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/staffing/settings/show"
       },
       "user_input": "params[:section]",
       "confidence": "Medium",
