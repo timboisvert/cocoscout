@@ -42,6 +42,92 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
     expect(response).to redirect_to(manage_money_show_payout_path(show))
   end
 
+  it "adds no-bank payees to the run too — their money rides it until they connect" do
+    nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
+
+    post manage_add_to_run_money_show_payout_path(show)
+
+    expect(nobank.reload.in_payout_run?).to be(true)
+    expect(li_unpaid.reload.in_payout_run?).to be(true)
+
+    get manage_money_show_payout_path(show)
+    expect(response.body).to include("awaiting their bank")
+  end
+
+  it "still offers Add to payout run for a line that missed the first add (e.g. a producer allocation)" do
+    producer = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Gib Producer"),
+                                          amount: 29.30, is_individual_allocation: true)
+    # First add stages only Ollie (picker selection) — the show is now "in a run".
+    post manage_add_to_run_money_show_payout_path(show), params: { line_item_ids: [ li_unpaid.id ] }
+    expect(producer.reload.in_payout_run?).to be(false)
+
+    # The page must still offer to stage the leftover line…
+    get manage_money_show_payout_path(show)
+    expect(response.body).to include("Add to payout run")
+    expect(response.body).to include("Gib Producer")
+
+    # …and adding again picks him up.
+    post manage_add_to_run_money_show_payout_path(show)
+    expect(producer.reload.in_payout_run?).to be(true)
+  end
+
+  it "only adds the picker's checked lines; unchecked people stay off the run" do
+    nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
+
+    post manage_add_to_run_money_show_payout_path(show), params: { line_item_ids: [ li_unpaid.id ] }
+
+    expect(li_unpaid.reload.in_payout_run?).to be(true)
+    expect(nobank.reload.in_payout_run?).to be(false)
+  end
+
+  describe "marking an in-run line paid another way" do
+    before { org.update!(enabled_offline_payout_methods: [ "cash" ]) }
+
+    it "on a DRAFT run: records the payment and removes them — no credit minted" do
+      nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
+      post manage_add_to_run_money_show_payout_path(show)
+      expect(nobank.reload.in_payout_run?).to be(true)
+
+      post manage_mark_line_item_paid_money_show_payout_path(show, nobank), params: { payment_method: "cash" }
+
+      nobank.reload
+      expect(nobank.manually_paid).to be(true)
+      expect(nobank.in_payout_run?).to be(false)
+      expect(PayoutFundingCredit.count).to eq(0)
+    end
+
+    it "on a FUNDED run: records the payment, releases them, and mints funding credit" do
+      org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+
+      nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
+      post manage_add_to_run_money_show_payout_path(show)
+      batch = PayoutBatch.where(kind: "performer").order(:id).last
+      PayoutBatchService.fund!(batch, method: "ach")
+      expect(batch.reload.status).to eq("partially_paid") # Nobank Nel is waiting
+
+      post manage_mark_line_item_paid_money_show_payout_path(show, nobank), params: { payment_method: "cash" }
+
+      nobank.reload
+      expect(nobank.manually_paid).to be(true)
+      expect(nobank.in_payout_run?).to be(false)
+      credit = PayoutFundingCredit.last
+      expect(credit.organization).to eq(org)
+      expect(credit.amount_cents).to eq(3000)
+      # The run has nothing left waiting — it completes.
+      expect(batch.reload.status).to eq("completed")
+
+      # The credit shrinks the next run's debit.
+      next_batch = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "draft", trigger: "manual")
+      next_batch.items.create!(payee: create(:person, name: "Next Ned", stripe_account_id: "acct_n", payouts_enabled: true), amount_cents: 5000, status: "pending")
+      next_batch.recalculate_total!
+      expect(Stripe::PaymentIntent).to receive(:create).with(hash_including(amount: 2000)).and_return(double("pi", id: "pi_2", status: "succeeded"))
+      PayoutBatchService.fund!(next_batch, method: "ach")
+      expect(PayoutFundingCredit.available_cents(org)).to eq(0)
+    end
+  end
+
   describe "removing a payee from the run" do
     before { post manage_add_to_run_money_show_payout_path(show) } # queues Owed Ollie
 

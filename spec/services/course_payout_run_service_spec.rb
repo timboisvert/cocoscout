@@ -39,7 +39,7 @@ RSpec.describe CoursePayoutRunService do
     expect(result.batch.total_cents).to eq(3800)
   end
 
-  it "skips an instructor with no connected bank but still pays the org" do
+  it "adds an instructor with no connected bank (rides the run) and pays the org" do
     make_payable(org)
     instructor = create(:person) # no Connect account
     payout = build_payout(net_cents: 3800, total_payout_cents: 1000)
@@ -48,10 +48,12 @@ RSpec.describe CoursePayoutRunService do
 
     result = described_class.add_to_run!(payout)
 
-    expect(result.batch.items.find_by(payee: instructor)).to be_nil
+    # Same model as staffing/performers: the instructor's item waits on the run
+    # (the executor skips them until they connect, then a re-run pays them).
+    expect(result.batch.items.find_by(payee: instructor).status).to eq("pending")
     expect(result.batch.items.find_by(payee: org).amount_cents).to eq(2800)
-    expect(result.skipped).to eq(1)
-    expect(result.added).to eq(1)
+    expect(result.added).to eq(2)
+    expect(result.skipped).to eq(0)
   end
 
   it "is idempotent per source and restates a changed amount" do

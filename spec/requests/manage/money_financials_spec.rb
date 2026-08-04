@@ -21,8 +21,14 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
   describe "the all-productions slim list" do
-    it "renders productions in the slim spreadsheet list with an expandable events frame" do
+    it "keeps the index action-focused with a link to All financials" do
       get manage_money_financials_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(manage_money_all_financials_path)
+    end
+
+    it "renders productions in the slim spreadsheet list with an expandable events frame (All Financials page)" do
+      get manage_money_all_financials_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Slim Revue")
       # The slim list header columns
@@ -48,7 +54,7 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
 
   describe "courses" do
     it "lists a course as a single row (money in/out/profit), linking to its financials" do
-      get manage_money_financials_path
+      get manage_money_all_financials_path
       expect(response.body).to include("Improv 101").and include("Course")
       expect(response.body).to include("1 registration")
       # A course is one row — no expandable events accordion of its own.
@@ -57,11 +63,11 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
     end
 
     it "filters to only courses / only productions" do
-      get manage_money_financials_path(type: "courses")
+      get manage_money_all_financials_path(type: "courses")
       expect(response.body).to include("Improv 101")
       expect(response.body).not_to include("Slim Revue")
 
-      get manage_money_financials_path(type: "productions")
+      get manage_money_all_financials_path(type: "productions")
       expect(response.body).to include("Slim Revue")
       expect(response.body).not_to include("Improv 101")
     end

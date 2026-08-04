@@ -8,7 +8,30 @@ module Manage
     before_action :ensure_org_owner_or_manager
 
     def index
-      @batches = organization.payout_batches.recent.includes(:created_by).limit(50)
+      # Active = anything short of fully done: drafts being built, runs funding/
+      # paying, partially-paid runs waiting on people, and failed runs needing
+      # attention. Completed (and the rare canceled) runs are history below.
+      runs = organization.payout_batches.recent.includes(:created_by)
+      @active_batches = runs.where.not(status: %w[completed canceled]).to_a
+      @completed_batches = runs.where(status: %w[completed canceled]).limit(50).to_a
+
+      # How much money sits in each lifecycle state, across ALL runs (not just
+      # the 50 listed). Partially-paid runs split: the unpaid remainder is
+      # "waiting on people", the paid slice counts toward paid-out.
+      all = organization.payout_batches
+      items = PayoutBatchItem.joins(:payout_batch).where(payout_batches: { organization_id: organization.id })
+      @money_by_state = {
+        draft: all.where(status: "draft").sum(:total_cents),
+        funding: all.where(status: %w[funding funded processing]).sum(:total_cents),
+        waiting: items.where(payout_batches: { status: "partially_paid" }).where.not(status: "paid").sum(:amount_cents),
+        paid: items.where(status: "paid").sum(:amount_cents)
+      }
+      @runs_by_state = {
+        draft: all.where(status: "draft").count,
+        funding: all.where(status: %w[funding funded processing]).count,
+        waiting: all.where(status: "partially_paid").count,
+        paid: all.where(status: "completed").count
+      }
     end
 
     # Review who would be paid before running anything.
@@ -57,6 +80,35 @@ module Manage
       end
     end
 
+    # DEV ONLY: pretend Stripe's payment_intent.succeeded webhook arrived, so a
+    # run stuck in "funding" can advance without the Stripe CLI forwarding
+    # webhooks. A simulated webhook means no real money reached the test-mode
+    # platform balance, so transfers would fail with "insufficient available
+    # funds" — first top up the test balance with Stripe's bypass-pending test
+    # token (its charges land straight in available balance). Also handles a
+    # partially_paid run whose transfers already failed that way: top up and
+    # retry. Production settles via the real webhook (stripe_webhooks#create).
+    def simulate_funding
+      raise ActionController::RoutingError, "Not Found" unless Rails.env.development?
+
+      batch = organization.payout_batches.find(params[:id])
+      case batch.status
+      when "funding"
+        dev_top_up_test_balance!(batch.total_cents)
+        PayoutBatchService.advance_funding!(batch, "succeeded")
+        redirect_to manage_payout_batch_path(batch), notice: "Simulated: test balance topped up, funding cleared, transfers attempted."
+      when "partially_paid", "processing" # processing = crashed mid-process; retry is safe (paid items are skipped)
+        remaining = batch.items.where.not(status: "paid").sum(:amount_cents)
+        dev_top_up_test_balance!(remaining)
+        PayoutBatchService.pay_remaining!(batch)
+        redirect_to manage_payout_batch_path(batch), notice: "Simulated: test balance topped up, remaining transfers attempted."
+      else
+        redirect_to manage_payout_batch_path(batch), alert: "This run isn't waiting on funding."
+      end
+    rescue Stripe::StripeError, PayoutBatchService::Error => e
+      redirect_to manage_payout_batch_path(batch), alert: "Simulation failed: #{e.message}"
+    end
+
     # Send transfers to whoever in an already-funded, partially-paid run has
     # become payable since the last pass. No new funding — the original ACH
     # debit covered the whole run.
@@ -98,6 +150,18 @@ module Manage
       PayoutBatchService.discard!(batch)
       redirect_to manage_payout_batches_path,
                   notice: "Draft run discarded. Any staff hours it held are back in what's waiting to be paid."
+    end
+
+    # Dev-only: put test money in the platform's available balance so simulated
+    # runs can actually transfer. tok_bypassPending is Stripe's documented test
+    # token whose charges skip "pending" and land in available balance.
+    def dev_top_up_test_balance!(cents)
+      return unless Rails.env.development? && cents.positive?
+
+      Stripe::Charge.create(
+        amount: cents, currency: "usd", source: "tok_bypassPending",
+        description: "Dev top-up for simulated payout run"
+      )
     end
 
     # Connect the bank/card the org funds payout runs from (Stripe Checkout).

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1470,6 +1470,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
     t.index ["source_type", "source_id"], name: "index_payout_contributions_on_source_unique", unique: true, where: "(source_id IS NOT NULL)"
   end
 
+  create_table "payout_funding_credits", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.bigint "consumed_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "note"
+    t.bigint "organization_id", null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_payout_funding_credits_on_organization_id"
+    t.index ["source_type", "source_id"], name: "index_payout_funding_credits_on_source"
+  end
+
   create_table "payout_ledger_entries", force: :cascade do |t|
     t.bigint "amount_cents", null: false
     t.string "category", default: "performer", null: false
@@ -2231,7 +2244,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
     t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
-    t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
+    t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
     t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
@@ -2983,6 +2996,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
   add_foreign_key "payout_batches", "users", column: "created_by_id"
   add_foreign_key "payout_contributions", "payout_batch_items"
   add_foreign_key "payout_contributions", "payout_batches"
+  add_foreign_key "payout_funding_credits", "organizations"
   add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
   add_foreign_key "payout_scheme_defaults", "productions"

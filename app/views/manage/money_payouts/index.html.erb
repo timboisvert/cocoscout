@@ -193,6 +193,33 @@
     } %>
     <div class="mb-6"><%= render "shared/module_actions", actions: payouts_actions %></div>
 
+    <%# In flight — money already submitted, moving through funding/transfers.
+        Nothing to do here usually; it's the "we've acted" picture. %>
+    <% if @in_flight_runs.any? %>
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">In Flight</h3>
+      <div class="mb-8">
+        <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: [ "Amount" ], min_width: "min-w-[360px]" } do %>
+          <% @in_flight_runs.each do |run| %>
+            <%
+              waiting_cents = run.status == "partially_paid" ? run.total_cents - run.paid_total_cents : run.total_cents
+              subtitle = case run.status
+                         when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on people's bank info"
+                         else "ACH clearing — pays out automatically"
+                         end
+              badge_color = run.status == "partially_paid" ? "blue" : "amber"
+            %>
+            <%= render "shared/slim_list_row",
+                  title: "#{run.kind_label} · #{run.created_at.strftime('%b %-d')}",
+                  subtitle: subtitle,
+                  badge: { text: run.display_status, color: badge_color },
+                  href: manage_payout_batch_path(run),
+                  col_labels: [ "Amount" ],
+                  cells: [ { value: number_to_currency(run.total_cents / 100.0), class: "text-gray-900 font-medium" } ] %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
     <%# Awaiting Payout — address these first. Productions, courses, and contracts. %>
     <% if @awaiting_items.any? %>
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Awaiting Payout</h3>
@@ -230,34 +257,35 @@
       </div>
     <% end %>
 
-    <%# All productions — same slim grid + accordion as the financials list. %>
-    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">All Productions</h3>
-    <% if @production_summaries.any? %>
-      <%= render layout: "shared/slim_list", locals: { label: "Production", columns: [ "Awaiting", "Paid" ], min_width: "min-w-[420px]" } do %>
-        <% @production_summaries.each do |summary| %>
-          <%
-            production = summary[:production]
-            awaiting = summary[:awaiting_payout_amount].to_f
-            paid = summary[:paid_amount].to_f
-            awaiting_count = summary[:awaiting_payout_count].to_i
-            paid_count = summary[:paid_count].to_i
-            subtitle = "#{awaiting_count} awaiting · #{paid_count} paid"
-          %>
-          <%= render "shared/slim_list_row",
-            title: production.name,
-            subtitle: subtitle,
-            expand_src: manage_money_production_payout_events_path(production),
-            expand_id: "payout-events-#{production.id}",
-            col_labels: [ "Awaiting", "Paid" ],
-            cells: [
-              { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600 font-medium" : "text-gray-400" },
-              { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" }
-            ] %>
-        <% end %>
-      <% end %>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">No productions yet.</p>
+    <%# Blocked on the payee — owed people who haven't set up payment info. %>
+    <% if @missing_payment_info.any? %>
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Waiting on Payment Info</h3>
+      <div class="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+        <p class="text-sm text-gray-600 mb-3">
+          <span class="font-semibold text-gray-900"><%= @missing_payment_info.count %></span>
+          <%= "person".pluralize(@missing_payment_info.count) %> can't be paid yet — no payment info.
+          Send reminders from each production's payouts page.
+        </p>
+        <div class="flex flex-wrap gap-1.5">
+          <% @missing_payment_info.first(12).each do |person| %>
+            <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"><%= person.name %></span>
+          <% end %>
+          <% if @missing_payment_info.count > 12 %>
+            <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">+<%= @missing_payment_info.count - 12 %> more</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# The full every-production grid lives on its own page — this one stays
+        focused on action. %>
+    <%= link_to manage_money_all_payouts_path, class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">All payouts</h3>
+          <p class="text-sm text-gray-500 mt-0.5">Every production's payout history — awaiting and paid, show by show.</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </div>
     <% end %>
   <% end %>

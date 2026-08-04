@@ -23,13 +23,16 @@ RSpec.describe PerformerPayoutRunService do
     expect(org.payout_balance_cents_for(person, category: "performer")).to eq(20_000)
   end
 
-  it "does not add a performer who hasn't connected a bank (they stay owed)" do
+  it "adds a performer who hasn't connected a bank — their money rides the run" do
     no_bank = create(:person) # no stripe_account_id → can_receive_payouts? is false
     show_payout.line_items.create!(payee: no_bank, amount: 50, shares: 1)
 
     result = described_class.add_show_payout!(show_payout)
-    expect(result.batch.items.find_by(payee: no_bank)).to be_nil     # not added
-    expect(result.batch.items.find_by(payee: person)).to be_present  # bank-ready one is
+    # Same model as staffing: they're on the run (item pending); the funded run
+    # holds their money and pay_remaining! sends it once they connect.
+    expect(result.batch.items.find_by(payee: no_bank)).to be_present
+    expect(result.batch.items.find_by(payee: no_bank).status).to eq("pending")
+    expect(result.batch.items.find_by(payee: person)).to be_present
   end
 
   it "subtracts an outstanding advance from what the run pays (net balance)" do

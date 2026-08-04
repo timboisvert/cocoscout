@@ -128,9 +128,12 @@ module Manage
     end
 
     # Add this show's calculated performer payouts to the org's open performer
-    # payout run (one item per payee, a contribution per show).
+    # payout run (one item per payee, a contribution per show). The picker
+    # modal posts the checked line ids — anyone unchecked stays off the run
+    # (to be paid another way).
     def add_to_payout_run
-      result = PerformerPayoutRunService.add_show_payout!(@show_payout, added_by: Current.user)
+      only_ids = Array(params[:line_item_ids]).map(&:to_i).reject(&:zero?).presence
+      result = PerformerPayoutRunService.add_show_payout!(@show_payout, added_by: Current.user, only_line_ids: only_ids)
       if result.added.positive?
         # Stay on the payout page — you can keep working here and pay from the run
         # whenever you're ready (the page shows a "View runs" link once added).
@@ -313,7 +316,13 @@ module Manage
       paid_on = params[:paid_date].presence
 
       line_items.each do |line_item|
+        # A line sitting in a payout run comes OFF the run when it's hand-paid:
+        # capture the contribution first, mark paid (posts the offsetting ledger
+        # entry), then release — on a funded run the freed money becomes a
+        # funding credit toward the org's next run.
+        contribution = line_item.payout_contribution
         line_item.mark_as_already_paid!(Current.user, method: method, notes: notes, paid_on: paid_on)
+        release_from_run!(line_item, contribution) if contribution
       end
 
       # Explicit check in case the callback didn't fire (e.g., manually_paid was already true)
@@ -615,6 +624,32 @@ module Manage
     end
 
     private
+
+    # Pull a hand-paid line out of its payout run. Draft run: the contribution
+    # just goes away (no money moved). Funded run: the item shrinks (or drops),
+    # and the freed, already-funded money becomes a PayoutFundingCredit that
+    # reduces the org's next funding debit — no refunds, no fees. A paid item
+    # is never touched: that money already went out.
+    def release_from_run!(line_item, contribution)
+      item = contribution.payout_batch_item
+      batch = contribution.payout_batch
+      return if item.nil? || item.paid?
+
+      funded = batch.funding_status.present? && batch.status != "draft"
+      before_cents = item.amount_cents
+      contribution.destroy! # resettles the item (shrinks/drops) and re-totals the batch
+      after_cents = PayoutBatchItem.find_by(id: item.id)&.amount_cents.to_i
+      freed = before_cents - after_cents
+
+      if funded && freed.positive?
+        PayoutFundingCredit.create!(
+          organization: batch.organization, amount_cents: freed, source: line_item,
+          note: "#{line_item.payee_name} released from payout run ##{batch.id} — paid another way"
+        )
+      end
+      # A partially-paid run whose last waiting item was just released is done.
+      PayoutBatchService.finalize_status!(batch.reload) if batch.reload.status == "partially_paid"
+    end
 
     # A contract show whose money is a set of logged contract payments. Show what
     # we owe (outgoing → payable via the payout run) and what's owed to us

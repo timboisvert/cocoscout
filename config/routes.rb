@@ -1294,6 +1294,8 @@ Rails.application.routes.draw do
     patch "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     get   "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
+    # Must precede the :production_id routes so "all" isn't eaten as an id.
+    get "money/financials/all", to: "money_financials#all", as: "money_all_financials"
     # Slim inline accordion of a production's revenue events (Turbo-frame, lazy).
     get "money/financials/:production_id/events", to: "money_financials#events", as: "money_production_financial_events"
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
@@ -1308,6 +1310,8 @@ Rails.application.routes.draw do
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
+    # Dev-only escape hatch (the action 404s outside development).
+    post "money/payout-runs/:id/simulate-funding", to: "payout_batches#simulate_funding", as: "simulate_funding_payout_batch"
     delete "money/payout-runs/:id", to: "payout_batches#destroy"
 
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
@@ -1321,6 +1325,8 @@ Rails.application.routes.draw do
     get  "money/incoming/:production_id", to: "money_incoming#index", as: "money_production_incoming"
 
     get "money/payouts", to: "money_payouts#index", as: "money_payouts"
+    # Must precede the :production_id routes so "all" isn't eaten as an id.
+    get "money/payouts/all", to: "money_payouts#all", as: "money_all_payouts"
     # Slim inline accordion of a production's shows + their payout status (Turbo-frame, lazy).
     get "money/payouts/:production_id/events", to: "money_payouts#events", as: "money_production_payout_events"
     get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"

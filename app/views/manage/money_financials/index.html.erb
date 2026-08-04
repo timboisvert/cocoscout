@@ -139,42 +139,16 @@
       </div>
     <% end %>
 
-    <%# Filter Bar — Type (productions vs courses) first, then Status %>
-    <div class="mb-3">
-      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-        {
-          label: "Type",
-          filters: [
-            { text: "All",         path: manage_money_financials_path(type: "all", filter: @financials_filter),         active: @type_filter == "all" },
-            { text: "Productions", path: manage_money_financials_path(type: "productions", filter: @financials_filter), active: @type_filter == "productions" },
-            { text: "Courses",     path: manage_money_financials_path(type: "courses", filter: @financials_filter),     active: @type_filter == "courses" }
-          ]
-        },
-        { separator: true },
-        {
-          label: "Status",
-          filters: [
-            { text: "All",              path: manage_money_financials_path(type: @type_filter, filter: "all"),     active: @financials_filter.blank? || @financials_filter == "all" },
-            { text: "Pending Financials", path: manage_money_financials_path(type: @type_filter, filter: "pending"), active: @financials_filter == "pending" }
-          ]
-        }
-      ] %>
-    </div>
-
-    <div class="">
-      <% if @production_summaries.any? %>
-        <%= render "manage/money/slim_grid", summaries: @production_summaries, events_filter: @financials_filter %>
-      <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">
-            <% if @financials_filter == "pending" %>
-              All past revenue shows have financial data entered.
-            <% else %>
-              No productions yet.
-            <% end %>
-          </p>
+    <%# The full per-production grid lives on its own page — this one stays
+        focused on the summary and what needs action. %>
+    <%= link_to manage_money_all_financials_path, class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">All financials</h3>
+          <p class="text-sm text-gray-500 mt-0.5">Every production and course — revenue, costs, and profit, show by show.</p>
         </div>
-      <% end %>
-    </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </div>
+    <% end %>
   <% end %>
 </div>

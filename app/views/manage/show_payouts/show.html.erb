@@ -707,18 +707,29 @@
           </div>
         <% end %>
 
-        <%# Add these performer payouts to the open performer payout run. %>
-        <% if @show_payout.total_payout && has_line_items && !@show_payout.paid? && !@show_payout.in_payout_run? %>
+        <%# Add these performer payouts to the open performer payout run. Gated on
+            ADDABLE lines existing — not on "nothing added yet": a line that
+            joined late (or was unchecked in the picker) must still be stageable
+            after the rest of the show is already on a run. %>
+        <%
+          # EVERYONE payable-by-Stripe-someday gets added (same model as
+          # staffing): bank-connected people are paid when the run pays;
+          # no-bank people's money rides the funded run until they connect.
+          run_candidates = if @show_payout.total_payout && has_line_items && !@show_payout.paid?
+            (@line_items || []).select do |li|
+              !li.paid? && !li.in_payout_run? && li.payee.present? &&
+                li.payee.respond_to?(:can_receive_payouts?) && li.amount.to_f > 0
+            end
+          else
+            []
+          end
+        %>
+        <% if run_candidates.any? %>
           <div class="mb-4">
               <%
-                run_candidates = (@line_items || []).select do |li|
-                  !li.paid? && !li.in_payout_run? && li.payee.present? &&
-                    li.payee.respond_to?(:can_receive_payouts?) && li.amount.to_f > 0
-                end
-                # Only bank-connected people actually get added to the run.
                 run_ready = run_candidates.select { |li| li.payee.can_receive_payouts? }
                 run_needs_bank = run_candidates.reject { |li| li.payee.can_receive_payouts? }
-                run_ready_total = run_ready.sum(&:net_amount)
+                run_total = run_candidates.sum(&:net_amount)
               %>
               <div data-controller="modal">
                 <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small", type: :button,
@@ -736,44 +747,52 @@
                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                       </div>
-                      <div class="px-6 py-4">
-                        <p class="text-sm text-gray-600 mb-4">These performers get added to your open performer payout run. You stay here — pay everyone at once whenever you're ready from Payout Runs.</p>
-                        <% if run_ready.any? %>
-                          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-3">
-                            <% run_ready.each do |li| %>
-                              <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                                <span class="flex items-center gap-2 min-w-0">
-                                  <span class="text-gray-900 truncate"><%= li.payee_name %></span>
-                                  <span class="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 flex-shrink-0">Bank ready</span>
-                                </span>
-                                <span class="font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(li.net_amount) %></span>
-                              </div>
-                            <% end %>
-                          </div>
-                          <div class="flex items-center justify-between text-sm font-semibold mb-4">
-                            <span class="text-gray-700">Total to add</span>
-                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(run_ready_total) %></span>
-                          </div>
-                        <% else %>
-                          <p class="text-sm text-gray-500 mb-4">No one here is ready to be added yet.</p>
-                        <% end %>
-
-                        <% if run_needs_bank.any? %>
-                          <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                            <p class="text-xs font-medium text-amber-800"><%= pluralize(run_needs_bank.size, "person") %> can't be added yet — no bank connected:</p>
-                            <p class="text-xs text-amber-700 mt-0.5"><%= run_needs_bank.map(&:payee_name).join(", ") %></p>
-                            <p class="text-xs text-amber-700 mt-1">They stay owed and show as still-to-pay until they connect a bank.</p>
-                          </div>
-                        <% end %>
-                      </div>
-                      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
-                        <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-                        <% if run_ready.any? %>
-                          <%= button_to manage_add_to_run_money_show_payout_path(@show), method: :post, class: "inline-block" do %>
-                            <%= render "shared/button", text: "Add to run", variant: "primary", size: "small", type: :submit %>
+                      <%= form_with url: manage_add_to_run_money_show_payout_path(@show), method: :post, data: { controller: "run-picker" } do %>
+                        <div class="px-6 py-4">
+                          <p class="text-sm text-gray-600 mb-4">Checked people get added to your open performer payout run — funding covers all of them up front. Uncheck anyone you plan to pay another way; they stay owed on this show instead.</p>
+                          <% if run_candidates.any? %>
+                            <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-3">
+                              <% run_candidates.each do |li| %>
+                                <% bank_ready = run_ready.include?(li) %>
+                                <label class="flex items-center justify-between gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                                  <span class="flex items-center gap-2 min-w-0">
+                                    <%= check_box_tag "line_item_ids[]", li.id, true,
+                                          id: "run-pick-#{li.id}",
+                                          data: { "run-picker-target": "checkbox", action: "change->run-picker#recalc",
+                                                  cents: (li.net_amount.to_d * 100).round, "bank-ready": bank_ready },
+                                          class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                                    <span class="text-gray-900 truncate"><%= li.payee_name %></span>
+                                    <% if bank_ready %>
+                                      <span class="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 flex-shrink-0">Bank ready</span>
+                                    <% else %>
+                                      <span class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 flex-shrink-0">No bank yet</span>
+                                    <% end %>
+                                  </span>
+                                  <span class="font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(li.net_amount) %></span>
+                                </label>
+                              <% end %>
+                            </div>
+                            <div class="flex items-center justify-between text-sm font-semibold mb-3">
+                              <span class="text-gray-700">Total to add</span>
+                              <span class="text-gray-900 tabular-nums" data-run-picker-target="total"><%= number_to_currency(run_total) %></span>
+                            </div>
+                            <%# The acknowledgment line — what funding this run will actually commit. %>
+                            <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                              <p class="text-xs text-amber-800" data-run-picker-target="ack"></p>
+                            </div>
+                          <% else %>
+                            <p class="text-sm text-gray-500 mb-4">No one here to add yet.</p>
                           <% end %>
-                        <% end %>
-                      </div>
+                        </div>
+                        <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
+                          <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
+                          <% if run_candidates.any? %>
+                            <%= render "shared/button", text: "Add to run", variant: "primary", size: "small", type: :submit,
+                                  classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+                                  data: { "run-picker-target": "submit" } %>
+                          <% end %>
+                        </div>
+                      <% end %>
                     </div>
                   </div>
                 </div>
@@ -857,15 +876,12 @@
                           <% end %>
                         <% end %>
                         <div class="min-w-0">
-                          <div class="font-medium text-gray-900"><%= item.payee_name %></div>
-                          <%# How the number was arrived at — secondary info, lives under the name. %>
-                          <div class="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
-                            <span>
-                              <% items.each_with_index do |li, i| %><%= "; " if i.positive? %><%= li.calculation_explanation %><% end %>
-                            </span>
+                          <div class="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
+                            <span class="truncate"><%= item.payee_name %></span>
                             <% if !item.paid? && !item.is_guest? && !item.auto_payout? %>
-                              <%# They haven't connected a bank yet — show a QR they can scan to set it up. %>
-                                <span data-controller="qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
+                              <%# They haven't connected a bank yet — a QR they can scan
+                                  to set it up, right by the name where you look first. %>
+                                <span data-controller="qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>" class="text-xs font-normal">
                                   <button type="button"
                                           data-action="click->qr-code#open"
                                           class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(show payment QR)</button>
@@ -888,6 +904,10 @@
                                   </div>
                                 </span>
                             <% end %>
+                          </div>
+                          <%# How the number was arrived at — secondary info, lives under the name. %>
+                          <div class="text-xs text-gray-500">
+                            <% items.each_with_index do |li, i| %><%= "; " if i.positive? %><%= li.calculation_explanation %><% end %>
                           </div>
                           <%# Show advance information for this person %>
                           <% if item.payee_type == "Person" && @advances_by_person[item.payee_id]&.any? %>
@@ -983,12 +1003,16 @@
                           <div class="text-right" title="Paid automatically on a payout run.">
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">Paid · payout run</span>
                           </div>
-                        <% elsif item.auto_payout? && item.in_payout_run? %>
-                          <%# Bank connected and already added to an open payout run. %>
+                        <% elsif !item.paid? && item.in_payout_run? %>
+                          <%# Added to an open payout run — with or without a bank
+                              connected. A no-bank payee's money rides the run and
+                              pays out the moment they connect. %>
                           <%# Chip + ✕, mirroring the Paid row: the ✕ always undoes the chip
                               it sits next to (here: remove from the run). Confirm via modal. %>
-                          <div class="flex items-center justify-end gap-2" title="Added to a payout run — pay the run to send this to their bank.">
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run</span>
+                          <% item_bank_ready = item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts? %>
+                          <div class="text-right">
+                          <div class="flex items-center justify-end gap-2" title="<%= item_bank_ready ? "Added to a payout run — pay the run to send this to their bank." : "On the payout run without a bank connected — the run holds their money and pays them the moment they connect." %>">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run<% unless item_bank_ready %> · awaiting their bank<% end %></span>
                             <div data-controller="modal">
                               <button type="button"
                                       data-action="click->modal#open"
@@ -1023,6 +1047,22 @@
                                 </div>
                               </div>
                             </div>
+                          </div>
+                          <% if Current.organization.offline_payout_method_choices.any? %>
+                            <%# Escape hatch, tucked right under the chip: hand-paying
+                                them takes the line off the run — on a funded run the
+                                freed money becomes credit toward the next funding debit.
+                                Same label as the needs-setup branch, one vocabulary. %>
+                            <div class="-mt-0.5">
+                              <button type="button"
+                                      data-action="click->payment-actions#showMarkPaidModal"
+                                      data-item-id="<%= items.map(&:id).join(",") %>"
+                                      data-item-name="<%= item.payee_name %>"
+                                      data-item-amount="<%= number_to_currency(total_net_amount) %>"
+                                      class="text-[11px] text-gray-400 hover:text-pink-600 underline cursor-pointer"
+                                      title="Record an offline payment — this also takes them off the payout run; already-funded money becomes credit for your next run.">Mark paid another way</button>
+                            </div>
+                          <% end %>
                           </div>
                         <% elsif item.auto_payout? %>
                           <%# Bank connected but not yet added — adding to a run is a manual step. %>

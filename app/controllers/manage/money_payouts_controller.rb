@@ -21,6 +21,13 @@ module Manage
       )
     end
 
+    # The full every-production payout grid, moved off the index so the main
+    # payouts page stays focused on what needs action.
+    def all
+      @productions = Current.user.accessible_productions.schedulable.order(:name)
+      @production_summaries = @productions.map { |p| build_payout_summary(p) }
+    end
+
     def send_payment_setup_reminders
       missing_people = people_missing_payment_info
 
@@ -199,7 +206,15 @@ module Manage
       # courses, and contracts. This is the address-first to-do list.
       @awaiting_items = build_awaiting_payout_items
 
-      @missing_payment_info = []
+      # Runs already in motion — submitted money the org is waiting on (ACH
+      # clearing, or partially paid runs waiting on people's bank info).
+      @in_flight_runs = Current.organization.payout_batches
+                               .where(status: %w[funding funded processing partially_paid])
+                               .recent.to_a
+
+      # Payouts blocked on the payee: people owed money who haven't set up
+      # payment info yet, across all productions.
+      @missing_payment_info = people_missing_payment_info
     end
 
     def build_payout_summary(production)

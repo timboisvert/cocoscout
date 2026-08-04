@@ -17,6 +17,13 @@ class Show < ApplicationRecord
 
   has_many :email_drafts, dependent: :nullify
   has_many :contract_payments, dependent: :nullify
+  # Messages scoped to this show survive it — they're conversation history.
+  has_many :messages, dependent: :nullify
+  # Extra shows a merged staffing shift covers (the join rows die with the show).
+  has_many :shift_shows, dependent: :destroy
+  # External-calendar mapping rows. No dependent option: prepare_calendar_events_for_destruction
+  # removes them and schedules remote (Google) deletion after commit.
+  has_many :calendar_events
 
   has_many :show_person_role_assignments, dependent: :destroy
 
@@ -132,7 +139,12 @@ class Show < ApplicationRecord
 
   # Calendar sync - trigger sync for affected people when show changes
   after_commit :trigger_calendar_sync, on: [ :create, :update ]
-  after_destroy :trigger_calendar_sync_for_destruction
+  # calendar_events.show_id carries a NOT NULL FK, so the mapping rows must go
+  # BEFORE the show row is deleted (an after_destroy hook never gets the chance —
+  # the DELETE itself is what trips the constraint). Remote deletion is network
+  # I/O, so it runs in a job after commit.
+  before_destroy :prepare_calendar_events_for_destruction
+  after_destroy_commit :enqueue_remote_calendar_event_cleanup
 
   # Contract payment sync - update revenue-share contract payments when show or its financials change
   after_commit :sync_contract_payments, on: [ :create, :update ]
@@ -915,17 +927,21 @@ class Show < ApplicationRecord
     end
   end
 
-  def trigger_calendar_sync_for_destruction
-    # Before the show is destroyed, find the relevant calendar events and delete them
-    CalendarEvent.where(show_id: id).find_each do |calendar_event|
-      begin
-        service = calendar_service_for(calendar_event.calendar_subscription)
-        service&.delete_event(calendar_event)
-      rescue StandardError => e
-        Rails.logger.error("Failed to delete calendar event #{calendar_event.id}: #{e.message}")
-        # Still destroy the calendar event record even if external deletion fails
-        calendar_event.destroy
-      end
+  def prepare_calendar_events_for_destruction
+    # Capture the Google event handles, then drop the local mapping rows so the
+    # FK doesn't block deleting this show. iCal is a pull feed — its rows just go.
+    @remote_calendar_events_to_cleanup = calendar_events
+      .joins(:calendar_subscription)
+      .where(calendar_subscriptions: { provider: "google" })
+      .pluck(:calendar_subscription_id, :provider_event_id)
+    # NOT the association's delete_all — without a dependent option that
+    # nullifies show_id, which its NOT NULL constraint rejects.
+    CalendarEvent.where(show_id: id).delete_all
+  end
+
+  def enqueue_remote_calendar_event_cleanup
+    (@remote_calendar_events_to_cleanup || []).each do |subscription_id, provider_event_id|
+      CalendarEventCleanupJob.perform_later(subscription_id, provider_event_id)
     end
   end
 
@@ -958,14 +974,5 @@ class Show < ApplicationRecord
     end
 
     person_ids.to_a
-  end
-
-  def calendar_service_for(subscription)
-    case subscription.provider
-    when "google"
-      CalendarSync::GoogleService.new(subscription)
-    else
-      nil # iCal doesn't need event deletion
-    end
   end
 end

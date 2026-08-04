@@ -68,6 +68,28 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
+    it "settles every bundled show line with the shared transfer id (one item, many shows)" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_shared"))
+
+      production = create(:production, organization: org)
+      lines = 2.times.map do |i|
+        show = create(:show, production: production, event_type: :show, date_and_time: (i + 2).days.ago)
+        payout = ShowPayout.create!(show: show, status: "awaiting_payout", calculated_at: Time.current, total_payout: 25)
+        line = ShowPayoutLineItem.create!(show_payout: payout, payee: ready, amount: 25)
+        PerformerPayoutRunService.add_show_payout!(payout)
+        line
+      end
+
+      batch = PayoutBatch.where(kind: "performer").order(:id).last
+      PayoutBatchService.process!(batch)
+
+      # Both lines share the one transfer's reference — no unique-index blowup.
+      lines.each do |line|
+        expect(line.reload.payout_reference_id).to eq("tr_shared")
+        expect(line.paid?).to be(true)
+      end
+    end
+
     it "marks a performer a billable active performer for the payout's month when a performer run pays them" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_p"))
 

@@ -141,12 +141,26 @@ class PayoutBatchService
     payment_method = payment_method_id.presence || org.funding_payment_method_id.presence
     raise Error, "Connect a bank or card to fund payouts first." if payment_method.blank?
 
+    # Money released back from earlier funded runs (payees paid another way)
+    # never left the Stripe balance — spend it before debiting the bank.
+    credit_used = PayoutFundingCredit.consume!(org, batch.total_cents)
+    debit_cents = batch.total_cents - credit_used
+
+    if debit_cents <= 0
+      # Fully covered by credit: no PaymentIntent at all — the balance already
+      # holds the money, so the run advances straight to paying.
+      batch.update!(status: "funding", funding_status: "succeeded", funding_payment_intent_id: nil)
+      advance_funding!(batch, "succeeded")
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id)
+      return batch
+    end
+
     # The Stripe payment-method type: prefer the connected source's type, else
     # the caller's ach/card choice.
     pm_type = org.funding_payment_method_type.presence || (method == "card" ? "card" : "us_bank_account")
 
     intent = Stripe::PaymentIntent.create(
-      amount: batch.total_cents,
+      amount: debit_cents,
       currency: "usd",
       customer: org.stripe_customer_id,
       payment_method: payment_method,
@@ -162,6 +176,12 @@ class PayoutBatchService
     PayoutRunSubmittedNotificationJob.perform_later(batch.id)
     batch
   rescue Stripe::StripeError => e
+    # The debit never happened — give back any credit this attempt consumed so
+    # the org's available balance stays truthful.
+    if defined?(credit_used) && credit_used.to_i.positive?
+      PayoutFundingCredit.create!(organization: batch.organization, amount_cents: credit_used,
+                                  note: "Restored after failed funding of run ##{batch.id}")
+    end
     batch.update!(status: "failed", funding_status: "failed")
     raise Error, e.message
   end
@@ -228,7 +248,7 @@ class PayoutBatchService
   # the original debit already covered the full run; these transfers draw on
   # that money. Failed items get one more chance each call.
   def self.pay_remaining!(batch)
-    unless batch.funding_status == "succeeded"
+    unless batch.funding_status == "succeeded" || batch.skips_funding?
       raise Error, "This run hasn't been funded yet — fund it first."
     end
     unless %w[partially_paid processing failed].include?(batch.status)

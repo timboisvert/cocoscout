@@ -28,15 +28,23 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     expect(response.body).to include("1 of 3 paid")
   end
 
-  it "shows an Awaiting Payout section and an All Productions accordion on the org page" do
+  it "keeps the org page action-focused: Awaiting Payout plus a link to All payouts" do
     get manage_money_payouts_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Awaiting Payout").and include("All Productions")
+    expect(response.body).to include("Awaiting Payout")
     expect(response.body).to include("Payout Prod")
     expect(response.body).to include("$80.00") # remaining awaiting
     # Breadcrumb back to the money hub (like the financials page).
     expect(response.body).to include(manage_money_index_path)
-    # All-productions rows expand to a lazy payout-events frame.
+    # The full grid moved to its own page.
+    expect(response.body).to include(manage_money_all_payouts_path)
+  end
+
+  it "shows the every-production accordion on the All Payouts page" do
+    get manage_money_all_payouts_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Payout Prod")
+    # Rows expand to a lazy payout-events frame.
     expect(response.body).to include("payout-events-#{production.id}")
     expect(response.body).to include(manage_money_production_payout_events_path(production))
   end

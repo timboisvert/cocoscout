@@ -1,0 +1,23 @@
+<%# One run in the payout-runs tables (active + completed share this). Locals: batch %>
+<tr class="hover:bg-gray-50">
+  <td class="px-4 py-2.5">
+    <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+    <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
+  </td>
+  <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
+  <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
+  <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
+  <td class="px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
+  <td class="px-4 py-2.5 text-right">
+    <% if batch.status == "draft" %>
+      <% dcid = "confirm-discard-#{batch.id}" %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= dcid %>"
+              class="text-xs text-gray-500 hover:text-red-600 cursor-pointer bg-transparent border-0 whitespace-nowrap">Discard</button>
+      <%= render "shared/confirm_modal", id: dcid,
+            title: "Discard this draft run?",
+            message: "This removes the run and puts everything on it back where it came from — staff hours return to the unpaid pool, and tips, bonuses and other typed-in amounts land back in the Pay People draft. This can't be undone.",
+            confirm_text: "Discard run",
+            url: manage_payout_batch_path(batch), method: :delete %>
+    <% end %>
+  </td>
+</tr>

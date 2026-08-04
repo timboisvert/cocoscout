@@ -78,8 +78,17 @@ class CoursePayoutRunService
       item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
     end
 
+    # People (instructors/contractors) go on the run whether or not they've
+    # connected a bank — same model as staffing/performers: their item stays
+    # pending, the run drops back to draft after paying everyone else, and
+    # re-running it pays them once they connect. The org's own remainder row is
+    # different: it only joins once the org's Stripe account can actually
+    # receive the transfer.
     def payable?(payee)
-      payee.present? && payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+      return false if payee.blank?
+      return true if PayoutBatchService::PAYABLE_TYPES.include?(payee.class.polymorphic_name)
+
+      payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
     end
   end
 end

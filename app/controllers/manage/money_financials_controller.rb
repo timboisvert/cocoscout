@@ -47,23 +47,14 @@ module Manage
           end
         end
       else
-        # All productions view - show list of productions with summaries
+        # Org-level view — action-focused: overall summary + shows that still
+        # need financials. The full per-production grid lives on #all.
         return redirect_to manage_path unless Current.organization
 
         @productions = Current.user.accessible_productions.order(:name)
         @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
 
         revenue_types = EventTypes.revenue_event_types
-        # Pre-compute pending show counts per production in bulk
-        pending_counts = Show
-          .where(production_id: @productions.map(&:id), event_type: revenue_types)
-          .where(canceled: false)
-          .where("date_and_time <= ?", 1.day.from_now)
-          .left_joins(:show_financials)
-          .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
-          .group(:production_id)
-          .count
-
         # The actionable to-do at the top of the page: revenue shows that have
         # already started (hit their start time) but don't yet have confirmed
         # financials. One flat, most-recent-first list the user can click into.
@@ -75,38 +66,6 @@ module Manage
           .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
           .includes(:production, :show_financials)
           .order(date_and_time: :desc)
-
-        all_summaries = @productions.map do |production|
-          base = if production.type_course?
-            build_course_summary(production)
-          elsif production.type_third_party?
-            build_third_party_summary(production)
-          else
-            summary = FinancialSummaryService.new(production).summary_for_period(@selected_period)
-            {
-              production: production,
-              revenue_shows: summary[:show_count],
-              gross_revenue: summary[:gross_revenue],
-              show_expenses: summary[:show_expenses],
-              production_expenses: summary[:production_expenses],
-              total_payouts: summary[:total_payouts],
-              net_income: summary[:net_income]
-            }
-          end
-          base.merge(pending_financials_count: pending_counts[production.id] || 0)
-        end
-
-        # Primary filter: productions vs courses (default all).
-        @type_filter = %w[productions courses].include?(params[:type]) ? params[:type] : "all"
-        case @type_filter
-        when "courses"     then all_summaries = all_summaries.select { |s| s[:is_course] }
-        when "productions" then all_summaries = all_summaries.reject { |s| s[:is_course] }
-        end
-
-        @financials_filter = params[:filter].presence
-        @production_summaries = @financials_filter == "pending" \
-          ? all_summaries.select { |s| s[:pending_financials_count] > 0 }
-          : all_summaries
       end
 
       # Apply filter if provided (for both in-house and third-party productions with shows)
@@ -140,6 +99,59 @@ module Manage
           @shows = @shows.select { |show| revenue_types.include?(show.event_type) }
         end
       end
+    end
+
+    # The full every-production financials grid (with type/status filters),
+    # moved off the index so the main financials page stays action-focused.
+    def all
+      return redirect_to manage_path unless Current.organization
+
+      @selected_period = (params[:period].presence || "all_time").to_sym
+      @productions = Current.user.accessible_productions.order(:name)
+      @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
+
+      revenue_types = EventTypes.revenue_event_types
+      # Pre-compute pending show counts per production in bulk
+      pending_counts = Show
+        .where(production_id: @productions.map(&:id), event_type: revenue_types)
+        .where(canceled: false)
+        .where("date_and_time <= ?", 1.day.from_now)
+        .left_joins(:show_financials)
+        .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
+        .group(:production_id)
+        .count
+
+      all_summaries = @productions.map do |production|
+        base = if production.type_course?
+          build_course_summary(production)
+        elsif production.type_third_party?
+          build_third_party_summary(production)
+        else
+          summary = FinancialSummaryService.new(production).summary_for_period(@selected_period)
+          {
+            production: production,
+            revenue_shows: summary[:show_count],
+            gross_revenue: summary[:gross_revenue],
+            show_expenses: summary[:show_expenses],
+            production_expenses: summary[:production_expenses],
+            total_payouts: summary[:total_payouts],
+            net_income: summary[:net_income]
+          }
+        end
+        base.merge(pending_financials_count: pending_counts[production.id] || 0)
+      end
+
+      # Primary filter: productions vs courses (default all).
+      @type_filter = %w[productions courses].include?(params[:type]) ? params[:type] : "all"
+      case @type_filter
+      when "courses"     then all_summaries = all_summaries.select { |s| s[:is_course] }
+      when "productions" then all_summaries = all_summaries.reject { |s| s[:is_course] }
+      end
+
+      @financials_filter = params[:filter].presence
+      @production_summaries = @financials_filter == "pending" \
+        ? all_summaries.select { |s| s[:pending_financials_count] > 0 }
+        : all_summaries
     end
 
     # Slim inline list of a production's revenue events, loaded lazily into the

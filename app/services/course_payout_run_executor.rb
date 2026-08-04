@@ -21,6 +21,10 @@ class CoursePayoutRunExecutor
       batch.update!(status: "processing")
 
       batch.items.pending.includes(:payee, :payout_contributions).find_each do |item|
+        # No connected bank yet: don't burn a doomed Stripe call — the item
+        # stays pending on the (re-runnable) run until they connect.
+        next unless item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
+
         transfer = Stripe::Transfer.create(
           amount: item.amount_cents,
           currency: "usd",

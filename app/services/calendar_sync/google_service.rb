@@ -47,21 +47,19 @@ module CalendarSync
     end
 
     def delete_event(calendar_event)
+      delete_remote_event(calendar_event.provider_event_id)
+      calendar_event.destroy!
+    end
+
+    # Delete straight from the provider id — used when the local CalendarEvent
+    # row is already gone (e.g. its show was destroyed).
+    def delete_remote_event(provider_event_id)
       ensure_valid_token!
 
-      make_request(
-        :delete,
-        "/calendars/#{calendar_id}/events/#{calendar_event.provider_event_id}"
-      )
-
-      calendar_event.destroy!
+      make_request(:delete, "/calendars/#{calendar_id}/events/#{provider_event_id}")
     rescue StandardError => e
-      # If the event doesn't exist in Google, just delete our record
-      if e.message.include?("404") || e.message.include?("Not Found")
-        calendar_event.destroy!
-      else
-        raise
-      end
+      # Already gone in Google — nothing to clean up
+      raise unless e.message.include?("404") || e.message.include?("Not Found")
     end
 
     def self.authorization_url(redirect_uri:, state:)

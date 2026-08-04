@@ -1,0 +1,44 @@
+<% content_for :title, "All Payouts" %>
+
+<%# The full every-production payout grid (moved off the payouts index, which
+    stays focused on action items). Same slim grid + per-show accordion. %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [ "Money", manage_money_index_path ],
+      [ "Payouts", manage_money_payouts_path ]
+    ],
+    text: "All Payouts",
+    links: []
+  } %>
+
+  <% if @production_summaries.any? %>
+    <%= render layout: "shared/slim_list", locals: { label: "Production", columns: [ "Awaiting", "Paid" ], min_width: "min-w-[420px]" } do %>
+      <% @production_summaries.each do |summary| %>
+        <%
+          production = summary[:production]
+          awaiting = summary[:awaiting_payout_amount].to_f
+          paid = summary[:paid_amount].to_f
+          awaiting_count = summary[:awaiting_payout_count].to_i
+          paid_count = summary[:paid_count].to_i
+          subtitle = "#{awaiting_count} awaiting · #{paid_count} paid"
+        %>
+        <%= render "shared/slim_list_row",
+          title: production.name,
+          subtitle: subtitle,
+          expand_src: manage_money_production_payout_events_path(production),
+          expand_id: "payout-events-#{production.id}",
+          col_labels: [ "Awaiting", "Paid" ],
+          cells: [
+            { value: number_to_currency(awaiting), class: awaiting > 0 ? "text-pink-600 font-medium" : "text-gray-400" },
+            { value: number_to_currency(paid), class: paid > 0 ? "text-green-600" : "text-gray-400" }
+          ] %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">No productions yet.</p>
+    </div>
+  <% end %>
+</div>

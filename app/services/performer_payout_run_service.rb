@@ -12,7 +12,9 @@ class PerformerPayoutRunService
   Result = Struct.new(:batch, :added, :skipped, keyword_init: true)
 
   class << self
-    def add_show_payout!(show_payout, added_by: nil)
+    # only_line_ids: the picker's checkbox selection — when given, lines not in
+    # the list stay off the run (the manager plans to pay them another way).
+    def add_show_payout!(show_payout, added_by: nil, only_line_ids: nil)
       organization = show_payout.show.production.organization
       added = 0
       skipped = 0
@@ -27,7 +29,8 @@ class PerformerPayoutRunService
 
         show_payout.line_items.includes(:payee).each do |line|
           cents = (line.amount.to_d * 100).round
-          if !payable?(line) || cents <= 0 || PayoutContribution.exists?(source: line)
+          if (only_line_ids && !only_line_ids.include?(line.id)) ||
+             !payable?(line) || cents <= 0 || PayoutContribution.exists?(source: line)
             skipped += 1
             next
           end
@@ -56,12 +59,12 @@ class PerformerPayoutRunService
       )
     end
 
-    # Only add people we can actually pay — someone who hasn't connected a bank
-    # stays owed (unpayable) rather than sitting in a run that can't pay them.
-    # Guests (no payee) and groups are handled offline for now.
+    # Anyone who CAN eventually be paid through Stripe goes on the run — same
+    # model as staffing: no-bank people ride along, the funded run holds their
+    # money, and "Pay remaining" sends it once they connect. Guests (no payee —
+    # they'd have to become a Person first) and groups stay offline.
     def payable?(line)
-      line.payee.present? && line.payee.respond_to?(:can_receive_payouts?) &&
-        line.payee.can_receive_payouts?
+      line.payee.present? && PayoutBatchService::PAYABLE_TYPES.include?(line.payee_type)
     end
 
     def label_for(show)

@@ -29,6 +29,12 @@ class Production < ApplicationRecord
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :production_expenses, dependent: :destroy
+  # FK-carrying rows with no lifecycle of their own — must not block deletion.
+  # payout_scheme_defaults are deleted (not nullified): production_id NULL means
+  # "org-wide default", so nullifying would silently promote the scheme.
+  has_many :audition_wizard_states, dependent: :delete_all
+  has_many :casting_table_productions, dependent: :delete_all
+  has_many :payout_scheme_defaults, dependent: :delete_all
 
   # Advances
   has_many :person_advances, dependent: :destroy
