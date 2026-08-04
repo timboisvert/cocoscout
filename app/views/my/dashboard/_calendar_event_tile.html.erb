@@ -1,0 +1,36 @@
+<%#
+  Desktop day-cell tile for the Home dashboard calendar.
+  Links navigate the whole page (data-turbo-frame="_top") since the
+  calendar itself lives inside the dashboard_calendar turbo frame.
+
+  Locals:
+    - item: Hash with :time, :title, :subtitle, :path, :color, :canceled
+    - is_past: Boolean (from shared/month_calendar)
+%>
+<%
+  color_classes = if item[:color] == "gray"
+    "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+  elsif item[:color] == "canceled"
+    "bg-gray-100 text-gray-400 border-gray-300 line-through opacity-60"
+  else
+    case item[:color]
+    when "pink" then "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+    when "blue" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+    when "green" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+    when "purple" then "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
+    when "amber" then "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200"
+    when "teal" then "bg-teal-100 text-teal-800 border-teal-300 hover:bg-teal-200"
+    else "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+    end
+  end
+  color_classes = "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200" if is_past
+%>
+<%= link_to item[:path], class: "block mb-1", data: { turbo_frame: "_top" } do %>
+  <div class="text-xs p-1.5 rounded border <%= color_classes %> transition-colors truncate">
+    <div class="font-semibold truncate"><%= item[:time].strftime("%-I:%M%p").downcase %></div>
+    <div class="truncate text-[10px]"><%= item[:title] %></div>
+    <% unless item[:color] == "gray" %>
+      <div class="truncate text-[10px] font-semibold <%= is_past ? 'text-gray-500' : '' %>"><%= item[:subtitle] %></div>
+    <% end %>
+  </div>
+<% end %>

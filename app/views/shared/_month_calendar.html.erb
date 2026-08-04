@@ -27,6 +27,8 @@
     - cell_attrs: lambda(Date, [items]) => Hash of extra attributes for the day
         cell div (e.g. a modal trigger); a :class key is appended to the cell's
         classes, the rest render as attributes
+    - max_desktop_items: Integer — cap tiles per desktop day cell, with a
+        "+N more" line for the rest (default: no cap; mobile always shows all)
 %>
 <%
   current_month = local_assigns[:current_month]
@@ -44,6 +46,7 @@
   empty_text  = local_assigns[:empty_text] || "Nothing scheduled this month."
   mobile_item_partial = local_assigns[:mobile_item_partial] || item_partial
   cell_attrs  = local_assigns[:cell_attrs]
+  max_desktop_items = local_assigns[:max_desktop_items]
 
   month_start_date = current_month.to_date
   month_end_date   = current_month.end_of_month.to_date
@@ -118,8 +121,12 @@
         <% extra_class = extra.delete(:class) %>
         <div class="border border-gray-200 <%= min_cell %> p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %> <%= extra_class %>" <%= tag.attributes(extra) %>>
           <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>"><%= current_date.day %></div>
-          <% day_items.each do |item| %>
+          <% visible_items = max_desktop_items ? day_items.first(max_desktop_items) : day_items %>
+          <% visible_items.each do |item| %>
             <%= render item_partial, item: item, is_past: is_past %>
+          <% end %>
+          <% if max_desktop_items && day_items.size > max_desktop_items %>
+            <div class="text-[10px] text-gray-500 text-center mt-0.5">+<%= day_items.size - max_desktop_items %> more</div>
           <% end %>
         </div>
         <% current_date += 1.day %>

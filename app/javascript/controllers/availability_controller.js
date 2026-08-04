@@ -64,10 +64,23 @@ export default class extends Controller {
                     this.updateButtonsForRow(showRow, data.status);
                     // Show check icon in the selected button
                     this.showCheckForStatus(showRow, data.status);
+                    // Update any read-only summary tiles for this show+entity
+                    // (e.g. the availability calendar's day cells behind the modal)
+                    this.updateTilesFor(showId, entityKey, data.status);
                 } else if (data.error) {
                     console.error("Availability update failed:", data.error);
                 }
             });
+    }
+
+    updateTilesFor(showId, entityKey, status) {
+        // Read-only tiles render all three status chips; show the one that
+        // matches the new answer and hide the rest.
+        document.querySelectorAll(`[data-availability-tile="${showId}-${entityKey}"]`).forEach(tile => {
+            tile.querySelectorAll('[data-tile-status]').forEach(chip => {
+                chip.classList.toggle('hidden', chip.dataset.tileStatus !== status);
+            });
+        });
     }
 
     showCheckForStatus(row, status) {

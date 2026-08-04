@@ -28,11 +28,19 @@
   <% end %>
   <% if show.canceled %>
     <div class="text-red-600 font-semibold text-[9px]">Canceled</div>
-  <% elsif current_status == "available" %>
-    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span>
-  <% elsif current_status == "unavailable" %>
-    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span>
-  <% elsif !is_past %>
-    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-amber-700">Needs response</span>
+  <% elsif is_past %>
+    <% if current_status == "available" %>
+      <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span>
+    <% elsif current_status == "unavailable" %>
+      <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span>
+    <% end %>
+  <% else %>
+    <%# All three chips render; availability_controller.js swaps which one is
+        visible when the answer changes in the day modal — no reload needed. %>
+    <span data-availability-tile="<%= show.id %>-<%= item[:entity_key] %>">
+      <span data-tile-status="available" class="<%= 'hidden' unless current_status == 'available' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span>
+      <span data-tile-status="unavailable" class="<%= 'hidden' unless current_status == 'unavailable' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span>
+      <span data-tile-status="unset" class="<%= 'hidden' unless current_status == 'unset' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-amber-700">Needs response</span>
+    </span>
   <% end %>
 </div>

@@ -1,0 +1,46 @@
+<%#
+  Mobile day-list row for the Home dashboard calendar: colored dot, time,
+  title, subtitle. Links navigate the whole page (turbo-frame opt-out).
+
+  Locals:
+    - item: Hash with :time, :title, :subtitle, :path, :color, :canceled
+    - is_past: Boolean
+%>
+<%
+  is_canceled = item[:canceled]
+  is_assigned = item[:color] != "gray" && !is_canceled
+  if is_canceled
+    row_bg = "bg-gray-50 border border-gray-200 opacity-60 line-through"
+    dot_color = "bg-gray-300"
+  elsif is_assigned
+    row_bg = case item[:color]
+             when "pink" then "bg-pink-50 border border-pink-200"
+             when "blue" then "bg-blue-50 border border-blue-200"
+             when "green" then "bg-green-50 border border-green-200"
+             when "purple" then "bg-purple-50 border border-purple-200"
+             when "amber" then "bg-amber-50 border border-amber-200"
+             when "teal" then "bg-teal-50 border border-teal-200"
+             else ""
+    end
+    dot_color = case item[:color]
+                when "pink" then "bg-pink-400"
+                when "blue" then "bg-blue-400"
+                when "green" then "bg-green-400"
+                when "purple" then "bg-purple-400"
+                when "amber" then "bg-amber-400"
+                when "teal" then "bg-teal-400"
+                else "bg-gray-400"
+    end
+  else
+    row_bg = ""
+    dot_color = "bg-gray-400"
+  end
+%>
+<%= link_to item[:path], class: "flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 transition-colors #{row_bg}", data: { turbo_frame: "_top" } do %>
+  <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></div>
+  <span class="text-xs text-gray-500 w-14 flex-shrink-0"><%= item[:time].strftime("%-I:%M%p").downcase %></span>
+  <span class="text-sm truncate flex-1 text-gray-900"><%= item[:title] %></span>
+  <% unless item[:color] == "gray" %>
+    <span class="text-xs text-gray-400 truncate max-w-[100px]"><%= item[:subtitle] %></span>
+  <% end %>
+<% end %>
