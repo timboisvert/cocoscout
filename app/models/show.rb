@@ -824,12 +824,21 @@ class Show < ApplicationRecord
     EventLinkage.where(primary_show_id: id).update_all(primary_show_id: nil)
   end
 
-  # When true, per-show contract-payment sync is skipped. Used while merging
-  # duplicate productions, where shows are moved/deleted en masse and the merger
-  # manages the payment links itself — letting the after_destroy sync fire here
-  # would re-link a payment to a just-deleted show and violate the FK.
+  # When true, per-show contract-payment sync is skipped. Used where shows are
+  # destroyed en masse and the caller manages the payment links itself (contract
+  # cancel, production merge) — letting the sync fire mid-destroy re-links a
+  # payment to the show being deleted (Contract#find_payment_for_show writes
+  # show_id back "for future lookups") and the FK then blocks the DELETE.
   def self.skip_contract_payment_sync?
     ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync]
+  end
+
+  def self.without_contract_payment_sync
+    previous = ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync]
+    ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync] = true
+    yield
+  ensure
+    ActiveSupport::IsolatedExecutionState[:skip_contract_payment_sync] = previous
   end
 
   def sync_contract_payments

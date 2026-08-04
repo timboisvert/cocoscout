@@ -640,7 +640,10 @@ module Manage
       # the show link, never the payment itself.
       show_ids = contract.contract_shows.pluck(:id)
       ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
-      contract.contract_shows.destroy_all
+      # Suppress the per-show payment sync while destroying: a ShowFinancials
+      # cascade fires it mid-destroy and it would re-link a payment to the very
+      # show being deleted, violating the FK we just cleared.
+      Show.without_contract_payment_sync { contract.contract_shows.destroy_all }
 
       # Delete any touched production that's now genuinely empty and unshared —
       # no other contracts, no remaining runs, no remaining shows.

@@ -152,7 +152,9 @@ class Contract < ApplicationRecord
         # to other contracts, so we drop the link, not the payment).
         show_ids = contract_shows.pluck(:id)
         ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
-        contract_shows.destroy_all
+        # Suppress the per-show payment sync while destroying — it re-links a
+        # payment to the show being deleted, violating the FK we just cleared.
+        Show.without_contract_payment_sync { contract_shows.destroy_all }
       else
         contract_shows.update_all(canceled: true)
       end
@@ -655,8 +657,10 @@ class Contract < ApplicationRecord
       revenue_payments.find { |p| p.due_date.beginning_of_month == show_month }
     end
 
-    # Link the show_id for future lookups if we found a match
-    if payment && payment.show_id.nil?
+    # Link the show_id for future lookups if we found a match — but never to a
+    # show that's been destroyed (the after_destroy sync lands here), which
+    # would violate the contract_payments→shows FK.
+    if payment && payment.show_id.nil? && !show.destroyed?
       payment.update_column(:show_id, show.id)
     end
 

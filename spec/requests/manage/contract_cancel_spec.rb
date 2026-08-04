@@ -83,6 +83,30 @@ RSpec.describe "Manage::Contracts cancel page", type: :request do
       expect(Show.exists?(show.id)).to be(false)
     end
 
+    it "cancels a revenue-share per-event contract whose financials sync would re-link a payment (FK regression)" do
+      contract.update!(draft_data: {
+        "payment_structure" => "revenue_share",
+        "payment_config" => {
+          "revenue_our_share" => 80,
+          "revenue_their_share" => 20,
+          "revenue_settlement" => "per_event"
+        }
+      })
+      create(:show_financials, show: show)
+      payment = contract.contract_payments.create!(
+        description: "Revenue Share Settlement", amount: 0, amount_tbd: true,
+        direction: "incoming", due_date: show.date_and_time.to_date, status: "pending"
+      )
+
+      post process_cancel_manage_contract_path(contract), params: { settlement_type: "cancel_all" }
+
+      expect(response).to redirect_to(manage_contracts_path)
+      expect(contract.reload.status).to eq("cancelled")
+      expect(Show.exists?(show.id)).to be(false)
+      expect(payment.reload.show_id).to be_nil
+      expect(payment.status).to eq("cancelled")
+    end
+
     it "cancels despite messages tied to a show, keeping the messages" do
       message = create(:message, organization: org, show: show, visibility: :show)
 
