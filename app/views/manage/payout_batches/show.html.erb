@@ -42,7 +42,11 @@
           <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-amber-900"><%= pluralize(@not_ready_items.size, "person") %> hasn't connected a bank yet</p>
-            <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — we'll pay everyone who's ready and skip these until they connect a bank. Their balance stays owed.</p>
+            <% if @batch.status == "partially_paid" %>
+              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. As each person connects a bank, come back and hit “Pay remaining” — no new debit, no new run.</p>
+            <% else %>
+              <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — the full amount is funded up front, we pay everyone who's ready, and each remaining person's money waits on this run until they connect a bank.</p>
+            <% end %>
             <div class="mt-2 flex flex-wrap gap-1.5">
               <% @not_ready_items.each do |item| %>
                 <span class="inline-flex items-center gap-1 rounded-md bg-white/60 border border-amber-200 px-2 py-0.5 text-xs text-amber-900">
@@ -52,6 +56,33 @@
             </div>
           </div>
         </div>
+      </div>
+    <% end %>
+
+    <%# Funded, partially paid: the remaining money is sitting on this run.
+        "Pay remaining" transfers to whoever has become ready since last pass. %>
+    <% if @batch.status == "partially_paid" %>
+      <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <% remaining_cents = @batch.total_cents - @batch.paid_total_cents %>
+          <p class="text-sm font-medium text-gray-900"><%= number_to_currency(remaining_cents / 100.0) %> still to pay on this run — already funded</p>
+          <% if @payable_remaining_items.any? %>
+            <p class="text-xs text-gray-600 mt-0.5"><%= pluralize(@payable_remaining_items.size, "person") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).</p>
+          <% else %>
+            <p class="text-xs text-gray-600 mt-0.5">No one new is ready yet — this button lights up as people connect their banks.</p>
+          <% end %>
+        </div>
+        <% if @payable_remaining_items.any? %>
+          <% pay_remaining_cid = "confirm-pay-remaining" %>
+          <%= render "shared/button", text: "Pay remaining", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: pay_remaining_cid } %>
+          <%= render "shared/confirm_modal", id: pay_remaining_cid,
+                title: "Pay the remaining people?",
+                message: "Send #{number_to_currency(@payable_remaining_items.sum(&:amount_cents) / 100.0)} to #{pluralize(@payable_remaining_items.size, 'person')} from this run's already-funded balance? No new money is debited.",
+                confirm_text: "Pay remaining",
+                url: manage_pay_remaining_payout_batch_path(@batch),
+                method: :post %>
+        <% end %>
       </div>
     <% end %>
 

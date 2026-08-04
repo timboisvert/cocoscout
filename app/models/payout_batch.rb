@@ -2,7 +2,11 @@
 
 # A batch of payouts an organization sends at once through Stripe Connect.
 class PayoutBatch < ApplicationRecord
-  STATUSES = %w[draft funding funded processing completed failed canceled].freeze
+  # "partially_paid": funded and some (possibly zero) transfers sent, but at
+  # least one person is still owed — usually waiting on their bank. The run
+  # stays actionable ("Pay remaining") until every item is paid; only then does
+  # it become "completed".
+  STATUSES = %w[draft funding funded processing partially_paid completed failed canceled].freeze
   TRIGGERS = %w[manual scheduled].freeze
   # Run kinds. "staff_pay" = staffing hours; "performer" = show payouts; "course"
   # = course settlements (instructor pay + the org's leftover revenue). They run
@@ -38,10 +42,10 @@ class PayoutBatch < ApplicationRecord
     status == "draft"
   end
 
-  # Submitted and money moving: funding debit in progress, funded, or paying
-  # out. The payee-facing "we've sent it — waiting on the bank" state.
+  # Submitted and money moving: funding debit in progress, funded, paying out,
+  # or funded-but-partially-paid. The payee-facing "we've sent it" state.
   def in_flight?
-    %w[funding funded processing].include?(status)
+    %w[funding funded processing partially_paid].include?(status)
   end
 
   # Deposits typically land 2–4 business days after the run is funded (ACH
@@ -96,7 +100,7 @@ class PayoutBatch < ApplicationRecord
   end
 
   def display_status
-    status.titleize
+    status == "partially_paid" ? "Partially paid" : status.titleize
   end
 
   # The ordered lifecycle steps for the run-page timeline, each tagged with its
@@ -119,6 +123,12 @@ class PayoutBatch < ApplicationRecord
       case status
       when "completed"
         :done
+      when "partially_paid"
+        # Funded; the paying step is mid-way (some paid, some waiting on banks).
+        if index <= keys.index("funded") then :done
+        elsif index == keys.index("processing") then :current
+        else :upcoming
+        end
       when "failed", "canceled"
         failed_index = keys.index(funding_status == "failed" ? "funding" : "processing")
         if index < failed_index then :done

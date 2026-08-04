@@ -1291,6 +1291,7 @@ Rails.application.routes.draw do
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get   "money/settings", to: "money_settings#show", as: "money_settings"
     patch "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
+    patch "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     get   "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     # Slim inline accordion of a production's revenue events (Turbo-frame, lazy).
@@ -1306,6 +1307,7 @@ Rails.application.routes.draw do
     post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
+    post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
     delete "money/payout-runs/:id", to: "payout_batches#destroy"
 
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,

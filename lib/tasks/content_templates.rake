@@ -27,6 +27,30 @@ namespace :content_templates do
       puts "content template contract_person_added already exists — left as is"
     end
 
+    # Emailed to the org's chosen managers (Money settings → Notifications)
+    # when a payout run is submitted: names + amounts, expected deposit window,
+    # and a link to the run.
+    payout_submitted = ContentTemplate.find_or_initialize_by(key: "payout_run_submitted")
+    if payout_submitted.new_record?
+      payout_submitted.update!(
+        name: "Payout Run Submitted (manager alert)",
+        subject: "Payout run submitted — {{total}} to {{people_count}}",
+        body: "<p>Hi {{recipient_name}},</p>" \
+              "<p>A {{run_kind}} payout run for {{organization_name}} was just submitted: " \
+              "<strong>{{total}}</strong> to {{people_count}}.</p>" \
+              "{{payee_lines}}" \
+              "<p>Deposits are expected to land <strong>{{expected_window}}</strong> " \
+              "(people who haven't connected a bank yet are paid from this run once they do).</p>" \
+              "<p><a href=\"{{payout_run_url}}\">View the payout run</a></p>",
+        category: "notifications",
+        channel: "email",
+        active: true
+      )
+      puts "Created content template: payout_run_submitted"
+    else
+      puts "content template payout_run_submitted already exists — left as is"
+    end
+
     # Sent to the org's chosen managers when a contract is signed by the
     # counterparty. Message-only (no email); renders as an automated notification.
     signed = ContentTemplate.find_or_initialize_by(key: "contract_signed_manager")

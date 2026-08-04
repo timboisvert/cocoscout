@@ -32,12 +32,12 @@ module Manage
             q.house_role && { role: q.house_role, rate_cents: m.rate_cents_for(q.house_role).to_i }
           end
         end
-        @draft = PayDraft.read(Current.user, Current.organization)
+        @draft = PayDraft.read(Current.organization)
       end
 
       # Server-side draft autosave of the whole pay form (opaque JSON blob).
       def save_draft
-        PayDraft.write(Current.user, Current.organization, params[:draft].to_s)
+        PayDraft.write(Current.organization, params[:draft].to_s)
         head :no_content
       end
 
@@ -67,7 +67,7 @@ module Manage
           redirect_to manage_staffing_pay_path, alert: "Nothing to add — enter hours or an amount for at least one person." and return
         end
 
-        PayDraft.clear(Current.user, Current.organization)
+        PayDraft.clear(Current.organization)
         redirect_to manage_payout_batch_path(result.batch),
                     notice: "Added #{helpers.pluralize(result.added, 'person')} to your staff payout run. Fund and pay it when you're ready."
       end

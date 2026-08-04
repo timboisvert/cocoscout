@@ -79,11 +79,49 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     it "saves and restores the draft, and clears it after a paid run" do
       patch manage_staffing_pay_draft_path, params: { draft: '{"payday":"2026-08-01"}' }, as: :json
       expect(response).to have_http_status(:no_content)
-      expect(PayDraft.read(owner, org)).to eq('{"payday":"2026-08-01"}')
+      expect(PayDraft.read(org)).to eq('{"payday":"2026-08-01"}')
 
       post manage_create_staffing_pay_path, params: { lines: { member.id.to_s => { hours: "4" } } }
 
-      expect(PayDraft.read(owner, org)).to be_nil
+      expect(PayDraft.read(org)).to be_nil
+    end
+
+    # A tips number read off the bar's POS exists nowhere else — discarding the
+    # draft run must put everything hand-entered back into the shared draft.
+    it "rebuilds the shared draft from a discarded staff run" do
+      bartender = create(:house_role, organization: org, name: "Bartender")
+      create(:staff_role_qualification, organization_staff_member: member, house_role: bartender, hourly_rate_cents: 1300)
+      entry = create(:staff_time_entry, organization: org, person: person, house_role: bartender,
+                     approved_at: Time.current, approved_by: owner,
+                     started_at: Time.current.change(hour: 18), ended_at: Time.current.change(hour: 21))
+
+      post manage_create_staffing_pay_path, params: {
+        payday: Date.current.to_s,
+        lines: { member.id.to_s => {
+          adhoc: [ "2|#{bartender.id}" ],
+          time_entry_ids: [ entry.id.to_s ],
+          bonus: "10", reimbursement: "5.50", tips: "25", cash_tips: "15",
+          tips_sheet: [ "2026-07-18|25" ], cash_tips_sheet: [ "2026-07-19|15" ]
+        } }
+      }
+      batch = PayoutBatch.last
+      expect(PayDraft.read(org)).to be_nil # cleared on submit
+
+      delete manage_payout_batch_path(batch)
+
+      draft = JSON.parse(PayDraft.read(org))
+      line = draft["lines"][member.id.to_s]
+      expect(line["tips"]).to eq("25.00")
+      expect(line["tips_sheet"]).to eq([ "2026-07-18|25.00" ])
+      expect(line["cash_tips"]).to eq("15.00")
+      expect(line["cash_tips_sheet"]).to eq([ "2026-07-19|15.00" ])
+      expect(line["bonus"]).to eq("10.00")
+      expect(line["reimbursement"]).to eq("5.50")
+      expect(line["adhoc"]).to eq([ "2.0|#{bartender.id}" ])
+      expect(line["time_entry_ids"]).to eq([ entry.id.to_s ])
+      # The entry itself is back in the approved-unpaid pool.
+      expect(entry.reload.payout_batch_id).to be_nil
+      expect(entry.paid_at).to be_nil
     end
   end
 

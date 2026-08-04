@@ -36,15 +36,37 @@ module Manage
 
     def show
       @batch = organization.payout_batches.find(params[:id])
-      # Payees in an open run who can't be paid yet (no connected bank) — their
-      # transfer would fail, so warn before funding.
-      @not_ready_items = if @batch.open?
+      # Payees who can't be paid yet (no connected bank): in an open run they're
+      # a pre-funding warning; in a funded, partially-paid run they're who the
+      # run is still waiting on.
+      @not_ready_items = if @batch.open? || @batch.status == "partially_paid"
         @batch.items.includes(:payee).pending.reject do |item|
           item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
         end
       else
         []
       end
+      # Unpaid items whose payee has since become payable (connected a bank, or
+      # a failed transfer worth retrying) — what "Pay remaining" would send.
+      @payable_remaining_items = if @batch.status == "partially_paid" && @batch.funding_status == "succeeded"
+        @batch.items.includes(:payee).where(status: %w[pending failed]).select do |item|
+          item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
+        end
+      else
+        []
+      end
+    end
+
+    # Send transfers to whoever in an already-funded, partially-paid run has
+    # become payable since the last pass. No new funding — the original ACH
+    # debit covered the whole run.
+    def pay_remaining
+      batch = organization.payout_batches.find(params[:id])
+      PayoutBatchService.pay_remaining!(batch)
+      redirect_to manage_payout_batch_path(batch),
+                  notice: batch.reload.completed? ? "Everyone in this run is paid — run complete." : "Paid everyone who's ready. The rest stay on this run until they connect a bank."
+    rescue PayoutBatchService::Error => e
+      redirect_to manage_payout_batch_path(batch), alert: e.message
     end
 
     # Fund and pay an existing open run (e.g. a performer run built via

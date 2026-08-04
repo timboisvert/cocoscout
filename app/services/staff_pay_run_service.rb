@@ -76,7 +76,8 @@ class StaffPayRunService
 
         parts.each do |part|
           add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
-                            description: line[:notes], excluded_from_payout: part[:excluded], worksheet: part[:worksheet])
+                            description: line[:notes], excluded_from_payout: part[:excluded],
+                            worksheet: part[:worksheet], details: part[:details])
         end
         item.update!(amount_cents: item.payout_contributions.payable.sum(:amount_cents))
 
@@ -95,8 +96,12 @@ class StaffPayRunService
   # kept as a permanent part of the run's record but never paid. Tips and cash
   # tips carry their per-day worksheet breakdown for backward traceability.
   def self.contribution_parts(organization, member, line, worked)
+    # The ad-hoc "hours|role_id" pairs ride on the worked contribution so a
+    # discarded draft run can rebuild the Pay People draft exactly as entered.
+    adhoc_pairs = Array(line[:adhoc]).map { |l| "#{l[:hours]}|#{l[:house_role]&.id}" }
+    worked_details = adhoc_pairs.any? ? { "adhoc" => adhoc_pairs } : nil
     [
-      { label: worked_label(organization, member, line), amount: worked.to_i, excluded: false },
+      { label: worked_label(organization, member, line), amount: worked.to_i, excluded: false, details: worked_details },
       { label: "Bonus", amount: line[:bonus_cents].to_i, excluded: false },
       { label: "Reimbursement", amount: line[:reimbursement_cents].to_i, excluded: false },
       { label: "Tips", amount: line[:tips_cents].to_i, excluded: false, worksheet: line[:tips_worksheet] },
@@ -124,11 +129,11 @@ class StaffPayRunService
     "Worked hours (#{formatted}h#{role_suffix})"
   end
 
-  def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil, excluded_from_payout: false, worksheet: nil)
+  def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil, excluded_from_payout: false, worksheet: nil, details: nil)
     contribution = PayoutContribution.create!(
       payout_batch: batch, payout_batch_item: item, payee: payee,
       amount_cents: amount_cents, label: label, description: description,
-      excluded_from_payout: excluded_from_payout, worksheet: worksheet.presence
+      excluded_from_payout: excluded_from_payout, worksheet: worksheet.presence, details: details.presence
     )
     # Recorded-only lines (cash tips) must not add to the worker's owed balance —
     # they're already in hand, so no earning entry is posted.

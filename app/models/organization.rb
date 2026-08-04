@@ -132,6 +132,21 @@ class Organization < ApplicationRecord
     contract_notification_manager_users.where(id: ids).filter_map(&:person)
   end
 
+  # --- Payout-run notifications ----------------------------------------------
+  # The managers the org chose to email when a payout run is submitted (funded).
+  # Empty means nobody is emailed. Draws from the same manager pool as contract
+  # notifications; intersecting keeps removed managers from lingering.
+  def payout_notification_user_ids
+    Array(self[:payout_notification_user_ids]).map(&:to_i)
+  end
+
+  def payout_notification_users
+    ids = payout_notification_user_ids
+    return User.none if ids.empty?
+
+    contract_notification_manager_users.where(id: ids)
+  end
+
   before_create :generate_invite_token
 
   # Generate or ensure invite token exists

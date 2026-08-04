@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1380,6 +1380,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_120000) do
     t.bigint "organization_talent_pool_id"
     t.bigint "owner_id", null: false
     t.string "payout_funding_method", default: "ach", null: false
+    t.jsonb "payout_notification_user_ids", default: [], null: false
     t.string "payout_schedule", default: "manual", null: false
     t.integer "payout_schedule_day"
     t.boolean "payouts_enabled", default: false, null: false
@@ -1451,6 +1452,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_120000) do
     t.bigint "amount_cents", default: 0, null: false
     t.datetime "created_at", null: false
     t.string "description"
+    t.jsonb "details"
     t.boolean "excluded_from_payout", default: false, null: false
     t.string "label", null: false
     t.bigint "payee_id", null: false

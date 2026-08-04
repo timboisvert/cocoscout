@@ -81,6 +81,109 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     expect(response).to redirect_to(manage_payout_batch_path(batch))
   end
 
+  describe "a run with someone still waiting on a bank" do
+    before do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+    end
+
+    let!(:batch) do
+      b = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "draft", trigger: "manual")
+      b.items.create!(payee: ready, amount_cents: 4000, status: "pending")
+      b.items.create!(payee: not_ready, amount_cents: 2500, status: "pending")
+      b.recalculate_total!
+      b
+    end
+
+    it "funds the full total, pays the ready, and keeps the run open as partially paid" do
+      post manage_fund_payout_batch_path(batch)
+
+      batch.reload
+      expect(batch.status).to eq("partially_paid")
+      expect(batch.completed_at).to be_nil
+      expect(batch.items.find_by(payee: ready).status).to eq("paid")
+      # Skipped, not failed — the money waits on this run.
+      expect(batch.items.find_by(payee: not_ready).status).to eq("pending")
+
+      get manage_payout_batch_path(batch)
+      expect(response.body).to include("still to pay on this run")
+      expect(response.body).to include("Nobank Ned")
+      # No one new is ready, so no Pay remaining button yet.
+      expect(response.body).not_to include("confirm-pay-remaining")
+    end
+
+    it "pays the remaining person once they connect a bank, then completes" do
+      post manage_fund_payout_batch_path(batch)
+      not_ready.update!(stripe_account_id: "acct_n", payouts_enabled: true)
+
+      get manage_payout_batch_path(batch)
+      expect(response.body).to include("Pay remaining")
+
+      post manage_pay_remaining_payout_batch_path(batch)
+
+      batch.reload
+      expect(batch.status).to eq("completed")
+      expect(batch.completed_at).to be_present
+      expect(batch.items.where.not(status: "paid")).to be_empty
+      expect(org.payout_balance_cents_for(not_ready)).to eq(0)
+    end
+
+    it "refuses pay_remaining on an unfunded run" do
+      post manage_pay_remaining_payout_batch_path(batch)
+      expect(response).to redirect_to(manage_payout_batch_path(batch))
+      follow_redirect!
+      expect(response.body).to include("hasn&#39;t been funded")
+    end
+  end
+
+  describe "submitted notification email" do
+    include ActiveJob::TestHelper
+
+    before do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+      ContentTemplate.create!(
+        key: "payout_run_submitted", name: "Payout Run Submitted",
+        subject: "Payout run submitted — {{total}} to {{people_count}}",
+        body: "<p>{{payee_lines}}</p><p>Expected {{expected_window}}</p><p><a href=\"{{payout_run_url}}\">View the payout run</a></p>",
+        category: "notifications", channel: "email", active: true
+      )
+      org.update!(payout_notification_user_ids: [ owner.id ])
+    end
+
+    after { clear_enqueued_jobs }
+
+    let!(:batch) do
+      b = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "draft", trigger: "manual")
+      b.items.create!(payee: ready, amount_cents: 4000, status: "pending")
+      b.recalculate_total!
+      b
+    end
+
+    it "emails the chosen managers with names, amounts, the window, and a link" do
+      expect { post manage_fund_payout_batch_path(batch) }
+        .to have_enqueued_job(PayoutRunSubmittedNotificationJob).with(batch.id)
+
+      expect { perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob) }
+        .to change { ActionMailer::Base.deliveries.count }.by(1)
+
+      mail = ActionMailer::Base.deliveries.last
+      expect(mail.to).to eq([ owner.email_address ])
+      expect(mail.subject).to include("$40.00").and include("1 person")
+      raw = mail.to_s
+      expect(raw).to include("Ready Rita")
+      expect(raw).to include("$40.00")
+      expect(raw).to include("payout-runs/#{batch.id}")
+    end
+
+    it "sends nothing when no recipients are chosen" do
+      org.update!(payout_notification_user_ids: [])
+      post manage_fund_payout_batch_path(batch)
+      expect { perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob) }
+        .not_to change { ActionMailer::Base.deliveries.count }
+    end
+  end
+
   it "links a payment component back to the show payout that created it" do
     show = create(:show, production: create(:production, organization: org), event_type: :show, date_and_time: 3.days.ago)
     payout = ShowPayout.create!(show: show, status: "awaiting_payout", calculated_at: Time.current, total_payout: 40)

@@ -5,7 +5,8 @@ module Manage
   # so it can grow more topics later; for now the only section is the offline
   # payment methods an org uses to pay people outside CocoScout's Stripe rail.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[offline_methods].freeze
+    SECTIONS = %w[offline_methods notifications].freeze
+    SECTION_LABELS = { "offline_methods" => "Offline Methods", "notifications" => "Notifications" }.freeze
     DEFAULT_SECTION = "offline_methods"
 
     before_action :set_section, only: %i[show]
@@ -14,7 +15,19 @@ module Manage
       case @section
       when "offline_methods"
         @enabled_offline_payout_methods = Current.organization.enabled_offline_payout_methods
+      when "notifications"
+        @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
+        @notification_selected_ids = Current.organization.payout_notification_user_ids
       end
+    end
+
+    # Which managers get an email when a payout run is submitted. Store only ids
+    # that are actually current managers; empty selection means "no one".
+    def update_notifications
+      manager_ids = Current.organization.contract_notification_manager_users.pluck(:id)
+      selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
+      Current.organization.update!(payout_notification_user_ids: selected)
+      redirect_to section_path("notifications"), notice: "Payout notification recipients updated."
     end
 
     # The "other ways" this org sometimes pays people (cash/check/Zelle/Venmo/other).
@@ -31,7 +44,7 @@ module Manage
     # never moves anybody else's link.
     def sections
       SECTIONS.map do |key|
-        { key: key, label: key.titleize, path: section_path(key) }
+        { key: key, label: SECTION_LABELS.fetch(key, key.titleize), path: section_path(key) }
       end
     end
     helper_method :sections

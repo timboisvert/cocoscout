@@ -1,0 +1,31 @@
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Payout run alerts</h2>
+    <p class="text-sm text-gray-600 mt-1">Pick the managers who should get an email when a payout run is submitted — who's being paid, how much, and when deposits should land. If no one is selected, no emails are sent.</p>
+  </div>
+  <%= form_with url: manage_money_settings_notifications_path, method: :patch, class: "px-6 py-5" do %>
+    <% if @notification_managers.any? %>
+      <div class="space-y-3">
+        <% @notification_managers.each do |user| %>
+          <% label = user.person&.name.presence || user.email_address %>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <%= check_box_tag "notification_user_ids[]", user.id,
+                  @notification_selected_ids.include?(user.id), id: "payout_notify_user_#{user.id}",
+                  class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+            <span>
+              <span class="block text-sm font-medium text-gray-900"><%= label %></span>
+              <% if user.person&.name.present? %>
+                <span class="block text-xs text-gray-500"><%= user.email_address %></span>
+              <% end %>
+            </span>
+          </label>
+        <% end %>
+      </div>
+      <div class="mt-5">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">No managers to notify yet. Add managers to your organization first.</p>
+    <% end %>
+  <% end %>
+</div>

@@ -11,10 +11,11 @@ class PayoutBatchService
   PAYABLE_TYPES = %w[Person Contractor].freeze
 
   # Batch statuses that still "hold" money: an open draft (fund it from its own
-  # run) or a run mid-flight. Money committed to one of these has posted its
-  # earning to the ledger but not yet its offsetting payout, so a balance sweep
-  # must NOT grab it again.
-  UNSETTLED_BATCH_STATUSES = %w[draft funding funded processing].freeze
+  # run), a run mid-flight, or a funded run partially paid (some payees still
+  # waiting on a bank — their slice stays committed to the run). Money committed
+  # to one of these has posted its earning to the ledger but not yet its
+  # offsetting payout, so a balance sweep must NOT grab it again.
+  UNSETTLED_BATCH_STATUSES = %w[draft funding funded processing partially_paid].freeze
 
   # Create a draft batch with one item per eligible payee. The amount is the
   # payee's ledger balance MINUS anything already committed to another open/
@@ -57,14 +58,68 @@ class PayoutBatchService
   # pool (dependent: :nullify clears payout_batch_id on destroy, but not paid_at),
   # then destroys the batch — cascading to its items, contributions, and the
   # earning ledger entries those posted. Draft-only: never touch money in flight.
+  #
+  # For a staff run, everything hand-entered (tips + their per-day worksheets,
+  # bonuses, reimbursements, ad-hoc hours, included time entries) is first
+  # written back into the org's shared Pay People draft — a tips number read
+  # off the bar's POS exists nowhere else, so a discard must never eat it.
   def self.discard!(batch)
     raise Error, "Only a draft run can be discarded." unless batch.status == "draft"
 
     ActiveRecord::Base.transaction do
+      rebuild_staff_pay_draft!(batch) if batch.kind == "staff_pay"
       batch.staff_time_entries.update_all(paid_at: nil, updated_at: Time.current)
       batch.destroy!
     end
     batch
+  end
+
+  # Reconstruct the Pay People draft blob (the same shape the grid's autosave
+  # writes — see pay_draft_controller.js #serialize) from a draft staff run's
+  # items and contributions, and store it as the org's shared draft. Multiple
+  # add-to-run visits merge: amounts sum, worksheets and ad-hoc lines concatenate.
+  def self.rebuild_staff_pay_draft!(batch)
+    org = batch.organization
+    members_by_person = org.organization_staff_members.index_by(&:person_id)
+    entries_by_person = batch.staff_time_entries.group_by(&:person_id)
+
+    dollars = ->(cents) { format("%.2f", cents / 100.0) }
+    sheet = ->(worksheet_entries) { worksheet_entries.map { |w| "#{w['date']}|#{dollars.call(w['amount_cents'].to_i)}" } }
+
+    lines = {}
+    batch.items.includes(:payee, :payout_contributions).each do |item|
+      next unless item.payee.is_a?(Person)
+
+      member = members_by_person[item.payee_id]
+      next unless member
+
+      line = Hash.new { |h, k| h[k] = 0 }
+      arrays = Hash.new { |h, k| h[k] = [] }
+      item.payout_contributions.each do |c|
+        case c.label
+        when /\AWorked hours/
+          arrays["adhoc"].concat(Array(c.details&.dig("adhoc")))
+        when "Bonus" then line["bonus"] += c.amount_cents
+        when "Reimbursement" then line["reimbursement"] += c.amount_cents
+        when "Tips"
+          line["tips"] += c.amount_cents
+          arrays["tips_sheet"].concat(sheet.call(c.worksheet_entries))
+        when "Cash tips (recorded)"
+          line["cash_tips"] += c.amount_cents
+          arrays["cash_tips_sheet"].concat(sheet.call(c.worksheet_entries))
+        end
+      end
+
+      draft_line = line.transform_values { |cents| dollars.call(cents) }
+      arrays.each { |k, v| draft_line[k] = v if v.any? }
+      entry_ids = entries_by_person[item.payee_id]&.map { |e| e.id.to_s }
+      draft_line["time_entry_ids"] = entry_ids if entry_ids&.any?
+
+      lines[member.id.to_s] = draft_line if draft_line.any?
+    end
+    return if lines.empty?
+
+    PayDraft.write(org, JSON.generate({ "funding_method" => "ach", "lines" => lines }))
   end
 
   FUNDING_METHODS = %w[ach card].freeze
@@ -102,6 +157,9 @@ class PayoutBatchService
     )
     batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
     advance_funding!(batch, intent.status)
+    # The run is submitted — tell the org's chosen managers (who's being paid,
+    # how much, expected deposit window). Async; no recipients chosen = no-op.
+    PayoutRunSubmittedNotificationJob.perform_later(batch.id)
     batch
   rescue Stripe::StripeError => e
     batch.update!(status: "failed", funding_status: "failed")
@@ -123,12 +181,20 @@ class PayoutBatchService
 
   class Error < StandardError; end
 
-  # Transfer every pending item to its connected account. Each success posts a
-  # `payout` ledger entry (debiting the balance); failures leave the balance intact.
+  # Transfer every payable pending item to its connected account. Each success
+  # posts a `payout` ledger entry (debiting the balance); failures leave the
+  # balance intact. Payees without a connected bank are SKIPPED, not failed —
+  # the funding debit covered them, so their money stays attached to this run
+  # (status "partially_paid") and goes out via #pay_remaining! once they
+  # connect. A run only reads "completed" when every item is actually paid.
   def self.process!(batch)
     batch.update!(status: "processing")
 
     batch.items.pending.find_each do |item|
+      # No connected bank yet: a transfer would just fail. Leave the item
+      # pending — their slice of the funded money waits on this run.
+      next unless item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
+
       transfer = Stripe::Transfer.create(
         amount: item.amount_cents,
         currency: "usd",
@@ -142,9 +208,35 @@ class PayoutBatchService
       item.mark_failed!(e.message)
     end
 
-    all_paid = batch.items.where.not(status: "paid").none?
-    batch.update!(status: all_paid ? "completed" : "failed", completed_at: Time.current)
+    finalize_status!(batch)
     batch
+  end
+
+  # A funded run stays open until every person in it is paid: all paid →
+  # completed (and only then stamped completed_at); anything still pending or
+  # failed → partially_paid, waiting for #pay_remaining!.
+  def self.finalize_status!(batch)
+    if batch.items.where.not(status: "paid").none?
+      batch.update!(status: "completed", completed_at: Time.current)
+    else
+      batch.update!(status: "partially_paid", completed_at: nil)
+    end
+  end
+
+  # Pay whoever in this already-funded run has become payable since the last
+  # pass (connected a bank, or a transient transfer failure). No new funding —
+  # the original debit already covered the full run; these transfers draw on
+  # that money. Failed items get one more chance each call.
+  def self.pay_remaining!(batch)
+    unless batch.funding_status == "succeeded"
+      raise Error, "This run hasn't been funded yet — fund it first."
+    end
+    unless %w[partially_paid processing failed].include?(batch.status)
+      raise Error, "This run has nothing left to pay."
+    end
+
+    batch.items.where(status: "failed").update_all(status: "pending", error: nil, updated_at: Time.current)
+    process!(batch)
   end
 
   # Mark a paid performer a billable "active performer" for the payout's month —
