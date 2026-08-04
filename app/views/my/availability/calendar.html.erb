@@ -1,6 +1,6 @@
 <% content_for :title, "Availability Calendar" %>
 
-<div class="w-full mb-10" data-controller="availability">
+<div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -43,327 +43,88 @@
       ]
   %>
   <% if @show_entity_pairs.any? %>
-    <% # Desktop: Show selected month only; Mobile: Show all months %>
-    <% # Use Date for month keys to avoid DST timezone comparison issues %>
-    <% current_month_param = params[:month] ? Date.parse(params[:month]).beginning_of_month : nil %>
-    <% desktop_month = current_month_param || Date.current.beginning_of_month %>
-    <% desktop_pairs = @pairs_by_month[desktop_month] || [] %>
+    <%
+      # Use Date for month keys to avoid DST timezone comparison issues
+      current_month_param = params[:month] ? Date.parse(params[:month]).beginning_of_month : nil
+      display_month = current_month_param || Date.current.beginning_of_month
+      month_pairs = @pairs_by_month[display_month] || []
+      multi_entity = @people.size > 1 || @groups.any?
 
-    <% # Calculate valid month range %>
-    <% first_month = @pairs_by_month.keys.sort.first %>
-    <% last_month = @pairs_by_month.keys.sort.last %>
-    <% prev_month = desktop_month - 1.month %>
-    <% next_month = desktop_month + 1.month %>
-    <% can_go_prev = prev_month >= Date.current.beginning_of_month %>
-    <% can_go_next = next_month <= last_month %>
+      last_month = @pairs_by_month.keys.sort.last
+      prev_month = display_month - 1.month
+      next_month = display_month + 1.month
 
-    <!-- Separator -->
-    <div class="border-t border-gray-200 my-4"></div>
+      # One augmented item per show x entity, grouped by day for the calendar.
+      items_by_date = month_pairs
+        .map { |pair| pair.merge(availability: @availabilities[[ pair[:show].id, pair[:entity_key] ]], multi_entity: multi_entity) }
+        .group_by { |pair| pair[:show].date_and_time.to_date }
 
-    <!-- Month Navigation (Desktop Only) -->
-    <div class="hidden md:flex items-center justify-between mb-4">
-      <% if can_go_prev %>
-        <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(","), month: prev_month.strftime("%Y-%m-01")),
-                data: { turbo_prefetch: false },
-                class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <%= prev_month.strftime("%B %Y") %>
-        <% end %>
-      <% else %>
-        <div class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <%= prev_month.strftime("%B %Y") %>
-        </div>
-      <% end %>
+      month_link = ->(m) {
+        my_availability_calendar_path(event_type: @event_type_filter.join(","),
+                                      entity: @entity_filter.join(","),
+                                      month: m.strftime("%Y-%m-01"))
+      }
 
-      <div class="flex items-center gap-3">
-        <h2 class="text-2xl font-bold text-gray-900"><%= desktop_month.strftime("%B %Y") %></h2>
-        <% if desktop_month != Date.current.beginning_of_month %>
-          <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
-                  data: { turbo_prefetch: false },
-                  class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors" do %>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Today
-          <% end %>
-        <% end %>
-      </div>
+      # Clicking a day with events opens its modal (future days only).
+      cell_attrs = ->(date, day_items) {
+        next {} if day_items.empty? || date < Date.current
+        {
+          class: "cursor-pointer hover:border-pink-400 hover:shadow-sm transition-all",
+          data: { controller: "modal", action: "click->modal#open", modal_id: "day-modal-#{date.iso8601}" }
+        }
+      }
+    %>
 
-      <% if can_go_next %>
-        <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(","), month: next_month.strftime("%Y-%m-01")),
-                data: { turbo_prefetch: false },
-                class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
-          <%= next_month.strftime("%B %Y") %>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        <% end %>
-      <% else %>
-        <div class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
-          <%= next_month.strftime("%B %Y") %>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      <% end %>
-    </div>
+    <%= render "shared/month_calendar",
+        current_month: display_month,
+        month_link: month_link,
+        items_by_date: items_by_date,
+        item_partial: "my/availability/calendar_tile",
+        mobile_item_partial: "my/availability/calendar_mobile_row",
+        cell_attrs: cell_attrs,
+        prev_month: prev_month,
+        next_month: next_month,
+        can_go_prev: prev_month >= Date.current.beginning_of_month,
+        can_go_next: next_month <= (last_month || display_month),
+        dim_past: true,
+        empty_text: "No upcoming events this month." %>
 
-    <!-- Desktop: Single Month Calendar -->
-    <div class="hidden md:block border border-gray-200 rounded-lg p-4 mb-8">
-      <div class="grid grid-cols-7 gap-1">
-        <!-- Day headers -->
-        <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day| %>
-          <div class="text-center text-xs font-semibold text-gray-600 p-2">
-            <%= day %>
+    <%# Day modals: the standard editable availability rows %>
+    <% items_by_date.each do |date, day_items| %>
+      <% next if date < Date.current %>
+      <div id="day-modal-<%= date.iso8601 %>"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+           data-controller="modal"
+           data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden"
+             data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white"><%= date.strftime("%A, %B %-d") %></h3>
+            <button type="button"
+                    data-action="click->modal#close"
+                    class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
           </div>
-        <% end %>
-
-        <!-- Empty cells for days before month starts -->
-        <% (desktop_month.wday).times do %>
-          <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
-        <% end %>
-
-        <!-- Calendar days -->
-        <% current_date = desktop_month %>
-        <% while current_date.month == desktop_month.month %>
-          <% day_pairs = desktop_pairs.select { |pair| pair[:show].date_and_time.to_date == current_date.to_date } %>
-          <% is_past = current_date.to_date < Date.current %>
-          <% is_today = current_date.to_date == Date.current %>
-          <div class="border border-gray-200 min-h-[80px] p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
-            <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
-              <%= current_date.day %>
-            </div>
-
-            <% day_pairs.each do |pair| %>
-              <% show = pair[:show] %>
-              <% entity_key = pair[:entity_key] %>
-              <% entity = pair[:entity] %>
-              <div class="mb-2" data-availability-show-id-value="<%= show.id %>" data-availability-entity-key-value="<%= entity_key %>" data-availability-status-value="<%= @availabilities[[show.id, entity_key]]&.status || 'unset' %>">
-                <% event_type_badge_classes = if is_past
-                  "bg-gray-100 text-gray-600 border-gray-300"
-                else
-                  case show.event_type
-                    when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
-                    when "meeting" then "bg-green-100 text-green-800 border-green-300"
-                    else "bg-pink-100 text-pink-800 border-pink-300"
-                  end
-                end %>
-                <div class="text-xs p-2 rounded border <%= event_type_badge_classes %> <%= 'opacity-50 line-through' if show.canceled %> relative">
-                  <div class="absolute top-1 right-1 flex gap-0.5">
-                    <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, class: "w-5 h-5 rounded object-cover", title: entity.name %>
-                    <% else %>
-                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-[8px]" title="<%= entity.name %>">
-                        <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
-                      </div>
-                    <% end %>
-                  </div>
-                  <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
-                  <div class="text-[10px] mb-1"><%= show.production.name %></div>
-                  <% if show.secondary_name.present? %>
-                    <div class="truncate text-[10px]"><%= show.secondary_name %></div>
-                  <% end %>
-
-                  <% unless is_past %>
-                    <div class="flex gap-1 mt-2">
-                      <% current_status = @availabilities[[show.id, entity_key]]&.status || 'unset' %>
-
-                      <!-- Available button -->
-                      <%= link_to "#",
-                          class: "flex-1 p-1 rounded text-center text-[10px] border #{current_status == 'available' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}",
-                          data: { action: "click->availability#setStatus", availability_status: "available", availability_entity_key: entity_key },
-                          title: "Available" do %>
-                        <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/>
-                        </svg>
-                      <% end %>
-
-                      <!-- Unavailable button -->
-                      <%= link_to "#",
-                          class: "flex-1 p-1 rounded text-center text-[10px] border #{current_status == 'unavailable' ? 'bg-red-500 text-white border-red-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}",
-                          data: { action: "click->availability#setStatus", availability_status: "unavailable", availability_entity_key: entity_key },
-                          title: "Unavailable" do %>
-                        <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/>
-                        </svg>
-                      <% end %>
-                    </div>
-
-                    <!-- Success indicator -->
-                    <div data-availability-target="success" class="hidden text-center mt-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mx-auto text-green-600">
-                        <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                      </svg>
-                    </div>
-                  <% end %>
-
-                  <% if show.canceled %>
-                    <div class="text-red-600 font-semibold mt-1 text-[10px]">Canceled</div>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-          <% current_date = current_date + 1.day %>
-        <% end %>
-
-        <!-- Empty cells to complete the week -->
-        <% remaining_cells = (7 - current_date.wday) % 7 %>
-        <% remaining_cells.times do %>
-          <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
-        <% end %>
-      </div>
-    </div>
-
-    <!-- Mobile: Single Month with Navigation -->
-    <div class="md:hidden">
-      <!-- Mobile Month Navigation -->
-      <div class="flex items-center justify-between mb-4">
-        <% if can_go_prev %>
-          <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(","), month: prev_month.strftime("%Y-%m-01")),
-                  data: { turbo_prefetch: false },
-                  class: "inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            <%= prev_month.strftime("%b") %>
-          <% end %>
-        <% else %>
-          <div class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            <%= prev_month.strftime("%b") %>
-          </div>
-        <% end %>
-
-        <div class="flex items-center gap-2">
-          <h2 class="text-lg font-bold text-gray-900"><%= desktop_month.strftime("%B %Y") %></h2>
-          <% if desktop_month != Date.current.beginning_of_month %>
-            <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(",")),
-                    data: { turbo_prefetch: false },
-                    class: "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors" do %>
-              Today
-            <% end %>
-          <% end %>
-        </div>
-
-        <% if can_go_next %>
-          <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: @entity_filter.join(","), month: next_month.strftime("%Y-%m-01")),
-                  data: { turbo_prefetch: false },
-                  class: "inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
-            <%= next_month.strftime("%b") %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          <% end %>
-        <% else %>
-          <div class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
-            <%= next_month.strftime("%b") %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        <% end %>
-      </div>
-
-      <!-- Mobile Month Events -->
-      <% mobile_pairs = desktop_pairs.select { |pair| pair[:show].date_and_time.to_date >= Date.current } %>
-      <% if mobile_pairs.any? %>
-        <div class="border border-gray-200 rounded-lg p-4">
-          <div class="space-y-2">
-            <% current_date = [desktop_month, Date.current].max %>
-            <% while current_date.month == desktop_month.month %>
-              <% day_pairs = mobile_pairs.select { |pair| pair[:show].date_and_time.to_date == current_date.to_date } %>
-              <% if day_pairs.any? %>
-                <div class="border border-gray-200 rounded-lg p-3 <%= 'bg-blue-50' if current_date.to_date == Date.current %>">
-                  <div class="text-sm font-semibold text-gray-700 mb-2">
-                    <%= current_date.strftime("%A, %B %-d") %>
-                  </div>
-
-                  <div class="space-y-2">
-                    <% day_pairs.each do |pair| %>
-                      <% show = pair[:show] %>
-                      <% entity_key = pair[:entity_key] %>
-                      <% entity = pair[:entity] %>
-                      <div class="mb-2" data-availability-show-id-value="<%= show.id %>" data-availability-entity-key-value="<%= entity_key %>" data-availability-status-value="<%= @availabilities[[show.id, entity_key]]&.status || 'unset' %>">
-                        <% event_type_badge_classes = case show.event_type
-                            when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
-                            when "meeting" then "bg-green-100 text-green-800 border-green-300"
-                            else "bg-pink-100 text-pink-800 border-pink-300"
-                          end %>
-                        <div class="text-sm p-3 rounded border <%= event_type_badge_classes %> <%= 'opacity-50 line-through' if show.canceled %> relative">
-                          <div class="absolute top-2 right-2">
-                            <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
-                            <% if headshot_variant %>
-                              <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover", title: entity.name %>
-                            <% else %>
-                              <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-[9px]" title="<%= entity.name %>">
-                                <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
-                              </div>
-                            <% end %>
-                          </div>
-                          <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
-                          <div class="text-xs mb-1"><%= show.production.name %></div>
-                          <% if show.secondary_name.present? %>
-                            <div class="text-xs"><%= show.secondary_name %></div>
-                          <% end %>
-
-                          <div class="flex gap-2 mt-3">
-                            <% current_status = @availabilities[[show.id, entity_key]]&.status || 'unset' %>
-
-                            <!-- Available button -->
-                            <%= link_to "#",
-                                class: "flex-1 p-2 rounded text-center text-sm border flex items-center justify-center gap-1 #{current_status == 'available' ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}",
-                                data: { action: "click->availability#setStatus", availability_status: "available", availability_entity_key: entity_key },
-                                title: "Available" do %>
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/>
-                              </svg>
-                              <span>Available</span>
-                            <% end %>
-
-                            <!-- Unavailable button -->
-                            <%= link_to "#",
-                                class: "flex-1 p-2 rounded text-center text-sm border flex items-center justify-center gap-1 #{current_status == 'unavailable' ? 'bg-red-500 text-white border-red-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}",
-                                data: { action: "click->availability#setStatus", availability_status: "unavailable", availability_entity_key: entity_key },
-                                title: "Unavailable" do %>
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/>
-                              </svg>
-                              <span>Unavailable</span>
-                            <% end %>
-                          </div>
-
-                          <!-- Success indicator -->
-                          <div data-availability-target="success" class="hidden text-center mt-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mx-auto text-green-600">
-                              <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                          </div>
-
-                          <% if show.canceled %>
-                            <div class="text-red-600 font-semibold mt-2">Canceled</div>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-              <% current_date = current_date + 1.day %>
+          <div class="p-4 space-y-1 max-h-[70vh] overflow-y-auto">
+            <% day_items.each do |item| %>
+              <%= render partial: "my/tasks/availability_item", locals: {
+                item: {
+                  show: item[:show],
+                  entity: item[:entity],
+                  entity_type: item[:entity].class.name,
+                  entity_key: item[:entity_key],
+                  availability: item[:availability]
+                },
+                has_groups: multi_entity
+              } %>
             <% end %>
           </div>
         </div>
-      <% else %>
-        <p class="text-gray-500 text-sm">No upcoming events this month.</p>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
   <% else %>
     <p class="text-gray-500 text-sm">
       You don't have any upcoming events matching your filters.

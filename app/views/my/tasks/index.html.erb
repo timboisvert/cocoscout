@@ -71,11 +71,9 @@
               <p class="text-sm text-gray-500 mt-0.5">Let your production managers know if you can make these shows.</p>
             </div>
           </div>
-          <div class="p-4 space-y-1" data-controller="linked-highlight">
+          <div class="p-4 space-y-1">
             <% @open_availability_items.each do |item| %>
-              <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
-                <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
-              </div>
+              <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
             <% end %>
           </div>
         </div>
@@ -100,11 +98,9 @@
             </svg>
           </button>
           <div data-disclosure-target="content" class="hidden border-t border-gray-200">
-            <div class="p-4 space-y-1" data-controller="linked-highlight">
+            <div class="p-4 space-y-1">
               <% @answered_availability_items.each do |item| %>
-                <div id="request-item-<%= item[:show].id %>-<%= item[:entity_key] %>">
-                  <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
-                </div>
+                <%= render partial: "my/tasks/availability_item", locals: { item: item, has_groups: has_groups } %>
               <% end %>
             </div>
             <div class="px-5 pb-4">
@@ -133,7 +129,7 @@
           </div>
           <div class="p-4 space-y-1">
             <% (@open_signup_items + @answered_signup_items).each do |item| %>
-              <%= render partial: "my/tasks/signup_item", locals: { item: item } %>
+              <%= render partial: "my/tasks/signup_item", locals: { item: item, has_groups: has_groups } %>
             <% end %>
             <% @non_event_signups.each do |item| %>
               <%= render partial: "my/tasks/non_event_signup", locals: { item: item, has_groups: has_groups } %>

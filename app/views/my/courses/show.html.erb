@@ -234,9 +234,9 @@
               <% is_past = session.date_and_time < Time.current %>
               <% is_next = session == @next_session %>
               <div class="flex items-center gap-3 px-3 py-2 rounded-lg <%= is_next ? 'bg-pink-50 border border-pink-200' : (is_past ? 'opacity-60' : '') %>">
-                <div class="flex-shrink-0 w-10 text-center">
-                  <div class="text-[10px] font-semibold text-pink-600 uppercase leading-tight"><%= session.date_and_time.strftime("%b") %></div>
-                  <div class="text-lg font-bold text-gray-900 leading-tight"><%= session.date_and_time.strftime("%-d") %></div>
+                <div class="flex-shrink-0 w-10 flex items-center gap-1">
+                  <span class="text-lg leading-none font-bold text-gray-900"><%= session.date_and_time.strftime("%-d") %></span>
+                  <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= session.date_and_time.strftime("%b") %></span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="text-sm font-medium text-gray-900"><%= session.date_and_time.strftime("%A") %></div>

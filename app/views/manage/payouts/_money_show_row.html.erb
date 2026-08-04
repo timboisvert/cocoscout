@@ -56,10 +56,12 @@
     <%# Panel 1 & 2: Show Info (left half) %>
     <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
       <%# Date Box %>
-      <div class="flex-shrink-0 w-14 text-center <%= 'line-through' if is_canceled %>">
-        <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-        <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-        <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+      <div class="flex-shrink-0 w-14 <%= 'line-through' if is_canceled %> flex items-center gap-1.5">
+        <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+        <span class="text-[10px] leading-tight uppercase">
+          <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+          <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+        </span>
       </div>
 
       <%# Show Details %>

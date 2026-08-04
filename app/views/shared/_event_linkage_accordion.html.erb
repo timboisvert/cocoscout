@@ -41,28 +41,30 @@
       <% if spans_months %>
         <%# Two date boxes for different months %>
         <div class="flex items-center gap-1">
-          <div class="flex-shrink-0 w-12 text-center">
-            <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
-            <div class="text-xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></div>
+          <div class="flex-shrink-0 w-12 flex items-center gap-1">
+            <span class="text-lg leading-none font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></span>
+            <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></span>
           </div>
           <span class="text-gray-400 text-sm">–</span>
-          <div class="flex-shrink-0 w-12 text-center">
-            <div class="text-xs font-semibold text-pink-600 uppercase"><%= last_show.date_and_time.strftime("%b") %></div>
-            <div class="text-xl font-bold text-gray-900"><%= last_show.date_and_time.strftime("%-d") %></div>
+          <div class="flex-shrink-0 w-12 flex items-center gap-1">
+            <span class="text-lg leading-none font-bold text-gray-900"><%= last_show.date_and_time.strftime("%-d") %></span>
+            <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= last_show.date_and_time.strftime("%b") %></span>
           </div>
         </div>
       <% elsif first_show.date_and_time.to_date == last_show.date_and_time.to_date %>
         <%# Single day - one date box %>
-        <div class="flex-shrink-0 w-14 text-center">
-          <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
-          <div class="text-2xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></div>
-          <div class="text-xs text-gray-500"><%= first_show.date_and_time.strftime("%a") %></div>
+        <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
+          <span class="text-xl leading-none font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></span>
+          <span class="text-[10px] leading-tight uppercase">
+            <span class="block font-semibold text-pink-600"><%= first_show.date_and_time.strftime("%b") %></span>
+            <span class="block text-gray-500"><%= first_show.date_and_time.strftime("%a") %></span>
+          </span>
         </div>
       <% else %>
         <%# Same month, different days - combined date box %>
-        <div class="flex-shrink-0 w-14 text-center">
-          <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
-          <div class="text-xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %>-<%= last_show.date_and_time.strftime("%-d") %></div>
+        <div class="flex-shrink-0 w-14 flex items-center gap-1">
+          <span class="text-lg leading-none font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %>-<%= last_show.date_and_time.strftime("%-d") %></span>
+          <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></span>
         </div>
       <% end %>
 
@@ -96,10 +98,12 @@
     <% all_shows.each do |show| %>
       <div class="flex items-center px-3 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition">
         <%# Date Box %>
-        <div class="flex-shrink-0 w-14 text-center">
-          <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-          <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-          <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+        <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
+          <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+          <span class="text-[10px] leading-tight uppercase">
+            <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+            <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+          </span>
         </div>
 
         <%# Show Details %>

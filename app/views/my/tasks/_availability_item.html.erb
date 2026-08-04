@@ -1,20 +1,100 @@
 <%#
-  One availability request row — inline-editable via shared/show_row's
-  availability panel (Available / Unavailable buttons PATCH straight to
-  /my/availability/:show_id).
+  One availability row on My Tasks — the 2026 compact design.
+  White bordered card, inline date (big day + stacked month/weekday),
+  compact worded Available/Unavailable control (never thumbs). On phones
+  the control becomes a full-width tap bar below the show info instead of
+  squeezing beside it. The note lives behind a pencil icon that expands a
+  full-width editor under the row.
+
+  Availability saves inline: the buttons PATCH /my/availability/:show_id
+  via availability_controller.js, which repaints selection by toggling
+  bg-pink-500/text-white — keep those classes and the <a data-availability-status>
+  shape if you restyle.
 
   Required locals:
     - item: Hash with :show, :entity, :entity_type, :entity_key, :availability
-    - has_groups: Boolean (affects headshot display in show_row)
+    - has_groups: Boolean — when the user answers for multiple profiles/groups,
+      show a small headshot so rows for the same show are tellable apart
 %>
-<%= render partial: "shared/show_row", locals: {
-  show: item[:show],
-  show_location: true,
-  show_production: true,
-  show_linked: true,
-  availability: item[:availability],
-  entity_key: item[:entity_key],
-  entity: item[:entity],
-  has_groups: has_groups,
-  right_panel: :availability
-} %>
+<%
+  show = item[:show]
+  entity = item[:entity]
+  availability = item[:availability]
+  current_status = availability&.status || "unset"
+  note = availability&.note
+  location_name = show.location&.name
+%>
+<div id="request-item-<%= show.id %>-<%= item[:entity_key] %>"
+     class="bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all"
+     data-controller="availability disclosure"
+     data-availability-show-id-value="<%= show.id %>"
+     data-availability-status-value="<%= current_status %>"
+     data-availability-entity-key-value="<%= item[:entity_key] %>"
+     data-availability-entity-type-value="<%= item[:entity_type] %>">
+  <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 px-3 py-1.5">
+    <%# Inline date: big day + stacked month/weekday %>
+    <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
+      <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+      <span class="text-[10px] leading-tight uppercase">
+        <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+        <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+      </span>
+    </div>
+
+    <%# Details — time/location production-line-sized but title-colored %>
+    <div class="flex-1 min-w-0">
+      <div class="text-xs text-gray-400 truncate"><%= show.production.name %></div>
+      <div class="text-sm font-medium text-gray-900 truncate"><%= show.display_name %></div>
+      <div class="text-xs text-gray-900 truncate">
+        <%= show.date_and_time.strftime("%-I:%M %p") %><% if location_name.present? %> &middot; <%= location_name %><% end %>
+      </div>
+    </div>
+
+    <%# Who this answer is for — only matters with multiple profiles/groups %>
+    <% if has_groups %>
+      <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, alt: entity.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+          <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%# Available/Unavailable — right-aligned on sm+, full-width tap bar below on phones %>
+    <div class="order-last sm:order-none w-full sm:w-auto flex flex-shrink-0 mt-1.5 sm:mt-0 pt-1.5 sm:pt-0 border-t border-gray-100 sm:border-t-0">
+      <% %w[available unavailable].each do |status| %>
+        <%
+          classes = "flex-1 sm:flex-none sm:w-24 text-xs sm:text-[11px] px-2.5 py-1.5 sm:py-1 text-center border border-gray-200 cursor-pointer flex items-center justify-center whitespace-nowrap"
+          classes += status == "available" ? " rounded-l border-r-0" : " rounded-r"
+          classes += current_status == status ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50"
+        %>
+        <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
+          <span data-availability-target="<%= status %>Check" class="hidden">&check;</span>
+          <span data-availability-target="<%= status %>Text"><%= status.humanize %></span>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%# Note toggle — pink with a dot when a note exists %>
+    <button type="button" data-action="click->disclosure#toggle" title="<%= note.present? ? "Edit note" : "Add a note" %>"
+            class="relative flex-shrink-0 p-1.5 rounded-md <%= note.present? ? "text-pink-500" : "text-gray-300" %> hover:text-pink-500 hover:bg-pink-50 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487zm0 0L19.5 7.125"/></svg>
+      <% if note.present? %>
+        <span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+      <% end %>
+    </button>
+  </div>
+
+  <%# Note editor — full-width, below the row, only when opened %>
+  <div data-disclosure-target="content" class="hidden px-3 pb-2">
+    <div class="flex items-center gap-1 sm:pl-[68px]">
+      <input type="text" data-availability-target="noteInput" data-action="focus->availability#showSaveButton"
+             value="<%= note %>" maxlength="100" placeholder="Add a note..."
+             class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+      <button type="button" data-availability-target="saveButton" data-action="click->availability#saveNote"
+              class="hidden px-2 py-1.5 text-xs bg-pink-500 text-white rounded hover:bg-pink-600 cursor-pointer flex-shrink-0 transition-all">Save</button>
+    </div>
+  </div>
+</div>

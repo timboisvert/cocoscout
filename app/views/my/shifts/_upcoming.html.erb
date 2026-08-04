@@ -18,9 +18,9 @@
                 <% org = shift.organization %>
                 <% location_name = shift.source.try(:location).try(:name) %>
                 <div class="flex items-center gap-4 p-3 rounded-lg border <%= assignment.declined? ? "bg-pink-50 border-pink-200" : "bg-gray-50 border-gray-100" %>">
-                  <div class="flex-shrink-0 w-12 text-center">
-                    <div class="text-[10px] font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></div>
-                    <div class="text-xl font-bold text-gray-900 leading-tight"><%= shift.starts_at.strftime("%-d") %></div>
+                  <div class="flex-shrink-0 w-12 flex items-center gap-1">
+                    <span class="text-lg leading-none font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></span>
+                    <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></span>
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-medium text-gray-900 truncate <%= "line-through text-gray-500" if assignment.declined? %>"><%= shift.role_label %></div>

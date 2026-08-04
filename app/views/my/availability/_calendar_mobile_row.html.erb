@@ -1,0 +1,18 @@
+<%#
+  Mobile day-list row for the availability calendar — the exact same
+  editable availability row used on My Tasks.
+
+  Locals:
+    - item: Hash with :show, :entity, :entity_key, :availability, :multi_entity
+    - is_past: Boolean (unused; mobile list is future-only)
+%>
+<%= render partial: "my/tasks/availability_item", locals: {
+  item: {
+    show: item[:show],
+    entity: item[:entity],
+    entity_type: item[:entity].class.name,
+    entity_key: item[:entity_key],
+    availability: item[:availability]
+  },
+  has_groups: item[:multi_entity]
+} %>

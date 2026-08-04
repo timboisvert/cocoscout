@@ -68,7 +68,8 @@
 <%
   data_attrs = {}
   if has_availability
-    data_attrs["controller"] = "availability"
+    # The availability panel's note editor expands/collapses via disclosure.
+    data_attrs["controller"] = right_panel == :availability ? "availability disclosure" : "availability"
     data_attrs["availability-show-id-value"] = show.id
     data_attrs["availability-status-value"] = current_status
     data_attrs["availability-entity-key-value"] = local_assigns[:entity_key]
@@ -100,7 +101,10 @@
 
 <%# Row wrapper - either link or div %>
 <%
-  base_row_classes = compact ? "flex items-stretch px-3 py-1.5 border rounded-lg hover:border-gray-400 transition-all group" : "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group"
+  base_row_classes = compact ? "flex items-stretch px-3 py-1 border rounded-lg hover:border-gray-400 transition-all group" : "flex items-stretch px-3 py-1.5 border rounded-lg hover:border-gray-400 transition-all group"
+  # Availability rows carry a full-width note editor after the main content —
+  # the root must wrap so it can drop below the row.
+  base_row_classes += " flex-wrap" if right_panel == :availability
   default_classes = "bg-white border-gray-200"
   row_classes = "#{base_row_classes} #{wrapper_classes.present? ? wrapper_classes : default_classes}"
 %>
@@ -110,19 +114,34 @@
   <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
   <% end %>
   <%# Left Section: Date & Show Details %>
-  <div class="<%= has_right_panel ? 'w-full md:w-1/2' : 'flex-1' %> flex items-center gap-4">
-    <%# Date Box %>
+  <%
+    # The compact availability panel hugs the right edge, so the details get
+    # all remaining width; the older panels keep their 50/50 split.
+    left_section_classes = if right_panel == :availability
+      "w-full md:flex-1 md:min-w-0"
+    elsif has_right_panel
+      "w-full md:w-1/2"
+    else
+      "flex-1"
+    end
+  %>
+  <div class="<%= left_section_classes %> flex items-center gap-4">
+    <%# Date: big day + stacked month/weekday (2026 compact treatment) %>
     <% if compact %>
-    <div class="flex-shrink-0 w-10 text-center">
-      <div class="text-[10px] font-semibold text-pink-600 uppercase leading-tight"><%= show.date_and_time.strftime("%b") %></div>
-      <div class="text-lg font-bold text-gray-900 leading-tight <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></div>
-      <div class="text-[10px] text-gray-500 leading-tight"><%= show.date_and_time.strftime("%a") %></div>
+    <div class="flex-shrink-0 w-12 flex items-center gap-1">
+      <span class="text-lg leading-none font-bold text-gray-900 <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></span>
+      <span class="text-[9px] leading-tight uppercase">
+        <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+        <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+      </span>
     </div>
     <% else %>
-    <div class="flex-shrink-0 w-14 text-center">
-      <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-      <div class="text-2xl font-bold text-gray-900 <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></div>
-      <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+    <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
+      <span class="text-xl leading-none font-bold text-gray-900 <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></span>
+      <span class="text-[10px] leading-tight uppercase">
+        <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+        <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+      </span>
     </div>
     <% end %>
 
@@ -139,7 +158,7 @@
         <% if is_canceled %>
           <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
         <% end %>
-        <span class="<%= compact ? 'text-sm' : '' %> font-medium text-gray-900">
+        <span class="text-sm font-medium text-gray-900">
           <%= show.display_name %>
         </span>
         <% if show_recurring && show.recurring? %>
@@ -166,7 +185,7 @@
           </span>
         <% end %>
       </div>
-      <div class="<%= compact ? 'text-xs' : 'text-sm' %> text-gray-600">
+      <div class="text-xs text-gray-900">
         <%# Show time range if duration is set, otherwise just start time %>
         <% if show.space_rental&.has_separate_event_time? %>
           <%= show.space_rental.effective_event_starts_at.strftime("%l:%M %p").strip %><% if show.duration_minutes.present? %> – <%= show.ends_at.strftime("%l:%M %p").strip %><% end %>
@@ -521,88 +540,61 @@
     </div>
 
   <% elsif right_panel == :availability && local_assigns[:entity].present? %>
-    <%# Right Section: Availability (2 sub-columns: headshot+buttons, note) %>
-    <div class="w-full md:w-2/3 md:border-l border-gray-200 md:pl-4 flex items-center gap-0 border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
-      <%# Sub-column 1: Headshot + Buttons (middle third) %>
-      <div class="flex items-center gap-3 flex-shrink-0 w-1/2">
-        <%# Headshot %>
-        <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
-        <% if headshot_variant %>
-          <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-        <% else %>
-          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
-            <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
-          </div>
-        <% end %>
-        <%# Buttons %>
-        <div class="flex-shrink-0">
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
-          <div class="flex gap-0">
-          <%
-            [:available, :unavailable].each do |status|
-              classes = "w-8 sm:w-20 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
+    <%# Right Section: compact worded control (2026 design). Right-aligned on
+        md+; a full-width tap bar below the details on phones. The note lives
+        behind the pencil icon — its editor renders after the wrapper closes. %>
+    <% availability_note = local_assigns[:availability]&.note %>
+    <div class="w-full md:w-auto md:ml-auto md:pl-4 flex items-center gap-1.5 border-t border-gray-100 md:border-t-0 pt-1.5 md:pt-0 flex-shrink-0">
+      <%# Headshot — who this answer is for %>
+      <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+          <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
+        </div>
+      <% end %>
 
-              if status == :available
-                classes += " rounded-l border-r-0"
-              elsif status == :unavailable
-                classes += " rounded-r"
-              end
-
-              if current_status == status.to_s
-                classes += " bg-pink-500 text-white"
-              else
-                classes += " bg-white text-gray-700 hover:bg-gray-50"
-              end
-          %>
-            <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
-              <%# Check icon - shown temporarily after selection %>
-              <span data-availability-target="<%= status %>Check" class="hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
-                </svg>
-              </span>
-              <%# Normal content %>
-              <span data-availability-target="<%= status %>Text">
-                <span class="sm:hidden">
-                  <% if status == :available %>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
-                <% else %>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
-                <% end %>
-                </span>
-                <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
-              </span>
-            <% end %>
+      <div class="flex flex-1 md:flex-none">
+        <%
+          [:available, :unavailable].each do |status|
+            classes = "flex-1 md:flex-none md:w-24 text-xs md:text-[11px] px-2.5 py-1.5 md:py-1 text-center border border-gray-200 cursor-pointer flex items-center justify-center whitespace-nowrap"
+            classes += status == :available ? " rounded-l border-r-0" : " rounded-r"
+            classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50"
+        %>
+          <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
+            <span data-availability-target="<%= status %>Check" class="hidden">&check;</span>
+            <span data-availability-target="<%= status %>Text"><%= status.to_s.humanize %></span>
           <% end %>
-        </div>
-      </div>
+        <% end %>
       </div>
 
-      <%# Sub-column 2: Note (right third, only when available) %>
-      <% availability_note = local_assigns[:availability]&.note %>
-      <div data-availability-target="noteContainer" class="w-1/2 pl-3 border-l border-gray-200 <%= current_status == 'available' ? '' : 'hidden' %>">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Note</div>
-        <div class="flex items-center gap-1">
-          <input type="text"
-                 data-availability-target="noteInput"
-                 data-action="focus->availability#showSaveButton"
-                 value="<%= availability_note %>"
-                 maxlength="100"
-                 placeholder="Add a note..."
-                 class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
-          <button type="button"
-                  data-availability-target="saveButton"
-                  data-action="click->availability#saveNote"
-                  class="hidden px-2 py-1.5 text-xs bg-pink-500 text-white rounded hover:bg-pink-600 cursor-pointer flex-shrink-0 transition-all">
-            Save
-          </button>
-        </div>
-      </div>
+      <%# Note toggle — pink with a dot when a note exists %>
+      <button type="button" data-action="click->disclosure#toggle" title="<%= availability_note.present? ? "Edit note" : "Add a note" %>"
+              class="relative flex-shrink-0 p-1.5 rounded-md <%= availability_note.present? ? "text-pink-500" : "text-gray-300" %> hover:text-pink-500 hover:bg-pink-50 transition-colors cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487zm0 0L19.5 7.125"/></svg>
+        <% if availability_note.present? %>
+          <span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+        <% end %>
+      </button>
     </div>
   <% end %>
 
   <% if has_right_panel %>
   </div> <%# Close flex wrapper for mobile stacking %>
+  <% end %>
+
+  <% if right_panel == :availability && local_assigns[:entity].present? %>
+    <%# Note editor — full-width under the row, opened by the pencil icon %>
+    <div data-disclosure-target="content" class="hidden pt-1.5 w-full">
+      <div class="flex items-center gap-1 md:pl-[68px]">
+        <input type="text" data-availability-target="noteInput" data-action="focus->availability#showSaveButton"
+               value="<%= local_assigns[:availability]&.note %>" maxlength="100" placeholder="Add a note..."
+               class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300" />
+        <button type="button" data-availability-target="saveButton" data-action="click->availability#saveNote"
+                class="hidden px-2 py-1.5 text-xs bg-pink-500 text-white rounded hover:bg-pink-600 cursor-pointer flex-shrink-0 transition-all">Save</button>
+      </div>
+    </div>
   <% end %>
 
   <% if !has_right_panel %>
@@ -642,31 +634,12 @@
         <div class="flex gap-0">
         <%
           [:available, :unavailable].each do |status|
-            classes = "w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
-
-            if status == :available
-              classes += " rounded-l-lg border-r-0"
-            elsif status == :unavailable
-              classes += " rounded-r-lg"
-            end
-
-            if current_status == status.to_s
-              classes += " bg-pink-500 text-white"
-            else
-              classes += " bg-white text-gray-700 hover:bg-gray-50"
-            end
-
-            desktop_content = status.to_s.humanize
+            classes = "w-24 text-[11px] px-2.5 py-1 text-center border border-gray-200 cursor-pointer flex items-center justify-center whitespace-nowrap"
+            classes += status == :available ? " rounded-l border-r-0" : " rounded-r"
+            classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50"
         %>
           <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
-            <span class="sm:hidden">
-              <% if status == :available %>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
-              <% else %>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
-              <% end %>
-            </span>
-            <span class="hidden sm:inline"><%= desktop_content %></span>
+            <%= status.to_s.humanize %>
           <% end %>
         <% end %>
         </div>

@@ -1,0 +1,38 @@
+<%#
+  Desktop day-cell tile for the availability calendar — read-only summary:
+  time, show name, and your answer. Changing an answer happens in the day
+  modal (the cell is the modal trigger).
+
+  Locals:
+    - item: Hash with :show, :entity, :entity_key, :availability, :multi_entity
+    - is_past: Boolean (from shared/month_calendar)
+%>
+<%
+  show = item[:show]
+  current_status = item[:availability]&.status || "unset"
+  tile_classes = if is_past
+    "bg-gray-100 text-gray-600 border-gray-300"
+  else
+    case show.event_type
+    when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
+    when "meeting" then "bg-green-100 text-green-800 border-green-300"
+    else "bg-pink-100 text-pink-800 border-pink-300"
+    end
+  end
+%>
+<div class="text-xs p-1.5 rounded border mb-1 <%= tile_classes %> <%= 'opacity-50 line-through' if show.canceled %>">
+  <div class="font-semibold truncate"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
+  <div class="text-[10px] truncate"><%= show.display_name %></div>
+  <% if item[:multi_entity] %>
+    <div class="text-[9px] opacity-70 truncate">as <%= item[:entity].name %></div>
+  <% end %>
+  <% if show.canceled %>
+    <div class="text-red-600 font-semibold text-[9px]">Canceled</div>
+  <% elsif current_status == "available" %>
+    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span>
+  <% elsif current_status == "unavailable" %>
+    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span>
+  <% elsif !is_past %>
+    <span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-amber-700">Needs response</span>
+  <% end %>
+</div>
