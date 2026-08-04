@@ -36,11 +36,14 @@
     <% end %>
   <% else %>
     <%# All three chips render; availability_controller.js swaps which one is
-        visible when the answer changes in the day modal — no reload needed. %>
+        visible when the answer changes in the day modal — no reload needed.
+        `hidden` lives on the plain wrapper span, NOT on the styled chip: in
+        the built Tailwind CSS .inline-flex sorts after .hidden, so a chip
+        carrying both classes would stay visible. %>
     <span data-availability-tile="<%= show.id %>-<%= item[:entity_key] %>">
-      <span data-tile-status="available" class="<%= 'hidden' unless current_status == 'available' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span>
-      <span data-tile-status="unavailable" class="<%= 'hidden' unless current_status == 'unavailable' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span>
-      <span data-tile-status="unset" class="<%= 'hidden' unless current_status == 'unset' %> inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-amber-700">Needs response</span>
+      <span data-tile-status="available" class="<%= 'hidden' unless current_status == 'available' %>"><span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-pink-700">&check; Available</span></span>
+      <span data-tile-status="unavailable" class="<%= 'hidden' unless current_status == 'unavailable' %>"><span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-gray-600">&times; Unavailable</span></span>
+      <span data-tile-status="unset" class="<%= 'hidden' unless current_status == 'unset' %>"><span class="inline-flex items-center mt-0.5 rounded bg-white/80 px-1 py-px text-[9px] font-semibold text-amber-700">Needs response</span></span>
     </span>
   <% end %>
 </div>
