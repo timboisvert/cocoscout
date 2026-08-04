@@ -25,7 +25,7 @@ RSpec.describe "My::Tasks", type: :request do
       expect(response.body).to include("Availability requests")
       expect(response.body).not_to include("Sign-ups")
       expect(response.body).not_to include("Questionnaires")
-      expect(response.body).not_to include("Availability you&#39;ve given")
+      expect(response.body).not_to include("Availability you've already given")
     end
 
     it "shows an unset-status availability row as still awaiting" do
@@ -36,12 +36,12 @@ RSpec.describe "My::Tasks", type: :request do
       expect(response.body).to include("Availability requests")
     end
 
-    it "surfaces answered availability in the always-findable 'Availability you've given' section" do
+    it "surfaces answered availability in the always-findable 'Availability you've already given' section" do
       show = create(:show, production: production, date_and_time: 1.week.from_now)
       create(:show_availability, :available, show: show, available_entity: person)
 
       get my_tasks_path
-      expect(response.body).to include("Availability you&#39;ve given")
+      expect(response.body).to include("Availability you've already given")
       expect(response.body).to include("change your answer any time")
       expect(response.body).to include(my_availability_calendar_path)
       expect(response.body).not_to include("Availability requests")
