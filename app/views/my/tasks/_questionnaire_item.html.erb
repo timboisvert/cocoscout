@@ -3,7 +3,11 @@
 
   Required params:
     - item: Hash with :questionnaire, :entity, :entity_key, :responded (boolean), :context_name (string or nil)
+  Optional:
+    - show_type: prefix the secondary line with "Questionnaire" — for mixed
+      sections like Done, where the header doesn't say what the item is
 %>
+<% show_type = local_assigns.fetch(:show_type, false) %>
 
 <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4 hover:border-gray-300 transition-colors">
   <%# Left side: questionnaire info %>
@@ -18,8 +22,9 @@
     <%# Details %>
     <div class="min-w-0">
       <div class="font-medium text-gray-900 truncate"><%= item[:questionnaire].title %></div>
-      <% if item[:context_name].present? %>
-        <div class="text-sm text-gray-500 truncate"><%= item[:context_name] %></div>
+      <% secondary = [ (show_type ? "Questionnaire" : nil), item[:context_name].presence ].compact %>
+      <% if secondary.any? %>
+        <div class="text-sm text-gray-500 truncate"><%= secondary.join(" · ") %></div>
       <% end %>
     </div>
   </div>

@@ -176,7 +176,7 @@
           <div data-disclosure-target="content" class="hidden border-t border-gray-200">
             <div class="p-4 space-y-2">
               <% @completed_questionnaire_items.each do |item| %>
-                <%= render partial: "my/tasks/questionnaire_item", locals: { item: item } %>
+                <%= render partial: "my/tasks/questionnaire_item", locals: { item: item, show_type: true } %>
               <% end %>
             </div>
           </div>
