@@ -37,6 +37,12 @@
     <div class="space-y-6">
 
       <%# ========================================= %>
+      <%# Do these right now — the headline the nav badge points at. Only %>
+      <%# open tasks count; the answered sections below carry no badges. %>
+      <%# ========================================= %>
+      <%= render "my/tasks/summary_card", show_button: false %>
+
+      <%# ========================================= %>
       <%# All caught up %>
       <%# ========================================= %>
       <% if @counts[:total].zero? %>
@@ -85,10 +91,8 @@
           <button type="button" data-action="click->disclosure#toggle"
                   class="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
             <div>
-              <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                Availability you've already given
-                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full bg-pink-100 text-pink-700"><%= @answered_availability_items.size %></span>
-              </h3>
+              <%# No count badge — badges are reserved for must-do-now items. %>
+              <h3 class="font-semibold text-gray-900">Availability you've already given</h3>
               <p class="text-sm text-gray-500 mt-0.5">Plans changed? Open this and change your answer any time.</p>
             </div>
             <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -165,10 +169,8 @@
         <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-controller="disclosure">
           <button type="button" data-action="click->disclosure#toggle"
                   class="w-full px-5 py-3 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-gray-50 transition-colors">
-            <h3 class="text-sm font-medium text-gray-500 flex items-center gap-2">
-              Done
-              <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600"><%= @completed_questionnaire_items.size %></span>
-            </h3>
+            <%# No count badge — badges are reserved for must-do-now items. %>
+            <h3 class="text-sm font-medium text-gray-500">Done</h3>
             <svg data-disclosure-target="icon" class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>

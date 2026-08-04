@@ -1,7 +1,12 @@
-<%# Dashboard nudge for open tasks (availability, sign-ups, questionnaires).
+<%# Nudge for open tasks (availability, sign-ups, questionnaires).
     Self-guarding: renders nothing when the user is caught up. Counts come
     from the same TaskListService that builds My Tasks and the nav badge,
-    memoized on the user so this adds no extra queries per render. %>
+    memoized on the user so this adds no extra queries per render.
+
+    On the dashboard it links to the tasks page; on the tasks page itself pass
+    show_button: false — there it's the "do these right now" headline that the
+    nav badge points at. %>
+<% show_button = local_assigns.fetch(:show_button, true) %>
 <% task_counts = Current.user&.open_task_counts %>
 <% if task_counts && task_counts[:total].positive? %>
   <%
@@ -19,11 +24,13 @@
         </div>
         <p class="text-sm text-gray-600 mt-1"><%= breakdown.to_sentence.capitalize %>.</p>
       </div>
-      <div class="flex-shrink-0">
-        <%= link_to my_tasks_path do %>
-          <%= render "shared/button", text: "Go to My Tasks & Availability", variant: "primary", size: "medium" %>
-        <% end %>
-      </div>
+      <% if show_button %>
+        <div class="flex-shrink-0">
+          <%= link_to my_tasks_path do %>
+            <%= render "shared/button", text: "Go to My Tasks & Availability", variant: "primary", size: "medium" %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   </div>
 <% end %>
