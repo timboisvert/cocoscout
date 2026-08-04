@@ -1,7 +1,7 @@
 <%# Super Admin left sidebar — global (not org-scoped). Same shell as the other
     dashboards: switcher on top, grouped section links (from the shared
     dashboard_nav_sections helper), coco logo + account menu at the bottom. %>
-<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col z-50 justify-between fixed left-0 top-0 h-screen">
+<nav class="hidden w-64 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col z-50 justify-between fixed left-0 top-0 h-screen">
   <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "superadmin" %>
 
   <div class="flex-1 overflow-y-auto">

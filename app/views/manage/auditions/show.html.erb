@@ -210,7 +210,7 @@
 
 <% if can_vote %>
   <%# Fade overlay %>
-  <div class="fixed bottom-0 left-0 right-0 lg:left-56 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
+  <div class="fixed bottom-0 left-0 right-0 lg:left-64 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
 
   <% current_vote = @audition.vote_for(Current.user) %>
   <% vote_counts = @audition.vote_counts %>
