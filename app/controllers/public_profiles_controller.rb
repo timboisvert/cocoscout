@@ -3,7 +3,7 @@
 class PublicProfilesController < ApplicationController
   skip_before_action :require_authentication
   before_action :resume_session_if_present
-  before_action :find_entity, only: %i[show shoutouts]
+  before_action :find_entity, only: %i[show]
   before_action :find_production, only: %i[production_show]
 
   def show
@@ -77,23 +77,6 @@ class PublicProfilesController < ApplicationController
     return if request.fresh?(response)
 
     render "public_profiles/production_show"
-  end
-
-  def shoutouts
-    # Only show current versions (not replaced shoutouts)
-    @shoutouts = @entity.received_shoutouts
-                        .left_joins(:replacement)
-                        .where(replacement: { id: nil })
-                        .newest_first
-                        .includes(:author)
-
-    # Check if current user has already given this person a shoutout
-    return unless Current.user&.person
-
-    @has_given_shoutout = Current.user.person.given_shoutouts
-                                 .where(shoutee: @entity)
-                                 .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
-                                 .exists?
   end
 
   private

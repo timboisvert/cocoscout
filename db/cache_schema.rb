@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_05_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2114,21 +2114,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_090000) do
     t.index ["source_type", "source_id"], name: "index_shifts_on_source_type_and_source_id"
   end
 
-  create_table "shoutouts", force: :cascade do |t|
-    t.bigint "author_id", null: false
-    t.text "content", null: false
-    t.datetime "created_at", null: false
-    t.integer "replaces_shoutout_id"
-    t.bigint "shoutee_id", null: false
-    t.string "shoutee_type", null: false
-    t.datetime "updated_at", null: false
-    t.index ["author_id", "created_at"], name: "index_shoutouts_on_author_and_created"
-    t.index ["author_id"], name: "index_shoutouts_on_author_id"
-    t.index ["replaces_shoutout_id"], name: "index_shoutouts_on_replaces_shoutout_id"
-    t.index ["shoutee_type", "shoutee_id", "created_at"], name: "index_shoutouts_on_shoutee_and_created"
-    t.index ["shoutee_type", "shoutee_id"], name: "index_shoutouts_on_shoutee"
-  end
-
   create_table "show_advance_waivers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "notes"
@@ -3052,7 +3037,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_090000) do
   add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"
   add_foreign_key "shifts", "organizations"
-  add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_advance_waivers", "people"
   add_foreign_key "show_advance_waivers", "shows"
   add_foreign_key "show_advance_waivers", "users", column: "waived_by_id"

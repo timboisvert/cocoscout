@@ -38,7 +38,6 @@ The native apps wrap the entire `/my` dashboard. All 20 existing controllers are
 | Course Registrations | `course_registrations` | Register and check out for courses |
 | Payments | `payments` | Payment history, payout setup (Venmo/Zelle) |
 | Posts | `posts` | Community discussion posts per production |
-| Shoutouts | `shoutouts` | Give/receive peer recognition |
 | Calendar Sync | `calendar_sync` | Connect Google Calendar for show sync |
 
 **Native-only additions:**

@@ -30,9 +30,6 @@ class Group < ApplicationRecord
   has_many :roles, through: :show_person_role_assignments
   has_many :role_eligibilities, as: :member, dependent: :destroy
 
-  # Shoutout associations
-  has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
-
   # Messages addressed to this group (via MessageRecipient)
   has_many :message_recipients, as: :recipient, dependent: :destroy
   has_many :received_messages, through: :message_recipients, source: :message

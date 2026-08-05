@@ -1912,10 +1912,6 @@ class SuperadminController < ApplicationController
       end
     end
 
-    # Transfer shoutouts
-    source.received_shoutouts.update_all(shoutee_id: target.id, shoutee_type: "Person")
-    source.given_shoutouts.update_all(author_id: target.id)
-
     # Transfer role eligibilities (skip duplicates)
     source.role_eligibilities.each do |re|
       unless target.role_eligibilities.exists?(role_id: re.role_id)

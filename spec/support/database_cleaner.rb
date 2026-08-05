@@ -26,7 +26,6 @@ def seed_content_templates
     { key: "person_invitation", name: "Person Invitation", subject: "You've been invited to join {{organization_name}} on CocoScout", body: "<p>{{organization_name}} is using CocoScout. <a href=\"{{setup_url}}\">Set Up Your Account</a></p>", category: "invitations", channel: "email" },
     { key: "contract_person_added", name: "Added to a Contract", subject: "{{organization_name}} added you to a contract", body: "<p>{{organization_name}} has set you up on a contract in CocoScout. <a href=\"{{contracts_url}}\">View your contracts</a>.</p>", category: "invitations", channel: "message" },
     { key: "group_invitation", name: "Group Invitation", subject: "Group Invite", body: "Join group", category: "invitations", channel: "email" },
-    { key: "shoutout_invitation", name: "Shoutout Invitation", subject: "Shoutout", body: "Shoutout!", category: "social", channel: "email" },
     { key: "team_organization_invitation", name: "Org Invitation", subject: "Team Invite", body: "Join", category: "invitations", channel: "email" },
     { key: "team_production_invitation", name: "Production Invitation", subject: "Production Invite", body: "Join", category: "invitations", channel: "email" },
     { key: "audition_invitation", name: "Audition Invitation", subject: "Audition", body: "Audition invite", category: "auditions", channel: "message" },
@@ -46,7 +45,6 @@ def seed_content_templates
     { key: "sign_up_registration_notification", name: "Registration Notification", subject: "New signup", body: "New signup", category: "sign_ups", channel: "message" },
     { key: "unread_digest", name: "Unread Digest", subject: "Unread messages", body: "Check inbox", category: "messaging", channel: "email" },
     { key: "group_member_added", name: "Member Added", subject: "Added", body: "Added to group", category: "groups", channel: "message" },
-    { key: "shoutout_notification", name: "Shoutout Notification", subject: "Shoutout", body: "You got a shoutout", category: "social", channel: "message" },
     { key: "audition_request_submitted", name: "Request Submitted", subject: "Received", body: "Request received", category: "auditions", channel: "message" },
     { key: "talent_left_production", name: "Talent Left", subject: "Left", body: "Talent left", category: "casting", channel: "message" },
     { key: "questionnaire_invitation", name: "Questionnaire", subject: "Questionnaire", body: "Please complete", category: "questionnaires", channel: "message" },
@@ -54,13 +52,23 @@ def seed_content_templates
     { key: "removed_from_cast_notification", name: "Removed from Cast", subject: "Removed", body: "Removed", category: "casting", channel: "message" },
     { key: "casting_table_notification", name: "Casting Table", subject: "Casting", body: "Casting info", category: "casting", channel: "message" },
     { key: "payment_setup_reminder", name: "Payment Reminder", subject: "Payment", body: "Set up payment", category: "payments", channel: "message" },
-    { key: "payout_sent_to_payee", name: "Payout Sent (payee notice)",
-      subject: "{{#sending}}{{amount}} is on its way from {{organization_name}}{{/sending}}{{#needs_bank}}{{amount}} from {{organization_name}} is waiting for you{{/needs_bank}}",
-      body: "<p>Hi {{recipient_name}},</p>" \
-            "{{#returning_payout}}<p>{{amount}} is on its way to your bank. Expect it {{expected_window}}.</p>{{/returning_payout}}" \
-            "{{#first_payout}}<p>{{amount}} is on its way. Because this is your first payment through CocoScout, our payout provider takes a little longer to finish setting up your account — so expect this one {{expected_window}}.</p>{{/first_payout}}" \
-            "{{#needs_bank}}<p>{{amount}} is set aside for you. You haven't connected a bank account yet, so we can't send it.</p>{{/needs_bank}}" \
-            "<p><a href=\"{{payments_url}}\">See what it's for in My Payments</a></p>",
+    { key: "payout_sent_to_payee", name: "Payout Sent — on its way (payee)",
+      subject: "{{amount}} is on its way from {{organization_name}}",
+      body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} just sent you {{amount}}.</p>" \
+            "<p>It should reach your bank account {{expected_window}}.</p>" \
+            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+      category: "payments", channel: "both" },
+    { key: "payout_sent_to_payee_first_payment", name: "Payout Sent — first payment (payee)",
+      subject: "{{amount}} is on its way from {{organization_name}}",
+      body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} just sent you {{amount}} — your first payment through CocoScout.</p>" \
+            "<p>First payments take a bit longer than usual: our payout provider needs extra time to finish setting up your account. Expect this one {{expected_window}}.</p>" \
+            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+      category: "payments", channel: "both" },
+    { key: "payout_sent_to_payee_no_bank", name: "Payout Sent — waiting on a bank account (payee)",
+      subject: "{{amount}} from {{organization_name}} is waiting for you",
+      body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} has {{amount}} set aside for you.</p>" \
+            "<p>We can't send it yet — there's no bank account on your profile. Add one and your money will be on its way.</p>" \
+            "<p><a href=\"{{setup_url}}\">Add your bank account</a></p>",
       category: "payments", channel: "both" },
     { key: "staff_onboarding_invite", name: "Staff Onboarding Invite", subject: "Welcome to {{organization_name}}", body: "Hi {{first_name}}, get set up at {{onboarding_url}}", category: "staffing", channel: "both" },
     { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}", body: "<p>{{intro}}</p>{{shifts_list}} See your <a href=\"{{my_shifts_link}}\">My Shifts</a>.", category: "shows", channel: "message" },

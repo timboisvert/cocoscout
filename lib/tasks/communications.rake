@@ -55,7 +55,7 @@ namespace :communications do
     },
 
     # ============================================
-    # PROFILES (invitations, shoutouts, team invites)
+    # PROFILES (invitations, team invites)
     # ============================================
     person_invitation: {
       name: "Person Invitation",
@@ -67,8 +67,7 @@ namespace :communications do
       callers: [
         "Manage::PeopleController#invite",
         "Manage::PeopleController#invite_existing",
-        "Manage::Auditions::CyclesController",
-        "ShoutoutsController"
+        "Manage::Auditions::CyclesController"
       ]
     },
     group_invitation: {
@@ -88,25 +87,6 @@ namespace :communications do
       template_key: "group_member_added",
       description: "Notify existing user they were added to a group",
       callers: [ "GroupInvitationsController#create" ]
-    },
-    shoutout_notification: {
-      name: "Shoutout Notification",
-      category: :profiles,
-      channel: :message,
-      service: "MessageService.send_direct",
-      template_key: "shoutout_notification",
-      description: "Notify person they received a shoutout",
-      callers: [ "My::ShoutoutsController#send_shoutout_notification" ]
-    },
-    shoutout_invitation: {
-      name: "Shoutout New User Invitation",
-      category: :profiles,
-      channel: :email,
-      mailer: "Manage::PersonMailer#person_invitation",
-      template_key: "shoutout_invitation",
-      description: "Invite non-user to CocoScout after receiving shoutout",
-      callers: [ "My::ShoutoutsController#handle_invite_shoutout" ],
-      notes: "Template rendered by caller, passed to mailer as subject/message"
     },
     team_organization_invitation: {
       name: "Team Organization Invitation",
@@ -415,13 +395,17 @@ namespace :communications do
   # - auth_signup: Duplicate of auth_welcome
   # - team_invitation: Legacy version of team_organization_invitation
   # - audition_request_notification: Renamed to audition_request_submitted
-  # - shoutout_received: Merged into shoutout_notification
+  # - shoutout_received / shoutout_notification / shoutout_invitation: the
+  #   shoutout feature was removed entirely (2026-08); the drop migration
+  #   deletes these rows, this list keeps `orphans` from flagging stragglers.
   #
   LEGACY_TEMPLATES = %w[
     auth_signup
     team_invitation
     audition_request_notification
     shoutout_received
+    shoutout_notification
+    shoutout_invitation
   ].freeze
 
   # ============================================

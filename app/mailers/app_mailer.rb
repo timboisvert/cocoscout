@@ -89,23 +89,6 @@ class AppMailer < ApplicationMailer
       )
     end
 
-    def shoutout_notification(shoutout)
-      shoutee = shoutout.shoutee
-      # For email (no account), link to public profile shoutouts page
-      shoutout_url = Rails.application.routes.url_helpers.public_profile_shoutouts_url(shoutee.public_key, host: default_url_host)
-
-      with(
-        template_key: "shoutout_notification",
-        to: shoutee.email,
-        variables: {
-          author_name: shoutout.author.name,
-          recipient_name: shoutee.first_name || "there",
-          shoutout_message: shoutout.content,
-          shoutout_url: shoutout_url
-        }
-      )
-    end
-
     def team_organization_invitation(team_invitation, custom_message: nil)
       accept_url = Rails.application.routes.url_helpers.accept_team_invitation_url(
         team_invitation.token,

@@ -510,13 +510,6 @@ Rails.application.routes.draw do
     # outside CocoScout ("show"), or staffing hours settled offline ("hours").
     get    "/payments/receipt/:kind/:id",        to: "payments#receipt",                   as: "payment_receipt"
 
-    # Shoutouts management
-    get   "/shoutouts",                         to: "shoutouts#index",                    as: "shoutouts"
-    post  "/shoutouts",                         to: "shoutouts#create",                   as: "create_shoutout"
-    get   "/shoutouts/search",                  to: "shoutouts#search_people_and_groups",
-                                                as: "search_shoutout_recipients"
-    get   "/shoutouts/check_existing",          to: "shoutouts#check_existing_shoutout", as: "check_existing_shoutout"
-
     # Calendar sync management
     get   "/calendar-sync",                     to: "calendar_sync#index",                as: "calendar_sync"
     get   "/calendar-sync/connect/google",      to: "calendar_sync#connect_google",       as: "calendar_sync_connect_google"
@@ -1696,8 +1689,6 @@ Rails.application.routes.draw do
   post "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
-  get "/:public_key/shoutouts", to: "public_profiles#shoutouts", as: "public_profile_shoutouts",
-                                constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/ }
   get "/:public_key/:show_id", to: "public_profiles#production_show", as: "public_profile_show",
                                constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/, show_id: /\d+/ }
   get "/:public_key", to: "public_profiles#show", as: "public_profile",

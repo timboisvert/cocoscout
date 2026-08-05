@@ -324,7 +324,6 @@ class ContentTemplateService
       when /url|link/i then "https://cocoscout.com/example-link"
       when /custom_message/i then "<p>Looking forward to having you join our production!</p>"
       when /body_content/i then sample_body_content(template_key)
-      when /shoutout_content/i then "Amazing performance last night! The whole cast was incredible."
       when /subject/i then sample_subject(template_key)
       when /count|number/i then "5"
       else "[#{name}]"

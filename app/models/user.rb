@@ -346,7 +346,6 @@ class User < ApplicationRecord
     vacancy_invitations
     audition_invitations
     group_invitations
-    shoutouts
     message_digest
   ].freeze
 
