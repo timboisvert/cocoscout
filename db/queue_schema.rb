@@ -707,7 +707,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_140000) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"

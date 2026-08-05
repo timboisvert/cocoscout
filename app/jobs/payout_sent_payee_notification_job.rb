@@ -70,21 +70,28 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
       from: item.paid_at&.to_date || Date.current
     )
 
-    rendered = ContentTemplateService.render("payout_sent_to_payee", {
+    # One template per situation rather than one template full of conditional
+    # blocks: each reads as ordinary copy in the editor, previews correctly,
+    # and can't silently render to nothing if a flag goes missing.
+    template_key =
+      if !has_bank then "payout_sent_to_payee_no_bank"
+      elsif first_payout then "payout_sent_to_payee_first_payment"
+      else "payout_sent_to_payee"
+      end
+
+    url_options = mailer_url_options
+    variables = {
       recipient_name: person.name.to_s.split.first.presence || person.name,
       organization_name: batch.organization.name,
       amount: ActiveSupport::NumberHelper.number_to_currency(item.amount_cents / 100.0),
       expected_window: "#{earliest.strftime('%B %-d')} – #{latest.strftime('%B %-d, %Y')}",
-      # Exactly one of these three is set; the template branches on them with
-      # {{#flag}}…{{/flag}}. Positive flags only — interpolate has no negation.
-      returning_payout: (has_bank && !first_payout) || nil,
-      first_payout: first_payout || nil,
-      needs_bank: (!has_bank) || nil,
-      # True whenever money is actually moving, so the subject line can say so
-      # without repeating the first-vs-returning split.
-      sending: has_bank || nil,
-      payments_url: Rails.application.routes.url_helpers.my_payments_url(**mailer_url_options)
-    })
+      payments_url: Rails.application.routes.url_helpers.my_payments_url(**url_options)
+    }
+    if template_key == "payout_sent_to_payee_no_bank"
+      variables[:setup_url] = Rails.application.routes.url_helpers.my_payments_setup_url(**url_options)
+    end
+
+    rendered = ContentTemplateService.render(template_key, variables)
 
     # Email is the backbone: person.email is always present, while plenty of
     # performers have no login at all.

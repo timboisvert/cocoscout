@@ -72,7 +72,7 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
 
       expect { described_class.perform_now(batch.id) }
         .to change { ActionMailer::Base.deliveries.size }.by(1)
-      expect(last_email_body).to include("on its way")
+      expect(last_email_body).to include("just sent you")
       expect(last_email_body).not_to include("set aside")
 
       # …and then it settles down again.
@@ -145,7 +145,7 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
       described_class.perform_now(batch.id)
 
       earliest, latest = batch.expected_deposit_range(from: Date.current)
-      expect(last_email_body).to include("on its way to your bank")
+      expect(last_email_body).to include("just sent you")
         .and include(earliest.strftime("%B %-d"))
         .and include(latest.strftime("%B %-d, %Y"))
       expect(last_email_body).not_to include("first payment")
@@ -192,8 +192,8 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
 
       described_class.perform_now(batch.id)
 
-      expect(last_email_body).to include("set aside for you").and include("haven't connected a bank")
-      expect(last_email_body).not_to include("on its way to your bank")
+      expect(last_email_body).to include("set aside for you").and include("no bank account on your profile")
+      expect(last_email_body).not_to include("just sent you")
       # The subject must not contradict the body by promising a deposit.
       expect(ActionMailer::Base.deliveries.last.subject).to eq("$150.00 from Stars and Garters is waiting for you")
     end
