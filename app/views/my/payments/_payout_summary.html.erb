@@ -25,50 +25,42 @@
       end
       rest_cents = owed_cents - submitted_cents
     %>
-    <div class="mb-6 rounded-lg border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-white p-5">
-      <div class="flex items-start justify-between gap-4 flex-wrap">
-        <div class="min-w-0">
-          <div class="text-xs font-semibold uppercase tracking-wider text-pink-600">You're owed</div>
-          <div class="text-3xl font-bold text-gray-900 tabular-nums mt-0.5"><%= owed %></div>
-          <% if ps_person.can_receive_payouts? %>
-            <% if submitted_cents.positive? %>
-              <p class="text-sm text-gray-700 mt-1 max-w-md">
-                <span class="font-semibold"><%= number_to_currency(submitted_cents / 100.0) %></span> is on its way —
-                expect it in your bank <span class="font-semibold"><%= window_text %></span>.
-                <% if rest_cents.positive? %>
-                  The other <%= number_to_currency(rest_cents / 100.0) %> goes out on a future payout run.
-                <% end %>
-              </p>
-            <% else %>
-              <p class="text-sm text-gray-600 mt-1">Heading to your bank on the next payout run.</p>
-            <% end %>
-          <% else %>
-            <% if submitted_cents.positive? %>
-              <%# Their money is literally funded and parked — the strongest
-                  possible reason to connect. Lead with it. %>
-              <p class="text-sm text-gray-700 mt-1 max-w-md">
-                <span class="font-semibold"><%= number_to_currency(submitted_cents / 100.0) %> of this is already funded and waiting on you</span> —
-                it heads to your bank within days of you connecting one.
-                <% if rest_cents.positive? %>The rest follows on future payout runs.<% end %>
-              </p>
-            <% else %>
-              <p class="text-sm text-gray-700 mt-1 max-w-md">
-                Connect your bank and you'll get this <span class="font-semibold"><%= owed %></span>
-                automatically, straight to your account — no chasing checks.
-              </p>
-            <% end %>
-          <% end %>
-          <p class="text-sm mt-2">
-            <%= link_to "See what it's for in My Payments →", my_payments_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
-          </p>
-        </div>
-        <% unless ps_person.can_receive_payouts? %>
-          <div class="flex-shrink-0">
-            <%= render "shared/button", text: "Connect your bank & get paid", variant: "primary", size: "medium", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
-          </div>
-        <% end %>
-      </div>
-    </div>
+    <%
+      # One small line under the amount, and one button. Which pair depends on
+      # whether they can actually be paid yet.
+      bold = ->(text) { tag.span(text, class: "font-semibold") }
+      body =
+        if ps_person.can_receive_payouts?
+          if submitted_cents.positive?
+            safe_join([ bold.call(number_to_currency(submitted_cents / 100.0)), " is on its way — expect it in your bank ",
+                        bold.call(window_text), ".",
+                        (" The other #{number_to_currency(rest_cents / 100.0)} goes out on a future payout run." if rest_cents.positive?) ].compact)
+          else
+            "Heading to your bank on the next payout run."
+          end
+        elsif submitted_cents.positive?
+          # Their money is literally funded and parked — the strongest possible
+          # reason to connect. Lead with it.
+          safe_join([ bold.call("#{number_to_currency(submitted_cents / 100.0)} of this is already funded and waiting on you"),
+                      " — it heads to your bank within days of you connecting one.",
+                      (" The rest follows on future payout runs." if rest_cents.positive?) ].compact)
+        else
+          safe_join([ "Connect your bank and you'll get this ", bold.call(owed),
+                      " automatically, straight to your account — no chasing checks." ])
+        end
+      action =
+        if ps_person.can_receive_payouts?
+          { text: "Go to My Payments", path: my_payments_path }
+        else
+          { text: "Connect your bank & get paid", path: my_payments_connect_bank_path,
+            method: :post, form: { data: { turbo: false } } }
+        end
+    %>
+    <%= render "shared/alert_panel",
+          eyebrow: "You're owed",
+          headline: owed,
+          body: body,
+          actions: [ action ] %>
   <% elsif local_assigns.fetch(:banner_fallback, true) %>
     <%# Nothing owed right now — fall back to the general "connect your bank" nudge
         (self-guards on needs_bank_connection?). Suppressed where the page already

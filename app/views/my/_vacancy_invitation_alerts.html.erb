@@ -1,0 +1,26 @@
+<%# "You're invited to fill a role" — one alert per open invitation. Shared by
+    My Calendar and My Shows, which both surface the same list.
+    Local: invitations (Array<RoleVacancyInvitation>). %>
+<% invitations.each do |invitation| %>
+  <%
+    vacancy = invitation.role_vacancy
+    show = vacancy.show
+    when_text = "#{show.date_and_time.strftime('%a, %b %-d')} at #{show.time_range_display}"
+    body = "#{show.production.name} · #{when_text}"
+    body += " — you declined, but you can still claim it while it's open." if invitation.can_claim? && invitation.declined?
+    body += " — this role is no longer available." unless invitation.can_claim?
+    actions =
+      if invitation.can_claim?
+        [ { text: "Claim role", path: claim_vacancy_path(invitation.token),
+            variant: invitation.declined? ? "outline" : "primary" },
+          (invitation.declined? ? nil : { text: "Decline", path: decline_claim_vacancy_path(invitation.token), method: :post }) ].compact
+      else
+        []
+      end
+  %>
+  <%= render "shared/alert_panel",
+        eyebrow: "You're invited to fill a role",
+        headline: vacancy.role.name,
+        body: body,
+        actions: actions %>
+<% end %>

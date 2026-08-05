@@ -15,22 +15,9 @@
     breakdown << pluralize(task_counts[:signups], "sign-up") if task_counts[:signups].positive?
     breakdown << pluralize(task_counts[:questionnaires], "questionnaire") if task_counts[:questionnaires].positive?
   %>
-  <div class="mb-6 rounded-lg border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-white p-5">
-    <div class="flex items-start justify-between gap-4 flex-wrap">
-      <div class="min-w-0">
-        <div class="text-xs font-semibold uppercase tracking-wider text-pink-600">Waiting on you</div>
-        <div class="text-2xl font-bold text-gray-900 mt-0.5">
-          <%= pluralize(task_counts[:total], "task") %> waiting
-        </div>
-        <p class="text-sm text-gray-600 mt-1"><%= breakdown.to_sentence.capitalize %>.</p>
-      </div>
-      <% if show_button %>
-        <div class="flex-shrink-0">
-          <%= link_to my_tasks_path do %>
-            <%= render "shared/button", text: "Go to My Tasks & Availability", variant: "primary", size: "medium" %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  </div>
+  <%= render "shared/alert_panel",
+        eyebrow: "Waiting on you",
+        headline: "#{pluralize(task_counts[:total], 'task')} waiting",
+        body: "#{breakdown.to_sentence.capitalize}.",
+        actions: show_button ? [ { text: "Go to My Tasks & Availability", path: my_tasks_path } ] : [] %>
 <% end %>

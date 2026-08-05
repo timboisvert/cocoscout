@@ -13,36 +13,20 @@
       payment:  { title: "Set up payment",      desc: "Connect your bank so productions can pay you directly." }
     }
   %>
-  <div data-controller="profile-completion" class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
-    <div class="bg-pink-100 px-4 py-3 border-b border-pink-200 flex items-center gap-2">
-      <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-      </svg>
-      <h3 class="text-md font-semibold text-pink-900 coustard-regular">Complete your info</h3>
-    </div>
-    <div class="p-4">
-      <p class="text-sm text-gray-700 mb-3">You're in a talent pool — add the missing details so your team can reach you, recognize you, and pay you.</p>
-      <div class="space-y-2">
-        <% gaps.each do |gap| %>
-          <% meta = gap_meta[gap] %>
-          <div class="flex items-center justify-between gap-3 bg-white border border-pink-200 rounded-lg px-3 py-2.5">
-            <div class="min-w-0">
-              <div class="text-sm font-medium text-gray-900"><%= meta[:title] %></div>
-              <div class="text-xs text-gray-500"><%= meta[:desc] %></div>
-            </div>
-            <% if gap == :payment %>
-              <%= link_to "Set up", my_payments_setup_path,
-                    class: "flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-1.5 text-sm cursor-pointer transition-colors" %>
-            <% else %>
-              <button type="button" data-action="click->profile-completion#open" data-gap="<%= gap %>"
-                      class="flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded px-3 py-1.5 text-sm cursor-pointer transition-colors">
-                Add
-              </button>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-    </div>
+  <div data-controller="profile-completion">
+    <% gaps.each do |gap| %>
+      <% meta = gap_meta[gap] %>
+      <%= render "shared/alert_panel",
+            eyebrow: "Complete your info",
+            headline: meta[:title],
+            body: meta[:desc],
+            actions: [
+              gap == :payment ?
+                { text: "Set up", path: my_payments_setup_path } :
+                { text: "Add", type: :button,
+                  data: { action: "click->profile-completion#open", gap: gap } }
+            ] %>
+    <% end %>
 
     <%# ===== Contact modal ===== %>
     <div data-profile-completion-target="contactModal" data-profile-completion-modal

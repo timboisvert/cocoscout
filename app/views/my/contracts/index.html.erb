@@ -10,13 +10,11 @@
   } %>
 
   <% if @needs_bank %>
-    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="text-sm text-amber-900">
-        <span class="font-semibold">Connect your bank to get paid.</span>
-        Payments on your contracts are sent straight to your bank account.
-      </div>
-      <%= render "shared/button", text: "Set up payment", variant: "primary", size: "small", path: my_payments_setup_path %>
-    </div>
+    <%= render "shared/alert_panel",
+          eyebrow: "Getting paid",
+          headline: "Connect your bank to get paid",
+          body: "Payments on your contracts are sent straight to your bank account.",
+          actions: [ { text: "Set up payment", path: my_payments_setup_path } ] %>
   <% end %>
 
   <% if @contracts.any? %>

@@ -16,7 +16,7 @@ RSpec.describe "My::Dashboard", type: :request do
 
       get my_dashboard_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Finish setting up your staff")
+      expect(response.body).to include("Finish setting up")
       expect(response.body).to include(org.name)
       expect(response.body).to include(my_onboarding_path(org.id))
     end

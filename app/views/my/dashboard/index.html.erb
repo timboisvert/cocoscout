@@ -34,89 +34,15 @@
   <% end %>
 
   <!-- Pending Vacancy Invitations -->
-  <% if @pending_vacancy_invitations.any? %>
-    <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
-      <div class="bg-pink-100 px-4 py-3 border-b border-pink-200 flex items-center gap-2">
-        <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        <h3 class="text-md font-semibold text-pink-900 coustard-regular">You're Invited to Fill a Role!</h3>
-      </div>
-      <div class="p-4">
-        <div class="space-y-3">
-          <% @pending_vacancy_invitations.each do |invitation| %>
-            <% vacancy = invitation.role_vacancy %>
-            <% show = vacancy.show %>
-            <% production = show.production %>
-            <div class="p-3 bg-white border border-pink-200 rounded-lg">
-              <div class="flex items-center gap-4">
-                <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
-                  <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
-                  <span class="text-[10px] leading-tight uppercase">
-                    <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
-                    <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
-                  </span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
-                  <div class="text-sm text-gray-600">
-                    <strong class="text-pink-600"><%= vacancy.role.name %></strong>
-                    · <%= show.date_and_time.strftime("%l:%M %p").strip %>
-                  </div>
-                </div>
-              </div>
-              <% if invitation.can_claim? %>
-                <div class="mt-3 pt-3 border-t border-pink-200 flex flex-col sm:flex-row sm:items-center gap-2">
-                  <div class="flex items-center gap-2">
-                    <%= render "shared/button", text: "Claim Role", path: claim_vacancy_path(invitation.token), variant: invitation.declined? ? "outline" : "primary", size: "small" %>
-                    <% unless invitation.declined? %>
-                      <%= render "shared/button", text: "Decline", path: decline_claim_vacancy_path(invitation.token), method: :post, variant: "outline", size: "small" %>
-                    <% end %>
-                  </div>
-                  <% if invitation.declined? %>
-                    <span class="text-xs text-gray-500">You declined, but you can still claim if available</span>
-                  <% end %>
-                </div>
-              <% else %>
-                <div class="mt-3 pt-3 border-t border-pink-200">
-                  <span class="text-sm text-gray-500">No longer available</span>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  <% end %>
+  <%= render "my/vacancy_invitation_alerts", invitations: @pending_vacancy_invitations %>
 
   <!-- Pending Agreement Signatures -->
-  <% if @pending_agreements.any? %>
-    <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
-      <div class="bg-pink-100 px-4 py-3 border-b border-pink-200 flex items-center gap-2">
-        <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <h3 class="text-md font-semibold text-pink-900 coustard-regular">Agreement Signature Required</h3>
-      </div>
-      <div class="p-4">
-        <div class="space-y-3">
-          <% @pending_agreements.each do |production| %>
-            <div class="p-3 bg-white border border-pink-200 rounded-lg flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="flex-shrink-0">
-                  <%= render "shared/production_image", production: production, width: "w-10", initials_class: "text-sm" %>
-                </div>
-                <div>
-                  <div class="font-medium text-gray-900"><%= production.name %></div>
-                  <div class="text-sm text-gray-600">Please review and sign the performer agreement</div>
-                </div>
-              </div>
-              <%= render "shared/button", text: "Review & Sign", path: my_production_agreement_path(production), variant: "primary", size: "small" %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
+  <% @pending_agreements.each do |production| %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Signature required",
+          headline: production.name,
+          body: "Please review and sign the performer agreement.",
+          actions: [ { text: "Review & sign", path: my_production_agreement_path(production) } ] %>
   <% end %>
 
   <!-- Unified Calendar -->

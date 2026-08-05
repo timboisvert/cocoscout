@@ -2,24 +2,10 @@
     bank. Works on any "my" page (uses Current.user's person). %>
 <% banner_person = @person || Current.user&.person %>
 <% if banner_person&.needs_bank_connection? %>
-  <div class="mb-6 rounded-lg border border-pink-200 bg-gradient-to-r from-pink-50 to-white p-4">
-    <div class="flex items-start justify-between gap-4 flex-wrap">
-      <div class="flex items-start gap-3">
-        <div class="w-9 h-9 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-pink-900">We've upgraded how you get paid</p>
-          <p class="text-sm text-pink-800/80 mt-0.5 max-w-xl">
-            Your payments are now more secure, with clearer visibility into what you're owed and when you're paid. If you'd entered payment details before, you'll need to add them again to keep getting paid.
-          </p>
-        </div>
-      </div>
-      <div class="flex-shrink-0">
-        <%= render "shared/button", text: "Set up payments", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
-      </div>
-    </div>
-  </div>
+  <%= render "shared/alert_panel",
+        eyebrow: "Getting paid",
+        headline: "We've upgraded how you get paid",
+        body: "Your payments are now more secure, with clearer visibility into what you're owed and when you're paid. If you'd entered payment details before, you'll need to add them again to keep getting paid.",
+        actions: [ { text: "Set up payments", path: my_payments_connect_bank_path,
+                     method: :post, form: { data: { turbo: false } } } ] %>
 <% end %>
