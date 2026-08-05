@@ -616,7 +616,10 @@ class Contract < ApplicationRecord
     pending_shows = all_shows - confirmed_shows
 
     confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
-    fee = flat_fee_amount
+    # The fee is charged per show, so what we've actually earned so far tracks
+    # the shows whose numbers are in — it doesn't sit at the full contract fee
+    # while half the run is still unreported.
+    fee = flat_fee_for_shows(confirmed_shows.count)
     contractor_amount = [ confirmed_revenue - fee, 0 ].max
 
     {
@@ -629,19 +632,52 @@ class Contract < ApplicationRecord
     }
   end
 
+  # The fee due across a given number of shows. A per-show deal is simply the
+  # price times the count; a whole-contract total is allocated proportionally,
+  # and lands on exactly flat_fee_amount once every show is counted so a run
+  # never over- or under-charges by a rounding cent.
+  def flat_fee_for_shows(count)
+    count = count.to_i
+    return 0.0 unless count.positive?
+    return (flat_fee_per_show * count).round(2) if flat_fee_basis == "per_show"
+
+    total = contract_shows.where(canceled: false).count
+    return 0.0 if total.zero?
+    return flat_fee_amount.round(2) if count >= total
+
+    (flat_fee_amount * count / total).round(2)
+  end
+
+  # The payments that carry this contract's core settlement, oldest first.
+  # Revenue splits can run either direction and are named for the split;
+  # minus-fee settlements are always us paying them and are named for the fee.
+  def settlement_payments
+    if ticket_revenue_minus_fee?
+      contract_payments.where(direction: "outgoing")
+                       .where("amount_tbd = ? OR description LIKE ?", true, "Ticket revenue%")
+                       .order(:due_date)
+    else
+      contract_payments.where(amount_tbd: true)
+                       .or(contract_payments.where("description LIKE ?", "%Revenue Share%"))
+                       .order(:due_date)
+    end
+  end
+
   # Find the matching ContractPayment for a given show based on settlement frequency
   def find_payment_for_show(show)
-    return nil unless revenue_share?
+    return nil unless revenue_share? || ticket_revenue_minus_fee?
 
     # First, try direct show_id link
     direct = contract_payments.find_by(show_id: show.id)
     return direct if direct
 
-    settlement = draft_payment_config["revenue_settlement"] || "monthly"
+    # A deal that settles once has a single payment covering every show, so
+    # there's no per-show payment to find.
+    return nil unless settles_periodically?
+
+    settlement = settlement_cadence
     # Direction-agnostic: contracts can be incoming (contractor pays us) or outgoing (we pay contractor)
-    revenue_payments = contract_payments.where(amount_tbd: true)
-                                        .or(contract_payments.where("description LIKE ?", "%Revenue Share%"))
-                                        .order(:due_date)
+    revenue_payments = settlement_payments
 
     payment = case settlement
     when "per_event", "next_day", "same_day"
@@ -675,14 +711,16 @@ class Contract < ApplicationRecord
       return show ? [ show ] : []
     end
 
-    settlement = draft_payment_config["revenue_settlement"] || "monthly"
+    settlement = settlement_cadence
     all_shows = contract_shows.includes(:show_financials).order(:date_and_time).to_a
+
+    # One settlement at the end covers the whole run.
+    return all_shows unless settles_periodically?
 
     case settlement
     when "per_event", "next_day", "same_day"
       # Match by positional order: sort payments by due_date, pair 1:1 with shows by date
-      revenue_payments = contract_payments.where("amount_tbd = ? OR description LIKE ?", true, "%Revenue Share%")
-                                          .order(:due_date).to_a
+      revenue_payments = settlement_payments.to_a
       payment_index = revenue_payments.index { |p| p.id == payment.id }
       show = payment_index ? all_shows[payment_index] : nil
       if show
@@ -728,6 +766,65 @@ class Contract < ApplicationRecord
 
   def flat_fee_amount
     draft_payment_config["flat_fee_amount"].to_f
+  end
+
+  # --- Ticket-revenue-minus-fee: what the fee means and how often we settle ---
+
+  # Whether flat_fee_amount is a per-show price or one whole-contract total.
+  # "contract" is the default so contracts written before this existed keep
+  # their meaning.
+  def flat_fee_basis
+    draft_payment_config["flat_fee_basis"].presence || "contract"
+  end
+
+  # How often we hand back the remainder: "once" (one settlement at the end),
+  # "per_event", "weekly" or "monthly". Defaults to "once" for the same reason.
+  def flat_fee_settlement
+    draft_payment_config["flat_fee_settlement"].presence || "once"
+  end
+
+  # The fee attributable to a single show. Every settlement deducts this times
+  # the number of shows it covers, which is what makes a per-show fee and a
+  # whole-contract total the same arithmetic: on a contract-total deal we just
+  # spread the total across the shows first, so a run of N shows still deducts
+  # exactly flat_fee_amount in the end.
+  #
+  # Canceled shows fall out of the denominator, so a contract-total fee stays
+  # whole when a date drops while a per-show fee simply isn't charged for it.
+  def flat_fee_per_show
+    return flat_fee_amount if flat_fee_basis == "per_show"
+
+    count = contract_shows.where(canceled: false).count
+    return 0.0 if count.zero?
+
+    (flat_fee_amount / count).round(2)
+  end
+
+  # How often the core settlement pays out, whichever basis this contract uses.
+  # Revenue splits and minus-fee deals ask the same question in two different
+  # config keys, so payment lookup can stay written once.
+  def settlement_cadence
+    if ticket_revenue_minus_fee?
+      flat_fee_settlement
+    else
+      draft_payment_config["revenue_settlement"] || "monthly"
+    end
+  end
+
+  # True when the deal settles show-by-show or period-by-period rather than in
+  # a single payment at the end.
+  def settles_periodically?
+    settlement_cadence != "once"
+  end
+
+  def settlement_cadence_label
+    case settlement_cadence
+    when "per_event", "same_day" then "After each show"
+    when "next_day"              then "The day after each show"
+    when "weekly"                then "Weekly"
+    when "monthly"               then "Monthly"
+    else                              "Once, at the end of the run"
+    end
   end
 
   def revenue_share_percentage
@@ -1191,7 +1288,8 @@ class Contract < ApplicationRecord
     return "—" unless cfg["flat_fee_amount"].to_f.positive?
 
     if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
-      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])} fee"
+      per = flat_fee_basis == "per_show" ? " per show" : ""
+      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])}#{per} fee"
     else
       deal_money(cfg["flat_fee_amount"])
     end
@@ -1218,8 +1316,11 @@ class Contract < ApplicationRecord
 
   def deal_summary_flat_fee(cfg, lines)
     if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
+      fee = deal_money(cfg["flat_fee_amount"])
+      fee = "#{fee} per show" if flat_fee_basis == "per_show"
       lines << { label: "How the money works",
-                 value: "They keep the ticket revenue, less our #{deal_money(cfg['flat_fee_amount'])} fee" }
+                 value: "They keep the ticket revenue, less our #{fee} fee" }
+      lines << { label: "Settled", value: settlement_cadence_label }
       return
     end
 

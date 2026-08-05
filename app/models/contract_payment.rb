@@ -173,9 +173,11 @@ class ContractPayment < ApplicationRecord
       flat_amt = config["flat_fee_amount"].to_f
       fee_direction = config["flat_fee_direction"]
       if fee_direction == "ticket_revenue_minus_fee" && flat_amt > 0
-        contractor_amount = (total_revenue - flat_amt).round(2)
-        contractor_amount = [ contractor_amount, 0 ].max
-        { amount: contractor_amount, explanation: "Ticket revenue minus $#{'%.2f' % flat_amt} fee" }
+        # Only the fee for the shows this payment settles, so a weekly
+        # settlement deducts that week's shows rather than the whole run's.
+        fee = contract.flat_fee_for_shows(shows_with_data.size)
+        contractor_amount = [ (total_revenue - fee).round(2), 0 ].max
+        { amount: contractor_amount, explanation: "Ticket revenue minus $#{'%.2f' % fee} fee" }
       elsif flat_amt > 0
         { amount: flat_amt, explanation: "Flat fee" }
       end

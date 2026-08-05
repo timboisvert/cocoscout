@@ -255,5 +255,124 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(payment.amount_tbd).to be false
       end
     end
+
+    context "Case 3 settling weekly on a per-show fee" do
+      # Six shows, three a week, $250 a show. We sell; each week we hand back
+      # that week's ticket revenue less $750.
+      let(:contract) do
+        create(:contract, :active, organization: organization, draft_data: {
+                 "payment_structure" => "flat_fee",
+                 "payment_config" => {
+                   "flat_fee_direction" => "ticket_revenue_minus_fee",
+                   "flat_fee_amount" => 250,
+                   "flat_fee_basis" => "per_show",
+                   "flat_fee_settlement" => "weekly"
+                 }
+               })
+      end
+      let(:production) do
+        create(:production, organization: organization, production_type: "third_party")
+              .tap { |p| contract.update!(production: p) }
+      end
+
+      # Week of Mon Mar 2, then week of Mon Mar 9.
+      let(:week_one_dates) { [ Date.new(2026, 3, 3), Date.new(2026, 3, 5), Date.new(2026, 3, 7) ] }
+      let(:week_two_dates) { [ Date.new(2026, 3, 10), Date.new(2026, 3, 12), Date.new(2026, 3, 14) ] }
+
+      def show_on(date, revenue)
+        create(:show, production: production, date_and_time: date.to_time(:utc).change(hour: 20)).tap do |show|
+          create(:show_financials, :complete, show: show, ticket_revenue: revenue, other_revenue: 0.0)
+        end
+      end
+
+      it "deducts only that week's shows from that week's settlement" do
+        week_one = create(:contract_payment, contract: contract, direction: "outgoing",
+                                             description: "Ticket revenue less $750.00 fee — week of Mar 2",
+                                             amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 7))
+        week_two = create(:contract_payment, contract: contract, direction: "outgoing",
+                                             description: "Ticket revenue less $750.00 fee — week of Mar 9",
+                                             amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 14))
+
+        week_one_dates.each { |d| show_on(d, 1000.0) }
+        week_two_dates.each { |d| show_on(d, 400.0) }
+
+        described_class.new(production.shows.order(:date_and_time).last).call
+
+        expect(week_one.reload.amount).to eq(2250.0) # 3000 revenue − 3 × 250
+        expect(week_one.amount_tbd).to be false
+        expect(week_two.reload.amount).to eq(450.0)  # 1200 revenue − 3 × 250
+        expect(week_two.amount_tbd).to be false
+      end
+
+      it "never pays out a negative when a week's revenue is under its fee" do
+        payment = create(:contract_payment, contract: contract, direction: "outgoing",
+                                            description: "Ticket revenue less $750.00 fee — week of Mar 2",
+                                            amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 7))
+
+        week_one_dates.each { |d| show_on(d, 100.0) }
+
+        described_class.new(production.shows.first).call
+
+        expect(payment.reload.amount).to eq(0.0) # 300 revenue − 750 fee, floored
+      end
+
+      it "holds a week at TBD until every show in it is confirmed" do
+        payment = create(:contract_payment, contract: contract, direction: "outgoing",
+                                            description: "Ticket revenue less $750.00 fee — week of Mar 2",
+                                            amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 7))
+
+        show_on(week_one_dates.first, 1000.0)
+        # The other two dates exist but have no financials yet.
+        week_one_dates.drop(1).each do |d|
+          create(:show, production: production, date_and_time: d.to_time(:utc).change(hour: 20))
+        end
+
+        described_class.new(production.shows.first).call
+
+        payment.reload
+        expect(payment.amount).to eq(750.0) # 1000 revenue − 1 × 250
+        expect(payment.amount_tbd).to be true
+      end
+    end
+
+    context "Case 3 on a whole-run fee settled weekly" do
+      # The same deal written as one $1,500 total rather than $250 a show: the
+      # fee is spread across the six dates, so each week still deducts $750.
+      let(:contract) do
+        create(:contract, :active, organization: organization, draft_data: {
+                 "payment_structure" => "flat_fee",
+                 "payment_config" => {
+                   "flat_fee_direction" => "ticket_revenue_minus_fee",
+                   "flat_fee_amount" => 1500,
+                   "flat_fee_basis" => "contract",
+                   "flat_fee_settlement" => "weekly"
+                 }
+               })
+      end
+      let(:production) do
+        create(:production, organization: organization, production_type: "third_party")
+              .tap { |p| contract.update!(production: p) }
+      end
+
+      it "spreads the total across the run" do
+        payment = create(:contract_payment, contract: contract, direction: "outgoing",
+                                            description: "Ticket revenue less $750.00 fee — week of Mar 2",
+                                            amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 7))
+
+        [ Date.new(2026, 3, 3), Date.new(2026, 3, 5), Date.new(2026, 3, 7) ].each do |date|
+          show = create(:show, production: production, date_and_time: date.to_time(:utc).change(hour: 20))
+          create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)
+        end
+        # Three more dates the following week, unreported.
+        [ Date.new(2026, 3, 10), Date.new(2026, 3, 12), Date.new(2026, 3, 14) ].each do |date|
+          create(:show, production: production, date_and_time: date.to_time(:utc).change(hour: 20))
+        end
+
+        described_class.new(production.shows.order(:date_and_time).first).call
+
+        # 3 of 6 shows → half the $1,500 total.
+        expect(payment.reload.amount).to eq(2250.0)
+      end
+    end
   end
 end

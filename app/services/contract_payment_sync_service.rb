@@ -17,14 +17,11 @@ class ContractPaymentSyncService
   def call
     return unless should_sync?
 
-    if @contract.ticket_revenue_minus_fee?
-      sync_revenue_minus_fee
-      return
-    end
-
-    settlement = @contract.draft_payment_config["revenue_settlement"] || "monthly"
-
-    case settlement
+    # Both bases answer the same question — how often do we settle — so they
+    # share one dispatch. Only a minus-fee deal can settle "once".
+    case @contract.settlement_cadence
+    when "once"
+      sync_whole_contract
     when "per_event", "next_day", "same_day"
       sync_per_event
     when "weekly"
@@ -43,9 +40,9 @@ class ContractPaymentSyncService
     @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
   end
 
-  # Case 3: we sell, contractor gets all ticket revenue minus our flat fee. One
-  # whole-contract outgoing payment settled from every confirmed show.
-  def sync_revenue_minus_fee
+  # Case 3 settling once: we sell, contractor gets all ticket revenue minus our
+  # fee. One whole-contract outgoing payment settled from every confirmed show.
+  def sync_whole_contract
     summary = @contract.flat_fee_revenue_summary
     return unless summary
 
@@ -60,6 +57,26 @@ class ContractPaymentSyncService
     elsif !payment.status_paid?
       payment.update(amount: 0, amount_tbd: true)
     end
+  end
+
+  # What one settlement covering these shows should move. A minus-fee deal
+  # hands back their revenue less the fee for exactly the shows in this
+  # settlement — so a week of three shows deducts three shows' worth, and the
+  # run as a whole still deducts the whole fee. A split takes its percentage.
+  def settled_amount_for(shows)
+    revenue = shows.sum { |s| s.show_financials.total_revenue }
+
+    if @contract.ticket_revenue_minus_fee?
+      [ (revenue - @contract.flat_fee_for_shows(shows.size)).round(2), 0 ].max
+    else
+      (revenue * share_pct_for(nil) / 100.0).round(2)
+    end
+  end
+
+  # Whether a payment is one of the contract's core settlements (as opposed to
+  # a one-off added by hand), so we only ever reset those back to TBD.
+  def settlement_payment?(payment)
+    @contract.ticket_revenue_minus_fee? || payment.revenue_share?
   end
 
   # The slice of ticket revenue this payment settles. When the contractor sells
@@ -81,8 +98,7 @@ class ContractPaymentSyncService
 
     financials = @show.show_financials
     if financials&.has_data?
-      settled_amount = (financials.total_revenue * share_pct_for(payment) / 100.0).round(2)
-      update_payment(payment, settled_amount, [ [ @show, financials.total_revenue ] ])
+      update_payment(payment, settled_amount_for([ @show ]), [ [ @show, financials.total_revenue ] ])
     elsif !payment.status_paid?
       # Reset to TBD if financial data removed
       payment.update(amount: 0, amount_tbd: true) if payment.amount_tbd? == false
@@ -91,11 +107,9 @@ class ContractPaymentSyncService
 
   # For weekly/monthly settlement: aggregate all shows in the period
   def sync_period(period_method)
-    # Find all revenue-share payments
-    # Direction-agnostic: revenue-share payments can be incoming or outgoing
-    revenue_payments = @contract.contract_payments
-                                .where("description LIKE ? OR amount_tbd = ?", "%Revenue Share%", true)
-                                .order(:due_date)
+    # Find all settlement payments. Direction-agnostic: a revenue split can run
+    # either way, while minus-fee settlements are always outgoing.
+    revenue_payments = @contract.settlement_payments
 
     # Group shows by period
     all_shows = @contract.contract_shows.includes(:show_financials).to_a
@@ -107,11 +121,10 @@ class ContractPaymentSyncService
       confirmed_shows = period_shows.select { |s| s.show_financials&.has_data? }
 
       if confirmed_shows.any?
-        total_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
-        settled_amount = (total_revenue * share_pct_for(payment) / 100.0).round(2)
         show_details = confirmed_shows.map { |s| [ s, s.show_financials.total_revenue ] }
-        update_payment(payment, settled_amount, show_details, pending_count: period_shows.size - confirmed_shows.size)
-      elsif payment.revenue_share? && !payment.status_paid?
+        update_payment(payment, settled_amount_for(confirmed_shows), show_details,
+                       pending_count: period_shows.size - confirmed_shows.size)
+      elsif settlement_payment?(payment) && !payment.status_paid?
         # All shows still pending — keep TBD
         payment.update(amount: 0, amount_tbd: true)
       end

@@ -7,7 +7,9 @@ export default class extends Controller {
         // Flat fee targets
         "flatFeeConfig", "flatFeeAmount", "flatFeeAmountLabel", "flatFeeDirection", "flatFeeDeposit",
         "flatFeeDepositConfig", "flatFeeDepositAmount", "flatFeeDepositPercent", "flatFeeDepositDue", "flatFeeFinalDue",
-        "flatFeeTicketRevenueHint",
+        "flatFeeTicketRevenueHint", "flatFeeDepositSection", "flatFeeFinalDueConfig",
+        // Ticket-revenue-minus-fee: how the fee is priced and how often we settle
+        "flatFeeBasis", "flatFeeBasisConfig", "flatFeeSettlement", "flatFeeSettlementConfig",
         // Per event targets
         "perEventConfig", "perEventAmount", "perEventCount", "perEventDirection", "perEventTiming",
         "perEventUpfrontConfig", "perEventUpfrontDue", "perEventTotal", "perEventCountDisplay", "perEventAmountDisplay",
@@ -57,6 +59,9 @@ export default class extends Controller {
 
         // Cards first, so the list and totals read the restored answers.
         this.syncChoiceCards()
+        // A brand-new contract skips restoreConfig (nothing saved yet), so settle
+        // the flat-fee blocks here too rather than only on the restore path.
+        this.refreshFlatFeeUi()
         // Revenue share needs tickets — gate it before the first render (a brand-new
         // contract starts on "No tickets", so it should start disabled).
         this.syncRevenueShareAvailability()
@@ -194,15 +199,16 @@ export default class extends Controller {
         }
         if (this.hasFlatFeeDirectionTarget && config.flat_fee_direction) {
             this.flatFeeDirectionTarget.value = config.flat_fee_direction
-            // Restore ticket revenue hint and label
-            const isTicketRevenue = config.flat_fee_direction === "ticket_revenue_minus_fee"
-            if (this.hasFlatFeeTicketRevenueHintTarget) {
-                this.flatFeeTicketRevenueHintTarget.classList.toggle("hidden", !isTicketRevenue)
-            }
-            if (this.hasFlatFeeAmountLabelTarget) {
-                this.flatFeeAmountLabelTarget.textContent = isTicketRevenue ? "Our Fee (Deduction from Ticket Revenue)" : "Total Contract Amount"
-            }
         }
+        if (this.hasFlatFeeBasisTarget && config.flat_fee_basis) {
+            this.flatFeeBasisTarget.value = config.flat_fee_basis
+        }
+        if (this.hasFlatFeeSettlementTarget && config.flat_fee_settlement) {
+            this.flatFeeSettlementTarget.value = config.flat_fee_settlement
+        }
+        // Hint, labels and which blocks are visible all follow from the three
+        // answers above, so settle them in one place once they're restored.
+        this.refreshFlatFeeUi()
         if (this.hasFlatFeeDepositTarget && config.flat_fee_has_deposit) {
             this.flatFeeDepositTarget.value = config.flat_fee_has_deposit ? "yes" : "no"
             if (this.hasFlatFeeDepositConfigTarget) {
@@ -303,6 +309,8 @@ export default class extends Controller {
             // Flat fee config
             flat_fee_amount: this.hasFlatFeeAmountTarget ? this.flatFeeAmountTarget.value : "",
             flat_fee_direction: this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming",
+            flat_fee_basis: this.flatFeeBasisValue,
+            flat_fee_settlement: this.flatFeeSettlementValue,
             flat_fee_has_deposit: this.depositOn,
             flat_fee_deposit_amount: this.hasFlatFeeDepositAmountTarget ? this.flatFeeDepositAmountTarget.value : "",
             flat_fee_deposit_percent: this.hasFlatFeeDepositPercentTarget ? this.flatFeeDepositPercentTarget.value : "",
@@ -427,20 +435,74 @@ export default class extends Controller {
     }
 
     onFlatFeeDirectionChange() {
-        const direction = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
-        const isTicketRevenue = direction === "ticket_revenue_minus_fee"
+        this.refreshFlatFeeUi()
+        this.updateSummaryFromConfig()
+    }
 
-        // Toggle hint
+    onFlatFeeBasisChange() {
+        this.refreshFlatFeeUi()
+        this.updateSummaryFromConfig()
+    }
+
+    onFlatFeeSettlementChange() {
+        this.refreshFlatFeeUi()
+        this.updateSummaryFromConfig()
+    }
+
+    get flatFeeIsMinusFee() {
+        const direction = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
+        return direction === "ticket_revenue_minus_fee"
+    }
+
+    get flatFeeBasisValue() {
+        return this.hasFlatFeeBasisTarget ? this.flatFeeBasisTarget.value : "contract"
+    }
+
+    get flatFeeSettlementValue() {
+        return this.hasFlatFeeSettlementTarget ? this.flatFeeSettlementTarget.value : "once"
+    }
+
+    // The fee this deal deducts for a single show. A per-show price is already
+    // that; a whole-run total is spread across the booked dates, which is what
+    // lets one settlement cover a week and still add up to the agreed total.
+    flatFeePerShow(flatAmount) {
+        if (this.flatFeeBasisValue === "per_show") return flatAmount
+
+        const count = this.bookingDates.length || this.eventCount || 0
+        return count > 0 ? flatAmount / count : 0
+    }
+
+    // Only the minus-fee direction prices per show and settles on a cadence;
+    // the deposit and the single due date belong to the other two.
+    refreshFlatFeeUi() {
+        const isTicketRevenue = this.flatFeeIsMinusFee
+        const perShow = isTicketRevenue && this.flatFeeBasisValue === "per_show"
+        const settlesOnce = !isTicketRevenue || this.flatFeeSettlementValue === "once"
+
         if (this.hasFlatFeeTicketRevenueHintTarget) {
             this.flatFeeTicketRevenueHintTarget.classList.toggle("hidden", !isTicketRevenue)
         }
-
-        // Update amount label
-        if (this.hasFlatFeeAmountLabelTarget) {
-            this.flatFeeAmountLabelTarget.textContent = isTicketRevenue ? "Our Fee (Deduction from Ticket Revenue)" : "Total Contract Amount"
+        if (this.hasFlatFeeBasisConfigTarget) {
+            this.flatFeeBasisConfigTarget.classList.toggle("hidden", !isTicketRevenue)
         }
-
-        this.updateSummaryFromConfig()
+        if (this.hasFlatFeeSettlementConfigTarget) {
+            this.flatFeeSettlementConfigTarget.classList.toggle("hidden", !isTicketRevenue)
+        }
+        // A deposit makes no sense when they're the ones being paid out.
+        if (this.hasFlatFeeDepositSectionTarget) {
+            this.flatFeeDepositSectionTarget.classList.toggle("hidden", isTicketRevenue)
+        }
+        // Settling on a cadence takes its due dates from the booked shows.
+        if (this.hasFlatFeeFinalDueConfigTarget) {
+            this.flatFeeFinalDueConfigTarget.classList.toggle("hidden", !settlesOnce)
+        }
+        if (this.hasFlatFeeAmountLabelTarget) {
+            this.flatFeeAmountLabelTarget.textContent = !isTicketRevenue
+                ? "Total Contract Amount"
+                : perShow
+                    ? "Our Fee Per Show (Deduction from Ticket Revenue)"
+                    : "Our Fee for the Whole Run (Deduction from Ticket Revenue)"
+        }
     }
 
     toggleVolumeDiscount(event) {
@@ -546,10 +608,19 @@ export default class extends Controller {
                 const flatDirection = this.hasFlatFeeDirectionTarget ? this.flatFeeDirectionTarget.value : "incoming"
 
                 if (flatDirection === "ticket_revenue_minus_fee") {
-                    // Ticket revenue minus our fee: we keep $X, they get the rest
-                    if (flatAmount > 0) {
-                        incoming = flatAmount
-                        details.push({ label: "Our fee (from ticket revenue)", amount: flatAmount })
+                    // We keep our fee across the run, they get whatever's left.
+                    const showCount = this.bookingDates.length || this.eventCount || 0
+                    const perShowBasis = this.flatFeeBasisValue === "per_show"
+                    const totalFee = perShowBasis ? flatAmount * showCount : flatAmount
+
+                    if (totalFee > 0) {
+                        incoming = totalFee
+                        details.push({
+                            label: perShowBasis && showCount > 0
+                                ? `Our fee — ${showCount} × $${flatAmount.toFixed(2)}`
+                                : "Our fee (from ticket revenue)",
+                            amount: totalFee
+                        })
                         details.push({ label: "They receive", amount: "TBD (ticket revenue − fee)" })
                     }
                     break
@@ -834,16 +905,7 @@ export default class extends Controller {
                 const hasDeposit = this.depositOn
 
                 if (flatDirection === "ticket_revenue_minus_fee") {
-                    // Ticket revenue minus our fee: generate outgoing payment (TBD amount)
-                    payments.push({
-                        description: `Ticket revenue minus $${flatAmount.toFixed(2)} fee`,
-                        source: "Ticket revenue minus fee",
-                        amount: 0,
-                        amount_tbd: true,
-                        direction: "outgoing",
-                        due_date: flatFinalDue || this.getDateDaysFromNow(30),
-                        notes: `They receive all ticket revenue minus our $${flatAmount.toFixed(2)} deduction.`
-                    })
+                    payments.push(...this.buildMinusFeePayments(flatAmount, flatFinalDue))
                     break
                 }
 
@@ -1057,6 +1119,87 @@ export default class extends Controller {
         }
 
         return payments
+    }
+
+    // The calendar date a booking falls on. The stored value is a zoned ISO
+    // string, so the part before the "T" is already the local date — parsing
+    // the whole thing would shift a late show into the next day.
+    bookingCalendarDate(bookingDate) {
+        const [ year, month, day ] = bookingDate.split("T")[0].split("-").map(Number)
+        return new Date(year, month - 1, day)
+    }
+
+    // Group the booked dates into the periods we settle on. Weeks start Monday
+    // to match Rails, and each period is due on its last show so the settlement
+    // always lands inside the period it's paying for.
+    bookingPeriods(cadence) {
+        const periods = new Map()
+
+        this.bookingDates.forEach((bookingDate) => {
+            const date = this.bookingCalendarDate(bookingDate)
+            let key
+            let label
+
+            if (cadence === "weekly") {
+                const day = date.getDay()
+                const monday = new Date(date)
+                monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1))
+                key = this.formatDateForInput(monday)
+                label = `week of ${monday.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+            } else if (cadence === "monthly") {
+                key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+                label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+            } else {
+                key = this.formatDateForInput(date)
+                label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            }
+
+            if (!periods.has(key)) periods.set(key, { label, dates: [], lastDate: date })
+            const period = periods.get(key)
+            period.dates.push(bookingDate)
+            if (date > period.lastDate) period.lastDate = date
+        })
+
+        return Array.from(periods.values()).sort((a, b) => a.lastDate - b.lastDate)
+    }
+
+    // We sell, keep our fee, hand back the rest. Every settlement deducts the
+    // fee for the shows it covers, so a week of three shows deducts three
+    // shows' worth and the run still deducts the agreed total.
+    //
+    // Amounts stay TBD until the box office numbers are confirmed — the sync
+    // service fills them in as each show's financials land. Descriptions all
+    // start with "Ticket revenue" so it can find them again.
+    buildMinusFeePayments(flatAmount, flatFinalDue) {
+        const cadence = this.flatFeeSettlementValue
+        const perShow = this.flatFeePerShow(flatAmount)
+
+        if (cadence === "once" || this.bookingDates.length === 0) {
+            return [ {
+                description: `Ticket revenue less $${flatAmount.toFixed(2)} fee`,
+                source: "Ticket revenue minus fee",
+                amount: 0,
+                amount_tbd: true,
+                direction: "outgoing",
+                due_date: flatFinalDue || this.getDateDaysFromNow(30),
+                notes: `They receive all ticket revenue minus our $${flatAmount.toFixed(2)} deduction.`
+            } ]
+        }
+
+        return this.bookingPeriods(cadence).map((period) => {
+            const fee = perShow * period.dates.length
+            const shows = `${period.dates.length} ${period.dates.length === 1 ? "show" : "shows"}`
+
+            return {
+                description: `Ticket revenue less $${fee.toFixed(2)} fee — ${period.label}`,
+                source: "Ticket revenue minus fee",
+                amount: 0,
+                amount_tbd: true,
+                direction: "outgoing",
+                due_date: this.formatDateForInput(period.lastDate),
+                notes: `${shows} × $${perShow.toFixed(2)} deducted from this period's ticket revenue.`
+            }
+        })
     }
 
     preparePaymentsForSubmit() {
