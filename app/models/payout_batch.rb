@@ -53,13 +53,24 @@ class PayoutBatch < ApplicationRecord
   DEPOSIT_MIN_BUSINESS_DAYS = 2
   DEPOSIT_MAX_BUSINESS_DAYS = 4
 
+  # A payee's very first payment is held longer while our payout provider
+  # finishes setting up their account. That hold is counted in calendar days,
+  # not business days — running it through add_business_days would overstate it
+  # to roughly three weeks.
+  FIRST_DEPOSIT_MIN_DAYS = 7
+  FIRST_DEPOSIT_MAX_DAYS = 14
+
   # [earliest, latest] dates a payee can expect the deposit, counted from the
   # payday (freshened to the submit date when the run is funded — see
   # PayoutBatchService.fund!).
-  def expected_deposit_range
+  def expected_deposit_range(first_payout: false)
     base = payday || created_at&.to_date || Date.current
-    [ self.class.add_business_days(base, DEPOSIT_MIN_BUSINESS_DAYS),
-      self.class.add_business_days(base, DEPOSIT_MAX_BUSINESS_DAYS) ]
+    if first_payout
+      [ base + FIRST_DEPOSIT_MIN_DAYS.days, base + FIRST_DEPOSIT_MAX_DAYS.days ]
+    else
+      [ self.class.add_business_days(base, DEPOSIT_MIN_BUSINESS_DAYS),
+        self.class.add_business_days(base, DEPOSIT_MAX_BUSINESS_DAYS) ]
+    end
   end
 
   def self.add_business_days(date, count)

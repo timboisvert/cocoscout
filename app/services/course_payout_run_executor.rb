@@ -18,6 +18,10 @@ class CoursePayoutRunExecutor
 
       paid = 0
       failed = 0
+      # The payee's expected deposit window counts from payday, so a run created
+      # days before it's paid would otherwise advertise a window in the past.
+      # Mirrors the freshening PayoutBatchService.fund! does for funded runs.
+      batch.payday = Date.current if batch.payday.blank? || batch.payday < Date.current
       batch.update!(status: "processing")
 
       batch.items.pending.includes(:payee, :payout_contributions).find_each do |item|
@@ -49,6 +53,11 @@ class CoursePayoutRunExecutor
         status: all_paid ? "completed" : "draft",
         completed_at: all_paid ? Time.current : nil
       )
+
+      # Tell each instructor their money is on the way — the same notice
+      # performers and staff get. The org's own remainder row is skipped by the
+      # job (nobody to tell when you pay yourself).
+      PayoutSentPayeeNotificationJob.perform_later(batch.id)
 
       Result.new(batch: batch, paid: paid, failed: failed)
     end

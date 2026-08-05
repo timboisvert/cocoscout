@@ -51,6 +51,44 @@ namespace :content_templates do
       puts "content template payout_run_submitted already exists — left as is"
     end
 
+    # Sent to each payee when a payout run is submitted — performers, staff,
+    # and course instructors alike. Three mutually exclusive branches, exactly
+    # one of which is set by PayoutSentPayeeNotificationJob. Never names our
+    # payout provider.
+    payout_sent = ContentTemplate.find_or_initialize_by(key: "payout_sent_to_payee")
+    if payout_sent.new_record?
+      payout_sent.update!(
+        name: "Payout Sent (payee notice)",
+        # The subject has to branch too — promising "on its way" to someone we
+        # can't actually pay yet contradicts the body.
+        subject: "{{#sending}}{{amount}} is on its way from {{organization_name}}{{/sending}}" \
+                 "{{#needs_bank}}{{amount}} from {{organization_name}} is waiting for you{{/needs_bank}}",
+        body: "<p>Hi {{recipient_name}},</p>" \
+              "{{#returning_payout}}" \
+              "<p><strong>{{amount}}</strong> from {{organization_name}} is on its way to your bank. " \
+              "Expect it <strong>{{expected_window}}</strong>.</p>" \
+              "{{/returning_payout}}" \
+              "{{#first_payout}}" \
+              "<p><strong>{{amount}}</strong> from {{organization_name}} is on its way.</p>" \
+              "<p>Because this is your first payment through CocoScout, our payout provider " \
+              "takes a little longer to finish setting up your account — so expect this one " \
+              "<strong>{{expected_window}}</strong>. Payments after this arrive within a few days.</p>" \
+              "{{/first_payout}}" \
+              "{{#needs_bank}}" \
+              "<p><strong>{{amount}}</strong> from {{organization_name}} is set aside for you.</p>" \
+              "<p>You haven't connected a bank account yet, so we can't send it. " \
+              "Add one and your money will be on its way.</p>" \
+              "{{/needs_bank}}" \
+              "<p><a href=\"{{payments_url}}\">See what it's for in My Payments</a></p>",
+        category: "payments",
+        channel: "both",
+        active: true
+      )
+      puts "Created content template: payout_sent_to_payee"
+    else
+      puts "content template payout_sent_to_payee already exists — left as is"
+    end
+
     # Sent to the org's chosen managers when a contract is signed by the
     # counterparty. Message-only (no email); renders as an automated notification.
     signed = ContentTemplate.find_or_initialize_by(key: "contract_signed_manager")

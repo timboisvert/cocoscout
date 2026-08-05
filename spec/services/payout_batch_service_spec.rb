@@ -141,6 +141,25 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
+    it "tells each payee their money is on its way when the run is submitted" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_n", status: "processing"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+
+      expect { PayoutBatchService.fund!(batch, method: "ach") }
+        .to have_enqueued_job(PayoutSentPayeeNotificationJob).with(batch.id)
+    end
+
+    it "promises nobody anything when the funding debit fails" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_raise(Stripe::StripeError.new("card declined"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+
+      expect {
+        expect { PayoutBatchService.fund!(batch, method: "ach") }.to raise_error(PayoutBatchService::Error)
+      }.not_to have_enqueued_job(PayoutSentPayeeNotificationJob)
+    end
+
     it "raises when the org has no connected funding source" do
       org.update!(funding_payment_method_id: nil)
       batch = PayoutBatchService.build_for(organization: org)

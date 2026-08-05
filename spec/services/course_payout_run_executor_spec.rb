@@ -90,4 +90,21 @@ RSpec.describe CoursePayoutRunExecutor do
     expect(batch.reload.status).to eq("completed")
     expect(batch.items.all?(&:paid?)).to be(true)
   end
+
+  it "tells the instructors their money is on its way" do
+    batch = build_run
+
+    expect { described_class.pay!(batch) }
+      .to have_enqueued_job(PayoutSentPayeeNotificationJob).with(batch.id)
+  end
+
+  it "freshens a stale payday so the payee isn't quoted a deposit window in the past" do
+    batch = build_run
+    batch.update!(payday: 10.days.ago.to_date)
+
+    described_class.pay!(batch)
+
+    expect(batch.reload.payday).to eq(Date.current)
+    expect(batch.expected_deposit_range.first).to be >= Date.current
+  end
 end

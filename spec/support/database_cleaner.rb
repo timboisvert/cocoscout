@@ -54,6 +54,14 @@ def seed_content_templates
     { key: "removed_from_cast_notification", name: "Removed from Cast", subject: "Removed", body: "Removed", category: "casting", channel: "message" },
     { key: "casting_table_notification", name: "Casting Table", subject: "Casting", body: "Casting info", category: "casting", channel: "message" },
     { key: "payment_setup_reminder", name: "Payment Reminder", subject: "Payment", body: "Set up payment", category: "payments", channel: "message" },
+    { key: "payout_sent_to_payee", name: "Payout Sent (payee notice)",
+      subject: "{{#sending}}{{amount}} is on its way from {{organization_name}}{{/sending}}{{#needs_bank}}{{amount}} from {{organization_name}} is waiting for you{{/needs_bank}}",
+      body: "<p>Hi {{recipient_name}},</p>" \
+            "{{#returning_payout}}<p>{{amount}} is on its way to your bank. Expect it {{expected_window}}.</p>{{/returning_payout}}" \
+            "{{#first_payout}}<p>{{amount}} is on its way. Because this is your first payment through CocoScout, our payout provider takes a little longer to finish setting up your account — so expect this one {{expected_window}}.</p>{{/first_payout}}" \
+            "{{#needs_bank}}<p>{{amount}} is set aside for you. You haven't connected a bank account yet, so we can't send it.</p>{{/needs_bank}}" \
+            "<p><a href=\"{{payments_url}}\">See what it's for in My Payments</a></p>",
+      category: "payments", channel: "both" },
     { key: "staff_onboarding_invite", name: "Staff Onboarding Invite", subject: "Welcome to {{organization_name}}", body: "Hi {{first_name}}, get set up at {{onboarding_url}}", category: "staffing", channel: "both" },
     { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}", body: "<p>{{intro}}</p>{{shifts_list}} See your <a href=\"{{my_shifts_link}}\">My Shifts</a>.", category: "shows", channel: "message" },
     { key: "course_registration_confirmed", name: "Course Registration Confirmed", subject: "You're registered for {{course_title}}!", body: "Hi {{recipient_name}}, your registration for {{course_title}} is confirmed.", category: "courses", channel: "both" },

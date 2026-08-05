@@ -152,6 +152,7 @@ class PayoutBatchService
       batch.update!(status: "funding", funding_status: "succeeded", funding_payment_intent_id: nil)
       advance_funding!(batch, "succeeded")
       PayoutRunSubmittedNotificationJob.perform_later(batch.id)
+      PayoutSentPayeeNotificationJob.perform_later(batch.id)
       return batch
     end
 
@@ -174,6 +175,8 @@ class PayoutBatchService
     # The run is submitted — tell the org's chosen managers (who's being paid,
     # how much, expected deposit window). Async; no recipients chosen = no-op.
     PayoutRunSubmittedNotificationJob.perform_later(batch.id)
+    # …and tell each payee their own money is on the way.
+    PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
   rescue Stripe::StripeError => e
     # The debit never happened — give back any credit this attempt consumed so
