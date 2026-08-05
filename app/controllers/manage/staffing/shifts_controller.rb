@@ -4,57 +4,55 @@ module Manage
   module Staffing
     class ShiftsController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next acknowledge_gap unacknowledge_gap]
+      before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next]
 
       def create
         attrs = shift_params
         @shift = Current.organization.shifts.new(sanitize_roles(attrs, attrs[:house_role_id]))
         if @shift.save
-          flash[:notice] = "Shift added."
+          assigned_note = assign_initial_person
+          redirect_to_scheduling notice: [ "Shift added.", assigned_note ].compact.join(" ")
         else
-          flash[:alert] = "Couldn't add shift: #{@shift.errors.full_messages.to_sentence}"
+          redirect_to_scheduling alert: "Couldn't add shift: #{@shift.errors.full_messages.to_sentence}"
         end
-        redirect_back_or_to manage_staffing_scheduling_path
       rescue ActiveRecord::RecordNotUnique
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "There's already a shift for this role at that time."
+        redirect_to_scheduling alert: "There's already a shift for this role at that time."
       end
 
       def update
         if @shift.update(sanitize_roles(shift_params, @shift.house_role_id))
-          flash[:notice] = "Shift updated."
+          redirect_to_scheduling notice: "Shift updated."
         else
-          flash[:alert] = "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
+          redirect_to_scheduling alert: "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
         end
-        redirect_back_or_to manage_staffing_scheduling_path
       rescue ActiveRecord::RecordNotUnique
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "There's already a shift for this role at that time."
+        redirect_to_scheduling alert: "There's already a shift for this role at that time."
       end
 
       def destroy
+        day = scheduling_day_for(@shift)
         @shift.shift_assignments.each { |a| record_removal_if_notified(a) }
         @shift.destroy!
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Shift removed."
+        redirect_to_scheduling day: day, notice: "Shift removed."
       end
 
       def assign
         person_id = params[:person_id].to_i
         person = Current.organization.people.find_by(id: person_id)
         unless person
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "Person not found in this organization.") and return
+          redirect_to_scheduling(alert: "Person not found in this organization.") and return
         end
         # Only allow assigning if the person is on staff and qualified for the role.
-        member = OrganizationStaffMember.active.find_by(organization: Current.organization, person: person)
-        unless member && member.house_role_ids.include?(@shift.house_role_id)
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "That person isn't on staff or isn't qualified for this role.") and return
+        unless qualified_for_shift?(person, @shift)
+          redirect_to_scheduling(alert: "That person isn't on staff or isn't qualified for this role.") and return
         end
 
         next_position = (@shift.shift_assignments.maximum(:position) || 0) + 1
         assignment = @shift.shift_assignments.new(person: person, position: next_position)
         if assignment.save
-          redirect_back_or_to manage_staffing_scheduling_path, notice: "Assigned #{person.name}."
+          redirect_to_scheduling notice: "Assigned #{person.name}."
         else
-          redirect_back_or_to manage_staffing_scheduling_path,
-                              alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
+          redirect_to_scheduling alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
         end
       end
 
@@ -64,9 +62,9 @@ module Manage
           name = assignment.person.name
           record_removal_if_notified(assignment)
           assignment.destroy!
-          redirect_back_or_to manage_staffing_scheduling_path, notice: "Removed #{name} from this shift."
+          redirect_to_scheduling notice: "Removed #{name} from this shift."
         else
-          redirect_back_or_to manage_staffing_scheduling_path, alert: "Assignment not found."
+          redirect_to_scheduling alert: "Assignment not found."
         end
       end
 
@@ -84,7 +82,7 @@ module Manage
           .where.not(id: @shift.id)
           .to_a
         if others.empty?
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "Pick at least one shift to merge.") and return
+          redirect_to_scheduling(alert: "Pick at least one shift to merge.") and return
         end
 
         all_shifts = [ @shift ] + others
@@ -109,9 +107,9 @@ module Manage
           others.each(&:destroy!)
           @shift.shows = extra_shows if extra_shows.any?
         end
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Merged #{all_shifts.size} shifts."
+        redirect_to_scheduling notice: "Merged #{all_shifts.size} shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't merge: #{e.message}"
+        redirect_to_scheduling alert: "Couldn't merge: #{e.message}"
       end
 
       def split
@@ -130,7 +128,7 @@ module Manage
 
         segments.each do |seg|
           if seg[:ends_at] <= seg[:starts_at]
-            redirect_back_or_to(manage_staffing_scheduling_path, alert: "Each segment must end after it starts.") and return
+            redirect_to_scheduling(alert: "Each segment must end after it starts.") and return
           end
         end
 
@@ -150,10 +148,9 @@ module Manage
             )
           end
         end
-        redirect_back_or_to manage_staffing_scheduling_path,
-                            notice: "Split into #{segments.size} shifts."
+        redirect_to_scheduling notice: "Split into #{segments.size} shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't split: #{e.message}"
+        redirect_to_scheduling alert: "Couldn't split: #{e.message}"
       end
 
       # Merge with the adjacent same-role shift that starts at this one's end.
@@ -170,7 +167,7 @@ module Manage
           .first
 
         unless next_shift
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "No adjacent shift to merge with.") and return
+          redirect_to_scheduling(alert: "No adjacent shift to merge with.") and return
         end
 
         ActiveRecord::Base.transaction do
@@ -185,29 +182,54 @@ module Manage
           @shift.update!(ends_at: [ next_shift.ends_at, @shift.ends_at ].max)
           next_shift.destroy!
         end
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Shifts merged."
+        redirect_to_scheduling notice: "Shifts merged."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't merge: #{e.message}"
-      end
-
-      # Mark the gap between this shift and the next same-role shift as intentional.
-      # We store the next shift's starts_at; if the schedule shifts, the stored value
-      # no longer matches and the warning reappears automatically.
-      def acknowledge_gap
-        next_starts_at = Time.zone.parse(params[:next_starts_at].to_s)
-        if next_starts_at.nil? || next_starts_at <= @shift.ends_at
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "Couldn't acknowledge gap.") and return
-        end
-        @shift.update!(gap_after_acknowledged_until: next_starts_at)
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Gap marked OK."
-      end
-
-      def unacknowledge_gap
-        @shift.update!(gap_after_acknowledged_until: nil)
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Gap warning restored."
+        redirect_to_scheduling alert: "Couldn't merge: #{e.message}"
       end
 
       private
+
+      # Every action on the scheduling page redirects back to it — but a bare
+      # redirect makes Turbo re-render from the top, dumping the manager back at
+      # the top of the week. Anchor the redirect to the affected shift's day card
+      # (id="day-<iso date>" in scheduling.html.erb) so they stay where they were
+      # working. Referer is used when it's safely on-host so week_start and other
+      # query params survive.
+      def redirect_to_scheduling(day: nil, notice: nil, alert: nil)
+        day ||= @shift && scheduling_day_for(@shift)
+        base = url_from(request.referer) || manage_staffing_scheduling_path
+        target = day ? "#{base.split('#').first}#day-#{day.iso8601}" : base
+        redirect_to target, notice: notice, alert: alert
+      end
+
+      # Which schedule day a shift belongs to — follows its source show/rental
+      # (so a past-midnight shift groups with its show), mirroring
+      # StaffingController#staffing_day_for.
+      def scheduling_day_for(shift)
+        (shift.source.try(:date_and_time) || shift.starts_at).to_date
+      end
+
+      def qualified_for_shift?(person, shift)
+        member = OrganizationStaffMember.active.find_by(organization: Current.organization, person: person)
+        member.present? && member.house_role_ids.include?(shift.house_role_id)
+      end
+
+      # The add-shift modal can name a person to put straight onto the new
+      # shift. Optional — an unassigned shift is perfectly valid — and guarded
+      # by the same staff/qualification rule as assign.
+      def assign_initial_person
+        person_id = params[:person_id].to_i
+        return nil if person_id.zero?
+
+        person = Current.organization.people.find_by(id: person_id)
+        return "Couldn't assign: person not found." unless person
+        return "Couldn't assign #{person.name}: not on staff or not qualified for this role." unless qualified_for_shift?(person, @shift)
+
+        @shift.shift_assignments.create!(person: person, position: 1)
+        "Assigned #{person.name}."
+      rescue ActiveRecord::RecordInvalid => e
+        "Couldn't assign #{person&.name}: #{e.message}"
+      end
 
       # Split a merged show-based shift back into one shift per show it covers —
       # each anchored to its show with that show's hours. The first show's shift
@@ -216,7 +238,7 @@ module Manage
       def split_into_shows
         shows = @shift.covered_shows
         if shows.size < 2
-          redirect_back_or_to(manage_staffing_scheduling_path, alert: "This shift only covers one show.") and return
+          redirect_to_scheduling(alert: "This shift only covers one show.") and return
         end
 
         ActiveRecord::Base.transaction do
@@ -236,9 +258,9 @@ module Manage
             )
           end
         end
-        redirect_back_or_to manage_staffing_scheduling_path, notice: "Split into #{shows.size} per-show shifts."
+        redirect_to_scheduling notice: "Split into #{shows.size} per-show shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-        redirect_back_or_to manage_staffing_scheduling_path, alert: "Couldn't split: #{e.message}"
+        redirect_to_scheduling alert: "Couldn't split: #{e.message}"
       end
 
       # If this assignment was already notified to the person, log a pending

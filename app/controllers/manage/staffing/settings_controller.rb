@@ -8,8 +8,9 @@ module Manage
     # agreement-template CRUD lives in AgreementTemplatesController and
     # redirects back here), and who's hidden from the Pay People grid.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people].freeze
-      SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list" }.freeze
+      SECTIONS = %w[agreements pay_people coverage].freeze
+      SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
+                         "coverage" => "Show coverage" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -26,12 +27,14 @@ module Manage
         end
       end
 
-      # Two independent settings post here: the required staff agreement, and
-      # which members are excluded from the Pay People grid. Each form submits
-      # only its own params, so we branch on what arrived.
+      # Independent settings post here: the required staff agreement, the Pay
+      # People exclusions, and the show-coverage assistant toggle. Each form
+      # submits only its own params, so we branch on what arrived.
       def update
         if params.key?(:excluded_staff_member_ids) || params[:excluding_from_pay].present?
           update_pay_exclusions
+        elsif params[:updating_coverage].present?
+          update_coverage_alerts
         else
           update_required_agreement
         end
@@ -85,6 +88,17 @@ module Manage
         count = scope.where(excluded_from_pay: true).count
         redirect_to section_path("pay_people"),
                     notice: count.positive? ? "#{helpers.pluralize(count, 'person')} hidden from the Pay People list." : "Everyone shows on the Pay People list."
+      end
+
+      # The coverage assistant: when on, the scheduling page flags shows that
+      # are missing a staffed shift for a show-specific role, naming the roles.
+      # (updating_coverage is a marker param so an unchecked box still routes
+      # here and turns it off.)
+      def update_coverage_alerts
+        enabled = params[:alert_uncovered_show_roles].present?
+        Current.organization.update!(alert_uncovered_show_roles: enabled)
+        redirect_to section_path("coverage"),
+                    notice: enabled ? "Scheduling now flags shows missing show-specific role coverage." : "Coverage alerts turned off."
       end
     end
   end

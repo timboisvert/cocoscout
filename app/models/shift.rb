@@ -78,13 +78,6 @@ class Shift < ApplicationRecord
     assigned_count >= required_count
   end
 
-  # Acknowledgement applies only to the specific gap whose next-start matches
-  # the stored timestamp. If the next shift moves, the acknowledgement becomes
-  # stale on its own — no manual cleanup needed.
-  def gap_after_acknowledged?(next_starts_at)
-    gap_after_acknowledged_until.present? && gap_after_acknowledged_until == next_starts_at
-  end
-
   # :day or :evening, used to match against staff unavailability scopes.
   def day_part
     StaffUnavailability.day_part_for(starts_at)

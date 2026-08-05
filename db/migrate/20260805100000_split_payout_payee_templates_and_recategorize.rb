@@ -28,7 +28,7 @@ class SplitPayoutPayeeTemplatesAndRecategorize < ActiveRecord::Migration[8.1]
       body: "<p>Hi {{recipient_name}},</p>" \
             "<p><strong>{{organization_name}}</strong> just sent you <strong>{{amount}}</strong>.</p>" \
             "<p>It should reach your bank account <strong>{{expected_window}}</strong>.</p>" \
-            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+            "<p><a href=\"{{payments_url}}\">View this payment in My Payments</a></p>",
       available_variables: SHARED_VARIABLES + %w[expected_window]
     },
     {
@@ -41,7 +41,7 @@ class SplitPayoutPayeeTemplatesAndRecategorize < ActiveRecord::Migration[8.1]
             "<p>First payments take a bit longer than usual: our payout provider needs extra time to " \
             "finish setting up your account. Expect this one <strong>{{expected_window}}</strong>. " \
             "After this, payments normally arrive within a few business days.</p>" \
-            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+            "<p><a href=\"{{payments_url}}\">View this payment in My Payments</a></p>",
       available_variables: SHARED_VARIABLES + %w[expected_window]
     },
     {
@@ -53,7 +53,7 @@ class SplitPayoutPayeeTemplatesAndRecategorize < ActiveRecord::Migration[8.1]
             "<p>We can't send it yet — there's no bank account on your profile. " \
             "Add one and your money will be on its way.</p>" \
             "<p><a href=\"{{setup_url}}\">Add your bank account</a></p>" \
-            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+            "<p><a href=\"{{payments_url}}\">View this payment in My Payments</a></p>",
       available_variables: SHARED_VARIABLES + %w[setup_url]
     }
   ].freeze

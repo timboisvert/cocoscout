@@ -1,38 +1,61 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Opens a modal for adding a shift on a given day. Pick a role and the shift's
-// window is filled in from the day's shows. For "per-show" (show-specific)
-// roles, a Show picker appears so the shift is tied to one chosen show and runs
-// for that show's hours; house roles span the whole evening.
+// The progressive Add-shift modal. Pick a role and the rest reveals itself
+// already filled in: the suggested time window (editable), the show picker for
+// per-show roles, and the qualified people so the shift can be staffed in the
+// same motion. Leaving the person blank creates an unassigned shift.
+//
+// Shares the page root with shift-assign, so the staff pool / unavailability /
+// cast payloads are read straight off the root element's shift-assign values
+// rather than being serialized twice.
 export default class extends Controller {
-    static targets = ["modal", "form", "subtitle", "roleSelect", "startInput", "endInput", "timeHint",
-                      "sourceTypeInput", "sourceIdInput", "showRow", "showSelect"]
+    static targets = ["modal", "form", "subtitle", "roleSelect", "details",
+                      "startInput", "endInput", "startTimeInput", "endTimeInput", "timeHint",
+                      "sourceTypeInput", "sourceIdInput", "showRow", "showSelect",
+                      "people", "personIdInput", "submitWrap"]
     static values = { createUrl: String }
 
     open(event) {
         if (event) event.preventDefault()
         const btn = event.currentTarget
-        const dayLabel = btn.dataset.dayLabel || ""
 
         this.roleDefaults = this.parse(btn.dataset.roleDefaults, {}) // { roleId: {starts_at, ends_at} }
         this.showDefaults = this.parse(btn.dataset.showDefaults, {}) // { roleId: { showId: {starts_at, ends_at} } }
         this.dayShows = this.parse(btn.dataset.dayShows, [])         // [{ id, label }]
         this.defaultSourceShowId = btn.dataset.sourceShowId || ""
+        this.dayIso = btn.dataset.dayIso || ""
 
-        if (this.hasSubtitleTarget) this.subtitleTarget.textContent = dayLabel
+        // Sibling controller payloads, shared via the page root.
+        this.staffByRole = this.parse(this.element.dataset.shiftAssignStaffByRoleValue, {})
+        this.unavailability = this.parse(this.element.dataset.shiftAssignStaffUnavailabilityValue, {})
+        this.castByDay = this.parse(this.element.dataset.shiftAssignCastByDayValue, {})
+
+        if (this.hasSubtitleTarget) this.subtitleTarget.textContent = btn.dataset.dayLabel || ""
         if (this.hasFormTarget && this.hasCreateUrlValue) this.formTarget.action = this.createUrlValue
 
+        // Fresh start: no role chosen yet, everything else tucked away.
+        if (this.hasRoleSelectTarget) this.roleSelectTarget.value = ""
+        this.clearPerson()
         this.roleChanged()
         this.show()
     }
 
-    // Role picked: show the per-show picker for show-specific roles, else fall
-    // back to the whole-evening window anchored to the day's first show.
+    // Role picked: reveal the rest. Per-show roles get the show picker (which
+    // drives the times); house roles get the whole-evening window.
     roleChanged() {
         if (!this.hasRoleSelectTarget) return
         const roleId = this.roleSelectTarget.value
-        const perShow = this.showDefaults[roleId]
 
+        if (!roleId) {
+            if (this.hasDetailsTarget) this.detailsTarget.classList.add("hidden")
+            this.setSubmitEnabled(false)
+            return
+        }
+
+        if (this.hasDetailsTarget) this.detailsTarget.classList.remove("hidden")
+        this.setSubmitEnabled(true)
+
+        const perShow = this.showDefaults[roleId]
         if (perShow && this.dayShows.length) {
             this.populateShowOptions()
             if (this.hasShowRowTarget) this.showRowTarget.classList.remove("hidden")
@@ -43,6 +66,9 @@ export default class extends Controller {
             if (d) this.applyTimes(d.starts_at, d.ends_at)
             this.setSource(this.defaultSourceShowId)
         }
+
+        this.clearPerson()
+        this.renderPeople(roleId)
     }
 
     // Show picked (per-show roles): anchor the shift to that show and use its hours.
@@ -68,11 +94,34 @@ export default class extends Controller {
         if (current && this.dayShows.some(s => s.id === current)) this.showSelectTarget.value = current
     }
 
+    // Seed the visible time inputs and the hidden datetimes from a suggested
+    // window ("YYYY-MM-DDTHH:MM" local).
     applyTimes(startsAt, endsAt) {
-        if (this.hasStartInputTarget) this.startInputTarget.value = startsAt
-        if (this.hasEndInputTarget)   this.endInputTarget.value   = endsAt
-        if (this.hasTimeHintTarget && startsAt && endsAt) {
-            this.timeHintTarget.textContent = `Will run ${this.fmt(startsAt)} – ${this.fmt(endsAt)}.`
+        this.baseDate = (startsAt || "").split("T")[0]
+        if (this.hasStartTimeInputTarget) this.startTimeInputTarget.value = (startsAt || "").split("T")[1] || ""
+        if (this.hasEndTimeInputTarget) this.endTimeInputTarget.value = (endsAt || "").split("T")[1] || ""
+        this.syncHiddenTimes()
+    }
+
+    // The manager edited a time by hand — keep the hidden datetimes in step.
+    timesEdited() {
+        this.syncHiddenTimes()
+    }
+
+    // End time earlier than start rolls to the next day (a shift crossing
+    // midnight), mirroring the edit modal's behavior.
+    syncHiddenTimes() {
+        if (!this.baseDate) return
+        const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
+        const end = this.hasEndTimeInputTarget ? this.endTimeInputTarget.value : ""
+        if (!start || !end) return
+
+        const endDate = end <= start ? this.nextDay(this.baseDate) : this.baseDate
+        if (this.hasStartInputTarget) this.startInputTarget.value = `${this.baseDate}T${start}`
+        if (this.hasEndInputTarget) this.endInputTarget.value = `${endDate}T${end}`
+        if (this.hasTimeHintTarget) {
+            const rollover = end <= start ? " (past midnight)" : ""
+            this.timeHintTarget.textContent = `Runs ${this.fmt(start)} – ${this.fmt(end)}${rollover}. Adjust as needed.`
         }
     }
 
@@ -81,17 +130,121 @@ export default class extends Controller {
         if (this.hasSourceIdInputTarget)   this.sourceIdInputTarget.value   = showId || ""
     }
 
+    // ----- person picker -----
+
+    renderPeople(roleId) {
+        if (!this.hasPeopleTarget) return
+        const pool = this.staffByRole[roleId] || []
+        if (pool.length === 0) {
+            this.peopleTarget.innerHTML = `<p class="col-span-2 text-xs text-gray-400 py-2">No one is qualified for this role yet.</p>`
+            return
+        }
+
+        this.peopleTarget.innerHTML = pool.map(p => {
+            const badge = this.badgeFor(p.id)
+            const avatar = p.headshot_url
+                ? `<img src="${this.h(p.headshot_url)}" class="w-7 h-7 rounded-lg object-cover flex-shrink-0" alt="">`
+                : `<span class="w-7 h-7 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-[10px] flex-shrink-0">${this.h(p.initials || (p.name || "?")[0])}</span>`
+            return `
+                <button type="button"
+                        data-person-id="${p.id}"
+                        data-action="click->shift-add#togglePerson"
+                        class="relative flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 bg-white hover:border-pink-400 hover:bg-pink-50 transition-colors cursor-pointer text-left">
+                    ${avatar}
+                    <span class="min-w-0">
+                        <span class="block text-xs font-medium text-gray-900 truncate">${this.h(p.name || "(no name)")}</span>
+                        ${badge}
+                    </span>
+                </button>`
+        }).join("")
+    }
+
+    badgeFor(personId) {
+        if (this.isPerforming(personId)) {
+            return `<span class="block text-[10px] text-purple-600 font-medium">In a show</span>`
+        }
+        if (this.isUnavailable(personId)) {
+            return `<span class="block text-[10px] text-red-600 font-medium">Unavailable</span>`
+        }
+        return ""
+    }
+
+    togglePerson(event) {
+        if (event) event.preventDefault()
+        const btn = event.currentTarget
+        const id = btn.dataset.personId
+        const selecting = this.hasPersonIdInputTarget && this.personIdInputTarget.value !== id
+
+        this.clearPerson()
+        if (selecting) {
+            if (this.hasPersonIdInputTarget) this.personIdInputTarget.value = id
+            btn.classList.add("ring-2", "ring-pink-500", "border-pink-400", "bg-pink-50")
+        }
+    }
+
+    clearPerson() {
+        if (this.hasPersonIdInputTarget) this.personIdInputTarget.value = ""
+        if (this.hasPeopleTarget) {
+            this.peopleTarget.querySelectorAll("button").forEach(b =>
+                b.classList.remove("ring-2", "ring-pink-500", "border-pink-400", "bg-pink-50"))
+        }
+    }
+
+    // Same semantics as shift-assign: cast on this schedule day, or an
+    // unavailability entry covering the shift's day part.
+    isPerforming(personId) {
+        if (!this.dayIso) return false
+        const byDay = this.castByDay[this.dayIso] || {}
+        return (byDay[String(personId)] || []).length > 0
+    }
+
+    isUnavailable(personId) {
+        if (!this.dayIso) return false
+        const data = this.unavailability[personId]
+        if (!data) return false
+
+        const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
+        const dayPart = parseInt(start.slice(0, 2) || "17", 10) >= 17 ? "evening" : "day"
+        const entries = data.entries || []
+        const covers = entries.some(e => {
+            if (e.date !== this.dayIso) return false
+            return e.scope === "all_day" ||
+                   (e.scope === "day_shifts" && dayPart === "day") ||
+                   (e.scope === "evening_shifts" && dayPart === "evening")
+        })
+        return data.mode === "available" ? !covers : covers
+    }
+
+    // ----- plumbing -----
+
+    setSubmitEnabled(enabled) {
+        if (!this.hasSubmitWrapTarget) return
+        this.submitWrapTarget.classList.toggle("opacity-40", !enabled)
+        this.submitWrapTarget.classList.toggle("pointer-events-none", !enabled)
+    }
+
     parse(json, fallback) {
         try { return JSON.parse(json || "") } catch (_) { return fallback }
     }
 
-    fmt(localIso) {
-        // localIso is "YYYY-MM-DDTHH:MM" in local time; format as h:MM AM/PM.
-        const [, time] = localIso.split("T")
+    nextDay(iso) {
+        const d = new Date(`${iso}T12:00:00`)
+        d.setDate(d.getDate() + 1)
+        return d.toISOString().slice(0, 10)
+    }
+
+    fmt(time) {
         const [hh, mm] = time.split(":").map(n => parseInt(n, 10))
         const ampm = hh >= 12 ? "PM" : "AM"
         const h = hh % 12 || 12
         return `${h}:${String(mm).padStart(2, "0")} ${ampm}`
+    }
+
+    h(s) {
+        if (s == null) return ""
+        const d = document.createElement("div")
+        d.textContent = String(s)
+        return d.innerHTML
     }
 
     close(event) { if (event) event.preventDefault(); this.hide() }

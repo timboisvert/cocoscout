@@ -70,10 +70,15 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, :source, shift_assignments: :person)
+        .includes(:house_role, :additional_roles, :source, :shows, shift_assignments: :person)
         .ordered
         .to_a
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
+
+      # Coverage assistant (opt-in via Staffing settings): which shows this week
+      # are missing a staffed shift for a show-specific role, and which roles.
+      @uncovered_roles_by_show =
+        Current.organization.alert_uncovered_show_roles? ? uncovered_show_roles(shifts) : {}
 
       @finalization = Current.organization.staffing_finalizations.find_by(week_start: @week_start)
       @week_finalized = @finalization&.finalized? || false
@@ -136,93 +141,6 @@ module Manage
 
       load_availability_overview
     end
-
-    # Per-day shift auto-generation. See the long comment in the previous
-    # ScheduleController for the algorithm — moved here when /staffing became
-    # the schedule page itself.
-    def generate
-      @week_start = parse_week_start(params[:week_start])
-      @week_end = @week_start + 6.days
-      roles = Current.organization.house_roles.active.to_a
-      if roles.empty?
-        redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s),
-                    alert: "Add at least one house role first." and return
-      end
-
-      shows = shows_in_range(@week_start..@week_end)
-      # Optional: restrict to a hand-picked subset of shows. Absent = all shows
-      # in the week (the default), so the plain "generate for the week" still works.
-      if params[:show_ids].present?
-        selected_ids = Array(params[:show_ids]).map(&:to_i).to_set
-        shows = shows.select { |s| selected_ids.include?(s.id) }
-      end
-      shows_by_day = shows.group_by { |s| s.date_and_time.to_date }
-      # Optional explicit shift windows (set in the Generate modal when a day's
-      # shows have a 2h+ gap). When present for a day, house roles use these
-      # windows verbatim instead of one all-evening shift — so a split evening
-      # becomes a shift tied to the earlier shows and one tied to the later ones.
-      segments_by_date = parse_split_segments(params[:split_segments])
-      created = 0
-      skipped = 0
-
-      shows_by_day.each do |day, day_shows|
-        sorted = day_shows.sort_by(&:date_and_time)
-        first_show = sorted.first
-        last_show = sorted.last
-        day_segments = segments_by_date[day]
-
-        roles.each do |role|
-          # Shifts run for the show's own hours (any early-in/late-out is baked
-          # into the show times / the contract). Show-specific roles get one anchor
-          # per show. House roles get one anchor per contiguous cluster of shows
-          # (shows an hour or less apart — or overlapping — become one shift; a
-          # bigger gap splits them) — unless the manager split the evening by hand,
-          # in which case we use their windows verbatim.
-          anchors =
-            if role.show_specific?
-              sorted.map { |show| [ show.date_and_time, show.ends_at, show ] }
-            elsif day_segments.any?
-              day_segments.map { |seg_start, seg_end| [ seg_start, seg_end, first_show ] }
-            else
-              cluster_shows_by_gap(sorted).map { |c| [ c[:start], c[:end], c[:first] ] }
-            end
-
-          anchors.each do |starts_at, ends_at, source_show|
-            # Venue-scoped roles only staff shows at their venue.
-            next if role.location_id.present? && source_show.location_id != role.location_id
-            next if ends_at <= starts_at
-
-            shift = Current.organization.shifts.new(
-              house_role: role,
-              source: source_show,
-              starts_at: starts_at,
-              ends_at: ends_at,
-              required_count: role.default_required_count,
-              coverage_mode: :needs_assignment
-            )
-            begin
-              shift.save!
-              created += 1
-            rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-              # Already exists (the no-dupe validation or the DB index) — skip it
-              # and keep generating the rest.
-              skipped += 1
-            end
-          end
-        end
-      end
-
-      notice =
-        if created.zero? && skipped.zero?
-          "No shows in this week — nothing to generate."
-        elsif created.zero?
-          "Already up to date — no new shifts needed."
-        else
-          "#{created} shift(s) generated#{" (#{skipped} already existed and were skipped)" if skipped > 0}."
-        end
-      redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s), notice: notice
-    end
-
     # Publish/notify a week's schedule. The FIRST time (never finalized) this
     # publishes the week and notifies everyone assigned. Once published, it's a
     # targeted "Notify updates": only people with a new/changed/removed shift are
@@ -462,34 +380,36 @@ module Manage
         .order("shifts.starts_at ASC")
         .to_a
     end
+    # { show_id => [role names] } for every show in the loaded week that lacks
+    # a fully staffed shift covering it for an applicable show-specific role.
+    # "Applicable" respects venue scoping: a role tied to another location is
+    # never reported missing for this show. A shift covers a show only through
+    # its explicit links (source / merged shift_shows) — never inferred from
+    # time — and counts once it's fully staffed (which includes
+    # covered_by_renter and not_needed modes).
+    def uncovered_show_roles(shifts)
+      show_roles = Current.organization.house_roles.active.select(&:show_specific?)
+      return {} if show_roles.empty?
 
-    # The Generate modal's split windows → { Date => [[start, end], ...] }.
-    def parse_split_segments(raw)
-      result = Hash.new { |h, k| h[k] = [] }
-      Array(raw).each do |seg|
-        seg = seg.respond_to?(:to_unsafe_h) ? seg.to_unsafe_h : seg
-        s = Time.zone.parse(seg["starts_at"].to_s) rescue nil
-        e = Time.zone.parse(seg["ends_at"].to_s) rescue nil
-        next unless s && e && e > s
-        result[s.to_date] << [ s, e ]
+      covered = Hash.new { |h, k| h[k] = Set.new }
+      shifts.each do |shift|
+        next unless shift.fully_staffed?
+
+        role_ids = [ shift.house_role_id ] + shift.additional_roles.map(&:id)
+        shift.covered_shows.each { |show| covered[show.id].merge(role_ids) }
       end
-      result
-    end
 
-    # Group a day's sorted shows into contiguous clusters. Consecutive shows an
-    # hour or less apart — or that overlap — belong to one shift; a bigger gap
-    # starts a new cluster. Managers can still split a cluster further by hand.
-    def cluster_shows_by_gap(sorted_shows, max_gap: 1.hour)
-      clusters = []
-      sorted_shows.each do |show|
-        current = clusters.last
-        if current && (show.date_and_time - current[:end]) <= max_gap
-          current[:end] = [ current[:end], show.ends_at ].max
-        else
-          clusters << { start: show.date_and_time, end: show.ends_at, first: show }
+      result = {}
+      @shows_by_day.each_value do |shows|
+        shows.each do |show|
+          missing = show_roles.select do |role|
+            (role.location_id.nil? || role.location_id == show.location_id) &&
+              !covered[show.id].include?(role.id)
+          end
+          result[show.id] = missing.map(&:name) if missing.any?
         end
       end
-      clusters
+      result
     end
 
     def shows_in_range(range)

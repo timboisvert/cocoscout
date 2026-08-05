@@ -1196,7 +1196,6 @@ Rails.application.routes.draw do
     patch "staffing/timesheets/:id/unmark_paid_offline", to: "staffing/timesheets#unmark_paid_offline", as: "unmark_paid_offline_staffing_timesheet"
     patch "staffing/timesheets/:id",              to: "staffing/timesheets#update",      as: "staffing_timesheet"
     delete "staffing/timesheets/:id",             to: "staffing/timesheets#reject",      as: "reject_staffing_timesheet"
-    post "staffing/generate",                     to: "staffing#generate",               as: "generate_staffing"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
     get  "staffing/house_roles/editor",           to: "staffing/house_roles#editor",     as: "staffing_house_roles_editor"
@@ -1266,8 +1265,6 @@ Rails.application.routes.draw do
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
-    post   "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#acknowledge_gap", as: "acknowledge_gap_staffing_shift"
-    delete "staffing/shifts/:id/acknowledge_gap", to: "staffing/shifts#unacknowledge_gap", as: "unacknowledge_gap_staffing_shift"
     # Legacy /staffing/schedule URLs redirect to the scheduling sub-section.
     get    "staffing/schedule", to: redirect("/manage/staffing/scheduling")
 

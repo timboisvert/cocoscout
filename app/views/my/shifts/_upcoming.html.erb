@@ -29,6 +29,17 @@
                       <% if org %><%= org.name %><% end %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %>
                       <% if @people.size > 1 %> · <%= row[:person].name %><% end %>
                     </div>
+                    <%# Show-tied shifts (per-show roles, or merged shifts covering
+                        several shows) name what they're covering. House shifts that
+                        merely anchor to a show for scheduling stay quiet. %>
+                    <% if shift.house_role&.show_specific? || shift.shows.any? %>
+                      <% covered = shift.covered_shows %>
+                      <% if covered.any? %>
+                        <div class="text-xs text-gray-600">
+                          Covering: <%= covered.map { |cs| "#{cs.date_and_time.strftime('%-l:%M %p')} #{cs.production&.name}".strip }.join(" · ") %>
+                        </div>
+                      <% end %>
+                    <% end %>
                     <% if assignment.declined? %>
                       <div class="mt-1 text-xs text-pink-700 font-medium">
                         You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %>

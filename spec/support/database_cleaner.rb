@@ -56,13 +56,13 @@ def seed_content_templates
       subject: "{{amount}} is on its way from {{organization_name}}",
       body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} just sent you {{amount}}.</p>" \
             "<p>It should reach your bank account {{expected_window}}.</p>" \
-            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+            "<p><a href=\"{{payments_url}}\">View this payment in My Payments</a></p>",
       category: "payments", channel: "both" },
     { key: "payout_sent_to_payee_first_payment", name: "Payout Sent — first payment (payee)",
       subject: "{{amount}} is on its way from {{organization_name}}",
       body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} just sent you {{amount}} — your first payment through CocoScout.</p>" \
             "<p>First payments take a bit longer than usual: our payout provider needs extra time to finish setting up your account. Expect this one {{expected_window}}.</p>" \
-            "<p><a href=\"{{payments_url}}\">See what this payment is for</a></p>",
+            "<p><a href=\"{{payments_url}}\">View this payment in My Payments</a></p>",
       category: "payments", channel: "both" },
     { key: "payout_sent_to_payee_no_bank", name: "Payout Sent — waiting on a bank account (payee)",
       subject: "{{amount}} from {{organization_name}} is waiting for you",
