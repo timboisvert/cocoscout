@@ -40,6 +40,14 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Who pays</label>
             <%= select_tag "services[#{i}][direction]", options_for_select(dir_options, chosen ? chosen["direction"] : option.default_direction), class: input %>
           </div>
+          <div class="w-52">
+            <label class="block text-xs font-medium text-gray-600 mb-1">How it's settled</label>
+            <%= select_tag "services[#{i}][settlement]",
+                  options_for_select([ [ "They pay it directly", "direct" ], [ "Taken out of their payout", "payout_deduction" ] ],
+                                     chosen ? chosen["settlement"] : "direct"),
+                  class: input %>
+            <p class="text-[11px] text-gray-500 mt-1">Applies when they pay us — a payout deduction nets it out when their share goes on a payout run.</p>
+          </div>
         </div>
       </div>
     <% end %>

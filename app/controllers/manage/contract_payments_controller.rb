@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid add_to_payout_run]
+    before_action :set_payment, only: %i[update destroy mark_paid add_to_payout_run settlement]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -69,6 +69,27 @@ module Manage
       else
         redirect_back fallback_location: manage_contract_path(@contract), alert: result.error
       end
+    end
+
+    # Flip how an incoming payment settles: they pay it directly, or it's
+    # deducted from their payout when their share joins a run. Pending incoming
+    # payments only — once money moved, the story is written.
+    def settlement
+      unless @payment.direction_incoming? && @payment.status_pending?
+        redirect_back fallback_location: manage_contract_path(@contract),
+                      alert: "Only a pending payment they owe can change how it's settled." and return
+      end
+
+      method = params[:settlement_method].to_s
+      unless ContractPayment::SETTLEMENT_METHODS.include?(method)
+        redirect_back fallback_location: manage_contract_path(@contract), alert: "Unknown settlement method." and return
+      end
+
+      @payment.update!(settlement_method: method)
+      notice = method == "payout_deduction" ?
+        "#{@payment.description.presence || 'This payment'} will be deducted from their payout." :
+        "#{@payment.description.presence || 'This payment'} is back to being paid directly."
+      redirect_back fallback_location: manage_contract_path(@contract), notice: notice
     end
 
     private

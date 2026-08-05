@@ -121,7 +121,11 @@
                 <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm <%= 'bg-pink-50' if payment == next_owing %>">
                   <span class="text-gray-700 truncate">
                     <%= payment.description.presence || "Payment" %>
-                    <span class="text-gray-400">· <%= payment.due_date&.strftime("%b %-d, %Y") %></span>
+                    <% if payment.deduct_from_payout? || payment.payment_method == "payout_deduction" %>
+                      <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700">Taken out of your payout</span>
+                    <% else %>
+                      <span class="text-gray-400">· <%= payment.due_date&.strftime("%b %-d, %Y") %></span>
+                    <% end %>
                   </span>
                   <span class="font-medium text-gray-900 flex-shrink-0"><%= amount_label.call(payment) %></span>
                 </div>

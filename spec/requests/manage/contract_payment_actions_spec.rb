@@ -100,6 +100,41 @@ RSpec.describe "Manage contract payment actions", type: :request do
     end
   end
 
+  describe "PATCH settlement (pay directly vs deduct from payout)" do
+    let(:contract) { contract_for(payable_person) }
+    let!(:service) do
+      create(:contract_payment, contract: contract, direction: "incoming",
+                                amount: 120, description: "Tech service")
+    end
+
+    it "flips a pending incoming payment to deduct-from-payout and back" do
+      patch settlement_manage_contract_contract_payment_path(contract, service, settlement_method: "payout_deduction")
+      expect(service.reload.settlement_method).to eq("payout_deduction")
+      expect(service).not_to be_collectable_online
+
+      patch settlement_manage_contract_contract_payment_path(contract, service, settlement_method: "direct")
+      expect(service.reload.settlement_method).to eq("direct")
+      expect(service).to be_collectable_online
+    end
+
+    it "refuses on outgoing or already-paid payments" do
+      outgoing = create(:contract_payment, :outgoing, contract: contract, amount: 50)
+      patch settlement_manage_contract_contract_payment_path(contract, outgoing, settlement_method: "payout_deduction")
+      expect(outgoing.reload.settlement_method).to eq("direct")
+
+      service.update!(status: "paid", paid_date: Date.current)
+      patch settlement_manage_contract_contract_payment_path(contract, service, settlement_method: "payout_deduction")
+      expect(service.reload.settlement_method).to eq("direct")
+    end
+
+    it "shows the deduction chip instead of pay-link actions on the contract page" do
+      service.update!(settlement_method: "payout_deduction")
+      get manage_contract_path(contract)
+      expect(response.body).to include("Deducts from payout")
+      expect(response.body).not_to include("Copy pay link")
+    end
+  end
+
   describe "POST mark_paid" do
     it "refuses to mark an outgoing payment paid by hand" do
       contract = contract_for(payable_person)

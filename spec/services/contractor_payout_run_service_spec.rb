@@ -77,4 +77,102 @@ RSpec.describe ContractorPayoutRunService do
       expect { PayoutBatchService.process!(batch) }.not_to change(PerformerActivation, :count)
     end
   end
+
+  describe "services settled by payout deduction" do
+    def deductible_service!(amount:, description: "Tech service")
+      create(:contract_payment, contract: contract, direction: "incoming",
+                                amount: amount, description: description,
+                                settlement_method: "payout_deduction")
+    end
+
+    it "nets a smaller service out of the share as a visible negative line" do
+      service = deductible_service!(amount: 100)
+
+      batch = described_class.add_contract_payment!(payment).batch
+      item = batch.items.find_by(payee: payee)
+
+      # Gross share + itemized deduction, item pays the difference.
+      expect(item.amount_cents).to eq(20_000)
+      deduction = item.payout_contributions.find_by(source: service)
+      expect(deduction.amount_cents).to eq(-10_000)
+      expect(deduction.label).to include("Tech service").and include("deducted")
+
+      # The service is settled — no pay link, nothing to chase.
+      expect(service.reload).to be_status_paid
+      expect(service.payment_method).to eq("payout_deduction")
+      expect(service).not_to be_collectable_online
+
+      # Ledger agrees with the run: they're owed the net.
+      expect(org.payout_balance_cents_for(payee)).to eq(20_000)
+    end
+
+    it "pays out the net amount when the run runs" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_net"))
+      deductible_service!(amount: 100)
+
+      batch = described_class.add_contract_payment!(payment).batch
+      PayoutBatchService.process!(batch)
+
+      expect(Stripe::Transfer).to have_received(:create).with(hash_including(amount: 20_000))
+      expect(org.payout_balance_cents_for(payee)).to eq(0)
+    end
+
+    it "settles an exact offset as a wash — nothing rides the run, both sides paid" do
+      service = deductible_service!(amount: 300) # equals the 300 share
+
+      result = described_class.add_contract_payment!(payment)
+
+      # Nothing to transfer, no item left, no dangling ledger.
+      expect(result.batch.items.where(payee: payee)).to be_empty
+      expect(org.payout_balance_cents_for(payee)).to eq(0)
+
+      # BOTH payments are settled, so neither can be re-added or re-collected.
+      expect(payment.reload).to be_status_paid
+      expect(payment.payment_method).to eq("offset")
+      expect(service.reload).to be_status_paid
+      expect(service.payment_method).to eq("payout_deduction")
+    end
+
+    it "leaves the uncovered remainder payable directly when services exceed the share" do
+      service = deductible_service!(amount: 450)
+
+      described_class.add_contract_payment!(payment)
+
+      # $300 share offsets $300 of the service; $150 flips back to payable.
+      expect(payment.reload).to be_status_paid # settled by offset
+      service.reload
+      expect(service).to be_status_pending
+      expect(service.amount.to_f).to eq(150.0)
+      expect(service.settlement_method).to eq("direct")
+      expect(service).to be_collectable_online
+      expect(service.description).to include("offset against payout")
+      expect(org.payout_balance_cents_for(payee)).to eq(0)
+    end
+
+    it "never deducts the same service twice across runs" do
+      deductible_service!(amount: 100)
+      described_class.add_contract_payment!(payment)
+
+      second_outgoing = create(:contract_payment, :outgoing, contract: contract, amount: 200)
+      batch = described_class.add_contract_payment!(second_outgoing).batch
+
+      item = batch.items.find_by(payee: payee)
+      # Second share rides untouched — the service settled on the first add.
+      expect(item.payout_contributions.where("amount_cents < 0").count).to eq(1)
+      expect(org.payout_balance_cents_for(payee)).to eq(20_000 + 20_000)
+    end
+
+    it "ignores direct-settlement and TBD services entirely" do
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 100,
+                                settlement_method: "direct")
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 0,
+                                amount_tbd: true, settlement_method: "payout_deduction")
+
+      batch = described_class.add_contract_payment!(payment).batch
+      item = batch.items.find_by(payee: payee)
+
+      expect(item.amount_cents).to eq(30_000)
+      expect(item.payout_contributions.where("amount_cents < 0")).to be_empty
+    end
+  end
 end

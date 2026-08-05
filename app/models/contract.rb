@@ -412,10 +412,14 @@ class Contract < ApplicationRecord
       amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
       next unless amount.positive?
 
+      direction = service["direction"].presence || "incoming"
       contract_payments.create!(
         description: service["name"],
         amount: amount,
-        direction: service["direction"].presence || "incoming",
+        direction: direction,
+        # "Taken out of their payout" only makes sense for money they owe us;
+        # outgoing services are always paid directly.
+        settlement_method: direction == "incoming" ? (service["settlement"].presence || "direct") : "direct",
         due_date: contract_end_date || Date.current
       )
     end

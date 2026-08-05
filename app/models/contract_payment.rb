@@ -22,10 +22,16 @@ class ContractPayment < ApplicationRecord
     cancelled: "cancelled"
   }, default: :pending, prefix: :status
 
+  # How an incoming payment is settled: they pay it directly (pay link /
+  # recorded payment), or it's taken out of their payout when their revenue
+  # share joins a payout run (see ContractorPayoutRunService).
+  SETTLEMENT_METHODS = %w[direct payout_deduction].freeze
+
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
   validates :direction, presence: true
+  validates :settlement_method, inclusion: { in: SETTLEMENT_METHODS }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
@@ -69,12 +75,26 @@ class ContractPayment < ApplicationRecord
     payout_contribution.present?
   end
 
+  # Money they owe us that we've agreed to net out of their payout instead of
+  # invoicing. Only meaningful on incoming payments.
+  def deduct_from_payout?
+    direction_incoming? && settlement_method == "payout_deduction"
+  end
+
+  # Settled by being netted out of the counterparty's payout run. Display-only
+  # for traceability — the run's contributions and ledger entries carry the
+  # actual money movement.
+  def mark_paid_via_deduction!(reference: nil)
+    update!(status: :paid, paid_date: Date.current, payment_method: "payout_deduction", reference_number: reference)
+  end
+
   # --- Paying us online -------------------------------------------------------
 
   # Whether this payment can be collected through a pay link: money owed TO us,
   # still outstanding, and with a settled amount to charge.
   def collectable_online?
-    direction_incoming? && status_pending? && !amount_tbd? && amount.to_f.positive?
+    direction_incoming? && status_pending? && !amount_tbd? && amount.to_f.positive? &&
+      !deduct_from_payout?
   end
 
   # The secret in the shareable /pay/contract/:token link. Minted on first use
@@ -122,6 +142,11 @@ class ContractPayment < ApplicationRecord
   # the PayoutBatchItem posts the single debiting ledger entry, so this must not
   # touch the ledger.
   def mark_paid_via_payout_run!(reference_id: nil)
+    # A deduction line's source is an INCOMING payment already settled by the
+    # netting (or carrying a live remainder) — the run paying out must never
+    # relabel it as a Stripe payment or resurrect a paid one.
+    return if direction_incoming? || status_paid?
+
     update!(status: :paid, paid_date: Date.current, payment_method: "stripe", reference_number: reference_id)
   end
 

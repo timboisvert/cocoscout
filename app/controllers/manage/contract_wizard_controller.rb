@@ -220,7 +220,8 @@ module Manage
           "quantity" => quantity,
           "unit_price" => row[:unit_price].to_f,
           "unit" => row[:unit].presence || "flat",
-          "direction" => row[:direction].presence || "incoming"
+          "direction" => row[:direction].presence || "incoming",
+          "settlement" => ContractPayment::SETTLEMENT_METHODS.include?(row[:settlement].to_s) ? row[:settlement].to_s : "direct"
         }
       end
 

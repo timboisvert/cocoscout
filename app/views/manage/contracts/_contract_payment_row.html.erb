@@ -127,6 +127,19 @@
           <% if in_run %>
             <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                   class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
+          <% elsif is_incoming && payment.deduct_from_payout? %>
+            <%# Settling out of their payout: no pay link, no collecting — it
+                nets automatically when their share joins a payout run. %>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
+                    title="Nets against their share automatically when it's added to a payout run.">
+                Deducts from payout
+              </span>
+              <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "direct"),
+                    method: :patch, form_class: "inline-block" do %>
+                <%= render "shared/button", text: "Have them pay it", variant: "secondary", size: "xs", type: :submit %>
+              <% end %>
+            </div>
           <% elsif is_incoming && payment.collectable_online? %>
             <%# Copy the pay link, record an offline payment inline, or open the
                 Collect page for the QR code + reminders. No login needed to pay. %>
@@ -143,6 +156,13 @@
               <% end %>
               <%= link_to manage_money_incoming_payment_path(payment) do %>
                 <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
+              <% end %>
+              <% if contract.contractor.present? %>
+                <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "payout_deduction"),
+                      method: :patch, form_class: "inline-block",
+                      title: "Stop collecting this — net it out of their payout instead" do %>
+                  <%= render "shared/button", text: "Deduct from payout", variant: "secondary", size: "xs", type: :submit %>
+                <% end %>
               <% end %>
             </div>
           <% elsif is_incoming && offline_allowed %>

@@ -14,7 +14,10 @@ class PayoutContribution < ApplicationRecord
   # :destroy so removing a contribution from an open run reverses what it owed.
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
 
-  validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  # Negative amounts are real: a contract service settled by payout deduction
+  # is a negative line on the item, so the payee sees their gross share and
+  # the deduction itemized (see ContractorPayoutRunService).
+  validates :amount_cents, presence: true, numericality: { only_integer: true }
   validates :label, presence: true
 
   # Contributions that count toward the payee's transfer and ledger. Excludes
