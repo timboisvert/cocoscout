@@ -34,7 +34,14 @@
     gtag('config', 'G-P198QVDCDH');
   </script>
 
-  <body class="inter-regular text-slate-700 bg-[#f9f9f7]" <% if Current.user.present? %>data-controller="upgrade-modal"<% end %>>
+  <%# The global impersonation bar, unless the page already renders its own
+      richer one (the Mics header sets :impersonation_banner) or we're inside
+      the native app, which has no web chrome. %>
+  <% show_impersonation_bar = impersonating? && !turbo_native_app? && !content_for?(:impersonation_banner) %>
+
+  <body class="inter-regular text-slate-700 bg-[#f9f9f7] <%= "impersonating" if show_impersonation_bar %>" <% if Current.user.present? %>data-controller="upgrade-modal"<% end %>>
+
+  <%= render "shared/impersonation_bar" if show_impersonation_bar %>
 
   <div class="flex min-h-screen">
 

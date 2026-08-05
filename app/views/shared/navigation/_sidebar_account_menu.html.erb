@@ -5,15 +5,8 @@
 <% return if respond_to?(:turbo_native_app?) && turbo_native_app? %>
 
 <div class="px-3 pb-3 pt-2 border-t border-gray-200">
-  <% if impersonating? %>
-    <div class="flex items-center justify-between gap-2 bg-pink-100 border border-pink-300 px-3 py-2 rounded-lg mb-2">
-      <div class="min-w-0">
-        <div class="text-[10px] font-semibold text-pink-800 uppercase tracking-wide">Impersonating</div>
-        <div class="text-xs font-medium text-pink-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
-      </div>
-      <%= render "shared/button", text: "Stop", variant: "outline-pink", size: "small", path: stop_impersonating_user_path, method: :post %>
-    </div>
-  <% end %>
+  <%# No impersonation notice here — shared/_impersonation_bar runs across the
+      top of every page, which is far harder to miss than a box down here. %>
 
   <div class="relative" data-controller="dropdown">
     <button data-action="click->dropdown#toggle click@window->dropdown#hide"

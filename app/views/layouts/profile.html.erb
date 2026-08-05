@@ -23,7 +23,11 @@
     <%= Sentry.get_trace_propagation_meta.html_safe %>
   </head>
 
-  <body class="inter-regular text-slate-700 bg-[#f9f9f7]" data-controller="profile-visibility profile-nav">
+  <% show_impersonation_bar = impersonating? && !turbo_native_app? %>
+
+  <body class="inter-regular text-slate-700 bg-[#f9f9f7] <%= "impersonating" if show_impersonation_bar %>" data-controller="profile-visibility profile-nav">
+
+    <%= render "shared/impersonation_bar" if show_impersonation_bar %>
 
     <div class="flex min-h-screen">
 

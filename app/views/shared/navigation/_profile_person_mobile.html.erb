@@ -1,4 +1,4 @@
-<div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
+<div data-controller="mobile-nav" class="app-top-chrome fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
   <%# ===== TOP BAR ===== %>
   <div class="flex items-center justify-between px-4 py-2.5">
     <button type="button" data-action="mobile-nav#toggle" class="p-1">
@@ -16,26 +16,11 @@
   </div>
 
   <%# ===== FULL-SCREEN PANEL ===== %>
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[45px] bg-white overflow-y-auto z-40">
+  <div data-mobile-nav-target="panel" class="app-top-chrome hidden fixed inset-0 top-[45px] bg-white overflow-y-auto z-40">
     <div class="flex flex-col min-h-full">
 
-      <%# ===== IMPERSONATION BANNER ===== %>
-      <% if impersonating? %>
-        <div class="bg-amber-500 px-4 py-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-white flex-shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
-              <div>
-                <div class="text-xs font-bold text-white uppercase tracking-wider">Impersonating</div>
-                <div class="text-sm font-semibold text-white"><%= Current.user.person&.name || Current.user.email_address %></div>
-              </div>
-            </div>
-            <%= render "shared/button", text: "Stop", variant: "outline", size: "small", path: stop_impersonating_user_path, data: { turbo_method: :post } %>
-          </div>
-        </div>
-      <% end %>
+      <%# No impersonation banner here — shared/_impersonation_bar sits above the
+          whole nav now, so it's visible without opening this panel. %>
 
       <%# ===== MAIN CONTENT ===== %>
       <div class="flex-1 px-4 py-6">

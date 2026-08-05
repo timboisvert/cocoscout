@@ -142,3 +142,29 @@ select:focus {
     cursor: grab;
 }
 .dual-range-input::-moz-range-thumb:active { cursor: grabbing; }
+
+/* ── Impersonation bar ─────────────────────────────────────────────────────
+   shared/_impersonation_bar is a fixed amber strip across the top of the
+   viewport whenever a superadmin is impersonating someone. Everything else
+   that pins itself to the top — the desktop sidebars and headers, the mobile
+   nav bar and its full-screen panel — carries `app-top-chrome` and comes down
+   by the same amount, and the document gets matching headroom.
+
+   margin-top (not top) so each element keeps whatever offset it already had:
+   the nav panels sit at top-[44px]/top-[45px], the rest at top-0. Sidebars are
+   the one exception — h-screen is an explicit height, so it has to shrink too.
+
+   Keep --impersonation-bar-h in sync with the bar's own h-8. */
+body.impersonating {
+    --impersonation-bar-h: 2rem;
+    padding-top: var(--impersonation-bar-h);
+}
+body.impersonating .min-h-screen {
+    min-height: calc(100vh - var(--impersonation-bar-h));
+}
+body.impersonating .app-top-chrome {
+    margin-top: var(--impersonation-bar-h);
+}
+body.impersonating .app-top-chrome.h-screen {
+    height: calc(100vh - var(--impersonation-bar-h));
+}

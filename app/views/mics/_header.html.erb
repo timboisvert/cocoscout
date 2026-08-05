@@ -3,6 +3,9 @@
     (city captain, mic runner, superadmin) so they can verify the
     impersonation is reaching the right view. %>
 <% if impersonating? && Current.user %>
+  <%# Tells the layout to skip the global shared/_impersonation_bar: this one
+      says the same thing plus the mics-specific role badges. %>
+  <% content_for :impersonation_banner, "mics" %>
   <%
     cu = Current.user
     captain_hubs = CityHub.joins(:memberships)
