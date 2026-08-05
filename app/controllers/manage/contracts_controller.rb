@@ -443,25 +443,17 @@ module Manage
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
       @service_options = Current.organization.contract_service_options.ordered
       @existing_services = @amend_data["services"] || @contract.draft_services
+      # Amended bookings when the schedule step already changed them, else the
+      # contract's current dates — per-event services pick from these.
+      @bookings = @amend_data["bookings"] || @contract.draft_bookings || []
     end
 
     def save_amend_ticketing_tech
       ticketing_data = params[:ticketing].present? ? (JSON.parse(params[:ticketing]) rescue {}) : {}
 
-      services = Array(params[:services]&.values).filter_map do |row|
-        name = row[:name].to_s.strip
-        next if name.blank? || row[:include] != "1"
-
-        quantity = row[:quantity].to_f
-        quantity = 1 if quantity <= 0
-        {
-          "name" => name,
-          "quantity" => quantity,
-          "unit_price" => row[:unit_price].to_f,
-          "unit" => row[:unit].presence || "flat",
-          "direction" => row[:direction].presence || "incoming"
-        }
-      end
+      # Same parser as the wizard — this path used to hand-roll the hash and
+      # silently dropped the settlement choice on every amendment.
+      services = Contract.normalize_service_rows(params[:services])
 
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(

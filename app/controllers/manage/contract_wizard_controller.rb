@@ -201,29 +201,19 @@ module Manage
     end
 
     # Step 6: Services (optional) — draw from the org catalog, override price/qty.
+    # Per-event services need the booked dates to hang themselves on.
     def tech
       @step = 6
       @service_options = Current.organization.contract_service_options.ordered
       @existing_services = @contract.draft_services
+      @bookings = @contract.draft_bookings || []
     end
 
     def save_tech
-      # Collect the chosen service line items into draft_data["services"].
-      services = Array(params[:services]&.values).filter_map do |row|
-        name = row[:name].to_s.strip
-        next if name.blank? || row[:include] != "1"
-
-        quantity = row[:quantity].to_f
-        quantity = 1 if quantity <= 0
-        {
-          "name" => name,
-          "quantity" => quantity,
-          "unit_price" => row[:unit_price].to_f,
-          "unit" => row[:unit].presence || "flat",
-          "direction" => row[:direction].presence || "incoming",
-          "settlement" => ContractPayment::SETTLEMENT_METHODS.include?(row[:settlement].to_s) ? row[:settlement].to_s : "direct"
-        }
-      end
+      # Collect the chosen service line items (incl. per-event date/hours
+      # selections) into draft_data["services"]. One shared parser with the
+      # amend path so the two can't drift.
+      services = Contract.normalize_service_rows(params[:services])
 
       @contract.update_draft_step(:services, services)
 

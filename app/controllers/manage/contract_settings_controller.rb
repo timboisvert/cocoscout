@@ -90,7 +90,7 @@ module Manage
     end
 
     def service_params
-      permitted = params.require(:contract_service_option).permit(:name, :unit, :default_direction, :default_price)
+      permitted = params.require(:contract_service_option).permit(:name, :unit, :default_direction, :default_price, :booking_mode)
       price = permitted.delete(:default_price)
       permitted[:default_price_cents] = (price.to_f * 100).round if price.present?
       permitted

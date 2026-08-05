@@ -2,6 +2,7 @@
   input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   unit_options = ContractServiceOption::UNITS.map { |u| [u == "hourly" ? "Per hour" : "Flat", u] }
   dir_options = [["They pay us", "incoming"], ["We pay them", "outgoing"]]
+  mode_options = [["Once per contract", "once"], ["Per event", "per_event"]]
 %>
 
 <div class="bg-white border border-gray-200 rounded-xl p-6">
@@ -37,6 +38,10 @@
             <div class="w-36">
               <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
               <%= select_tag "contract_service_option[default_direction]", options_for_select(dir_options, service.default_direction), class: input %>
+            </div>
+            <div class="w-40">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Booked</label>
+              <%= select_tag "contract_service_option[booking_mode]", options_for_select(mode_options, service.booking_mode), class: input %>
             </div>
             <div class="flex items-center gap-2">
               <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
@@ -86,6 +91,10 @@
       <div class="w-36">
         <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
         <%= select_tag "contract_service_option[default_direction]", options_for_select(dir_options, "incoming"), class: input %>
+      </div>
+      <div class="w-40">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Booked</label>
+        <%= select_tag "contract_service_option[booking_mode]", options_for_select(mode_options, "once"), class: input %>
       </div>
       <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
     </div>

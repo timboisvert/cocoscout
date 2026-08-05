@@ -4,7 +4,7 @@
 
   <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true do |form| %>
     <div class="mb-6">
-      <%= render "manage/contracts/services_fields", service_options: @service_options, existing_services: @existing_services %>
+      <%= render "manage/contracts/services_fields", service_options: @service_options, existing_services: @existing_services, bookings: @bookings %>
     </div>
 
     <div class="flex items-center justify-between">

@@ -405,24 +405,107 @@ class Contract < ApplicationRecord
     draft_data["services"] || []
   end
 
-  # Turn a set of service line items into billable ContractPayments (one per line
-  # with a positive amount). Used at activation.
-  def bill_services!(services)
-    Array(services).each do |service|
-      amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
-      next unless amount.positive?
+  # Normalize the wizard/amend services form rows into draft_services line
+  # hashes. One parser for both paths, so amendment can't drift (it used to
+  # silently drop the settlement choice). Per-event rows carry their selected
+  # dates + hours; everything else keeps the flat quantity.
+  def self.normalize_service_rows(rows)
+    raw = rows.respond_to?(:values) ? rows.values : Array(rows)
+    raw.filter_map do |row|
+      row = row.to_unsafe_h if row.respond_to?(:to_unsafe_h)
+      row = row.stringify_keys
+      name = row["name"].to_s.strip
+      next if name.blank? || row["include"] != "1"
 
-      direction = service["direction"].presence || "incoming"
-      contract_payments.create!(
-        description: service["name"],
-        amount: amount,
-        direction: direction,
-        # "Taken out of their payout" only makes sense for money they owe us;
-        # outgoing services are always paid directly.
-        settlement_method: direction == "incoming" ? (service["settlement"].presence || "direct") : "direct",
-        due_date: contract_end_date || Date.current
-      )
+      line = {
+        "name" => name,
+        "unit" => row["unit"].presence || "flat",
+        "unit_price" => row["unit_price"].to_f,
+        "direction" => row["direction"].presence || "incoming",
+        "settlement" => ContractPayment::SETTLEMENT_METHODS.include?(row["settlement"].to_s) ? row["settlement"].to_s : "direct"
+      }
+
+      events_raw = row["events"]
+      events_raw = events_raw.values if events_raw.respond_to?(:values) && !events_raw.is_a?(Array)
+      events = Array(events_raw).filter_map do |ev|
+        ev = ev.to_unsafe_h if ev.respond_to?(:to_unsafe_h)
+        ev = ev.stringify_keys
+        next unless ev["include"] == "1" && ev["starts_at"].present?
+
+        hours = ev["hours"].to_f
+        hours = 1 if hours <= 0
+        { "starts_at" => ev["starts_at"].to_s, "hours" => hours }
+      end
+
+      if row["per_event"] == "1" && events.any?
+        line["per_event"] = true
+        line["events"] = events
+        line["quantity"] = events.sum { |e| e["hours"] }.round(2)
+      else
+        quantity = row["quantity"].to_f
+        quantity = 1 if quantity <= 0
+        line["quantity"] = quantity
+      end
+      line
     end
+  end
+
+  # Turn a set of service line items into billable ContractPayments. A flat
+  # line bills once, due at contract end; a per-event line bills one payment
+  # per selected date — due on the event's date, tied to the show when one
+  # exists (billing runs after show creation at activation). Used at
+  # activation and re-billing on amendment.
+  def bill_services!(services)
+    shows_by_date = service_shows_by_date
+
+    Array(services).each do |service|
+      direction = service["direction"].presence || "incoming"
+      # "Taken out of their payout" only makes sense for money they owe us;
+      # outgoing services are always paid directly.
+      settlement = direction == "incoming" ? (service["settlement"].presence || "direct") : "direct"
+
+      if service["per_event"] && service["events"].present?
+        Array(service["events"]).each do |event|
+          starts_at = (Time.zone.parse(event["starts_at"].to_s) rescue nil)
+          next unless starts_at
+
+          amount = if service["unit"] == "hourly"
+            (event["hours"].to_f * service["unit_price"].to_f).round(2)
+          else
+            service["unit_price"].to_f.round(2)
+          end
+          next unless amount.positive?
+
+          contract_payments.create!(
+            description: "#{service['name']} — #{starts_at.strftime('%b %-d, %Y')}",
+            amount: amount,
+            direction: direction,
+            settlement_method: settlement,
+            due_date: starts_at.to_date,
+            show_id: shows_by_date[starts_at.to_date]&.first&.id
+          )
+        end
+      else
+        amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
+        next unless amount.positive?
+
+        contract_payments.create!(
+          description: service["name"],
+          amount: amount,
+          direction: direction,
+          settlement_method: settlement,
+          due_date: contract_end_date || Date.current
+        )
+      end
+    end
+  end
+
+  # This contract's shows keyed by date, for tying a per-event service payment
+  # to its show. Empty (harmlessly) before activation creates them.
+  def service_shows_by_date
+    return {} unless production
+
+    production.shows.group_by { |s| s.date_and_time.to_date }
   end
 
   # Re-bill services when a contract is amended: drop the still-pending payments
@@ -430,7 +513,13 @@ class Contract < ApplicationRecord
   # are never touched, so nothing that's already been settled is disturbed.
   def reconcile_service_payments!(new_services)
     old_names = draft_services.map { |s| s["name"] }.compact
-    contract_payments.status_pending.where(description: old_names).destroy_all if old_names.any?
+    if old_names.any?
+      # Per-event lines billed as "Name — Oct 16, 2026", so match the bare
+      # name and its dated variants.
+      conditions = old_names.map { "(description = ? OR description LIKE ?)" }.join(" OR ")
+      binds = old_names.flat_map { |n| [ n, "#{n} — %" ] }
+      contract_payments.status_pending.where(conditions, *binds).destroy_all
+    end
     update_draft_step(:services, Array(new_services))
     bill_services!(draft_services)
   end
@@ -1188,10 +1277,17 @@ class Contract < ApplicationRecord
     esc = ->(s) { ERB::Util.html_escape(s.to_s) }
     out = +%(<h4>Services</h4><ul>)
     services.each do |s|
-      qty = s["quantity"].to_f
-      qty_label = qty > 1 ? " × #{qty.to_i == qty ? qty.to_i : qty}" : ""
       per = s["unit"] == "hourly" ? "/hr" : ""
-      out << %(<li>#{esc.(s["name"])}#{qty_label} — #{deal_money(s["unit_price"])}#{per}</li>)
+      if s["per_event"] && s["events"].present?
+        events = Array(s["events"])
+        hours = events.sum { |e| e["hours"].to_f }
+        detail = s["unit"] == "hourly" ? "#{events.size} events, #{hours.to_i == hours ? hours.to_i : hours} hrs total" : "#{events.size} events"
+        out << %(<li>#{esc.(s["name"])} — #{detail} — #{deal_money(s["unit_price"])}#{per}</li>)
+      else
+        qty = s["quantity"].to_f
+        qty_label = qty > 1 ? " × #{qty.to_i == qty ? qty.to_i : qty}" : ""
+        out << %(<li>#{esc.(s["name"])}#{qty_label} — #{deal_money(s["unit_price"])}#{per}</li>)
+      end
     end
     out << "</ul>"
     out
@@ -1447,9 +1543,6 @@ class Contract < ApplicationRecord
       )
     end
 
-    # Services become their own billable payments (this is what "Tech" never did).
-    bill_services!(draft_services)
-
     # Always create a production and shows for all bookings
     created_shows = []
     if rentals.any?
@@ -1485,6 +1578,11 @@ class Contract < ApplicationRecord
         created_shows << show
       end
     end
+
+    # Services become their own billable payments (this is what "Tech" never
+    # did). Billed AFTER show creation so per-event service payments can carry
+    # their show's id and land on the event's date.
+    bill_services!(draft_services)
 
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
