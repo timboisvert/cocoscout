@@ -116,7 +116,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1.5">How is our fee priced?</label>
         <%= render "manage/contract_wizard/choice_cards",
               name: "flat_fee_basis_choice", target: "flatFeeBasis", columns: 2,
-              selected: existing_payment_config["flat_fee_basis"].presence || "contract",
+              selected: existing_payment_config["flat_fee_basis"].presence || "per_show",
               action: "change->contract-payments#onFlatFeeBasisChange",
               options: [
                 { value: "per_show", title: "Per show", help: "Charged for each date. Cancel a show and its fee goes with it." },

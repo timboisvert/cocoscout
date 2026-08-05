@@ -455,7 +455,7 @@ export default class extends Controller {
     }
 
     get flatFeeBasisValue() {
-        return this.hasFlatFeeBasisTarget ? this.flatFeeBasisTarget.value : "contract"
+        return this.hasFlatFeeBasisTarget ? this.flatFeeBasisTarget.value : "per_show"
     }
 
     get flatFeeSettlementValue() {
@@ -1175,14 +1175,24 @@ export default class extends Controller {
         const perShow = this.flatFeePerShow(flatAmount)
 
         if (cadence === "once" || this.bookingDates.length === 0) {
+            // Settling once still deducts the fee for EVERY show: a $200
+            // per-show fee across three dates is a $600 deduction, not $200.
+            // A whole-run total is already the whole run's fee.
+            const count = this.bookingDates.length || this.eventCount || 0
+            const perShowPricing = this.flatFeeBasisValue === "per_show" && count > 0
+            const totalFee = perShowPricing ? perShow * count : flatAmount
+            const feeNote = perShowPricing
+                ? `${count} ${count === 1 ? "show" : "shows"} × $${perShow.toFixed(2)} deducted from ticket revenue.`
+                : `They receive all ticket revenue minus our $${totalFee.toFixed(2)} deduction.`
+
             return [ {
-                description: `Ticket revenue less $${flatAmount.toFixed(2)} fee`,
+                description: `Ticket revenue less $${totalFee.toFixed(2)} fee`,
                 source: "Ticket revenue minus fee",
                 amount: 0,
                 amount_tbd: true,
                 direction: "outgoing",
                 due_date: flatFinalDue || this.getDateDaysFromNow(30),
-                notes: `They receive all ticket revenue minus our $${flatAmount.toFixed(2)} deduction.`
+                notes: feeNote
             } ]
         }
 

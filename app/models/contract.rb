@@ -867,6 +867,10 @@ class Contract < ApplicationRecord
   # "contract" is the default so contracts written before this existed keep
   # their meaning.
   def flat_fee_basis
+    # New contracts default to per_show in the wizard UI and save it
+    # explicitly. The fallback here stays "contract" on purpose: it's the
+    # legacy interpretation for deals saved before the basis existed, and
+    # flipping it would silently re-price their fee as per-show.
     draft_payment_config["flat_fee_basis"].presence || "contract"
   end
 

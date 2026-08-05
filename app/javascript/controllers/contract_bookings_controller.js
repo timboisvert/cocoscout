@@ -151,42 +151,42 @@ export default class extends Controller {
         const startsAtInput = clone.querySelector('[data-field="starts_at"]')
         const durationSelect = clone.querySelector('[data-field="duration"]')
 
-        // Look for the last single event in the list to copy values from
-        const existingItems = this.bookingsListTarget.querySelectorAll('.booking-item[data-booking-type="single"]')
-        const lastItem = existingItems.length > 0 ? existingItems[existingItems.length - 1] : null
+        // Inherit from whatever the user just set up: the last single event if
+        // there is one, else the last recurring series (same room, same setup —
+        // only the date is theirs to pick).
+        const lastSingle = this.lastItemOfType("single")
+        const lastRecurring = this.lastItemOfType("recurring")
+        const source = lastSingle || lastRecurring
 
-        if (lastItem) {
-            const lastLocationId = lastItem.querySelector('[data-field="location_id"]')?.value
-            const lastSpaceId = lastItem.querySelector('[data-field="space_id"]')?.value
-            const lastStartsAt = lastItem.querySelector('[data-field="starts_at"]')?.value
-            const lastDuration = lastItem.querySelector('[data-field="duration"]')?.value
+        if (source) {
+            this.copySharedFields(source, clone)
 
-            // Copy location and populate spaces
-            if (locationSelect && lastLocationId) {
-                locationSelect.value = lastLocationId
-                if (spaceSelect) {
-                    this.updateSpaceDropdown(spaceSelect, lastLocationId)
-                    if (lastSpaceId) spaceSelect.value = lastSpaceId
-                }
-            }
-
-            // Copy duration
+            const lastDuration = source.querySelector('[data-field="duration"]')?.value
             if (durationSelect && lastDuration) {
                 this.setDurationField(durationSelect, lastDuration)
             }
 
-            // Copy date/time + 1 day
-            if (startsAtInput && lastStartsAt) {
-                const lastDate = new Date(lastStartsAt)
-                if (!isNaN(lastDate.getTime())) {
-                    lastDate.setDate(lastDate.getDate() + 1)
-                    // Format as datetime-local value: YYYY-MM-DDTHH:MM
-                    const year = lastDate.getFullYear()
-                    const month = String(lastDate.getMonth() + 1).padStart(2, '0')
-                    const day = String(lastDate.getDate()).padStart(2, '0')
-                    const hours = String(lastDate.getHours()).padStart(2, '0')
-                    const minutes = String(lastDate.getMinutes()).padStart(2, '0')
-                    startsAtInput.value = `${year}-${month}-${day}T${hours}:${minutes}`
+            if (startsAtInput) {
+                const lastStartsAt = lastSingle?.querySelector('[data-field="starts_at"]')?.value
+                if (lastStartsAt) {
+                    // From a single event: same time, next day.
+                    const lastDate = new Date(lastStartsAt)
+                    if (!isNaN(lastDate.getTime())) {
+                        lastDate.setDate(lastDate.getDate() + 1)
+                        startsAtInput.value = this.formatDateTimeLocal(lastDate)
+                    }
+                } else {
+                    // From a recurring series: no single date to advance — the
+                    // date is the user's to pick, but the moment they pick one
+                    // the series' start time fills in (unless they typed a time).
+                    const time = lastRecurring?.querySelector('[data-field="time"]')?.value
+                    if (time) {
+                        startsAtInput.addEventListener("change", () => {
+                            if (startsAtInput.value && startsAtInput.value.endsWith("T00:00")) {
+                                startsAtInput.value = `${startsAtInput.value.split("T")[0]}T${time}`
+                            }
+                        }, { once: true })
+                    }
                 }
             }
         } else {
@@ -213,21 +213,94 @@ export default class extends Controller {
 
         item.dataset.bookingIndex = this.bookingIndex++
 
-        // Pre-select default location and populate spaces
-        const locationSelect = clone.querySelector('[data-field="location_id"]')
-        const spaceSelect = clone.querySelector('[data-field="space_id"]')
-        if (locationSelect && this.defaultLocationIdValue) {
-            locationSelect.value = this.defaultLocationIdValue
-            if (spaceSelect) {
-                this.updateSpaceDropdown(spaceSelect, this.defaultLocationIdValue)
+        // Inherit the previous rule's setup: same room, same cadence (weekly
+        // stays weekly on the same day), same time and duration. Only the
+        // date range is left for the user to choose.
+        const lastRecurring = this.lastItemOfType("recurring")
+        const lastSingle = this.lastItemOfType("single")
+
+        if (lastRecurring) {
+            this.copySharedFields(lastRecurring, clone)
+
+            for (const field of ["frequency", "day_of_week", "week_ordinal", "monthly_day_of_week", "time"]) {
+                const from = lastRecurring.querySelector(`[data-field="${field}"]`)
+                const to = clone.querySelector(`[data-field="${field}"]`)
+                if (from && to && from.value) to.value = from.value
+            }
+            const lastDuration = lastRecurring.querySelector('[data-field="duration"]')?.value
+            const durationSelect = clone.querySelector('[data-field="duration"]')
+            if (durationSelect && lastDuration) this.setDurationField(durationSelect, lastDuration)
+
+            // The template prefills a date range; an inherited rule shouldn't
+            // presume dates — that's the one thing the user came to change.
+            const startDate = clone.querySelector('[data-field="start_date"]')
+            const endDate = clone.querySelector('[data-field="end_date"]')
+            if (startDate) startDate.value = ""
+            if (endDate) endDate.value = ""
+
+            this.updateFrequencyFields(item)
+        } else if (lastSingle) {
+            // Coming from a single event: same room and duration, weekly on
+            // that event's weekday at its time.
+            this.copySharedFields(lastSingle, clone)
+
+            const lastDuration = lastSingle.querySelector('[data-field="duration"]')?.value
+            const durationSelect = clone.querySelector('[data-field="duration"]')
+            if (durationSelect && lastDuration) this.setDurationField(durationSelect, lastDuration)
+
+            const startsAt = lastSingle.querySelector('[data-field="starts_at"]')?.value
+            if (startsAt) {
+                const date = new Date(startsAt)
+                if (!isNaN(date.getTime())) {
+                    const freq = clone.querySelector('[data-field="frequency"]')
+                    const dow = clone.querySelector('[data-field="day_of_week"]')
+                    const time = clone.querySelector('[data-field="time"]')
+                    if (freq) freq.value = "weekly"
+                    if (dow) dow.value = String(date.getDay())
+                    if (time) time.value = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+                }
+            }
+            this.updateFrequencyFields(item)
+        } else if (this.defaultLocationIdValue) {
+            const locationSelect = clone.querySelector('[data-field="location_id"]')
+            const spaceSelect = clone.querySelector('[data-field="space_id"]')
+            if (locationSelect) {
+                locationSelect.value = this.defaultLocationIdValue
+                if (spaceSelect) this.updateSpaceDropdown(spaceSelect, this.defaultLocationIdValue)
             }
         }
 
         this.bookingsListTarget.appendChild(clone)
 
-        // Focus the start date input since location is pre-selected
+        // Focus the start date input — everything else is pre-filled.
         const startDateInput = this.bookingsListTarget.lastElementChild.querySelector('[data-field="start_date"]')
         if (startDateInput) startDateInput.focus()
+    }
+
+    // The most recent rule of a type ("single" | "recurring"), or null.
+    lastItemOfType(type) {
+        const items = this.bookingsListTarget.querySelectorAll(`.booking-item[data-booking-type="${type}"]`)
+        return items.length > 0 ? items[items.length - 1] : null
+    }
+
+    // Fields every rule shape shares: the room and the event type.
+    copySharedFields(source, clone) {
+        const locationId = source.querySelector('[data-field="location_id"]')?.value
+        const spaceId = source.querySelector('[data-field="space_id"]')?.value
+        const eventType = source.querySelector('[data-field="event_type"]')?.value
+
+        const locationSelect = clone.querySelector('[data-field="location_id"]')
+        const spaceSelect = clone.querySelector('[data-field="space_id"]')
+        const eventTypeSelect = clone.querySelector('[data-field="event_type"]')
+
+        if (locationSelect && locationId) {
+            locationSelect.value = locationId
+            if (spaceSelect) {
+                this.updateSpaceDropdown(spaceSelect, locationId)
+                if (spaceId) spaceSelect.value = spaceId
+            }
+        }
+        if (eventTypeSelect && eventType) eventTypeSelect.value = eventType
     }
 
     removeBooking(event) {

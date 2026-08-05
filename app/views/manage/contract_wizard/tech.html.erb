@@ -11,7 +11,10 @@
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: @contract.org_sells_tickets? ? manage_ticketing_contract_wizard_path(@contract) : manage_payments_contract_wizard_path(@contract) %>
       <div class="flex items-center gap-3">
         <%= link_to "Skip — no services", manage_documents_contract_wizard_path(@contract), class: "text-sm text-gray-500 hover:text-gray-700" %>
-        <%= render "shared/button", text: "Next: Documents", variant: "primary", size: "medium", type: :submit %>
+        <%# E-sign contracts generate their own signed PDF, so save_tech skips
+            the Documents step and goes straight to Review & Send. %>
+        <%= render "shared/button", text: @contract.signing_mode_esign? ? "Next: Review & Send" : "Next: Documents",
+              variant: "primary", size: "medium", type: :submit %>
       </div>
     </div>
   <% end %>
