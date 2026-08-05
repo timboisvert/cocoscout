@@ -48,9 +48,10 @@ export default class extends Controller {
         // Restore saved config first
         this.restoreConfig(this.existingConfigValue || {})
 
-        // Default flat fee final due date to first event if not already set
+        // Default the flat-fee due date to the LAST event: a single settlement
+        // covering the whole run can't come due before the run has run.
         if (this.hasFlatFeeFinalDueTarget && !this.flatFeeFinalDueTarget.value && this.bookingDates.length > 0) {
-            this.flatFeeFinalDueTarget.value = this.bookingDates[0].split("T")[0]
+            this.flatFeeFinalDueTarget.value = this.bookingDates[this.bookingDates.length - 1].split("T")[0]
         }
 
         // Initialize UI with saved structure
