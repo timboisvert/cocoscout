@@ -5,6 +5,7 @@ module Manage
     include Authentication
     include Pagy::Method
     include SentryContext
+    include Impersonation
     include Manage::PaidFeatureGate
 
     layout "application"
@@ -33,7 +34,7 @@ module Manage
 
     def index
       # Check if user needs to see welcome page (but not when impersonating)
-      if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank? && cookies.signed[:impersonator_user_id].blank?
+      if Current.user.welcomed_production_at.nil? && !impersonating?
         @show_manage_sidebar = false
         @has_organization = Current.user.accessible_organizations.any?
         @has_production = @has_organization && Current.organization&.productions&.any?
@@ -188,7 +189,7 @@ module Manage
 
     def dismiss_production_welcome
       # Prevent dismissing welcome screen when impersonating
-      if session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
+      if impersonating?
         redirect_to manage_path, alert: "Cannot dismiss welcome screen while impersonating"
         return
       end

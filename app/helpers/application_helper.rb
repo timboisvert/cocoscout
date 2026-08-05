@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
-  def impersonating?
-    session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
-  end
+  # `impersonating?` / `impersonator_user_id` live on ApplicationController
+  # (exposed via helper_method) so controllers and views share one definition.
 
   def current_user_can_manage?(production = nil)
     return false unless Current.user

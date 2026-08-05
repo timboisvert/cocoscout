@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   include Pagy::Method
   include ActivityTracking
   include SentryContext
+  include Impersonation
 
   helper_method :turbo_native_app?
   layout :resolve_layout

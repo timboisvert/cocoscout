@@ -391,9 +391,11 @@ class SuperadminController < ApplicationController
   end
 
   def impersonate
+    impersonator_id = Current.user.id
+
     # Store the current user ID in a signed cookie (survives session termination)
     cookies.signed[:impersonator_user_id] = {
-      value: Current.user.id,
+      value: impersonator_id,
       httponly: true,
       same_site: :lax
     }
@@ -424,11 +426,16 @@ class SuperadminController < ApplicationController
       # End any current session and impersonation
       terminate_session
 
-      # Start a new session for the impersonated user
+      # Start a new session for the impersonated user, and record the
+      # impersonator on the session row itself. That row is found via the
+      # permanent :session_id cookie, so the banner lasts as long as the
+      # impersonated login does — the cookie/session copies below are
+      # browser-session-scoped and mobile browsers drop them early.
       start_new_session_for user
+      Current.session.update!(impersonator_user_id: impersonator_id)
 
       # Copy from cookie to session (now that we have a fresh session)
-      session[:user_doing_the_impersonating] = cookies.signed[:impersonator_user_id]
+      session[:user_doing_the_impersonating] = impersonator_id
       session[:impersonate_user_id] = user.id
     end
 
@@ -436,8 +443,9 @@ class SuperadminController < ApplicationController
   end
 
   def stop_impersonating
-    # Get the original user from cookie (session may not have it)
-    impersonator_id = cookies.signed[:impersonator_user_id] || session[:user_doing_the_impersonating]
+    # Session row first (survives cookie loss), then the legacy cookie/session
+    # copies for impersonations started before the column existed.
+    impersonator_id = impersonator_user_id
 
     # Kill the impersonation session
     terminate_session
