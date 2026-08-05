@@ -152,7 +152,6 @@ class PayoutBatchService
       batch.update!(status: "funding", funding_status: "succeeded", funding_payment_intent_id: nil)
       advance_funding!(batch, "succeeded")
       PayoutRunSubmittedNotificationJob.perform_later(batch.id)
-      PayoutSentPayeeNotificationJob.perform_later(batch.id)
       return batch
     end
 
@@ -175,8 +174,6 @@ class PayoutBatchService
     # The run is submitted — tell the org's chosen managers (who's being paid,
     # how much, expected deposit window). Async; no recipients chosen = no-op.
     PayoutRunSubmittedNotificationJob.perform_later(batch.id)
-    # …and tell each payee their own money is on the way.
-    PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
   rescue Stripe::StripeError => e
     # The debit never happened — give back any credit this attempt consumed so
@@ -232,6 +229,15 @@ class PayoutBatchService
     end
 
     finalize_status!(batch)
+
+    # Tell each payee now, not at submission. process! only ever runs once
+    # funding has actually succeeded (advance_funding! calls it solely on
+    # "succeeded"; pay_remaining! requires it), so by here the money is real:
+    # an ACH debit that was still settling — or that bounced — has never
+    # promised anyone a deposit. It also means the expected-deposit window is
+    # counted from the day the transfer happened rather than from submit day,
+    # which on ACH can be several days earlier.
+    PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
   end
 

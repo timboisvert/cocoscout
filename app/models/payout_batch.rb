@@ -63,8 +63,13 @@ class PayoutBatch < ApplicationRecord
   # [earliest, latest] dates a payee can expect the deposit, counted from the
   # payday (freshened to the submit date when the run is funded — see
   # PayoutBatchService.fund!).
-  def expected_deposit_range(first_payout: false)
-    base = payday || created_at&.to_date || Date.current
+  #
+  # `from:` overrides that base for callers that know when the money actually
+  # moved. An ACH-funded run is submitted days before it settles, so counting a
+  # payee's window from payday would quote a date that's already gone by the
+  # time the transfer happens.
+  def expected_deposit_range(first_payout: false, from: nil)
+    base = from || payday || created_at&.to_date || Date.current
     if first_payout
       [ base + FIRST_DEPOSIT_MIN_DAYS.days, base + FIRST_DEPOSIT_MAX_DAYS.days ]
     else

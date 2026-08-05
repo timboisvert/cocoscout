@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
-# Tells each payee their money is on its way, at the moment the run is
-# submitted. One standard notification whether it's a performer, staff, or
-# course payment — the amount is whatever we're actually sending them.
+# Tells each payee their money is on its way. One standard notification
+# whether it's a performer, staff, or course payment — the amount is whatever
+# we're actually sending them.
 #
-# We deliberately notify at submission rather than when the Stripe transfer
-# clears: a transfer lands in the payee's payout-provider balance, not their
-# bank, so "you've been paid" then would arrive about two days before the
-# deposit actually shows up.
+# Timing: we notify once the money has actually moved, not when the run is
+# submitted. An ACH-funded run is submitted days before the debit settles, so
+# announcing at submission risks promising a deposit that never lands (a
+# bounced debit is never retracted) and quotes a window counted from a day
+# that's already gone. We still stop short of claiming they've been *paid* —
+# a transfer reaches the payee's payout-provider balance, and their bank
+# deposit follows a couple of business days later.
 #
-# Enqueued from PayoutBatchService.fund! (staff/performer/balance runs) and
+# Enqueued from PayoutBatchService.process! (staff/performer/balance runs,
+# which only reaches that point once funding succeeded) and from
 # CoursePayoutRunExecutor.pay! (course runs, which skip funding entirely).
 class PayoutSentPayeeNotificationJob < ApplicationJob
   queue_as :default
@@ -21,7 +25,7 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
     return unless batch.in_flight? || batch.completed?
 
     batch.items.includes(:payee).find_each do |item|
-      next if item.payee_notified_at.present?
+      next unless needs_notice?(item)
 
       person = payee_person(item)
       next unless person
@@ -36,6 +40,16 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
 
   private
 
+  # Notify once — except that a payee first told "your money is set aside,
+  # connect a bank" deserves the real "it's on its way" once they connect and
+  # a manager hits Pay remaining. That's the only case where the story we told
+  # them stops being true, so it's the only case we re-send.
+  def needs_notice?(item)
+    return true if item.payee_notified_at.blank?
+
+    item.status == "paid" && item.paid_at.present? && item.paid_at > item.payee_notified_at
+  end
+
   # The Person who actually receives the money. Organization payees are the
   # course-remainder row — the org paying itself, nobody to tell. A Contractor
   # is a container; its linked Person holds the account and the ledger.
@@ -49,7 +63,12 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
   def notify!(batch, item, person)
     has_bank = person.can_receive_payouts?
     first_payout = has_bank && first_payout_for?(person, item)
-    earliest, latest = batch.expected_deposit_range(first_payout: first_payout)
+    # Count the window from the day the money actually moved. On ACH the run's
+    # payday is the submit date, which can be several days stale by now.
+    earliest, latest = batch.expected_deposit_range(
+      first_payout: first_payout,
+      from: item.paid_at&.to_date || Date.current
+    )
 
     rendered = ContentTemplateService.render("payout_sent_to_payee", {
       recipient_name: person.name.to_s.split.first.presence || person.name,

@@ -141,12 +141,19 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
-    it "tells each payee their money is on its way when the run is submitted" do
+    it "promises the payee nothing while an ACH debit is still settling" do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_n", status: "processing"))
 
       batch = PayoutBatchService.build_for(organization: org)
 
+      # Submitted, not settled: the debit can still bounce, so nobody is told
+      # money is coming yet.
       expect { PayoutBatchService.fund!(batch, method: "ach") }
+        .not_to have_enqueued_job(PayoutSentPayeeNotificationJob)
+
+      # The settlement webhook is what actually sends the money — and the notice.
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_ach"))
+      expect { PayoutBatchService.advance_funding!(batch, "succeeded") }
         .to have_enqueued_job(PayoutSentPayeeNotificationJob).with(batch.id)
     end
 
@@ -158,6 +165,16 @@ RSpec.describe PayoutBatchService do
       expect {
         expect { PayoutBatchService.fund!(batch, method: "ach") }.to raise_error(PayoutBatchService::Error)
       }.not_to have_enqueued_job(PayoutSentPayeeNotificationJob)
+    end
+
+    it "notifies immediately for card funding, which sends in the same breath" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_c", status: "succeeded"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_c"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+
+      expect { PayoutBatchService.fund!(batch, method: "card") }
+        .to have_enqueued_job(PayoutSentPayeeNotificationJob).with(batch.id)
     end
 
     it "raises when the org has no connected funding source" do

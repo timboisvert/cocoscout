@@ -49,10 +49,33 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
     end
 
     it "never notifies the same payee twice for one run" do
-      item_for(connected_person)
+      item = item_for(connected_person)
+      item.update!(status: "paid", paid_at: Time.current)
       described_class.perform_now(batch.id)
 
       # pay_remaining! and the course executor are both re-runnable.
+      expect { described_class.perform_now(batch.id) }
+        .not_to change { ActionMailer::Base.deliveries.size }
+    end
+
+    it "follows up when a parked payee connects a bank and finally gets paid" do
+      person = create(:person, name: "Nobank Nel", user: create(:user))
+      item = item_for(person)
+
+      # First pass: no bank, so we tell them it's set aside.
+      described_class.perform_now(batch.id)
+      expect(last_email_body).to include("set aside for you")
+
+      # They connect, a manager hits Pay remaining, the transfer lands.
+      person.update!(stripe_account_id: "acct_late", payouts_enabled: true)
+      item.update!(status: "paid", paid_at: Time.current)
+
+      expect { described_class.perform_now(batch.id) }
+        .to change { ActionMailer::Base.deliveries.size }.by(1)
+      expect(last_email_body).to include("on its way")
+      expect(last_email_body).not_to include("set aside")
+
+      # …and then it settles down again.
       expect { described_class.perform_now(batch.id) }
         .not_to change { ActionMailer::Base.deliveries.size }
     end
@@ -116,15 +139,35 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
       # An earlier payment, so they're not a first-timer.
       create(:payout_batch, organization: org, kind: "staff_pay", status: "completed")
         .items.create!(payee: person, amount_cents: 500, status: "paid", paid_at: 1.month.ago)
-      item_for(person)
+      item = item_for(person)
+      item.update!(status: "paid", paid_at: Time.current)
 
       described_class.perform_now(batch.id)
 
-      earliest, latest = batch.expected_deposit_range
+      earliest, latest = batch.expected_deposit_range(from: Date.current)
       expect(last_email_body).to include("on its way to your bank")
         .and include(earliest.strftime("%B %-d"))
         .and include(latest.strftime("%B %-d, %Y"))
       expect(last_email_body).not_to include("first payment")
+    end
+
+    it "counts the window from the day the money moved, not the stale submit date" do
+      # An ACH run submitted a week ago that only settled today: quoting the
+      # window from payday would hand the payee a date already in the past.
+      batch.update!(payday: 7.days.ago.to_date)
+      person = connected_person
+      create(:payout_batch, organization: org, kind: "staff_pay", status: "completed")
+        .items.create!(payee: person, amount_cents: 500, status: "paid", paid_at: 2.months.ago)
+      item = item_for(person)
+      item.update!(status: "paid", paid_at: Time.current)
+
+      described_class.perform_now(batch.id)
+
+      from_payday, = batch.expected_deposit_range
+      from_transfer, = batch.expected_deposit_range(from: Date.current)
+      expect(from_payday).to be < Date.current
+      expect(last_email_body).to include(from_transfer.strftime("%B %-d"))
+      expect(last_email_body).not_to include(from_payday.strftime("%B %-d, %Y"))
     end
 
     it "warns a first-timer that the first one takes longer, without naming our provider" do
