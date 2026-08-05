@@ -1,3 +1,15 @@
+# Solid Cache and Solid Queue live in the SAME database as everything else —
+# their entries here exist only to point at their own migrations_paths, not at
+# a separate database. So they have no schema of their own to dump: Rails would
+# connect, see the whole shared database, and write a full copy of the primary
+# schema to db/cache_schema.rb and db/queue_schema.rb on every migration.
+#
+# schema_dump: false stops that. It also stops db:prepare trying to load those
+# files, which is right — db/schema.rb already carries the solid_cache_* and
+# solid_queue_* tables, because it's dumped from the same database.
+#
+# If cache or queue ever move to a database of their own, drop the flag and let
+# Rails dump them again.
 postgres_default: &postgres_default
   adapter: postgresql
   encoding: unicode
@@ -15,11 +27,13 @@ development:
     database: cocoscout_development
     host: localhost
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *postgres_default
     database: cocoscout_development
     host: localhost
     migrations_paths: db/queue_migrate
+    schema_dump: false
 
 test:
   primary:
@@ -31,11 +45,13 @@ test:
     database: cocoscout_test
     host: localhost
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *postgres_default
     database: cocoscout_test
     host: localhost
     migrations_paths: db/queue_migrate
+    schema_dump: false
 
 production:
   primary:
@@ -48,7 +64,9 @@ production:
     <<: *postgres_default
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *postgres_default
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/queue_migrate
+    schema_dump: false
