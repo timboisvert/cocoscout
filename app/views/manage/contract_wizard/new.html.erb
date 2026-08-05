@@ -82,77 +82,56 @@
          data-action="click->new-contract-contractor#stopPropagation">
 
       <%# Header %>
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">New Contractor</h3>
-          <button type="button" data-action="click->new-contract-contractor#closeModal"
-                  class="text-gray-400 hover:text-gray-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
+      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600">
+        <h3 class="text-lg font-bold text-white">New Contractor</h3>
+        <button type="button" data-action="click->new-contract-contractor#closeModal"
+                class="text-white/80 hover:text-white">
+          <%= icon("x-mark", class: "w-5 h-5") %>
+        </button>
       </div>
 
-      <%# Form %>
-      <div class="px-6 py-5 space-y-4">
-        <div>
-          <label for="new_contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Name
-            <span class="text-pink-500">*</span>
-          </label>
-          <input type="text"
-                 id="new_contractor_name"
-                 data-new-contract-contractor-target="name"
-                 placeholder="e.g., Local Comedy Troupe"
-                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+      <%# The same questions as the full New Contractor page — name, email, and
+          who they are on CocoScout — rendered from the same partials so the two
+          can't drift. Submitted over fetch so the wizard keeps its place. %>
+      <%= form_with model: Contractor.new, url: manage_contractors_path, method: :post,
+                    data: { new_contract_contractor_target: "modalForm",
+                            action: "submit->new-contract-contractor#createContractor" } do |f| %>
+        <div class="px-6 py-5 space-y-5">
+          <div>
+            <label for="contractor_name" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Contractor name
+              <span class="text-pink-500">*</span>
+            </label>
+            <%= f.text_field :name,
+              placeholder: "e.g., Nuns4Fun Entertainment",
+              required: true,
+              data: { new_contract_contractor_target: "name" },
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
+
+          <div>
+            <label for="contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
+              Email
+            </label>
+            <%= f.email_field :email,
+              placeholder: "contact@example.com",
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+          </div>
+
+          <%= render "manage/contractors/person_link_fields" %>
+
+          <%= render "manage/contractors/more_details_fields", form: f %>
+
+          <%# Error message %>
+          <div data-new-contract-contractor-target="error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg"></div>
         </div>
 
-        <div>
-          <label for="new_contractor_email" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Email
-            <span class="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <input type="email"
-                 id="new_contractor_email"
-                 data-new-contract-contractor-target="email"
-                 placeholder="contact@example.com"
-                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        <%# Footer %>
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->new-contract-contractor#closeModal" } %>
+          <%= render "shared/button", text: "Create Contractor", variant: "primary", size: "medium", type: :submit, data: { "new-contract-contractor-target": "submitBtn" } %>
         </div>
-
-        <div>
-          <label for="new_contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Phone
-            <span class="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <input type="tel"
-                 id="new_contractor_phone"
-                 data-new-contract-contractor-target="phone"
-                 placeholder="(555) 123-4567"
-                 class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-        </div>
-
-        <div>
-          <label for="new_contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">
-            Address
-            <span class="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <textarea id="new_contractor_address"
-                    data-new-contract-contractor-target="address"
-                    rows="2"
-                    placeholder="123 Main Street&#10;City, State 12345"
-                    class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"></textarea>
-        </div>
-
-        <%# Error message %>
-        <div data-new-contract-contractor-target="error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg"></div>
-      </div>
-
-      <%# Footer %>
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->new-contract-contractor#closeModal" } %>
-        <%= render "shared/button", text: "Create Contractor", variant: "primary", size: "medium", type: :button, data: { action: "click->new-contract-contractor#createContractor", "new-contract-contractor-target": "submitBtn" } %>
-      </div>
+      <% end %>
     </div>
   </div>
 </div>

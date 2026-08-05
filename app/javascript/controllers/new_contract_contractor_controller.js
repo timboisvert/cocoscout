@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
  * Handles selecting existing contractors and creating new ones via modal.
  */
 export default class extends Controller {
-    static targets = ["select", "modal", "name", "email", "phone", "address", "error", "submitBtn", "form", "contractorSection"]
+    static targets = ["select", "modal", "modalForm", "name", "error", "submitBtn", "form", "contractorSection"]
     static values = { createUrl: String }
 
     connect() {
@@ -51,14 +51,27 @@ export default class extends Controller {
     }
 
     clearModalForm() {
-        if (this.hasNameTarget) this.nameTarget.value = ""
-        if (this.hasEmailTarget) this.emailTarget.value = ""
-        if (this.hasPhoneTarget) this.phoneTarget.value = ""
-        if (this.hasAddressTarget) this.addressTarget.value = ""
+        if (this.hasModalFormTarget) this.modalFormTarget.reset()
+
+        // The CocoScout-user block keeps its own step state (searching, someone
+        // picked, inviting by email), so send it back to the search step too.
+        const inviteSearch = this.inviteSearchController()
+        if (inviteSearch) {
+            inviteSearch.backToSearch()
+            inviteSearch.reset()
+        }
+
         if (this.hasErrorTarget) {
             this.errorTarget.classList.add('hidden')
             this.errorTarget.textContent = ""
         }
+    }
+
+    inviteSearchController() {
+        if (!this.hasModalFormTarget) return null
+        const element = this.modalFormTarget.querySelector('[data-controller~="invite-search"]')
+        if (!element) return null
+        return this.application.getControllerForElementAndIdentifier(element, "invite-search")
     }
 
     async createContractor(event) {
@@ -70,7 +83,12 @@ export default class extends Controller {
             return
         }
 
-        // Disable submit button
+        // Post the modal's own form as-is, so whatever the shared contractor
+        // fields collect — including person_id / invite_email from the
+        // CocoScout-user block — reaches the controller untouched.
+        const body = new FormData(this.modalFormTarget)
+
+        const originalLabel = this.hasSubmitBtnTarget ? this.submitBtnTarget.innerHTML : null
         if (this.hasSubmitBtnTarget) {
             this.submitBtnTarget.disabled = true
             this.submitBtnTarget.textContent = "Creating..."
@@ -80,18 +98,10 @@ export default class extends Controller {
             const response = await fetch(this.createUrlValue, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-Token': this.getCSRFToken()
                 },
-                body: JSON.stringify({
-                    contractor: {
-                        name: name,
-                        email: this.hasEmailTarget ? this.emailTarget.value.trim() : "",
-                        phone: this.hasPhoneTarget ? this.phoneTarget.value.trim() : "",
-                        address: this.hasAddressTarget ? this.addressTarget.value.trim() : ""
-                    }
-                })
+                body: body
             })
 
             const data = await response.json()
@@ -111,7 +121,7 @@ export default class extends Controller {
             // Re-enable submit button
             if (this.hasSubmitBtnTarget) {
                 this.submitBtnTarget.disabled = false
-                this.submitBtnTarget.textContent = "Create Contractor"
+                if (originalLabel !== null) this.submitBtnTarget.innerHTML = originalLabel
             }
         }
     }

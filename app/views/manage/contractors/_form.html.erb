@@ -39,99 +39,11 @@
     </div>
 
     <% unless contractor.persisted? %>
-      <%# Who this contractor IS on CocoScout — the primary thing after the name.
-          Links a real user so they can log in, see their contracts, and get paid. %>
-      <div class="pt-4 border-t border-gray-100"
-           data-controller="invite-search" data-invite-search-url-value="<%= search_for_invite_manage_people_path(mode: "link") %>">
-        <h3 class="text-sm font-medium text-gray-900">CocoScout user</h3>
-        <p class="text-sm text-gray-500 mt-0.5 mb-4">Link who this contractor is so they can log in, review &amp; sign contracts, and get paid. You can also set this later.</p>
-
-        <input type="hidden" name="person_id" data-invite-search-target="selectedPersonIdInput">
-
-        <%# Step 1: search %>
-        <div data-invite-search-target="searchSection">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Search CocoScout by name or email</label>
-          <input type="text"
-                 data-invite-search-target="input"
-                 data-action="input->invite-search#search"
-                 placeholder="Search by name or email…"
-                 class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-          <div data-invite-search-target="results" class="mt-3"></div>
-          <div class="mt-3">
-            <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700" data-action="invite-search#showInviteForm">
-              <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %> Can't find them? Invite by email
-            </button>
-          </div>
-        </div>
-
-        <%# Selected existing person %>
-        <div data-invite-search-target="selectedPerson" class="hidden">
-          <div class="flex items-center justify-between gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
-            <div class="min-w-0">
-              <div class="font-medium text-gray-900 truncate" data-invite-search-target="selectedPersonName"></div>
-              <div class="text-sm text-gray-500 truncate" data-invite-search-target="selectedPersonEmail"></div>
-            </div>
-            <button type="button" class="text-sm font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" data-action="invite-search#backToSearch">Change</button>
-          </div>
-        </div>
-
-        <%# Invite-new details %>
-        <div data-invite-search-target="inviteForm" class="hidden mt-3">
-          <div data-invite-search-target="personDetailsSection">
-            <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-3" data-action="invite-search#backToSearch">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-              Back to search
-            </button>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
-                <input type="text" name="invite_name" data-invite-search-target="inviteName"
-                       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                <input type="email" name="invite_email" data-invite-search-target="inviteEmail" autocapitalize="none"
-                       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-              </div>
-            </div>
-          </div>
-          <p class="text-xs text-gray-400 mt-2">We'll invite them to CocoScout so they can accept, set a password, and connect their bank.</p>
-        </div>
-      </div>
+      <%= render "manage/contractors/person_link_fields" %>
     <% end %>
   </div>
 
-  <%# Secondary details — kept available but out of the way. %>
-  <details class="bg-white border border-gray-200 rounded-lg group">
-    <summary class="cursor-pointer select-none px-6 py-4 text-sm font-medium text-gray-700 flex items-center justify-between list-none [&::-webkit-details-marker]:hidden">
-      More details (optional)
-      <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-    </summary>
-    <div class="px-6 pb-6 pt-5 space-y-5 border-t border-gray-100">
-      <div>
-        <label for="contractor_phone" class="block text-sm font-medium text-gray-900 mb-1.5">Phone</label>
-        <%= form.telephone_field :phone,
-          placeholder: "(555) 123-4567",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-      </div>
-
-      <div>
-        <label for="contractor_address" class="block text-sm font-medium text-gray-900 mb-1.5">Address</label>
-        <%= form.text_area :address,
-          rows: 3,
-          placeholder: "123 Main Street\nCity, State 12345",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-      </div>
-
-      <div>
-        <label for="contractor_notes" class="block text-sm font-medium text-gray-900 mb-1.5">Notes</label>
-        <%= form.text_area :notes,
-          rows: 3,
-          placeholder: "Internal notes about this contractor...",
-          class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-      </div>
-    </div>
-  </details>
+  <%= render "manage/contractors/more_details_fields", form: form %>
 
   <div class="flex justify-end gap-3">
     <%= link_to contractor.persisted? ? manage_contractor_path(contractor) : manage_contractors_path, class: "px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition" do %>
