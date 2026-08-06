@@ -943,6 +943,7 @@ module Manage
         # Cancel all occurrences in the recurrence group
         shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
         count = @show.recurrence_group.update_all(canceled: true)
+        dropped = drop_contract_payments_for(shows_to_cancel)
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -950,7 +951,7 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
         # Cancel this and all future occurrences
@@ -960,17 +961,19 @@ module Manage
         count = @show.recurrence_group
                      .where("date_and_time >= ?", @show.date_and_time)
                      .update_all(canceled: true)
+        dropped = drop_contract_payments_for(shows_to_cancel)
 
         if notify_cast
           send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
                     status: :see_other
       else
         # Cancel just this occurrence
         @show.update!(canceled: true)
+        dropped = drop_contract_payments_for([ @show ])
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -978,9 +981,35 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "#{event_label} was successfully canceled",
+                    notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}",
                     status: :see_other
       end
+    end
+
+    # A cancelled show shouldn't leave its contract payment standing. Only
+    # still-pending, uncommitted payments come off — anything paid or already
+    # in a payout run is money that moved, and stays.
+    #
+    # (The bulk recurrence branches above use update_all and skip callbacks
+    # entirely, which is the other half of why a cancelled show used to keep
+    # its payment.)
+    def drop_contract_payments_for(shows)
+      show_ids = shows.map(&:id)
+      return 0 if show_ids.empty?
+
+      payments = ContractPayment.where(show_id: show_ids).status_pending
+                                .joins(:contract)
+                                .where(contracts: { organization_id: Current.organization.id })
+                                .to_a
+                                .reject(&:in_payout_run?)
+      payments.each(&:destroy!)
+      payments.size
+    end
+
+    def cancellation_money_note(count)
+      return "" if count.to_i.zero?
+
+      " — and #{helpers.pluralize(count, 'pending contract payment')} dropped with it"
     end
 
     def delete_show

@@ -315,6 +315,63 @@ module Manage
 
     # ==================== AMEND CONTRACT FLOW ====================
 
+    # Amending splits in two, because they're different jobs with different
+    # risks. Changing dates shouldn't drag the deal's whole payment schedule
+    # through a regeneration — that's how a settled date ends up with a second
+    # payment.
+    def amend_choose
+    end
+
+    # Dates only: add, remove or move events. The deal is not touched.
+    def amend_dates
+      @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @shows_by_rental = @contract.production&.shows&.where(space_rental_id: @rentals.map(&:id))&.index_by(&:space_rental_id) || {}
+      @locations = Current.organization.locations.includes(:location_spaces)
+    end
+
+    # Apply date changes: params[:dates] is { rental_id => { action:, starts_at:, ends_at: } }
+    # where action is "keep", "remove" or "move".
+    def apply_amend_dates
+      changes = params[:dates].is_a?(ActionController::Parameters) ? params[:dates].to_unsafe_h : {}
+      removed = []
+      moved = []
+      kept_paid = []
+
+      @contract.transaction do
+        @contract.space_rentals.where(id: changes.keys).find_each do |rental|
+          change = changes[rental.id.to_s] || {}
+          case change["action"]
+          when "remove"
+            result = ContractDateChanges.remove!(contract: @contract, rental: rental)
+            result[:settled] ? kept_paid << result[:label] : removed << result[:label]
+          when "move"
+            starts_at = Time.zone.parse(change["starts_at"].to_s) rescue nil
+            next unless starts_at
+
+            duration = rental.ends_at - rental.starts_at
+            moved << ContractDateChanges.move!(contract: @contract, rental: rental,
+                                               starts_at: starts_at, ends_at: starts_at + duration)
+          end
+        end
+
+        @contract.refresh_dates_from_rentals!
+      end
+
+      redirect_to manage_contract_path(@contract), notice: date_change_notice(removed, moved, kept_paid)
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to amend_dates_manage_contract_path(@contract), alert: "Couldn't change those dates: #{e.message}"
+    end
+
+    # Plain English for what just happened to the dates.
+    def date_change_notice(removed, moved, kept_paid)
+      parts = []
+      parts << "Removed #{removed.to_sentence}" if removed.any?
+      parts << "Moved #{moved.to_sentence}" if moved.any?
+      parts << "Cancelled #{kept_paid.to_sentence} — that date was already settled, so its payment stays" if kept_paid.any?
+      parts.any? ? "#{parts.join('. ')}." : "No date changes to make."
+    end
+    helper_method :date_change_notice
+
     # Step 1: Amend Bookings
     def amend_bookings
       @locations = Current.organization.locations.includes(:location_spaces)

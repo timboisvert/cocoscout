@@ -1,0 +1,104 @@
+<% content_for :title, "Change dates" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Contracts", manage_contracts_path],
+      [@contract.contractor_name, manage_contract_path(@contract)]
+    ],
+    text: "Change dates",
+    links: []
+  } %>
+
+  <div class="max-w-3xl mx-auto mt-6">
+    <p class="text-gray-600 mb-6">
+      Each date stands on its own. Removing one takes its still-pending payments with it and leaves
+      the rest of the deal exactly as it is.
+    </p>
+
+    <%= form_with url: apply_amend_dates_manage_contract_path(@contract), method: :post, html: { novalidate: true } do %>
+      <div class="space-y-3">
+        <% @rentals.each do |rental| %>
+          <%
+            show = @shows_by_rental[rental.id]
+            payments = @contract.contract_payments.select { |p| p.show_id == show&.id || p.due_date == rental.starts_at.to_date }
+            settled = payments.any? { |p| p.status_paid? || p.in_payout_run? } || show&.show_financials.present?
+            pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
+            past = rental.starts_at < Time.current
+          %>
+          <div class="border border-gray-200 rounded-lg p-4 bg-white" data-controller="amend-date">
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+              <div class="min-w-0">
+                <p class="font-medium text-gray-900">
+                  <%= rental.starts_at.strftime("%A, %b %-d, %Y") %>
+                  <span class="text-gray-400 font-normal">· <%= rental.starts_at.strftime("%-l:%M %p") %>–<%= rental.ends_at.strftime("%-l:%M %p") %></span>
+                </p>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  <%= rental.location_space&.name || "Entire Venue" %> at <%= rental.location&.name %>
+                  <% if past %><span class="text-gray-400">· already happened</span><% end %>
+                </p>
+
+                <% if settled %>
+                  <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
+                    Already settled — removing this cancels the date and leaves the money alone.
+                  </p>
+                <% elsif pending.any? %>
+                  <p class="text-xs text-gray-500 mt-1.5">
+                    Removing it also drops <%= pluralize(pending.size, "pending payment") %>
+                    (<%= pending.map { |p| p.amount_tbd? ? "TBD" : number_to_currency(p.amount) }.to_sentence %>).
+                  </p>
+                <% end %>
+              </div>
+
+              <div class="flex items-center gap-3 flex-shrink-0">
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="keep" checked
+                         class="accent-pink-500" data-action="change->amend-date#modeChanged">
+                  <span class="text-gray-700">Keep</span>
+                </label>
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="move"
+                         class="accent-pink-500" data-action="change->amend-date#modeChanged">
+                  <span class="text-gray-700">Move</span>
+                </label>
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="remove"
+                         class="accent-pink-500" data-action="change->amend-date#modeChanged">
+                  <span class="text-gray-700"><%= settled ? "Cancel" : "Remove" %></span>
+                </label>
+              </div>
+            </div>
+
+            <%# Moving keeps the show itself, so its cast and staffing follow. %>
+            <div data-amend-date-target="moveFields" class="hidden mt-3 pt-3 border-t border-gray-100">
+              <label class="block text-xs font-medium text-gray-600 mb-1">New date and time</label>
+              <input type="datetime-local" name="dates[<%= rental.id %>][starts_at]"
+                     value="<%= rental.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                     class="block w-full sm:w-72 px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+              <p class="text-xs text-gray-500 mt-1">The show keeps its cast and staffing — they move with it.</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @rentals.empty? %>
+        <p class="text-sm text-gray-500">This contract has no dates on it yet.</p>
+      <% end %>
+
+      <div class="flex items-center justify-between mt-6">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left",
+              path: amend_choose_manage_contract_path(@contract) %>
+        <% if @rentals.any? %>
+          <%= render "shared/button", text: "Apply date changes", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <p class="text-xs text-gray-500 mt-4">
+      Adding a date? Use <%= link_to "Change the deal", amend_bookings_manage_contract_path(@contract), class: "text-pink-600 hover:text-pink-700 underline" %>,
+      which knows how to price a new one.
+    </p>
+  </div>
+</div>

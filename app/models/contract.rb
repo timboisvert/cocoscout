@@ -625,6 +625,16 @@ class Contract < ApplicationRecord
     end
   end
 
+  # Re-derive the contract's span from the dates it actually holds. Called after
+  # dates are added, removed or moved.
+  def refresh_dates_from_rentals!
+    starts = space_rentals.minimum(:starts_at)
+    ends = space_rentals.maximum(:ends_at)
+    return if starts.nil? || ends.nil?
+
+    update!(contract_start_date: starts.to_date, contract_end_date: ends.to_date)
+  end
+
   # Which way the money goes and when it's due — see reconcile_amended_payments!.
   def payment_slot(payment)
     [ payment.direction, payment.due_date ]

@@ -1430,6 +1430,10 @@ Rails.application.routes.draw do
         post :process_cancel
         patch :update_projection
         # Amend contract flow with nested paths
+        get "amend", action: :amend_choose, as: :amend_choose
+        # Changing dates is its own job — no financial regeneration at all.
+        get "amend/dates", action: :amend_dates, as: :amend_dates
+        post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates
         get "amend/bookings", action: :amend_bookings, as: :amend_bookings
         post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings
         get "amend/events", action: :amend_events, as: :amend_events
