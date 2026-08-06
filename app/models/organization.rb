@@ -147,6 +147,21 @@ class Organization < ApplicationRecord
     contract_notification_manager_users.where(id: ids)
   end
 
+  # --- Staffing notifications -------------------------------------------------
+  # The managers the org chose to message about staffing events (today: a staff
+  # member declining a shift). Same manager pool as the other lists; empty means
+  # nobody is notified.
+  def staffing_notification_user_ids
+    Array(self[:staffing_notification_user_ids]).map(&:to_i)
+  end
+
+  def staffing_notification_recipients
+    ids = staffing_notification_user_ids
+    return [] if ids.empty?
+
+    contract_notification_manager_users.where(id: ids).filter_map(&:person)
+  end
+
   before_create :generate_invite_token
 
   # Generate or ensure invite token exists

@@ -8,9 +8,9 @@ module Manage
     # agreement-template CRUD lives in AgreementTemplatesController and
     # redirects back here), and who's hidden from the Pay People grid.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people coverage].freeze
+      SECTIONS = %w[agreements pay_people coverage notifications].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
-                         "coverage" => "Show coverage" }.freeze
+                         "coverage" => "Show coverage", "notifications" => "Notifications" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -24,6 +24,9 @@ module Manage
           # the pay grid automatically.
           @active_staff_members = Current.organization.organization_staff_members.active
                                          .includes(:person).order("people.name").references(:person)
+        when "notifications"
+          @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
+          @notification_selected_ids = Current.organization.staffing_notification_user_ids
         end
       end
 
@@ -35,6 +38,8 @@ module Manage
           update_pay_exclusions
         elsif params[:updating_coverage].present?
           update_coverage_alerts
+        elsif params[:updating_notifications].present?
+          update_notification_recipients
         else
           update_required_agreement
         end
@@ -99,6 +104,17 @@ module Manage
         Current.organization.update!(alert_uncovered_show_roles: enabled)
         redirect_to section_path("coverage"),
                     notice: enabled ? "Scheduling now flags shows missing show-specific role coverage." : "Coverage alerts turned off."
+      end
+
+      # Which managers get an in-app message when a staff member can't make a
+      # shift. Store only ids that are actually current managers; empty means
+      # nobody is notified. (updating_notifications is a marker param so an
+      # all-unchecked submit still routes here.)
+      def update_notification_recipients
+        manager_ids = Current.organization.contract_notification_manager_users.pluck(:id)
+        selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
+        Current.organization.update!(staffing_notification_user_ids: selected)
+        redirect_to section_path("notifications"), notice: "Notification recipients updated."
       end
     end
   end

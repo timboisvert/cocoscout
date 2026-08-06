@@ -71,6 +71,7 @@ module My
     def decline
       assignment = find_my_assignment or return
       assignment.decline!(reason: params[:reason])
+      ShiftDeclinedNotificationJob.perform_later(assignment.id)
       redirect_to my_shifts_path,
                   notice: "Thanks — we've let #{assignment.shift.organization.name} know you can't make this shift."
     end

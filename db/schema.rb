@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1388,6 +1388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_180000) do
     t.integer "payout_schedule_day"
     t.boolean "payouts_enabled", default: false, null: false
     t.bigint "required_staff_agreement_template_id"
+    t.jsonb "staffing_notification_user_ids", default: [], null: false
     t.string "staffing_subscription_id"
     t.string "stripe_account_id"
     t.string "stripe_account_status"

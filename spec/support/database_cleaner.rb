@@ -71,6 +71,12 @@ def seed_content_templates
             "<p><a href=\"{{setup_url}}\">Add your bank account</a></p>",
       category: "payments", channel: "both" },
     { key: "staff_onboarding_invite", name: "Staff Onboarding Invite", subject: "Welcome to {{organization_name}}", body: "Hi {{first_name}}, get set up at {{onboarding_url}}", category: "staffing", channel: "both" },
+    { key: "shift_declined_manager", name: "Shift Declined (manager alert)",
+      subject: "{{person_name}} can't make a shift",
+      body: "<p>{{person_name}} can't make their <strong>{{role_name}}</strong> shift on <strong>{{shift_time}}</strong>.</p>" \
+            "{{#decline_reason}}<p>Their note: “{{decline_reason}}”</p>{{/decline_reason}}" \
+            "<p><a href=\"{{scheduling_url}}\">View that day in Staffing Scheduling</a></p>",
+      category: "staffing", channel: "message" },
     { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}", body: "<p>{{intro}}</p>{{shifts_list}} See your <a href=\"{{my_shifts_link}}\">My Shifts</a>.", category: "shows", channel: "message" },
     { key: "course_registration_confirmed", name: "Course Registration Confirmed", subject: "You're registered for {{course_title}}!", body: "Hi {{recipient_name}}, your registration for {{course_title}} is confirmed.", category: "courses", channel: "both" },
     { key: "course_registration_producer_notification", name: "Course Registration Producer Notification", subject: "New registration for {{course_title}}", body: "{{registrant_name}} has registered for {{course_title}}.", category: "courses", channel: "message" }
