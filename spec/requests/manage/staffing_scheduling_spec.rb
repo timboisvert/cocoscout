@@ -138,6 +138,13 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(response.body).not_to include("needs Booth Tech")
     end
 
+    it "still lays out coverage in the show panel when the setting is off" do
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      expect(response.body).to include("Show coverage")
+      expect(response.body).to include("not covered yet")
+      expect(response.body).to include("This show doesn&#39;t need these roles")
+    end
+
     context "with the setting on" do
       before { org.update!(alert_uncovered_show_roles: true) }
 
@@ -173,6 +180,33 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).not_to include("needs Booth Tech")
       end
+
+      it "skips shows marked as not needing coverage, and offers to re-enable" do
+        [ early_show, late_show ].each { |s| s.update!(staffing_coverage_exempt: true) }
+
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        expect(response.body).not_to include("needs Booth Tech")
+        expect(response.body).to include("Coverage checks are off for this show")
+        expect(response.body).to include("Turn coverage checks back on")
+      end
+    end
+  end
+
+  describe "the per-show coverage opt-out" do
+    it "flips the exemption on and off, anchored back to the day" do
+      patch manage_staffing_show_coverage_exempt_path(early_show, exempt: "1")
+      expect(early_show.reload.staffing_coverage_exempt).to be(true)
+      expect(response.headers["Location"]).to end_with("#day-#{show_day.iso8601}")
+
+      patch manage_staffing_show_coverage_exempt_path(early_show)
+      expect(early_show.reload.staffing_coverage_exempt).to be(false)
+    end
+
+    it "refuses a show belonging to another organization" do
+      foreign_show = create(:show, production: create(:production, organization: create(:organization, owner: create(:user))))
+
+      patch manage_staffing_show_coverage_exempt_path(foreign_show, exempt: "1")
+      expect(foreign_show.reload.staffing_coverage_exempt).to be(false)
     end
   end
 

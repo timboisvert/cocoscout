@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_06_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2305,6 +2305,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_100000) do
     t.string "secondary_name"
     t.boolean "signup_based_casting", default: false, null: false
     t.bigint "space_rental_id"
+    t.boolean "staffing_coverage_exempt", default: false, null: false
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
     t.index ["casting_source"], name: "index_shows_on_casting_source"

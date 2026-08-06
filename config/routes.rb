@@ -1197,6 +1197,7 @@ Rails.application.routes.draw do
     patch "staffing/timesheets/:id",              to: "staffing/timesheets#update",      as: "staffing_timesheet"
     delete "staffing/timesheets/:id",             to: "staffing/timesheets#reject",      as: "reject_staffing_timesheet"
     post "staffing/finalize",                     to: "staffing#finalize",               as: "finalize_staffing"
+    patch "staffing/shows/:id/coverage-exempt",   to: "staffing#toggle_show_coverage_exempt", as: "staffing_show_coverage_exempt"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
     get  "staffing/house_roles/editor",           to: "staffing/house_roles#editor",     as: "staffing_house_roles_editor"
     get  "staffing/house_roles/new",              to: "staffing/house_roles#new",        as: "new_staffing_house_role"

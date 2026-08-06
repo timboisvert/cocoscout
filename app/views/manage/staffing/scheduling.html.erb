@@ -537,11 +537,25 @@
                   (where shows are drawn as their own row inside the chart). %>
               <div data-day-view-target="cards" class="px-1 mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
                 <% day_shows.each do |show| %>
-                  <% cast = @show_cast[show.id] || [] %>
-                  <% uncovered = @uncovered_roles_by_show[show.id] %>
-                  <%# Hover the chip to reveal that show's cast — most staff also
-                      perform, so this is a quick double-check before assigning. %>
-                  <span class="relative inline-flex items-center gap-1 cursor-default <%= 'rounded bg-amber-50 border border-amber-300 px-1.5 py-0.5' if uncovered %>" data-controller="cast-popover">
+                  <%
+                    cast = @show_cast[show.id] || []
+                    uncovered = @uncovered_roles_by_show[show.id]
+                    coverage = @show_coverage[show.id]
+                    rental = show.space_rental
+                    show_time = "#{show.date_and_time.strftime("%-l:%M %p")}–#{show.ends_at.strftime("%-l:%M %p")}"
+                    call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
+                    # The contract's booked window, when it's wider than the show itself.
+                    booked_range = if rental && (rental.starts_at != show.date_and_time || rental.ends_at != show.ends_at)
+                      "#{rental.starts_at.strftime("%-l:%M %p")}–#{rental.ends_at.strftime("%-l:%M %p")}"
+                    end
+                    detail_cid = "show-detail-#{show.id}"
+                  %>
+                  <%# Hover for the schedule + cast; click for the full panel with
+                      coverage. The hover panel is promoted to position:fixed by
+                      cast-popover so the day card's overflow-hidden can't clip it. %>
+                  <span class="relative inline-flex items-center gap-1 cursor-pointer hover:text-gray-700 <%= 'rounded bg-amber-50 border border-amber-300 px-1.5 py-0.5' if uncovered %>"
+                        data-controller="cast-popover modal"
+                        data-action="click->modal#open" data-modal-id="<%= detail_cid %>">
                     <span class="font-medium text-gray-700"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
                     <%= show.production&.name %>
                     <% if cast.any? %>
@@ -555,22 +569,27 @@
                         needs <%= uncovered.to_sentence %>
                       </span>
                     <% end %>
-                    <%# Hover popover with the cast list. The cast-popover controller
-                        promotes this to position:fixed on hover so the day card's
-                        overflow-hidden can't clip it against the top of the day. %>
                     <span data-cast-popover-target="panel"
-                          class="invisible opacity-0 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-56 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2 text-left">
-                      <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 px-1">
-                        Cast · <%= show.production&.name %>
+                          class="invisible opacity-0 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-64 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2.5 text-left">
+                      <span class="block text-xs font-semibold text-gray-900 mb-1.5"><%= show.display_name %></span>
+                      <span class="block space-y-0.5 mb-1.5">
+                        <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Show</span><span class="text-gray-800 font-medium tabular-nums"><%= show_time %></span></span>
+                        <% if call_time %>
+                          <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Call</span><span class="text-gray-800 font-medium tabular-nums"><%= call_time %></span></span>
+                        <% end %>
+                        <% if booked_range %>
+                          <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Booked</span><span class="text-gray-800 font-medium tabular-nums"><%= booked_range %></span></span>
+                        <% end %>
                       </span>
+                      <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 pt-1.5 border-t border-gray-100">Cast</span>
                       <% if cast.any? %>
                         <% cast.sort_by { |p| p.name.to_s }.each do |person| %>
                           <span class="flex items-center gap-2 px-1 py-0.5">
                             <% v = person.safe_headshot_variant(:thumb) %>
                             <% if v %>
-                              <%= image_tag v, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                              <%= image_tag v, alt: person.name, class: "w-5 h-5 rounded-lg object-cover flex-shrink-0" %>
                             <% else %>
-                              <span class="w-5 h-5 rounded bg-gray-200 text-gray-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0"><%= person.initials %></span>
+                              <span class="w-5 h-5 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0"><%= person.initials %></span>
                             <% end %>
                             <span class="text-xs text-gray-800 truncate"><%= person.name %></span>
                           </span>
@@ -578,8 +597,86 @@
                       <% else %>
                         <span class="block text-xs text-gray-400 italic px-1 py-0.5">No cast assigned</span>
                       <% end %>
+                      <span class="block text-[10px] text-gray-400 mt-1.5 pt-1.5 border-t border-gray-100">Click for coverage &amp; details</span>
                     </span>
                   </span>
+
+                  <%# The click panel — a sibling of the chip (a trigger wrapping its
+                      own modal would re-open it on every backdrop click). %>
+                  <div id="<%= detail_cid %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+                       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+                      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+                        <h3 class="text-lg font-semibold text-white truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
+                        <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer flex-shrink-0 ml-3">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div class="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                        <div class="space-y-1">
+                          <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Show</span><span class="text-gray-900 font-medium tabular-nums"><%= show_time %></span></div>
+                          <% if call_time %>
+                            <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Call time</span><span class="text-gray-900 font-medium tabular-nums"><%= call_time %></span></div>
+                          <% end %>
+                          <% if booked_range %>
+                            <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Booked on the contract</span><span class="text-gray-900 font-medium tabular-nums"><%= booked_range %></span></div>
+                          <% end %>
+                        </div>
+
+                        <div>
+                          <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Cast</p>
+                          <% if cast.any? %>
+                            <div class="space-y-1">
+                              <% cast.sort_by { |p| p.name.to_s }.each do |person| %>
+                                <div class="flex items-center gap-2">
+                                  <% v = person.safe_headshot_variant(:thumb) %>
+                                  <% if v %>
+                                    <%= image_tag v, alt: person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                                  <% else %>
+                                    <span class="w-6 h-6 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-[9px] font-bold flex-shrink-0"><%= person.initials %></span>
+                                  <% end %>
+                                  <span class="text-sm text-gray-900"><%= person.name %></span>
+                                </div>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <p class="text-sm text-gray-400 italic">No cast assigned</p>
+                          <% end %>
+                        </div>
+
+                        <% if coverage %>
+                          <div class="pt-3 border-t border-gray-200">
+                            <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Show coverage</p>
+                            <div class="space-y-1 mb-3">
+                              <% coverage[:roles].each do |role| %>
+                                <div class="flex items-center gap-2 text-sm">
+                                  <% if role[:covered] %>
+                                    <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                    <span class="text-gray-900"><%= role[:name] %></span>
+                                    <span class="text-xs text-gray-400">covered</span>
+                                  <% else %>
+                                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                    <span class="text-gray-900"><%= role[:name] %></span>
+                                    <span class="text-xs text-amber-700 font-medium">not covered yet</span>
+                                  <% end %>
+                                </div>
+                              <% end %>
+                            </div>
+                            <% if coverage[:exempt] %>
+                              <p class="text-xs text-gray-500 mb-2">Coverage checks are off for this show — it won't be flagged as missing these roles.</p>
+                              <%= form_with url: manage_staffing_show_coverage_exempt_path(show), method: :patch do %>
+                                <%= render "shared/button", text: "Turn coverage checks back on", variant: "primary", size: "small", type: :submit %>
+                              <% end %>
+                            <% else %>
+                              <%= form_with url: manage_staffing_show_coverage_exempt_path(show, exempt: "1"), method: :patch do %>
+                                <%= render "shared/button", text: "This show doesn't need these roles", variant: "primary", size: "small", type: :submit %>
+                              <% end %>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
                 <% end %>
               </div>
             <% end %>

@@ -75,10 +75,22 @@ module Manage
         .to_a
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
 
-      # Coverage assistant (opt-in via Staffing settings): which shows this week
-      # are missing a staffed shift for a show-specific role, and which roles.
+      # Per-show coverage detail — always computed, so the show popover can lay
+      # out covered/missing show-specific roles whether or not the assistant is
+      # on. The amber chip flag stays opt-in (Staffing settings) and skips shows
+      # marked as not needing coverage.
+      @show_coverage = show_coverage_by_show(shifts)
       @uncovered_roles_by_show =
-        Current.organization.alert_uncovered_show_roles? ? uncovered_show_roles(shifts) : {}
+        if Current.organization.alert_uncovered_show_roles?
+          @show_coverage.each_with_object({}) do |(show_id, entry), h|
+            next if entry[:exempt]
+
+            missing = entry[:roles].reject { |r| r[:covered] }.map { |r| r[:name] }
+            h[show_id] = missing if missing.any?
+          end
+        else
+          {}
+        end
 
       @finalization = Current.organization.staffing_finalizations.find_by(week_start: @week_start)
       @week_finalized = @finalization&.finalized? || false
@@ -182,6 +194,20 @@ module Manage
           "Notified #{notified} #{"person".pluralize(notified)} of their schedule #{notify_everyone ? "" : "changes"}.".squeeze(" ")
         end
       redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s), notice: notice
+    end
+
+    # Per-show opt-out of the coverage assistant: "this one doesn't need the
+    # show roles." Flips with the same control, so no confirm needed.
+    def toggle_show_coverage_exempt
+      show = ::Show.joins(:production)
+                   .where(productions: { organization_id: Current.organization.id })
+                   .find_by(id: params[:id])
+      return redirect_to(manage_staffing_scheduling_path, alert: "We couldn't find that show.") unless show
+
+      show.update!(staffing_coverage_exempt: params[:exempt].present?)
+      day = show.date_and_time.to_date
+      redirect_to manage_staffing_scheduling_path(week_start: day.beginning_of_week.iso8601, anchor: "day-#{day.iso8601}"),
+                  notice: show.staffing_coverage_exempt? ? "#{show.display_name} won't be flagged for show-role coverage." : "#{show.display_name} is back in the coverage checks."
     end
 
     public
@@ -387,7 +413,10 @@ module Manage
     # its explicit links (source / merged shift_shows) — never inferred from
     # time — and counts once it's fully staffed (which includes
     # covered_by_renter and not_needed modes).
-    def uncovered_show_roles(shifts)
+    #
+    # Returns { show_id => { roles: [ { name:, covered: } ], exempt: } } for
+    # every show in the week with at least one applicable show-specific role.
+    def show_coverage_by_show(shifts)
       show_roles = Current.organization.house_roles.active.select(&:show_specific?)
       return {} if show_roles.empty?
 
@@ -402,11 +431,13 @@ module Manage
       result = {}
       @shows_by_day.each_value do |shows|
         shows.each do |show|
-          missing = show_roles.select do |role|
-            (role.location_id.nil? || role.location_id == show.location_id) &&
-              !covered[show.id].include?(role.id)
-          end
-          result[show.id] = missing.map(&:name) if missing.any?
+          applicable = show_roles.select { |role| role.location_id.nil? || role.location_id == show.location_id }
+          next if applicable.empty?
+
+          result[show.id] = {
+            roles: applicable.map { |role| { name: role.name, covered: covered[show.id].include?(role.id) } },
+            exempt: show.staffing_coverage_exempt?
+          }
         end
       end
       result
@@ -417,7 +448,7 @@ module Manage
             .where(productions: { organization_id: Current.organization.id })
             .where(date_and_time: range.first.beginning_of_day..range.last.end_of_day)
             .where(canceled: [ false, nil ])
-            .includes(:production, :location)
+            .includes(:production, :location, :space_rental)
             .order(:date_and_time)
             .to_a
     end
