@@ -1,0 +1,39 @@
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <div class="flex items-center gap-2.5 mb-1">
+    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </span>
+    <h2 class="text-xl text-gray-900 coustard-regular">Role Call</h2>
+  </div>
+  <p class="text-sm text-gray-600">
+    Before every show, Role Call checks that each show-specific role — a booth
+    tech, a house manager — actually has someone on it. Any show still missing
+    one gets flagged right in the day's show list on Scheduling, naming the
+    roles it needs. Fully staffed shows aren't marked at all.
+  </p>
+  <p class="text-sm text-gray-600 mt-2">
+    A show that genuinely doesn't need a role (a rental running its own booth,
+    say) can be excused from that one role — click the show on Scheduling and
+    mark it there. Every other role on that show keeps getting checked.
+  </p>
+
+  <div class="mt-5 pt-5 border-t border-gray-200">
+    <%= form_with url: manage_staffing_settings_path, method: :patch, class: "flex items-center justify-between gap-4" do %>
+      <%# Marker param so an unchecked submit still routes to this setting. %>
+      <%= hidden_field_tag :updating_coverage, "1" %>
+      <label class="flex items-start gap-3 cursor-pointer">
+        <%= check_box_tag :alert_uncovered_show_roles, "1", Current.organization.alert_uncovered_show_roles?,
+              class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span>
+          <span class="block text-sm font-medium text-gray-900">Run Role Call on my shows</span>
+          <span class="block text-xs text-gray-500 mt-0.5">
+            Covers every role set to "one shift per show" on the
+            <%= link_to "roles page", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
+            Roles tied to a venue only count for shows at that venue.
+          </span>
+        </span>
+      </label>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    <% end %>
+  </div>
+</div>

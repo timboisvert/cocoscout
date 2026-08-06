@@ -130,7 +130,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
-  describe "the coverage assistant" do
+  describe "Role Call" do
     let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
 
     it "stays quiet when the setting is off" do
@@ -138,11 +138,11 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(response.body).not_to include("needs Booth Tech")
     end
 
-    it "still lays out coverage in the show panel when the setting is off" do
+    it "is absent from the show popover and panel entirely when the setting is off" do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
-      expect(response.body).to include("Show coverage")
-      expect(response.body).to include("not covered yet")
-      expect(response.body).to include("Not needed here")
+      expect(response.body).not_to include("Role Call")
+      expect(response.body).not_to include("not covered yet")
+      expect(response.body).not_to include("Not needed here")
     end
 
     context "with the setting on" do
@@ -151,6 +151,14 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       it "flags shows with no staffed tech shift, naming the role" do
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).to include("needs Booth Tech")
+      end
+
+      it "brands the popover and panel, and links through to its settings" do
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        expect(response.body).to include("Role Call")
+        expect(response.body).to include("Still needs Booth Tech")   # popover summary
+        expect(response.body).to include("not covered yet")          # panel row
+        expect(response.body).to include(manage_staffing_settings_section_path(section: "role_call"))
       end
 
       it "clears the flag once a staffed shift covers the show" do
@@ -232,13 +240,20 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
-  describe "settings: the coverage toggle" do
-    it "turns the assistant on and off from Staffing settings" do
+  describe "settings: the Role Call section" do
+    it "turns Role Call on and off from Staffing settings" do
       patch manage_staffing_settings_path, params: { updating_coverage: "1", alert_uncovered_show_roles: "1" }
       expect(org.reload.alert_uncovered_show_roles).to be(true)
+      expect(response).to redirect_to(manage_staffing_settings_section_path(section: "role_call"))
 
       patch manage_staffing_settings_path, params: { updating_coverage: "1" }
       expect(org.reload.alert_uncovered_show_roles).to be(false)
+    end
+
+    it "renders the named section under its own tab" do
+      get manage_staffing_settings_section_path(section: "role_call")
+      expect(response.body).to include("Role Call")
+      expect(response.body).to include("Run Role Call on my shows")
     end
   end
 

@@ -8,9 +8,9 @@ module Manage
     # agreement-template CRUD lives in AgreementTemplatesController and
     # redirects back here), and who's hidden from the Pay People grid.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people coverage notifications].freeze
+      SECTIONS = %w[agreements pay_people role_call notifications].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
-                         "coverage" => "Show coverage", "notifications" => "Notifications" }.freeze
+                         "role_call" => "Role Call", "notifications" => "Notifications" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -95,15 +95,15 @@ module Manage
                     notice: count.positive? ? "#{helpers.pluralize(count, 'person')} hidden from the Pay People list." : "Everyone shows on the Pay People list."
       end
 
-      # The coverage assistant: when on, the scheduling page flags shows that
-      # are missing a staffed shift for a show-specific role, naming the roles.
+      # Role Call: when on, the scheduling page checks every show against the
+      # show-specific roles and flags the ones still missing coverage.
       # (updating_coverage is a marker param so an unchecked box still routes
       # here and turns it off.)
       def update_coverage_alerts
         enabled = params[:alert_uncovered_show_roles].present?
         Current.organization.update!(alert_uncovered_show_roles: enabled)
-        redirect_to section_path("coverage"),
-                    notice: enabled ? "Scheduling now flags shows missing show-specific role coverage." : "Coverage alerts turned off."
+        redirect_to section_path("role_call"),
+                    notice: enabled ? "Role Call is on — scheduling now checks every show for its roles." : "Role Call turned off."
       end
 
       # Which managers get an in-app message when a staff member can't make a

@@ -550,9 +550,9 @@
                     end
                     detail_cid = "show-detail-#{show.id}"
                   %>
-                  <%# Hover for the schedule + cast; click for the full panel with
-                      coverage. The hover panel is promoted to position:fixed by
-                      cast-popover so the day card's overflow-hidden can't clip it. %>
+                  <%# Hover for the schedule, cast and Role Call summary; click for
+                      the full panel. The hover panel is promoted to position:fixed
+                      by cast-popover so the day card's overflow-hidden can't clip it. %>
                   <span class="relative inline-flex items-center gap-1 cursor-pointer hover:text-gray-700 <%= 'rounded bg-amber-50 border border-amber-300 px-1.5 py-0.5' if uncovered %>"
                         data-controller="cast-popover modal"
                         data-action="click->modal#open" data-modal-id="<%= detail_cid %>">
@@ -597,7 +597,28 @@
                       <% else %>
                         <span class="block text-xs text-gray-400 italic px-1 py-0.5">No cast assigned</span>
                       <% end %>
-                      <span class="block text-[10px] text-gray-400 mt-1.5 pt-1.5 border-t border-gray-100">Click for coverage &amp; details</span>
+
+                      <% if coverage %>
+                        <%# Role Call, branded — the named feature gets its own
+                            tinted block rather than reading as one more line. %>
+                        <%
+                          rc_needed = coverage[:roles].reject { |r| r[:covered] || r[:exempt] }
+                          rc_counted = coverage[:roles].reject { |r| r[:exempt] }
+                        %>
+                        <span class="block mt-2 rounded-lg border <%= rc_needed.any? ? "border-amber-200 bg-amber-50" : "border-pink-100 bg-pink-50" %> px-2 py-1.5">
+                          <span class="flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 <%= rc_needed.any? ? "text-amber-600" : "text-pink-600" %> flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="text-[11px] font-semibold <%= rc_needed.any? ? "text-amber-900" : "text-pink-900" %>">Role Call</span>
+                            <span class="ml-auto text-[10px] <%= rc_needed.any? ? "text-amber-700" : "text-pink-700" %> tabular-nums">
+                              <%= rc_counted.count { |r| r[:covered] } %>/<%= rc_counted.size %>
+                            </span>
+                          </span>
+                          <span class="block text-[10px] <%= rc_needed.any? ? "text-amber-800" : "text-pink-800" %> mt-0.5">
+                            <%= rc_needed.any? ? "Still needs #{rc_needed.map { |r| r[:name] }.to_sentence}" : "Every role covered" %>
+                          </span>
+                        </span>
+                      <% end %>
+                      <span class="block text-[10px] text-gray-400 mt-1.5 pt-1.5 border-t border-gray-100">Click for details</span>
                     </span>
                   </span>
 
@@ -644,19 +665,31 @@
                           <% end %>
                         </div>
 
+                        <%# Role Call — the named feature, so it gets a badge, its own
+                            framed block and a way through to its settings. Only here
+                            when Role Call is switched on for the org. %>
                         <% if coverage %>
-                          <div class="pt-3 border-t border-gray-200">
-                            <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Show coverage</p>
+                          <div class="pt-4 border-t border-gray-200">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              </span>
+                              <span class="text-base text-gray-900 coustard-regular">Role Call</span>
+                              <%= link_to "Settings", manage_staffing_settings_section_path(section: "role_call"),
+                                    class: "ml-auto text-xs text-pink-600 hover:text-pink-700 underline" %>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-2.5">The show-specific roles this show is checked for. Excuse any this show genuinely doesn't need.</p>
+
                             <%# Each role flips on its own — a show can skip the booth
                                 tech and still be checked for the door person. %>
-                            <div class="space-y-1.5">
+                            <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                               <% coverage[:roles].each do |role| %>
-                                <div class="flex items-center gap-2 text-sm">
+                                <div class="flex items-center gap-2 text-sm px-3 py-2 <%= "bg-gray-50/60" if role[:exempt] %>">
                                   <% if role[:exempt] %>
                                     <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                                     <span class="text-gray-500"><%= role[:name] %></span>
                                     <span class="text-xs text-gray-400">not needed for this show</span>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "ml-auto" do %>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "ml-auto flex-shrink-0" do %>
                                       <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Needs it again</button>
                                     <% end %>
                                   <% elsif role[:covered] %>
@@ -667,7 +700,7 @@
                                     <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                                     <span class="text-gray-900"><%= role[:name] %></span>
                                     <span class="text-xs text-amber-700 font-medium">not covered yet</span>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "ml-auto" do %>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "ml-auto flex-shrink-0" do %>
                                       <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Not needed here</button>
                                     <% end %>
                                   <% end %>

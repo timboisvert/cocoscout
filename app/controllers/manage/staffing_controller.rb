@@ -75,20 +75,16 @@ module Manage
         .to_a
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
 
-      # Per-show coverage detail — always computed, so the show popover can lay
-      # out covered/missing show-specific roles whether or not the assistant is
-      # on. The amber chip flag stays opt-in (Staffing settings) and skips shows
-      # marked as not needing coverage.
-      @show_coverage = show_coverage_by_show(shifts)
-      @uncovered_roles_by_show =
-        if Current.organization.alert_uncovered_show_roles?
-          @show_coverage.each_with_object({}) do |(show_id, entry), h|
-            missing = entry[:roles].reject { |r| r[:covered] || r[:exempt] }.map { |r| r[:name] }
-            h[show_id] = missing if missing.any?
-          end
-        else
-          {}
-        end
+      # Role Call (opt-in via Staffing settings): every show checked against the
+      # show-specific roles. @show_coverage drives the per-role breakdown in the
+      # show popover/panel; @uncovered_roles_by_show is the amber chip flag,
+      # which counts only roles that are neither covered nor excused.
+      @role_call_enabled = Current.organization.alert_uncovered_show_roles?
+      @show_coverage = @role_call_enabled ? show_coverage_by_show(shifts) : {}
+      @uncovered_roles_by_show = @show_coverage.each_with_object({}) do |(show_id, entry), h|
+        missing = entry[:roles].reject { |r| r[:covered] || r[:exempt] }.map { |r| r[:name] }
+        h[show_id] = missing if missing.any?
+      end
 
       @finalization = Current.organization.staffing_finalizations.find_by(week_start: @week_start)
       @week_finalized = @finalization&.finalized? || false
