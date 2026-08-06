@@ -42,7 +42,10 @@
         per_event = option.per_event? && event_entries.any?
         line_price = chosen ? chosen["unit_price"].to_f : option.default_price
         line_direction = chosen ? chosen["direction"] : option.default_direction
-        line_settlement = chosen ? chosen["settlement"] : "direct"
+        # Fresh lines default to the payout deduction — most services are ours
+        # to net out of what we owe them. Saved rows keep their stored choice;
+        # rows saved before the choice existed (nil) stay direct, how they billed.
+        line_settlement = chosen ? (chosen["settlement"].presence || "direct") : "payout_deduction"
       %>
       <div class="border border-gray-200 rounded-lg has-[.service-include:checked]:border-pink-300 has-[.service-include:checked]:bg-pink-50/30 transition-colors"
            data-controller="contract-service-line"
@@ -97,7 +100,7 @@
             <div class="w-52 <%= "hidden" if line_direction == "outgoing" %>" data-contract-service-line-target="settlementWrap">
               <label class="block text-xs font-medium text-gray-600 mb-1">How it's settled</label>
               <%= select_tag "services[#{i}][settlement]",
-                    options_for_select([ [ "They pay it directly", "direct" ], [ "Taken out of their payout", "payout_deduction" ] ], line_settlement),
+                    options_for_select([ [ "Taken out of their payout", "payout_deduction" ], [ "They pay it directly", "direct" ] ], line_settlement),
                     class: input %>
             </div>
           </div>
