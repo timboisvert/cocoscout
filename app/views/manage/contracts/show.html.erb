@@ -237,8 +237,10 @@
         <div class="p-4">
           <% if @payments.any? %>
             <div class="space-y-2">
-              <% @payments.each do |payment| %>
-                <%= render "contract_payment_row", payment: payment %>
+              <%# Charges that settle by deduction fold into the settlement that
+                  nets them out — see Contract#payment_schedule_groups. %>
+              <% @contract.payment_schedule_groups(@payments.to_a).each do |group| %>
+                <%= render "contract_payment_row", payment: group[:payment], deductions: group[:deductions] %>
               <% end %>
             </div>
           <% else %>

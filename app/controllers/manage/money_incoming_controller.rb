@@ -182,11 +182,31 @@ module Manage
 
     private
 
-    # Pending money owed TO this org, across every contract.
+    # Pending money owed TO this org that someone actually has to collect.
+    #
+    # Charges settled by deduction are excluded on purpose: they net out of the
+    # counterparty's payout automatically, so nobody invoices them, chases them
+    # or sends a reminder about them. Listing them here inflated "owed to us"
+    # with money that will never arrive as a payment.
     def incoming_scope
+      collectable_incoming
+    end
+
+    # Everything owed to us, including the amounts that settle by deduction —
+    # for totals and reporting, where the money is real even though the
+    # collection is automatic.
+    def all_incoming
       ContractPayment.direction_incoming.status_pending
                      .joins(:contract)
                      .where(contracts: { organization_id: Current.organization.id })
+    end
+
+    def collectable_incoming
+      all_incoming.where.not(settlement_method: "payout_deduction")
+    end
+
+    def deduction_settled_incoming
+      all_incoming.where(settlement_method: "payout_deduction")
     end
 
     # Detail/remind look up by id within the org, not restricted to pending — a

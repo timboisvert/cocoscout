@@ -596,6 +596,35 @@ class Contract < ApplicationRecord
     link_payments_to_shows(kept, contract_shows.order(:date_and_time).to_a)
   end
 
+  # The payment schedule with deduction-settled charges folded into the
+  # settlement that nets them out.
+  #
+  # A weekly ticket-revenue deal with a booth tech billed per show produced six
+  # separate "$50, they pay us" rows beside two weekly settlements — six things
+  # that look like invoices to chase, when they're actually one deduction
+  # against each week's payment. Each charge attaches to the first settlement
+  # due on or after it; a charge with no settlement to hide behind stays a row
+  # of its own.
+  #
+  # Returns [{ payment:, deductions: [ContractPayment], deduction_total: Float }]
+  def payment_schedule_groups(payments = nil)
+    rows = payments || contract_payments.by_due_date.to_a
+    deductible, rest = rows.partition { |p| p.status_pending? && p.deduct_from_payout? }
+    settlements = rest.select { |p| p.direction_outgoing? && p.status_pending? }.sort_by(&:due_date)
+
+    attached = Hash.new { |h, k| h[k] = [] }
+    orphans = []
+    deductible.each do |charge|
+      host = settlements.detect { |s| s.due_date >= charge.due_date } || settlements.last
+      host ? attached[host.id] << charge : orphans << charge
+    end
+
+    (rest + orphans).sort_by(&:due_date).map do |payment|
+      charges = attached[payment.id].sort_by(&:due_date)
+      { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f } }
+    end
+  end
+
   # Which way the money goes and when it's due — see reconcile_amended_payments!.
   def payment_slot(payment)
     [ payment.direction, payment.due_date ]

@@ -15,9 +15,14 @@
 
   Optional params:
     - show_actions: Whether to show action buttons/modals (default: true)
+    - deductions: charges that settle by being netted out of THIS payment
+      (see Contract#payment_schedule_groups). They're folded in here rather
+      than listed as peers, because they're not money anyone has to collect.
 %>
 <%
   show_actions = local_assigns.fetch(:show_actions) { local_assigns.fetch(:show_mark_received, true) }
+  deductions = local_assigns.fetch(:deductions, [])
+  deduction_total = deductions.sum { |d| d.amount.to_f }
   contract = payment.contract
   contractor = contract.contractor
   is_late = payment.overdue?
@@ -74,9 +79,27 @@
           <% if contract.production_name.present? %>
             <%= contract.contractor_name %> &middot;
           <% end %>
-          <%= payment.description.presence || "Payment" %>
+          <%= payment.description.presence || "Payment" %><%= " and #{number_to_currency(deduction_total)} services" if deductions.any? %>
           <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
         </div>
+
+        <% if deductions.any? %>
+          <%# Netted out of this payment when it settles — never invoiced, so
+              they sit inside this row instead of standing beside it. %>
+          <details class="mt-1 group/deductions">
+            <summary class="text-xs text-purple-700 hover:text-purple-900 cursor-pointer select-none">
+              <%= pluralize(deductions.size, "charge") %> deducted from this payment
+            </summary>
+            <ul class="mt-1 ml-1 space-y-0.5 border-l-2 border-purple-200 pl-3">
+              <% deductions.each do |charge| %>
+                <li class="text-xs text-gray-600 flex items-baseline justify-between gap-3">
+                  <span class="truncate"><%= charge.description %></span>
+                  <span class="tabular-nums text-gray-700 flex-shrink-0">−<%= number_to_currency(charge.amount) %></span>
+                </li>
+              <% end %>
+            </ul>
+          </details>
+        <% end %>
       </div>
     </div>
 

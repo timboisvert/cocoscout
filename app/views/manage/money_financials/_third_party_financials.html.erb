@@ -249,8 +249,9 @@
 
     <% if contract_payments.any? %>
       <div class="space-y-2">
-        <% contract_payments.each do |payment| %>
-          <%= render partial: "manage/contracts/contract_payment_row", locals: { payment: payment, show_actions: true } %>
+        <% contract_payments.first.contract.payment_schedule_groups(contract_payments.to_a).each do |group| %>
+          <%= render partial: "manage/contracts/contract_payment_row",
+                locals: { payment: group[:payment], deductions: group[:deductions], show_actions: true } %>
         <% end %>
       </div>
     <% else %>
