@@ -287,6 +287,15 @@ class Show < ApplicationRecord
     "#{start_str} – #{end_str}"
   end
 
+  # The staffing shifts working this show. Shifts normally attach through their
+  # `source`; `shift_shows` is only populated when show-based shifts are
+  # deliberately merged, so both directions have to be asked. There's no
+  # association for this because a shift's source is polymorphic.
+  def staffing_shifts
+    Shift.where(source_type: "Show", source_id: id)
+         .or(Shift.where(id: ShiftShow.where(show_id: id).select(:shift_id)))
+  end
+
   # Show-specific staffing roles this show has opted out of (the coverage
   # assistant won't flag them). Stored as a jsonb id list, toggled per role
   # from the scheduling page's show panel.

@@ -188,6 +188,47 @@
             <p class="text-sm text-gray-500"><span data-compose-message-target="showCastCount"></span> cast members</p>
             <div data-compose-message-target="showCastHeadshots" class="flex flex-wrap -space-x-1.5 mt-2"></div>
           </div>
+
+          <%# Who on this show: the performers, or everyone working it. Only
+              offered when the show actually has staffing assigned. %>
+          <div data-compose-message-target="audiencePanel" class="hidden pt-3 border-t border-gray-200">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Who should get this?</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+                <input type="radio" name="show_audience" value="cast" checked class="mt-0.5 accent-pink-500"
+                       data-action="change->compose-message#selectAudience">
+                <span class="text-sm text-gray-700">
+                  <span class="block font-medium text-gray-900">Cast only</span>
+                  <span class="block text-xs text-gray-500">The performers in this show.</span>
+                </span>
+              </label>
+              <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+                <input type="radio" name="show_audience" value="cast_and_crew" class="mt-0.5 accent-pink-500"
+                       data-action="change->compose-message#selectAudience">
+                <span class="text-sm text-gray-700">
+                  <span class="block font-medium text-gray-900">Cast and crew</span>
+                  <span class="block text-xs text-gray-500">Everyone staffed on it too.</span>
+                </span>
+              </label>
+            </div>
+
+            <%# One row per shift, the assigned names underneath in small text.
+                Everyone's checked; untick a role or a person to drop them. %>
+            <div data-compose-message-target="crewPicker" class="hidden mt-3">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Crew working this show</p>
+                <div class="flex items-center gap-2">
+                  <button type="button" data-action="click->compose-message#selectAllCrew"
+                          class="text-xs text-pink-600 hover:text-pink-700 underline cursor-pointer bg-transparent border-0 p-0">All</button>
+                  <span class="text-gray-300">·</span>
+                  <button type="button" data-action="click->compose-message#selectNoCrew"
+                          class="text-xs text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0 p-0">None</button>
+                </div>
+              </div>
+              <div data-compose-message-target="crewList"
+                   class="rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-56 overflow-y-auto"></div>
+            </div>
+          </div>
         </div>
 
         <%# Talent Pool: Production picker (if needed) + Auto-selected preview %>

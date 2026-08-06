@@ -109,18 +109,28 @@ module Manage
         .limit(50)
         .includes(show_person_role_assignments: { assignable: { profile_headshots: { image_attachment: :blob } } })
 
+      crew_by_show = crew_for_shows(shows)
+
       shows_data = shows.map do |show|
         cast_people = show.show_person_role_assignments
           .select { |a| a.assignable_type == "Person" && a.assignable.present? }
           .map(&:assignable).uniq
+        crew = crew_by_show[show.id] || []
         {
           id: show.id,
           name: show.display_name,
           date: show.date_and_time&.strftime("%b %-d, %Y at %-I:%M %p"),
           cast_count: cast_people.size,
+          # Ids as well as the preview faces: sending to cast AND crew resolves
+          # to one person list, so the cast has to be addressable by id too.
+          cast_person_ids: cast_people.map(&:id),
           cast_members: cast_people.first(10).map { |p|
-            { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "" }
-          }
+            { id: p.id, name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "" }
+          },
+          # Who's working the show — the staffing side, grouped by the shift so
+          # the picker can offer "the booth tech" rather than a flat name list.
+          crew_count: crew.sum { |c| c[:people].size },
+          crew: crew
         }
       end
 
@@ -626,6 +636,40 @@ module Manage
     end
 
     private
+
+    # Crew per show: [{ shift_id, role, time, people: [{id, name}] }].
+    #
+    # Loaded for the whole batch of shows at once — one query for the shifts and
+    # one for their assignments — because the compose modal asks for a
+    # production's worth of shows in a single request.
+    def crew_for_shows(shows)
+      show_ids = shows.map(&:id)
+      return {} if show_ids.empty?
+
+      merged = ShiftShow.where(show_id: show_ids).pluck(:shift_id, :show_id)
+      shifts = Shift.where(id: merged.map(&:first))
+                    .or(Shift.where(source_type: "Show", source_id: show_ids))
+                    .includes(:house_role, :additional_roles, shift_assignments: :person)
+                    .distinct
+
+      merged_by_shift = merged.group_by(&:first).transform_values { |rows| rows.map(&:last) }
+
+      shifts.each_with_object(Hash.new { |h, k| h[k] = [] }) do |shift, out|
+        people = shift.shift_assignments.filter_map(&:person).uniq
+        next if people.empty?
+
+        entry = {
+          shift_id: shift.id,
+          role: shift.role_label,
+          time: "#{shift.starts_at.strftime('%-l:%M %p')}–#{shift.ends_at.strftime('%-l:%M %p')}",
+          people: people.map { |p| { id: p.id, name: p.name } }
+        }
+
+        covered = merged_by_shift[shift.id] || []
+        covered << shift.source_id if shift.source_type == "Show" && show_ids.include?(shift.source_id)
+        covered.uniq.each { |show_id| out[show_id] << entry }
+      end
+    end
 
     def message_not_found
       redirect_to manage_messages_path, alert: "Message not found"

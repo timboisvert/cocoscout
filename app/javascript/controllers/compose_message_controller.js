@@ -34,6 +34,7 @@ export default class extends Controller {
         "showCastPanel", "showCastProductionPicker", "showCastProductionSelect",
         "showSelectWrapper", "showSelect",
         "showCastPreview", "showCastCount", "showCastHeadshots",
+        "audiencePanel", "crewPicker", "crewList",
         "talentPoolPanel", "talentPoolProductionPicker", "talentPoolProductionSelect",
         "talentPoolPreviewBox", "talentPoolCount", "talentPoolHeadshots"
     ]
@@ -429,6 +430,8 @@ export default class extends Controller {
             opt.textContent = `${show.name} — ${show.date}`
             opt.dataset.castCount = show.cast_count
             opt.dataset.castMembers = JSON.stringify(show.cast_members || [])
+            opt.dataset.castPersonIds = JSON.stringify(show.cast_person_ids || [])
+            opt.dataset.crew = JSON.stringify(show.crew || [])
             select.appendChild(opt)
         })
     }
@@ -466,10 +469,74 @@ export default class extends Controller {
             if (countEl) countEl.textContent = castCount
             if (headshotsEl) headshotsEl.innerHTML = this.renderStackedHeadshots(castMembers)
             if (continueBtn) continueBtn.disabled = false
+            this.renderCrew(modal, selectedOption)
         } else {
             if (preview) preview.classList.add('hidden')
             if (continueBtn) continueBtn.disabled = true
+            this.hideAudiencePanel(modal)
         }
+    }
+
+    // ---- cast vs cast-and-crew ---------------------------------------------
+    // The crew list is one row per shift with the assigned names beneath it, so
+    // "the booth tech" is a thing you can tick rather than a name you have to
+    // recognise. Everyone starts checked.
+
+    renderCrew(modal, selectedOption) {
+        const crew = selectedOption?.dataset?.crew ? JSON.parse(selectedOption.dataset.crew) : []
+        const panel = modal.querySelector('[data-compose-message-target="audiencePanel"]')
+        const list = modal.querySelector('[data-compose-message-target="crewList"]')
+        if (!panel || !list) return
+
+        // Nothing staffed on this show: don't offer a choice that has one answer.
+        if (crew.length === 0) {
+            this.hideAudiencePanel(modal)
+            return
+        }
+
+        list.innerHTML = crew.map(shift => `
+            <label class="flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50">
+              <input type="checkbox" checked class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                     data-crew-shift="${shift.shift_id}"
+                     data-person-ids="${(shift.people || []).map(p => p.id).join(',')}">
+              <span class="min-w-0">
+                <span class="block text-sm text-gray-900">${this.escapeHtml(shift.role)} <span class="text-gray-400 font-normal">· ${this.escapeHtml(shift.time)}</span></span>
+                <span class="block text-xs text-gray-500 truncate">${(shift.people || []).map(p => this.escapeHtml(p.name)).join(', ')}</span>
+              </span>
+            </label>
+        `).join('')
+
+        panel.classList.remove('hidden')
+        // Re-picking a show resets to cast-only rather than silently keeping a
+        // crew selection that belonged to a different night.
+        const castRadio = modal.querySelector('input[name="show_audience"][value="cast"]')
+        if (castRadio) castRadio.checked = true
+        modal.querySelector('[data-compose-message-target="crewPicker"]')?.classList.add('hidden')
+    }
+
+    hideAudiencePanel(modal) {
+        modal.querySelector('[data-compose-message-target="audiencePanel"]')?.classList.add('hidden')
+        modal.querySelector('[data-compose-message-target="crewPicker"]')?.classList.add('hidden')
+    }
+
+    selectAudience(event) {
+        const modal = document.getElementById('compose-message-modal')
+        const picker = modal?.querySelector('[data-compose-message-target="crewPicker"]')
+        if (picker) picker.classList.toggle('hidden', event.currentTarget.value !== 'cast_and_crew')
+    }
+
+    selectAllCrew() {
+        document.querySelectorAll('[data-crew-shift]').forEach(cb => { cb.checked = true })
+    }
+
+    selectNoCrew() {
+        document.querySelectorAll('[data-crew-shift]').forEach(cb => { cb.checked = false })
+    }
+
+    escapeHtml(value) {
+        const div = document.createElement('div')
+        div.textContent = value == null ? '' : String(value)
+        return div.innerHTML
     }
 
     // Person search for individuals panel
@@ -644,11 +711,29 @@ export default class extends Controller {
             const showName = selectedOption?.textContent || ''
             const castMembers = selectedOption?.dataset?.castMembers ? JSON.parse(selectedOption.dataset.castMembers) : []
 
-            this.recipientTypeValue = 'show_cast'
-            this.recipientIdValue = parseInt(showId)
+            const audience = modal.querySelector('input[name="show_audience"]:checked')?.value || 'cast'
             this.recipientNameValue = showName.split(' — ')[0]?.trim() || showName
-            this.castMembersValue = castMembers
-            this.batchPersonIdsValue = []
+
+            if (audience === 'cast_and_crew') {
+                // Cast plus the ticked shifts, resolved to one person list and
+                // sent as a batch — MessageService.send_to_people takes an
+                // arbitrary list, so there's no new send path to maintain.
+                const castIds = selectedOption?.dataset?.castPersonIds ? JSON.parse(selectedOption.dataset.castPersonIds) : []
+                const crewIds = Array.from(modal.querySelectorAll('[data-crew-shift]:checked'))
+                    .flatMap(cb => (cb.dataset.personIds || '').split(',').filter(Boolean).map(Number))
+                const everyone = [...new Set([...castIds, ...crewIds])]
+
+                this.recipientTypeValue = 'batch'
+                this.recipientIdValue = null
+                this.recipientNameValue = `${this.recipientNameValue} — cast & crew`
+                this.batchPersonIdsValue = everyone
+                this.castMembersValue = castMembers
+            } else {
+                this.recipientTypeValue = 'show_cast'
+                this.recipientIdValue = parseInt(showId)
+                this.castMembersValue = castMembers
+                this.batchPersonIdsValue = []
+            }
         } else if (selected === 'talent_pool') {
             this.recipientTypeValue = 'talent_pool'
             this.recipientIdValue = this.talentPoolIdValue
