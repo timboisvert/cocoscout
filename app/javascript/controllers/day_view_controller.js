@@ -10,6 +10,31 @@ export default class extends Controller {
     static targets = ["cards", "ganttRoles", "ganttPeople", "toggle"]
     static values = { mode: { type: String, default: "cards" } }
 
+    // Every scheduling action morphs this page in place, and a morph patches the
+    // DOM back towards what the server rendered. The chosen view is client-side
+    // state the server knows nothing about, so it would snap back to cards on
+    // every assign. Two hooks keep it: refuse the morph of the attribute holding
+    // the mode, then re-apply the visibility classes the morph just reset.
+    connect() {
+        this.keepMode = this.keepMode.bind(this)
+        this.reapplyMode = this.reapplyMode.bind(this)
+        this.element.addEventListener("turbo:before-morph-attribute", this.keepMode)
+        document.addEventListener("turbo:morph", this.reapplyMode)
+    }
+
+    disconnect() {
+        this.element.removeEventListener("turbo:before-morph-attribute", this.keepMode)
+        document.removeEventListener("turbo:morph", this.reapplyMode)
+    }
+
+    keepMode(event) {
+        if (event.detail?.attributeName === "data-day-view-mode-value") event.preventDefault()
+    }
+
+    reapplyMode() {
+        this.modeValueChanged()
+    }
+
     setMode(event) {
         if (event) event.preventDefault()
         this.modeValue = event.currentTarget.dataset.mode

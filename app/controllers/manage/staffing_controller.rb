@@ -5,6 +5,8 @@ module Manage
   # Roles (Manage::Staffing::HouseRolesController) and Staff
   # (Manage::Staffing::StaffController) live under app/controllers/manage/staffing/.
   class StaffingController < Manage::ManageController
+    include Manage::SchedulingReturn
+
     before_action :ensure_org_owner_or_manager
 
     # The Staffing landing is now the people-first hub: the org's staff list with
@@ -187,7 +189,7 @@ module Manage
         else
           "Notified #{notified} #{"person".pluralize(notified)} of their schedule #{notify_everyone ? "" : "changes"}.".squeeze(" ")
         end
-      redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s), notice: notice
+      redirect_to scheduling_return_url, notice: notice
     end
 
     # Per-show, per-role opt-out of the coverage assistant: "this show doesn't
@@ -206,8 +208,7 @@ module Manage
       ids = params[:exempt].present? ? (ids | [ role.id ]) : (ids - [ role.id ])
       show.update!(staffing_coverage_exempt_role_ids: ids)
 
-      day = show.date_and_time.to_date
-      redirect_to manage_staffing_scheduling_path(week_start: day.beginning_of_week.iso8601, anchor: "day-#{day.iso8601}"),
+      redirect_to scheduling_return_url,
                   notice: ids.include?(role.id) ? "#{show.display_name} won't be flagged for #{role.name} coverage." : "#{show.display_name} needs #{role.name} coverage again."
     end
 

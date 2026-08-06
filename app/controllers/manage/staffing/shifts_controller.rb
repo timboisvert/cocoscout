@@ -3,6 +3,8 @@
 module Manage
   module Staffing
     class ShiftsController < Manage::ManageController
+      include Manage::SchedulingReturn
+
       before_action :ensure_org_owner_or_manager
       before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next]
 
@@ -30,10 +32,9 @@ module Manage
       end
 
       def destroy
-        day = scheduling_day_for(@shift)
         @shift.shift_assignments.each { |a| record_removal_if_notified(a) }
         @shift.destroy!
-        redirect_to_scheduling day: day, notice: "Shift removed."
+        redirect_to_scheduling notice: "Shift removed."
       end
 
       def assign
@@ -189,24 +190,11 @@ module Manage
 
       private
 
-      # Every action on the scheduling page redirects back to it — but a bare
-      # redirect makes Turbo re-render from the top, dumping the manager back at
-      # the top of the week. Anchor the redirect to the affected shift's day card
-      # (id="day-<iso date>" in scheduling.html.erb) so they stay where they were
-      # working. Referer is used when it's safely on-host so week_start and other
-      # query params survive.
-      def redirect_to_scheduling(day: nil, notice: nil, alert: nil)
-        day ||= @shift && scheduling_day_for(@shift)
-        base = url_from(request.referer) || manage_staffing_scheduling_path
-        target = day ? "#{base.split('#').first}#day-#{day.iso8601}" : base
-        redirect_to target, notice: notice, alert: alert
-      end
-
-      # Which schedule day a shift belongs to — follows its source show/rental
-      # (so a past-midnight shift groups with its show), mirroring
-      # StaffingController#staffing_day_for.
-      def scheduling_day_for(shift)
-        (shift.source.try(:date_and_time) || shift.starts_at).to_date
+      # Every action here goes back to the page the manager is already on, which
+      # lets Turbo morph it in place instead of re-rendering. See
+      # Manage::SchedulingReturn for why the URL has to match exactly.
+      def redirect_to_scheduling(notice: nil, alert: nil)
+        redirect_to scheduling_return_url, notice: notice, alert: alert
       end
 
       def qualified_for_shift?(person, shift)

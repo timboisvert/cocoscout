@@ -1,5 +1,15 @@
 <% content_for :title, "Scheduling" %>
 
+<%# Assigning someone, adding a shift, splitting one — every action here posts
+    and comes straight back to this same URL. Declaring morph means Turbo patches
+    only the nodes that actually changed instead of re-rendering the page, and
+    preserve keeps the scroll exactly where the manager left it. Scoped to this
+    page: the rest of the app still navigates normally. %>
+<% content_for :head do %>
+  <meta name="turbo-refresh-method" content="morph">
+  <meta name="turbo-refresh-scroll" content="preserve">
+<% end %>
+
 <%
   days = (@week_start..@week_end).to_a
   assign_url_template = manage_assign_staffing_shift_path(":id")

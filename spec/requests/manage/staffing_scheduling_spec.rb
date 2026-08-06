@@ -84,34 +84,54 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
-  describe "staying put after an action (no more jump to the top)" do
+  # Turbo only morphs the page — patching what changed, leaving scroll alone —
+  # when a form redirects to the exact URL it was submitted from. An anchor, a
+  # dropped query param, anything: the match fails and the manager gets a full
+  # re-render from the top of the week. So these assert byte-identical returns.
+  describe "staying put after an action (morph, not reload)" do
     let!(:role) { create(:house_role, organization: org, name: "Bartender", role_type: :house) }
     let!(:shift) do
       create(:shift, organization: org, house_role: role, source: early_show,
                      starts_at: early_show.date_and_time, ends_at: late_show.ends_at)
     end
+    let(:page_url) { manage_staffing_scheduling_url(week_start: week_start.to_s) }
 
-    it "anchors the redirect to the shift's day card" do
+    it "returns an assign to the identical URL, with no anchor" do
       person = create(:person, name: "Anna Chor")
       staff!(person, role)
 
       post manage_assign_staffing_shift_path(shift), params: { person_id: person.id },
-           headers: { "HTTP_REFERER" => manage_staffing_scheduling_url(week_start: week_start.to_s) }
+           headers: { "HTTP_REFERER" => page_url }
 
-      expect(response).to redirect_to(
-        manage_staffing_scheduling_url(week_start: week_start.to_s) + "#day-#{show_day.iso8601}"
-      )
+      expect(response).to redirect_to(page_url)
+      expect(response.headers["Location"]).not_to include("#")
     end
 
-    it "anchors a destroy too, using the day captured before deletion" do
-      delete manage_destroy_staffing_shift_path(shift),
-             headers: { "HTTP_REFERER" => manage_staffing_scheduling_url(week_start: week_start.to_s) }
+    it "returns a destroy to the identical URL too" do
+      delete manage_destroy_staffing_shift_path(shift), headers: { "HTTP_REFERER" => page_url }
 
-      expect(response.headers["Location"]).to end_with("#day-#{show_day.iso8601}")
+      expect(response).to redirect_to(page_url)
     end
 
-    it "renders the day card with its anchor id" do
+    it "keeps whatever week the manager was on" do
+      other_week = (week_start + 7).to_s
+      other_url = manage_staffing_scheduling_url(week_start: other_week)
+
+      delete manage_destroy_staffing_shift_path(shift), headers: { "HTTP_REFERER" => other_url }
+
+      expect(response).to redirect_to(other_url)
+    end
+
+    it "falls back to the schedule when there's no referer to return to" do
+      delete manage_destroy_staffing_shift_path(shift)
+      expect(response).to redirect_to(manage_staffing_scheduling_url)
+    end
+
+    it "declares morphing so Turbo patches in place instead of re-rendering" do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
+
+      expect(response.body).to include(%(name="turbo-refresh-method" content="morph"))
+      expect(response.body).to include(%(name="turbo-refresh-scroll" content="preserve"))
       expect(response.body).to include(%(id="day-#{show_day.iso8601}"))
     end
   end
@@ -213,10 +233,13 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
     let!(:door) { create(:house_role, organization: org, name: "Door Person", role_type: :show_specific) }
 
-    it "flips one role at a time, anchored back to the day" do
-      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: tech.id, exempt: "1")
+    it "flips one role at a time, returning to the page it was clicked from" do
+      page_url = manage_staffing_scheduling_url(week_start: week_start.to_s)
+
+      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: tech.id, exempt: "1"),
+            headers: { "HTTP_REFERER" => page_url }
       expect(early_show.reload.staffing_coverage_exempt_role_ids).to eq([ tech.id ])
-      expect(response.headers["Location"]).to end_with("#day-#{show_day.iso8601}")
+      expect(response).to redirect_to(page_url)
 
       patch manage_staffing_show_coverage_exempt_path(early_show, role_id: door.id, exempt: "1")
       expect(early_show.reload.staffing_coverage_exempt_role_ids).to contain_exactly(tech.id, door.id)

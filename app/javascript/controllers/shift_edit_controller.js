@@ -141,7 +141,10 @@ export default class extends Controller {
         }
 
         document.body.appendChild(form)
-        form.submit()
+        // requestSubmit, not submit: submit() navigates natively, which reloads
+        // the whole schedule and dumps the manager back at the top. requestSubmit
+        // fires the submit event, so Turbo handles it and morphs the page in place.
+        form.requestSubmit()
     }
 
     formatDayLabel(dateString) {
