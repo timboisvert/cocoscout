@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 // commits the modal UI to those inputs; syncAll re-reads them (draft restore)
 // back into the UI, row datasets, and button labels.
 export default class extends Controller {
-    static targets = ["row", "modal", "button"]
+    static targets = ["row", "modal", "button", "pullModal", "pullCheckbox"]
 
     connect() {
         this.openModalEl = null
@@ -149,6 +149,49 @@ export default class extends Controller {
     // missing-hours check adds entries by checking their boxes). ----
     commitMembers(event) {
         (event.detail?.memberIds || []).forEach(id => this.commit(id))
+    }
+
+    // ---- bulk pull ----------------------------------------------------------
+    // "Pull in approved hours" writes nothing of its own: it ticks every entry
+    // inside each chosen person's Hours modal and commits it, so the per-person
+    // modals stay the only place that decides what's included and how it prices.
+    // Ticking rather than replacing means hours already added by hand survive.
+
+    openPull() {
+        if (!this.hasPullModalTarget) return
+        this.pullModalTarget.classList.remove("hidden")
+        document.body.classList.add("overflow-hidden")
+    }
+
+    closePull() {
+        if (!this.hasPullModalTarget) return
+        this.pullModalTarget.classList.add("hidden")
+        document.body.classList.remove("overflow-hidden")
+    }
+
+    pullSelectAll() {
+        this.pullCheckboxTargets.forEach(cb => { cb.checked = true })
+    }
+
+    pullSelectNone() {
+        this.pullCheckboxTargets.forEach(cb => { cb.checked = false })
+    }
+
+    pullConfirm() {
+        const memberIds = this.pullCheckboxTargets.filter(cb => cb.checked).map(cb => cb.dataset.memberId)
+
+        memberIds.forEach(memberId => {
+            const modal = this.modalFor(memberId)
+            if (!modal) return
+            modal.querySelectorAll("[data-entry-id]").forEach(cb => { cb.checked = true })
+            this.commit(memberId)
+        })
+
+        this.closePull()
+        // One bubbling event refreshes totals, the accordion summary and the draft.
+        const first = memberIds[0]
+        const holder = first && document.getElementById(`pay-adhoc-${first}`)
+        if (holder) holder.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
     // ---- state sync ---------------------------------------------------------

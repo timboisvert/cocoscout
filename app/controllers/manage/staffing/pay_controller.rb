@@ -32,6 +32,15 @@ module Manage
             q.house_role && { role: q.house_role, rate_cents: m.rate_cents_for(q.house_role).to_i }
           end
         end
+        # Everyone with hours waiting, for the bulk "Pull in approved hours"
+        # modal. Same entries as the per-person modals — this is only a
+        # different way in, so the two can never disagree. Hidden/excluded
+        # members stay out: pulling would un-hide them by surprise.
+        @members_with_approved_hours = @staff_members.filter_map do |member|
+          entries = @approved_entries_by_person[member.person_id]
+          [ member, entries ] if entries.present?
+        end
+        @approved_hours_waiting = @members_with_approved_hours.sum { |_, entries| entries.sum { |e| e.hours.to_f } }
         @draft = PayDraft.read(Current.organization)
       end
 

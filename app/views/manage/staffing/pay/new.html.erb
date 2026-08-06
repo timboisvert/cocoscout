@@ -77,6 +77,19 @@
       <div class="lg:overflow-x-auto lg:border lg:border-gray-200 lg:rounded-lg lg:bg-white"
            data-controller="pay-accordion pay-hours"
            data-action="input->pay-accordion#refreshAll change->pay-accordion#refreshAll input->pay-hours#syncAll keydown.esc@window->pay-hours#closeAll pay-hours:commit->pay-hours#commitMembers">
+        <%# One click instead of opening every person's modal in turn. %>
+        <% if @members_with_approved_hours.any? %>
+          <div class="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-wrap">
+            <p class="text-xs text-gray-600">
+              <%= pluralize(@members_with_approved_hours.size, "person") %>
+              <%= @members_with_approved_hours.size == 1 ? "has" : "have" %>
+              approved hours waiting —
+              <%= number_with_precision(@approved_hours_waiting, precision: 2, strip_insignificant_zeros: true) %>h in total.
+            </p>
+            <%= render "shared/button", text: "Pull in approved hours", variant: "primary", size: "small",
+                  icon: "clock", type: :button, data: { action: "click->pay-hours#openPull" } %>
+          </div>
+        <% end %>
         <table class="block lg:table min-w-full text-sm">
           <thead class="hidden lg:table-header-group bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
@@ -242,6 +255,14 @@
                 member: member,
                 entries: @approved_entries_by_person[member.person_id] || [],
                 role_rates: @role_rates_by_member[member.id] || [] %>
+        <% end %>
+
+        <%# Bulk pull. Lives inside this wrapper so its targets resolve on the
+            same pay-hours controller that owns the per-person modals. %>
+        <% if @members_with_approved_hours.any? %>
+          <%= render "manage/staffing/pay/pull_hours_modal",
+                members_with_hours: @members_with_approved_hours,
+                role_rates_by_member: @role_rates_by_member %>
         <% end %>
       </div>
 

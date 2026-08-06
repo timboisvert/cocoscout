@@ -1,0 +1,74 @@
+<%#
+  Pull in approved hours — the bulk counterpart to the per-person Hours modal.
+
+  Everyone with approved, unpaid hours, checked by default. Confirming ticks
+  every entry inside each chosen person's own Hours modal and commits it, so
+  this writes nothing itself: the per-person modals stay the single source of
+  truth for what's included and how it's priced.
+
+  Locals:
+    members_with_hours - [[member, [StaffTimeEntry]]]
+    role_rates_by_member - { member_id => [{ role:, rate_cents: }] }
+%>
+<div id="pull-hours-modal" class="hidden fixed inset-0 z-50" data-pay-hours-target="pullModal">
+  <div class="fixed inset-0 bg-black/50" data-action="click->pay-hours#closePull"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 flex-shrink-0">
+        <h3 class="text-lg font-bold text-white">Pull in approved hours</h3>
+        <button type="button" data-action="click->pay-hours#closePull" class="text-white/80 hover:text-white cursor-pointer">
+          <%= icon("x-mark", class: "w-5 h-5") %>
+        </button>
+      </div>
+
+      <div class="px-6 py-4 overflow-y-auto">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-sm text-gray-600">
+              Everyone with hours you've approved and haven't paid yet. Uncheck anyone you're not paying this time.
+            </p>
+            <div class="flex items-center gap-2 flex-shrink-0 ml-4">
+              <button type="button" data-action="click->pay-hours#pullSelectAll"
+                      class="text-xs text-pink-600 hover:text-pink-700 underline cursor-pointer bg-transparent border-0 p-0">All</button>
+              <span class="text-gray-300">·</span>
+              <button type="button" data-action="click->pay-hours#pullSelectNone"
+                      class="text-xs text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0 p-0">None</button>
+            </div>
+          </div>
+
+          <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
+            <% members_with_hours.each do |member, entries| %>
+              <%
+                total_hours = entries.sum { |e| e.hours.to_f }
+                total_cents = entries.sum { |e| (e.hours.to_d * member.rate_cents_for(e.effective_house_role).to_i).round }
+              %>
+              <label class="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                <input type="checkbox" checked
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                       data-pay-hours-target="pullCheckbox"
+                       data-member-id="<%= member.id %>">
+                <span class="flex-1 min-w-0">
+                  <span class="flex items-baseline justify-between gap-3">
+                    <span class="text-sm font-medium text-gray-900 truncate"><%= member.person&.name %></span>
+                    <span class="text-sm text-gray-900 tabular-nums flex-shrink-0">
+                      <%= number_with_precision(total_hours, precision: 2, strip_insignificant_zeros: true) %>h
+                      · <%= number_to_currency(total_cents / 100.0) %>
+                    </span>
+                  </span>
+                  <span class="block text-xs text-gray-500 mt-0.5">
+                    <%= entries.map { |e| "#{e.started_at.strftime('%b %-d')} #{e.effective_house_role&.name}" }.uniq.first(4).to_sentence %><%= " and more" if entries.size > 4 %>
+                  </span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 flex-shrink-0">
+        <button type="button" data-action="click->pay-hours#closePull"
+                class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+        <%= render "shared/button", text: "Add these hours", variant: "primary", size: "medium", type: :button,
+              data: { action: "click->pay-hours#pullConfirm" } %>
+      </div>
+    </div>
+  </div>
+</div>
