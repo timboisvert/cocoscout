@@ -103,6 +103,36 @@ class PayoutBatch < ApplicationRecord
     kind == "course"
   end
 
+  # --- Automatic retry of parked payees ---------------------------------------
+  # RetryParkedPayoutsJob runs daily at this time; the account.updated webhook
+  # also fires it the moment a payee finishes connecting a bank. Kept here so
+  # the schedule and the "we'll try again at..." copy can't drift apart.
+  AUTO_RETRY_HOUR = 6
+  AUTO_RETRY_MINUTE = 15
+
+  # Funded, still owes somebody, and the money is really in — so the only thing
+  # standing between a parked payee and their deposit is their bank details.
+  def awaiting_bank_connections?
+    status == "partially_paid" &&
+      (funding_status == "succeeded" || skips_funding?) &&
+      items.any? { |i| i.status == "pending" }
+  end
+
+  # Somebody parked on this run can be paid right now.
+  def ready_to_retry?
+    awaiting_bank_connections? &&
+      items.any? { |i| i.status == "pending" && i.payee.respond_to?(:can_receive_payouts?) && i.payee.can_receive_payouts? }
+  end
+
+  # When the automatic sweep will next look at this run. nil when there's
+  # nothing waiting, so callers can render the line only when it means something.
+  def next_auto_retry_at
+    return nil unless awaiting_bank_connections?
+
+    today = Time.zone.now.change(hour: AUTO_RETRY_HOUR, min: AUTO_RETRY_MINUTE, sec: 0)
+    today > Time.zone.now ? today : today + 1.day
+  end
+
   def recalculate_total!
     update!(total_cents: items.sum(:amount_cents))
   end

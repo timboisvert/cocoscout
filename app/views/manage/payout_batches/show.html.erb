@@ -52,7 +52,17 @@
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-amber-900"><%= pluralize(@not_ready_items.size, "person") %> <%= @not_ready_items.size == 1 ? "hasn't" : "haven't" %> connected a bank yet</p>
             <% if @batch.status == "partially_paid" %>
-              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. As each person connects a bank, come back and hit “Pay remaining” — no new debit, no new run.</p>
+              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. You don't have to do anything — we pay each person automatically as soon as they connect a bank.</p>
+              <% next_try = @batch.next_auto_retry_at %>
+              <% if next_try %>
+                <p class="text-xs text-amber-800 mt-1 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Next automatic attempt
+                  <strong><%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
+                    at <%= next_try.strftime("%-l:%M%P") %></strong>
+                  <span class="text-amber-700">— or the moment they connect, whichever comes first.</span>
+                </p>
+              <% end %>
             <% else %>
               <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — the full amount is funded up front, we pay everyone who's ready, and each remaining person's money waits on this run until they connect a bank.</p>
             <% end %>
@@ -75,10 +85,24 @@
         <div>
           <% remaining_cents = @batch.total_cents - @batch.paid_total_cents %>
           <p class="text-sm font-medium text-gray-900"><%= number_to_currency(remaining_cents / 100.0) %> still to pay on this run — already funded</p>
+          <% next_try = @batch.next_auto_retry_at %>
           <% if @payable_remaining_items.any? %>
-            <p class="text-xs text-gray-600 mt-0.5"><%= pluralize(@payable_remaining_items.size, "person") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).</p>
+            <p class="text-xs text-gray-600 mt-0.5">
+              <%= pluralize(@payable_remaining_items.size, "person") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).
+              <% if next_try %>
+                We'll send it automatically <%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
+                at <%= next_try.strftime("%-l:%M%P") %>, or hit the button to send it now.
+              <% end %>
+            </p>
           <% else %>
-            <p class="text-xs text-gray-600 mt-0.5">No one new is ready yet — this button lights up as people connect their banks.</p>
+            <p class="text-xs text-gray-600 mt-0.5">
+              No one new is ready yet.
+              <% if next_try %>
+                We check automatically every morning — next
+                <%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
+                at <%= next_try.strftime("%-l:%M%P") %> — and the moment anyone connects a bank.
+              <% end %>
+            </p>
           <% end %>
         </div>
         <div class="flex items-center gap-2 flex-wrap">

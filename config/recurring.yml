@@ -83,3 +83,10 @@ production:
   run_scheduled_payouts:
     class: RunScheduledPayoutsJob
     schedule: at 6am every day
+
+  # Just after the scheduled runs, so anyone parked on a run created this
+  # morning gets a same-day look. Keep in step with PayoutBatch::AUTO_RETRY_*,
+  # which is what the "we'll try again at..." copy reads.
+  retry_parked_payouts:
+    class: RetryParkedPayoutsJob
+    schedule: at 6:15am every day

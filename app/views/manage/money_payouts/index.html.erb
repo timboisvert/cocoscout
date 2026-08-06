@@ -202,8 +202,16 @@
           <% @in_flight_runs.each do |run| %>
             <%
               waiting_cents = run.status == "partially_paid" ? run.total_cents - run.paid_total_cents : run.total_cents
+              next_try = run.next_auto_retry_at
+              retry_label = if next_try
+                              when_text = if next_try.to_date == Date.current then "today"
+                                          elsif next_try.to_date == Date.current + 1 then "tomorrow"
+                                          else next_try.strftime("%b %-d")
+                                          end
+                                " · retrying #{when_text} #{next_try.strftime('%-l:%M%P')}"
+              end
               subtitle = case run.status
-                         when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on people's bank info"
+                         when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on people's bank info#{retry_label}"
                          else "ACH clearing — pays out automatically"
                          end
               badge_color = run.status == "partially_paid" ? "blue" : "amber"

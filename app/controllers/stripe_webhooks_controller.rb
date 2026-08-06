@@ -78,6 +78,11 @@ class StripeWebhooksController < ApplicationController
     if payee.is_a?(Person)
       OrganizationStaffMember.where(person_id: payee.id).find_each(&:refresh_onboarding_state!)
     end
+
+    # They can be paid now — so pay them. Money debited from the org has been
+    # parked on a funded run waiting for exactly this. The daily sweep would
+    # catch it tomorrow morning; this makes the usual case immediate.
+    RetryParkedPayoutsJob.perform_later(payee: payee) if payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
   rescue StripeConnectService::Error => e
     Rails.logger.warn("Connect account.updated sync failed for #{account.id}: #{e.message}")
   end
