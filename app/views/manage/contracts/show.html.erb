@@ -493,6 +493,8 @@
 
       <%# Actions %>
       <% if @contract.status_active? %>
+        <%= render "manage/contracts/version_history" %>
+
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Actions" %>
           <div class="p-4 space-y-2">

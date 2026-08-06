@@ -362,6 +362,29 @@ module Manage
       redirect_to amend_dates_manage_contract_path(@contract), alert: "Couldn't change those dates: #{e.message}"
     end
 
+    # Cut the version this amendment produced. Only e-sign contracts can be
+    # asked to re-sign; an offline one has no signature machinery to re-engage,
+    # so it's always recorded as an internal correction.
+    def cut_amendment_version!
+      @contract.ensure_baseline_version!(created_by: Current.user)
+      needs_signature = @contract.signing_mode_esign? && params[:requires_signature] == "1"
+
+      @contract.cut_version!(
+        requires_signature: needs_signature,
+        created_by: Current.user,
+        change_summary: amendment_change_summary
+      )
+    end
+
+    def amendment_change_summary
+      parts = []
+      parts << "financials" if @amend_data.key?("payment_structure") || @amend_data.key?("payment_config")
+      parts << "ticketing" if @amend_data.key?("ticketing")
+      parts << "services" if @amend_data.key?("services")
+      parts << "dates" if (@amend_data["new_bookings"] || []).any? || (@amend_data["removed_rental_ids"] || []).any?
+      parts.any? ? "Amended #{parts.to_sentence}" : "Amended"
+    end
+
     # Plain English for what just happened to the dates.
     def date_change_notice(removed, moved, kept_paid)
       parts = []
@@ -565,6 +588,14 @@ module Manage
     end
 
     def apply_amendments
+      # An outstanding signature request has to be pulled back first — the
+      # counterparty may be mid-read, and silently swapping the document under
+      # them is worse than making the producer revoke it deliberately.
+      if @contract.signing_out_for_signature?
+        redirect_to manage_contract_path(@contract),
+                    alert: "Revoke the outstanding signature request before amending this contract." and return
+      end
+
       @amend_data = @contract.amend_data
       new_bookings = @amend_data["new_bookings"] || []
       removed_rental_ids = @amend_data["removed_rental_ids"] || []
@@ -659,11 +690,27 @@ module Manage
       # Clear amend data from contract
       @contract.clear_amend_data
 
-      if success
-        redirect_to manage_contract_path(@contract), notice: "Contract amended successfully."
-      else
-        redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments."
+      unless success
+        redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments." and return
       end
+
+      version = cut_amendment_version!
+      if version&.requires_signature?
+        # Back to unsent so the existing Prepare -> Sign -> Send wizard handles
+        # re-signature with no new signing UI. executed_at is left alone: it
+        # means "first executed", and signing_state alone already flips
+        # signing_executed?.
+        @contract.update!(signing_state: :unsent)
+        redirect_to manage_sign_contract_wizard_path(@contract),
+                    notice: "Amendment applied as #{version.label}. Sign it and send it to #{@contract.contractor_name}."
+      else
+        GenerateContractPdfJob.perform_later(@contract.id, version.id) if version
+        redirect_to manage_contract_path(@contract),
+                    notice: version ? "Contract amended — recorded as #{version.label}." : "Contract amended successfully."
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      # An overlap validation used to escape as a 500 from here.
+      redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments: #{e.message}"
     end
 
     private

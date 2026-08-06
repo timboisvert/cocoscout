@@ -15,6 +15,8 @@ class Contract < ApplicationRecord
   belongs_to :contract_template, optional: true
   has_many :course_offerings, dependent: :nullify
   has_many :contract_signatures, dependent: :destroy
+  has_many :contract_versions, dependent: :destroy
+  has_many :contract_appendixes, dependent: :destroy
 
   # Status enum
   enum :status, {
@@ -54,6 +56,7 @@ class Contract < ApplicationRecord
   # nothing is duplicated — see #render_document_for.
   LICENSE_SCHEDULE_TOKEN = "{{license_schedule}}"
   SERVICES_TOKEN = "{{services}}"
+  APPENDIXES_TOKEN = "{{appendixes}}"
 
   # Ways money can reach us that aren't the online pay link. Each must be
   # allowed on the contract before a manager may record one.
@@ -195,26 +198,32 @@ class Contract < ApplicationRecord
     organization.people.where("LOWER(email) = ?", contractor_email.to_s.downcase).first
   end
 
+  # Of the CURRENT version — an internal-correction version carries the last
+  # signed version's signatures forward for display.
   def organization_signature
-    contract_signatures.detect(&:role_organization?) ||
-      contract_signatures.role_organization.first
+    current_version&.effective_signatures&.find(&:role_organization?)
   end
 
   def contractor_signature
-    contract_signatures.detect(&:role_contractor?) ||
-      contract_signatures.role_contractor.first
+    current_version&.effective_signatures&.find(&:role_contractor?)
   end
 
   # The generated (or uploaded) signed-contract PDF, if one is attached. Uses the
   # loaded association (so a preloaded index doesn't re-query per card).
+  # The last fully executed version's PDF. While a newer version is out for
+  # re-signature it must still return the previous one, or the page claims the
+  # PDF is perpetually "being generated".
   def signed_pdf_document
-    contract_documents.to_a.select { |d| d.document_type == "signed_contract" }.detect { |d| d.file.attached? }
+    latest_executed_version&.pdf_document ||
+      contract_documents.to_a.select { |d| d.document_type == "signed_contract" && d.contract_version_id.nil? }
+                        .detect { |d| d.file.attached? }
   end
 
   # Kick off signed-PDF generation if this is executed but has none yet. Safe to
   # call from a view/GET — the job is idempotent and no-ops when a PDF exists.
   def ensure_signed_pdf!
-    GenerateContractPdfJob.perform_later(id) if signing_executed? && signed_pdf_document.nil?
+    version = latest_executed_version
+    GenerateContractPdfJob.perform_later(id, version.id) if version && version.pdf_document.nil?
   end
 
   # Mint a fresh public signing token (rotates any prior one — an old link dies).
@@ -244,9 +253,15 @@ class Contract < ApplicationRecord
     return false if signing_executed? || signing_out_for_signature?
 
     transaction do
-      snapshot = render_signable_document
-      contract_signatures.role_organization.destroy_all
-      contract_signatures.create!(
+      # Cut (or refresh) the version this signature is against, and sign THAT
+      # text — the two must be byte-identical, so never render twice.
+      version = current_version&.refreshable? ? refresh_version!(current_version) : cut_version!(requires_signature: true, created_by: signed_by)
+      snapshot = version.content_snapshot
+      # Scoped to this version. Unscoped, re-signing v2 would delete v1's
+      # historical signature — the whole point of keeping versions.
+      version.contract_signatures.role_organization.destroy_all
+      version.contract_signatures.create!(
+        contract: self,
         signer_role: "organization",
         signer_name: signer_name.presence || signed_by&.person&.name.presence || organization.name,
         signer_email: signed_by&.person&.email.presence || signed_by&.email_address,
@@ -272,6 +287,9 @@ class Contract < ApplicationRecord
 
     regenerate_signing_token!
     update!(signing_state: :out_for_signature, sent_for_signature_at: Time.current)
+    # Record which token this version went out with, so a link the counterparty
+    # kept can be recognised as superseded rather than dying as "invalid".
+    current_version&.update!(signing_token: signing_token, sent_for_signature_at: Time.current)
     true
   end
 
@@ -282,6 +300,7 @@ class Contract < ApplicationRecord
     return false unless signing_out_for_signature?
 
     update!(signing_state: :awaiting_send, signing_token: nil, sent_for_signature_at: nil)
+    current_version&.update!(signing_token: nil, sent_for_signature_at: nil)
     true
   end
 
@@ -292,9 +311,11 @@ class Contract < ApplicationRecord
     return false unless signing_out_for_signature?
 
     transaction do
-      snapshot = organization_signature&.content_snapshot.presence || render_signable_document
-      contract_signatures.role_contractor.destroy_all
-      contract_signatures.create!(
+      version = current_version || cut_version!(requires_signature: true)
+      snapshot = version.content_snapshot
+      version.contract_signatures.role_contractor.destroy_all
+      version.contract_signatures.create!(
+        contract: self,
         signer_role: "contractor",
         signer_name: signer_name,
         signer_email: signer_email,
@@ -306,9 +327,10 @@ class Contract < ApplicationRecord
         contract_template: contract_template,
         template_version: contract_template&.version
       )
+      version.update!(executed_at: Time.current)
       # Keep the token alive after execution so the signer can return to their
       # link for the signed PDF; only revoke nulls it.
-      update!(signing_state: :executed, executed_at: Time.current)
+      update!(signing_state: :executed, executed_at: executed_at || Time.current)
     end
 
     # Best-effort: a fully-signed contract becomes operational. If activation
@@ -354,9 +376,27 @@ class Contract < ApplicationRecord
   def render_document_for(template)
     body = template ? template.render_content(signing_variables).to_s : ""
     uses_inline = body.include?(LICENSE_SCHEDULE_TOKEN) || body.include?(SERVICES_TOKEN)
+    uses_appendix_token = body.include?(APPENDIXES_TOKEN)
     body = body.gsub(LICENSE_SCHEDULE_TOKEN, license_schedule_html)
     body = body.gsub(SERVICES_TOKEN, license_services_html)
-    uses_inline ? body.html_safe : "#{body}#{deal_terms_html}".html_safe
+    body = body.gsub(APPENDIXES_TOKEN, appendixes_html)
+    main = uses_inline ? body : "#{body}#{deal_terms_html}"
+    # Appended last unless the template placed them itself. "Above the signature
+    # block" comes free: the signatures aren't part of the body — the signing
+    # page and ContractPdf both render them after it.
+    (uses_appendix_token ? main : "#{main}#{appendixes_html}").html_safe
+  end
+
+  # The appendixes as document HTML. Escaped titles; bodies are ActionText,
+  # already sanitised.
+  def appendixes_html
+    sections = contract_appendixes.ordered.to_a
+    return "" if sections.empty?
+
+    parts = sections.map do |appendix|
+      "<hr><h3>#{ERB::Util.html_escape(appendix.heading)}</h3>#{appendix.body_html}"
+    end
+    parts.join
   end
 
   # Draft data helpers
@@ -623,6 +663,74 @@ class Contract < ApplicationRecord
       charges = attached[payment.id].sort_by(&:due_date)
       { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f } }
     end
+  end
+
+  # --- Versions ---------------------------------------------------------------
+  # A version is the document at a moment. It is history, not a restore point:
+  # shows, rentals, payments and payouts are live shared records and are never
+  # rolled back by looking at an old version.
+
+  def current_version
+    contract_versions.ordered.last
+  end
+
+  def latest_executed_version
+    contract_versions.where.not(executed_at: nil).ordered.last
+  end
+
+  def fully_executed?
+    current_version&.executed_at.present?
+  end
+
+  # An amendment has been applied and is waiting on a fresh signature.
+  def awaiting_resignature?
+    v = current_version
+    v.present? && v.version_number > 1 && v.requires_signature? && v.executed_at.nil?
+  end
+
+  # Capture the pre-amendment state as v1 for a contract that was never signed
+  # through CocoScout — otherwise its first amendment would be labelled "v1",
+  # which reads as a lie about what came before.
+  def ensure_baseline_version!(created_by: nil)
+    return current_version if contract_versions.any?
+
+    cut_version!(requires_signature: false, created_by: created_by,
+                 change_summary: "Baseline — the contract as it stood before this amendment")
+  end
+
+  def cut_version!(requires_signature:, created_by: nil, change_summary: nil, amendment_data: {})
+    with_lock do
+      next_number = (contract_versions.maximum(:version_number) || 0) + 1
+      contract_versions.create!(
+        version_number: next_number,
+        content_snapshot: render_signable_document.to_s,
+        deal_snapshot: version_deal_snapshot,
+        contract_template: contract_template,
+        template_version: contract_template&.version,
+        requires_signature: requires_signature,
+        change_summary: change_summary,
+        # A correction nobody has to sign takes effect the moment it's applied.
+        executed_at: requires_signature ? nil : Time.current,
+        created_by: created_by
+      )
+    end
+  end
+
+  # Re-render a version that hasn't been signed or sent yet, rather than cutting
+  # another one — repeated edits before sending shouldn't inflate the number.
+  def refresh_version!(version)
+    version.update!(content_snapshot: render_signable_document.to_s,
+                    deal_snapshot: version_deal_snapshot,
+                    contract_template: contract_template,
+                    template_version: contract_template&.version)
+    version
+  end
+
+  def version_deal_snapshot
+    {
+      "draft_data" => draft_data.except("amend"),
+      "appendixes" => contract_appendixes.ordered.map { |a| { "title" => a.title, "position" => a.position, "body_html" => a.body_html } }
+    }
   end
 
   # Re-derive the contract's span from the dates it actually holds. Called after

@@ -1,0 +1,39 @@
+<%#
+  Version history — every document this contract has been. Read as history:
+  shows, rentals and payments are live records and are never rolled back by
+  looking at an old version.
+%>
+<% versions = @contract.contract_versions.ordered.to_a.reverse %>
+<% if versions.size > 1 %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Version history" %>
+    <div class="divide-y divide-gray-100">
+      <% versions.each do |version| %>
+        <div class="px-4 py-3 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900">
+              <%= version.label %>
+              <span class="font-normal text-gray-500">
+                <% case version.state %>
+                <% when :executed %>
+                  · <%= version.requires_signature? ? "Signed" : "Internal correction" %>
+                  <%= version.executed_at&.strftime("%b %-d, %Y") %>
+                <% when :out_for_signature %>· Awaiting signature
+                <% when :awaiting_send %>· Signed by you, not sent
+                <% else %>· Draft
+                <% end %>
+              </span>
+            </p>
+            <% if version.change_summary.present? %>
+              <p class="text-xs text-gray-500 mt-0.5"><%= version.change_summary %><%= " · #{version.created_by.person&.name || version.created_by.email_address}" if version.created_by %></p>
+            <% end %>
+          </div>
+          <% if version.pdf_document&.file&.attached? %>
+            <%= link_to "PDF", rails_blob_path(version.pdf_document.file, disposition: "attachment"),
+                  class: "text-xs text-pink-600 hover:text-pink-700 underline flex-shrink-0" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

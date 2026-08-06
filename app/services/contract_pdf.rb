@@ -12,8 +12,11 @@ require "prawn/table"
 # generated HTML (rich-text template wording + a Deal Terms table), so a small
 # Nokogiri walker maps the tags we actually emit onto Prawn.
 class ContractPdf
-  def initialize(contract)
-    @contract = contract
+  # Takes a ContractVersion: the document is that version's snapshot, never a
+  # live re-render, so a PDF can't drift from what was signed.
+  def initialize(version)
+    @version = version
+    @contract = version.contract
   end
 
   def render
@@ -50,7 +53,7 @@ class ContractPdf
   end
 
   def render_body(pdf)
-    html = @contract.organization_signature&.content_snapshot.presence || @contract.render_signable_document
+    html = @version.content_snapshot
     Nokogiri::HTML.fragment(html.to_s).children.each { |node| render_node(pdf, node) }
   end
 
@@ -155,7 +158,7 @@ class ContractPdf
     pdf.text "Signatures", size: 13, style: :bold
     pdf.move_down 8
 
-    @contract.contract_signatures.sort_by { |s| s.signed_at || Time.current }.each do |sig|
+    @version.effective_signatures.sort_by { |s| s.signed_at || Time.current }.each do |sig|
       role = sig.role_organization? ? @contract.organization.name : "Contractor"
       pdf.text "<b>#{esc(sig.signer_name.to_s)}</b>  —  #{esc(role)}", inline_format: true, size: 10
       meta = []

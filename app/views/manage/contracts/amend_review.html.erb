@@ -247,15 +247,40 @@
         </div>
       <% end %>
 
-      <div class="flex justify-between items-end pt-4 border-t border-gray-200">
-        <%= render "shared/button", text: "Back: Ticketing & Services", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
-        <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
+      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
+        <%# Does the counterparty need to sign this? Only meaningful for e-sign
+            contracts that have been signed once already — an offline one has no
+            signature to re-engage. %>
+        <% if @contract.signing_mode_esign? && @contract.contract_versions.any? %>
+          <div class="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+            <p class="text-sm font-medium text-gray-900 mb-2">Does this change need a new signature?</p>
+            <div class="space-y-2">
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="requires_signature" value="1" checked class="mt-0.5 accent-pink-500">
+                <span class="text-sm text-gray-700">
+                  <span class="block font-medium text-gray-900">Yes — send it back to <%= @contract.contractor_name %></span>
+                  <span class="block text-xs text-gray-500">A new version goes out for signature. The terms below take effect now; the signed document catches up when they sign.</span>
+                </span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="requires_signature" value="0" class="mt-0.5 accent-pink-500">
+                <span class="text-sm text-gray-700">
+                  <span class="block font-medium text-gray-900">No — record it as an internal correction</span>
+                  <span class="block text-xs text-gray-500">Takes effect immediately and is kept in the contract's history, with the existing signatures carried forward and noted.</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="flex justify-between items-end pt-4 border-t border-gray-200">
+          <%= render "shared/button", text: "Back: Ticketing & Services", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
           <input type="hidden" name="force_overlap" value="" data-contract-conflict-target="flag">
           <div data-contract-conflict-target="submit">
             <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit %>
           </div>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
 
       <%# Conflict modal — lists exactly what's double-booked, and the acknowledge
           checkbox that unlocks Apply. %>

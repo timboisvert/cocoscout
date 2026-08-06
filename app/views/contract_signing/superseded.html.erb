@@ -1,0 +1,23 @@
+<% content_for :title, "This contract was updated" %>
+
+<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+  <div class="max-w-lg w-full bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+    <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600 mb-4">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+      </svg>
+    </span>
+
+    <h1 class="text-xl font-bold text-gray-900 mb-2">This contract has been updated</h1>
+
+    <p class="text-gray-600">
+      The copy you're looking at was replaced
+      <% if @superseded_version&.updated_at %>on <%= @superseded_version.updated_at.strftime("%B %-d, %Y") %><% end %>,
+      so it's no longer the version to sign.
+    </p>
+    <p class="text-gray-600 mt-3">
+      A newer one has been sent to you — check your email for the latest link.
+      If you can't find it, contact <strong><%= @organization&.name %></strong> and they'll re-send it.
+    </p>
+  </div>
+</div>

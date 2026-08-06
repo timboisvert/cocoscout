@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -447,14 +447,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
     t.index ["key"], name: "index_content_templates_on_key", unique: true
   end
 
+  create_table "contract_appendixes", force: :cascade do |t|
+    t.bigint "contract_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "position"], name: "index_contract_appendixes_on_contract_id_and_position"
+    t.index ["contract_id"], name: "index_contract_appendixes_on_contract_id"
+  end
+
   create_table "contract_documents", force: :cascade do |t|
     t.bigint "contract_id", null: false
+    t.bigint "contract_version_id"
     t.datetime "created_at", null: false
     t.string "document_type"
     t.string "name", null: false
     t.text "notes"
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_contract_documents_on_contract_id"
+    t.index ["contract_version_id"], name: "index_contract_documents_on_contract_version_id"
   end
 
   create_table "contract_payments", force: :cascade do |t|
@@ -503,6 +515,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
     t.text "content_snapshot", null: false
     t.bigint "contract_id", null: false
     t.bigint "contract_template_id"
+    t.bigint "contract_version_id"
     t.datetime "created_at", null: false
     t.string "ip_address"
     t.bigint "person_id"
@@ -514,9 +527,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
     t.integer "template_version"
     t.datetime "updated_at", null: false
     t.text "user_agent"
-    t.index ["contract_id", "signer_role"], name: "index_contract_signatures_on_contract_id_and_signer_role", unique: true
     t.index ["contract_id"], name: "index_contract_signatures_on_contract_id"
     t.index ["contract_template_id"], name: "index_contract_signatures_on_contract_template_id"
+    t.index ["contract_version_id", "signer_role"], name: "index_contract_signatures_on_version_and_role", unique: true
+    t.index ["contract_version_id"], name: "index_contract_signatures_on_contract_version_id"
     t.index ["person_id"], name: "index_contract_signatures_on_person_id"
     t.index ["signed_by_user_id"], name: "index_contract_signatures_on_signed_by_user_id"
   end
@@ -531,6 +545,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
     t.integer "version", default: 1, null: false
     t.index ["organization_id", "active"], name: "index_contract_templates_on_organization_id_and_active"
     t.index ["organization_id"], name: "index_contract_templates_on_organization_id"
+  end
+
+  create_table "contract_versions", force: :cascade do |t|
+    t.text "change_summary"
+    t.text "content_snapshot", null: false
+    t.bigint "contract_id", null: false
+    t.bigint "contract_template_id"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.jsonb "deal_snapshot", default: {}, null: false
+    t.datetime "executed_at"
+    t.boolean "requires_signature", default: true, null: false
+    t.datetime "sent_for_signature_at"
+    t.string "signing_token"
+    t.integer "template_version"
+    t.datetime "updated_at", null: false
+    t.integer "version_number", null: false
+    t.index ["contract_id", "version_number"], name: "index_contract_versions_on_contract_id_and_version_number", unique: true
+    t.index ["contract_id"], name: "index_contract_versions_on_contract_id"
+    t.index ["contract_template_id"], name: "index_contract_versions_on_contract_template_id"
+    t.index ["created_by_id"], name: "index_contract_versions_on_created_by_id"
+    t.index ["signing_token"], name: "index_contract_versions_on_signing_token", unique: true
   end
 
   create_table "contractors", force: :cascade do |t|
@@ -2906,14 +2942,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "city_hub_memberships", "city_hubs"
+  add_foreign_key "contract_appendixes", "contracts"
+  add_foreign_key "contract_documents", "contract_versions"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contract_service_options", "organizations"
   add_foreign_key "contract_signatures", "contract_templates"
+  add_foreign_key "contract_signatures", "contract_versions"
   add_foreign_key "contract_signatures", "contracts"
   add_foreign_key "contract_signatures", "people"
   add_foreign_key "contract_templates", "organizations"
+  add_foreign_key "contract_versions", "contract_templates"
+  add_foreign_key "contract_versions", "contracts"
+  add_foreign_key "contract_versions", "users", column: "created_by_id"
   add_foreign_key "contractors", "organizations"
   add_foreign_key "contractors", "people"
   add_foreign_key "contracts", "contract_templates"

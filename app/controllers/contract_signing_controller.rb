@@ -70,7 +70,9 @@ class ContractSigningController < ApplicationController
   # agree to identical text. Falls back to a fresh render if somehow absent. The
   # snapshot is our own generated HTML, so render it as HTML (not escaped text).
   def signable_document
-    snapshot = @contract.organization_signature&.content_snapshot.presence
+    # The version's snapshot, never a live re-render — amending the deal must
+    # not silently rewrite the document somebody is about to sign.
+    snapshot = @contract.current_version&.content_snapshot.presence
     return snapshot.html_safe if snapshot
 
     @contract.render_signable_document
@@ -79,6 +81,21 @@ class ContractSigningController < ApplicationController
   def set_contract
     @token = params[:token].to_s
     @contract = Contract.find_by(signing_token: @token) if @token.present?
+
+    if @contract.nil? && @token.present?
+      # Not the live token — but if a previous version went out with it, explain
+      # that rather than 404ing. Signing a superseded document would be worse
+      # still, so this never offers the new one; it points at the org instead.
+      superseded = ContractVersion.find_by(signing_token: @token)
+      if superseded&.superseded?
+        @superseded_version = superseded
+        @contract = superseded.contract
+        @organization = @contract.organization
+        render :superseded, status: :ok
+        return
+      end
+    end
+
     return render :invalid, status: :not_found unless @contract
 
     @organization = @contract.organization

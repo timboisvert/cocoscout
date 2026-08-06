@@ -937,7 +937,9 @@ RSpec.describe Contract, type: :model do
       end
 
       it "generates a PDF without raising (the nested-table walker handles the grid)" do
-        bytes = ContractPdf.new(contract).render
+        # ContractPdf renders a VERSION's snapshot, never a live render.
+        version = contract.cut_version!(requires_signature: false)
+        bytes = ContractPdf.new(version).render
 
         expect(bytes).to be_present
         expect(bytes[0, 4]).to eq("%PDF")
