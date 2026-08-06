@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2847,6 +2847,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_100000) do
     t.index ["city", "state"], name: "index_venues_on_city_and_state"
     t.index ["city_hub_id"], name: "index_venues_on_city_hub_id"
     t.index ["lat", "lng"], name: "index_venues_on_lat_and_lng"
+  end
+
+  create_table "webhook_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_id", null: false
+    t.string "event_type"
+    t.string "provider", default: "stripe", null: false
+    t.index ["created_at"], name: "index_webhook_events_on_created_at"
+    t.index ["provider", "event_id"], name: "index_webhook_events_on_provider_and_event_id", unique: true
   end
 
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"

@@ -298,4 +298,25 @@ class PayoutBatchService
       source.mark_paid_via_payout_run!(reference_id: transfer_id) if source.respond_to?(:mark_paid_via_payout_run!)
     end
   end
+
+  # The inverse, for money that came back. Without it a returned payout leaves
+  # every show payout, advance and contract payment still reading "paid" — the
+  # org would have no idea it still owes the money.
+  def self.unsettle_item_sources!(item)
+    item.payout_contributions.includes(:source).each do |contribution|
+      source = contribution.source
+      source.mark_unpaid_via_payout_run! if source.respond_to?(:mark_unpaid_via_payout_run!)
+    end
+  end
+
+  # A paid item whose money the bank sent back: reverse the ledger, put the
+  # sources back to owed, and recompute the run's status so a "completed" run
+  # doesn't quietly contain a returned item.
+  def self.return_item!(item, reason:)
+    item.mark_returned!(reason: reason)
+    unsettle_item_sources!(item)
+    finalize_status!(item.payout_batch)
+    PayoutReturnedNotificationJob.perform_later(item.id)
+    item
+  end
 end

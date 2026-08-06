@@ -99,6 +99,17 @@ class ShowPayoutLineItem < ApplicationRecord
     )
   end
 
+  # The run that paid this came back — see PayoutBatchItem#mark_returned!. Back
+  # to awaiting payout so it's owed again and can join the next run. A line
+  # marked paid by hand isn't touched: that money really did change hands.
+  def mark_unpaid_via_payout_run!
+    return if manually_paid?
+    return unless payout_status == "success"
+
+    update!(payout_status: nil, payout_reference_id: nil, paid_at: nil, payment_method: nil)
+    sync_payout_ledger_entry!
+  end
+
   def unmark_as_already_paid!
     # If payout was marked as paid, revert it to awaiting_payout
     if show_payout.paid?

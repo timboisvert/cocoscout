@@ -19,6 +19,10 @@ class StripeWebhooksController < ApplicationController
       return head :bad_request
     end
 
+    # Stripe redelivers on any non-2xx, and money-moving handlers must not run
+    # twice for the same event. First writer wins; everyone else no-ops.
+    return head :ok unless WebhookEvent.claim!(provider: "stripe", event_id: event.id, event_type: event.type)
+
     case event.type
     when "checkout.session.completed"
       handle_checkout_completed(event.data.object)
@@ -32,6 +36,8 @@ class StripeWebhooksController < ApplicationController
       handle_connect_account_updated(event.data.object)
     when "transfer.reversed"
       handle_transfer_reversed(event.data.object)
+    when "payout.failed"
+      handle_connect_payout_failed(event.data.object, event.account)
     when "payment_intent.succeeded", "payment_intent.payment_failed"
       handle_payout_funding(event.data.object, event.type)
     end
@@ -52,16 +58,53 @@ class StripeWebhooksController < ApplicationController
       PayoutBatchService.advance_funding!(batch, "succeeded")
     else
       batch.update!(status: "failed", funding_status: "failed")
+      # A bounced debit used to be silent — the run just sat there "failed"
+      # while everyone assumed the money was moving.
+      PayoutFundingFailedNotificationJob.perform_later(batch.id)
     end
   end
 
-  # A Connect transfer was reversed — undo the payout: mark the batch item failed
-  # and remove its ledger entry so the payee's balance is restored.
+  # A Connect transfer was reversed — the money never reached the payee. Route
+  # it through the same path as a bank return so the ledger, the sources and
+  # the run's status all follow.
   def handle_transfer_reversed(transfer)
     item = PayoutBatchItem.find_by(stripe_transfer_id: transfer.id)
-    return unless item
+    return unless item&.paid?
 
-    item.mark_failed!("Transfer reversed")
+    PayoutBatchService.return_item!(item, reason: "Transfer reversed")
+  end
+
+  # A payout from a payee's Stripe balance to their own bank failed — a closed
+  # account, or details that don't match. This is the only signal we get for a
+  # bank rejection; our transfer succeeded days earlier.
+  #
+  # Stripe reports the payee's account and an amount, not our item id, and one
+  # Stripe payout can bundle several of our transfers. We act only when a single
+  # unreturned paid item matches that amount exactly. Anything ambiguous is
+  # reported rather than guessed at — a wrong guess corrupts the ledger.
+  def handle_connect_payout_failed(payout, account_id)
+    return unless account_id
+
+    payee = StripeConnectService.payee_for_account(account_id)
+    return unless payee
+
+    candidates = PayoutBatchItem.where(payee: payee, status: "paid").order(paid_at: :desc).to_a
+    matches = candidates.select { |i| i.amount_cents == payout.amount }
+
+    if matches.one?
+      PayoutBatchService.return_item!(matches.first, reason: failure_reason(payout))
+    else
+      Rails.logger.warn(
+        "[stripe] payout.failed for account #{account_id} (#{payout.amount}c) matched " \
+        "#{matches.size} paid items — not guessing; flagging the payee instead."
+      )
+      PayoutAccountProblemNotificationJob.perform_later(payee.class.name, payee.id, payout.amount, failure_reason(payout))
+    end
+  end
+
+  def failure_reason(payout)
+    [ payout.try(:failure_message), payout.try(:failure_code) ].compact.reject(&:blank?).first ||
+      "The bank rejected the deposit"
   end
 
   # A payee's Connect Express account changed (finished onboarding, payouts

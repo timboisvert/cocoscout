@@ -76,6 +76,14 @@ class PersonAdvance < ApplicationRecord
     update!(paid_at: Time.current, payment_method: "stripe")
   end
 
+  # The run that paid this came back — see PayoutBatchItem#mark_returned!.
+  # Only undoes a payout-run payment; anything handed over another way stands.
+  def mark_unpaid_via_payout_run!
+    return unless payment_method == "stripe"
+
+    update!(paid_at: nil, payment_method: nil)
+  end
+
   # Payment status
   def paid?
     paid_at.present?

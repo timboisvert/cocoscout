@@ -150,6 +150,15 @@ class ContractPayment < ApplicationRecord
     update!(status: :paid, paid_date: Date.current, payment_method: "stripe", reference_number: reference_id)
   end
 
+  # The run that paid this came back — the payee's bank rejected the deposit.
+  # Only undoes what a payout run itself did; money recorded by hand or settled
+  # by deduction is left alone.
+  def mark_unpaid_via_payout_run!
+    return unless status_paid? && payment_method == "stripe"
+
+    update!(status: :pending, paid_date: nil, payment_method: nil, reference_number: nil)
+  end
+
   # Mark as paid
   def mark_paid!(paid_on: Date.current, method: nil, reference: nil, amount: nil)
     attrs = {

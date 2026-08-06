@@ -3,7 +3,12 @@
 # One payee's line in a payout batch. When paid, it posts a negative `payout`
 # ledger entry that debits the payee's company-wide balance.
 class PayoutBatchItem < ApplicationRecord
-  STATUSES = %w[pending paid failed].freeze
+  # "failed": the transfer never happened (Stripe refused it). "returned": the
+  # money did leave, reached the payee's Stripe balance, and their bank rejected
+  # the deposit — so it came back. The distinction matters because a return has
+  # a ledger entry to reverse and settled sources to un-settle; a failure never
+  # got that far.
+  STATUSES = %w[pending paid failed returned].freeze
 
   belongs_to :payout_batch
   belongs_to :payee, polymorphic: true
@@ -53,6 +58,35 @@ class PayoutBatchItem < ApplicationRecord
     transaction do
       update!(status: "failed", error: message.to_s.truncate(500))
       PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
+    end
+  end
+
+  def returned?
+    status == "returned"
+  end
+
+  # The payee's bank rejected the deposit and Stripe handed the money back.
+  #
+  # Unlike mark_failed!, this does NOT delete the payout ledger entry: the
+  # payment genuinely happened and then came back, and erasing it would leave
+  # no trace of either. It posts a matching `reversal` instead, which restores
+  # the payee's balance while keeping both halves of the story on the ledger.
+  def mark_returned!(reason:)
+    transaction do
+      update!(status: "returned", error: reason.to_s.truncate(500))
+
+      # Course runs never posted a payout entry, so there's nothing to reverse.
+      next if payout_batch.kind == "course"
+
+      PayoutLedgerEntry.post!(
+        organization: organization,
+        payee: payee,
+        entry_type: "reversal",
+        amount_cents: amount_cents,
+        source: self,
+        description: "Payout returned by the bank",
+        category: payout_batch.kind == "staff_pay" ? "staffing" : "performer"
+      )
     end
   end
 
