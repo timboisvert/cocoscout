@@ -457,6 +457,10 @@ class Contract < ApplicationRecord
   # activation and re-billing on amendment.
   def bill_services!(services)
     shows_by_date = service_shows_by_date
+    # Charges that have already been settled — paid, or netted out of a payout
+    # run. Re-billing on an amendment must not raise them a second time.
+    already_billed = contract_payments.select { |p| p.status_paid? || p.in_payout_run? }
+                                      .map { |p| [ p.description, p.due_date ] }.to_set
 
     Array(services).each do |service|
       direction = service["direction"].presence || "incoming"
@@ -476,8 +480,11 @@ class Contract < ApplicationRecord
           end
           next unless amount.positive?
 
+          description = "#{service['name']} — #{starts_at.strftime('%b %-d, %Y')}"
+          next if already_billed.include?([ description, starts_at.to_date ])
+
           contract_payments.create!(
-            description: "#{service['name']} — #{starts_at.strftime('%b %-d, %Y')}",
+            description: description,
             amount: amount,
             direction: direction,
             settlement_method: settlement,
@@ -489,12 +496,15 @@ class Contract < ApplicationRecord
         amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
         next unless amount.positive?
 
+        due = contract_end_date || Date.current
+        next if already_billed.include?([ service["name"], due ])
+
         contract_payments.create!(
           description: service["name"],
           amount: amount,
           direction: direction,
           settlement_method: settlement,
-          due_date: contract_end_date || Date.current
+          due_date: due
         )
       end
     end
@@ -518,7 +528,10 @@ class Contract < ApplicationRecord
       # name and its dated variants.
       conditions = old_names.map { "(description = ? OR description LIKE ?)" }.join(" OR ")
       binds = old_names.flat_map { |n| [ n, "#{n} — %" ] }
-      contract_payments.status_pending.where(conditions, *binds).destroy_all
+      # Pending only, and never one already committed to a payout run — that
+      # money is spoken for, and destroying it would strand the run's contribution.
+      contract_payments.status_pending.where(conditions, *binds)
+                       .reject(&:in_payout_run?).each(&:destroy!)
     end
     update_draft_step(:services, Array(new_services))
     bill_services!(draft_services)
@@ -526,26 +539,89 @@ class Contract < ApplicationRecord
 
   # Amend: apply a freshly-edited payment list (the deal-derived payments plus any
   # by-hand extras, produced by the same Financials editor as create) to an active
-  # contract. Paid payments are history and stay put; every pending payment is
-  # replaced by the staged list, and per-event payments are re-linked to shows.
+  # contract.
+  #
+  # This reconciles by DIFF. It used to destroy every pending payment and rebuild
+  # from the staged list, which had three bad consequences: it invented a second
+  # payment for any date that had already been settled (a show that had happened,
+  # sold tickets and been paid still got a fresh "due" row beside the paid one);
+  # it could destroy a payment already committed to a payout run; and it threw
+  # away every choice a manager had made by hand — settling out of the payout, a
+  # hand-set amount, an already-issued pay link.
+  #
+  # A payment's identity is its SLOT: which way the money goes and when it's due.
+  # Two payments in the same slot are the same payment as far as an amendment is
+  # concerned, however the deal has re-worded or re-priced them. Slots that
+  # already carry settled money are closed — nothing is ever created for them.
   def reconcile_amended_payments!(staged_payments)
-    contract_payments.status_pending.destroy_all
+    staged = Array(staged_payments).filter_map { |row| staged_payment_attributes(row) }
+    existing = contract_payments.to_a
 
-    created = Array(staged_payments).filter_map do |payment|
-      tbd = payment["amount_tbd"] == true || payment["amount_tbd"] == "true"
-      next if payment["amount"].to_f <= 0 && !tbd
+    settled_slots = existing.select { |p| p.status_paid? || p.in_payout_run? }
+                            .map { |p| payment_slot(p) }.to_set
+    # Only pending rows that aren't committed to a run are ours to change.
+    unclaimed = existing.select { |p| p.status_pending? && !p.in_payout_run? }
+    kept = []
 
-      contract_payments.create!(
-        description: payment["description"],
-        amount: payment["amount"].to_f,
-        amount_tbd: tbd,
-        direction: payment["direction"].presence || settlement_direction,
-        due_date: payment["due_date"].present? ? Date.parse(payment["due_date"].to_s) : (contract_end_date || Date.current),
-        notes: payment["notes"]
-      )
+    # Two passes: an exact match first, then the same slot with different
+    # wording — that's a re-priced fee, not a new payment.
+    [ ->(attrs, p) { payment_slot(p) == attrs[:slot] && p.description == attrs[:description] },
+      ->(attrs, p) { payment_slot(p) == attrs[:slot] } ].each do |matches|
+      staged.each do |attrs|
+        next if attrs[:claimed]
+
+        match = unclaimed.detect { |p| matches.call(attrs, p) }
+        next unless match
+
+        unclaimed.delete(match)
+        attrs[:claimed] = true
+        # Only the deal's own fields are rewritten. settlement_method,
+        # payment_token and show_id belong to the manager, and survive.
+        match.update!(attrs[:values])
+        kept << match
+      end
     end
 
-    link_payments_to_shows(created, contract_shows.order(:date_and_time).to_a)
+    staged.each do |attrs|
+      next if attrs[:claimed]
+      # The guard that stops an amendment inventing money for a closed date.
+      next if settled_slots.include?(attrs[:slot])
+
+      kept << contract_payments.create!(attrs[:values])
+    end
+
+    # Pending, uncommitted rows the amended deal no longer produces.
+    unclaimed.each(&:destroy!)
+
+    link_payments_to_shows(kept, contract_shows.order(:date_and_time).to_a)
+  end
+
+  # Which way the money goes and when it's due — see reconcile_amended_payments!.
+  def payment_slot(payment)
+    [ payment.direction, payment.due_date ]
+  end
+
+  def staged_payment_attributes(row)
+    tbd = row["amount_tbd"] == true || row["amount_tbd"] == "true"
+    amount = row["amount"].to_f
+    return nil if amount <= 0 && !tbd
+
+    direction = row["direction"].presence || settlement_direction
+    due_date = row["due_date"].present? ? Date.parse(row["due_date"].to_s) : (contract_end_date || Date.current)
+
+    {
+      slot: [ direction, due_date ],
+      description: row["description"],
+      claimed: false,
+      values: {
+        description: row["description"],
+        amount: amount,
+        amount_tbd: tbd,
+        direction: direction,
+        due_date: due_date,
+        notes: row["notes"]
+      }
+    }
   end
 
   def update_draft_step(step_name, data)
