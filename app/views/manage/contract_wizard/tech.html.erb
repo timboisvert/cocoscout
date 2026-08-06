@@ -2,7 +2,9 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Services</h2>
   <p class="text-gray-600 mb-6">Optional — add any services this contract includes, like technical services. You don't have to add anything.</p>
 
-  <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true do |form| %>
+  <%# novalidate: unchecked service lines keep their inputs in hidden bodies —
+      a constraint violation in one would block submit with an unfocusable-control error. %>
+  <%= form_with url: manage_tech_contract_wizard_path(@contract), method: :post, local: true, html: { novalidate: true } do |form| %>
     <div class="mb-6">
       <%= render "manage/contracts/services_fields", service_options: @service_options, existing_services: @existing_services, bookings: @bookings %>
     </div>

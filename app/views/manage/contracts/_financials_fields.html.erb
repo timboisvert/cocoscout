@@ -21,7 +21,11 @@
      data-contract-payments-existing-config-value="<%= existing_payment_config.to_json %>"
      data-contract-payments-bookings-value="<%= booking_dates.to_json %>"
      data-contract-payments-bookings-count-value="<%= bookings_count %>">
-  <%= form_with url: form_url, method: :post, local: true, data: { action: "submit->contract-payments#preparePaymentsForSubmit" } do |form| %>
+  <%# novalidate: the real payload is the three hidden JSON fields below. The
+      visible config inputs are display-only and half of them sit in panels the
+      controller hides — a stored value that trips a step/min constraint in a
+      hidden panel would otherwise block submit with an unfocusable-control error. %>
+  <%= form_with url: form_url, method: :post, local: true, html: { novalidate: true }, data: { action: "submit->contract-payments#preparePaymentsForSubmit" } do |form| %>
 
   <%# Who holds the ticket money. Separate from how the deal settles — we might
       sell the tickets on a deal that's simply a flat rental. %>

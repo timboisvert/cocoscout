@@ -17,7 +17,9 @@
   <div class="max-w-2xl mx-auto mt-6">
     <p class="text-gray-600 mb-6">Update the ticket tiers and prices, discounts, and the services on this contract.</p>
 
-    <%= form_with url: save_amend_ticketing_tech_manage_contract_path(@contract), method: :post, local: true do %>
+    <%# novalidate: unchecked service lines keep their inputs in hidden bodies —
+        a constraint violation in one would block submit with an unfocusable-control error. %>
+    <%= form_with url: save_amend_ticketing_tech_manage_contract_path(@contract), method: :post, local: true, html: { novalidate: true } do %>
       <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
         <h3 class="text-base font-semibold text-gray-900 mb-4">Ticketing</h3>
         <%= render "manage/contracts/ticketing_fields", ticketing: @ticketing %>
